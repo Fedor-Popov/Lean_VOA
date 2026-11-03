@@ -1,0 +1,275 @@
+/-
+Copyright (c) 2026 Leonardo Rastelli. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Leonardo Rastelli
+-/
+import VOA.DeligneAudit.D4FusionRealizationTwoWordTypes
+
+set_option maxRecDepth 100000
+
+namespace VOA.DeligneAudit.D4Two.Certificate
+
+set_option maxHeartbeats 2000000 in
+-- Literal action payloads require additional elaboration steps.
+def actionData315 : List ActionCase := [
+  { denominator := Int.ofNat 2, terms := [(39, Int.ofNat 1), (344, Int.negSucc 1)] },
+  { denominator := Int.ofNat 2, terms := [(40, Int.ofNat 1)] },
+  { denominator := Int.ofNat 2, terms := [(38, Int.ofNat 1), (322, Int.ofNat 2), (355, Int.negSucc
+    1)] },
+  { denominator := Int.ofNat 2, terms := [(38, Int.ofNat 1), (322, Int.ofNat 2), (350, Int.negSucc
+    1), (355, Int.negSucc 1)] },
+  { denominator := Int.ofNat 2, terms := [(38, Int.ofNat 1), (322, Int.ofNat 2), (350, Int.negSucc
+    1)] },
+  { denominator := Int.ofNat 1, terms := [(334, Int.negSucc 3), (370, Int.ofNat 4)] },
+  { denominator := Int.ofNat 1, terms := [(316, Int.negSucc 3), (408, Int.negSucc 1), (682,
+    Int.ofNat 2), (697, Int.negSucc 1), (700, Int.negSucc 1), (703, Int.negSucc 1)] },
+  { denominator := Int.ofNat 1, terms := [(341, Int.negSucc 3), (369, Int.ofNat 4)] },
+  { denominator := Int.ofNat 2, terms := [(38, Int.ofNat 1), (350, Int.negSucc 1), (355,
+    Int.negSucc 1)] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 2, terms := [(56, Int.ofNat 1), (378, Int.negSucc 1)] },
+  { denominator := Int.ofNat 2, terms := [(57, Int.ofNat 1), (346, Int.ofNat 2), (383, Int.negSucc
+    1)] },
+  { denominator := Int.ofNat 2, terms := [(58, Int.ofNat 1)] },
+  { denominator := Int.ofNat 2, terms := [(59, Int.ofNat 1), (323, Int.negSucc 1), (346, Int.ofNat
+    4), (373, Int.ofNat 1), (377, Int.negSucc 1), (383, Int.negSucc 1), (691, Int.ofNat 2), (704,
+    Int.ofNat 2), (711, Int.negSucc 1), (714, Int.negSucc 1)] },
+  { denominator := Int.ofNat 2, terms := [(60, Int.ofNat 1)] },
+  { denominator := Int.ofNat 2, terms := [(61, Int.ofNat 1), (346, Int.ofNat 2), (377, Int.negSucc
+    1)] },
+  { denominator := Int.ofNat 2, terms := [(62, Int.ofNat 1), (382, Int.negSucc 1)] },
+  { denominator := Int.ofNat 2, terms := [(57, Int.ofNat 1), (59, Int.ofNat 1), (323, Int.ofNat
+    2), (346, Int.ofNat 4), (383, Int.negSucc 1), (388, Int.negSucc 1), (394, Int.negSucc 1)] },
+  { denominator := Int.ofNat 2, terms := [(60, Int.ofNat 1), (356, Int.ofNat 4)] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 4, terms := [(58, Int.ofNat 1), (351, Int.ofNat 4)] },
+  { denominator := Int.ofNat 1, terms := [(335, Int.negSucc 7), (361, Int.ofNat 2), (397,
+    Int.negSucc 1), (402, Int.negSucc 1), (410, Int.ofNat 4), (688, Int.negSucc 3), (701,
+    Int.negSucc 3), (722, Int.negSucc 3), (725, Int.negSucc 3)] },
+  { denominator := Int.ofNat 1, terms := [(371, Int.negSucc 7)] },
+  { denominator := Int.ofNat 1, terms := [(323, Int.negSucc 3), (373, Int.ofNat 1), (459,
+    Int.negSucc 1), (691, Int.ofNat 2), (704, Int.ofNat 2), (711, Int.negSucc 1), (714,
+    Int.negSucc 1)] },
+  { denominator := Int.ofNat 1, terms := [(342, Int.negSucc 3), (366, Int.ofNat 1), (401,
+    Int.negSucc 0), (405, Int.negSucc 0), (409, Int.ofNat 2), (685, Int.negSucc 1), (698,
+    Int.negSucc 1), (733, Int.negSucc 1), (736, Int.negSucc 1)] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [(374, Int.negSucc 0)] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 2, terms := [(79, Int.ofNat 1), (379, Int.ofNat 2), (428, Int.negSucc
+    1)] },
+  { denominator := Int.ofNat 2, terms := [(80, Int.ofNat 1), (347, Int.ofNat 2), (420, Int.negSucc
+    1), (432, Int.negSucc 1)] },
+  { denominator := Int.ofNat 2, terms := [(81, Int.ofNat 1), (384, Int.ofNat 4), (435, Int.negSucc
+    1)] },
+  { denominator := Int.ofNat 2, terms := [(82, Int.ofNat 1), (352, Int.negSucc 3), (379, Int.ofNat
+    8), (413, Int.ofNat 2), (423, Int.negSucc 3), (428, Int.negSucc 3), (744, Int.negSucc 3)] },
+  { denominator := Int.ofNat 2, terms := [(83, Int.ofNat 1)] },
+  { denominator := Int.ofNat 2, terms := [(84, Int.ofNat 1), (374, Int.negSucc 1)] },
+  { denominator := Int.ofNat 2, terms := [(85, Int.ofNat 1), (352, Int.negSucc 1), (379, Int.ofNat
+    6), (413, Int.ofNat 1), (423, Int.negSucc 2), (428, Int.negSucc 1), (744, Int.negSucc 1)] },
+  { denominator := Int.ofNat 2, terms := [(86, Int.ofNat 1), (357, Int.negSucc 1), (384, Int.ofNat
+    6), (416, Int.ofNat 1), (427, Int.negSucc 1), (435, Int.negSucc 2), (751, Int.negSucc 1)] },
+  { denominator := Int.ofNat 2, terms := [(87, Int.ofNat 1), (384, Int.ofNat 2), (427, Int.negSucc
+    1)] },
+  { denominator := Int.ofNat 2, terms := [(84, Int.ofNat 1)] },
+  { denominator := Int.ofNat 2, terms := [(79, Int.ofNat 1), (85, Int.ofNat 1), (352, Int.ofNat
+    2), (379, Int.ofNat 4), (389, Int.ofNat 2), (423, Int.negSucc 0), (428, Int.negSucc 1), (446,
+    Int.negSucc 1)] },
+  { denominator := Int.ofNat 2, terms := [(81, Int.ofNat 1), (86, Int.ofNat 1), (357, Int.ofNat
+    2), (384, Int.ofNat 6), (395, Int.ofNat 2), (435, Int.negSucc 2), (440, Int.negSucc 1)] },
+  { denominator := Int.ofNat 1, terms := [(352, Int.negSucc 7), (379, Int.ofNat 4), (413,
+    Int.ofNat 2), (423, Int.negSucc 3), (428, Int.negSucc 3), (461, Int.ofNat 4), (744,
+    Int.negSucc 3)] },
+  { denominator := Int.ofNat 1, terms := [(372, Int.negSucc 7), (403, Int.ofNat 4), (411,
+    Int.negSucc 3), (449, Int.negSucc 1), (456, Int.negSucc 1), (758, Int.negSucc 3)] },
+  { denominator := Int.ofNat 1, terms := [(357, Int.negSucc 3), (384, Int.ofNat 2), (416,
+    Int.ofNat 1), (427, Int.negSucc 1), (435, Int.negSucc 1), (460, Int.ofNat 2), (751,
+    Int.negSucc 1)] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [(375, Int.negSucc 0)] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [(414, Int.negSucc 1)] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [(414, Int.negSucc 0)] },
+  { denominator := Int.ofNat 1, terms := [(417, Int.negSucc 0)] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 4, terms := [(106, Int.negSucc 0), (107, Int.ofNat 2), (380,
+    Int.ofNat 8), (390, Int.negSucc 3), (421, Int.ofNat 8), (464, Int.ofNat 2), (475, Int.negSucc
+    7), (487, Int.negSucc 3), (765, Int.negSucc 3)] },
+  { denominator := Int.ofNat 2, terms := [(108, Int.ofNat 1), (429, Int.ofNat 4), (490,
+    Int.negSucc 1)] },
+  { denominator := Int.ofNat 2, terms := [(109, Int.ofNat 1)] },
+  { denominator := Int.ofNat 2, terms := [(110, Int.ofNat 1), (380, Int.ofNat 2), (421, Int.ofNat
+    2), (475, Int.negSucc 1), (494, Int.negSucc 1)] },
+  { denominator := Int.ofNat 2, terms := [(111, Int.ofNat 1), (385, Int.ofNat 2), (433, Int.ofNat
+    2), (479, Int.negSucc 1), (497, Int.negSucc 1)] },
+  { denominator := Int.ofNat 2, terms := [(112, Int.ofNat 1), (436, Int.ofNat 6)] },
+  { denominator := Int.ofNat 2, terms := [(113, Int.ofNat 1), (414, Int.negSucc 3)] },
+  { denominator := Int.ofNat 2, terms := [(114, Int.ofNat 1), (424, Int.ofNat 2)] },
+  { denominator := Int.ofNat 2, terms := [(115, Int.ofNat 1), (391, Int.negSucc 3), (429,
+    Int.ofNat 12), (468, Int.ofNat 2), (482, Int.negSucc 3), (490, Int.negSucc 5), (695,
+    Int.negSucc 3), (745, Int.ofNat 4), (752, Int.ofNat 4), (759, Int.negSucc 3)] },
+  { denominator := Int.ofNat 2, terms := [(116, Int.ofNat 1), (417, Int.negSucc 1)] },
+  { denominator := Int.ofNat 2, terms := [(117, Int.ofNat 1), (391, Int.negSucc 1), (429,
+    Int.ofNat 8), (468, Int.ofNat 1), (482, Int.negSucc 2), (490, Int.negSucc 2), (695,
+    Int.negSucc 1), (745, Int.ofNat 2), (752, Int.ofNat 2), (759, Int.negSucc 1)] },
+  { denominator := Int.ofNat 2, terms := [(118, Int.ofNat 1), (385, Int.ofNat 10), (396,
+    Int.negSucc 3), (433, Int.ofNat 10), (471, Int.ofNat 2), (479, Int.negSucc 1), (486,
+    Int.negSucc 3), (497, Int.negSucc 9), (773, Int.negSucc 3)] },
+  { denominator := Int.ofNat 4, terms := [(113, Int.ofNat 1)] },
+  { denominator := Int.ofNat 2, terms := [(116, Int.ofNat 1)] },
+  { denominator := Int.ofNat 2, terms := [(108, Int.ofNat 1), (117, Int.ofNat 1), (391, Int.ofNat
+    2), (429, Int.ofNat 6), (441, Int.ofNat 2), (447, Int.ofNat 2), (482, Int.negSucc 0), (490,
+    Int.negSucc 2)] },
+  { denominator := Int.ofNat 1, terms := [(391, Int.negSucc 7), (429, Int.ofNat 8), (462,
+    Int.negSucc 3), (468, Int.ofNat 2), (482, Int.negSucc 3), (490, Int.negSucc 3), (695,
+    Int.negSucc 3), (745, Int.ofNat 4), (752, Int.ofNat 4), (759, Int.negSucc 3)] },
+  { denominator := Int.ofNat 1, terms := [(404, Int.ofNat 8), (412, Int.negSucc 15), (454,
+    Int.ofNat 4), (504, Int.negSucc 3), (512, Int.negSucc 7), (780, Int.negSucc 7)] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [(415, Int.negSucc 0), (465, Int.negSucc 0)] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [(415, Int.negSucc 0)] },
+  { denominator := Int.ofNat 1, terms := [(418, Int.negSucc 0)] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [(469, Int.negSucc 1)] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [(469, Int.negSucc 0)] },
+  { denominator := Int.ofNat 1, terms := [(418, Int.negSucc 2), (472, Int.negSucc 1)] },
+  { denominator := Int.ofNat 1, terms := [(418, Int.negSucc 0), (472, Int.negSucc 0)] },
+  { denominator := Int.ofNat 2, terms := [(137, Int.ofNat 1), (415, Int.ofNat 1), (540,
+    Int.negSucc 1)] },
+  { denominator := Int.ofNat 2, terms := [(138, Int.ofNat 1), (425, Int.ofNat 2), (476, Int.ofNat
+    4), (544, Int.negSucc 1)] },
+  { denominator := Int.ofNat 4, terms := [(136, Int.negSucc 0), (139, Int.ofNat 2), (430,
+    Int.ofNat 8), (442, Int.negSucc 3), (480, Int.ofNat 8), (488, Int.ofNat 4), (516, Int.ofNat
+    2), (528, Int.negSucc 7), (547, Int.negSucc 3), (766, Int.ofNat 4), (787, Int.negSucc 3)] },
+  { denominator := Int.ofNat 2, terms := [(140, Int.ofNat 1), (491, Int.ofNat 6)] },
+  { denominator := Int.ofNat 2, terms := [(141, Int.ofNat 1)] },
+  { denominator := Int.ofNat 2, terms := [(142, Int.ofNat 1)] },
+  { denominator := Int.ofNat 2, terms := [(143, Int.ofNat 1), (430, Int.ofNat 2), (480, Int.ofNat
+    2), (495, Int.ofNat 2), (528, Int.negSucc 1), (550, Int.negSucc 1)] },
+  { denominator := Int.ofNat 2, terms := [(145, Int.ofNat 1), (437, Int.ofNat 2), (498, Int.ofNat
+    4), (532, Int.negSucc 1)] },
+  { denominator := Int.ofNat 2, terms := [(146, Int.ofNat 1), (469, Int.negSucc 3)] },
+  { denominator := Int.ofNat 2, terms := [(147, Int.ofNat 1), (483, Int.ofNat 2)] },
+  { denominator := Int.ofNat 2, terms := [(136, Int.ofNat 2), (148, Int.ofNat 1), (430, Int.ofNat
+    24), (442, Int.negSucc 3), (443, Int.negSucc 7), (480, Int.ofNat 24), (488, Int.ofNat 20),
+    (516, Int.ofNat 2), (520, Int.ofNat 4), (528, Int.negSucc 7), (535, Int.negSucc 7), (547,
+    Int.negSucc 19), (696, Int.negSucc 7), (709, Int.negSucc 7), (746, Int.ofNat 8), (753,
+    Int.ofNat 8), (760, Int.negSucc 7), (766, Int.ofNat 12), (774, Int.ofNat 8), (781, Int.negSucc
+    7), (787, Int.negSucc 3)] },
+  { denominator := Int.ofNat 2, terms := [(149, Int.ofNat 1), (418, Int.negSucc 1), (472,
+    Int.negSucc 1), (539, Int.negSucc 1)] },
+  { denominator := Int.ofNat 8, terms := [(136, Int.ofNat 4), (148, Int.negSucc 0), (150,
+    Int.ofNat 6), (151, Int.negSucc 1), (430, Int.ofNat 64), (442, Int.negSucc 7), (443,
+    Int.negSucc 15), (448, Int.negSucc 7), (480, Int.ofNat 48), (488, Int.ofNat 48), (495,
+    Int.ofNat 8), (516, Int.ofNat 4), (520, Int.ofNat 8), (524, Int.ofNat 4), (528, Int.negSucc
+    15), (535, Int.negSucc 19), (547, Int.negSucc 39), (550, Int.negSucc 15), (696, Int.negSucc
+    15), (709, Int.negSucc 15), (746, Int.ofNat 16), (753, Int.ofNat 16), (760, Int.negSucc 15),
+    (766, Int.ofNat 24), (774, Int.ofNat 24), (781, Int.negSucc 15), (787, Int.negSucc 7), (795,
+    Int.negSucc 7)] },
+  { denominator := Int.ofNat 4, terms := [(146, Int.ofNat 1)] },
+  { denominator := Int.ofNat 2, terms := [(136, Int.ofNat 3), (139, Int.negSucc 1), (148,
+    Int.ofNat 1), (430, Int.ofNat 32), (443, Int.negSucc 7), (463, Int.negSucc 15), (480,
+    Int.ofNat 16), (488, Int.ofNat 16), (510, Int.ofNat 4), (520, Int.ofNat 4), (535, Int.negSucc
+    7), (547, Int.negSucc 15), (556, Int.negSucc 3), (560, Int.negSucc 7), (696, Int.negSucc 7),
+    (709, Int.negSucc 7), (746, Int.ofNat 8), (753, Int.ofNat 8), (760, Int.negSucc 7), (766,
+    Int.ofNat 8), (774, Int.ofNat 8), (781, Int.negSucc 15), (802, Int.negSucc 7)] },
+  { denominator := Int.ofNat 1, terms := [(466, Int.negSucc 1)] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 2, terms := [(467, Int.negSucc 0)] },
+  { denominator := Int.ofNat 1, terms := [(470, Int.negSucc 0), (517, Int.negSucc 0)] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [(470, Int.negSucc 0)] },
+  { denominator := Int.ofNat 1, terms := [(473, Int.negSucc 1)] },
+  { denominator := Int.ofNat 1, terms := [(474, Int.negSucc 0)] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [(470, Int.negSucc 5), (517, Int.negSucc 1), (521,
+    Int.negSucc 3)] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [(470, Int.negSucc 3), (517, Int.negSucc 0), (521,
+    Int.negSucc 1), (525, Int.negSucc 0)] },
+  { denominator := Int.ofNat 1, terms := [(470, Int.negSucc 0), (525, Int.negSucc 0)] },
+  { denominator := Int.ofNat 2, terms := [(169, Int.ofNat 1)] },
+  { denominator := Int.ofNat 2, terms := [(170, Int.ofNat 1), (470, Int.ofNat 1), (541, Int.ofNat
+    2), (590, Int.negSucc 1)] },
+  { denominator := Int.ofNat 2, terms := [(171, Int.ofNat 1), (484, Int.ofNat 2), (529, Int.ofNat
+    4), (545, Int.ofNat 2), (593, Int.negSucc 1)] },
+  { denominator := Int.ofNat 2, terms := [(167, Int.ofNat 5), (172, Int.negSucc 1), (481,
+    Int.ofNat 20), (489, Int.ofNat 8), (500, Int.negSucc 15), (564, Int.ofNat 2), (578,
+    Int.negSucc 7), (596, Int.negSucc 3), (710, Int.negSucc 7), (767, Int.ofNat 4), (775,
+    Int.ofNat 4), (782, Int.negSucc 3)] },
+  { denominator := Int.ofNat 2, terms := [(168, Int.negSucc 0), (173, Int.ofNat 1), (492,
+    Int.ofNat 4), (501, Int.negSucc 1), (533, Int.negSucc 1), (548, Int.ofNat 4), (567, Int.ofNat
+    1), (581, Int.negSucc 3), (788, Int.ofNat 4)] },
+  { denominator := Int.ofNat 2, terms := [(174, Int.ofNat 1)] },
+  { denominator := Int.ofNat 2, terms := [(176, Int.ofNat 1)] },
+  { denominator := Int.ofNat 2, terms := [(178, Int.ofNat 1), (492, Int.ofNat 2), (533, Int.ofNat
+    2), (551, Int.ofNat 4), (581, Int.negSucc 1)] },
+  { denominator := Int.ofNat 2, terms := [(170, Int.ofNat 1), (180, Int.ofNat 3), (192,
+    Int.negSucc 0), (470, Int.ofNat 4), (502, Int.negSucc 3), (517, Int.ofNat 2), (541, Int.ofNat
+    4), (585, Int.negSucc 3), (590, Int.negSucc 7), (803, Int.negSucc 3)] },
+  { denominator := Int.ofNat 2, terms := [(171, Int.ofNat 2), (181, Int.ofNat 5), (183,
+    Int.negSucc 1), (484, Int.ofNat 10), (503, Int.negSucc 3), (529, Int.ofNat 8), (536, Int.ofNat
+    8), (573, Int.ofNat 2), (593, Int.negSucc 7), (796, Int.ofNat 4)] },
+  { denominator := Int.ofNat 2, terms := [(182, Int.ofNat 1), (470, Int.negSucc 1), (525,
+    Int.negSucc 2), (541, Int.ofNat 2), (585, Int.negSucc 0)] },
+  { denominator := Int.ofNat 4, terms := [(170, Int.negSucc 0), (174, Int.ofNat 2), (180,
+    Int.ofNat 4), (182, Int.negSucc 1), (192, Int.negSucc 0), (470, Int.negSucc 1), (517,
+    Int.negSucc 3), (521, Int.ofNat 4), (525, Int.negSucc 1), (585, Int.negSucc 1), (590,
+    Int.negSucc 3), (803, Int.negSucc 3)] },
+  { denominator := Int.ofNat 1, terms := [(170, Int.ofNat 3), (180, Int.ofNat 7), (192,
+    Int.negSucc 2), (470, Int.ofNat 34), (502, Int.negSucc 19), (517, Int.ofNat 12), (521,
+    Int.ofNat 20), (541, Int.ofNat 4), (585, Int.negSucc 11), (590, Int.negSucc 23), (803,
+    Int.negSucc 11)] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [(515, Int.negSucc 1)] },
+  { denominator := Int.ofNat 1, terms := [(518, Int.negSucc 1)] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 2, terms := [(519, Int.negSucc 0)] },
+  { denominator := Int.ofNat 1, terms := [(518, Int.negSucc 3), (522, Int.negSucc 1), (565,
+    Int.negSucc 1)] },
+  { denominator := Int.ofNat 1, terms := [(523, Int.negSucc 0), (568, Int.negSucc 0)] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 1, terms := [(518, Int.negSucc 0), (522, Int.negSucc 0), (526,
+    Int.negSucc 0), (565, Int.negSucc 0)] },
+  { denominator := Int.ofNat 1, terms := [(523, Int.negSucc 0)] },
+  { denominator := Int.ofNat 1, terms := [(527, Int.negSucc 1)] },
+  { denominator := Int.ofNat 2, terms := [(212, Int.ofNat 1)] },
+  { denominator := Int.ofNat 1, terms := [(519, Int.negSucc 1), (574, Int.negSucc 1)] },
+  { denominator := Int.ofNat 1, terms := [] },
+  { denominator := Int.ofNat 2, terms := [(519, Int.negSucc 8), (574, Int.negSucc 7)] },
+  { denominator := Int.ofNat 2, terms := [(200, Int.ofNat 1)] },
+  { denominator := Int.ofNat 4, terms := [(201, Int.ofNat 1), (217, Int.negSucc 1), (518,
+    Int.ofNat 6), (522, Int.ofNat 8), (542, Int.ofNat 4), (553, Int.negSucc 7), (565, Int.ofNat
+    12), (618, Int.negSucc 7), (628, Int.negSucc 7), (721, Int.negSucc 3), (769, Int.ofNat 4),
+    (777, Int.ofNat 4), (804, Int.negSucc 3)] },
+  { denominator := Int.ofNat 2, terms := [(202, Int.ofNat 1), (523, Int.ofNat 1), (568,
+    Int.negSucc 1), (591, Int.ofNat 4)] }
+]
+
+end VOA.DeligneAudit.D4Two.Certificate

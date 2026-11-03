@@ -1,0 +1,9 @@
+import VOA.DeligneAudit.E6DivisorData
+
+/-! An unchanged fixed E6 divisor certificate. -/
+namespace VOA.DeligneAudit.DeligneDivisor.E6
+open VOA.DeligneAudit.DeligneSector.Sparse VOA.DeligneAudit.DeligneDivisor
+
+theorem e6_sym_20 : symChecks 20 25 = true := by decide +kernel
+
+end VOA.DeligneAudit.DeligneDivisor.E6

@@ -1,0 +1,2751 @@
+\chapter{Structure theory and invariant forms}\label{ch:L04}
+\begingroup\setlength{\emergencystretch}{3em}
+
+\providecommand{\lfourvac}{\mathbf{1}}
+\providecommand{\lfourV}{V}
+\providecommand{\lfourm}{\mathfrak{m}}
+\providecommand{\lfourrad}{\operatorname{rad}}
+\providecommand{\lfourQP}{\mathcal{QP}}
+\providecommand{\lfourvc}{\varepsilon}
+\providecommand{\lfourH}{\mathrm{H}}
+
+This chapter documents the release of the LeanVOA library named in the front matter. Every Lean quotation below is checked by \texttt{scripts/textbook/sync.py}
+to occur verbatim (up to whitespace and comments) in the source files of that release. Checks that were run at an earlier state of the library and not re-run for this edition are marked as such. The chapter covers the thirty-four files assigned to it in
+\texttt{Notes/Textbook/assignment.txt}: the files of \leanpath{VOA/\allowbreak Core/} called
+\texttt{V1LieAlgebra}, \texttt{LieAlgebraV1}, \texttt{Automorphism}, \texttt{InnerAutomorphism},
+\texttt{CommutativeRing}, \texttt{QuotientVOA}, \texttt{VOASubalgebraGenerated}, \texttt{TensorVOA},
+\texttt{TensorLieAction}, \texttt{InternalGradingOperator}, \texttt{SimpleImage},
+\texttt{SingularVector}, \texttt{ScreeningKernel}, \texttt{BRSTCohomology},
+\texttt{WeightCommutatorField}, \texttt{BilinearForm}, \texttt{GradedFormMatrix},
+\texttt{QuasiPrimaryDecomp}, and the sixteen files \texttt{InvariantForm*}.
+
+These files are the ``structure theory'' of a vertex operator algebra in the sense in which one
+speaks of the structure theory of Lie algebras: the operations that take one algebra and produce
+another (subalgebras, quotients, tensor products, kernels of derivations, cohomology), the
+symmetries (automorphisms, inner automorphisms, the Lie algebra of currents), the distinguished
+vectors (singular vectors) and, above all, the \emph{invariant bilinear form}, which is the tool by
+which simplicity is decided. The headline results are:
+\begin{enumerate}
+\item the weight-one space $\lfourV_1$ of a vertex operator algebra is a Lie algebra under
+  $[u,v] = u_{(0)}v$ (Section~\ref{l04:sec:v1});
+\item the exponential of a locally nilpotent current zero mode is an automorphism, and
+  conjugation of such an exponential by an automorphism is again one (Section~\ref{l04:sec:aut});
+\item every ideal is graded and two-sided, there is a maximal proper ideal $\lfourm(\lfourV)$, and
+  $\lfourV/\lfourm(\lfourV)$ is a simple vertex operator algebra; a surjective homomorphism onto a
+  simple vertex operator algebra has kernel exactly $\lfourm(\lfourV)$
+  (Sections~\ref{l04:sec:quot}--\ref{l04:sec:hom});
+\item the kernel of the zero mode of a weight-one state (a ``screening operator'') is a vertex
+  operator subalgebra (Section~\ref{l04:sec:screening});
+\item a singular vector whose generated ideal is proper obstructs simplicity, with two practical
+  criteria for properness (Section~\ref{l04:sec:singular});
+\item the tensor product of two vertex superalgebras and the BRST cohomology of a vertex
+  superalgebra are again vertex superalgebras, under named hypotheses
+  (Sections~\ref{l04:sec:tensor} and~\ref{l04:sec:brst});
+\item \emph{the theorem of Frenkel--Huang--Lepowsky and Li}: if $\lfourvac\ne0$ and
+  $L_1\lfourV_1 = 0$, there is a unique invariant bilinear form with $(\lfourvac|\lfourvac) = 1$
+  (Section~\ref{l04:sec:canonical});
+\item \emph{Li's radical theorem}: the radical of such a form is the maximal ideal, so $\lfourV$
+  is simple if and only if the form is nondegenerate, and the graded dimensions of the simple
+  quotient are the ranks of the Gram matrices (Sections~\ref{l04:sec:li} and~\ref{l04:sec:gram}).
+\end{enumerate}
+Throughout, ``vertex operator algebra'' means the library's \lean{VertexOperatorAlgebra}, which is the
+Lepowsky--Li/FLM VOA \emph{of CFT type} ($\lfourV_0 = \C\lfourvac$, $\lfourV_n = 0$ for $n<0$, integer grading,
+finite-dimensional pieces; Chapter~\ref{ch:L03}, Definition~\ref{l03:def:VOA}); the headlines above are theorems about VOAs
+of CFT type only, a restriction relative to FLM and Lepowsky--Li. The superalgebra headline (item~6) is about other
+structures: \lean{SuperVertexAlgebra} (which, like \lean{PreVertexAlgebra}, has no translation-covariance axiom and no
+CFT-type condition) and \lean{SuperNearVOA} (which adds a conformal vector and the translation axiom, but not CFT type);
+both are described where they arise.
+\texttt{\#print axioms} on every headline reports only Lean's three standard axioms; \lean{VOA.pbw} (the PBW theorem of Chapter~\ref{ch:L02}; formerly a project axiom, now a theorem) is used nowhere in this chapter (Section~\ref{l04:sec:audit}).
+
+The chapter also records several findings of the fidelity check that a referee should know before
+relying on these files, collected here for convenience and explained where they arise:
+\begin{itemize}
+\item the normality of the inner automorphism group \lean{Inn} holds \emph{by construction} (it is
+  defined as a normal closure), and the predicate \lean{IsExpInner} that defines it is weak enough
+  that the identity satisfies it for every current (the warning on p.~\pageref{l04:warn:inn});
+\item the hypothesis \lean{homega} of the inner automorphism \lean{inner} is redundant
+  (Remark~\ref{l04:rem:homega});
+\item the ``tensor product of VOAs'' file constructs a tensor product of vertex
+  \emph{superalgebras} without conformal vectors, conditional on two linear-algebra hypotheses
+  (the warning on p.~\pageref{l04:warn:tensor});
+\item the library's notion of a subalgebra generated by a set always contains $\omega$
+  (Definition~\ref{l04:def:generated});
+\item Li's general theorem (invariant forms $\leftrightarrow$ $(\lfourV_0/L_1\lfourV_1)^*$) is
+  formalised only in the case $L_1\lfourV_1 = 0$, and the symmetry of invariant forms is
+  \emph{not} proved (Section~\ref{l04:sec:canonical});
+\item four general routes to invariance, recorded in the files, are dead ends; their
+  ``refutation'' in the library is conditional on a witness that is not constructed, though one is
+  easy to give on paper (Section~\ref{l04:sec:deadends}).
+\end{itemize}
+
+\paragraph{Prerequisites.} The definitions of formal distribution, mode, the library's structure
+\lean{PreVertexAlgebra} (graded VA1--VA5 data, which lacks translation covariance and is \emph{not} a vertex algebra in
+the standard sense; the library's translation-covariant \lean{VertexAlgebra} adds that axiom, Chapter~\ref{ch:L03}), vertex
+operator algebra (\lean{VertexOperatorAlgebra}, of CFT type by definition, with its fields \lean{grading}, \lean{Y}, \lean{vacuum}, \lean{conformalVector},
+\lean{centralCharge}, \lean{virasoro}, \lean{L0_grading}, \lean{translation}, \lean{vacuum_grade},
+\lean{positivity}), the Borcherds identity and skew-symmetry are those of
+Chapters~\ref{ch:L01} and~\ref{ch:L03}. Several notions of this chapter (automorphisms, subalgebras, ideals,
+quotients, invariant forms) were already used in the Moonshine chapters (for instance the fixed-point
+sub-VOA of Chapter~\ref{ch:04}); here they are developed in full. Chapter~\ref{ch:10} uses the invariant-form
+results of this chapter to prove that $\Vnat$ is simple.
+
+%======================================================================
+\section{Conventions recalled}\label{l04:sec:conv}
+%======================================================================
+
+We recall the conventions that every statement of this chapter uses; the reader who has read
+Chapter~\ref{ch:L03} may skip to Section~\ref{l04:sec:v1}.
+
+\paragraph{Modes.} A formal distribution $f = \sum_{k\in\Z} f_k z^k$ with coefficients in a space
+is stored in Lean as the function $k\mapsto f_k$, i.e.\ \lean{f k} is the coefficient of $z^k$.
+The \emph{mode} is
+\begin{leancode}
+def mode (f : FormalDist 𝒲) (m : ℤ) : 𝒲 := f (-m - 1)
+\end{leancode}
+File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalCalculus.lean}. So for the state--field
+correspondence $Y(u,z) = \sum_n u_{(n)}z^{-n-1}$ one has \lean{mode (W.Y u) n} $= u_{(n)}$, and the
+library abbreviates
+\begin{leancode}
+def smul (V : PreVertexAlgebra 𝒱) (u : 𝒱) (n : ℤ) (v : 𝒱) : 𝒱 := mode (V.Y u) n v
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak VertexAlgebra.lean}. Thus \lean{W.smul u n v} is the
+$n$-th product $u_{(n)}v$. The coefficient form \lean{(W.Y v) k u} is $v_{(-k-1)}u$
+(\lean{Y_apply_eq_smul} in \leanpath{VOA/\allowbreak Core/\allowbreak InvariantFormSymmetry.lean}).
+
+\paragraph{Virasoro modes.} The Virasoro operators are
+\begin{leancode}
+def L (W : VertexOperatorAlgebra 𝒱) (n : ℤ) : End ℂ 𝒱 :=
+  mode (W.Y W.conformalVector) (n + 1)
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak VertexOperatorAlgebra.lean}: $L_n = \omega_{(n+1)}$, so
+$L_{-1} = \omega_{(0)}$ is the translation operator $T$, $L_0 = \omega_{(1)}$ is the grading
+operator and $L_1 = \omega_{(2)}$ lowers the weight by one.
+
+\paragraph{Weights.} The weight grading is \lean{W.grading : ℤ → Submodule ℂ 𝒱}, an internal
+direct sum (\lean{isInternal}) of finite-dimensional pieces (\lean{finrank}); VA1 is the rule
+$u\in\lfourV_k$, $v\in\lfourV_\ell\Rightarrow u_{(n)}v\in\lfourV_{k+\ell-n-1}$ (Lean:
+\lean{smul_}\allowbreak\lean{mem_}\allowbreak\lean{grading}). The vertex operator algebras of the library are \emph{of CFT type by
+definition}: \lean{vacuum_grade} says $\lfourV_0 = \C\lfourvac$ and \lean{positivity} says
+$\lfourV_n = 0$ for $n<0$. This is used constantly below, and it is the reason several
+hypotheses of the literature (``$\lfourV$ of CFT type'') never appear explicitly. It is also a genuine
+\emph{restriction} relative to FLM and Lepowsky--Li, who ask only $\lfourV_n = 0$ for $n\ll0$: VOAs with
+$\dim\lfourV_0>1$ or with negative weights are not instances, so every theorem of this chapter is a theorem about
+VOAs of CFT type (release audit 2026-10-27, finding m-1). Note that CFT
+type as stated allows $\lfourvac = 0$ (then $\lfourV = 0$): the zero space is a VOA in the library's sense (release
+audit, finding m-4); this is why the hypothesis $\lfourvac\ne0$ appears in several theorems.
+
+\paragraph{Projections.} \lean{piHom W n : 𝒱 →ₗ[ℂ] 𝒱} is the projection onto $\lfourV_n$ along
+the other weight spaces (\leanpath{VOA/\allowbreak Modules/\allowbreak FiniteGenerationProof.lean}).
+
+\paragraph{Lean notation used throughout.} \lean{Submodule ℂ 𝒱} is the type of complex subspaces
+of $\lfourV$; \lean{⊥} and \lean{⊤} are $0$ and $\lfourV$; \lean{⊓}, \lean{⨆}, \lean{sSup},
+\lean{sInf} are intersection, sum, sum of a set and intersection of a set of subspaces;
+\lean{𝒱 ⧸ I} is the quotient space and \lean{I.mkQ} the quotient map; \lean{LinearMap.ker},
+\lean{LinearMap.range} are kernel and image; \lean{End ℂ 𝒱} is the algebra of linear
+endomorphisms; \lean{𝒱 ≃ₗ[ℂ] 𝒱} the group of linear automorphisms; \lean{↥S} (often implicit)
+turns a subspace into a type; \lean{Module.finrank ℂ X} is the dimension of a finite-dimensional
+space (and $0$ for an infinite-dimensional one); \lean{∑ᶠ} is a sum over a finite support (it
+returns $0$ if the support is infinite, a convention whose harmlessness has to be checked each
+time it is used).
+
+%======================================================================
+\section{The Lie algebra of currents}\label{l04:sec:v1}
+%======================================================================
+
+\subsection{Zero modes and the derivation property}
+
+For a homogeneous state $u\in\lfourV_k$ the \emph{zero mode} is $o(u) = u_{(k-1)}$: by VA1 it
+maps $\lfourV_\ell$ into $\lfourV_{k+\ell-(k-1)-1} = \lfourV_\ell$, i.e.\ it preserves every weight
+space. For a weight-one state the zero mode is $u_{(0)}$.
+
+\begin{definition}[Zero mode; Gannon §5.2.1]\label{l04:def:zeromode}
+For $u\in\lfourV$ and $k\in\Z$, $o_k(u) := u_{(k-1)}\in\End(\lfourV)$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak LieAlgebraV1.lean}.
+\begin{leancode}
+def zeroMode (W : VertexOperatorAlgebra 𝒱) (u : 𝒱) (k : ℤ) : End ℂ 𝒱 :=
+  mode (W.Y u) (k - 1)
+
+theorem zeroMode_mem_grading (W : VertexOperatorAlgebra 𝒱) {k : ℤ} {u : 𝒱}
+    (hu : u ∈ W.grading k) {ℓ : ℤ} {v : 𝒱} (hv : v ∈ W.grading ℓ) :
+    W.zeroMode u k v ∈ W.grading ℓ := by
+\end{leancode}
+\begin{dictionary}
+\lean{zeroMode u k} is $u_{(k-1)}$ for \emph{any} $u$, with the weight $k$ supplied by hand,
+because a general $u$ is a sum of homogeneous pieces of different weights and ``the'' zero mode
+would then not be defined. Only for $u\in\lfourV_k$ (hypothesis \lean{hu} of
+\lean{zeroMode_}\allowbreak\lean{mem_}\allowbreak\lean{grading}) is it the zero mode of the literature. Throughout this chapter only
+$k = 1$ matters, where \lean{W.zeroMode u 1} $= u_{(0)}$ (indeed $1-1 = 0$).
+\end{dictionary}
+\begin{physics}
+In conformal field theory a weight-$k$ field $u(z) = \sum_m u_m z^{-m-k}$ has modes $u_m =
+u_{(m+k-1)}$; the zero mode $u_0 = u_{(k-1)}$ commutes with $L_0$ and so acts within each energy
+level. For $k = 1$ the field is a \emph{current} and $u_0 = \oint u(z)\,dz/2\pi i$ is its
+\emph{charge}: a conserved quantity that acts on the space of states without changing energies.
+\end{physics}
+\begin{status}
+Definition and an unconditional lemma (VA1); axiom-clean.
+\end{status}
+
+\begin{theorem}[Zero modes are derivations; Gannon (5.2.4)]\label{l04:thm:deriv}
+For all $u,v,w\in\lfourV$ and $n\in\Z$:
+$u_{(0)}(v_{(n)}w) - v_{(n)}(u_{(0)}w) = (u_{(0)}v)_{(n)}w$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak LieAlgebraV1.lean}.
+\begin{leancode}
+theorem zeroMode_isDerivation (W : VertexOperatorAlgebra 𝒱) (u v w : 𝒱) (n : ℤ) :
+    W.smul u 0 (W.smul v n w) - W.smul v n (W.smul u 0 w) = W.smul (W.smul u 0 v) n w := by
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak Automorphism.lean} restates it as a Leibniz rule:
+\begin{leancode}
+theorem zeroMode_leibniz (W : VertexOperatorAlgebra 𝒱) (u a b : 𝒱) (n : ℤ) :
+    W.smul u 0 (W.smul a n b) = W.smul (W.smul u 0 a) n b + W.smul a n (W.smul u 0 b) := by
+\end{leancode}
+\begin{dictionary}
+Both statements are for \emph{arbitrary} $u$, $v$, $w$, $n$: no weight hypothesis at all. This is
+correct: the commutator formula $[u_{(m)},v_{(n)}] = \sum_{j\ge0}\binom mj(u_{(j)}v)_{(m+n-j)}$
+at $m = 0$ has the single term $j = 0$. The Lean statement is exactly the textbook one with the
+commutator written out. It could not be vacuous: both sides are vectors of $\lfourV$ and there are
+no hypotheses.
+\end{dictionary}
+\begin{physics}
+The charge $u_0$ of any field acts on every operator product as a derivation: $[Q,\phi_1(z)\phi_2(w)]
+= [Q,\phi_1(z)]\phi_2(w) + \phi_1(z)[Q,\phi_2(w)]$, and $[u_{(0)},Y(v,z)] = Y(u_{(0)}v,z)$ says that
+the charge acts on a field by acting on the state that creates it. This is the infinitesimal form of
+the statement that conserved charges generate symmetries of the operator algebra.
+\end{physics}
+\emph{Proof on paper.} The $n$-th product formula $Y(u_{(n)}v,z) = \Res_{z_1}
+\big((z_1-z)^n[Y(u,z_1),Y(v,z)]\big)$ (valid in any vertex algebra in the standard sense, and proved in the library for
+\lean{VertexOperatorAlgebra} but not for the weaker \lean{PreVertexAlgebra}; Chapter~\ref{ch:L03}) at
+$n = 0$ reads $Y(u_{(0)}v,z) = \Res_{z_1}[Y(u,z_1),Y(v,z)] = [u_{(0)},Y(v,z)]$. Taking the coefficient
+of $z^{-n-1}$ and applying to $w$ gives the claim. \qed
+\begin{status}
+Unconditional; \texttt{\#print axioms} = \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\subsection{The bracket on the weight-one space}
+
+\begin{definition}[The Lie bracket on $\lfourV_1$]\label{l04:def:bracket}
+For $u,v\in\lfourV_1$, $[u,v] := u_{(0)}v$, which lies in $\lfourV_{1+1-0-1} = \lfourV_1$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak LieAlgebraV1.lean}.
+\begin{leancode}
+def bracketV1 (W : VertexOperatorAlgebra 𝒱) (u v : W.grading 1) : W.grading 1 :=
+  ⟨W.smul (u : 𝒱) 0 (v : 𝒱), by
+    have h := W.smul_mem_grading u.2 v.2 0
+    rwa [show (1 : ℤ) + 1 - 0 - 1 = 1 by ring] at h⟩
+\end{leancode}
+\begin{dictionary}
+The type \lean{W.grading 1} is the subspace $\lfourV_1$ viewed as a type; an element is a pair of
+a vector and a proof of membership, and \lean{(u : 𝒱)} forgets the proof. The anonymous
+constructor \lean{⟨x, proof⟩} packages $u_{(0)}v$ with the VA1 proof that it is again in
+$\lfourV_1$ (the one-line proof is shown because it is informative: it is exactly the weight count
+$1+1-0-1 = 1$). The bracket is literally $u_{(0)}v$, with no sign or normalisation.
+\end{dictionary}
+\begin{physics}
+$\lfourV_1$ is the space of conserved currents $J^a(z)$. Their OPE has the form
+$J^a(z)J^b(w)\sim \frac{k^{ab}}{(z-w)^2} + \frac{f^{ab}{}_c J^c(w)}{z-w}$; the simple-pole coefficient is
+$J^a_{(0)}J^b = f^{ab}{}_cJ^c$, the structure constants of the global symmetry algebra, and the double
+pole $J^a_{(1)}J^b = k^{ab}\lfourvac$ is the level (the current--current two-point function).
+\end{physics}
+\begin{status}
+Definition; axiom-clean.
+\end{status}
+
+\begin{theorem}[$\lfourV_1$ is a Lie algebra; Gannon §5.2.1]\label{l04:thm:lie}
+The bracket of Definition~\ref{l04:def:bracket} is bilinear, antisymmetric and satisfies the
+Jacobi identity $[[u,v],w] = [u,[v,w]] - [v,[u,w]]$. Hence $(\lfourV_1,[\cdot,\cdot])$ is a complex
+Lie algebra.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak LieAlgebraV1.lean}.
+\begin{leancode}
+theorem bracketV1_jacobi (W : VertexOperatorAlgebra 𝒱) (u v w : W.grading 1) :
+    W.bracketV1 (W.bracketV1 u v) w
+      = W.bracketV1 u (W.bracketV1 v w) - W.bracketV1 v (W.bracketV1 u w) := by
+
+theorem bracketV1_antisymm (W : VertexOperatorAlgebra 𝒱) (u v : W.grading 1) :
+    W.bracketV1 u v = - W.bracketV1 v u :=
+
+noncomputable instance instLieRingGradingOne (W : VertexOperatorAlgebra 𝒱) :
+    LieRing (W.grading 1) where
+  bracket u v := W.bracketV1 u v
+
+noncomputable instance instLieAlgebraGradingOne (W : VertexOperatorAlgebra 𝒱) :
+    LieAlgebra ℂ (W.grading 1) where
+  lie_smul c u v := W.bracketV1_smul_right c u v
+\end{leancode}
+\begin{dictionary}
+An \lean{instance} of \lean{LieRing} and \lean{LieAlgebra ℂ} on the type $\lfourV_1$ is Mathlib's way
+of saying ``$\lfourV_1$ is a complex Lie algebra''; the fields not shown (\lean{add_lie},
+\lean{lie_add}, \lean{lie_self}, \lean{leibniz_lie}) are discharged by the bilinearity lemmas,
+antisymmetry and Jacobi. The line \lean{bracket u v := W.bracketV1 u v} pins the Lie bracket
+\lean{⁅u, v⁆} of Mathlib to $u_{(0)}v$, so there is no ambiguity about which bracket is meant.
+Mathlib's Leibniz form $[u,[v,w]] = [[u,v],w] + [v,[u,w]]$ is equivalent to the displayed Jacobi
+identity. The statements are unconditional and exactly the textbook ones.
+
+A historical remark the source records: antisymmetry was at first stated only conditionally
+(\lean{bracketV1_}\allowbreak\lean{antisymm_}\allowbreak\lean{of_}\allowbreak\lean{skew}, taking $u_{(0)}v+v_{(0)}u = 0$ as hypothesis) while
+skew-symmetry was unproved; now skew-symmetry is a theorem (Chapter~\ref{ch:L03}, Theorem~\ref{l03:thm:skew}) and
+\lean{bracketV1_}\allowbreak\lean{antisymm} discharges the hypothesis via \lean{smul_}\allowbreak\lean{zero_}\allowbreak\lean{add_}\allowbreak\lean{swap_}\allowbreak\lean{eq_}\allowbreak\lean{zero}.
+\end{dictionary}
+\begin{physics}
+The currents of a chiral algebra close into a Lie algebra $\mathfrak g = \lfourV_1$: this is the
+\emph{continuous global symmetry} of the chiral CFT, and the modes $J^a_n$ form the affine
+(Kac--Moody) algebra $\hat{\mathfrak g}$ whose zero modes $J^a_0$ generate $\mathfrak g$ acting on each
+energy level. For the Moonshine module $\Vnat_1 = 0$: the theory has no continuous symmetry, only the
+finite Monster group.
+\end{physics}
+\emph{Proof on paper.} Jacobi is Theorem~\ref{l04:thm:deriv} at $n = 0$. Antisymmetry:
+skew-symmetry $Y(u,z)v = e^{zT}Y(v,-z)u$ gives, at the coefficient of $z^{-1}$,
+$u_{(0)}v = -v_{(0)}u + T(v_{(1)}u) - \tfrac12T^2(v_{(2)}u)+\cdots$. For $u,v\in\lfourV_1$, $v_{(1)}u\in
+\lfourV_0 = \C\lfourvac$ and $T\lfourvac = 0$; $v_{(j)}u\in\lfourV_{1-j} = 0$ for $j\ge2$. So
+$u_{(0)}v = -v_{(0)}u$. \qed
+\begin{status}
+Unconditional; \texttt{\#print axioms} on \lean{instLieAlgebraGradingOne} and
+\lean{bracketV1_}\allowbreak\lean{antisymm}: \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\begin{example}[Affine and lattice examples]\label{l04:ex:affine}
+For the universal affine vertex algebra $V^k(\mathfrak g)$ (Chapters~\ref{ch:L08} and~\ref{ch:L23}),
+$\lfourV_1 = \mathfrak g$ and $x_{(0)}y = [x,y]$, so Theorem~\ref{l04:thm:lie} returns $\mathfrak g$.
+For a lattice vertex algebra $V_L$ with $L$ even and positive definite, $\lfourV_1 = \mathfrak h\oplus
+\bigoplus_{\langle\alpha,\alpha\rangle = 2}\C e^\alpha$, which is the simply-laced Lie algebra with root
+system $\{\alpha : \langle\alpha,\alpha\rangle = 2\}$ (Frenkel--Kac); for the Leech lattice there
+are no roots and $\lfourV_1 = \mathfrak h$ is abelian of dimension $24$.
+\end{example}
+
+\subsection{Primary vectors and the Griess product}
+
+\begin{definition}[Primary subspace; Gannon (5.2.3)]\label{l04:def:primary}
+$\mathcal P\lfourV_n := \{v\in\lfourV_n : L_kv = 0\text{ for all }k\ge1\}$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak LieAlgebraV1.lean}.
+\begin{leancode}
+def primaryV (W : VertexOperatorAlgebra 𝒱) (n : ℤ) : Submodule ℂ 𝒱 where
+  carrier := {v | v ∈ W.grading n ∧ ∀ k : ℤ, 1 ≤ k → W.L k v = 0}
+\end{leancode}
+\begin{dictionary}
+Exactly the textbook definition (the omitted fields are the proofs that it is a subspace).
+``Primary'' (killed by all $L_k$, $k\ge1$) is stronger than ``quasi-primary'' (killed by $L_1$),
+a notion used in Section~\ref{l04:sec:canonical}.
+\end{dictionary}
+\begin{physics}
+Primary states create primary fields: fields that transform under all conformal maps as tensors of
+weight $n$, $\phi(z)\mapsto (f'(z))^n\phi(f(z))$. They are the highest-weight vectors of the Virasoro
+algebra inside the chiral algebra.
+\end{physics}
+\begin{status}
+Definition; axiom-clean.
+\end{status}
+
+\begin{definition}[Griess product]\label{l04:def:griess}
+For $u,v\in\lfourV_2$, $u\times v := u_{(1)}v\in\lfourV_{2+2-1-1} = \lfourV_2$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak LieAlgebraV1.lean}.
+\begin{leancode}
+def griessMul (W : VertexOperatorAlgebra 𝒱) (u v : W.grading 2) : W.grading 2 :=
+  ⟨W.smul (u : 𝒱) 1 (v : 𝒱), by
+    have h := W.smul_mem_grading u.2 v.2 1
+    rwa [show (2 : ℤ) + 2 - 1 - 1 = 2 by ring] at h⟩
+
+theorem griessMul_comm_of_grading1_eq_bot (W : VertexOperatorAlgebra 𝒱)
+    (h1 : W.grading 1 = ⊥) (u v : W.grading 2) :
+    W.griessMul u v = W.griessMul v u := by
+\end{leancode}
+\begin{dictionary}
+\lean{h1 : W.grading 1 = ⊥} is $\lfourV_1 = 0$. The theorem says the Griess product is
+commutative when there are no currents. This is the correct hypothesis: in general skew-symmetry
+gives $u_{(1)}v = v_{(1)}u - T(v_{(2)}u) + \tfrac12T^2(v_{(3)}u)-\cdots$ with $v_{(2)}u\in\lfourV_1$ and
+$v_{(3)}u\in\lfourV_0$, and only the $\lfourV_1$ term can survive, so without $\lfourV_1 = 0$ the
+product is only commutative modulo $T\lfourV_1$. Associativity is not claimed (the Griess algebra is
+not associative).
+\end{dictionary}
+\begin{physics}
+On $\Vnat$, $\lfourV_2$ has dimension $196884$ and the Griess product is the commutative non-associative
+algebra whose automorphism group is the Monster; it is the OPE coefficient $T^a(z)T^b(w)\supset
+\frac{(a\times b)(w)}{(z-w)^2}$ among the weight-two fields. Commutativity reflects the bosonic
+symmetry of the OPE of two weight-two fields once no weight-one field can appear.
+\end{physics}
+\emph{Proof on paper.} As just explained in the fidelity check, with $\lfourV_1 = 0$ killing the
+only correction term. \qed
+\begin{status}
+Unconditional given \lean{h1}; axiom-clean.
+\end{status}
+
+\begin{remark}[Three re-export files]\label{l04:rem:stubs}
+\leanpath{VOA/\allowbreak Core/\allowbreak V1LieAlgebra.lean}, \leanpath{VOA/\allowbreak Core/\allowbreak InnerAutomorphism.lean} and
+\leanpath{VOA/\allowbreak Core/\allowbreak CommutativeRing.lean} contain no declarations: each is a single
+\texttt{import} with a docstring explaining that its content was absorbed into
+\texttt{LieAlgebraV1}, \texttt{Automorphism} and \texttt{Commutativity} respectively. The last of these
+(the commutative ring structure on a commutative vertex algebra, Gannon Thm.~5.1.4) is documented in
+Chapter~\ref{ch:L03}. Nothing in these three files needs refereeing.
+\end{remark}
+
+%======================================================================
+\section{Automorphisms and inner automorphisms}\label{l04:sec:aut}
+%======================================================================
+
+\subsection{The automorphism group}
+
+\begin{definition}[Automorphism; Gannon §5.2.1]\label{l04:def:aut}
+An automorphism of $\lfourV$ is a linear bijection $\alpha:\lfourV\to\lfourV$ with
+$\alpha(u_{(n)}v) = (\alpha u)_{(n)}(\alpha v)$ for all $u,v,n$, $\alpha\lfourvac = \lfourvac$ and
+$\alpha\omega = \omega$. Composition makes the automorphisms a group $\Aut(\lfourV)$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak Automorphism.lean}.
+\begin{leancode}
+structure Aut (W : VertexOperatorAlgebra 𝒱) where
+  toLinearEquiv : 𝒱 ≃ₗ[ℂ] 𝒱
+  map_smul' : ∀ (u : 𝒱) (n : ℤ) (v : 𝒱),
+    toLinearEquiv (W.smul u n v) = W.smul (toLinearEquiv u) n (toLinearEquiv v)
+  map_vacuum : toLinearEquiv W.vacuum = W.vacuum
+  map_omega : toLinearEquiv W.conformalVector = W.conformalVector
+
+instance : Group (Aut W) where
+  mul := comp
+  one := id W
+  inv := inverse
+
+@[simp] theorem mul_apply (α β : Aut W) (v : 𝒱) : (α * β) v = α (β v) := rfl
+\end{leancode}
+\begin{dictionary}
+\lean{𝒱 ≃ₗ[ℂ] 𝒱} is a linear bijection with its inverse. The group law is composition with
+$(\alpha\beta)v = \alpha(\beta v)$ (the \lean{rfl} lemma \lean{mul_apply}). Grading preservation is
+not an axiom but a theorem (\lean{Aut.map_grading}, Theorem~\ref{l04:thm:autgrading}), because $\alpha$ commutes with $L_0 = \omega_{(1)}$. On paper the
+condition $\alpha\lfourvac = \lfourvac$ is even redundant: by CFT type and grading preservation
+$\alpha\lfourvac = \lambda\lfourvac$ with $\lambda\ne0$, and applying $\alpha$ to $\lfourvac_{(-1)}\lfourvac = \lfourvac$ gives
+$\lambda^2 = \lambda$. The definition
+agrees with FLM and Lepowsky--Li. The file also proves \lean{aut_comm_L}: $\alpha L_n = L_n\alpha$.
+\end{dictionary}
+\begin{physics}
+A global (internal) symmetry of the chiral CFT: an invertible map of the space of states preserving
+the OPE, the vacuum and the stress tensor. Examples: the $\Z_2$ symmetry $\phi\mapsto-\phi$ of a free
+boson, the Weyl group and torus of an affine algebra, the Monster acting on $\Vnat$. Fixing $\omega$
+means the symmetry commutes with conformal transformations.
+\end{physics}
+\begin{status}
+Definition and group structure; axiom-clean.
+\end{status}
+
+\begin{theorem}[Automorphisms preserve the grading]\label{l04:thm:autgrading}
+Let $\alpha\in\Aut(\lfourV)$. Then $\alpha(\lfourV_n)\subseteq\lfourV_n$ for every $n\in\Z$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak Twisted.lean}.
+\begin{leancode}
+theorem Aut.map_grading (α : Aut W) {n : ℤ} {v : 𝒱} (hv : v ∈ W.grading n) :
+    α v ∈ W.grading n
+\end{leancode}
+
+\begin{dictionary}
+\lean{Aut W} is the structure of Definition~\ref{l04:def:aut}; \lean{α v} is the application of its underlying linear
+equivalence (a coercion to a function); \lean{W.grading n} is the weight space $\lfourV_n$ of the VOA structure
+(Chapter~\ref{ch:L03}), a \lean{Submodule ℂ 𝒱}. \textbf{Hypotheses:} the vector $v$ lies in $\lfourV_n$; the integer $n$
+is arbitrary. \textbf{Why this is a theorem and not an axiom.} The definition of \lean{Aut} requires
+$\alpha(u_{(n)}v) = (\alpha u)_{(n)}\alpha v$, $\alpha\lfourvac = \lfourvac$, $\alpha\omega = \omega$, but \emph{not} that
+$\alpha$ respects the grading. FLM and Lepowsky--Li define automorphisms as grading-preserving maps with
+$\alpha Y(u,z)\alpha^{-1} = Y(\alpha u,z)$ and $\alpha\omega=\omega$; the statement proved here shows that the library's
+(shorter) definition is equivalent to theirs, so nothing is lost. The same-or-stronger-or-weaker check: the
+conclusion is equivalent to $\alpha(\lfourV_n)\subseteq\lfourV_n$ for all $n$, hence, applying it to $\alpha^{-1}$, to
+equality $\alpha(\lfourV_n) = \lfourV_n$. \textbf{Could the definition have been vacuous?} The identity is an automorphism, so
+$\Aut(\lfourV)$ is never empty and the theorem is never about an empty class; and $\lfourV_n$ is the genuine
+$n$-eigenspace of $L_0=\omega_{(1)}$, not a convention that might be changed by $\alpha$.
+\end{dictionary}
+
+\begin{physics}
+An automorphism is an internal symmetry of the chiral algebra, and it fixes the stress tensor. A symmetry that
+commutes with $L_0$ cannot mix operators of different scaling dimension: each space of operators of fixed conformal
+weight, $\lfourV_n$, is a representation of the symmetry group. For the $\Z_2$ symmetry $\phi\mapsto-\phi$ of a free
+boson it acts on the weight-$h$ space by $(-1)^{\#\text{oscillators}}$; for the Monster it is the statement that
+$\Vnat_n$ is a finite-dimensional Monster representation for each $n$.
+\end{physics}
+
+\textbf{Proof on paper.} Since $\alpha$ is an automorphism, $\alpha(\omega_{(1)}v) = (\alpha\omega)_{(1)}\alpha v =
+\omega_{(1)}\alpha v$, i.e.\ $\alpha$ commutes with $L_0=\omega_{(1)}$. Now $\lfourV_n$ is exactly the $n$-eigenspace of
+$L_0$: if $x=\sum_kx_k$ is the decomposition of a vector into homogeneous components and $L_0x = nx$, then
+$\sum_k(k-n)x_k = 0$, and since the sum $\bigoplus_k\lfourV_k$ is direct, $(k-n)x_k=0$ for each $k$, so $x = x_n$.
+Hence for $v\in\lfourV_n$ we have $L_0(\alpha v) = \alpha(L_0v) = n\,\alpha v$, so $\alpha v\in\lfourV_n$. \qed
+
+\begin{status}
+Unconditional. \texttt{\#print axioms} \lean{VOA.Aut.map\_grading} $=$
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (run for this chapter with
+\texttt{lake env lean -DmaxSynthPendingDepth=3}). The PBW theorem \lean{VOA.pbw} is not used.
+\end{status}
+
+\subsection{Exponentials of locally nilpotent derivations}
+
+To exponentiate a current zero mode one must make sense of $e^D = \sum_k D^k/k!$ on an
+infinite-dimensional space without any topology. The library does this for \emph{locally
+nilpotent} $D$: every vector is killed by some power of $D$, so the series is a finite sum on each
+vector.
+
+\begin{definition}[Local nilpotency, locally finite exponential]\label{l04:def:exp}
+$D\in\End(\lfourV)$ is locally nilpotent if for every $v$ there is $N$ with $D^Nv = 0$. Then
+$e^Dv := \sum_{k<N}D^kv/k!$ for any such $N$ (independent of the choice).
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak Automorphism.lean}.
+\begin{leancode}
+noncomputable def expSum (D : End ℂ 𝒱) (N : ℕ) (v : 𝒱) : 𝒱 :=
+  ∑ k ∈ Finset.range N, ((k.factorial : ℂ)⁻¹) • ((D ^ k) v)
+
+def IsLocNilp (D : End ℂ 𝒱) : Prop := ∀ v : 𝒱, ∃ N : ℕ, (D ^ N) v = 0
+
+noncomputable def expFun {D : End ℂ 𝒱} (hD : IsLocNilp D) (v : 𝒱) : 𝒱 :=
+  expSum D (locNilpIdx hD v) v
+
+noncomputable def expEquiv {D : End ℂ 𝒱} (hD : IsLocNilp D) : 𝒱 ≃ₗ[ℂ] 𝒱 where
+  toLinearMap := expLN hD
+  invFun := expLN hD.neg
+\end{leancode}
+\begin{dictionary}
+\lean{locNilpIdx hD v} is an index $N$ chosen (by the axiom of choice) with $D^Nv = 0$;
+\lean{expSum_indep} proves that any two such indices give the same partial sum, so \lean{expFun} does
+not depend on the choice. \lean{expLN} packages \lean{expFun} as a linear map, and \lean{expEquiv}
+is the linear bijection with inverse $e^{-D}$ (\lean{hD.neg} is local nilpotency of $-D$; the
+inverse property is the convolution identity \lean{expSum_conv}, the finite form of
+$e^De^{-D} = 1$). This is the standard algebraic exponential (it is the device used for integrable representations in Kac's \emph{Infinite-dimensional
+Lie algebras}).
+\end{dictionary}
+\begin{physics}
+The finite exponential of a nilpotent charge is a \emph{unipotent} symmetry, like $e^{tE}$ for a
+raising operator $E$ of $\mathfrak{sl}_2$ acting in a finite-dimensional representation. Each energy
+level of a CFT is finite-dimensional and the charge preserves it, which is why local nilpotency is the
+natural algebraic condition.
+\end{physics}
+\begin{status}
+Definitions; the linear equivalence is axiom-clean.
+\end{status}
+
+\begin{theorem}[The exponential of a derivation is a homomorphism]\label{l04:thm:expsmul}
+If $D$ is locally nilpotent and $D(a_{(n)}b) = (Da)_{(n)}b + a_{(n)}(Db)$ for all $a,b$, then
+$e^D(a_{(n)}b) = (e^Da)_{(n)}(e^Db)$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak Automorphism.lean}.
+\begin{leancode}
+theorem expFun_smul {W : VertexOperatorAlgebra 𝒱} {D : End ℂ 𝒱} (hD : IsLocNilp D) (n : ℤ)
+    (hleib : ∀ a b : 𝒱, D (W.smul a n b) = W.smul (D a) n b + W.smul a n (D b))
+    (a b : 𝒱) :
+    expFun hD (W.smul a n b) = W.smul (expFun hD a) n (expFun hD b) := by
+\end{leancode}
+\begin{dictionary}
+The Leibniz hypothesis \lean{hleib} is for the fixed $n$ only, and the conclusion is for that $n$:
+the statement is per product, which is slightly sharper than needed.
+\end{dictionary}
+\begin{physics}
+A charge that acts as a derivation on all OPEs exponentiates to a finite symmetry that preserves all
+OPEs: the passage from the Lie algebra of conserved charges to the symmetry group.
+\end{physics}
+\emph{Proof on paper.} By induction, $D^k(a_{(n)}b) = \sum_i\binom ki(D^ia)_{(n)}(D^{k-i}b)$
+(\lean{iter_leibniz}); dividing by $k!$ and summing over $k$ up to $2N$, where $D^Na = D^Nb = 0$,
+the Cauchy product gives $\sum_{i,j<N}\frac{1}{i!j!}(D^ia)_{(n)}(D^jb) = (e^Da)_{(n)}(e^Db)$. \qed
+\begin{status}
+Unconditional given its hypotheses; axiom-clean.
+\end{status}
+
+\subsection{Inner automorphisms}
+
+\begin{definition}[Inner automorphism; Gannon (5.2.4)]\label{l04:def:inner}
+For $u\in\lfourV_1$ with $u_{(0)}$ locally nilpotent and $u_{(0)}\omega = 0$, the automorphism
+$\exp(u_{(0)})$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak Automorphism.lean}.
+\begin{leancode}
+def IsExpInner (u : W.grading 1) (α : Aut W) : Prop :=
+  ∀ v : 𝒱, ∃ N : ℕ, α v = ∑ k ∈ Finset.range N,
+    ((k.factorial : ℂ)⁻¹) • ((W.zeroMode (u : 𝒱) 1 ^ k) v)
+
+noncomputable def inner (u : W.grading 1)
+    (hnilp : VOA.IsLocNilp (W.zeroMode (u : 𝒱) 1))
+    (homega : W.zeroMode (u : 𝒱) 1 W.conformalVector = 0) : Aut W where
+  toLinearEquiv := VOA.expEquiv hnilp
+
+theorem inner_isExpInner (u : W.grading 1)
+    (hnilp : VOA.IsLocNilp (W.zeroMode (u : 𝒱) 1))
+    (homega : W.zeroMode (u : 𝒱) 1 W.conformalVector = 0) :
+    IsExpInner u (inner u hnilp homega) := by
+
+def innerSet (W : VertexOperatorAlgebra 𝒱) : Set (Aut W) :=
+  {α | ∃ u : W.grading 1, IsExpInner u α}
+
+def Inn (W : VertexOperatorAlgebra 𝒱) : Subgroup (Aut W) :=
+  Subgroup.normalClosure (innerSet W)
+
+instance Inn_normal (W : VertexOperatorAlgebra 𝒱) : (Inn W).Normal :=
+  Subgroup.normalClosure_normal
+\end{leancode}
+\begin{dictionary}
+\lean{inner u hnilp homega} is the automorphism whose underlying linear map is \lean{expEquiv} of
+$D = u_{(0)}$; its omitted fields prove that it fixes $\lfourvac$ (since $u_{(0)}\lfourvac = 0$ by
+creation), fixes $\omega$ (by \lean{homega}), and intertwines all products
+(Theorem~\ref{l04:thm:expsmul} with Leibniz from Theorem~\ref{l04:thm:deriv}). This construction
+is faithful to the literature.
+
+\lean{IsExpInner u α} is an interface predicate: \emph{for each $v$ there is some $N$} such that
+$\alpha v$ equals the $N$-th partial sum of the exponential series of $u_{(0)}$ on $v$. When
+$u_{(0)}$ is locally nilpotent and $N$ is large, the partial sums stabilise at $e^{u_{(0)}}v$; but
+the predicate does not require $N$ to be large. See the warning on p.~\pageref{l04:warn:inn}.
+\lean{Subgroup.normalClosure S} is the smallest normal subgroup containing the set $S$.
+\end{dictionary}
+\begin{physics}
+Inner automorphisms are the symmetries generated by the currents themselves: $e^{\theta J_0}$ for a
+charge $J_0$. Physically, the continuous symmetry group $G$ whose Lie algebra is $\lfourV_1$; its
+subgroup generated by such exponentials is normal because conjugating the symmetry generated by a
+current $J$ by any symmetry $g$ gives the symmetry generated by the current $gJ$.
+\end{physics}
+\begin{status}
+Definitions; \texttt{\#print axioms} on \lean{inner} and \lean{Inn_normal}:
+\lean{[propext, Classical.choice, Quot.sound]}. The construction \lean{inner} is used downstream in
+\leanpath{VOA/\allowbreak Moonshine/\allowbreak TrialityRoot.lean}.
+\end{status}
+
+\begin{theorem}[Conjugation of inner automorphisms; Gannon (5.2.4)]\label{l04:thm:conj}
+If $\beta$ is the exponential of $u_{(0)}$ and $\alpha\in\Aut(\lfourV)$, then $\alpha\beta\alpha^{-1}$
+is the exponential of $(\alpha u)_{(0)}$. Moreover $u_{(0)}$ locally nilpotent implies
+$(\alpha u)_{(0)}$ locally nilpotent, and $\alpha(e^{u_{(0)}}v) = e^{(\alpha u)_{(0)}}(\alpha v)$.
+\end{theorem}
+\noindent Files: \lean{isExpInner_conj} is in \leanpath{VOA/Modularity/Twisted.lean};
+\lean{aut_conj_expFun} is in \leanpath{VOA/\allowbreak Core/\allowbreak Automorphism.lean}.
+\begin{leancode}
+theorem VertexOperatorAlgebra.isExpInner_conj {u : W.grading 1} {β : Aut W}
+    (hβ : VertexOperatorAlgebra.IsExpInner u β) (α : Aut W) :
+    VertexOperatorAlgebra.IsExpInner (⟨α (u : 𝒱), α.map_grading u.2⟩ : W.grading 1)
+      (α * β * α⁻¹) := by
+
+theorem aut_conj_expFun (α : Aut W) (u : 𝒱)
+    (hnilp : VOA.IsLocNilp (W.zeroMode u 1)) (v : 𝒱) :
+    α (VOA.expFun hnilp v) = VOA.expFun (isLocNilp_aut α u hnilp) (α v) := by
+\end{leancode}
+\begin{dictionary}
+The conjugation statement now lives in \leanpath{VOA/\allowbreak Modularity/\allowbreak Twisted.lean} under the full name
+\lean{VertexOperatorAlgebra.isExpInner_conj}. An earlier version (in \leanpath{Automorphism.lean}) carried a hypothesis
+\lean{hαu : α u ∈ W.grading 1}, needed only to form the element of \lean{W.grading 1}; this book flagged it as redundant
+(it always holds by \lean{Aut.map_grading}), and the current statement builds the element directly as
+\lean{⟨α u, α.map_grading u.2⟩}, with no hypothesis. \lean{aut_conj_expFun} is the genuine conjugation formula
+$\alpha e^{u_{(0)}}\alpha^{-1} = e^{(\alpha u)_{(0)}}$ for locally nilpotent zero modes;
+\lean{isExpInner_conj} is the same statement at the level of the interface predicate.
+\end{dictionary}
+\begin{physics}
+Conjugating the symmetry generated by the charge of $J$ by a global symmetry $g$ gives the symmetry
+generated by the charge of $gJ$. This is the statement that the inner symmetries form a normal
+subgroup: the quotient $\Aut/\mathrm{Inn}$ is the group of ``outer'' (discrete) symmetries, like the
+diagram automorphisms of an affine algebra or the Monster for $\Vnat$ (where $\mathrm{Inn}$ is trivial).
+\end{physics}
+\emph{Proof on paper.} $\alpha(u_{(0)}v) = (\alpha u)_{(0)}(\alpha v)$, hence
+$\alpha u_{(0)}^k = (\alpha u)_{(0)}^k\alpha$; apply $\alpha$ to the finite exponential sum. Local
+nilpotency transfers because $(\alpha u)_{(0)}^k = \alpha u_{(0)}^k\alpha^{-1}$. \qed
+\begin{status}
+Unconditional; axiom-clean.
+\end{status}
+
+\begin{warning}[title={Trap / dead end: What the normality of \texttt{Inn} does and does not say}]\label{l04:warn:inn}
+\textbf{(a) Normality is by construction.} \lean{Inn W} is \emph{defined} as the normal closure of
+\lean{innerSet W}, so \lean{Inn_normal} is Mathlib's \lean{Subgroup.}\allowbreak\lean{normalClosure_}\allowbreak\lean{normal}: it holds
+for the normal closure of any set whatsoever. The mathematical content of ``$\mathrm{Inn}\trianglelefteq
+\Aut$'' --- that the subgroup \emph{generated} by the inner automorphisms is already normal --- is
+\lean{isExpInner_conj}, which shows that \lean{innerSet} is stable under conjugation (so that its
+normal closure equals the subgroup it generates). The source says exactly this. A referee should
+read the headline ``\lean{Inn} is normal'' as resting on \lean{isExpInner_conj}, not on
+\lean{Inn_normal}.
+
+\textbf{(b) \lean{IsExpInner} is weak.} Taking $N = 1$ in its definition gives the partial sum
+$v$; so \emph{the identity automorphism satisfies \lean{IsExpInner u 1} for every current $u$},
+whether or not $u_{(0)}$ is locally nilpotent. We checked this in Lean for this book (scratch file,
+not part of the library):
+\begin{plaincode}
+example (u : W.grading 1) : IsExpInner u (1 : Aut W) := fun v => ⟨1, by simp⟩
+\end{plaincode}
+This is harmless for the identity (which is inner anyway), but it shows that \lean{innerSet} is
+defined by a property weaker than ``$\alpha = e^{u_{(0)}}$'': an automorphism $\alpha$ belongs to it as
+soon as, for some $u$, each $\alpha v$ is \emph{some} partial sum of the exponential series of $v$.
+Whether \lean{innerSet} can contain automorphisms that are not exponentials of locally nilpotent
+current zero modes has not been examined by the library. The safe reading is: the automorphisms
+\lean{inner u hnilp homega} are genuine inner automorphisms (\lean{inner_mem_Inn}) and are in
+\lean{Inn W}; nothing in this chapter proves that \lean{Inn W} consists only of products of such.
+
+\textbf{(c) Not every current exponentiates this way.} \lean{inner} needs $u_{(0)}$ locally
+nilpotent. Root currents $e^\alpha$ of a lattice vertex algebra qualify (in a fixed weight space only
+finitely many charges $\beta+k\alpha$ occur), but Cartan currents $h$ do not: $h_{(0)}e^\beta =
+\langle h,\beta\rangle e^\beta$ is diagonal. The torus $\exp(\mathfrak h)$ acts by automorphisms, but
+they are not constructed by this file.
+\end{warning}
+
+\begin{remark}[The hypothesis \texttt{homega} is redundant]\label{l04:rem:homega}
+For $u\in\lfourV_1$ in a vertex operator algebra of CFT type, $u_{(0)}\omega = 0$ automatically:
+skew-symmetry gives $u_{(0)}\omega = -L_{-1}u + T(L_0u) - \tfrac12T^2(L_1u) + \cdots = -Tu + Tu -
+\tfrac12T^2(c\lfourvac) = 0$, since $L_1u\in\lfourV_0 = \C\lfourvac$ and $T\lfourvac = 0$, and higher
+terms vanish by weight. The library proves this as \lean{Screening.}\allowbreak\lean{screening_}\allowbreak\lean{conformalVector}
+(Section~\ref{l04:sec:screening}), but \lean{inner} still asks for it. We checked in Lean that it is
+discharged in one line:
+\begin{plaincode}
+example (u : W.grading 1) : W.zeroMode (u : 𝒱) 1 W.conformalVector = 0 := by
+  rw [← Screening.screening_eq_zeroMode]; exact Screening.screening_conformalVector W u.2
+\end{plaincode}
+So \lean{inner} is in effect conditional only on local nilpotency.
+\end{remark}
+
+%======================================================================
+\section{Ideals, quotients and the simple quotient}\label{l04:sec:quot}
+%======================================================================
+
+\subsection{Ideals and simplicity}
+
+\begin{definition}[Ideal, simple VOA]\label{l04:def:simple}
+An ideal of $\lfourV$ is a subspace $I$ with $u_{(n)}v\in I$ for all $u\in\lfourV$, $v\in I$, $n\in\Z$.
+$\lfourV$ is simple if $\lfourV\ne0$ and its only ideals are $0$ and $\lfourV$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak BilinearForm.lean}.
+\begin{leancode}
+def IsIdeal (W : VertexOperatorAlgebra 𝒱) (I : Submodule ℂ 𝒱) : Prop :=
+  ∀ (u v : 𝒱) (n : ℤ), v ∈ I → W.smul u n v ∈ I
+
+def IsSimple (W : VertexOperatorAlgebra 𝒱) : Prop :=
+  (⊤ : Submodule ℂ 𝒱) ≠ ⊥ ∧ ∀ I : Submodule ℂ 𝒱, W.IsIdeal I → I = ⊥ ∨ I = ⊤
+\end{leancode}
+\begin{dictionary}
+\textbf{One-sided by definition.} \lean{IsIdeal} asks only $u_{(n)}I\subseteq I$ ($I$ in the
+\emph{right} slot of the product; equivalently, $I$ is a submodule of the adjoint module, a
+``left ideal''). The literature (FLM, Lepowsky--Li Def.~3.9.7, FHL) defines an ideal as a subspace
+with $u_{(n)}I\subseteq I$ \emph{and} $I_{(n)}u\subseteq I$; Lepowsky--Li observe that for
+an $L_{-1}$-stable subspace either condition implies the other by skew-symmetry. The library proves
+this (Theorem~\ref{l04:thm:twosided}), so \lean{IsIdeal} is the textbook notion and \lean{IsSimple}
+is the textbook simplicity, not a weaker or stronger variant. (Chapter~\ref{ch:10} raised the
+question whether \lean{IsSimple} is quantified over left ideals only: it is, and by
+Theorem~\ref{l04:thm:twosided} this is the same class of subspaces.)
+
+\textbf{Not graded by definition.} No gradedness is asked; it is automatic
+(Theorem~\ref{l04:thm:graded}).
+
+\textbf{Nonzero.} \lean{(⊤ : Submodule ℂ 𝒱) ≠ ⊥} is $\lfourV\ne0$, which excludes the zero
+algebra (which has only the ideal $0 = \lfourV$). For a vertex operator algebra this is equivalent
+to $\lfourvac\ne0$ (\lean{IsSimple.}\allowbreak\lean{vacuum_}\allowbreak\lean{ne_}\allowbreak\lean{zero} in \leanpath{VOA/\allowbreak Core/\allowbreak SimpleImage.lean}),
+since every $u = u_{(-1)}\lfourvac$.
+
+A deprecated duplicate \lean{IsSimple} exists in \leanpath{VOA/\allowbreak Modules/\allowbreak Rationality.lean}
+(Chapter~\ref{ch:L12}); every statement of this chapter uses the one above.
+\end{dictionary}
+\begin{physics}
+An ideal is a set of states closed under the action of every field: once such states appear they can
+only produce more of themselves, so they form a sector that decouples from correlation functions with
+the vacuum. A simple chiral algebra has no such sector: the vacuum module is irreducible and all
+states are ``physical''. Quotienting by an ideal is setting null states to zero.
+\end{physics}
+\begin{status}
+Definitions.
+\end{status}
+
+\begin{theorem}[Ideals are two-sided]\label{l04:thm:twosided}
+If $I$ is an ideal, then $u_{(n)}v\in I$ for all $u\in I$, $v\in\lfourV$, $n\in\Z$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak QuotientVOA.lean}.
+\begin{leancode}
+def AbsorbsLeft (W : VertexOperatorAlgebra 𝒱) (I : Submodule ℂ 𝒱) : Prop :=
+  ∀ (u v : 𝒱) (n : ℤ), u ∈ I → W.smul u n v ∈ I
+
+theorem absorbsLeft_of_isIdeal (hI : W.IsIdeal I) : AbsorbsLeft W I := by
+\end{leancode}
+\begin{dictionary}
+\lean{AbsorbsLeft} is the other half of the two-sided condition; the theorem says
+\lean{IsIdeal} implies it, unconditionally.
+\end{dictionary}
+\begin{physics}
+Locality: the OPE $u(z)v(w)$ and $v(w)u(z)$ are the same function, so if the states of $I$ are
+closed under being acted on by fields, they are also closed when they act on other states. This is
+the chiral form of the statement that an operator ideal of a local quantum field theory is
+automatically two-sided.
+\end{physics}
+\emph{Proof on paper.} An ideal is stable under $T = L_{-1} = \omega_{(0)}$, hence under all
+$T^j$. Skew-symmetry gives $u_{(n)}v = \sum_{j\ge0}\frac{(-1)^{n+j+1}}{j!}T^j(v_{(n+j)}u)$, a
+finite sum of elements $T^j(v_{(n+j)}u)$ with $u\in I$ in the right slot, all in $I$. \qed
+\begin{status}
+Unconditional; axiom-clean.
+\end{status}
+
+\begin{theorem}[Ideals are graded]\label{l04:thm:graded}
+Every ideal $I$ satisfies $I = \bigoplus_n(I\cap\lfourV_n)$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak QuotientVOA.lean}.
+\begin{leancode}
+def IsGradedIdeal (W : VertexOperatorAlgebra 𝒱) (I : Submodule ℂ 𝒱) : Prop :=
+  I = ⨆ n : ℤ, I ⊓ W.grading n
+
+theorem isGradedIdeal_of_isIdeal (hI : W.IsIdeal I) : IsGradedIdeal W I := by
+\end{leancode}
+\begin{dictionary}
+\lean{⨆ n, I ⊓ W.grading n} is the sum of the homogeneous pieces $I\cap\lfourV_n$; since the
+$\lfourV_n$ are independent this sum is direct, so the equation is ``$I$ is graded''. Despite its
+name, \lean{IsGradedIdeal} does not include \lean{IsIdeal}; it is a property of subspaces.
+\end{dictionary}
+\begin{physics}
+An ideal is stable under $L_0$, the Hamiltonian; a subspace stable under a diagonalisable
+Hamiltonian is spanned by energy eigenstates. Null states can always be taken of definite energy.
+\end{physics}
+\emph{Proof on paper.} $L_0 = \omega_{(1)}$ maps $I$ into $I$ and acts on $\lfourV_n$ by $n$. If $x =
+\sum_{n\in S}x_n\in I$ with $S$ finite, then $(L_0-k)x = \sum_{n\ne k}(n-k)x_n\in I$ for $k\in S$;
+by induction on $|S|$ every $x_n\in I$. \qed
+\begin{status}
+Unconditional; axiom-clean.
+\end{status}
+
+\subsection{The quotient vertex operator algebra}
+
+\begin{definition}[Quotient VOA]\label{l04:def:quot}
+For an ideal $I$, $\lfourV/I$ with $Y([u],z)[v] = [Y(u,z)v]$, vacuum $[\lfourvac]$, conformal vector
+$[\omega]$, central charge $c$ and grading $(\lfourV/I)_n = $ image of $\lfourV_n$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak QuotientVOA.lean}.
+\begin{leancode}
+def quotientVOA (W : VertexOperatorAlgebra 𝒱) (I : Submodule ℂ 𝒱)
+    (hI : W.IsIdeal I) (hgr : IsGradedIdeal W I) : VertexOperatorAlgebra (𝒱 ⧸ I) where
+  grading n := (W.grading n).map I.mkQ
+  isInternal := isInternal_map W I hgr
+  finrank n := finiteDimensional_map W I n
+  Y := Yq hI
+  vacuum := I.mkQ W.vacuum
+
+theorem quotientVOA_mkQ_smul (hI : W.IsIdeal I) (hgr : IsGradedIdeal W I)
+    (u : 𝒱) (n : ℤ) (v : 𝒱) :
+    (quotientVOA W I hI hgr).smul (I.mkQ u) n (I.mkQ v) = I.mkQ (W.smul u n v) :=
+
+def quotientVOA' (W : VertexOperatorAlgebra 𝒱) (I : Submodule ℂ 𝒱) (hI : W.IsIdeal I) :
+    VertexOperatorAlgebra (𝒱 ⧸ I) :=
+  quotientVOA W I hI (isGradedIdeal_of_isIdeal hI)
+\end{leancode}
+\begin{dictionary}
+\lean{Yq hI} is the induced vertex operator: on classes, \lean{quotientVOA_}\allowbreak\lean{mkQ_}\allowbreak\lean{smul} says
+$[u]_{(n)}[v] = [u_{(n)}v]$, which is the defining property. Well-definedness in the left slot uses
+Theorem~\ref{l04:thm:twosided}. The omitted fields (conformal vector, central charge, the axioms)
+are the images of those of $\lfourV$, and \lean{quotientVOA_}\allowbreak\lean{centralCharge} records that $c$ is
+unchanged.
+
+\textbf{Which hypothesis is used where.} \lean{hgr} is used only for \lean{isInternal} (the image
+grading is a direct sum only if $I$ is graded) and is automatic (\lean{quotientVOA'}).
+\emph{Properness ($\lfourvac\notin I$) is not assumed}: for $I = \lfourV$ the quotient is the zero
+space, which satisfies all axioms. So a theorem that concludes ``\lean{quotientVOA W I …} is a VOA''
+says nothing about nontriviality; nontriviality has to be proved separately (as in
+Theorem~\ref{l04:thm:maxsimple}).
+\end{dictionary}
+\begin{physics}
+The quotient is the chiral algebra in which the states of $I$ are declared null and set to zero.
+The central charge is unchanged because the stress tensor is the image of the old one; the OPE of
+two surviving fields is the old OPE with the null part discarded.
+\end{physics}
+\begin{status}
+Definition; \texttt{\#print axioms} on \lean{quotientVOA}: \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\subsection{The maximal ideal}
+
+\begin{definition}[Maximal proper graded ideal]\label{l04:def:maxideal}
+$\lfourm(\lfourV) :=$ the sum of all graded ideals not containing $\lfourvac$; $L(\lfourV) :=
+\lfourV/\lfourm(\lfourV)$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak QuotientVOA.lean}.
+\begin{leancode}
+def ProperGradedIdeals (W : VertexOperatorAlgebra 𝒱) : Set (Submodule ℂ 𝒱) :=
+  {I | W.IsIdeal I ∧ IsGradedIdeal W I ∧ W.vacuum ∉ I}
+
+def maxGradedIdeal (W : VertexOperatorAlgebra 𝒱) : Submodule ℂ 𝒱 :=
+  sSup (ProperGradedIdeals W)
+
+def maxQuotientVOA (W : VertexOperatorAlgebra 𝒱) :
+    VertexOperatorAlgebra (𝒱 ⧸ maxGradedIdeal W) :=
+  quotientVOA W (maxGradedIdeal W) (maxGradedIdeal_isIdeal W) (maxGradedIdeal_isGradedIdeal W)
+\end{leancode}
+\begin{dictionary}
+``Proper'' is encoded as $\lfourvac\notin I$, which for an ideal is equivalent to $I\ne\lfourV$
+(\lean{eq_}\allowbreak\lean{top_}\allowbreak\lean{of_}\allowbreak\lean{vacuum_}\allowbreak\lean{mem}: an ideal containing $\lfourvac$ contains every $u = u_{(-1)}\lfourvac$).
+\lean{sSup} of the set is the sum of all its members. Since every ideal is graded, ``graded'' is
+redundant in \lean{ProperGradedIdeals}, so $\lfourm(\lfourV)$ is the sum of \emph{all} proper ideals
+(\lean{le_}\allowbreak\lean{maxGradedIdeal'}). The literature's ``unique maximal proper ideal'' of a VOA of CFT type is
+this object.
+\end{dictionary}
+\begin{physics}
+$\lfourm(\lfourV)$ is the space of \emph{all} null states of the theory --- everything that can be
+consistently set to zero --- and $L(\lfourV)$ is the physical chiral algebra. For the Virasoro vacuum
+module at $c = c_{p,q}$ this passage gives the minimal model $L(c_{p,q},0)$; for $V^k(\mathfrak g)$ at
+admissible level it gives $L_k(\mathfrak g)$.
+\end{physics}
+\begin{status}
+Definitions.
+\end{status}
+
+\begin{theorem}[The maximal ideal is proper, the quotient is simple]\label{l04:thm:maxsimple}
+If $\lfourvac\ne0$: (i) $\lfourvac\notin\lfourm(\lfourV)$; (ii) every ideal $J$ with $\lfourvac\notin J$
+lies in $\lfourm(\lfourV)$; (iii) $L(\lfourV) = \lfourV/\lfourm(\lfourV)$ is simple.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak QuotientVOA.lean}.
+\begin{leancode}
+theorem vacuum_not_mem_maxGradedIdeal (W : VertexOperatorAlgebra 𝒱) (hvac : W.vacuum ≠ 0) :
+    W.vacuum ∉ maxGradedIdeal W := by
+
+theorem le_maxGradedIdeal' {J : Submodule ℂ 𝒱} (hJ : W.IsIdeal J) (hv : W.vacuum ∉ J) :
+    J ≤ maxGradedIdeal W :=
+
+theorem isSimple_maxQuotientVOA (W : VertexOperatorAlgebra 𝒱) (hvac : W.vacuum ≠ 0)
+    (hgraded : ∀ J : Submodule ℂ (𝒱 ⧸ maxGradedIdeal W), (maxQuotientVOA W).IsIdeal J →
+      IsGradedIdeal W (J.comap (maxGradedIdeal W).mkQ)) :
+    (maxQuotientVOA W).IsSimple := by
+
+theorem isSimple_maxQuotientVOA' (W : VertexOperatorAlgebra 𝒱) (hvac : W.vacuum ≠ 0) :
+    (maxQuotientVOA W).IsSimple := by
+\end{leancode}
+\begin{dictionary}
+\lean{hvac : W.vacuum ≠ 0} is the only hypothesis of the unconditional form
+\lean{isSimple_}\allowbreak\lean{maxQuotientVOA'}; it is necessary, since for $\lfourvac = 0$ the algebra is zero and
+so is its quotient, which is not simple. The primed theorem is the unprimed one with \lean{hgraded}
+discharged by Theorem~\ref{l04:thm:graded}; the unprimed form is a historical artefact whose docstring
+still says the gradedness fact is ``not proved in this repo'' --- that sentence is outdated, the
+fact is \lean{isGradedIdeal_}\allowbreak\lean{of_}\allowbreak\lean{isIdeal}.
+
+\textbf{Why properness of the sum is not trivial.} A sum of proper ideals need not be proper in a
+general algebra. Here it is, because every proper graded ideal meets $\lfourV_0 = \C\lfourvac$ in $0$ and
+so lies in $\bigoplus_{n\ne0}\lfourV_n$, and a sum of subspaces of $\bigoplus_{n\ne0}\lfourV_n$
+stays there. This is where CFT type ($\lfourV_0 = \C\lfourvac$) is essential.
+
+\textbf{Could the conclusion be vacuous?} \lean{IsSimple} contains $\lfourV/\lfourm\ne0$, which is
+(i). It is the honest statement.
+\end{dictionary}
+\begin{physics}
+Removing all null states from the vacuum module leaves an irreducible chiral algebra: a unique
+vacuum, no further decoupled sector. The vacuum itself is never null because it has weight $0$ and
+the theory has a unique weight-zero state.
+\end{physics}
+\emph{Proof on paper.} (i), (ii): as in the fidelity check. (iii): an ideal $\bar J$ of the quotient
+pulls back to an ideal $J\supseteq\lfourm$ of $\lfourV$; if $\lfourvac\notin J$ then $J\subseteq\lfourm$ by
+(ii), so $\bar J = 0$; if $\lfourvac\in J$ then $J = \lfourV$ and $\bar J$ is everything. \qed
+\begin{status}
+Unconditional (given $\lfourvac\ne0$); \texttt{\#print axioms} on \lean{isSimple_}\allowbreak\lean{maxQuotientVOA'}
+and \lean{vacuum_}\allowbreak\lean{not_}\allowbreak\lean{mem_}\allowbreak\lean{maxGradedIdeal}: \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+%======================================================================
+\section{Homomorphisms and the transfer lemma}\label{l04:sec:hom}
+%======================================================================
+
+\begin{definition}[Homomorphism]\label{l04:def:hom}
+A linear map $\varphi:\lfourV\to T$ between VOAs is a homomorphism if $\varphi\lfourvac_V =
+\lfourvac_T$ and $\varphi(u_{(n)}v) = (\varphi u)_{(n)}(\varphi v)$ for all $u,v,n$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak SimpleImage.lean}.
+\begin{leancode}
+structure IsVOAHom (V : VertexOperatorAlgebra 𝒱) (T : VertexOperatorAlgebra 𝒲)
+    (φ : 𝒱 →ₗ[ℂ] 𝒲) : Prop where
+  map_vacuum : φ V.vacuum = T.vacuum
+  map_smul : ∀ (u : 𝒱) (n : ℤ) (v : 𝒱), φ (V.smul u n v) = T.smul (φ u) n (φ v)
+
+theorem isIdeal_ker (hφ : IsVOAHom V T φ) : V.IsIdeal (LinearMap.ker φ) := by
+\end{leancode}
+\begin{dictionary}
+A property of a linear map (\lean{Prop}-valued structure). It does \emph{not} require
+$\varphi\omega_V = \omega_T$ nor preservation of the grading: these are vertex-algebra homomorphisms
+(Kac's notion), not VOA homomorphisms in the sense of FLM. The deviation is deliberate (for a
+Sugawara vector landing in a free-field target the conformal vectors differ) and is the
+\emph{weaker} hypothesis, so theorems assuming \lean{IsVOAHom} are \emph{stronger} than their
+VOA-homomorphism versions. \lean{IsVOAHom.map_L} adds $\varphi\omega_V = \omega_T$ when needed.
+\end{dictionary}
+\begin{physics}
+A map of chiral algebras preserving all OPEs and the vacuum: a realisation of one chiral algebra
+inside another, as in a free-field (Wakimoto, Feigin--Fuchs) realisation or a conformal embedding.
+The stress tensors may differ (as for a coset or an improved stress tensor), which is why $\omega$ is
+not required to map to $\omega$.
+\end{physics}
+\begin{status}
+Definition; \lean{isIdeal_ker} unconditional, axiom-clean.
+\end{status}
+
+\begin{theorem}[Transfer lemma]\label{l04:thm:transfer}
+Let $\varphi:\lfourV\to T$ be a surjective homomorphism onto a simple VOA $T$. Then $\ker\varphi =
+\lfourm(\lfourV)$, so $\varphi$ induces an isomorphism $L(\lfourV)\cong T$, and $\varphi$ kills every
+vector of every proper ideal of $\lfourV$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak SimpleImage.lean}.
+\begin{leancode}
+theorem ker_eq_maxGradedIdeal (hφ : IsVOAHom V T φ) (hsurj : Function.Surjective φ)
+    (hsimple : T.IsSimple) : LinearMap.ker φ = QuotVOA.maxGradedIdeal V :=
+
+theorem apply_eq_zero_of_mem_properIdeal (hφ : IsVOAHom V T φ)
+    (hsurj : Function.Surjective φ) (hsimple : T.IsSimple)
+    {J : Submodule ℂ 𝒱} (hJ : V.IsIdeal J) (hJv : V.vacuum ∉ J)
+    {x : 𝒱} (hx : x ∈ J) : φ x = 0 :=
+
+noncomputable def maxQuotientEquiv (hφ : IsVOAHom V T φ) (hsurj : Function.Surjective φ)
+    (hsimple : T.IsSimple) : (𝒱 ⧸ QuotVOA.maxGradedIdeal V) ≃ₗ[ℂ] 𝒲 :=
+\end{leancode}
+\begin{dictionary}
+Hypotheses: $\varphi$ a homomorphism (Definition~\ref{l04:def:hom}), surjective, $T$ simple. No
+properness or ``$\varphi\ne0$'' hypothesis is needed: simplicity of $T$ gives $\lfourvac_T\ne0$, hence
+$\lfourvac_V\ne0$ and $\lfourvac_V\notin\ker\varphi$. The isomorphism \lean{maxQuotientEquiv} is a
+linear isomorphism; \lean{isVOAHom_}\allowbreak\lean{maxQuotientHom} shows the underlying map is a homomorphism from
+\lean{maxQuotientVOA V}. Two non-vacuity witnesses in the same file
+(\lean{maxGradedIdeal_}\allowbreak\lean{eq_}\allowbreak\lean{bot_}\allowbreak\lean{of_}\allowbreak\lean{isSimple}, from $\varphi = \mathrm{id}$, and
+\lean{ker_}\allowbreak\lean{mkQ_}\allowbreak\lean{max_}\allowbreak\lean{eq_}\allowbreak\lean{maxGradedIdeal}, from $\varphi$ the projection) re-derive known facts through
+the lemma, which would fail if an inclusion had been stated backwards.
+\end{dictionary}
+\begin{physics}
+If a chiral algebra is realised inside another and the image is irreducible, then the realisation
+kills exactly the null states: every null vector (for instance the Malikov--Feigin--Fuchs singular
+vector of an affine algebra at admissible level) vanishes automatically in the realisation, without
+computing it. This is how free-field realisations identify simple quotients.
+\end{physics}
+\emph{Proof on paper.} $\ker\varphi$ is an ideal not containing $\lfourvac$, so $\ker\varphi\subseteq
+\lfourm(\lfourV)$. Conversely $\varphi(\lfourm(\lfourV))$ is an ideal of $T$ (by surjectivity) not containing
+$\lfourvac_T$ (if $\lfourvac_T = \varphi(m)$ with $m\in\lfourm$, then $\lfourvac-m\in\ker\varphi\subseteq\lfourm$,
+so $\lfourvac\in\lfourm$, contradiction), hence $0$ by simplicity. \qed
+\begin{status}
+Unconditional given its hypotheses; \texttt{\#print axioms} on \lean{ker_}\allowbreak\lean{eq_}\allowbreak\lean{maxGradedIdeal},
+\lean{apply_}\allowbreak\lean{eq_}\allowbreak\lean{zero_}\allowbreak\lean{of_}\allowbreak\lean{mem_}\allowbreak\lean{properIdeal}, \lean{maxQuotientEquiv}: \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+%======================================================================
+\section{Subalgebras generated by a set}\label{l04:sec:gen}
+%======================================================================
+
+We use the structure
+\lean{VOASubalgebra W} (Definition~\ref{l04:def:subalg} below): a subspace containing $\lfourvac$ and $\omega$, closed under all products and
+under the projections \lean{piHom W n}; \lean{VOASubalgebra.}\allowbreak\lean{toVOA} makes it a VOA with the same
+central charge.
+
+\begin{definition}[Vertex operator subalgebra]\label{l04:def:subalg}
+A \emph{vertex operator subalgebra} of a VOA $\lfourV$ is a linear subspace $S\subseteq\lfourV$ containing $\lfourvac$ and
+$\omega$, closed under all products $u_{(n)}v$ ($u,v\in S$, $n\in\Z$), and \emph{graded}: $S = \bigoplus_n(S\cap\lfourV_n)$,
+equivalently every homogeneous component of every element of $S$ lies in $S$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak Twisted.lean}.
+\begin{leancode}
+structure VOASubalgebra (W : VertexOperatorAlgebra 𝒱) where
+  carrier : Submodule ℂ 𝒱
+  vacuum_mem : W.vacuum ∈ carrier
+  conformal_mem : W.conformalVector ∈ carrier
+  smul_mem : ∀ u ∈ carrier, ∀ (n : ℤ), ∀ v ∈ carrier, W.smul u n v ∈ carrier
+  graded : ∀ (n : ℤ), ∀ v ∈ carrier, piHom W n v ∈ carrier
+\end{leancode}
+(\lean{piHom W n} is the projection $\lfourV\to\lfourV_n$ along the direct sum decomposition,
+\leanpath{VOA/\allowbreak Modules/\allowbreak FiniteGenerationProof.lean}.)
+
+\begin{dictionary}
+\lean{carrier : Submodule ℂ 𝒱} is the subspace $S$; \lean{smul_mem} is closure under all integer products
+(closure under all $u_{(n)}$, $n\in\Z$, is the full closure under the vertex operators); \lean{graded} says that the projection onto each
+$\lfourV_n$ keeps one inside $S$, which is the same as $S = \bigoplus(S\cap\lfourV_n)$. \textbf{Containing $\omega$ is part of
+the definition:} these are subalgebras \emph{with the same conformal vector} (``full'' subalgebras), as is needed for
+orbifolds and for generated subalgebras (Definition~\ref{l04:def:generated}); the commutant or coset subalgebras, which
+carry a different conformal vector, are not of this kind. The notion is not vacuous: $S=\lfourV$ is one example, every generated subalgebra
+(Definition~\ref{l04:def:generated}) is another, and the fixed points of a group of automorphisms are a third (the
+orbifold, treated with the Moonshine construction).
+\end{dictionary}
+
+\begin{physics}
+A vertex operator subalgebra is a set of local operators closed under the operator product expansion and
+containing the same vacuum and the same stress tensor: a sub-chiral algebra of the same theory. Examples are the
+subalgebra generated by a subset of the currents together with $T$, and the fixed-point algebra of an orbifold. Read
+in the reverse direction the large algebra is an extension of the small one, as a lattice VOA is an extension of the one
+attached to a sublattice.
+\end{physics}
+
+\begin{status}
+Definition. Axiom-clean (\texttt{\#print axioms} \lean{VOA.VOASubalgebra} $=$
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}).
+\end{status}
+
+\begin{theorem}[A subalgebra is a VOA]\label{l04:thm:subalg}
+A vertex operator subalgebra $S\subseteq\lfourV$, with the restricted grading $S_n = S\cap\lfourV_n$, the restricted vertex
+operator $Y_S(u,z) = Y(u,z)|_S$, the same vacuum $\lfourvac$, the same conformal vector $\omega$ and the same central
+charge, is a vertex operator algebra.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak Twisted.lean}.
+\begin{leancode}
+noncomputable def toVOA : VertexOperatorAlgebra S.carrier where
+  grading := S.gradingS
+  isInternal := S.gradingS_isInternal
+  finrank := S.gradingS_finrank
+  Y := S.YS
+  vacuum := ⟨W.vacuum, S.vacuum_mem⟩
+
+theorem toVOA_centralCharge : S.toVOA.centralCharge = W.centralCharge
+\end{leancode}
+(The remaining fields of \lean{toVOA} are proofs of the axioms and are omitted; \lean{S.gradingS n} is $S\cap\lfourV_n$ regarded
+as a subspace of $S$, and \lean{S.YS u} is the restriction of $Y(u,z)$ to $S$, both in the same file.)
+
+\begin{dictionary}
+The new VOA lives on the \emph{type} \lean{S.carrier}, the subspace regarded as a vector space in its own right
+(printed \lean{↥S.carrier} in some contexts), so the vacuum has to be given as a pair
+\lean{⟨W.vacuum, S.vacuum_mem⟩} (an element together with the proof that it lies in $S$). \lean{toVOA} is a
+\emph{definition} producing a VOA, not a statement; its fidelity rests on its data being the restricted ones, which is
+visible in the displayed lines: grading $S\cap\lfourV_n$, vertex operator $Y|_S$, vacuum $\lfourvac$. (Among the omitted fields,
+the conformal vector is \lean{⟨W.conformalVector, S.conformal_mem⟩} and the central charge is \lean{W.centralCharge}.) \lean{toVOA_centralCharge} proves that the central charge is unchanged; its proof is
+\lean{rfl}, because the definition sets it so. \textbf{Hypotheses:} none besides $S$ being a \lean{VOASubalgebra}; in particular
+the finite-dimensionality and positivity of the graded pieces must come from $\lfourV$, and do. \textbf{Could the
+construction be vacuous or cheating?} The structure \lean{VertexOperatorAlgebra} has all the axioms of
+Definition~\ref{l03:def:VOA}; they are discharged field by field in the source (not assumed). In particular, CFT type
+holds because $S_0\subseteq\lfourV_0 = \C\lfourvac\subseteq S$.
+\end{dictionary}
+
+\begin{physics}
+A subalgebra that carries the same stress tensor is itself a chiral algebra with the same central charge: the
+operator product expansion of the sub-chiral algebra closes, the same $T(z)$ generates its conformal transformations,
+so the conformal anomaly $c$ (Casimir energy $-c/24$ on the cylinder) is the same. This is how one passes from a CFT to
+a sub-CFT: the weights stay the same because the spectrum of $L_0$ on $S$ is the restriction of the one on $\lfourV$, so the
+discrete, finite-degeneracy spectrum is inherited.
+\end{physics}
+
+\textbf{Proof on paper.} Every axiom is inherited. The grading $S=\bigoplus_n(S\cap\lfourV_n)$ is direct and has finite-dimensional
+pieces because $S\cap\lfourV_n\subseteq\lfourV_n$ and $\lfourV_n$ is finite-dimensional, and $S\cap\lfourV_n = 0$ for $n<0$;
+\lean{graded} gives that the sum is all of $S$. The operators $Y(u,z)$, $u\in S$, preserve $S$ because $S$ is closed under all
+products. Vacuum axiom, creation, regularity, locality and the Jacobi/Borcherds relations are identities between
+operators on $\lfourV$, so they hold for the restrictions; the Virasoro relations hold because $\omega\in S$ and the modes
+$L_n = \omega_{(n+1)}$ restrict; $L_0$ acts on $S\cap\lfourV_n$ by $n$; translation $Y(L_{-1}v,z) = \partial_zY(v,z)$ restricts;
+and CFT type holds because $S_0\subseteq\lfourV_0 = \C\lfourvac$ contains $\lfourvac$. \qed
+
+\begin{status}
+Unconditional. \texttt{\#print axioms} of \lean{VOA.VOASubalgebra.toVOA} and \lean{VOA.VOASubalgebra.toVOA\_centralCharge}
+are each \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (run for this chapter).
+\end{status}
+
+\begin{definition}[Generated subalgebra]\label{l04:def:generated}
+For $S\subseteq\lfourV$, $\langle S\rangle$ is the intersection of all vertex operator subalgebras
+(in the sense just recalled) containing $S$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak VOASubalgebraGenerated.lean}.
+\begin{leancode}
+def generated (S : Set 𝒱) : VOASubalgebra W :=
+  sInf {A : VOASubalgebra W | S ⊆ A.carrier}
+
+theorem generated_le {S : Set 𝒱} (A : VOASubalgebra W) (hA : S ⊆ A.carrier) :
+    (generated W S).carrier ≤ A.carrier :=
+
+theorem mem_generated {S : Set 𝒱} {motive : 𝒱 → Prop}
+    (base : ∀ x ∈ S, motive x)
+    (zero : motive 0)
+    (add : ∀ x y : 𝒱, motive x → motive y → motive (x + y))
+    (smul : ∀ (c : ℂ) (x : 𝒱), motive x → motive (c • x))
+    (vac : motive W.vacuum)
+    (conf : motive W.conformalVector)
+    (prod : ∀ u : 𝒱, motive u → ∀ (n : ℤ) (v : 𝒱), motive v → motive (W.smul u n v))
+    (proj : ∀ (n : ℤ) (v : 𝒱), motive v → motive (piHom W n v))
+    {x : 𝒱} (hx : x ∈ (generated W S).carrier) : motive x := by
+
+noncomputable def generatedVOA (S : Set 𝒱) :
+    VertexOperatorAlgebra (generated W S).carrier :=
+  (generated W S).toVOA
+\end{leancode}
+\begin{dictionary}
+\lean{sInf} uses the intersection structure \lean{instInfSetVOASubalgebra} proved in the same file.
+\lean{generated_le} is minimality; \lean{mem_generated} is the induction principle (every property
+true on $S$, $0$, $\lfourvac$, $\omega$ and stable under sums, scalars, products and projections holds on
+$\langle S\rangle$).
+
+\textbf{Deviation from the literature.} The usual ``vertex subalgebra generated by $S$'' (Kac,
+Lepowsky--Li §3.9) is the smallest subspace containing $S$ and $\lfourvac$ and closed under products; it
+need not contain $\omega$. Here \lean{VOASubalgebra} always contains $\omega$, so \lean{generated W S}
+is the vertex subalgebra generated by $S\cup\{\omega\}$, closed in addition under the projections.
+The projection clause adds nothing: the vertex subalgebra generated by $S\cup\{\omega\}$ is stable
+under $L_0 = \omega_{(1)}$, hence graded by the argument of Theorem~\ref{l04:thm:graded}. But the
+$\omega$ clause is a real difference: for instance the subalgebra generated by a Heisenberg current $h$
+inside a lattice VOA contains the full stress tensor $\omega$, not only the Heisenberg one. When a
+statement needs a subalgebra with a \emph{different} conformal vector (a coset, a commutant) this
+notion is the wrong one.
+\end{dictionary}
+\begin{physics}
+The sub-chiral algebra generated by a set of fields \emph{together with the stress tensor}: all normal
+ordered products and derivatives of the given fields and of $T(z)$. Always containing $T(z)$ means
+the subalgebra has the same central charge as the ambient theory.
+\end{physics}
+\begin{status}
+Definitions and an induction principle; axiom-clean.
+\end{status}
+
+%======================================================================
+\section{Screening operators and their kernels}\label{l04:sec:screening}
+%======================================================================
+
+\subsection{Derivations with subalgebra kernels}
+
+\begin{definition}[VOA derivation]\label{l04:def:voader}
+$D\in\End(\lfourV)$ is a VOA derivation if $D(u_{(n)}v) = (Du)_{(n)}v + u_{(n)}(Dv)$ for all $u,n,v$,
+$D\lfourvac = 0$, $D\omega = 0$, and $D$ commutes with every projection onto $\lfourV_n$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak ScreeningKernel.lean}.
+\begin{leancode}
+structure IsVOADerivation (W : VertexOperatorAlgebra 𝒱) (D : End ℂ 𝒱) : Prop where
+  leibniz : ∀ (u : 𝒱) (n : ℤ) (v : 𝒱),
+      D (W.smul u n v) = W.smul (D u) n v + W.smul u n (D v)
+  vacuum : D W.vacuum = 0
+  conformal : D W.conformalVector = 0
+  piHom_comm : ∀ (n : ℤ) (v : 𝒱), D (piHom W n v) = piHom W n (D v)
+
+def kerSubalgebra (W : VertexOperatorAlgebra 𝒱) (D : End ℂ 𝒱)
+    (hD : IsVOADerivation W D) : VOASubalgebra W where
+  carrier := LinearMap.ker D
+\end{leancode}
+\begin{dictionary}
+The four clauses are exactly what makes $\ker D$ a \lean{VOASubalgebra}: Leibniz gives closure
+under products, the next two give $\lfourvac,\omega\in\ker D$, and \lean{piHom_comm} gives gradedness.
+\lean{kerSubalgebra} is then a definition whose remaining fields are short proofs.
+\end{dictionary}
+\begin{physics}
+The states annihilated by a symmetry generator that commutes with the stress tensor form a closed
+sub-chiral algebra: the ``invariant'' operators.
+\end{physics}
+\begin{status}
+Definitions; axiom-clean.
+\end{status}
+
+\subsection{Screening operators}
+
+\begin{definition}[Screening operator]\label{l04:def:screening}
+For $a\in\lfourV$, $Q_a := a_{(0)}$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak ScreeningKernel.lean}.
+\begin{leancode}
+def screening (W : VertexOperatorAlgebra 𝒱) (a : 𝒱) : End ℂ 𝒱 := mode (W.Y a) 0
+\end{leancode}
+\begin{dictionary}
+Literally $a_{(0)}$, the zero mode \lean{W.zeroMode a 1} of a weight-one state
+(\lean{screening_}\allowbreak\lean{eq_}\allowbreak\lean{zeroMode}); on $\lfourV_1$ it is the adjoint action $[a,\cdot]$
+(\lean{screening_}\allowbreak\lean{eq_}\allowbreak\lean{bracketV1}).
+
+\textbf{Relation to screening operators in the literature.} In the Coulomb gas (Feigin--Fuchs,
+Dotsenko--Fateev) a screening operator is $\oint e^{\alpha\phi}(z)dz$, the zero mode of a field
+$e^{\alpha\phi}$ of weight one \emph{for a deformed (background-charge) stress tensor} $T^\lambda$, and it
+usually acts between \emph{different} Fock modules. The library's notion is the special case in
+which $a$ is a weight-one state of the vertex operator algebra itself, for its own $\omega$. The source
+records honestly that the concrete triplet screening operator of
+\leanpath{VOA/\allowbreak Examples/\allowbreak TripletScreening.lean} fits this definition only when
+$\lambda = 0$ and $\langle\alpha,\alpha\rangle = 2$, because the background-charge VOA structure on
+the lattice module is not in the repository.
+\end{dictionary}
+\begin{physics}
+A screening charge is the contour integral of a weight-one field. Because it has weight one, the
+integral is conformally invariant and commutes with the Virasoro algebra; the operators it
+annihilates (its ``commutant'') form a chiral algebra --- the Virasoro minimal models, the $W$-algebras
+and the triplet algebras are all defined as such commutants inside free-field theories.
+\end{physics}
+\begin{status}
+Definition.
+\end{status}
+
+\begin{theorem}[A weight-one state gives a VOA derivation]\label{l04:thm:scrder}
+For every $a$, $Q_a$ is a derivation of every product and $Q_a\lfourvac = 0$. If $a\in\lfourV_1$, then
+moreover $Q_a$ preserves each $\lfourV_n$ and $Q_a\omega = 0$; hence $Q_a$ is a VOA derivation.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak ScreeningKernel.lean}.
+\begin{leancode}
+theorem screening_leibniz (W : VertexOperatorAlgebra 𝒱) (a : 𝒱) (u : 𝒱) (n : ℤ) (v : 𝒱) :
+    screening W a (W.smul u n v)
+      = W.smul (screening W a u) n v + W.smul u n (screening W a v) := by
+
+theorem screening_conformalVector (W : VertexOperatorAlgebra 𝒱) {a : 𝒱}
+    (ha : a ∈ W.grading 1) : screening W a W.conformalVector = 0 := by
+
+theorem screening_isDerivation (W : VertexOperatorAlgebra 𝒱) {a : 𝒱}
+    (ha : a ∈ W.grading 1) : IsVOADerivation W (screening W a) where
+\end{leancode}
+\begin{dictionary}
+\lean{ha : a ∈ W.grading 1} is the only hypothesis, and it is needed only for grading preservation
+and $Q_a\omega = 0$. \textbf{No primarity of $a$ is assumed}, and none is needed:
+$a_{(0)}\omega = 0$ holds for every $a\in\lfourV_1$ in a VOA of CFT type (Remark~\ref{l04:rem:homega}). A
+reader who expects ``screening currents must be primary'' should note that in a VOA of CFT type a
+weight-one state is automatically annihilated by $L_n$, $n\ge2$, and $L_1a\in\C\lfourvac$; it is this
+that makes the computation work.
+\end{dictionary}
+\begin{physics}
+$[Q_a,L_n] = 0$: the charge of a weight-one current commutes with conformal transformations, so it
+maps primaries to primaries of the same weight. $Q_a\omega = 0$ is the statement that the stress tensor
+is neutral under the charge.
+\end{physics}
+\emph{Proof on paper.} Leibniz is Theorem~\ref{l04:thm:deriv}; $Q_a\lfourvac = 0$ is creation;
+grading preservation is VA1 with weight $1$; $Q_a\omega = 0$ is the skew-symmetry computation of
+Remark~\ref{l04:rem:homega}. \qed
+\begin{status}
+Unconditional; \texttt{\#print axioms} on \lean{screening_}\allowbreak\lean{conformalVector}: \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\begin{definition}[Screening kernels]\label{l04:def:scrkernel}
+For $a\in\lfourV_1$, $\ker Q_a$ as a vertex operator subalgebra; for a family $(a_i)$ of weight-one
+states, $\bigcap_i\ker Q_{a_i}$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak ScreeningKernel.lean}.
+\begin{leancode}
+def screeningKernel (W : VertexOperatorAlgebra 𝒱) (a : 𝒱) (ha : a ∈ W.grading 1) :
+    VOASubalgebra W :=
+  kerSubalgebra W (screening W a) (screening_isDerivation W ha)
+
+def screeningKernelInter {ι : Type*} (W : VertexOperatorAlgebra 𝒱) (a : ι → 𝒱)
+    (ha : ∀ i, a i ∈ W.grading 1) : VOASubalgebra W :=
+  sInf (Set.range fun i => screeningKernel W (a i) (ha i))
+
+theorem mem_screeningKernelInter {ι : Type*} {W : VertexOperatorAlgebra 𝒱} {a : ι → 𝒱}
+    {ha : ∀ i, a i ∈ W.grading 1} {x : 𝒱} :
+    x ∈ (screeningKernelInter W a ha).carrier ↔ ∀ i, screening W (a i) x = 0 := by
+\end{leancode}
+\begin{dictionary}
+The family may be indexed by any type \lean{ι} (finite or not). \lean{screeningKernelVOA} and
+\lean{screeningKernelInterVOA} are the corresponding VOAs (via \lean{toVOA}), with the same central
+charge. Membership is literally ``killed by every $Q_{a_i}$''.
+\end{dictionary}
+\begin{physics}
+The commutant of a set of screening charges: the chiral algebra of operators that commute with all of
+them. This is the definition of a $W$-algebra by screenings, and of the minimal models as the
+commutant of the two Dotsenko--Fateev screenings $Q_\pm$ (in the background-charge setting; see the
+caveat above).
+\end{physics}
+\begin{status}
+Definitions; axiom-clean.
+\end{status}
+
+\begin{theorem}[Screenings with total-derivative contact commute]\label{l04:thm:scrcommute}
+If $a_{(0)}b = \lambda\,Tc$ for some $c$ and $\lambda\in\C$, then $Q_aQ_b = Q_bQ_a$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak ScreeningKernel.lean}.
+\begin{leancode}
+theorem screening_commute_of_zeroProduct_eq_translation
+    (W : VertexOperatorAlgebra 𝒱) (a b c : 𝒱) (scalar : ℂ)
+    (hcontact : W.smul a 0 b = scalar • W.toPreVertexAlgebra.T c) :
+    Commute (screening W a) (screening W b) := by
+\end{leancode}
+\begin{dictionary}
+\lean{Commute A B} is $AB = BA$. No weight hypothesis is needed.
+\end{dictionary}
+\begin{physics}
+Two screening charges commute if the simple pole of their OPE is a total derivative, because the
+contour integral of a derivative vanishes: $[Q_a,Q_b] = \oint(a_{(0)}b)(w)dw = \lambda\oint\partial c = 0$.
+This is the standard check that the two Coulomb-gas screenings commute.
+\end{physics}
+\emph{Proof on paper.} $[Q_a,Q_b] = (a_{(0)}b)_{(0)} = \lambda (Tc)_{(0)}$ and $(Tc)_{(n)} = -nc_{(n-1)}$
+vanishes at $n = 0$. \qed
+\begin{status}
+Unconditional; axiom-clean.
+\end{status}
+
+\begin{theorem}[Transfer lemma for a screening-kernel image]\label{l04:thm:scrtransfer}
+Let $\varphi:\lfourV\to W$ be a homomorphism whose image is exactly $\ker Q_a$ for some $a\in W_1$.
+If the VOA $\ker Q_a$ is simple, then $\ker\varphi = \lfourm(\lfourV)$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak SimpleImage.lean}.
+\begin{leancode}
+theorem ker_eq_maxGradedIdeal_of_screeningKernel {V : VertexOperatorAlgebra 𝒱}
+    {W : VertexOperatorAlgebra 𝒲} {a : 𝒲} (ha : a ∈ W.grading 1) {φ : 𝒱 →ₗ[ℂ] 𝒲}
+    (hφ : IsVOAHom V W φ) (hin : ∀ x, screening W a (φ x) = 0)
+    (honto : ∀ y, screening W a y = 0 → ∃ x, φ x = y)
+    (hsimple : (screeningKernelVOA W a ha).IsSimple) :
+    LinearMap.ker φ = QuotVOA.maxGradedIdeal V := by
+\end{leancode}
+\begin{dictionary}
+\lean{hin} and \lean{honto} together say $\operatorname{im}\varphi = \ker Q_a$. \lean{hsimple} is
+simplicity of the kernel VOA, which in applications is the hard input. The proof corestricts
+$\varphi$ to the subalgebra (\lean{isVOAHom_}\allowbreak\lean{codRestrict}) and applies Theorem~\ref{l04:thm:transfer}.
+\end{dictionary}
+\begin{physics}
+If a universal chiral algebra maps onto the commutant of a screening charge and that commutant is
+irreducible, the map identifies the commutant with the simple quotient. This is the logic of
+Adamovi\'c's realisations of simple affine algebras, used in Chapter~\ref{ch:L19}.
+\end{physics}
+\begin{status}
+Conditional on \lean{hsimple}; axiom-clean.
+\end{status}
+
+\begin{remark}[The super screening kernel]\label{l04:rem:super}
+The same file defines \lean{superScreening} on a super near-VOA and
+\lean{superScreeningKernel W a h} for \lean{h : IsSuperScreening W a}, a structure whose fields
+\lean{leibniz} and \lean{conformal} are the super Leibniz rule and $a_{(0)}\omega = 0$ \emph{as
+hypotheses} (the super Borcherds machinery needed to prove them is not in the library). So the super
+statement is genuinely conditional on these two fields. Super vertex algebras are the subject of
+Chapter~\ref{ch:L17}.
+\end{remark}
+
+%======================================================================
+\section{Singular vectors}\label{l04:sec:singular}
+%======================================================================
+
+A singular vector is the algebraic shadow of a null state: a vector of positive weight that the
+lowering operators kill. The file \leanpath{VOA/\allowbreak Core/\allowbreak SingularVector.lean} is the
+interface between explicit singular-vector computations (Chapters~\ref{ch:L06}, \ref{ch:L08}) and the
+structural conclusion ``$\lfourV$ is not simple''. It distinguishes two notions, and the distinction is the
+first thing a referee should understand.
+
+\begin{definition}[Singular and strongly singular vectors]\label{l04:def:singular}
+Let $k>0$. A vector $s\ne0$ in $\lfourV_k$ is \emph{(Virasoro) singular of weight $k$} if $L_ns = 0$
+for all $n>0$. It is \emph{strongly singular of weight $k$} if $u_{(n)}s = 0$ for every homogeneous
+$u\in\lfourV_m$ and every $n\ge m$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak SingularVector.lean}.
+\begin{leancode}
+structure IsSingularOfWeight (W : VertexOperatorAlgebra 𝒱) (k : ℤ) (s : 𝒱) : Prop where
+  ne_zero : s ≠ 0
+  weight_pos : 0 < k
+  homogeneous : s ∈ W.grading k
+  annihilated : ∀ n : ℤ, 0 < n → W.L n s = 0
+
+structure IsStronglySingularOfWeight (W : VertexOperatorAlgebra 𝒱) (k : ℤ) (s : 𝒱) : Prop where
+  ne_zero : s ≠ 0
+  weight_pos : 0 < k
+  homogeneous : s ∈ W.grading k
+  annihilated : ∀ (m : ℤ) (u : 𝒱), u ∈ W.grading m → ∀ n : ℤ, m ≤ n → W.smul u n s = 0
+\end{leancode}
+\begin{dictionary}
+\textbf{Index convention.} $u\in\lfourV_m$ maps $\lfourV_k$ to $\lfourV_{m+k-n-1}$, so $n\ge m$ are
+exactly the modes that strictly \emph{lower} the weight (the target weight is $\le k-1$). For $u =
+\omega\in\lfourV_2$, $\omega_{(n)} = L_{n-1}$ with $n\ge2$, i.e.\ $L_j$ with $j\ge1$: strong singularity
+implies Virasoro singularity (\lean{IsStronglySingularOfWeight.}\allowbreak\lean{toIsSingularOfWeight}).
+
+\textbf{Nonvanishing and positive weight are required} (\lean{ne_zero}, \lean{weight_pos}). The
+question raised in the instructions for this book --- whether lowest-weight-type data require
+nonvanishing --- is answered here in the affirmative: $s = 0$ is excluded, so ``$\lfourV$ has a
+singular vector'' is not trivially true. Positive weight excludes $s = \lfourvac$, which is killed by
+all lowering modes.
+
+\textbf{Comparison with the literature.} ``Singular vector'' in the Virasoro and affine literature
+means a vector annihilated by the positive modes of the \emph{generators}; in a VOA generated by
+those fields this is equivalent to strong singularity (positive modes of generators generate, by the
+Borcherds identity, all weight-lowering modes). The library does not prove this equivalence --- the
+source lists it as missing --- so the two notions are kept apart, and only strong singularity, or
+Virasoro singularity with an extra pairing condition, is used to obstruct simplicity.
+\end{dictionary}
+\begin{physics}
+A singular vector is a null state: a descendant that is also a highest-weight state. It has zero
+norm and zero overlap with every state of the module. In the Virasoro vacuum module at $c = c_{p,q}$
+there is one at level $(p-1)(q-1)$; setting it to zero is what makes the minimal model have finitely
+many primaries.
+\end{physics}
+\begin{status}
+Definitions.
+\end{status}
+
+\begin{warning}[title={Trap / dead end: Virasoro singularity alone does not make the generated ideal proper}]\label{l04:warn:primary}
+The tempting argument ``everything in the ideal $(s)$ has weight $\ge\operatorname{wt}s>0$, and
+$\lfourvac$ has weight $0$'' is false, because modes $u_{(n)}$ with $n\ge\operatorname{wt}u$ lower the
+weight. The library's counterexample: in a simple affine VOA $L_k(\mathfrak g)$, $k\ne0$, every
+$x\in\lfourV_1 = \mathfrak g$ is primary ($L_nx = 0$ for $n>0$), yet $y_{(1)}x = k(x|y)\lfourvac$ reaches the
+vacuum in one step, so $(x) = \lfourV$. What fails is strong singularity: $y_{(1)}x\ne0$ with
+$\operatorname{wt}y = 1\le1$. The weight argument is proved only one layer deep
+(\lean{smul_mem_wtGE}: $u_{(n)}s$ has weight $\ge k$ for strongly singular $s$); turning it into
+properness of $(s)$ would need $(s) = \operatorname{span}\{u_{(n)}s\}$ (Lepowsky--Li Prop.~4.5.6),
+which is not in the library.
+\end{warning}
+
+\begin{definition}[Ideal generated by a vector]\label{l04:def:idealgen}
+$(s) :=$ the intersection of all ideals containing $s$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak SingularVector.lean}.
+\begin{leancode}
+def idealGen (W : VertexOperatorAlgebra 𝒱) (s : 𝒱) : Submodule ℂ 𝒱 :=
+  sInf {I : Submodule ℂ 𝒱 | s ∈ I ∧ W.IsIdeal I}
+
+theorem idealGen_isIdeal (W : VertexOperatorAlgebra 𝒱) (s : 𝒱) : W.IsIdeal (idealGen W s) := by
+\end{leancode}
+\begin{dictionary}
+The family is nonempty ($\lfourV$ is in it) and an intersection of ideals is an ideal, so \lean{idealGen}
+is the smallest ideal containing $s$. Standard.
+\end{dictionary}
+\begin{physics}
+The null submodule generated by a null state: all states obtained from it by the action of fields.
+\end{physics}
+\begin{status}
+Definition; axiom-clean.
+\end{status}
+
+\subsection{Two routes to properness}
+
+Properness is obtained through invariant forms (Section~\ref{l04:sec:forms}, which the reader may
+consult first): the radical of a normalised fully invariant form is a proper ideal, so any singular
+vector in a radical generates a proper ideal. The library needs the radical in both slots.
+
+\begin{definition}[Right radical]\label{l04:def:rightrad}
+For a bilinear form $B$, $\lfourrad_R B = \{b : B(a,b) = 0\ \forall a\}$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak SingularVector.lean}.
+\begin{leancode}
+def rightRadical (B : InvariantForm W) : Submodule ℂ 𝒱 := LinearMap.ker B.form.flip
+
+theorem rightRadical_isIdeal {B : InvariantForm W} (hB : B.IsFullyInvariant) :
+    W.IsIdeal (rightRadical B) := by
+\end{leancode}
+\begin{dictionary}
+\lean{B.form.flip} is $(a,b)\mapsto B(b,a)$; its kernel is the right radical. \lean{InvariantForm} and
+\lean{IsFullyInvariant} are Definitions~\ref{l04:def:invform} and~\ref{l04:def:fullinv} below. That the
+right radical is an ideal is less immediate than for the left radical, because full invariance moves
+modes from the left slot to the right; the proof is a downward induction on the weight of the acting
+state.
+\end{dictionary}
+\begin{physics}
+States orthogonal to everything from the other side of the two-point function; for a symmetric
+form (which is the physical case) the two radicals coincide, and Theorem~\ref{l04:thm:lirad} shows
+they coincide in general here.
+\end{physics}
+\begin{status}
+Unconditional given full invariance; axiom-clean.
+\end{status}
+
+\begin{theorem}[Singular vectors obstruct simplicity]\label{l04:thm:notsimple}
+Assume $\lfourvac\ne0$ and $L_1\lfourV_1 = 0$. (a) If $s$ is strongly singular of weight $k$, then $(s)$ is
+a proper nonzero ideal, so $\lfourV$ is not simple. (b) If $s$ is Virasoro singular of weight $k$ and
+$s_{(2k-1)}x = 0$ for all $x\in\lfourV_k$, the same conclusion holds.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak SingularVector.lean}.
+\begin{leancode}
+theorem not_isSimple_of_stronglySingular_FHL (hne : W.vacuum ≠ 0)
+    (hqp : ∀ v, v ∈ W.grading 1 → W.L 1 v = 0) {k : ℤ} {s : 𝒱}
+    (hs : IsStronglySingularOfWeight W k s) : ¬ W.IsSimple :=
+
+theorem not_isSimple_of_shapovalov_FHL (hne : W.vacuum ≠ 0)
+    (hqp : ∀ v, v ∈ W.grading 1 → W.L 1 v = 0) {k : ℤ} {s : 𝒱} (hs : IsSingularOfWeight W k s)
+    (hpair : ∀ x ∈ W.grading k, W.smul s (2 * k - 1) x = 0) : ¬ W.IsSimple :=
+\end{leancode}
+\begin{dictionary}
+\lean{hne}, \lean{hqp} are the hypotheses of the canonical invariant form
+(Theorem~\ref{l04:thm:canonical}); they enter only to produce a fully invariant normalised form, and
+the versions without the suffix \lean{_FHL} take such a form \lean{B} instead. \lean{hpair} is the
+\emph{Shapovalov condition}: $s_{(2k-1)}$ maps $\lfourV_k$ to $\lfourV_{k+k-(2k-1)-1} = \lfourV_0$, so
+$s_{(2k-1)}x$ is the ``vacuum component'' of the pairing of $s$ with $x$, and the condition says $s$ is
+in the radical of the level-$k$ Gram form. It is a finite linear condition on one weight space, which
+is what an explicit computation can check. In (b) only $L_1s = 0$ is really used (to collapse the
+invariance sum); the rest of Virasoro singularity is carried along.
+
+The conclusion \lean{¬ W.IsSimple} is genuinely informative: it is false for simple VOAs, and the
+hypotheses are satisfiable (Example~\ref{l04:ex:c0}).
+\end{dictionary}
+\begin{physics}
+A null state with vanishing two-point function against its own energy level generates a decoupled
+sector, so the theory built on the vacuum module is reducible; the physical theory is the quotient.
+Condition (b) is how degenerate values of $c$ are found in practice: the Kac determinant at level $k$
+vanishes.
+\end{physics}
+\emph{Proof on paper.} Let $B$ be the canonical form. (a) For $x\in\lfourV_p$ write $x = x_{(-1)}\lfourvac$
+and expand $B(x,s) = B(x_{(-1)}\lfourvac,s)$ by full invariance: every term is $\pm\frac1{j!}
+B(\lfourvac,(L_1^jx)_{(2p-1-j)}s)$, and $2p-1-j\ge p-j = \operatorname{wt}(L_1^jx)$ when $p\ge1$, so each
+term vanishes by strong singularity; for $p = 0$, $B(\lfourvac,s) = 0$ by weight orthogonality. So $s$ is
+in the right radical, a proper ideal (it misses $\lfourvac$ since $B(\lfourvac,\lfourvac) = 1$); $(s)$ is
+contained in it, and $(s)\ni s\ne0$. (b) With $L_1s = 0$ the invariance sum for $B(s,x)$ collapses to
+$(-1)^kB(\lfourvac,s_{(2k-1)}x)$ for $x\in\lfourV_k$, which is $0$ by \lean{hpair}; for $x$ in other weights
+$B(s,x) = 0$ by orthogonality. So $s$ is in the left radical. \qed
+\begin{status}
+Conditional only on the displayed hypotheses; \texttt{\#print axioms} on both \lean{_FHL} theorems:
+\lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\begin{example}[Central charge zero]\label{l04:ex:c0}
+In the universal Virasoro VOA $V(c,0)$ (Chapter~\ref{ch:L06}), $\lfourV_1 = 0$ (so \lean{hqp} holds
+trivially), $\lfourV_2 = \C\omega$, and $L_1\omega = 0$, $L_2\omega = \tfrac c2\lfourvac$. At $c = 0$,
+$s = \omega$ is Virasoro singular of weight $2$, and the Shapovalov condition is
+$\omega_{(3)}\omega = L_2\omega = 0$. Theorem~\ref{l04:thm:notsimple}(b) says $V(0,0)$ is not simple; its
+simple quotient is $L(0,0) = \C\lfourvac$, the trivial theory.
+\end{example}
+
+\begin{definition}[Quotient by a singular vector]\label{l04:def:quotsing}
+$\lfourV/(s)$ with the quotient structure.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak SingularVector.lean}.
+\begin{leancode}
+noncomputable def quotientBySingular (W : VertexOperatorAlgebra 𝒱) (s : 𝒱) :
+    VertexOperatorAlgebra (𝒱 ⧸ idealGen W s) :=
+  QuotVOA.quotientVOA' W (idealGen W s) (idealGen_isIdeal W s)
+
+theorem le_maxGradedIdeal_of_proper {s : 𝒱} (hv : W.vacuum ∉ idealGen W s) :
+    idealGen W s ≤ QuotVOA.maxGradedIdeal W :=
+\end{leancode}
+\begin{dictionary}
+Defined for every $s$ (for $(s) = \lfourV$ it is the zero VOA; \lean{quotientBySingular_}\allowbreak\lean{vacuum_}\allowbreak\lean{ne_}\allowbreak\lean{zero}
+gives nonvanishing when $(s)$ is proper). \lean{le_}\allowbreak\lean{maxGradedIdeal_}\allowbreak\lean{of_}\allowbreak\lean{proper} says that $\lfourV/(s)$
+surjects onto $L(\lfourV)$. The converse --- that $(s) = \lfourm(\lfourV)$ for the Virasoro minimal-model
+vector or for the affine admissible vector (Feigin--Fuchs, Kac--Kazhdan) --- is a representation-theoretic
+input that the file explicitly does \emph{not} assume or prove.
+\end{dictionary}
+\begin{physics}
+Setting the null vector to zero; whether this already gives the physical theory (no further null
+states) is a separate theorem about the vacuum module.
+\end{physics}
+\begin{status}
+Definition and unconditional lemma; axiom-clean.
+\end{status}
+
+%======================================================================
+\section{Tensor products}\label{l04:sec:tensor}
+%======================================================================
+
+The file \leanpath{VOA/\allowbreak Core/\allowbreak TensorVOA.lean} constructs the tensor product of two
+\emph{vertex superalgebras} in the sense of \lean{SuperVertexAlgebra}
+(\leanpath{VOA/\allowbreak Core/\allowbreak SuperVertexAlgebra.lean}, Chapter~\ref{ch:L17}). We recall
+what that structure is, in words: a space with a $\C$-valued weight grading (internal, finite-dimensional
+pieces) and an independent $\Z/2$ parity grading, a linear state--field map $Y$, a vacuum of weight $0$
+and even parity, and the axioms VA1 (weights add), VA1$'$ (parities add), VA2 ($Y(\lfourvac,z) = 1$),
+VA3 (creation), VA4 (locality up to the Koszul sign $(-1)^{|u||v|}$) and VA5 (truncation). It has
+\emph{no conformal vector}, no translation operator as a field, and no bounded-below condition.
+
+\begin{definition}[Tensor product vertex operator]\label{l04:def:tenY}
+For vertex superalgebras $V$ on $A$, $W$ on $B$:
+$Y(u\otimes v,z)(u'\otimes v') = (-1)^{|v||u'|}\,Y(u,z)u'\otimes Y(v,z)v'$, with weight grading
+$(A\otimes B)_h = \bigoplus_{h_1+h_2 = h}V_{h_1}\otimes W_{h_2}$, parity grading by addition, and
+vacuum $\lfourvac\otimes\lfourvac$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak TensorVOA.lean}.
+\begin{leancode}
+noncomputable def rawCoeff (V : SuperVertexAlgebra A) (W : SuperVertexAlgebra B) (a : A) (b : B)
+    (s : ℤ) : A ⊗[ℂ] B →ₗ[ℂ] A ⊗[ℂ] B :=
+  TensorProduct.lift (rawBil V W a b s)
+
+noncomputable def tenY (V : SuperVertexAlgebra A) (W : SuperVertexAlgebra B) :
+    A ⊗[ℂ] B →ₗ[ℂ] FormalDist (End ℂ (A ⊗[ℂ] B)) :=
+  (2⁻¹ : ℂ) •
+    ((postCompHom (1 + kappaTen V W 1)).comp (rawY V W)
+      + (postCompHom (1 - kappaTen V W 1)).comp
+          ((rawY V W).comp
+            (TensorProduct.map (LinearMap.id : A →ₗ[ℂ] A) ((parGr W).parityInvol))))
+
+theorem tenY_tmul_parity (V : SuperVertexAlgebra A) (W : SuperVertexAlgebra B) (a : A)
+    {q : ZMod 2} {b : B} (hb : b ∈ W.parity q) (s : ℤ) (z : A ⊗[ℂ] B) :
+    tenY V W (a ⊗ₜ[ℂ] b) s z = rawCoeff V W a b s (kappaTen V W q z) := by
+
+def tenGrading (V : SuperVertexAlgebra A) (W : SuperVertexAlgebra B) (h : ℂ) :
+    Submodule ℂ (A ⊗[ℂ] B) :=
+  ⨆ h₁ : ℂ, tenSub (V.grading h₁) (W.grading (h - h₁))
+\end{leancode}
+\begin{dictionary}
+\lean{A ⊗[ℂ] B} is the algebraic tensor product, \lean{a ⊗ₜ b} a pure tensor. \lean{rawCoeff a b s}
+is the sign-free coefficient of $z^s$ in $Y(a,z)\otimes Y(b,z)$, i.e.\ $x\otimes y\mapsto\sum_m
+(a$-coefficient of $z^m)x\otimes(b$-coefficient of $z^{s-m})y$ (\lean{rawCoeff_tmul}; finite by
+truncation). \lean{kappaTen V W q} is $(-1)^{qF}\otimes1$, the parity operator to the power $q$ on the
+first factor. The definition of \lean{tenY} is a device to keep $Y$ linear: for $b$ of parity $q$,
+\lean{tenY_}\allowbreak\lean{tmul_}\allowbreak\lean{parity} shows it equals $\mathtt{rawCoeff}\circ((-1)^{qF}\otimes1)$, which on
+$u'\otimes v'$ gives exactly $(-1)^{q|u'|}Y(a,z)u'\otimes Y(b,z)v'$, the Koszul formula of the
+definition. \lean{tenSub P Q} is the span of $P\otimes Q$ inside $A\otimes B$, so \lean{tenGrading} is
+the convolution grading. These agree with Kac (\emph{Vertex algebras for beginners}, §4.3) and FHL §3.
+\end{dictionary}
+\begin{physics}
+Two decoupled chiral CFTs stacked: the states are products, the fields are products of fields, and
+energies add. The sign is the usual fermionic statistics: moving a fermionic field of the second
+theory past a fermionic state of the first costs a sign. For purely bosonic theories the sign is
+absent.
+\end{physics}
+\begin{status}
+Definitions; axiom-clean.
+\end{status}
+
+\begin{theorem}[The tensor product is a vertex superalgebra]\label{l04:thm:tensor}
+If the parity involutions of $V$ and $W$ preserve the weight spaces, and the convolution weight
+spaces are independent and finite-dimensional, then Definition~\ref{l04:def:tenY} is a vertex
+superalgebra.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak TensorVOA.lean}.
+\begin{leancode}
+def ParityCompatible (V : SuperVertexAlgebra A) : Prop :=
+  ∀ (h : ℂ) (u : A), u ∈ V.grading h → (parGr V).parityInvol u ∈ V.grading h
+
+structure TensorGradingHyp (V : SuperVertexAlgebra A) (W : SuperVertexAlgebra B) : Prop where
+  iSupIndep : iSupIndep (tenGrading V W)
+  finrank : ∀ h : ℂ, FiniteDimensional ℂ (tenGrading V W h)
+
+noncomputable def tensorSVA (V : SuperVertexAlgebra A) (W : SuperVertexAlgebra B)
+    (hV : ParityCompatible V) (hW : ParityCompatible W) (hg : TensorGradingHyp V W) :
+    SuperVertexAlgebra (A ⊗[ℂ] B) where
+  grading := tenGrading V W
+\end{leancode}
+\begin{dictionary}
+\textbf{The hypotheses.} \lean{ParityCompatible}: the parity operator $(-1)^F$ maps each weight space to
+itself (the algebra is bigraded). It holds in every example, but the \lean{SuperVertexAlgebra}
+axioms do not force it, so it is a genuine hypothesis. \lean{TensorGradingHyp}: \lean{iSupIndep} says
+the convolution weight spaces are independent (their sum is direct), \lean{finrank} that each is
+finite-dimensional. The first is true over $\C$ by flatness (the file explains how it would be proved
+but does not prove it). The second is \emph{false in general}: for complex weights, $h = h_1+h_2$ can
+have infinitely many solutions with $V_{h_1}\ne0\ne W_{h_2}$; it holds when both gradings are bounded
+below and discrete, which is the situation of VOAs of CFT type. (The file's docstring speaks of
+``three'' linear-algebra facts; the structure has two fields, the third --- internality of the parity
+grading --- being proved as \lean{tenParity_}\allowbreak\lean{isInternal}.)
+
+\textbf{What is proved.} All of VA1--VA5 and VA1$'$: locality comes from Dong's lemma applied to the
+mutually commuting families $a_{(n)}\otimes1$ and $(-1)^{qF}\otimes b_{(n)}$.
+\end{dictionary}
+\begin{physics}
+Stacking two decoupled theories gives a consistent theory: locality of the product fields follows
+from locality in each factor and the fact that fields of different factors (anti)commute. The
+finiteness hypothesis is the requirement that each energy level of the combined theory be
+finite-dimensional, which fails only for pathological spectra.
+\end{physics}
+\emph{Proof on paper.} Linearity is built in. The weight and parity rules follow from those of the
+factors. The vacuum axioms follow from $Y(\lfourvac,z) = 1$ and creation in each factor. Locality: the
+field of $a\otimes b$ is the product of $\ell_a(z) = Y(a,z)\otimes1$ and $r_b(z) = (-1)^{qF}\otimes
+Y(b,z)$; these two families commute exactly up to the Koszul sign, so their normal-ordered product is
+their plain product, and Dong's lemma (Chapter~\ref{ch:L03}, Theorem~\ref{l03:thm:dong}) gives mutual locality of all such
+products. \qed
+\begin{status}
+Conditional on \lean{ParityCompatible} (twice) and \lean{TensorGradingHyp}; \texttt{\#print axioms}
+on \lean{tensorSVA}: \lean{[propext, Classical.choice, Quot.sound]}. The two clauses of
+\lean{TensorGradingHyp} are carried as open hypotheses downstream (in
+\leanpath{VOA/\allowbreak Examples/\allowbreak DSReductionSl2.lean}, Chapter~\ref{ch:L19}).
+\end{status}
+
+\begin{warning}[title={Trap / dead end: There is no tensor product of vertex operator algebras in the library}]\label{l04:warn:tensor}
+Despite its name, \leanpath{VOA/\allowbreak Core/\allowbreak TensorVOA.lean} does not construct a tensor
+product of \lean{VertexOperatorAlgebra}s. It builds a \lean{SuperVertexAlgebra}: no conformal vector
+$\omega\otimes\lfourvac+\lfourvac\otimes\omega$, no proof that central charges add, no CFT-type statement.
+The source says so in its closing note (``The conformal layer \ldots\ is not built here''). A reader
+who needs $c(V\otimes W) = c(V)+c(W)$ will not find it in this chapter's files.
+\end{warning}
+
+\begin{definition}[Tensor product of two Lie actions]\label{l04:def:tenlie}
+For Lie algebra representations $R:L\to\End V$, $S:L\to\End W$: $(R\otimes S)(x) = R(x)\otimes1 +
+1\otimes S(x)$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak TensorLieAction.lean}.
+\begin{leancode}
+def tensorLieAction (R : L →ₗ⁅ℂ⁆ End ℂ V) (S : L →ₗ⁅ℂ⁆ End ℂ W) :
+    L →ₗ⁅ℂ⁆ End ℂ (V ⊗[ℂ] W) where
+  toFun x := (R x).rTensor W + (S x).lTensor V
+
+theorem tensorLieAction_eigen (R : L →ₗ⁅ℂ⁆ End ℂ V) (S : L →ₗ⁅ℂ⁆ End ℂ W)
+    (x : L) (v : V) (w : W) (a b : ℂ) (ha : R x v=a • v) (hb : S x w=b • w) :
+    tensorLieAction R S x (v ⊗ₜ[ℂ] w)=(a+b) • (v ⊗ₜ[ℂ] w) := by
+
+theorem complex_tmul_ne_zero {v : V} {w : W} (hv : v ≠ 0) (hw : w ≠ 0) :
+    v ⊗ₜ[ℂ] w ≠ 0 := by
+\end{leancode}
+\begin{dictionary}
+\lean{L →ₗ⁅ℂ⁆ End ℂ V} is a Lie algebra homomorphism, i.e.\ a representation. \lean{rTensor W}
+and \lean{lTensor V} are $f\otimes1$ and $1\otimes f$. The file takes the representations as explicit
+data (rather than type-class instances) so that several representations on one space can coexist.
+Eigenvalues add, and pure tensors of nonzero vectors are nonzero. All standard.
+\end{dictionary}
+\begin{physics}
+The total charge of a two-particle (or two-sector) state is the sum of the charges: the coproduct
+$\Delta(x) = x\otimes1+1\otimes x$ of a Lie algebra symmetry. This is how $L_0$ and current zero modes act
+on a stacked theory.
+\end{physics}
+\begin{status}
+Unconditional; axiom-clean.
+\end{status}
+
+%======================================================================
+\section{Weight operators and weight-homogeneous fields}\label{l04:sec:weightop}
+%======================================================================
+
+Two small files provide operator-first grading tools used by free-field constructions.
+
+\begin{definition}[The weight operator of an internal grading]\label{l04:def:intweight}
+Given an internal grading $A = \bigoplus_iG_i$ and scalars $w_i$, the operator acting by $w_i$ on $G_i$;
+for a $\Z$-grading with $w_n = n$, the canonical ``$L_0$''.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak InternalGradingOperator.lean}.
+\begin{leancode}
+noncomputable def internalWeightOperatorZ (G : ℤ → Submodule ℂ A)
+    (hG : DirectSum.IsInternal G) : End ℂ A :=
+  internalWeightOperator G hG (fun n => (n : ℂ))
+
+theorem internalWeightOperatorZ_comm_of_maps
+    (G : ℤ → Submodule ℂ A) (hG : DirectSum.IsInternal G)
+    (f : End ℂ A) (d : ℤ)
+    (hf : ∀ n x, x ∈ G n → f x ∈ G (n + d)) :
+    internalWeightOperatorZ G hG * f - f * internalWeightOperatorZ G hG =
+      (d : ℂ) • f := by
+\end{leancode}
+\begin{dictionary}
+\lean{DirectSum.IsInternal G} says $A$ is the internal direct sum of the $G_n$. The theorem: an operator
+shifting degrees by $d$ satisfies $[W,f] = d f$. Standard.
+\end{dictionary}
+\begin{physics}
+An operator that raises the energy by $d$ has commutator $d$ with the Hamiltonian; this is how one
+reads off the weight of a mode, $[L_0,u_{(n)}] = (\operatorname{wt}u-n-1)u_{(n)}$.
+\end{physics}
+\begin{status}
+Unconditional; axiom-clean.
+\end{status}
+
+\begin{definition}[Weight-commutator field]\label{l04:def:wcf}
+A formal field $a(z) = \sum_ja_jz^j$ of $\End A$ is homogeneous of weight $D$ for $W\in\End A$ if
+$[W,a_j] = (D+j)a_j$ for all $j$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak WeightCommutatorField.lean}.
+\begin{leancode}
+def WeightCommutatorField (W : End ℂ A) (a : FormalDist (End ℂ A)) (D : ℤ) : Prop :=
+  ∀ j : ℤ, W * a j - a j * W = ((D + j : ℤ) : ℂ) • a j
+
+theorem nprod {W : End ℂ A} {a b : FormalDist (End ℂ A)}
+    (haf : IsField a) (hbf : IsField b) {Da Db : ℤ}
+    (ha : WeightCommutatorField W a Da) (hb : WeightCommutatorField W b Db) :
+    WeightCommutatorField W (VOA.nprod haf hbf) (Da + Db) := by
+\end{leancode}
+\begin{dictionary}
+\lean{a j} is the coefficient of $z^j$. For $a = Y(u,z)$ with $u$ of weight $D$, the coefficient of
+$z^j$ is $u_{(-j-1)}$, of degree $D+j$: so the definition is ``$a$ is the field of a weight-$D$ state'' in
+operator form, without any vertex algebra. \lean{VOA.nprod} is the normal-ordered product of two
+fields (Chapter~\ref{ch:L03}); weights add. The file also proves closure under sums, scalars and
+derivative (weight $D+1$).
+\end{dictionary}
+\begin{physics}
+The normal-ordered product $:\!a(z)b(z)\!:$ of fields of dimensions $D_a$ and $D_b$ has dimension
+$D_a+D_b$, and $\partial a$ has dimension $D_a+1$: the dimension counting of composite operators.
+\end{physics}
+\begin{status}
+Unconditional; axiom-clean.
+\end{status}
+
+%======================================================================
+\section{BRST cohomology}\label{l04:sec:brst}
+%======================================================================
+
+\begin{definition}[BRST complex]\label{l04:def:brst}
+A BRST complex on a vertex superalgebra $V$ is a $\Z$-grading $V = \bigoplus_gV^{(g)}$ (ghost number)
+together with $Q\in\End V$ that preserves weights, is odd, raises ghost number by one, satisfies
+$Q^2 = 0$ and $Q(u_{(n)}v) = (Qu)_{(n)}v + ((-1)^Fu)_{(n)}(Qv)$ for all $u,v,n$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak BRSTCohomology.lean}.
+\begin{leancode}
+structure BRSTComplex (V : SuperVertexAlgebra 𝒱) where
+  ghost : ℤ → Submodule ℂ 𝒱
+  ghost_isInternal : DirectSum.IsInternal ghost
+  Q : Module.End ℂ 𝒱
+  Q_wt : ∀ h : ℂ, ∀ v ∈ V.grading h, Q v ∈ V.grading h
+  Q_odd : ∀ p : ZMod 2, ∀ v ∈ V.parity p, Q v ∈ V.parity (p + 1)
+  Q_ghost : ∀ g : ℤ, ∀ v ∈ ghost g, Q v ∈ ghost (g + 1)
+  Q_sq : Q * Q = 0
+  Q_deriv : ∀ (u v : 𝒱) (n : ℤ),
+    Q (mode (V.Y u) n v) = mode (V.Y (Q u)) n v + mode (V.Y (sgn V u)) n (Q v)
+\end{leancode}
+\begin{dictionary}
+\lean{sgn V} is the parity operator $(-1)^F$. For $u$ of parity $p$ the derivation rule is the usual
+$Q(u_{(n)}v) = (Qu)_{(n)}v + (-1)^pu_{(n)}(Qv)$ (\lean{Q_deriv_homog}); writing the sign as an operator
+makes the rule bilinear for all $u$. The definition is abstract: it does not ask that $Q$ be the zero
+mode of a BRST current $J_{\mathrm{BRST}}$, nor that the ghost number be additive under products
+(that is the separate predicate \lean{GhostAdditive}). Every BRST differential of the literature
+(Feigin--Frenkel, Kac--Roan--Wakimoto) has these properties, so the notion is at least as general as
+needed. \textbf{No concrete instance is constructed in this chapter's files}; the Drinfeld--Sokolov
+file of Chapter~\ref{ch:L19} carries one as a hypothesis.
+\end{dictionary}
+\begin{physics}
+The BRST charge of a gauge-fixed theory: a nilpotent fermionic symmetry raising the ghost number. Its
+cohomology is the space of physical states and operators --- gauge invariant modulo pure gauge. In
+quantum Hamiltonian (Drinfeld--Sokolov) reduction, $Q$ imposes the constraint $J^{e}(z) = 1$ on an affine
+current, and the cohomology is the $W$-algebra.
+\end{physics}
+\begin{status}
+Definition.
+\end{status}
+
+\begin{theorem}[BRST cohomology is a vertex superalgebra]\label{l04:thm:brst}
+$\lfourH(V,Q) := \ker Q/\operatorname{im}Q$ carries a vertex superalgebra structure with
+$Y([u],z)[v] = [Y(u,z)v]$, vacuum $[\lfourvac]$ and the induced weight and parity gradings; the ghost
+grading descends. If the ghost number is additive, $\lfourH^0$ is closed under all products. If $Q = 0$,
+$\lfourH(V,0)\cong V$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak BRSTCohomology.lean}.
+\begin{leancode}
+abbrev Coh : Type u := C.kerQ ⧸ C.imQ'
+
+noncomputable def cohomology : SuperVertexAlgebra C.Coh where
+  grading := C.gradingH
+  isInternal := C.gradingH_isInternal
+  finrank := C.gradingH_finiteDimensional
+  parity := C.parityH
+  parity_isInternal := C.parityH_isInternal
+  Y := C.Ycohom
+  vacuum := C.prj C.vacK
+
+def GhostAdditive : Prop :=
+  ∀ (g g' : ℤ), ∀ u ∈ C.ghost g, ∀ v ∈ C.ghost g', ∀ n : ℤ,
+    mode (V.Y u) n v ∈ C.ghost (g + g')
+
+theorem H0_mode (hadd : C.GhostAdditive) {ubar vbar : C.Coh}
+    (hu : ubar ∈ C.H0) (hv : vbar ∈ C.H0) (n : ℤ) :
+    mode (C.Ycohom ubar) n vbar ∈ C.H0 := by
+
+noncomputable def cohEquivOfQZero (hQ : C.Q = 0) : 𝒱 ≃ₗ[ℂ] C.Coh :=
+  LinearEquiv.ofBijective (C.toCoh hQ) ⟨C.toCoh_injective hQ, C.toCoh_surjective hQ⟩
+\end{leancode}
+\begin{dictionary}
+\lean{C.kerQ} is $\ker Q$; \lean{C.imQ'} is $\operatorname{im}Q$ viewed inside $\ker Q$ (it is contained
+there since $Q^2 = 0$); \lean{Coh} is the quotient space. \lean{Ycohom} is the induced state--field
+map; well-definedness rests on $\ker Q$ being closed under products and $\operatorname{im}Q$ being a
+two-sided ideal \emph{inside} $\ker Q$ (\lean{mode_}\allowbreak\lean{mem_}\allowbreak\lean{imQ_}\allowbreak\lean{left}, \lean{mode_}\allowbreak\lean{mem_}\allowbreak\lean{imQ_}\allowbreak\lean{right}).
+\lean{gradingH h} is the image of $V_h\cap\ker Q$. \lean{H0} is the ghost-number-zero part. All fifteen
+fields of \lean{SuperVertexAlgebra} are proved; nothing is assumed beyond the \lean{BRSTComplex}.
+\textbf{Nontriviality is not part of the theorem}: if $\lfourvac\in\operatorname{im}Q$ the cohomology is
+zero, which is a valid vertex superalgebra. \lean{cohEquivOfQZero} (with \lean{toCoh_vacuum},
+\lean{toCoh_mode}) is the non-vacuity sanity check that for $Q = 0$ nothing is lost.
+\end{dictionary}
+\begin{physics}
+Physical operators form a closed operator algebra: the OPE of two BRST-closed operators is closed, and
+exact operators decouple (their OPE with closed ones is exact). The ghost-number-zero part is the
+algebra of physical fields --- for Drinfeld--Sokolov reduction, the $W$-algebra $W^k(\mathfrak g,f)$.
+\end{physics}
+\emph{Proof on paper.} Let $a,x\in\ker Q$. Then $Q(a_{(n)}x) = 0$ by the derivation rule. If $a = Qb$
+and $Qx = 0$, $(Qb)_{(n)}x = Q(b_{(n)}x)$, exact. If $Qa = 0$ and $x = Qb$, apply the rule to $(-1)^Fa$
+(which is still closed, since $Q(-1)^F = -(-1)^FQ$): $Q(((-1)^Fa)_{(n)}b) = a_{(n)}Qb$ up to the sign,
+exact. So $\operatorname{im}Q$ is a two-sided ideal of the vertex algebra $\ker Q$ and the axioms
+descend. The three gradings descend because $Q$ shifts each by a bijection of the index set. \qed
+\begin{status}
+\lean{cohomology} unconditional (given a \lean{BRSTComplex}); \lean{H0_mode} conditional on
+\lean{GhostAdditive}. \texttt{\#print axioms} on \lean{cohomology}, \lean{H0_mode},
+\lean{cohEquivOfQZero}: \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\begin{theorem}[Nontrivial vacuum; conformal structure descends]\label{l04:thm:brstconf}
+(a) If $\lfourvac$ has ghost number $0$, $V^{(-1)} = 0$ and $\lfourvac\ne0$, then $\lfourvac\notin
+\operatorname{im}Q$, so the cohomology vacuum is nonzero. (b) If $V$ is a super near-VOA and
+$Q\omega = 0$, then $\lfourH(V,Q)$ is a super near-VOA with conformal vector $[\omega]$ and the same
+central charge.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak BRSTCohomology.lean}.
+\begin{leancode}
+theorem vacuum_not_mem_imQ (h0 : V.vacuum ∈ C.ghost 0) (hneg : C.ghost (-1) = ⊥)
+    (hne : V.vacuum ≠ 0) : V.vacuum ∉ C.imQ := by
+
+noncomputable def cohomologyNearVOA : SuperNearVOA C.Coh where
+  toSuperVertexAlgebra := C.cohomology
+  conformalVector := C.prj (confK C hω)
+  conformal_mem := Submodule.mem_map_of_mem W.conformal_mem
+  conformal_parity := Submodule.mem_map_of_mem W.conformal_parity
+  centralCharge := W.centralCharge
+\end{leancode}
+\begin{dictionary}
+(a) \lean{hneg : C.ghost (-1) = ⊥} says there are no states of ghost number $-1$. It is a
+\emph{sufficient} condition: the ghost-number-zero part of $\operatorname{im}Q$ is $Q(V^{(-1)})$. A
+referee should be aware that in the standard Kac--Roan--Wakimoto complex the charged ghost system has
+states of negative ghost number, so this particular criterion is not the one that would establish a
+nonzero vacuum there (in that case one uses the vanishing of the cohomology outside degree $0$, which is
+not in the library). (b) \lean{SuperNearVOA} (\leanpath{VOA/\allowbreak Core/\allowbreak SuperNearVOA.lean},
+Chapter~\ref{ch:L17}) is a \lean{SuperVertexAlgebra} with a conformal vector $\omega$ of weight $2$, even,
+whose modes satisfy the Virasoro relations, with $L_0$ acting by the weight and $L_{-1}$ as translation;
+\lean{hω} is $Q\omega = 0$. The omitted fields (Virasoro relations, $L_0$-grading, translation) are
+transported from $\ker Q$.
+\end{dictionary}
+\begin{physics}
+(a) The vacuum is a physical state, not pure gauge. (b) If the stress tensor is BRST invariant, the
+physical theory is conformal, with the total central charge (matter plus ghosts) of the complex. In
+Drinfeld--Sokolov reduction one must first improve the Sugawara stress tensor so that it is BRST
+closed; this is the role of \lean{hω}.
+\end{physics}
+\begin{status}
+(a) conditional on \lean{h0}, \lean{hneg}, \lean{hne}; (b) conditional on \lean{hω}. Both axiom-clean.
+\end{status}
+
+%======================================================================
+\section{Invariant bilinear forms}\label{l04:sec:forms}
+%======================================================================
+
+\subsection{Motivation: the two-point function}
+
+In a unitary CFT the space of states carries an inner product for which $L_n^\dagger = L_{-n}$ and,
+more generally, the adjoint of a field is obtained by the inversion $z\mapsto1/z$: for a quasi-primary
+field of weight $h$, $\phi(z)^\dagger = \bar z^{-2h}\phi^\dagger(1/\bar z)$. Removing complex conjugation,
+one obtains a \emph{bilinear} pairing on the chiral algebra, the BPZ (Belavin--Polyakov--Zamolodchikov)
+pairing; restricted to quasi-primaries it is the Zamolodchikov metric, the matrix of two-point
+functions $\langle\phi_a(z)\phi_b(w)\rangle = G_{ab}(z-w)^{-2h}$. Frenkel--Huang--Lepowsky (FHL) turned this
+into the following algebraic definition. The map $w\mapsto1/w$ has derivative $-w^{-2}$; on a state $u$
+the corresponding operator is $e^{zL_1}(-z^{-2})^{L_0}$, where the factor $(-z^{-2})^{L_0}$ is the
+Jacobian for a quasi-primary and $e^{zL_1}$ corrects for the failure of $u$ to be quasi-primary.
+
+\begin{definition}[Invariant form, the library's two layers]\label{l04:def:invform}
+An \emph{invariant form} in the library's sense is a bilinear form $(\cdot|\cdot)$ on $\lfourV$ with
+$(L_na|b) = (a|L_{-n}b)$ for all $n$. It is \emph{normalised} if $(\lfourvac|\lfourvac) = 1$, and
+\emph{Gannon-normalised} if $(\lfourvac|\lfourvac) = -1$. Its \emph{left radical} is $\{a : (a|b) = 0\
+\forall b\}$; it is \emph{symmetric} if $(a|b) = (b|a)$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak BilinearForm.lean}.
+\begin{leancode}
+structure InvariantForm (W : VertexOperatorAlgebra 𝒱) where
+  form : LinearMap.BilinForm ℂ 𝒱
+  virasoro_adj : ∀ (n : ℤ) (a b : 𝒱), form (W.L n a) b = form a (W.L (-n) b)
+
+def IsSymmetric (B : InvariantForm W) : Prop := ∀ a b : 𝒱, B.form a b = B.form b a
+
+def NormalizedAt (B : InvariantForm W) (κ : ℂ) : Prop :=
+  B.form W.vacuum W.vacuum = κ
+
+def Normalized (B : InvariantForm W) : Prop := B.NormalizedAt 1
+
+def GannonNormalized (B : InvariantForm W) : Prop := B.NormalizedAt (-1)
+
+def leftRadical (B : InvariantForm W) : Submodule ℂ 𝒱 := LinearMap.ker B.form
+\end{leancode}
+\begin{dictionary}
+\lean{LinearMap.BilinForm ℂ 𝒱} is the type of bilinear forms $\lfourV\times\lfourV\to\C$, curried as
+$\lfourV\to(\lfourV\to\C)$; its kernel is the set of $a$ with $(a|\cdot) = 0$. The full name of the
+structure is \lean{VOA.}\allowbreak\lean{VertexOperatorAlgebra.}\allowbreak\lean{InvariantForm} (distinct from the Lie-algebra
+\lean{VOA.}\allowbreak\lean{InvariantForm} of \leanpath{VOA/\allowbreak Foundations/\allowbreak AffineLie.lean}).
+
+\textbf{Important: \lean{InvariantForm} alone is weaker than FHL invariance.} It records only the
+$u = \omega$ slice of FHL invariance (Virasoro adjointness). The full FHL condition is the separate
+predicate \lean{IsFullyInvariant} (Definition~\ref{l04:def:fullinv}), and every substantive theorem
+assumes it. A referee must check, for each statement mentioning an \lean{InvariantForm}, whether
+\lean{IsFullyInvariant} is also assumed. Section~\ref{l04:sec:deadends} shows that the gap between the
+two is real.
+
+\textbf{Normalisation.} The public convention is $(\lfourvac|\lfourvac) = +1$; Gannon's book uses $-1$
+(5.1.12a), and the library keeps it as \lean{GannonNormalized}.
+\end{dictionary}
+\begin{physics}
+The bilinear BPZ pairing: $(a|b)$ is the coefficient of the two-point function of the fields of $a$ and
+$b$ with $a$ inserted at infinity. Virasoro adjointness $L_n^\dagger = L_{-n}$ is the statement that the
+stress tensor is self-conjugate.
+\end{physics}
+\begin{status}
+Definitions.
+\end{status}
+
+\begin{definition}[Full (FHL) invariance]\label{l04:def:fullinv}
+$(Y(u,z)a|b) = (a|Y(e^{zL_1}(-z^{-2})^{L_0}u,z^{-1})b)$ for all $u,a,b$; in modes, for $u\in\lfourV_{\mathrm{wt}}$,
+\begin{equation}\label{l04:eq:fhl}
+(u_{(n)}a|b) = (-1)^{\mathrm{wt}}\sum_{j=0}^{\mathrm{wt}}\frac1{j!}\big(a\,\big|\,(L_1^ju)_{(2\mathrm{wt}-n-2-j)}b\big).
+\end{equation}
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak BilinearForm.lean}.
+\begin{leancode}
+abbrev IsFullyInvariant (B : InvariantForm W) : Prop :=
+  ∀ (wt : ℤ) (u : 𝒱), u ∈ W.grading wt → ∀ (n : ℤ) (a b : 𝒱),
+    B.form (W.smul u n a) b
+      = (-1 : ℂ) ^ wt • ∑ j ∈ Finset.range (wt.toNat + 1), ((j.factorial : ℂ)⁻¹) •
+          B.form a (W.smul (((W.L 1) ^ j) u) (2 * wt - n - 2 - (j : ℤ)) b)
+\end{leancode}
+\begin{dictionary}
+\textbf{Derivation of the mode form.} $(-z^{-2})^{L_0}u = (-1)^{\mathrm{wt}}z^{-2\mathrm{wt}}u$;
+$e^{zL_1}$ contributes $\sum_jz^jL_1^j/j!$; $Y(v,z^{-1}) = \sum_kv_{(k)}z^{k+1}$. The total power of $z$ is
+$-2\mathrm{wt}+j+k+1$, which equals $-n-1$ exactly when $k = 2\mathrm{wt}-n-2-j$. The sum stops at
+$j = \mathrm{wt}$ because $L_1^ju\in\lfourV_{\mathrm{wt}-j} = 0$ for $j>\mathrm{wt}$ (CFT type;
+\lean{L_}\allowbreak\lean{one_}\allowbreak\lean{pow_}\allowbreak\lean{eq_}\allowbreak\lean{zero}). So the Lean term is exactly \eqref{l04:eq:fhl}, with \lean{(-1 : ℂ) ^ wt}
+$= (-1)^{\mathrm{wt}}$ (a \lean{zpow}, harmless since only $\mathrm{wt}\ge0$ has $u\ne0$),
+\lean{Finset.range (wt.toNat + 1)} $= \{0,\dots,\mathrm{wt}\}$ and \lean{((W.L 1) ^ j) u} $= L_1^ju$.
+
+\textbf{Quantifiers.} For each weight and each homogeneous $u$; general $u$ follows by linearity. For
+$\mathrm{wt}<0$ the hypothesis forces $u = 0$ and both sides vanish.
+
+\textbf{Same as FHL.} This is FHL (5.2.1) / Gannon (5.1.11a) verbatim. \textbf{A documentation slip:}
+the docstring above \lean{IsFullyInvariant} writes the right side as ``$((L_1^ju)_{(\cdot)}a|b)$''; the
+Lean term has \lean{B.form a (W.smul … b)}, i.e.\ $(a|(L_1^ju)_{(\cdot)}b)$, which is the correct formula.
+The statement, not the comment, is what is used. The \lean{virasoro_adj} field is the slice $u = \omega$
+(where $L_1\omega = 0$, \lean{L1_}\allowbreak\lean{conformal_}\allowbreak\lean{zero}).
+\end{dictionary}
+\begin{physics}
+The adjoint of the field of $u$ is the field of the BPZ conjugate state at the inverted point. For a
+quasi-primary current $J$ of weight $1$ it reads $(J_na|b) = -(a|J_{-n}b)$: the bilinear form makes $J_n$
+anti-adjoint to $J_{-n}$. (The positive-definite Hermitian inner product of a unitary theory is obtained
+by composing with an antilinear involution that sends $J$ to $-\bar J$; this is why signs like
+$(h|h) = -k$ below are not a contradiction with unitarity.)
+\end{physics}
+\begin{status}
+Definition.
+\end{status}
+
+\subsection{Elementary consequences}
+
+\begin{theorem}[Orthogonality, radical, uniqueness, nondegeneracy, evaluation on $\lfourV_1$]\label{l04:thm:formbasics}
+Let $B$ be an invariant form. (i) $(\lfourV_m|\lfourV_n) = 0$ for $m\ne n$. Now let $B$ be fully invariant.
+(ii) Its left radical is an ideal. (iii) If $B_1,B_2$ are fully invariant and normalised, $B_1 = B_2$.
+(iv) If $\lfourV$ is simple and $B$ is fully invariant and normalised, its radical is $0$. (v) If $B$ is
+fully invariant and normalised, $u_{(1)}v = -(u|v)\lfourvac$ for $u,v\in\lfourV_1$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak BilinearForm.lean}.
+\begin{leancode}
+theorem orthogonal_of_ne (B : InvariantForm W) {m n : ℤ} (hmn : m ≠ n) {a b : 𝒱}
+    (ha : a ∈ W.grading m) (hb : b ∈ W.grading n) : B.form a b = 0 := by
+
+theorem radical_isIdeal {B : InvariantForm W} (hB : B.IsFullyInvariant) :
+    W.IsIdeal (leftRadical B) := by
+
+theorem invariantForm_unique {B₁ B₂ : InvariantForm W}
+    (h₁ : B₁.IsFullyInvariant) (h₂ : B₂.IsFullyInvariant)
+    (hn₁ : B₁.Normalized) (hn₂ : B₂.Normalized) : B₁.form = B₂.form := by
+
+theorem invariantForm_nondegenerate {B : InvariantForm W} (hsimple : W.IsSimple)
+    (hB : B.IsFullyInvariant) (hn : B.Normalized) : leftRadical B = ⊥ := by
+
+theorem eval_oneMode_grading1 {B : InvariantForm W} (hB : B.IsFullyInvariant)
+    (hn : B.Normalized) {u v : 𝒱} (hu : u ∈ W.grading 1) (hv : v ∈ W.grading 1) :
+    W.smul u 1 v = -B.form u v • W.vacuum := by
+\end{leancode}
+\begin{dictionary}
+All are the textbook statements (Gannon 5.1.11b, 5.1.12b), with these precisions. (i) needs only
+\lean{virasoro_adj} at $n = 0$. (iii) is uniqueness \emph{with normalisation}, i.e.\ equality, not
+``up to a scalar''; it needs no simplicity and no $L_1\lfourV_1 = 0$ --- if two such forms exist they
+agree. (iv) derives nondegeneracy from simplicity; the converse is Theorem~\ref{l04:thm:lirad}. (v) has a
+minus sign because of the public normalisation $(\lfourvac|\lfourvac) = 1$ and the $(-1)^{\mathrm{wt}}$ of
+FHL; in Gannon's normalisation it reads $u_{(1)}v = (u|v)\lfourvac$.
+\end{dictionary}
+\begin{physics}
+(i) Energy eigenstates of different energy are orthogonal. (ii) Null states (zero overlap with
+everything) form a decoupled sector. (iii) Two-point functions are fixed by the OPE and the vacuum
+normalisation. (iv) An irreducible theory has a nondegenerate Zamolodchikov metric. (v) The double pole of
+two currents is their two-point function: for a free boson $h(z)h(w)\sim k/(z-w)^2$ one has $h_{(1)}h =
+k\lfourvac$ and so $(h|h) = -k$.
+\end{physics}
+\emph{Proof on paper.} (i) $m(a|b) = (L_0a|b) = (a|L_0b) = n(a|b)$. (ii) If $(a|\cdot) = 0$, then
+$(u_{(n)}a|b)$ is by \eqref{l04:eq:fhl} a combination of $(a|\cdots) = 0$. (iii) $D = B_1-B_2$ is fully
+invariant with $(\lfourvac|\lfourvac)_D = 0$; by (i) and $\lfourV_0 = \C\lfourvac$, $\lfourvac\in\lfourrad D$; the
+radical is an ideal containing $\lfourvac$, hence $\lfourV$, so $D = 0$. (iv) The radical is an ideal; it is
+not $\lfourV$ since $(\lfourvac|\lfourvac) = 1$. (v) Write $u = u_{(-1)}\lfourvac$ and apply \eqref{l04:eq:fhl} with
+$\mathrm{wt} = 1$, $n = -1$: $(u|v) = -\big((\lfourvac|u_{(1)}v) + (\lfourvac|(L_1u)_{(0)}v)\big)$; the second
+term vanishes since $L_1u\in\C\lfourvac$ and $\lfourvac_{(0)} = 0$; and $u_{(1)}v = \mu\lfourvac$ gives
+$(\lfourvac|u_{(1)}v) = \mu$. \qed
+\begin{status}
+Unconditional given the displayed hypotheses; \texttt{\#print axioms} on \lean{radical_isIdeal} and
+\lean{invariantForm_}\allowbreak\lean{unique}: \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\begin{theorem}[Symmetry of the $(1)$-pairing on $\lfourV_1$]\label{l04:thm:v1symm}
+For $u,v\in\lfourV_1$: $u_{(1)}v = v_{(1)}u$ and $u_{(0)}v+v_{(0)}u = 0$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak InvariantFormSymmetry.lean}.
+\begin{leancode}
+theorem oneMode_symm_grading1 (W : VertexOperatorAlgebra 𝒱) {u v : 𝒱}
+    (hu : u ∈ W.grading 1) (hv : v ∈ W.grading 1) :
+    W.smul u 1 v = W.smul v 1 u := by
+
+theorem zeroMode_antisymm_grading1 (W : VertexOperatorAlgebra 𝒱) {u v : 𝒱}
+    (hu : u ∈ W.grading 1) (hv : v ∈ W.grading 1) :
+    W.smul u 0 v + W.smul v 0 u = 0 := by
+\end{leancode}
+\begin{dictionary}
+Unconditional consequences of skew-symmetry; with Theorem~\ref{l04:thm:formbasics}(v) they make every
+fully invariant normalised form symmetric \emph{on $\lfourV_1$}. Symmetry of the whole form is a theorem
+of FHL (Prop.~5.3.6) and Li, but it is \textbf{not proved in the library} for any form, including the
+canonical one; the file's closing comment states the gap. Downstream statements never assume symmetry
+without saying so.
+\end{dictionary}
+\begin{physics}
+The level matrix $k^{ab}$ in $J^a(z)J^b(w)\sim k^{ab}/(z-w)^2$ is symmetric, because the double pole of a
+bosonic OPE is symmetric under exchange.
+\end{physics}
+\emph{Proof on paper.} Skew-symmetry at $n = 1$ and $n = 0$; the correction terms $T^j(v_{(1+j)}u)$ lie in
+$T^j\lfourV_{-j}$, which is $0$ for $j\ge1$ (or $T\C\lfourvac = 0$). \qed
+\begin{status}
+Unconditional; axiom-clean.
+\end{status}
+
+%======================================================================
+\section{The canonical invariant form (FHL, Li)}\label{l04:sec:canonical}
+%======================================================================
+
+\subsection{The construction}
+
+Li's idea: if a normalised fully invariant form exists, then putting $a = \lfourvac$ in
+\eqref{l04:eq:fhl} shows $(x|b)$ is forced to be the vacuum coefficient of a certain mode product. One
+therefore \emph{defines} the form by that formula and proves invariance.
+
+\begin{definition}[Vacuum coordinate and the canonical pairing]\label{l04:def:canbilin}
+Let $\lfourvc:\lfourV\to\C$ be the coefficient of $\lfourvac$ in the weight-zero component. For homogeneous
+$a\in\lfourV_p$ put
+\begin{equation*}
+\mathrm{adjPair}_p(a,b) = (-1)^p\sum_{j=0}^{p}\frac1{j!}\,\lfourvc\big((L_1^ja)_{(2p-1-j)}b\big),
+\end{equation*}
+and extend to $\mathrm{canBilin}(a,b) = -\sum_p\mathrm{adjPair}_p(a_p,b)$ over the homogeneous components
+$a_p$ of $a$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak InvariantFormCanonical.lean}.
+\begin{leancode}
+noncomputable def vacCoord (W : VertexOperatorAlgebra V) (hne : W.vacuum ≠ 0) : V →ₗ[ℂ] ℂ :=
+  ((LinearEquiv.toSpanNonzeroSingleton ℂ V W.vacuum hne).symm.toLinearMap).comp
+    ((grade0ToSpan W).toLinearMap.comp (grade0 W))
+
+noncomputable def adjPair (W : VertexOperatorAlgebra V) (hne : W.vacuum ≠ 0) (wt : ℤ)
+    (a b : V) : ℂ :=
+  (-1 : ℂ) ^ wt • ∑ j ∈ Finset.range (wt.toNat + 1), ((j.factorial : ℂ)⁻¹) •
+    vacCoord W hne (W.smul (((W.L 1) ^ j) a) (2 * wt - 1 - (j : ℤ)) b)
+
+noncomputable def canBilin (W : VertexOperatorAlgebra V) (hne : W.vacuum ≠ 0) :
+    V →ₗ[ℂ] (V →ₗ[ℂ] ℂ) :=
+  letI : DirectSum.Decomposition W.grading := W.isInternal.chooseDecomposition
+  (DirectSum.toModule ℂ ℤ (V →ₗ[ℂ] ℂ) (bSlotOfGrade W hne)).comp
+    (DirectSum.decomposeLinearEquiv W.grading).toLinearMap
+\end{leancode}
+\begin{dictionary}
+\lean{grade0 W} is the projection to $\lfourV_0$, \lean{grade0ToSpan} rewrites $\lfourV_0 = \C\lfourvac$, and
+\lean{toSpanNonzeroSingleton … hne} identifies $\C\lfourvac$ with $\C$ via $c\lfourvac\mapsto c$, which needs
+$\lfourvac\ne0$ (\lean{hne}). So \lean{vacCoord} is $\lfourvc$. The mode index $2p-1-j$ is
+$2\mathrm{wt}-n-2-j$ at $n = -1$: $\mathrm{adjPair}_p(a,b)$ is the value of the right side of
+\eqref{l04:eq:fhl} at $u = a$, $n = -1$, read against $\lfourvac$, i.e.\ ``$(a_{(-1)}\lfourvac|b)$ if the form
+existed''. \lean{canBilin} glues these over the decomposition of $a$ (\lean{bSlotOfGrade} is the
+weight-$p$ piece $-\mathrm{adjPair}_p$, \lean{canBilin_homog}). The leading minus makes
+$\mathrm{canBilin}(\lfourvac,\lfourvac) = -1$ (\lean{canBilin_vacuum}), Gannon's normalisation; the public
+form is its negative.
+\end{dictionary}
+\begin{physics}
+$(a|b)$ is read off as the vacuum component of the BPZ-conjugate of $a$ acting on $b$: ``$\langle0|
+a^\dagger b\rangle$''. The chiral two-point function is computed by bringing one operator to infinity and
+taking the vacuum expectation value.
+\end{physics}
+\begin{status}
+Definitions; axiom-clean.
+\end{status}
+
+\begin{theorem}[Why $L_1\lfourV_1 = 0$ is needed]\label{l04:thm:virslice}
+For every $b$: $\mathrm{canBilin}(L_{-1}\lfourvac,b) = 0$ and
+$\mathrm{canBilin}(\lfourvac,L_1b) = -\lfourvc(L_1b)$. Hence the $n = -1$ Virasoro adjointness of canBilin at
+$a = \lfourvac$ holds if and only if $\lfourvc(L_1b) = 0$ for all $b$, i.e.\ iff $L_1\lfourV_1 = 0$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak InvariantFormCanonicalFHL.lean}.
+\begin{leancode}
+theorem virSlice_vacuum (hne : W.vacuum ≠ 0) (b : V) :
+    canBilin W hne (W.L (-1) W.vacuum) b = 0
+      ∧ canBilin W hne W.vacuum (W.L 1 b) = - vacCoord W hne (W.L 1 b) := by
+\end{leancode}
+\begin{dictionary}
+The Lean statement is the two displayed equalities; the ``iff'' is the one-line consequence (since
+$L_1b$ has weight-zero component $L_1b_1$, the condition is $L_1\lfourV_1 = 0$, proved as
+\lean{vacCoord_}\allowbreak\lean{L1_}\allowbreak\lean{eq_}\allowbreak\lean{zero} in \leanpath{VOA/\allowbreak Core/\allowbreak InvariantFormCanonicalVir.lean}). It is the
+library's certificate that the hypothesis \lean{hqp} of Theorem~\ref{l04:thm:canonical} cannot be
+dropped for this construction. More is true on paper: \emph{any} normalised form satisfying the
+$n = 1$ Virasoro adjointness has $(\lfourvac|L_1v) = (L_{-1}\lfourvac|v) = 0$ for $v\in\lfourV_1$, and
+$L_1v\in\C\lfourvac$, so $L_1\lfourV_1 = 0$ is necessary for the existence of a normalised invariant form at
+all. That converse is not stated in the library.
+\end{dictionary}
+\begin{physics}
+$L_1\lfourV_1 = 0$ says the currents are quasi-primary. When it fails --- e.g.\ the free boson with
+background charge, $T = \tfrac12(\partial\phi)^2+\lambda\partial^2\phi$, where $L_1(\partial\phi)\propto\lambda\lfourvac$ ---
+the vacuum is not self-conjugate: the Coulomb-gas two-point function $\langle V_\alpha V_\beta\rangle$ is
+nonzero only for $\alpha+\beta = 2\alpha_0$, and the BPZ pairing pairs the theory with a twisted version
+of itself. No normalised invariant form exists then.
+\end{physics}
+\begin{status}
+Unconditional; axiom-clean.
+\end{status}
+
+\subsection{The proof of invariance}
+
+The proof that canBilin is fully invariant under $L_1\lfourV_1 = 0$ occupies most of the
+\texttt{InvariantForm*} files. Mathematically it has three steps.
+
+\paragraph{Step 1: reduction to the diagonal.} By weight orthogonality and bilinearity it suffices to
+prove \eqref{l04:eq:fhl} for homogeneous $u\in\lfourV_{\mathrm{wt}}$, $a\in\lfourV_p$, $b\in\lfourV_q$ at the one mode
+$n = p+\mathrm{wt}-q-1$ for which $u_{(n)}a\in\lfourV_q$ (all other modes give $0 = 0$). This is the
+predicate \lean{CanDiagonal}.
+
+\paragraph{Step 2: the quasi-primary decomposition.} Under $L_1\lfourV_1 = 0$, every $a\in\lfourV_p$, $p\ge1$, is
+$a_0+L_{-1}c$ with $L_1a_0 = 0$ and $c\in\lfourV_{p-1}$ (Theorem~\ref{l04:thm:qp}). Both sides of
+\eqref{l04:eq:fhl} obey the same $L_{-1}$-covariance recursion in $a$ (from $[L_{-1},u_{(n)}] =
+-nu_{(n-1)}$ and the Virasoro adjointness $\mathrm{canBilin}(L_{-1}a,b) = \mathrm{canBilin}(a,L_1b)$, the
+latter proved under \lean{hqp} as \lean{canBilin_}\allowbreak\lean{Lneg1_}\allowbreak\lean{adj}), so it suffices to treat quasi-primary $a$,
+and similarly quasi-primary $u$.
+
+\paragraph{Step 3: the quasi-primary matching identity (Li, Prop.~2.6).} For quasi-primary $u\in\lfourV_w$
+and $a\in\lfourV_p$, $\mathrm{canBilin}(u_{(n)}a,b) = (-1)^w\mathrm{canBilin}(a,u_{(2w-n-2)}b)$, proved by a
+direct computation with the vacuum coordinate: skew-symmetry shows $\lfourvc(u_{(n)}v) = \pm\lfourvc(v_{(n)}u)$
+(the $T$-tower dies under $\lfourvc$), and a raising identity $(2p-M-2)\lfourvc(a_{(M+1)}X) =
+-\lfourvc(a_{(M)}L_1X)$ for quasi-primary $a$ kills low modes.
+
+\begin{theorem}[Quasi-primary decomposition]\label{l04:thm:qp}
+If $L_1\lfourV_1 = 0$ and $p\ge1$, every $a\in\lfourV_p$ can be written $a = a_0+L_{-1}c$ with $a_0\in\lfourV_p$,
+$L_1a_0 = 0$, $c\in\lfourV_{p-1}$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak QuasiPrimaryDecomp.lean}.
+\begin{leancode}
+theorem qpDecomp (W : VertexOperatorAlgebra V)
+    (hqp : ∀ v, v ∈ W.grading 1 → W.L 1 v = 0)
+    {p : ℤ} (hp : 1 ≤ p) {a : V} (ha : a ∈ W.grading p) :
+    ∃ a₀ c : V, a₀ ∈ W.grading p ∧ W.L 1 a₀ = 0 ∧ c ∈ W.grading (p - 1) ∧ a = a₀ + W.L (-1) c := by
+\end{leancode}
+\begin{dictionary}
+The statement asserts existence of a decomposition (the sum $\lfourQP_p+L_{-1}\lfourV_{p-1}$ is everything),
+not directness; directness also holds for $p\ge2$ but is not needed. The hypothesis \lean{hqp} is used
+exactly at $p = 1$, where $L_{-1}\lfourV_0 = L_{-1}\C\lfourvac = 0$ forces $\lfourV_1 = \lfourQP_1$. The docstring's
+``$\lfourV_p = \mathcal{P}\lfourV_p\oplus L_{-1}\lfourV_{p-1}$'' should be read with $\mathcal P$ meaning
+quasi-primary, not primary.
+\end{dictionary}
+\begin{physics}
+Every state is a quasi-primary or a derivative: under the global conformal group $SL_2$ (generated by
+$L_{-1},L_0,L_1$) each energy level decomposes into lowest-weight vectors (quasi-primaries) and their
+$L_{-1}$-descendants. Quasi-primary fields are those that transform simply under global conformal
+transformations, $\phi(z)\mapsto(cz+d)^{-2h}\phi(\frac{az+b}{cz+d})$.
+\end{physics}
+\emph{Proof on paper.} For quasi-primary $v\in\lfourV_m$, $L_1L_{-1}^{j+1}v = (j+1)(2m+j)L_{-1}^jv$ (the
+$\mathfrak{sl}_2$ tower). By induction on $q$, every $b\in\lfourV_q$ is a finite sum $\sum_kL_{-1}^kw_k$ with
+$w_k\in\lfourV_{q-k}$ quasi-primary (\lean{tower_}\allowbreak\lean{sum_}\allowbreak\lean{exists}): given $b$, $L_1b\in\lfourV_{q-1}$ has such an
+expansion, and one inverts $L_1L_{-1}$ term by term (the coefficient $(k+1)(2q-k)$ vanishes only where the
+base vector is $0$) to find $c$ with $L_1(b-L_{-1}c) = 0$. \qed
+\begin{status}
+Conditional on \lean{hqp}; \texttt{\#print axioms}: \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\begin{theorem}[The diagonal identity, unconditionally under $L_1\lfourV_1 = 0$]\label{l04:thm:diag}
+If $\lfourvac\ne0$ and $L_1\lfourV_1 = 0$, canBilin satisfies \eqref{l04:eq:fhl} at every matching mode.
+\end{theorem}
+\noindent Files \leanpath{VOA/\allowbreak Core/\allowbreak InvariantFormCanonicalFHL.lean}, \leanpath{VOA/\allowbreak Core/\allowbreak InvariantFormFHL2.lean}, \leanpath{VOA/\allowbreak Core/\allowbreak InvariantFormQPMatchGen.lean}.
+\begin{leancode}
+def CanDiagonal (hne : W.vacuum ≠ 0) : Prop :=
+  ∀ (wt p q : ℤ) (u a b : V), u ∈ W.grading wt → a ∈ W.grading p → b ∈ W.grading q →
+    canBilin W hne (W.smul u (p + wt - q - 1) a) b = canRHS hne u a b wt (p + wt - q - 1)
+
+theorem canBilin_qp_qp_adj (hne : W.vacuum ≠ 0) (hqp : ∀ v, v ∈ W.grading 1 → W.L 1 v = 0)
+    {w : ℤ} {u : V} (hu : u ∈ W.grading w) (hqpu : W.L 1 u = 0)
+    {p : ℤ} {a : V} (ha : a ∈ W.grading p) (hqpa : W.L 1 a = 0) (n : ℤ) (b : V) :
+    canBilin W hne (W.smul u n a) b = (-1:ℂ)^w • canBilin W hne a (W.smul u (2*w - n - 2) b) := by
+
+theorem canDiagonal_unconditional (hne : W.vacuum ≠ 0)
+    (hqp : ∀ v, v ∈ W.grading 1 → W.L 1 v = 0) : CanDiagonal hne :=
+  canDiagonal_holds hne hqp (fun {_p} hp {_a} ha => qpDecomp W hqp hp ha)
+    (fun {_w} {_u} hu hqpu {_p} {_a} ha hqpa n b => canBilin_qp_qp_adj hne hqp hu hqpu ha hqpa n b)
+\end{leancode}
+\begin{dictionary}
+\lean{canRHS hne u a b wt n} is the right side of \eqref{l04:eq:fhl} for canBilin (same file). The
+one-line proof of \lean{canDiagonal_}\allowbreak\lean{unconditional} is shown because it is informative: it is the
+assembly lemma \lean{canDiagonal_}\allowbreak\lean{holds} fed with the two genuine inputs, Theorem~\ref{l04:thm:qp} and the
+quasi-primary matching identity \lean{canBilin_}\allowbreak\lean{qp_}\allowbreak\lean{qp_}\allowbreak\lean{adj} (Step 3, for quasi-primary $u$ and $a$, all
+modes). ``Unconditional'' in the name means ``no hypothesis beyond \lean{hne}, \lean{hqp}''.
+\end{dictionary}
+\begin{physics}
+The two-point function of two quasi-primaries of weights $w$ and $p$ transforms covariantly under
+inversion; everything else follows by global conformal invariance, because descendants are derivatives
+of quasi-primaries.
+\end{physics}
+\begin{status}
+Conditional only on \lean{hne}, \lean{hqp}; \texttt{\#print axioms} on \lean{canDiagonal_}\allowbreak\lean{unconditional} and
+\lean{canBilin_}\allowbreak\lean{qp_}\allowbreak\lean{qp_}\allowbreak\lean{adj}: \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\begin{theorem}[FHL, Li: existence and uniqueness of the invariant form]\label{l04:thm:canonical}
+Let $\lfourV$ be a VOA (of CFT type) with $\lfourvac\ne0$ and $L_1\lfourV_1 = 0$. There is a fully invariant form
+with $(\lfourvac|\lfourvac) = 1$; every fully invariant normalised form equals it; it is nondegenerate if
+$\lfourV$ is simple; and $u_{(1)}v = -(u|v)\lfourvac$ on $\lfourV_1$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak InvariantFormFHL2.lean}.
+\begin{leancode}
+noncomputable def canonicalInvariantForm (hne : W.vacuum ≠ 0)
+    (hqp : ∀ v, v ∈ W.grading 1 → W.L 1 v = 0) : InvariantForm W :=
+  canFormFHL hne (canDiagonal_unconditional hne hqp)
+
+theorem canonicalInvariantForm_isFullyInvariant (hne : W.vacuum ≠ 0)
+    (hqp : ∀ v, v ∈ W.grading 1 → W.L 1 v = 0) :
+    (canonicalInvariantForm hne hqp).IsFullyInvariant :=
+
+theorem canonicalInvariantForm_normalized (hne : W.vacuum ≠ 0)
+    (hqp : ∀ v, v ∈ W.grading 1 → W.L 1 v = 0) :
+    (canonicalInvariantForm hne hqp).Normalized :=
+
+theorem invariantForm_unique_FHL (hne : W.vacuum ≠ 0)
+    (hqp : ∀ v, v ∈ W.grading 1 → W.L 1 v = 0) {B : InvariantForm W}
+    (hB : B.IsFullyInvariant) (hn : B.Normalized) :
+    B.form = (canonicalInvariantForm hne hqp).form :=
+
+theorem invariantForm_nondegenerate_FHL (hne : W.vacuum ≠ 0)
+    (hqp : ∀ v, v ∈ W.grading 1 → W.L 1 v = 0) (hsimple : W.IsSimple) :
+    InvariantForm.leftRadical (canonicalInvariantForm hne hqp) = ⊥ :=
+
+theorem eval_oneMode_grading1_FHL (hne : W.vacuum ≠ 0)
+    (hqp : ∀ v, v ∈ W.grading 1 → W.L 1 v = 0) {u v : V}
+    (hu : u ∈ W.grading 1) (hv : v ∈ W.grading 1) :
+    W.smul u 1 v = -(canonicalInvariantForm hne hqp).form u v • W.vacuum :=
+\end{leancode}
+\begin{dictionary}
+\textbf{Hypotheses.} \lean{hne}: $\lfourvac\ne0$ (equivalently $\lfourV\ne0$). \lean{hqp}: $L_1\lfourV_1 = 0$.
+CFT type is built into \lean{VertexOperatorAlgebra}. \lean{canFormFHL} is the negative of the
+Gannon-normalised form \lean{canForm} built from canBilin and the Virasoro adjointness it inherits from
+\lean{CanDiagonal} (the $u = \omega$ slice, using $L_1\omega = 0$).
+
+\textbf{Is the definition meaningful?} \lean{canonicalInvariantForm} is a \lean{def}, so its existence
+says nothing; the content is in \lean{_}\allowbreak\lean{isFullyInvariant} and \lean{_normalized}, which hold with no
+further hypotheses. Normalisation excludes the zero form.
+
+\textbf{Same, stronger or weaker than Li?} Li (JPAA 96, 1994) proves, for a vertex operator algebra
+in his setting, that the space of invariant bilinear forms is linearly isomorphic to
+$(\lfourV_0/L_1\lfourV_1)^*$, and that every invariant form is symmetric. The library proves the case
+$\lfourV_0 = \C\lfourvac$, $L_1\lfourV_1 = 0$, in which $(\lfourV_0/L_1\lfourV_1)^* = \C$: existence and uniqueness up to
+the normalisation. \textbf{It does not prove} (a) the general isomorphism with $(\lfourV_0/L_1\lfourV_1)^*$
+(when $L_1\lfourV_1 = \C\lfourvac$ the space of forms is $0$; the library only has the necessity witness of
+Theorem~\ref{l04:thm:virslice}), nor (b) symmetry of the form. So the Lean result is \emph{weaker} than
+Li's theorem in these two respects and \emph{the same} in the case it treats. Neither omission affects
+the uses in this book: $\Vnat$ has $\lfourV_1 = 0$, and nothing downstream depends on symmetry being
+proved; where it is needed (Chapter~\ref{ch:L07}, \lean{form_globalTowers_eq_zero} and
+\lean{form_globalTowers_eq_zero_of_ne} in \leanpath{VOA/\allowbreak Core/\allowbreak GlobalConformalTowers.lean}) it is an
+explicit hypothesis \lean{hB : B.IsSymmetric}.
+\end{dictionary}
+\begin{physics}
+A chiral CFT whose currents are quasi-primary has a canonical two-point function, unique once the
+vacuum is normalised: the BPZ metric is determined by the OPE. For $\Vnat$ ($\lfourV_1 = 0$) the condition is
+vacuous; for the free boson $h$ with $T = \tfrac12h^2$ it holds, and fails as soon as a background charge
+is turned on.
+\end{physics}
+\emph{Proof on paper.} Existence: Steps 1--3 above (Theorems~\ref{l04:thm:qp}, \ref{l04:thm:diag}); the
+negative of canBilin has $(\lfourvac|\lfourvac) = 1$. Uniqueness, nondegeneracy, evaluation:
+Theorem~\ref{l04:thm:formbasics}(iii)--(v). \qed
+\begin{status}
+Conditional only on \lean{hne}, \lean{hqp}, which are the theorem's genuine hypotheses (and \lean{hsimple}
+for nondegeneracy). \texttt{\#print axioms} on all six declarations: \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\begin{warning}[title={Trap / dead end: Stale status lines in the intermediate files}]\label{l04:warn:stale}
+The docstrings of \leanpath{VOA/\allowbreak Core/\allowbreak InvariantFormCanonical.lean},
+\texttt{…CanonicalFHL.lean}, \texttt{…CanonicalVir.lean} and \texttt{…CanonicalPStep.lean} still carry a
+status ``(half-filled circle) bottoms out at the unproved residual'' \lean{CanVirasoroAdj}, \lean{CanDiagonal} or
+\lean{CanPStep} ``($\to$ Li 1994)''. These were the open residuals of the construction while it was being
+built; they are now all discharged by \lean{canDiagonal_}\allowbreak\lean{unconditional} (and
+\lean{canVirasoroAdj_}\allowbreak\lean{of_}\allowbreak\lean{diagonal}), as the header of \texttt{InvariantFormFHL2.lean} states. The
+residual predicates remain as definitions; no theorem of this chapter depends on them as hypotheses. A
+referee reading those files should not conclude that Theorem~\ref{l04:thm:canonical} is conditional.
+\end{warning}
+
+%======================================================================
+\section{Li's radical theorem: simplicity is nondegeneracy}\label{l04:sec:li}
+%======================================================================
+
+\begin{theorem}[Li, Cor.~3.2]\label{l04:thm:lirad}
+Let $B$ be a fully invariant normalised form on $\lfourV$. Then
+\begin{enumerate}
+\item $\lfourrad_LB = \lfourm(\lfourV) = \lfourrad_RB$;
+\item $\lfourV$ is simple if and only if $\lfourrad_LB = 0$;
+\item for homogeneous $x\in\lfourV_n$: $x\in\lfourm(\lfourV)\iff(x|y) = 0$ for all $y\in\lfourV_n$; equivalently, the
+weight-$n$ part of $\lfourm(\lfourV)$ is the radical of the restriction of $B$ to $\lfourV_n\times\lfourV_n$.
+\end{enumerate}
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak InvariantFormRadical.lean}.
+\begin{leancode}
+theorem leftRadical_eq_maxGradedIdeal {B : InvariantForm W} (hB : B.IsFullyInvariant)
+    (hn : B.Normalized) :
+    InvariantForm.leftRadical B = QuotVOA.maxGradedIdeal W :=
+
+theorem leftRadical_eq_rightRadical {B : InvariantForm W} (hB : B.IsFullyInvariant)
+    (hn : B.Normalized) :
+    InvariantForm.leftRadical B = SingVec.rightRadical B := by
+
+theorem isSimple_iff_leftRadical_eq_bot {B : InvariantForm W} (hB : B.IsFullyInvariant)
+    (hn : B.Normalized) :
+    W.IsSimple ↔ InvariantForm.leftRadical B = ⊥ := by
+
+theorem mem_maxGradedIdeal_iff_grading {B : InvariantForm W} (hB : B.IsFullyInvariant)
+    (hn : B.Normalized) {n : ℤ} {x : 𝒱} (hx : x ∈ W.grading n) :
+    x ∈ QuotVOA.maxGradedIdeal W ↔ ∀ y ∈ W.grading n, B.form x y = 0 := by
+
+def gradedForm (n : ℤ) : LinearMap.BilinForm ℂ (W.grading n) :=
+  B.form.compl₁₂ (W.grading n).subtype (W.grading n).subtype
+
+theorem ker_gradedForm {B : InvariantForm W} (hB : B.IsFullyInvariant) (hn : B.Normalized)
+    (n : ℤ) :
+    LinearMap.ker (gradedForm B n) = (QuotVOA.maxGradedIdeal W).comap (W.grading n).subtype := by
+\end{leancode}
+\begin{dictionary}
+\textbf{Hypotheses.} Only full invariance and normalisation of the given $B$. In particular no
+$L_1\lfourV_1 = 0$ is needed --- if some such $B$ exists the theorem applies; $\lfourvac\ne0$ follows from
+normalisation (\lean{vacuum_}\allowbreak\lean{ne_}\allowbreak\lean{zero_}\allowbreak\lean{of_}\allowbreak\lean{normalized}); CFT type is built in. \textbf{Notation.}
+\lean{gradedForm B n} is $B$ restricted to $\lfourV_n$ (\lean{compl₁₂} composes both slots with the inclusion
+$\lfourV_n\hookrightarrow\lfourV$); \lean{comap} pulls the subspace $\lfourm(\lfourV)$ back along that inclusion. So
+\lean{ker_gradedForm} is (3) as an equality of subspaces of $\lfourV_n$; \lean{maxGradedIdeal_}\allowbreak\lean{inf_}\allowbreak\lean{grading}
+and \lean{maxGradedIdeal_}\allowbreak\lean{inf_}\allowbreak\lean{grading_}\allowbreak\lean{eq_}\allowbreak\lean{bot_}\allowbreak\lean{iff} restate it as $\lfourm\cap\lfourV_n = $ image of the radical, and
+$\lfourm\cap\lfourV_n = 0\iff$ the level-$n$ form is nondegenerate. The \lean{_canonical} corollaries
+(\lean{leftRadical_}\allowbreak\lean{canonical_}\allowbreak\lean{eq_}\allowbreak\lean{maxGradedIdeal}, \lean{isSimple_}\allowbreak\lean{iff_}\allowbreak\lean{canonical_}\allowbreak\lean{nondegenerate}, …) instantiate
+$B$ at Theorem~\ref{l04:thm:canonical}, at the cost of \lean{hne}, \lean{hqp}.
+
+\textbf{Strength.} (2) is an equivalence, strictly more than Theorem~\ref{l04:thm:formbasics}(iv). (1)
+includes the equality of the two radicals, a shadow of the (unproved) symmetry of $B$. (3) is the
+statement that makes simplicity \emph{computable}: membership in the abstract supremum $\lfourm(\lfourV)$ is
+decided by a finite Gram matrix. \textbf{Vacuity.} The theorem is used to prove $\Vnat$ simple
+(Chapter~\ref{ch:10}) and is false for the square-zero impostor of that chapter, whose analogous form has
+the twisted sector in its radical.
+\end{dictionary}
+\begin{physics}
+A chiral CFT is irreducible exactly when its Zamolodchikov metric is nondegenerate: a state with zero
+two-point function against every state is a null state, and null states are exactly what generates a
+decoupled ideal. Moreover null states can be found level by level, because the metric is block diagonal
+in the energy: the null states at level $n$ are the kernel of the level-$n$ Gram matrix. This is the Kac
+determinant method of Virasoro representation theory, here for an arbitrary chiral algebra.
+\end{physics}
+\emph{Proof on paper.} $\lfourrad_LB$ is an ideal (Theorem~\ref{l04:thm:formbasics}(ii)) not containing
+$\lfourvac$, so $\lfourrad_LB\subseteq\lfourm$. Conversely let $I$ be a proper ideal. First $(\lfourvac|z) = 0$ for $z\in I$:
+the homogeneous components of $z$ lie in $I$ (Theorem~\ref{l04:thm:graded}); those of nonzero weight are
+orthogonal to $\lfourvac$, and $I\cap\lfourV_0 = 0$ by properness. Next, for homogeneous $x\in I\cap\lfourV_p$, write
+$x = x_{(-1)}\lfourvac$ and expand: $(x|b) = (-1)^p\sum_j\frac1{j!}(\lfourvac|(L_1^jx)_{(2p-1-j)}b)$. Each $L_1^jx\in I$,
+so $(L_1^jx)_{(m)}b\in I$ by two-sidedness (Theorem~\ref{l04:thm:twosided}), and each term vanishes. So
+$I\subseteq\lfourrad_LB$. The right radical is handled the same way with the slots exchanged. (2) is (1) with
+Theorem~\ref{l04:thm:maxsimple}. (3): pairings of $x\in\lfourV_n$ with other weights vanish by orthogonality. \qed
+\begin{status}
+Conditional only on \lean{hB}, \lean{hn}; \texttt{\#print axioms} on \lean{leftRadical_}\allowbreak\lean{eq_}\allowbreak\lean{maxGradedIdeal},
+\lean{isSimple_}\allowbreak\lean{iff_}\allowbreak\lean{leftRadical_}\allowbreak\lean{eq_}\allowbreak\lean{bot}, \lean{mem_}\allowbreak\lean{maxGradedIdeal_}\allowbreak\lean{iff_}\allowbreak\lean{grading},
+\lean{leftRadical_}\allowbreak\lean{eq_}\allowbreak\lean{rightRadical}, \lean{isSimple_}\allowbreak\lean{iff_}\allowbreak\lean{canonical_}\allowbreak\lean{nondegenerate}:
+\lean{[propext, Classical.choice, Quot.sound]}. The source records an independent validation at
+$c = -22/5$ (Lee--Yang): the level-4 radical is one-dimensional, matching $\dim V(-\frac{22}5,0)_4 = 2$ and
+$\dim L(-\frac{22}5,0)_4 = 1$; that check uses \texttt{Examples} files and is not part of this file.
+\end{status}
+
+%======================================================================
+\section{Gram matrices: rank computes the simple quotient}\label{l04:sec:gram}
+%======================================================================
+
+\begin{definition}[Level-$n$ Gram matrix]\label{l04:def:gram}
+For a basis $(e_i)$ of $\lfourV_n$, $G_n = (B(e_i,e_j))_{i,j}$; for the canonical form, $\mathrm{canGram}$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak GradedFormMatrix.lean}.
+\begin{leancode}
+noncomputable def gramMatrix (B : InvariantForm W) (n : ℤ) (e : Basis ι ℂ (W.grading n)) :
+    Matrix ι ι ℂ :=
+  LinearMap.BilinForm.toMatrix e (gradedForm B n)
+
+noncomputable def canGram : Matrix ι ι ℂ := gramMatrix (canonicalInvariantForm hne hqp) n e
+\end{leancode}
+\begin{dictionary}
+\lean{Basis ι ℂ (W.grading n)} is a basis of $\lfourV_n$ indexed by a finite type \lean{ι}
+(\lean{[Fintype ι]}); \lean{toMatrix e} is the matrix of a bilinear form in that basis. \lean{canGram} takes
+\lean{hne}, \lean{hqp}, \lean{n}, \lean{e} as section variables.
+\end{dictionary}
+\begin{physics}
+The matrix of inner products of the states at energy level $n$ --- the Kac (Shapovalov) matrix of the
+vacuum module, computed with the BPZ form.
+\end{physics}
+\begin{status}
+Definitions.
+\end{status}
+
+\begin{theorem}[Rank, determinant and the simple quotient]\label{l04:thm:gram}
+Let $B$ be fully invariant and normalised. Then $\det G_n\ne0\iff\lfourm\cap\lfourV_n = 0$, and
+$\operatorname{rank}G_n+\dim(\lfourm\cap\lfourV_n) = \dim\lfourV_n$. For the canonical form,
+$\dim L(\lfourV)_n = \operatorname{rank}\mathrm{canGram}_n$; if $\det\mathrm{canGram}_n = 0$ then $\dim L(\lfourV)_n<
+\dim\lfourV_n$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak GradedFormMatrix.lean}.
+\begin{leancode}
+theorem gramMatrix_det_ne_zero_iff (hB : B.IsFullyInvariant) (hn : B.Normalized) :
+    (gramMatrix B n e).det ≠ 0 ↔ maxGradedIdeal W ⊓ W.grading n = ⊥ := by
+
+theorem rank_gramMatrix_add_finrank (hB : B.IsFullyInvariant) (hn : B.Normalized) :
+    (gramMatrix B n e).rank + finrank ℂ (maxGradedIdeal W ⊓ W.grading n : Submodule ℂ 𝒱)
+      = finrank ℂ (W.grading n) := by
+
+theorem finrank_maxQuotient_grading (hne : W.vacuum ≠ 0)
+    (hqp : ∀ v, v ∈ W.grading 1 → W.L 1 v = 0) (n : ℤ) (e : Basis ι ℂ (W.grading n)) :
+    finrank ℂ ((QuotVOA.maxQuotientVOA W).grading n) = (canGram hne hqp n e).rank := by
+
+theorem finrank_maxQuotient_grading_lt_of_det_eq_zero (hne : W.vacuum ≠ 0)
+    (hqp : ∀ v, v ∈ W.grading 1 → W.L 1 v = 0) (n : ℤ) (e : Basis ι ℂ (W.grading n))
+    (hdet : (canGram hne hqp n e).det = 0) :
+    finrank ℂ ((QuotVOA.maxQuotientVOA W).grading n) < finrank ℂ (W.grading n) := by
+\end{leancode}
+\begin{dictionary}
+\lean{finrank ℂ X} is $\dim X$; \lean{(QuotVOA.maxQuotientVOA W).grading n} is $L(\lfourV)_n$, which by
+definition (\lean{maxQuotientVOA_}\allowbreak\lean{grading_}\allowbreak\lean{eq}, \lean{rfl}) is the image of $\lfourV_n$ in the quotient.
+\lean{Matrix.rank} is the rank over $\C$. Finite-dimensionality of $\lfourV_n$ is a structure field, so no
+finiteness hypothesis appears; the basis \lean{e} is supplied by the caller. \textbf{Rank, not
+determinant.} The source stresses (and we repeat) that $\dim L(\lfourV)_n$ is the rank of the Gram matrix of
+\emph{this} form; a matrix of a different form with proportional determinant has the same zero set but
+can have a different rank. In particular the ``top-mode'' Shapovalov form \lean{RigidBridge.}\allowbreak\lean{shapForm} of
+Chapter~\ref{ch:L07} agrees with \lean{gradedForm} only up to the sign $(-1)^n$ and only on quasi-primary
+vectors (\lean{gradedForm_}\allowbreak\lean{eq_}\allowbreak\lean{signed_}\allowbreak\lean{shapForm_}\allowbreak\lean{of_}\allowbreak\lean{quasiPrimary}); at level $4$ of a Virasoro VOA no basis is
+quasi-primary, and the two Gram determinants differ by the constant $21$.
+\end{dictionary}
+\begin{physics}
+The number of physical (non-null) states at level $n$ is the rank of the Kac matrix; a zero of the Kac
+determinant signals that a null state appears at that level and the character of the physical theory drops
+there. This is how the characters of minimal models are computed.
+\end{physics}
+\emph{Proof on paper.} Theorem~\ref{l04:thm:lirad}(3) identifies $\lfourm\cap\lfourV_n$ with the kernel of the
+restricted form, whose dimension is $\dim\lfourV_n-\operatorname{rank}G_n$; the quotient map
+$\lfourV_n\to L(\lfourV)_n$ is surjective with that kernel. A zero determinant means a nonzero kernel. \qed
+\begin{status}
+Conditional only on the displayed hypotheses; \texttt{\#print axioms} on all four: \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\begin{example}[Level two of the Virasoro vacuum module]\label{l04:ex:vir2}
+In $V(c,0)$, $\lfourV_2 = \C\omega$ with $\omega = L_{-2}\lfourvac$, and $(\omega|\omega) = (\lfourvac|L_2L_{-2}\lfourvac) =
+(\lfourvac|(4L_0+\tfrac c2)\lfourvac) = \tfrac c2$. So $\mathrm{canGram}_2 = (c/2)$: for $c\ne0$, $\dim L(c,0)_2 = 1$; for
+$c = 0$, $\dim L(0,0)_2 = 0$, consistent with Example~\ref{l04:ex:c0}. At level $4$ the Gram matrix in the basis
+$L_{-4}\lfourvac$, $L_{-2}^2\lfourvac$ has determinant proportional to $c^2(5c+22)$, whose root $c = -\frac{22}5$ is the
+Lee--Yang model (Chapter~\ref{ch:L06}).
+\end{example}
+
+%======================================================================
+\section{Dead ends: four general routes to full invariance}\label{l04:sec:deadends}
+%======================================================================
+
+Before the canonical construction succeeded, the project tried to prove that \emph{every}
+\lean{InvariantForm} --- every Virasoro-adjoint bilinear form --- is fully invariant, reducing the claim
+in four successive files to sharper and sharper residual predicates:
+\begin{center}\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.27\textwidth}>{\raggedright\arraybackslash}p{0.33\textwidth}>{\raggedright\arraybackslash}p{0.3\textwidth}}
+\toprule
+file & reduction theorem & residual hypothesis\\
+\midrule
+\texttt{InvariantFormFHL} & \lean{isFullyInvariant_}\allowbreak\lean{of_}\allowbreak\lean{propagation} & \lean{hstep} (weight propagation)\\
+\texttt{InvariantFormDiagonal} & \lean{isFullyInvariant_}\allowbreak\lean{of_}\allowbreak\lean{diagonal} & \lean{DiagonalFHL B}\\
+\texttt{InvariantFormPStep} & \lean{isFullyInvariant_}\allowbreak\lean{of_}\allowbreak\lean{pstep} & \lean{PStep B}\\
+\texttt{InvariantFormFHLClosure} & \lean{isFullyInvariant_}\allowbreak\lean{of_}\allowbreak\lean{inputs} & \lean{GoodBound B}, \lean{CreationVanish B}\\
+\bottomrule
+\end{tabular}
+\end{center}
+{\raggedright\noindent Files \leanpath{VOA/\allowbreak Core/\allowbreak InvariantFormDiagonal.lean}, \leanpath{VOA/\allowbreak Core/\allowbreak InvariantFormPStep.lean},
+\leanpath{VOA/\allowbreak Core/\allowbreak InvariantFormFHLClosure.lean}.\par}
+\begin{leancode}
+def DiagonalFHL (B : InvariantForm W) : Prop :=
+  ∀ (wt p q : ℤ) (u a b : 𝒱), u ∈ W.grading wt → a ∈ W.grading p → b ∈ W.grading q →
+    B.form (W.smul u (p + wt - q - 1) a) b = fhlRHS B u a b wt (p + wt - q - 1)
+
+theorem isFullyInvariant_of_diagonal (B : InvariantForm W) (hdiag : DiagonalFHL B) :
+    B.IsFullyInvariant :=
+
+def PStep (B : InvariantForm W) : Prop :=
+  ∀ (wt q : ℤ), 0 ≤ wt → 0 ≤ q → (∀ q' : ℤ, q' < q → DiagAt B wt q') → DiagAt B wt q
+
+theorem isFullyInvariant_of_inputs (B : InvariantForm W) (hG : GoodBound B) (hC : CreationVanish B) :
+    B.IsFullyInvariant :=
+\end{leancode}
+All four reductions are proved and axiom-clean, but the universal statements they reduce to are false.
+
+\begin{theorem}[Conditional delimitation]\label{l04:thm:delim}
+Assume $L_1\lfourV_1 = 0$. A fully invariant form is symmetric on $\lfourV_1$. Hence, if some invariant form
+$B_0$ satisfies $B_0(u_0,v_0)\ne B_0(v_0,u_0)$ for some $u_0,v_0\in\lfourV_1$, then not every invariant form is
+fully invariant, and none of the four residual predicates holds universally.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak InvariantFormDelimitation.lean}.
+\begin{leancode}
+theorem fullyInvariant_forces_v1_symm (B : InvariantForm W)
+    (hqp : ∀ v, v ∈ W.grading 1 → W.L 1 v = 0)
+    (hFI : B.IsFullyInvariant) {u v : 𝒱} (hu : u ∈ W.grading 1) (hv : v ∈ W.grading 1) :
+    B.form u v = B.form v u := by
+
+theorem general_fullyInvariant_not_a_theorem
+    (hqp : ∀ v, v ∈ W.grading 1 → W.L 1 v = 0)
+    {B₀ : InvariantForm W} {u₀ v₀ : 𝒱} (hu₀ : u₀ ∈ W.grading 1) (hv₀ : v₀ ∈ W.grading 1)
+    (hasym : B₀.form u₀ v₀ ≠ B₀.form v₀ u₀) :
+    ¬ (∀ B : InvariantForm W, B.IsFullyInvariant) := fun hAll =>
+\end{leancode}
+\begin{dictionary}
+The four theorems \lean{general_}\allowbreak\lean{fullyInvariant_}\allowbreak\lean{not_}\allowbreak\lean{a_}\allowbreak\lean{theorem}, \lean{general_}\allowbreak\lean{diagonalFHL_}\allowbreak\lean{not_}\allowbreak\lean{a_}\allowbreak\lean{theorem},
+\lean{general_}\allowbreak\lean{pstep_}\allowbreak\lean{not_}\allowbreak\lean{a_}\allowbreak\lean{theorem}, \lean{general_}\allowbreak\lean{fhlClosure_}\allowbreak\lean{not_}\allowbreak\lean{a_}\allowbreak\lean{theorem} all take the witness
+\lean{B₀}, \lean{u₀}, \lean{v₀}, \lean{hasym} as hypotheses. \textbf{The library does not construct
+such a witness}; the files say so. The library map's phrase ``four general invariant-form routes refuted''
+must therefore be read as ``refuted conditionally''. The companion \leanpath{VOA/\allowbreak Core/\allowbreak InvariantFormTranspose.lean}
+shows that the transpose $B^{\mathsf T}(a,b) = B(b,a)$ of an invariant form is again one
+(\lean{InvariantForm.}\allowbreak\lean{transpose}) and that the skew-symmetry identity \lean{form_smul_skew} holds for both,
+so the general toolkit cannot distinguish $B$ from $B^{\mathsf T}$
+(\lean{no_}\allowbreak\lean{structural_}\allowbreak\lean{symmetry_}\allowbreak\lean{of_}\allowbreak\lean{antisymmetrize_}\allowbreak\lean{ne}).
+\end{dictionary}
+\begin{physics}
+Virasoro covariance alone does not fix the two-point functions of a theory with several currents: one can
+rotate the currents before pairing. Only covariance under the whole chiral algebra does.
+\end{physics}
+\emph{Proof on paper.} By \eqref{l04:eq:fhl} at $\mathrm{wt} = 1$, $n = -1$, $a = \lfourvac$, with $L_1u = 0$:
+$(u|v) = -(\lfourvac|u_{(1)}v)$; by Theorem~\ref{l04:thm:v1symm}, $u_{(1)}v = v_{(1)}u$. \qed
+\begin{status}
+Unconditional (\lean{fullyInvariant_}\allowbreak\lean{forces_}\allowbreak\lean{v1_}\allowbreak\lean{symm}) and conditional on an unconstructed witness (the four
+\lean{…_not_a_theorem}); axiom-clean.
+\end{status}
+
+\begin{warning}[title={Trap / dead end: A witness exists on paper; do not re-attempt the general route}]\label{l04:warn:deadend}
+The missing witness is easy to give mathematically (this argument is not formalised). Let $\lfourV$ be the
+rank-two Heisenberg VOA with currents $h^1,h^2$, $T = \frac12((h^1)^2+(h^2)^2)$, so $L_1\lfourV_1 = 0$, and let $B$ be
+its canonical form, with $B(h^i,h^j) = -\delta^{ij}$. The rotation $g$ by $90^\circ$ in the $(h^1,h^2)$-plane extends
+to an automorphism of $\lfourV$; it commutes with every $L_n$. Then $B_0(a,b) := B(a,gb)$ is Virasoro adjoint:
+$B_0(L_na,b) = B(a,L_{-n}gb) = B(a,gL_{-n}b) = B_0(a,L_{-n}b)$. With $gh^1 = h^2$, $gh^2 = -h^1$ one gets
+$B_0(h^1,h^2) = B(h^1,-h^1) = 1$ but $B_0(h^2,h^1) = B(h^2,h^2) = -1$, so $B_0$ is not symmetric on $\lfourV_1$. By
+Theorem~\ref{l04:thm:delim}, the universal general-$B$ statement is false for this $\lfourV$. The moral recorded by
+the project: \emph{full invariance cannot be derived from Virasoro adjointness}; the canonical-form route of
+Section~\ref{l04:sec:canonical} is the only one, and the four general reductions should not be revived.
+\end{warning}
+
+%======================================================================
+\section{Machine verification for this chapter}\label{l04:sec:audit}
+%======================================================================
+
+For this book (when the chapter was first written, at an earlier commit; not re-run for this edition) we ran \texttt{\#print axioms} on seventy-one declarations of the chapter's files, from a
+scratch file importing the relevant modules of the built tree, with
+\begin{plaincode}
+export PATH="$HOME/.elan/bin:$PATH"
+lake env lean -DmaxSynthPendingDepth=3 Axioms.lean
+\end{plaincode}
+(the flag avoids the audit trap of Section~\ref{ch15:sec:trap}: a bare
+\texttt{lake env lean} drops \texttt{maxSynthPendingDepth}). Every one reported exactly
+\begin{plaincode}
+depends on axioms: [propext, Classical.choice, Quot.sound]
+\end{plaincode}
+{\raggedright including \lean{instLieAlgebraGradingOne}, \lean{inner}, \lean{isExpInner_conj}, \lean{expFun_smul},
+\lean{quotientVOA}, \lean{isGradedIdeal_}\allowbreak\lean{of_}\allowbreak\lean{isIdeal}, \lean{isSimple_}\allowbreak\lean{maxQuotientVOA'},
+\lean{ker_}\allowbreak\lean{eq_}\allowbreak\lean{maxGradedIdeal}, \lean{screeningKernel}, \lean{screening_}\allowbreak\lean{conformalVector},
+\lean{ker_}\allowbreak\lean{eq_}\allowbreak\lean{maxGradedIdeal_}\allowbreak\lean{of_}\allowbreak\lean{screeningKernel}, \lean{generated}, \lean{tensorSVA},
+\lean{not_}\allowbreak\lean{isSimple_}\allowbreak\lean{of_}\allowbreak\lean{stronglySingular_}\allowbreak\lean{FHL}, \lean{not_}\allowbreak\lean{isSimple_}\allowbreak\lean{of_}\allowbreak\lean{shapovalov_}\allowbreak\lean{FHL},
+\lean{BRSTComplex.}\allowbreak\lean{cohomology}, \lean{cohomologyNearVOA}, \lean{canonicalInvariantForm_}\allowbreak\lean{isFullyInvariant},
+\lean{invariantForm_}\allowbreak\lean{unique_}\allowbreak\lean{FHL}, \lean{qpDecomp}, \lean{canBilin_}\allowbreak\lean{qp_}\allowbreak\lean{qp_}\allowbreak\lean{adj},
+\lean{leftRadical_}\allowbreak\lean{eq_}\allowbreak\lean{maxGradedIdeal}, \lean{isSimple_}\allowbreak\lean{iff_}\allowbreak\lean{leftRadical_}\allowbreak\lean{eq_}\allowbreak\lean{bot},
+\lean{finrank_}\allowbreak\lean{maxQuotient_}\allowbreak\lean{grading}, \lean{general_}\allowbreak\lean{fullyInvariant_}\allowbreak\lean{not_}\allowbreak\lean{a_}\allowbreak\lean{theorem}. The PBW theorem \lean{VOA.pbw} appears nowhere. We did \emph{not} re-run the aggregate \texttt{lake build}. The two Lean
+checks quoted in the warning on p.~\pageref{l04:warn:inn} and Remark~\ref{l04:rem:homega} were compiled the same way in a
+separate scratch file and are not part of the library.\par}
+
+\paragraph{Release audit 2026-10-27.} \texttt{Notes/\allowbreak Textbook/\allowbreak referee/\allowbreak RELEASE\_AUDIT\_FOUNDATIONS.md}.
+Its findings bearing on this chapter: \lean{VertexOperatorAlgebra} is the LL/FLM VOA of CFT type, so every result here
+(the Lie algebra $\lfourV_1$, quotients, simplicity, the FHL--Li invariant form) is a result about VOAs of CFT type; the
+zero space is a VOA, so the nonvanishing hypotheses $\lfourvac\ne0$ in this chapter are needed; the Borcherds identity
+used in the proofs is a theorem for \lean{VertexOperatorAlgebra}, not for \lean{PreVertexAlgebra}.
+
+%======================================================================
+\section{Referee's checklist}\label{l04:sec:checklist}
+%======================================================================
+
+All entries are \texttt{\#print axioms}-clean (standard axioms only, no \lean{VOA.pbw}).
+
+\begingroup\small
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.28\textwidth}>{\raggedright\arraybackslash}p{0.3\textwidth}>{\raggedright\arraybackslash}p{0.2\textwidth}>{\raggedright\arraybackslash}p{0.1\textwidth}}
+\toprule
+Lean declaration & Intended meaning & Hypotheses / status & Check\\
+\midrule\endhead
+\lean{zeroMode_}\allowbreak\lean{isDerivation} & $u_{(0)}$ is a derivation of every product & none; unconditional & Thm.~\ref{l04:thm:deriv}\\
+\lean{instLieAlgebraGradingOne} & $\lfourV_1$ is a Lie algebra, $[u,v] = u_{(0)}v$ & none; unconditional & Thm.~\ref{l04:thm:lie}\\
+\lean{griessMul_}\allowbreak\lean{comm_}\allowbreak\lean{of_}\allowbreak\lean{grading1_}\allowbreak\lean{eq_}\allowbreak\lean{bot} & Griess product commutative & $\lfourV_1 = 0$ & Def.~\ref{l04:def:griess}\\
+\lean{Aut}, \lean{Group (Aut W)} & automorphism group & definition & Def.~\ref{l04:def:aut}\\
+\lean{Aut.map_grading} & $\alpha(\lfourV_n)\subseteq\lfourV_n$ & none; unconditional & Thm.~\ref{l04:thm:autgrading}\\
+\lean{VOASubalgebra}, \lean{VOASubalgebra.}\allowbreak\lean{toVOA}, \lean{toVOA_centralCharge} & graded subspace containing $\lfourvac,\omega$, closed under products; it is a VOA of the same central charge & definition; $\omega\in S$ required; unconditional & Def.~\ref{l04:def:subalg}, Thm.~\ref{l04:thm:subalg}\\
+\lean{expFun_smul} & $e^D$ of a derivation is a homomorphism & $D$ loc.\ nilpotent, Leibniz & Thm.~\ref{l04:thm:expsmul}\\
+\lean{inner} & $\exp(u_{(0)})\in\Aut$ & $u_{(0)}$ loc.\ nilp.; \lean{homega} redundant & Def.~\ref{l04:def:inner}, Rem.~\ref{l04:rem:homega}\\
+\lean{isExpInner_conj}, \lean{aut_conj_expFun} & $\alpha e^{u_{(0)}}\alpha^{-1} = e^{(\alpha u)_{(0)}}$ & none (former redundant \lean{hαu} removed) & Thm.~\ref{l04:thm:conj}\\
+\lean{Inn}, \lean{Inn_normal} & inner automorphisms normal & \textbf{normal by construction}; weak predicate & p.~\pageref{l04:warn:inn}\\
+\lean{IsIdeal}, \lean{IsSimple} & ideal, simple VOA & left ideals = two-sided & Def.~\ref{l04:def:simple}\\
+\lean{absorbsLeft_}\allowbreak\lean{of_}\allowbreak\lean{isIdeal} & ideals are two-sided & none & Thm.~\ref{l04:thm:twosided}\\
+\lean{isGradedIdeal_}\allowbreak\lean{of_}\allowbreak\lean{isIdeal} & ideals are graded & none & Thm.~\ref{l04:thm:graded}\\
+\lean{quotientVOA}, \lean{quotientVOA'} & $\lfourV/I$ is a VOA & $I$ ideal; properness not assumed & Def.~\ref{l04:def:quot}\\
+\lean{maxGradedIdeal}, \lean{isSimple_}\allowbreak\lean{maxQuotientVOA'} & $\lfourV/\lfourm$ is simple & $\lfourvac\ne0$ & Thm.~\ref{l04:thm:maxsimple}\\
+\lean{IsVOAHom} & homomorphism & $\omega$ not required to be preserved & Def.~\ref{l04:def:hom}\\
+\lean{IsVOAHom.}\allowbreak\lean{ker_}\allowbreak\lean{eq_}\allowbreak\lean{maxGradedIdeal} & surjection onto simple has kernel $\lfourm$ & surjective, target simple & Thm.~\ref{l04:thm:transfer}\\
+\lean{VOASubalgebra.}\allowbreak\lean{generated} & subalgebra generated by $S$ & \textbf{always contains $\omega$} & Def.~\ref{l04:def:generated}\\
+\lean{screening_}\allowbreak\lean{isDerivation}, \lean{screeningKernel} & $\ker a_{(0)}$ is a subVOA & $a\in\lfourV_1$ (no primarity) & Thm.~\ref{l04:thm:scrder}, Def.~\ref{l04:def:scrkernel}\\
+\lean{Screening.}\allowbreak\lean{ker_}\allowbreak\lean{eq_}\allowbreak\lean{maxGradedIdeal_}\allowbreak\lean{of_}\allowbreak\lean{screeningKernel} & screening-kernel image is $L(\lfourV)$ & image $=\ker Q_a$, kernel simple & Thm.~\ref{l04:thm:scrtransfer}\\
+\lean{superScreeningKernel} & super analogue & Leibniz, $Q\omega = 0$ \textbf{assumed} & Rem.~\ref{l04:rem:super}\\
+\lean{IsSingularOfWeight}, \lean{IsStronglySingularOfWeight} & singular vectors & $s\ne0$, weight $>0$ & Def.~\ref{l04:def:singular}\\
+\lean{not_}\allowbreak\lean{isSimple_}\allowbreak\lean{of_}\allowbreak\lean{stronglySingular_}\allowbreak\lean{FHL} & strongly singular $\Rightarrow$ not simple & $\lfourvac\ne0$, $L_1\lfourV_1 = 0$ & Thm.~\ref{l04:thm:notsimple}\\
+\lean{not_}\allowbreak\lean{isSimple_}\allowbreak\lean{of_}\allowbreak\lean{shapovalov_}\allowbreak\lean{FHL} & singular + Shapovalov $\Rightarrow$ not simple & same + pairing condition & Thm.~\ref{l04:thm:notsimple}\\
+\lean{tensorSVA} & tensor product of vertex superalgebras & \lean{ParityCompatible}, \lean{TensorGradingHyp}; \textbf{no $\omega$} & Thm.~\ref{l04:thm:tensor}, p.~\pageref{l04:warn:tensor}\\
+\lean{BRSTComplex.}\allowbreak\lean{cohomology} & $\ker Q/\operatorname{im}Q$ is a vertex superalgebra & a \lean{BRSTComplex}; nontriviality not claimed & Thm.~\ref{l04:thm:brst}\\
+\lean{cohomologyNearVOA} & conformal structure descends & $Q\omega = 0$ & Thm.~\ref{l04:thm:brstconf}\\
+\lean{InvariantForm}, \lean{IsFullyInvariant} & Virasoro-adjoint form; FHL invariance & \textbf{two layers}; check which is assumed & Defs.~\ref{l04:def:invform}, \ref{l04:def:fullinv}\\
+\lean{invariantForm_}\allowbreak\lean{unique} & normalised fully invariant forms coincide & none & Thm.~\ref{l04:thm:formbasics}\\
+\lean{qpDecomp} & $\lfourV_p = \lfourQP_p+L_{-1}\lfourV_{p-1}$ & $L_1\lfourV_1 = 0$ & Thm.~\ref{l04:thm:qp}\\
+\lean{canonicalInvariantForm} (+ \lean{_}\allowbreak\lean{isFullyInvariant}, \lean{_normalized}) & FHL/Li canonical form exists & $\lfourvac\ne0$, $L_1\lfourV_1 = 0$; symmetry \textbf{not proved} & Thm.~\ref{l04:thm:canonical}\\
+\lean{invariantForm_}\allowbreak\lean{unique_}\allowbreak\lean{FHL} & uniqueness & same & Thm.~\ref{l04:thm:canonical}\\
+\lean{virSlice_vacuum} & $L_1\lfourV_1 = 0$ is necessary & none & Thm.~\ref{l04:thm:virslice}\\
+\lean{LiRadical.}\allowbreak\lean{leftRadical_}\allowbreak\lean{eq_}\allowbreak\lean{maxGradedIdeal} & radical $=\lfourm(\lfourV)$ & $B$ fully inv., normalised & Thm.~\ref{l04:thm:lirad}\\
+\lean{LiRadical.}\allowbreak\lean{isSimple_}\allowbreak\lean{iff_}\allowbreak\lean{leftRadical_}\allowbreak\lean{eq_}\allowbreak\lean{bot} & simple $\iff$ nondegenerate & same & Thm.~\ref{l04:thm:lirad}\\
+\lean{LiRadical.}\allowbreak\lean{mem_}\allowbreak\lean{maxGradedIdeal_}\allowbreak\lean{iff_}\allowbreak\lean{grading} & level-$n$ criterion & same & Thm.~\ref{l04:thm:lirad}\\
+\lean{GramMat.}\allowbreak\lean{finrank_}\allowbreak\lean{maxQuotient_}\allowbreak\lean{grading} & $\dim L(\lfourV)_n = \operatorname{rank}\mathrm{canGram}_n$ & $\lfourvac\ne0$, $L_1\lfourV_1 = 0$, basis & Thm.~\ref{l04:thm:gram}\\
+\lean{general_}\allowbreak\lean{fullyInvariant_}\allowbreak\lean{not_}\allowbreak\lean{a_}\allowbreak\lean{theorem} & general route false & \textbf{conditional on unconstructed witness} & Thm.~\ref{l04:thm:delim}, p.~\pageref{l04:warn:deadend}\\
+\bottomrule
+\end{longtable}
+\endgroup
+
+%======================================================================
+\section{Notes and references}\label{l04:sec:notes}
+%======================================================================
+
+The invariant bilinear form and its mode formula are due to I.~B.~Frenkel, Y.-Z.~Huang and
+J.~Lepowsky, \emph{On axiomatic approaches to vertex operator algebras and modules}, Memoirs of the
+American Mathematical Society 104 (1993), no.~494 (Section~5.2 for contragredient modules and invariant
+forms, Prop.~5.3.6 for symmetry, Section~3 for tensor products). The existence-and-uniqueness theorem, the
+identification of the space of invariant forms with $(\lfourV_0/L_1\lfourV_1)^*$, and the corollary relating the
+radical to the maximal ideal are in H.-S.~Li, \emph{Symmetric invariant bilinear forms on vertex operator
+algebras}, Journal of Pure and Applied Algebra 96 (1994) 279--297. The library's docstrings cite these, and
+the textbook account of T.~Gannon, \emph{Moonshine beyond the Monster}, Cambridge University Press (2006),
+§5.1.3 and §5.2.1, for the conventions (equations (5.1.11)--(5.1.12), (5.2.1)--(5.2.4)).
+
+General structure theory (ideals, quotients, simplicity, the $\lfourV_1$ Lie algebra, skew-symmetry) follows
+J.~Lepowsky and H.~Li, \emph{Introduction to Vertex Operator Algebras and Their Representations},
+Progress in Mathematics 227, Birkh\"auser (2004), Chapter~3; I.~Frenkel, J.~Lepowsky and A.~Meurman,
+\emph{Vertex Operator Algebras and the Monster}, Academic Press (1988); and V.~Kac, \emph{Vertex
+Algebras for Beginners}, 2nd ed., University Lecture Series 10, AMS (1998), §4.3 for tensor products. The
+automorphism groups and inner automorphisms of VOAs, and the role of $\lfourV_1$, are discussed in C.~Dong and
+G.~Mason, \emph{Rational vertex operator algebras and the effective central charge}, International
+Mathematics Research Notices 2004, and in Dong--Mason's work on
+the structure of $\lfourV_1$ (\emph{Integrability of $C_2$-cofinite vertex operator algebras}, IMRN 2006), where $\lfourV_1$ is shown to be reductive under rationality assumptions --- a result the
+library does not formalise.
+
+Screening operators and free-field realisations: B.~Feigin and D.~Fuchs, \emph{Representations of the
+Virasoro algebra}, in Representations of Lie groups and related topics, Gordon and Breach (1990);
+Vl.~S.~Dotsenko and V.~A.~Fateev, Nuclear Physics B 240 (1984) 312; D.~Adamovi\'c, \emph{Realizations of
+simple affine vertex algebras and their modules: the cases $\widehat{sl(2)}$ and $\widehat{osp(1,2)}$},
+Communications in Mathematical Physics 366 (2019) 1025--1067. BRST cohomology and the
+Drinfeld--Sokolov reduction: B.~Feigin and E.~Frenkel, \emph{Quantization of the Drinfeld--Sokolov
+reduction}, Physics Letters B 246 (1990) 75--81; V.~Kac, S.-S.~Roan and M.~Wakimoto, \emph{Quantum reduction
+for affine superalgebras}, Communications in Mathematical Physics 241 (2003) 307--342
+(arXiv:math-ph/0302015); E.~Frenkel and D.~Ben-Zvi, \emph{Vertex Algebras and Algebraic Curves}, 2nd ed.,
+Mathematical Surveys and Monographs 88, AMS (2004), Chapter~15. The physical picture of the BPZ pairing
+is that of A.~A.~Belavin, A.~M.~Polyakov and A.~B.~Zamolodchikov, Nuclear Physics B 241 (1984) 333--380,
+and of P.~Di~Francesco, P.~Mathieu and D.~S\'en\'echal, \emph{Conformal Field Theory}, Springer (1997),
+Chapters~6--7. The singular-vector criterion through invariant forms and the Gram-rank formula are the
+library's own packaging of these classical facts; the Kac determinant itself is the subject of
+Chapter~\ref{ch:L06}.
+
+\endgroup

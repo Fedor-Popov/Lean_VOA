@@ -1,0 +1,2421 @@
+\chapter[The Deligne series IV: final theorems and named inputs]{The Deligne series IV: the final theorems and the named inputs}\label{ch:L27}
+\begingroup\setlength{\emergencystretch}{3em}\sloppy
+
+\providecommand{\ltwentyseveng}{\mathfrak g}
+\providecommand{\ltwentysevenIns}{I_2^{\mathrm{ns}}}
+\providecommand{\ltwentysevenHilb}{\operatorname{Hilb}}
+\providecommand{\ltwentysevenvac}{\mathbf 1}
+\providecommand{\ltwentysevenJ}{J_\infty}
+\providecommand{\ltwentysevenF}{\mathcal F}
+\providecommand{\ltwentysevengr}{\operatorname{gr}}
+\providecommand{\ltwentysevendg}{d_{\mathfrak g}}
+\ifdefined\conjecture\else\newtheorem{conjecture}[definition]{Conjecture}\fi
+
+This chapter was written against an earlier state of the LeanVOA library; the statements of
+the literature inputs and the partial results of Section~\ref{l27:sec:partial} were revised against a later state of the
+source (28 October 2026), following the project's audit of the literature inputs
+(\texttt{Notes/Textbook/referee/DELIGNE\_INPUTS\_PRECISION.md}). What the machine confirmed, and when, is stated once, in
+Section~\ref{l27:sec:verification}. For this edition, \texttt{scripts/textbook/sync.py} checks that every Lean quotation below occurs verbatim (up to whitespace and comments) in the source files of that release.
+
+\paragraph{What this chapter is about.} The \emph{Deligne series} is the list of simple Lie algebras
+$A_1\subset A_2\subset G_2\subset D_4\subset F_4\subset E_6\subset E_7\subset E_8$. At the level $k=-1-h^\vee/6$
+($h^\vee$ the dual Coxeter number) the simple affine vertex algebra $L_k(\ltwentyseveng)$ is expected to be
+\emph{classically free}: its graded algebra for Li's filtration is the arc algebra of its $C_2$-algebra, and the
+$C_2$-algebra is $\operatorname{Sym}\ltwentyseveng$ modulo an explicit space $\ltwentysevenIns$ of quadrics.
+Chapters~\ref{ch:L24}--\ref{ch:L26} prove the pieces. This chapter states the result: for each of the seven
+higher-rank members $X\in\{A_2,G_2,D_4,F_4,E_6,E_7,E_8\}$ the library has one theorem \lean{X_classicallyFree_final}
+with that conclusion, and this chapter states all seven exactly, checks them against the intended mathematics, and
+records, for each type, which inputs are proved and which are still hypotheses.
+
+\paragraph{The result in one sentence.} For $A_2$ the final theorem has \emph{no hypotheses}: the library proves that
+$L_{-3/2}(\mathfrak{sl}_3)$ is classically free and that $R_V=\operatorname{Sym}\mathfrak{sl}_3/(\ltwentysevenIns)$ for eight
+explicit quadrics (\lean{VOA.DeligneAudit.A2.classicallyFree}, re-exported as \lean{A2_classicallyFree_final}). Machine
+status: confirmed. The aggregate build was green on 2026-10-28, and \texttt{\#print axioms} on both declarations reports
+\lean{[propext, Classical.choice, Quot.sound]} (Section~\ref{l27:sec:verification}). For the
+other six types the final theorems are proved \emph{conditionally}. For $D_4$ one published input remains: Input~T,
+the Kus--Littelmann fusion-product bound. Input~R is proved in Lean for $D_4$, so the theorem
+\lean{D4_classicallyFree_of_inputT} (Theorem~\ref{l27:thm:d4inputT}) has Input~T as its only hypothesis (machine-confirmed:
+aggregate build green on 3 November 2026, standard axioms). $G_2$, $F_4$, $E_6$, $E_7$, $E_8$ rest on three inputs. Two of
+them (T and R) are published theorems for every type, the first with one proof step flagged by the project; the library
+has formalized R only for $A_2$ and $D_4$, and T only for $A_2$. The third (S), needed for $G_2$, $F_4$, $E_6$, $E_7$,
+$E_8$, has no published proof known to us. \textbf{These five final theorems are therefore conditional on a conjecture},
+supported by numerical evidence only.
+
+\paragraph{The three inputs, by type.} The hypotheses of the final theorems are of three kinds, which we call
+Input~T, Input~R and Input~S throughout (they are defined in Section~\ref{l27:sec:inputs}).
+\begin{itemize}
+\item \textbf{Input T} (the \emph{total-dimension bound}): every module with the relations of the fusion module
+  $\ltwentysevenF_m$ has dimension at most $(\dim\ltwentyseveng)^m$. Lean: \lean{FusionTotalDimG}, and for $A_2$
+  \lean{SectorWeyl.FusionTotalDim}.
+\item \textbf{Input R} (the \emph{Demazure realizations}): for every $j$, some module with the relations of the
+  Demazure module $D(1,j\theta)$ is, in every degree, at least as large as the Demazure character. Lean:
+  \lean{DemazureRealizationG}.
+\item \textbf{Input S} (the \emph{star bound}): the Demazure sum is bounded by the Arakawa--Kawasetsu coefficients,
+  $\mathcal D_N\le c_N$. Lean: \lean{XStarBound}.
+\end{itemize}
+\begin{center}\small
+\begin{tabular}{p{0.07\textwidth}p{0.25\textwidth}p{0.25\textwidth}p{0.25\textwidth}}
+\toprule
+type & Input T & Input R & Input S\\
+\midrule
+$A_2$ & proved (\lean{CVUniv.fusionTotalDim}) & proved (\lean{EvalModel.}\allowbreak\lean{demazureRealization_all}) & proved (\lean{A2.starIdentity})\\
+$D_4$ & hypothesis & proved (\lean{D4Char.}\allowbreak\lean{d4_demazureRealization}) & proved (\lean{D4Wp.d4SchurEqE4} with the unclamped Demazure $=$ Schur identity; item (vi))\\
+$G_2$, $F_4$ & hypothesis & hypothesis & hypothesis\\
+$E_6$, $E_7$, $E_8$ & hypothesis & hypothesis & hypothesis\\
+\bottomrule
+\end{tabular}
+\par\smallskip\footnotesize ``Proved'' for $A_2$: machine-confirmed; aggregate build green on 2026-10-28, standard axioms (Section~\ref{l27:sec:verification}).
+``Proved'' for Input R of $D_4$: machine-confirmed; aggregate build green on 2026-11-03, standard axioms.
+``Hypothesis'' means \emph{not proved in Lean}; it says nothing about the literature. In the literature, T and R are
+theorems for every type and S is conjectural for $G_2$, $F_4$, $E_6$, $E_7$, $E_8$ (paragraph below, and
+Table~\ref{l27:tab:precise}).
+\end{center}
+Everything else in the argument is proved for all seven types (Chapters~\ref{ch:L24}--\ref{ch:L26}). The long form of
+this table, with sources and numerical evidence, is Section~\ref{l27:sec:ledger}.
+
+\paragraph{The literature behind the inputs, stated once.} We state the literature position here and refer to this
+paragraph elsewhere. A citation never discharges a Lean hypothesis; it only bears on whether the hypothesis is believed
+true.
+\begin{enumerate}
+\item[(i)] \textbf{Input T is a published theorem for every simple $\ltwentyseveng$, with one flagged proof step.} The
+  universal module with the Lean relations is the \emph{truncated Weyl module} $W(m\theta,m)$ of Kus and Littelmann (their
+  Definition~4.1): this is an elementary identification, proved on paper in Lemma~\ref{l27:lem:truncweyl} below. Kus and
+  Littelmann, Pacific J.\ Math.\ 278 (2015) 427--445, Theorem~4.2 (proved through their Theorem~3.5 and
+  Corollary~3.6(3)), taken at $\lambda=\theta$, $\lambda_0=0$, $N=m$, gives $W(m\theta,m)\cong\ltwentyseveng^{*m}$, of dimension
+  $(\dim\ltwentyseveng)^m$. For $\lambda_0=0$ the paper places \emph{no restriction on $\ltwentyseveng$} (the restriction to
+  classical types and $G_2$ concerns only $\lambda_0\neq0$), and $\theta$ satisfies their hypothesis $\lambda\in L^+$ in every
+  type, since it is supported on long simple roots (or is $2\omega_1$ in type $C$). So the specialization is the same for
+  all six types. \emph{Caveat:} the written argument on p.~437 of Kus--Littelmann, which passes from ``the difference lies in
+  the left ideal generated by the relations'' to ``its symbol kills the fusion vector'', controls only the initial forms of
+  the generators of the ideal, not of all its elements. The project's source audit flags this step as unjustified as written
+  (Section~\ref{l27:sec:feigin}). The caveat applies uniformly to all six types. For $D_4$ it has been sharpened by
+  computation (Python, not Lean): at $m=2$ the step as written is \emph{insufficient}, since the symbols of the defining
+  relations generate a strictly smaller left ideal than the symbols of all elements of the annihilator, with an explicit
+  witness $\tilde a$ (end of Section~\ref{l27:sec:feigin}). This is a gap in the published proof, not a counterexample: the
+  conclusion of the step was confirmed for $D_4$ at $m=2$ (exactly) and $m=3$ (modulo two primes), and Theorem~4.2 itself is not
+  known to fail for any type.
+\item[(ii)] \textbf{Feigin's earlier proof.} The statement first appears as E.~Feigin, \emph{SIGMA} 4 (2008) 070,
+  arXiv:0806.4851, Proposition~1 (the bigraded isomorphism) and Corollary~2 ($\ltwentyseveng^{*N}\cong
+  D(1,N\theta)/(\ltwentyseveng\otimes t^N\C[t])D(1,N\theta)$, for every simple $\ltwentyseveng$). In arXiv v1 the same results are
+  numbered Proposition~2.1 and Corollary~2.2. The printed proof of Proposition~1 is labelled ``the idea of the proof''.
+  Kus and Littelmann report a gap in it, by personal communication from the author, and the natural reading of the sketch is
+  false: for two adjoint factors of $\mathfrak{sl}_3$ a filtration piece of dimension $55$ would have to split into pieces of
+  total dimension $63$ (Section~\ref{l27:sec:feigin}).
+\item[(iii)] \textbf{Ravinder is not independent evidence for T.} B.~Ravinder, \emph{SIGMA} 10 (2014) 110,
+  arXiv:1409.0274, states his results for every simple $\ltwentyseveng$; only his Theorem~2 and Corollary~3 assume
+  $\ltwentyseveng$ simply laced. His Corollary~2 at $a=0$ \emph{is} Feigin's Corollary~2, imported as his Proposition~5, so it
+  inherits Feigin's gap.
+\item[(iv)] \textbf{The $A_2$ route.} Setia, Rani and Khandai (arXiv:2405.11944, \S8) give an independent proof for
+  $\mathfrak{sl}_3$ through Chari--Venkatesh modules. The library's proof of Input T for $A_2$ follows this route
+  (Chapter~\ref{ch:L26}, Section~\ref{l26:sec:cv}), so it depends neither on Feigin nor on the flagged step of
+  Kus--Littelmann.
+\item[(v)] \textbf{Input R is a published theorem for every type; it is formalized for $A_2$ and $D_4$.} Two facts are needed.
+  The relation half, that the extremal vector of $D(1,j\theta)$ satisfies the Lean relations, follows from Ravinder's
+  Proposition~1 (a presentation of $D(1,j\theta)$, stated for every simple $\ltwentyseveng$, after Chari--Venkatesh,
+  Corollary~3.5) by the short argument of Lemma~\ref{l27:lem:truncweyl}; it includes the short roots of $G_2$ and $F_4$. The
+  graded half, that the graded dimension of $D(1,j\theta)$ is the output of the Lean algorithm, is the Demazure character
+  formula (Kumar, Invent.\ Math.\ 89 (1987); Mathieu, Ast\'erisque 159--160 (1988)), valid for all Kac--Moody algebras. For
+  $D_4$, $E_6$, $E_7$, $E_8$ the Frenkel--Kac construction also realizes $D(1,j\theta)$ inside the lattice VOA. For $D_4$
+  the library proves Input R in every degree by its own route (\lean{D4Char.d4_demazureRealization},
+  Theorem~\ref{l27:thm:d4R}). For $G_2$, $F_4$, $E_6$, $E_7$, $E_8$ the library lacks a Lean model of $D(1,j\theta)$ with
+  its graded dimension, and a proof that the Lean algorithm implements the Demazure character formula.
+\item[(vi)] \textbf{Input S is a conjecture for $G_2$, $F_4$, $E_6$, $E_7$, $E_8$.} No published source is known to us. The
+  evidence is numerical only: equality $\mathcal D_N=c_N$ is checked through $q^{60}$ for $G_2$, $q^{25}$ for $F_4$, $q^{20}$
+  for $E_6$, $q^{16}$ for $E_7$ and $q^{14}$ for $E_8$ (scoping pass of 28 October 2026; Section~\ref{l27:sec:starinput}). For $G_2$ the library reduces it to the
+  single identity \lean{G2DemazureEqKW}, the other half (\lean{G2KWEqMLDE}) being proved. $D_4$ has no Input S: the needed
+  identity is proved as a pair. \lean{D4Wp.d4SchurEqE4} is the Schur $=$ $E_4$ half (the series \lean{d4SchurQ} is the MLDE
+  solution); the Demazure $=$ Schur half is \lean{d4DemazureEqSchur_of_positivity} (from JTP's finite identity
+  \lean{d4FiniteIdentity_holds}), whose positivity hypothesis is discharged on the unclamped route by
+  \lean{D4Wp.d4DemazurePositivity_of_U5Z}, i.e.\ from U5 and hence from Inputs T and R, of which R is proved for $D_4$
+  (Theorem~\ref{l25:thm:d4}; dictionary of Definition~\ref{l27:def:realization}).
+\end{enumerate}
+Table~\ref{l27:tab:precise} in Section~\ref{l27:sec:ledger} states each input type by type, with its precise literature
+status and the library's progress toward it.
+
+\paragraph{Plan of the chapter.}
+Section~\ref{l27:sec:chain} recalls what classical freeness is and how the proof is organised.
+Section~\ref{l27:sec:fusionprimer} is a primer on the current-algebra modules in which the inputs are stated, with a
+worked $\mathfrak{sl}_3$ example. Section~\ref{l27:sec:conclusion} states the common conclusion and lists the seven
+VOAs. Section~\ref{l27:sec:inputs} states Inputs T, R and S. Section~\ref{l27:sec:finals} states the seven final
+theorems, starting with the unconditional $A_2$ theorem. Section~\ref{l27:sec:ledger} is the type-by-type ledger, and
+Section~\ref{l27:sec:cores} says what is known about the inputs that remain open. Section~\ref{l27:sec:ladders}
+presents the per-type headline theorems from which the final theorems are assembled. Section~\ref{l27:sec:deadends}
+records approaches that are known to fail. The chapter ends with the verification record, remarks on the Lean sources,
+the referee's checklist and the references.
+
+\paragraph{Prerequisites.} From Chapter~\ref{ch:L24}: the predicate \lean{CaseClassicallyFree}
+(Definition~\ref{l24:def:packages}), the seven explicit presentations (Theorem~\ref{l24:thm:sevenpres}), sector data
+(Definition~\ref{l24:def:sectordata}), current modules and the input U5 (Definition~\ref{l24:def:U5}), and the logical
+arc of Remark~\ref{l24:rem:arc}. From Chapter~\ref{ch:L25}: the Demazure sum (Definition~\ref{l25:def:dsum}), the
+coefficients $c_N$ (Definition~\ref{l25:def:mlde}), the Demazure algorithm (Definition~\ref{l25:def:demazure}) and the
+target lower bound $c_N\le\dim L_N$ (Theorem~\ref{l25:thm:alltypes}). From Chapter~\ref{ch:L26}: the reduction of U5
+and U6 to Inputs T and R (universal modules, Section~\ref{l26:sec:univ}; the kernel lemma, Section~\ref{l26:sec:kernelG};
+the squeeze, Section~\ref{l26:sec:squeeze}; U6 by construction, Section~\ref{l26:sec:u6}) and the proofs of Inputs T and
+R for $A_2$ (Sections~\ref{l26:sec:u7} and~\ref{l26:sec:cv}). Each object is recalled where it first appears here.
+
+\subsection{Conventions}
+
+\begin{itemize}
+\item \emph{Omitted proofs.} A Lean quotation shows a statement, not its proof. A block that ends in \lean{:=} or
+  \lean{:= by} with nothing after it is a statement whose proof is omitted. A one-line proof term is shown when it is
+  informative, for example when it is a composition of earlier theorems.
+\item \emph{``Axioms standard''} means that \texttt{\#print axioms} reports a subset of
+  \lean{[propext, Classical.choice, Quot.sound]}, the three standard axioms of Lean's logic (Chapter~\ref{ch:01},
+  Section~\ref{ch01:sec:trust}). The library has no project axiom (\lean{VOA.pbw} is a theorem, Chapter~\ref{ch:L02}).
+  ``Axioms standard'' does \emph{not} mean ``unconditional'': \texttt{\#print axioms} does not list the explicit
+  hypotheses of a theorem (Section~\ref{ch01:sec:uncond}). Every status box therefore lists the hypotheses.
+\item \emph{Where a status claim comes from.} Unless a status box says otherwise, an axiom or build claim is a
+  \emph{campaign record} (the project's builds and the \texttt{\#print axioms} lines at the end of each Lean file),
+  described in Section~\ref{l27:sec:verification}. ``Re-checked'' marks a claim the author of this chapter re-ran.
+\end{itemize}
+
+\subsection{Reading the Lean in this chapter}\label{l27:sec:readlean}
+
+Chapter~\ref{ch:01}, Section~\ref{ch01:sec:lean}, is the general primer; Chapter~\ref{ch:L26},
+Section~\ref{l26:sec:readlean}, covers the current-module idioms. The constructs that recur here are these.
+\begin{itemize}
+\item \textbf{Fully qualified names.} The final theorems are stated with full names such as
+  \lean{VOA.DeligneAudit.A2.W}; the file \leanpath{VOA/DeligneAudit/DeligneSeries.lean} has no \lean{variable}
+  declarations, so there are no hidden section hypotheses. Elsewhere short names such as \lean{W} or
+  \lean{explicitPresentation} resolve through the file's \lean{namespace} and \lean{open} lines; the dictionaries give the
+  full name whenever a short name is ambiguous (\lean{explicitPresentation}, \lean{classicallyFree_of_fusion} and
+  \lean{mldeCoeff} each denote several declarations).
+\item \textbf{\lean{.A2}, \lean{.D4}, \dots} are the constructors of the enumeration \lean{HigherRankDeligneCase}; Lean
+  infers the type from the position, so \lean{CaseClassicallyFree .A2 W P} reads ``case $A_2$, VOA $W$, presentation $P$''.
+\item \textbf{Named statements.} \lean{def P : Prop := …}, \lean{abbrev P : Prop := …} and \lean{structure P : Prop where …}
+  only \emph{name} a statement; nothing is asserted. A theorem with an argument \lean{(h : P)} is proved assuming
+  \lean{P}. A named statement becomes a theorem when the library proves a term of it, as
+  \lean{CVUniv.fusionTotalDim : SectorWeyl.FusionTotalDim} does. \lean{abbrev} is a definition that Lean unfolds
+  automatically.
+\item \textbf{Existentials over modules.} \lean{∃ (V : Type) (_ : AddCommGroup V) (_ : Module ℂ V) (ρ : …) (w : V), …} asks
+  for a vector space $V$ (the two anonymous arguments \lean{_} are its additive group and $\C$-vector-space structures), a
+  current-module structure \lean{ρ} on it and a vector \lean{w}.
+\item \textbf{Current modules.} \lean{CurrentModule f V} is a family of linear maps \lean{ρ.op x r}$=x(r)=x\otimes t^r$ on $V$
+  satisfying the current-algebra bracket for the structure constants \lean{f}; \lean{wordOp ρ l w} applies a word;
+  \lean{cycDeg ρ w d} is the degree-$d$ part of the cyclic span of $w$ (Chapter~\ref{ch:L24}, Definition~\ref{l24:def:U5}).
+\item \textbf{Sums and series.} \lean{∑ b ∈ Finset.range B, f b} is $\sum_{b<B}f(b)$; \lean{PowerSeries ℚ} is $\Q[[q]]$;
+  \lean{coeff N F} is $[q^N]F$; \lean{Module.finrank ℂ U} is $\dim U$ (with the convention that it is $0$ when $U$ is
+  infinite-dimensional, which is why the finiteness of the relevant spaces is always proved separately).
+\item \textbf{Kernels and ideals.} \lean{MvPolynomial.aeval x} is the algebra map $\C[X_0,\dots,X_{n-1}]\to A$ sending $X_i$
+  to $x_i$; \lean{RingHom.ker (…).toRingHom} is its kernel, an ideal; \lean{Ideal.span} is the ideal generated by a set.
+\end{itemize}
+
+\subsection{Notation}
+
+We follow Chapters~\ref{ch:L24}--\ref{ch:L26}. Several letters are overloaded in the sources; in the text of this
+chapter we use the following, and keep the Lean names inside quotations and dictionaries.
+\begin{center}\small
+\begin{longtable}{p{0.22\textwidth}p{0.70\textwidth}}
+\toprule
+symbol & meaning\\
+\midrule\endhead
+$\ltwentyseveng$, $\ltwentysevendg$, $h^\vee$, $k$ & a simple Lie algebra of the series, its dimension
+  $\ltwentysevendg=\dim\ltwentyseveng$ (Lean: \lean{S.n}, and in some displays of earlier chapters $n$), its dual Coxeter
+  number, the level $k=-1-h^\vee/6$.\\
+$\theta$; $e_\theta$, $f_\theta$ & the highest root; its root vectors. For $\mathfrak{sl}_3$ the simple lowering vectors are
+  $f_1,f_2$ and $f_\theta=f_{12}$.\\
+$\ltwentyseveng[t]$, $x(r)$ & the current algebra $\ltwentyseveng\otimes\C[t]$; $x(r)=x\otimes t^r$, $r\ge0$. The power of $t$
+  is the \emph{degree}, recorded by the variable $q$.\\
+$L_k(\ltwentyseveng)$, $L_N$, $W$ & the simple affine VOA; its weight-$N$ space; $W$ is the Lean name of the VOA.\\
+$R_W$, $\ltwentysevenIns$ & Zhu's $C_2$-algebra; the explicit space of quadrics (Chapter~\ref{ch:L24}).\\
+$[q^N]f$, $(q)_j$ & the coefficient of $q^N$; $(q)_j=\prod_{i=1}^j(1-q^i)$.\\
+$V(\lambda)$ & the irreducible $\ltwentyseveng$-module of highest weight $\lambda$; $V(\theta)=\ltwentyseveng$.\\
+$D(1,\lambda)$; $\mathrm{Dem}_j$ & the level-one Demazure module (Section~\ref{l27:sec:fusionprimer}); its graded
+  character for $\lambda=j\theta$. The Demazure index is $j$ (Lean writes \lean{n}).\\
+$\mathcal D_N$ & the Demazure sum $[q^N]\sum_{j\ge0}q^j\mathrm{Dem}_j/(q)_j$.\\
+$c_N$ & the Arakawa--Kawasetsu coefficient, Lean \lean{DeligneCharacter.mldeCoeff h N}.\\
+$M_{a,b}$; $\ltwentysevenF_m$ & Ravinder's modules; the fusion module $\ltwentysevenF_m=M_{0,m}$.\\
+$m$ & the number of adjoint factors in a fusion product; the modes $x(r)$ with $r\ge m$ are the ones cut off in
+  $\ltwentysevenF_m$.\\
+$\mathcal I_m$ & the ideal $\ltwentyseveng\otimes t^m\C[t]$ of $\ltwentyseveng[t]$ (not to be confused with
+  $\ltwentysevenIns$).\\
+$\Phi_d$ & the degree filtration of a fusion product.\\
+$u$ & the number of trivial tensor factors (Section~\ref{l27:sec:feigin}).\\
+\bottomrule
+\end{longtable}
+\end{center}
+
+%======================================================================
+\section{Classical freeness and the shape of the proof}\label{l27:sec:chain}
+%======================================================================
+
+\paragraph{Classical freeness in five sentences.} For a VOA $W$, Zhu's $C_2$-algebra is $R_W=W/C_2(W)$, where $C_2(W)$
+is spanned by the states $a_{(-2)}b$; it is a commutative algebra, the ``classical limit'' of $W$ (for a 4d
+$\mathcal N=2$ theory, the Higgs branch chiral ring). Li's filtration $F^0W\supseteq F^1W\supseteq\dots$ makes the
+associated graded $\ltwentysevengr^{\mathrm{Li}}W$ a commutative algebra with a derivation, and its degree-zero part is
+$R_W$ (Chapters~\ref{ch:L11} and~\ref{ch:L24}). The \emph{arc algebra} $\ltwentysevenJ R_W$ is the universal commutative
+algebra with a derivation generated by $R_W$: if $R_W=\C[X]/I$, it is $\C[X^{(0)},X^{(1)},\dots]$ modulo all derivatives of
+all elements of $I$. By the universal property there is a canonical surjection $\ltwentysevenJ R_W\to\ltwentysevengr^{\mathrm{Li}}W$;
+$W$ is \emph{classically free} when it is injective, so that every state of $W$ is a classical polynomial in the generators
+and their derivatives, subject only to the derivatives of the relations of $R_W$. Counting by weight, classical freeness is
+the equality $\dim W_N=\dim(\ltwentysevenJ R_W)_N$ for every $N$.
+
+\paragraph{The carrier.} For an affine VOA the currents $x_{(-1)}\ltwentysevenvac$ generate, so
+$R_W=\operatorname{Sym}\ltwentyseveng/\ker$. The library proves that the explicit quadrics $\ltwentysevenIns$ lie in that
+kernel (Chapter~\ref{ch:L24}), so $\ltwentysevenJ R_W$ is a quotient of
+$\ltwentysevenJ\bigl(\operatorname{Sym}\ltwentyseveng/(\ltwentysevenIns)\bigr)$. The latter has an explicit linear model, the
+\emph{carrier}, a space of polynomial functions in which the weight-$N$ part is finite-dimensional; write
+$\mathrm{carrierDim}(N)$ for its dimension. Since Li's map is onto, $\dim L_N\le\mathrm{carrierDim}(N)$ always. Classical
+freeness, together with $\ker=(\ltwentysevenIns)$, follows from the reverse inequality.
+
+\begin{remark}[The logical arc]\label{l27:rem:arc}
+Chapter~\ref{ch:L24} (Remark~\ref{l24:rem:arc}) reduces classical freeness to three statements, for every weight $N$:
+\begin{align*}
+\text{(A)}\quad & \bigl(\mathrm{carrierDim}(N)\le\dim L_N\ \text{for all }N\bigr)\ \Longrightarrow\ \text{classical freeness and}
+\ \ker=(\ltwentysevenIns);\\
+\text{(B)}\quad & \mathrm{carrierDim}(N)\le\mathcal D_N;\\
+\text{(C)}\quad & \mathcal D_N\le c_N\le\dim L_N .
+\end{align*}
+(A) is proved with no hypothesis (Chapter~\ref{ch:L24}). (C): $c_N\le\dim L_N$ is proved for every type
+(Chapter~\ref{ch:L25}); $\mathcal D_N\le c_N$ is Input S. (B) is the \emph{carrier side}. Chapter~\ref{ch:L24} proves it
+from two statements about current-algebra modules:
+\begin{itemize}
+\item \textbf{U5} (fusion module bound): there is a family of power series $F_m(q)$ such that every module with the
+  relations of the fusion module $\ltwentysevenF_m$ has degree-$d$ piece of dimension at most $[q^d]F_m$, and total dimension at most
+  $\ltwentysevendg^{\,m}$;
+\item \textbf{U6} (mixed recursion): the family $M_{a,b}(q)$ generated from $F$ by $M_{0,b}=F_b$ and
+  $M_{a+1,b}=M_{a,b+1}+q^{2a+b+1}M_{a,b}$ satisfies $M_{j,0}=\mathrm{Dem}_j$ for every $j$.
+\end{itemize}
+The carrier side also uses a \emph{divisor comparison}, a statement of commutative algebra about the carrier of each
+type (a containment of two explicit modules over the symmetric polynomials, after localising at the primes that contain a
+discriminant), proved for each type by integer \emph{certificates}: finite lists of structure-constant identities, each
+checked by Lean's kernel, with Lean-proved lemmas saying that a passing check implies the statement
+(Chapter~\ref{ch:L24}, Section~\ref{l24:sec:divisor}). Chapter~\ref{ch:L26} proves U6 by \emph{defining} $F$ as the solution
+of the recursion, and reduces U5 to Inputs T and R. So the inputs that remain are exactly T, R and S, as in the table
+above (for $D_4$, only T).
+
+When all inputs hold the chain closes:
+$\dim L_N\le\mathrm{carrierDim}(N)\le\mathcal D_N\le c_N\le\dim L_N$, so all four numbers are equal. In particular
+$\dim L_N=c_N$, a \emph{consequence} of the inputs. This equality is not itself stated as a Lean theorem for the six
+conditional types; for $A_2$ it is a Lean theorem proved independently (\lean{A2.finrank_eq_mldeCoeff'},
+Chapter~\ref{ch:L25}).
+\end{remark}
+
+%======================================================================
+\section{Fusion products and Demazure modules: a primer}\label{l27:sec:fusionprimer}
+%======================================================================
+
+Inputs T and R are statements about graded modules for the current algebra $\ltwentyseveng[t]$. This section defines
+the modules involved and computes the smallest nontrivial case for $\mathfrak{sl}_3$.
+
+\paragraph{Graded cyclic modules and presentations.} $\ltwentyseveng[t]$ is graded by the power of $t$. A graded module
+generated by one vector $w$ of degree $0$ is \emph{cyclic}; its degree-$d$ piece is spanned by the words
+$x_1(r_1)\cdots x_s(r_s)w$ with $r_1+\dots+r_s=d$, and its \emph{graded character} is $\sum_d\dim M_d\,q^d$. A cyclic module is
+often given by a \emph{presentation}: a list of words that kill $w$. Every module whose generator satisfies the same relations
+is a quotient of the \emph{universal} one, so its graded character is coefficientwise smaller. Consequently an \emph{upper}
+bound for a presentation must be proved for the universal module, i.e.\ ``for every module with the relations'', while a
+\emph{lower} bound needs only ``some module with the relations''.
+
+\paragraph{Local Weyl modules.} For a dominant weight $\lambda$, the local Weyl module $W_{\mathrm{loc}}(\lambda)$ of Chari
+and Pressley is the cyclic module with relations
+\begin{equation*}
+\mathfrak n^+[t]\,w=0,\qquad h(s)\,w=\delta_{s,0}\,\lambda(h)\,w,\qquad f_i(0)^{\lambda(h_i)+1}w=0 .
+\end{equation*}
+It is finite-dimensional.
+
+\paragraph{Evaluation modules and fusion products.} A $\ltwentyseveng$-module $V$ and a point $c\in\C$ give the
+\emph{evaluation module} $V(c)$, on which $x(r)$ acts by $c^r x$. Given cyclic $\ltwentyseveng$-modules $V_1,\dots,V_m$
+and distinct points $c_1,\dots,c_m$, the tensor product $V_1(c_1)\otimes\dots\otimes V_m(c_m)$ is cyclic on the tensor
+product of the highest-weight vectors; filtering it by degree in $t$ and taking the associated graded gives a graded
+$\ltwentyseveng[t]$-module $V_1*\dots*V_m$ of the same total dimension, the \emph{fusion product} of Feigin and Loktev. (For
+the modules used here the result is known not to depend on the points, by Ravinder's presentation theorem; independence of
+the points is not known in general and is not needed.) The basic case is $\ltwentyseveng^{*m}=V(\theta)^{*m}$, of total
+dimension $\ltwentysevendg^{\,m}$.
+
+\paragraph{Level-one Demazure modules.} Let $L(\Lambda_0)$ be the basic (level-one vacuum) representation of the affine
+Lie algebra $\widehat{\ltwentyseveng}$. For a dominant $\lambda$ in the coroot lattice the extremal vector of
+$L(\Lambda_0)$ of weight $\lambda$ generates, under the Borel subalgebra containing $\ltwentyseveng[t]$, a
+finite-dimensional graded $\ltwentyseveng[t]$-module $D(1,\lambda)$, the \emph{level-one Demazure module}. Its graded
+character is given by the Demazure character formula: apply the Demazure operators along a reduced word of the
+translation by $\lambda$ to the extremal weight. Chapter~\ref{ch:L25} implements this as an algorithm
+(Definition~\ref{l25:def:demazure}); we write $\mathrm{Dem}_j$ for the result with $\lambda=j\theta$. The smallest case is
+\begin{gather*}
+D(1,\theta)=\ltwentyseveng\oplus\C,\qquad x(0)\ \text{acts on }\ltwentyseveng\text{ by the adjoint action and kills }\C,\\
+x(1)\,y=\kappa(x,y)\cdot1\ (y\in\ltwentyseveng),\qquad x(1)\,1=0,\qquad x(r)=0\ (r\ge2),
+\end{gather*}
+with $\kappa$ the normalised invariant form; so $\mathrm{Dem}_1=\ltwentysevendg+q$. More generally
+$D(1,j\theta)\cong D(1,\theta)^{*j}$, of total dimension $(\ltwentysevendg+1)^j$ (Fourier--Littelmann 2007 for simply laced
+$\ltwentyseveng$; for all $\ltwentyseveng$ Kus and Littelmann cite Chari--Shereen--Venkatesh--Wand, arXiv:1408.4090, together
+with Fourier--Littelmann. We did not verify the latter attribution; nothing in this chapter depends on it). On an evaluation
+module $D(1,\theta)(c)$ at a point $c$, the action is $x(r)\,v=c^r\,x(0)v+r\,c^{r-1}\,x(1)v$: the value of $t^r$ at $c$ acts
+through the $\ltwentyseveng$-action, and its derivative through the map $\ltwentyseveng\to\C$.
+
+\paragraph{Ravinder's modules $M_{a,b}$.} Fix the highest root vector $f_\theta$ and a \emph{fusion set} of negative root
+vectors containing $f_\theta$ (Ravinder takes $\{f_\alpha:\langle\alpha,\theta^\vee\rangle=1\}\cup\{f_\theta\}$, where
+$\langle\alpha,\theta^\vee\rangle=2(\alpha,\theta)/(\theta,\theta)$; with long roots of squared length $2$ this is $(\alpha,\theta)=1$.
+Since $\theta$ is long, every positive root $\alpha\neq\theta$ has $\langle\alpha,\theta^\vee\rangle\in\{0,1\}$, and the
+condition includes the \emph{short} roots of $G_2$ and $F_4$ with $(\alpha,\theta)=1$. For a short root of $G_2$ the other
+pairing $(\theta,\alpha^\vee)$ equals $3$, so writing the condition as $(\theta,\alpha^\vee)=1$ would wrongly exclude
+them). For $a,b\ge0$, $M_{a,b}$
+is the cyclic module with generator $w$ of weight $(a+b)\theta$ and relations
+\begin{gather*}
+e_\alpha(r)\,w=0\ (\alpha>0,\ r\ge0),\qquad h(r)\,w=0\ (r\ge1),\qquad h(0)\,w=(a+b)\,\theta(h)\,w,\\
+f_i(0)^{(a+b)\theta(h_i)+1}w=0,\\
+f_\alpha(a+b)\,w=0\ \ (f_\alpha\text{ in the fusion set},\ \alpha\ne\theta),\qquad f_\theta(2a+b)\,w=0 .
+\end{gather*}
+The first two lines are the local Weyl module $W_{\mathrm{loc}}((a+b)\theta)$; the third cuts the modes. By \emph{Garland's
+lemma} (a consequence of the integrability of each $\mathfrak{sl}_2$-triple: for $\mathfrak{sl}_2$, $e(1)^sf(0)^{r+s}w$ is a
+nonzero multiple of an explicit polynomial in the $f(k)$ applied to $w$) the cut on one mode implies cuts on all higher modes.
+Two cases matter: $M_{0,m}$, with all modes cut at $t^m$, is the \emph{fusion module} $\ltwentysevenF_m$, and the fusion
+product $\ltwentyseveng^{*m}$ is a quotient of it, so $\dim\ltwentysevenF_m\ge\ltwentysevendg^{\,m}$; and $M_{j,0}$ is a
+presentation of $D(1,j\theta)$ (Ravinder's Proposition~1). Ravinder's theorem (his Theorem~1 and Corollaries~1--2,
+stated for every simple $\ltwentyseveng$; the case $a=0$ is imported from Feigin, see item~(iii) of the literature paragraph)
+is that $M_{a,b}\cong D(1,\theta)^{*a}*\ltwentyseveng^{*b}$, of dimension $(\ltwentysevendg+1)^a\ltwentysevendg^{\,b}$, and
+that the family is linked by short exact sequences
+\begin{equation}\label{l27:eq:ravinder}
+0\longrightarrow \tau_{2a+b-1}\,M_{a-1,b}\longrightarrow M_{a,b}\longrightarrow M_{a-1,b+1}\longrightarrow0
+\qquad(a\ge1),
+\end{equation}
+where $\tau_s$ raises degrees by $s$ and the left map sends $w$ to $f_\theta(2a+b-1)w$. Taking characters gives the mixed
+recursion U6, $\mathrm{ch}\,M_{a,b}=\mathrm{ch}\,M_{a-1,b+1}+q^{2a+b-1}\mathrm{ch}\,M_{a-1,b}$, which determines
+$\mathrm{ch}\,M_{0,m}$ from the Demazure characters $\mathrm{ch}\,M_{j,0}=\mathrm{Dem}_j$.
+
+\begin{example}[$\mathfrak{sl}_3$ with two adjoint factors]\label{l27:ex:sl3}
+Take $\ltwentyseveng=\mathfrak{sl}_3$, $\ltwentysevendg=8$. Then $\mathrm{ch}\,M_{0,1}=8$ and $\mathrm{ch}\,M_{1,0}=\mathrm{Dem}_1=8+q$,
+and the recursion with $(a,b)=(1,0)$ reads $8+q=8+q\cdot1$ (totals $9=8+1$). The Demazure algorithm gives
+$\mathrm{Dem}_2=27+28q+17q^2+8q^3+q^4$, of total $81=9^2$. Running the recursion downwards:
+\begin{align*}
+\mathrm{ch}\,M_{1,1}&=\mathrm{ch}\,M_{2,0}-q^3\,\mathrm{ch}\,M_{1,0}=27+28q+17q^2 &&(81-9=72=9\cdot8),\\
+\mathrm{ch}\,M_{0,2}&=\mathrm{ch}\,M_{1,1}-q^2\,\mathrm{ch}\,M_{0,1}=27+28q+9q^2 &&(72-8=64=8^2).
+\end{align*}
+The degree-zero piece $27$ is $V(2\theta)$, and $27+28q+9q^2$ is the graded character of the fusion product $\mathfrak{sl}_3*\mathfrak{sl}_3$
+(Chapter~\ref{ch:L26}, Example~\ref{l26:ex:fus88}).
+
+\emph{The squeeze at $m=2$.} Suppose we know: (R) a module with the relations of $M_{2,0}$ whose character is at least
+$\mathrm{Dem}_2$ in every degree (Input R); (K) the \emph{spanning half} of each exact sequence,
+$\mathrm{ch}\,M_{a,b}\le\mathrm{ch}\,M_{a-1,b+1}+q^{2a+b-1}\mathrm{ch}\,M_{a-1,b}$ coefficientwise (this is the elementary half:
+see the warning below); and (T) $\dim M_{0,2}\le64$ (Input T). Applying (K) twice and the known $\mathrm{ch}\,M_{0,1}=8$,
+$\mathrm{ch}\,M_{1,0}\le8+q$,
+\begin{equation*}
+\mathrm{Dem}_2\ \le\ \mathrm{ch}\,M_{2,0}\ \le\ \mathrm{ch}\,M_{0,2}+8q^2+q^3(8+q),
+\qquad\text{so}\qquad \mathrm{ch}\,M_{0,2}\ \ge\ 27+28q+9q^2
+\end{equation*}
+coefficientwise. The right-hand side has total $64$, and by (T) the total of $\mathrm{ch}\,M_{0,2}$ is at most $64$; a
+coefficientwise lower bound with the same total forces equality in every degree. So $\mathrm{ch}\,M_{0,2}=27+28q+9q^2$: the
+graded upper bound U5 for $m=2$ follows from a lower bound (R), an elementary spanning inequality (K) and a total upper bound
+(T). This is Ravinder's squeeze (Chapter~\ref{ch:L26}, Theorem~\ref{l26:thm:squeeze}) in its smallest case; note that the
+subtractive step works only because the total bound (T) closes it.
+\end{example}
+
+\begin{warning}[title={The surjection half is free; the injection half is not}]
+In (\ref{l27:eq:ravinder}) the right map is surjective for elementary reasons: the relations of $M_{a-1,b+1}$ are those of
+$M_{a,b}$ plus the one relation $f_\theta(2a+b-1)w=0$. Its kernel is the cyclic span of $f_\theta(2a+b-1)w$, which is a quotient of
+$\tau_{2a+b-1}M_{a-1,b}$ (Ravinder's kernel lemma: that vector satisfies the relations of $M_{a-1,b}$). These facts give
+\emph{upper} bounds, inequality (K) above. What is hard is the other direction: that the kernel is \emph{as large as}
+$\tau_{2a+b-1}M_{a-1,b}$, or that $D(1,j\theta)$ is \emph{as large as} its character formula says. Upper bounds come from spanning
+sets; lower bounds need a model in which vectors can be shown to be independent.
+
+This explains why Input T, an \emph{upper} bound on $\dim M_{0,m}$, is hard. A spanning set for $M_{0,m}$ obtained from the
+relations is far larger than $\ltwentysevendg^{\,m}$ (the naive count gives $72$ instead of $64$ already for
+$\mathfrak{sl}_3$, $m=2$; Section~\ref{l27:sec:deadends}). Counting through the exact sequences converts the missing upper bound
+for $M_{0,m}$ into a missing \emph{lower} bound for the kernels, and a lower bound can in principle be proved by exhibiting
+independent vectors in a model. For $A_2$ the library proves Input T by enlarging the family of modules until an induction
+of this kind closes (Chapter~\ref{ch:L26}, Section~\ref{l26:sec:cv}).
+\end{warning}
+
+%======================================================================
+\section{The common conclusion and the seven VOAs}\label{l27:sec:conclusion}
+%======================================================================
+
+Every final theorem has the same conclusion, a conjunction of two statements about one VOA $W$ and one explicit
+presentation $P$.
+
+\begin{definition}[Classical freeness of a case, and the kernel statement]\label{l27:def:conclusion}
+Let $W$ be a VOA with weight-one states $\mathrm{gen}_i$, $i<n$, and let $I\subseteq\C[X_0,\dots,X_{n-1}]$ be an ideal
+contained in the kernel of the map $X_i\mapsto[\mathrm{gen}_i]$ into Li's associated graded algebra (a \emph{current
+$C_2$ presentation} $P$). The case is \emph{classically free} for $P$ if the infinite Li jet map
+$\ltwentysevenJ(\C[X]/I)\to\ltwentysevengr^{\mathrm{Li}}W$ is bijective. The \emph{kernel statement} is
+$\ker\bigl(\C[X]\to\ltwentysevengr^{\mathrm{Li}}W\bigr)=I$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak DeligneHigherRankConditionalCapstone.lean}.
+\begin{leancode}
+def CaseClassicallyFree (P : CurrentC2Presentation case W) : Prop :=
+  LiPresentationClassicallyFree W
+    (fun i => liDegreeZeroClass W 1 ⟨P.gen i, P.gen_weight_one i⟩)
+    P.ideal P.relations_vanish
+\end{leancode}
+
+\begin{dictionary}
+\lean{CurrentC2Presentation case W} is the structure of Definition~\ref{l24:def:packages}: the fields \lean{gen},
+\lean{gen_weight_one}, \lean{ideal}, and \lean{relations}, which says that \lean{ideal} is \emph{contained} in the
+kernel (\lean{P.relations_vanish} is a renaming of that field). \lean{liDegreeZeroClass W 1 x} is the class of the
+weight-one state $x$ in $F^0W_1/F^1W_1$, the degree-zero part of Li's associated graded algebra.
+\lean{LiPresentationClassicallyFree} is bijectivity of the infinite jet map (Definition~\ref{l24:def:lpcf}): its source is
+the presented jet algebra, the polynomial ring in variables $X_i^{(r)}$ modulo all derivatives of all elements of the ideal,
+and $X_i^{(r)}$ is sent to the $r$-th divided derivative of the class of $\mathrm{gen}_i$.
+\lean{CaseClassicallyFree} has, from the \lean{variable} lines of its file, an implicit carrier \lean{\{V : Type uV\}} with
+its vector-space structure and two explicit arguments \lean{case : HigherRankDeligneCase} (which of the seven types,
+fixing the number of currents \lean{case.currentDimension}) and \lean{W : VertexOperatorAlgebra V}.
+
+In every final theorem the kernel statement appears as a second conjunct,
+\lean{RingHom.ker (MvPolynomial.aeval fun i => liDegreeZeroClass W 1 ⟨P.gen i, P.gen_weight_one i⟩).toRingHom = I}, an equality
+of ideals of $\C[X_0,\dots,X_{n-1}]$. Since the image of $\C[X]$ is $R_W=\ltwentysevengr^{\mathrm{Li}}_0W$ (the currents
+strongly generate $W$), this is the statement $R_W=\operatorname{Sym}\ltwentyseveng/I$.
+
+\textbf{Why the conclusion is not weak.} Classical freeness of a presentation forces the ideal to equal the kernel
+(Theorem~\ref{l24:thm:kereq}), so the second conjunct follows from the first; the library states both so that a reader
+sees the presentation of $R_W$ directly. The conclusion cannot be satisfied by a degenerate choice: the ideal is fixed in
+advance, and $W$ is a specific nonzero VOA.
+\end{dictionary}
+
+\begin{physics}
+For the chiral algebra of a four-dimensional $\mathcal N=2$ theory, the first conjunct says that every Schur operator
+is a classical object: a polynomial in the flavour currents and their derivatives, subject only to the derivatives of
+the Higgs-branch chiral-ring relations. The second conjunct says that the chiral-ring relations among the moment maps
+are exactly the quadrics $\ltwentysevenIns$. Together they say that the Schur index equals the Hilbert series of the arc
+space of the \emph{scheme} $\operatorname{Spec}R_W$: no ``quantum'' cancellation between classical states.
+\emph{Heuristic, not Lean:} the reduced variety underneath this scheme is the associated variety of $L_k(\ltwentyseveng)$,
+which Arakawa and Moreau identify with the minimal nilpotent orbit closure $\overline{\mathbb O_{\min}}$ for the Deligne
+series at these levels; the scheme itself is non-reduced (the Casimir is nilpotent in $R_W$ but not zero; \emph{checked outside Lean}: the Lean statement is \lean{sym_X_mul_casPoly}, that $X_a\cdot\mathrm{Cas}$ vanishes in the $C_2$-algebra).
+\end{physics}
+
+\begin{status}
+Definition (Chapter~\ref{ch:L24}). The kernel statement is always a conclusion, never a hypothesis.
+\end{status}
+
+\paragraph{The seven VOAs.} Each final theorem is about a specific VOA built in Chapters~\ref{ch:L23}
+and~\ref{ch:L24}. The table lists the Lean name, the Lie data from which it is built, the level, and the number of quadrics in
+the library's relation list.
+\begin{center}\small
+\begin{longtable}{p{0.06\textwidth}p{0.30\textwidth}p{0.20\textwidth}p{0.06\textwidth}p{0.05\textwidth}p{0.05\textwidth}p{0.08\textwidth}}
+\toprule
+type & VOA (Lean) & Lie data & $k$ & $\ltwentysevendg$ & $h^\vee$ & quadrics\\
+\midrule\endhead
+$A_2$ & \lean{A2.W} & bespoke $\mathfrak{sl}_3$ & $-3/2$ & 8 & 3 & 8\\
+$G_2$ & \lean{G2Lie.g2W} & \lean{g2CertData} & $-5/3$ & 14 & 4 & 27\\
+$D_4$ & \lean{D4Lie.W4} & \lean{d4CertData} & $-2$ & 28 & 6 & 105\\
+$F_4$ & \lean{F4Lie.f4W} & \lean{f4CertData} & $-5/2$ & 52 & 9 & 324\\
+$E_6$ & \lean{DeligneCarrier.E6.W6} & \lean{e6LieData} & $-3$ & 78 & 12 & 650\\
+$E_7$ & \lean{E7Lie.W7} & \lean{e7CertData} & $-4$ & 133 & 18 & 1539\\
+$E_8$ & \lean{E8Lie.W8} & \lean{e8CertData} & $-6$ & 248 & 30 & 3875\\
+\bottomrule
+\end{longtable}
+\end{center}
+All seven are simple quotients of universal affine VOAs: $A_2$ through the $\mathfrak{sl}_3$ construction of
+Chapter~\ref{ch:L24}, the other six as \lean{simpleVOA D k _} of Chapter~\ref{ch:L23}. Their central charges are
+$c=k\,\ltwentysevendg/(k+h^\vee)=-2(h^\vee+1)$, namely $-8,-10,-14,-20,-26,-38,-62$.
+
+\begin{warning}[title={What the relation lists are, and what Lean proves about them}]
+For $A_2$ the ideal \lean{A2.I2ns} is generated by eight explicit quadrics $P_0,\dots,P_7$ (Chapter~\ref{ch:L24},
+Definition~\ref{l24:def:A2rel}). Lean proves that they are homogeneous, linearly independent, and in the kernel; that they
+span the adjoint summand $V(\theta)\subset\operatorname{Sym}^2\mathfrak{sl}_3$ was checked outside Lean and is \emph{not} a Lean
+statement. The ideal does not contain the Casimir (only its products $X_a\cdot\mathrm{Cas}$); this non-membership is checked outside Lean and is not a Lean statement (the Lean statement is \lean{sym_X_mul_casPoly}). So the $A_2$ theorem identifies $R_V$
+with $\operatorname{Sym}\mathfrak{sl}_3$ \emph{modulo these eight quadrics}; it does not mention, and must not be described as
+identifying $R_V$ with, the coordinate ring of the minimal nilpotent orbit closure or a ``Joseph ideal'' (type $A$ has no Joseph
+ideal in the sense of Chapter~\ref{ch:L24}, and $R_V$ is non-reduced, a fact checked outside Lean). For the other six types Lean proves that each listed quadric
+lies in the kernel; that the lists ($27,105,324,650,1539,3875$ quadrics) span exactly $\ltwentysevenIns$ is checked outside Lean.
+The conditional final theorems conclude $\ker=$ the ideal generated by the list.
+\end{warning}
+
+\begin{warning}[title={Scope: which VOA is meant for $G_2$, $D_4$, $F_4$, $E_6$, $E_7$, $E_8$}]\label{l27:warn:scope}
+For $D_4$, $E_7$ and $E_8$ the VOA of the final theorem is \lean{simpleVOA} of the \emph{certificate-basis} Lie data
+(\lean{d4CertData}, \lean{e7CertData}, \lean{e8CertData}): the lattice Lie algebra of Chapter~\ref{ch:L23}, written in
+the basis in which the relation lists were computed, with the form Killing$/12$, $/36$, $/60$. The library also builds
+VOAs \lean{d4SimpleVOA}, and so on, from a basis chosen by \lean{Module.finBasis}. Both are built from the same Lie
+algebra, form and $h^\vee$, but from different \lean{LieData} (different bases), and the isomorphism of the resulting
+VOAs (independence of the affine construction from the basis) is \emph{not} proved in Lean.
+
+The same split exists for $G_2$ and $F_4$. The final theorems use \lean{G2Lie.g2W}, which is
+\lean{simpleVOA g2CertData (-5/3) g2_level_ne} (\leanpath{VOA/DeligneAudit/G2LieData.lean}), and \lean{F4Lie.f4W}, which is
+\lean{simpleVOA f4CertData (-5/2) f4_level_ne} (\leanpath{VOA/DeligneAudit/F4LieData.lean}), Lie data on the
+structure-constant algebras \lean{g2Lie}, \lean{f4Lie} in the table basis, with the forms Killing$/8$ and Killing$/18$. The
+library also defines \lean{g2SimpleVOA} and \lean{f4SimpleVOA} (\leanpath{VOA/AffineGeneral/G2Lie.lean},
+\leanpath{VOA/AffineGeneral/F4Lie.lean}) from the \lean{standardData} of the same algebras with the same forms; no isomorphism
+\lean{g2W} $\cong$ \lean{g2SimpleVOA} or \lean{f4W} $\cong$ \lean{f4SimpleVOA} is proved. Likewise three models of
+$\mathfrak e_6$ coexist (a structure-constant table, the lattice $V_1$, and the \lean{E6Lat} certificate basis) and are not
+identified; the $E_6$ final theorem uses the structure-constant model \lean{e6LieData}.
+
+Each theorem is nevertheless about a genuine $L_k(\ltwentyseveng)$ for an explicit model of $\ltwentyseveng$: the Lie data carry
+their own proofs of the Lie algebra axioms and of the invariant form (Chapter~\ref{ch:L23}). This is a remark on scope, not an
+error. It does not concern $A_2$, whose VOA is the bespoke $\mathfrak{sl}_3$ construction.
+\end{warning}
+
+%======================================================================
+\section{The named inputs}\label{l27:sec:inputs}
+%======================================================================
+
+This section defines Inputs T, R and S and the relations in which they are stated. For each input we give the mathematical
+statement, the Lean definition and a fidelity check; the literature is the paragraph ``The literature behind the inputs'' at the
+start of the chapter.
+
+\subsection{Relation specifications and Ravinder's family}\label{l27:sec:relspec}
+
+\begin{definition}[Relation specifications; Ravinder's relations]\label{l27:def:relspec}
+A \emph{relation specification} for a Lie algebra with basis indexed by $\{0,\dots,\ltwentysevendg-1\}$ is a set of
+\emph{tails} (words $x_1(r_1)\cdots x_s(r_s)$ in the current generators) and a set of \emph{eigenvalue conditions} $(h,\mu)$.
+A vector $w$ of a current module \emph{satisfies} it if every tail kills $w$ and $h(0)w=\mu w$ for every eigenvalue
+condition. The relations of $M_{a,b}$ of Section~\ref{l27:sec:fusionprimer} form the specification
+$\mathrm{rav}(a+b,\,2a+b)$, where $\mathrm{rav}(k,d)$ consists of: $e(r)w=0$ for raising $e$ and all $r$; $h(r)w=0$ for Cartan
+$h$ and $r\ge1$; $f_i(0)^{k\theta(h_i)+1}w=0$ for simple lowering $f_i$; $x(k)w=0$ for $x$ in the fusion set other than
+$f_\theta$, and $f_\theta(d)w=0$; and the eigenvalues $h(0)w=k\theta(h)w$. The basis, the structure constants, the fusion set
+and the numbers $\theta(h)$ are packaged as \emph{sector data} $S$ (Definition~\ref{l24:def:sectordata}). For $\mathfrak{sl}_3$ the
+library also has a hand-written version, \lean{MabRel ρ w a b}.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneFusionUnivG.lean}.
+\begin{leancode}
+structure RelSpec (n : ℕ) where
+  tails : Set (List (Ltr n))
+  eig : Set (Fin n × ℂ)
+
+/-- The generator `w` of `ρ` satisfies `R`. -/
+structure Sat {V : Type*} [AddCommGroup V] [Module ℂ V] (ρ : CurrentModule f V) (w : V)
+    (R : RelSpec n) : Prop where
+  tail : ∀ t ∈ R.tails, wordOp ρ t w = 0
+  eig : ∀ p ∈ R.eig, ρ.op p.1 0 w = p.2 • w
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak D4FusionKernelGeneric.lean}.
+\begin{leancode}
+def ravSpec (k d : ℕ) : RelSpec S.n where
+  tails := {t | (∃ e r, S.raising e ∧ t = [(e, r)]) ∨ (∃ h r, S.cartan h ∧ 1 ≤ r ∧ t = [(h, r)]) ∨
+    (∃ i, S.lowering i ∧ t = List.replicate (k * S.lowExp i + 1) (i, 0)) ∨
+    (∃ x, S.fusion x ∧ t = [(x, if x = S.c₀ then d else k)]) ∨
+    (∃ h r, S.cartanN h ∧ 1 ≤ r ∧ t = [(h, r)])}
+  eig := {q | (∃ h, S.cartan h ∧ q = (h, ((k * S.thetaH h : ℕ) : ℂ))) ∨
+    (∃ h, S.cartanN h ∧ q = (h, -((k * S.thetaN h : ℕ) : ℂ)))}
+\end{leancode}
+\begin{leancode}
+def ravFam (a b : ℕ) : RelSpec S.n := ravSpec S (a + b) (2 * a + b)
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneFusionRel.lean}.
+\begin{leancode}
+structure MabRel {V : Type} [AddCommGroup V] [Module ℂ V]
+    (ρ : CurrentModule (bracketTable) V) (w : V) (a b : ℕ) : Prop where
+  raising : ∀ (e : Fin 8), e.val < 3 → ∀ r, ρ.op e r w = 0
+  cartan_pos : ∀ (h : Fin 8), 6 ≤ h.val → ∀ r, 1 ≤ r → ρ.op h r w = 0
+  cartan_zero : ∀ (h : Fin 8), 6 ≤ h.val → ρ.op h 0 w = ((a + b : ℕ) : ℂ) • w
+  lowering_f1 : (ρ.op 3 0)^[a + b + 1] w = 0
+  lowering_f2 : (ρ.op 4 0)^[a + b + 1] w = 0
+  trunc_f1 : ρ.op 3 (a + b) w = 0
+  trunc_f2 : ρ.op 4 (a + b) w = 0
+  trunc_theta : ρ.op 5 (2 * a + b) w = 0
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Words and letters.} \lean{Ltr n} is a pair (basis index, mode) $=(x,r)$, standing for $x(r)$; a tail is a list of
+letters, and \lean{wordOp ρ t w} applies the word to $w$ (the rightmost letter acts first; for the one-letter and
+repeated-letter tails used here the order does not matter). \lean{List.replicate k (i, 0)} is the word $f_i(0)^k$, and
+\lean{(ρ.op 3 0)^[a + b + 1]} is the $(a+b+1)$-fold iterate of $f_1(0)$.
+
+\textbf{The $f_\theta$ clause.} In \lean{ravSpec} the cut $f_\theta(d)w=0$ is the case \lean{x = S.c₀} of the fusion clause
+\lean{[(x, if x = S.c₀ then d else k)]}, imposed only for \lean{x} with \lean{S.fusion x}. So it belongs to the specification
+exactly when $c_0=f_\theta$ is in the fusion set. That membership is the field \lean{c0_fusion : S.fusion S.c₀} of the kernel
+tables \lean{KernelTable S} and \lean{KernelTableSL S} (\leanpath{VOA/DeligneAudit/D4FusionKernelGeneric.lean}), and every sector
+used by a final theorem comes with such a table.
+
+\textbf{Section variables.} \lean{Sat} has an implicit \lean{\{n : ℕ\}} and an explicit structure-constant table
+\lean{(f : Fin n → Fin n → Fin n → ℂ)}, so \lean{Sat S.f ρ w R} reads ``$w$ satisfies $R$ in the current module $\rho$ over the
+table \lean{S.f}''. \lean{ravSpec} and \lean{ravFam} take \lean{S} as an explicit first argument, which is why the final
+theorems write \lean{ravFam G2.G2sector}. The named inputs quantify over \lean{V : Type}, the lowest universe; every module
+that occurs (universal modules, evaluation and lattice models) lives there.
+
+\textbf{The two Cartan clauses.} Sector data split the Cartan basis vectors into those with $\theta(h)\ge0$
+(\lean{S.cartan}) and those with $\theta(h)<0$ (\lean{S.cartanN}, stored with the nonnegative number \lean{S.thetaN h}); the
+negative eigenvalues are written as $-(k\,\theta_N(h))$ because a natural number cannot be negative.
+
+\textbf{$\mathfrak{sl}_3$ indices.} In \lean{bracketTable} the basis is $e_1,e_2,e_\theta$ (indices $0,1,2$), $f_1,f_2,f_\theta$
+(indices $3,4,5$) and $h_1,h_2$ (indices $6,7$), with $\theta(h_1)=\theta(h_2)=1$. So \lean{MabRel ρ w a b} is
+$\mathrm{rav}(a+b,2a+b)$ with fusion set $\{f_1,f_2,f_\theta\}$. The relation $f_\theta(0)^{2(a+b)+1}w=0$ is not listed; it follows
+from the others ($\mathfrak{sl}_2$-integrability).
+
+\textbf{Same as the literature?} For $(a,b)=(0,m)$ the library proves \lean{ravFam S 0 m = lwSpec S m} (\lean{ravFam_zero}), the
+local Weyl and fusion relations. For $(a,b)=(j,0)$ these are the relations of Ravinder's Proposition~1 for $D(1,j\theta)$.
+The sector data of $E_6$, $E_7$, $E_8$ use exactly Ravinder's fusion set; those of $A_2$, $D_4$, $G_2$, $F_4$ use all negative
+root vectors. The extra vectors are the $f_\alpha$ with $\langle\alpha,\theta^\vee\rangle=0$ (every other positive root
+$\alpha\neq\theta$ has $\langle\alpha,\theta^\vee\rangle=1$ and is already in Ravinder's set, short roots of $G_2$ and $F_4$
+included). For these, $f_\alpha(r)w=0$ holds for \emph{every} $r$ in any module with the local Weyl relations, by the
+$h(r)$-bracket argument of Lemma~\ref{l27:lem:truncweyl}. So the two readings impose the same relations, for every type. For
+Input T this is in any case harmless, since extra relations make the hypothesis weaker; for Input R it means that the
+Demazure module $D(1,j\theta)$ satisfies the Lean relations, short roots included.
+\end{dictionary}
+
+\begin{physics}
+\emph{Heuristic.} A relation specification is a list of selection rules for a composite state: which current modes
+annihilate it. $M_{a,b}$ describes $a+b$ fused adjoint ``particles'', of which $a$ carry the extra one-dimensional excitation
+of $D(1,\theta)=\ltwentyseveng\oplus\C$ and $b$ do not; the mode cutoffs encode how much energy the fused system can absorb.
+\end{physics}
+
+\begin{status}
+Definitions. \lean{ravFam_zero} (Chapter~\ref{ch:L26}) identifies the $a=0$ case with the local Weyl and fusion relations;
+axioms standard (campaign record).
+\end{status}
+
+\subsection{Input T: the total-dimension bound}\label{l27:sec:totaldim}
+
+\begin{definition}[Input T]\label{l27:def:totaldim}
+For sector data $S$ of $\ltwentyseveng$, \lean{FusionTotalDimG S} is the statement: for every $m\ge0$, every current module $V$
+and every $w\in V$ satisfying the local Weyl and fusion relations for $m\theta$ (that is, $\mathrm{rav}(m,m)$), and every $B$,
+\begin{equation*}
+\sum_{b<B}\dim\bigl(\text{degree-}b\text{ part of the cyclic span of }w\bigr)\ \le\ \ltwentysevendg^{\,m} .
+\end{equation*}
+Equivalently, $\dim\ltwentysevenF_m\le\ltwentysevendg^{\,m}$. For $A_2$ the library has the same statement over the
+hand-written $\mathfrak{sl}_3$ relations, \lean{SectorWeyl.FusionTotalDim}, with bound $8^m$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneFusionFiniteG.lean}.
+\begin{leancode}
+def FusionTotalDimG : Prop :=
+  ∀ (m : ℕ) (V : Type) [AddCommGroup V] [Module ℂ V] (ρ : CurrentModule S.f V) (w : V),
+    LocalWeylRelG S ρ w m → ∀ B : ℕ, ∑ b ∈ Finset.range B, Module.finrank ℂ (cycDeg ρ w b) ≤ S.n ^ m
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneFusionFinite.lean}.
+\begin{leancode}
+def FusionTotalDim : Prop :=
+  ∀ (m : ℕ) (V : Type) [AddCommGroup V] [Module ℂ V] (ρ : CurrentModule (bracketTable) V) (w : V),
+    LocalWeylRel ρ w m → ∀ B : ℕ, ∑ b ∈ Finset.range B, Module.finrank ℂ (cycDeg ρ w b) ≤ 8 ^ m
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Decoding.} \lean{LocalWeylRelG S ρ w m} is the structure of Definition~\ref{l24:def:U5}: $w$ satisfies the local Weyl
+relations of $W_{\mathrm{loc}}(m\theta)$ and the fusion relations $x(m)w=0$ for $x$ in the fusion set. The $A_2$ predicate
+\lean{LocalWeylRel ρ w m} is the same for the $\mathfrak{sl}_3$ table (the library proves
+\lean{MabRel ρ w 0 m ↔ LocalWeylRel ρ w m}, \lean{mabRel_zero_iff}). The identification of \lean{LocalWeylRelG S ρ w m} with $\mathrm{rav}(m,m)$ is the Lean theorem \lean{UnivG.localWeylRelG_iff} (equivalence with \texttt{Sat S.f ρ w (lwSpec S m)}), together with \lean{ravFam_zero} (\texttt{ravFam S 0 m = lwSpec S m}); it is not a rewrite, since \lean{ravSpec} writes the powers as \texttt{List.replicate} while \lean{LocalWeylRelG} uses iterates. \lean{S.n} is $\ltwentysevendg$. The quantifier ``$\forall B$''
+bounds every finite partial sum, which is the same as bounding the total dimension.
+
+\textbf{An upper bound over all modules.} The statement quantifies over \emph{all} modules and generators with the
+relations, so it is a statement about the universal module $M_{0,m}$, of which all the others are quotients.
+
+\textbf{The finiteness clause.} \lean{Module.finrank} is $0$ on an infinite-dimensional space, so read alone the bound would
+say nothing about a module with an infinite-dimensional degree piece. The library proves separately, for every type, that
+every degree piece is finite-dimensional (\lean{fusionTotalBoundG_of_dim}; Chapter~\ref{ch:L26},
+Section~\ref{l26:sec:finiteG}), so the input that remains is only the bare bound displayed above.
+
+\textbf{Same as the literature?} With the finiteness clause it is exactly ``$\dim\ltwentysevenF_m\le\ltwentysevendg^{\,m}$'',
+and by Lemma~\ref{l27:lem:truncweyl} below $\ltwentysevenF_m$ is the truncated Weyl module $W(m\theta,m)$ of Kus--Littelmann,
+whichever fusion set the sector uses. The published statement is the equality $W(m\theta,m)\cong\ltwentyseveng^{*m}$:
+first in Feigin, \emph{SIGMA} 4 (2008) 070, Corollary~2, whose proof has a gap; then in Kus--Littelmann, Theorem~4.2 at
+$\lambda=\theta$, $\lambda_0=0$, $N=m$, a repair valid for every simple $\ltwentyseveng$, with one step (p.~437) that the
+project flags as unjustified as written, and that for $D_4$ is shown by computation to be insufficient as written at $m=2$
+(item~(i) of the literature paragraph; the theorem is not known to fail). Only the upper half of the equality is used;
+the lower half is free.
+
+\textbf{Could it be vacuous or false?} Modules with the relations exist (the universal one, and the evaluation product
+$\ltwentyseveng(c_1)\otimes\dots\otimes\ltwentyseveng(c_m)$ of dimension exactly $\ltwentysevendg^{\,m}$), so the bound, where true, is sharp.
+If it were false for a type, the conditional final theorem of that type would be vacuously true.
+\end{dictionary}
+
+\begin{physics}
+\emph{Heuristic.} $\ltwentysevenF_m$ is the space of states of $m$ adjoint particles brought together, keeping only the
+excitations allowed by the relations. The bound says that bringing the particles together creates no new states.
+\end{physics}
+
+\begin{status}
+Definitions. For $A_2$, \lean{SectorWeyl.FusionTotalDim} is \textbf{proved}: \lean{CVUniv.fusionTotalDim} (Chapter~\ref{ch:L26},
+Theorem~\ref{l26:thm:cvtotal}; \texttt{\#print axioms}-clean per the targeted build record). For $G_2$, $D_4$, $F_4$, $E_6$, $E_7$,
+$E_8$, \lean{FusionTotalDimG S} is a \textbf{named hypothesis} of the final theorem, not proved in Lean. In the literature it is
+\textbf{published} for all six types (Kus--Littelmann, Theorem~4.2), with one proof step flagged by the project; for $D_4$
+that step is insufficient as written at $m=2$ (item~(i) of the literature paragraph). Library progress:
+for $D_4$ the cases $m=1,2$ are proved (Section~\ref{l27:sec:partial}); toward all $m$, Lean reduces the bound to
+$\mathfrak{sl}_4$ core bounds with at least two adjoint sites, and on paper the levels with two adjoint sites are reduced further
+to two one-node bounds, both open in general (end of Section~\ref{l27:sec:feigin}); for the other types only the finiteness clause.
+\end{status}
+
+\begin{lemma}[The fusion module is a truncated Weyl module]\label{l27:lem:truncweyl}
+Let $m\ge0$ and let $w$ be a vector of a $\ltwentyseveng[t]$-module satisfying the local Weyl relations of
+$W_{\mathrm{loc}}(m\theta)$, together with $x(m)w=0$ for every $x$ in a set $\mathcal S$ of negative root vectors with
+$\{f_\alpha:\langle\alpha,\theta^\vee\rangle=1\}\cup\{f_\theta\}\subseteq\mathcal S$. Then $(\ltwentyseveng\otimes t^m\C[t])$
+annihilates the cyclic module $U(\ltwentyseveng[t])w$. Consequently the universal module with these relations,
+$\ltwentysevenF_m=M_{0,m}$, is the \emph{truncated Weyl module} $W(m\theta,m)$ of Kus--Littelmann (Definition~4.1): the
+quotient of $W_{\mathrm{loc}}(m\theta)$ on which $\ltwentyseveng\otimes t^m\C[t]$ acts by zero. In particular $M_{0,m}$ does not
+depend on the choice of $\mathcal S$ within these bounds.
+\end{lemma}
+
+\textbf{Proof on paper.} This is not a Lean statement; it is the bridge between the Lean hypothesis and the published theorem.
+Write $\mathcal I_m=\ltwentyseveng\otimes t^m\C[t]$. It suffices to show $\mathcal I_mw=0$: since $\mathcal I_m$ is an ideal of
+$\ltwentyseveng[t]$, for $y\in\ltwentyseveng[t]$ and $i\in\mathcal I_m$ we have $i\,y=y\,i-[y,i]$ with $[y,i]\in\mathcal I_m$, so by
+induction on the length of words $\mathcal I_m\,U(\ltwentyseveng[t])\subseteq U(\ltwentyseveng[t])\,\mathcal I_m$, and therefore
+$\mathcal I_m\,U(\ltwentyseveng[t])w\subseteq U(\ltwentyseveng[t])\,\mathcal I_mw=0$. The space $\mathcal I_m$ is spanned by
+$e_\alpha(s)$, $h(s)$ and $f_\alpha(s)$ with $s\ge m$.
+\begin{itemize}
+\item $e_\alpha(s)w=0$ for all $s$, and $h(s)w=0$ for $s\ge1$, are relations of $W_{\mathrm{loc}}(m\theta)$. (For $m=0$ the
+  remaining claim $h(0)w=0$ is the eigenvalue relation $h(0)w=0\cdot\theta(h)w$.)
+\item \emph{The bracket step.} For a positive root $\alpha$ choose $h$ in the Cartan subalgebra with $\alpha(h)\neq0$. In
+  $\ltwentyseveng[t]$, $[h(1),f_\alpha(s)]=-\alpha(h)\,f_\alpha(s+1)$. Applying both sides to $w$ and using $h(1)w=0$ gives
+  \begin{equation*}
+  f_\alpha(s+1)\,w=-\alpha(h)^{-1}\,h(1)\,f_\alpha(s)\,w .
+  \end{equation*}
+  So $f_\alpha(s)w=0$ implies $f_\alpha(s+1)w=0$, and by induction $f_\alpha(s')w=0$ for all $s'\ge s$.
+\item If $\langle\alpha,\theta^\vee\rangle=1$ or $\alpha=\theta$, then $f_\alpha\in\mathcal S$, so $f_\alpha(m)w=0$, and the
+  bracket step gives $f_\alpha(s)w=0$ for all $s\ge m$.
+\item If $\langle\alpha,\theta^\vee\rangle=0$, then also $\langle\theta,\alpha^\vee\rangle=0$. The degree-zero relations make
+  $U(\ltwentyseveng)w$ a finite-dimensional highest-weight module of highest weight $m\theta$, and in such a module
+  $f_\alpha(0)w=0$ exactly when $m\theta(h_\alpha)=m\langle\theta,\alpha^\vee\rangle=0$. So $f_\alpha(0)w=0$, and the bracket
+  step gives $f_\alpha(s)w=0$ for all $s\ge0$.
+\end{itemize}
+Since $\theta$ is long, every positive root $\alpha\neq\theta$ has $\langle\alpha,\theta^\vee\rangle\in\{0,1\}$, so the cases are
+exhaustive and $\mathcal I_mw=0$. Hence $M_{0,m}$ is a quotient of $W(m\theta,m)$. Conversely, the generator of $W(m\theta,m)$
+satisfies all the relations (the extra ones $x(m)w=0$ hold because $x(m)\in\mathcal I_m$), so $W(m\theta,m)$ is a quotient of
+$M_{0,m}$, and the two cyclic modules coincide. The same argument shows that the relations of the Lean family
+$\mathrm{rav}(j,2j)$ (Definition~\ref{l27:def:relspec}) hold on the extremal vector of $D(1,j\theta)$ for the sectors whose
+fusion set is larger than Ravinder's: the extra $f_\alpha$ have $\langle\alpha,\theta^\vee\rangle=0$ and are covered by the last
+case. \qed
+
+\begin{physics}
+\emph{Heuristic.} Once the modes of degree $m$ of all currents annihilate the composite state of $m$ adjoint particles, so do
+all higher modes: an energy cutoff on one mode propagates to all higher ones, because the higher modes are generated from the
+lower ones by the Cartan current $h(1)$, which acts trivially on the highest-weight state.
+\end{physics}
+
+\begin{status}
+\textbf{On paper only}; no Lean statement. The argument is the one recorded in the project's audit of the literature
+inputs (\texttt{DELIGNE\_INPUTS\_PRECISION.md}, \S1).
+\end{status}
+
+\subsection{Input R: Demazure realizations}\label{l27:sec:realization}
+
+\begin{definition}[Input R]\label{l27:def:realization}
+Let $S$ be sector data, $\mathrm{spec}$ a family of relation specifications indexed by $\N\times\N$, and
+$\mathrm{Dem}:\N\to\Q[[q]]$ a family of power series. For $j\in\N$, a \emph{Demazure realization at $j$} is a current module
+$V$ and a vector $w\in V$ satisfying $\mathrm{spec}(j,0)$ such that, for every degree $N$,
+\begin{equation*}
+[q^N]\,\mathrm{Dem}_j\ \le\ \dim\bigl(\text{degree-}N\text{ part of the cyclic span of }w\bigr).
+\end{equation*}
+In the final theorems $\mathrm{spec}=$ \lean{ravFam S}, so $\mathrm{spec}(j,0)$ are the relations of $M_{j,0}$, and $\mathrm{Dem}_j$
+is the type's Demazure table from Chapter~\ref{ch:L25}. Input R is ``a Demazure realization exists at every $j$''.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneFusionUnivGSector.lean}.
+\begin{leancode}
+def DemazureRealizationG (spec : ℕ → ℕ → RelSpec S.n) (Dem : ℕ → PowerSeries ℚ) (n : ℕ) : Prop :=
+  ∃ (V : Type) (_ : AddCommGroup V) (_ : Module ℂ V) (ρ : CurrentModule S.f V) (w : V),
+    Sat S.f ρ w (spec n 0) ∧ ∀ N, coeff N (Dem n) ≤ (Module.finrank ℂ (cycDeg ρ w N) : ℚ)
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneCarrierDemazure.lean}.
+\begin{leancode}
+def hilbSeries (hilb : ℕ → ℕ → ℕ) (n : ℕ) : PowerSeries ℚ :=
+  PowerSeries.mk fun N => (hilb n N : ℚ)
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneCharacterG2FusionZ.lean}.
+\begin{leancode}
+def g2HilbInt (m : ℕ) (N : ℤ) : ℤ := hilbIntG cartanG2 thetaG2 wordG2 m N
+\end{leancode}
+\begin{leancode}
+def g2HilbSeriesZ (n : ℕ) : PowerSeries ℚ := PowerSeries.mk fun N => (g2HilbInt n N : ℚ)
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Decoding.} The existential packages a vector space \lean{V}, a current-module structure \lean{ρ} over the structure
+constants \lean{S.f}, and a vector \lean{w}. \lean{Sat S.f ρ w (spec n 0)} says $w$ satisfies the relations of $M_{n,0}$
+(Lean's \lean{n} is our $j$). \lean{coeff N (Dem n)} is $[q^N]\mathrm{Dem}_j$. The inequality is in $\Q$.
+
+\textbf{It is a lower bound.} The statement asks for \emph{one} module. Since every module with these relations is a quotient
+of the universal $M_{j,0}$, it says that $M_{j,0}$ is at least as large as $\mathrm{Dem}_j$ in every degree. It is the lower
+bound (R) of the squeeze of Example~\ref{l27:ex:sl3}.
+
+\textbf{Clamped and unclamped tables.} The Demazure algorithm of Chapter~\ref{ch:L25} produces integers. A true character has
+nonnegative coefficients. The \emph{clamped} table replaces any negative output by $0$ (the last step of
+\lean{levelOneDemazureHilb} is \lean{Int.toNat}); \lean{hilbSeries hilb n} turns such a table into the power series
+$\sum_N\mathrm{hilb}(n,N)q^N$, and the tables \lean{f4DemazureHilb}, \lean{e6DemazureHilb}, \lean{e7DemazureHilb},
+\lean{e8DemazureHilb} are clamped. The \emph{unclamped} tables keep the integers: \lean{g2HilbInt} (through \lean{hilbIntG}) and
+\lean{D4Wp.hilbSeriesZ}. For Input R the two forms are \emph{equivalent}, not merely ordered: a requirement
+$c\le\dim(\cdot)$ is vacuous both when $c<0$ and when $c=0$, because a dimension is never negative, and clamping changes only
+negative entries into $0$. So Input R against the clamped table and Input R against the unclamped table are the same
+condition on a module. The final theorems use the unclamped
+tables for $G_2$ and $D_4$ and the clamped ones for $F_4$, $E_6$, $E_7$, $E_8$. For $G_2$ and $D_4$ the unclamped route has an
+advantage: the library derives the nonnegativity of the algorithm's output from U5 (\lean{g2HilbInt_nonneg_of_U5Z} for $G_2$),
+so no separate positivity hypothesis is needed. Elsewhere in this chapter we refer to this paragraph.
+
+\textbf{Same as the literature?} With the true characters of $D(1,j\theta)$, the statement is ``$D(1,j\theta)$ satisfies Ravinder's
+relations, and its graded dimension is the Demazure character''. Both halves are \emph{published theorems for every simple
+$\ltwentyseveng$}. The relation half is Ravinder's Proposition~1 (after Chari--Venkatesh, Corollary~3.5): $D(1,j\theta)$ is
+presented by $\mathfrak n^+[t]w=0$, $h(s)w=\delta_{s,0}\,j\theta(h)w$, $f_\alpha(0)w=0$ for $\langle\alpha,\theta^\vee\rangle=0$,
+$f_\alpha(0)^{jd_\alpha+1}w=0$ (with $d_\alpha=2/(\alpha,\alpha)=\langle\theta,\alpha^\vee\rangle$) and $f_\alpha(j)w=0$ for
+$\langle\alpha,\theta^\vee\rangle=1$, and $f_\theta(0)^{2j+1}w=0$. The Lean relations
+$\mathrm{rav}(j,2j)$ follow from these: $f_\theta(2j)w=0$ holds already in $W_{\mathrm{loc}}(j\theta)$ (the $\theta$-triple sees
+weight $2j$, and the $\mathfrak{sl}_2$ box kills $f_\theta(s)w$ for $s\ge2j$), and the extra fusion-set roots of the $D_4$, $G_2$,
+$F_4$ sectors are covered by Lemma~\ref{l27:lem:truncweyl}. Only this direction (``$D(1,j\theta)$ satisfies the Lean relations'')
+is needed, and it holds for every type, short roots included. The graded half is the Demazure character formula (Kumar 1987,
+Mathieu 1988), together with the standard identification of $D(1,j\theta)$ with the Demazure module
+$V_{(s_\theta s_0)^j}(\Lambda_0)$, which is how the Lean algorithm computes $\mathrm{Dem}_j$ (Chapter~\ref{ch:L25},
+Caveat~\ref{l25:cav:U7}). What is \emph{not} established is formal: that the Lean algorithm (\lean{levelOneDemazureHilb},
+\lean{hilbIntG}) implements the Demazure character formula correctly (Cartan-matrix orientation, the reduced word for $s_\theta$,
+the step $D_0$, which is valid because $\theta$ is long, and the regrading by $j^2$). The evidence for the encoding is that the proved
+totals agree with $(\ltwentysevendg+1)^j$ (for example \lean{g2_demazure_total}), which rules out a transposed Cartan matrix for
+$G_2$ and $F_4$, together with numerical checks; this is evidence, not a proof.
+\end{dictionary}
+
+\textbf{What is proved for $A_2$.} For $\mathfrak{sl}_3$ the library proves the realization for every $j$:
+\lean{EvalModel.demazureRealization_all} constructs an explicit evaluation model of $D(1,j\theta)$ on a tensor product of copies
+of $D(1,\theta)=\mathfrak{sl}_3\oplus\C$ at distinct points, checks the relations, and bounds its graded dimension from below
+through a filtration and Lagrange interpolation, with the matching upper bound from the Chari--Loktev spanning theorem, which is
+special to $\mathfrak{sl}_{r+1}$ (Chapter~\ref{ch:L26}, Section~\ref{l26:sec:u7}).
+
+
+\begin{physics}
+\emph{Heuristic.} $D(1,j\theta)$ is a truncation of the level-one vacuum module of the affine Lie algebra (the WZW vacuum
+module): the states reachable from the extremal vector of weight $j\theta$ by positive modes. A realization is an explicit
+system of $j$ excitable adjoint particles whose energy spectrum is at least as rich as the Demazure character predicts.
+\end{physics}
+
+\begin{status}
+Definitions. \lean{∀ n, DemazureRealizationG S (ravFam S) Dem n} is a \textbf{named hypothesis} for $G_2$, $F_4$, $E_6$,
+$E_7$, $E_8$. For $A_2$ the corresponding statement \lean{∀ n, A2.DemazureRealization n} is a theorem
+(\lean{EvalModel.demazureRealization_all}; axioms standard, re-checked at an earlier commit). For $D_4$ it is a theorem,
+\lean{D4Char.d4_demazureRealization} (Theorem~\ref{l27:thm:d4R}; aggregate build green on 3 November 2026, standard axioms), and
+the $D_4$ theorem \lean{D4_classicallyFree_of_inputT} no longer assumes it. In the literature Input R is a
+\textbf{published theorem for all six types} (Ravinder, Proposition~1, with the Demazure character formula); for $G_2$, $F_4$,
+$E_6$, $E_7$, $E_8$ only its formalization is missing. For $E_6$, $E_7$, $E_8$ the relation half holds in the lattice model for
+every $n$.
+\end{status}
+
+\textbf{What is proved for $D_4$.} For $\mathfrak{so}_8$ the library also proves the realization for every $j$, by a different
+route: a graded upper bound on the Levi side and the squeeze, rather than the Demazure character formula.
+
+\begin{theorem}[Input R for $D_4$]\label{l27:thm:d4R}
+For every $n$ there is a current module for the $D_4$ structure constants with a vector satisfying the relations
+$\mathrm{rav}(n,2n)$ whose degree-$N$ piece has dimension at least $[q^N]$ of the unclamped $D_4$ Demazure series, for every $N$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak D4CharDemazureRealization.lean}.
+\begin{leancode}
+theorem d4_demazureRealization :
+    ∀ n, DemazureRealizationG D4sector (ravFam D4sector) D4Wp.hilbSeriesZ n :=
+\end{leancode}
+
+\begin{dictionary}
+The full name is \lean{VOA.DeligneAudit.D4Char.d4_demazureRealization}; \lean{D4sector} is \lean{DeligneSector.D4.D4sector}. The type
+is exactly the hypothesis \lean{hD} of \lean{D4_classicallyFree_final} (Theorem~\ref{l27:thm:D4}): same sector, same family
+\lean{ravFam}, same unclamped series \lean{D4Wp.hilbSeriesZ}. It takes no arguments. The proof bounds every module with the
+relations, degree by degree, by a Levi character (\lean{D4Char.d4_gradedLeviBound}), and closes with the squeeze.
+\end{dictionary}
+
+\begin{status}
+Proved, \textbf{unconditional}. Machine-confirmed: aggregate build green on 3 November 2026, and \texttt{\#print axioms} reports
+\lean{[propext, Classical.choice, Quot.sound]}. It discharges Input R for $D_4$ (Theorem~\ref{l27:thm:d4inputT}).
+\end{status}
+
+\begin{physics}
+For $L_{-2}(\mathfrak{so}_8)$, the chiral algebra of $SU(2)$ gauge theory with four flavours, this supplies the lower
+bound on the number of Schur operators in each fusion sector; with Input~T it pins the Schur index to the arc-space
+count of the Higgs-branch chiral ring.
+\end{physics}
+
+\subsection{Input S: the star bounds}\label{l27:sec:starinput}
+
+\begin{definition}[Input S]\label{l27:def:star}
+For a Demazure table $\mathrm{hilb}$ and a target sequence $c:\N\to\Q$, the \emph{star bound} is $\mathcal D_N\le c_N$ for all
+$N$, where $\mathcal D_N=\sum_{j\le N}[q^{N-j}]\bigl(\mathrm{Dem}_j/(q)_j\bigr)$ is the Demazure sum. For $X=G_2,F_4,E_6,E_7,E_8$,
+\lean{XStarBound} is the star bound with the type's clamped Demazure table and $c_N=\mathtt{mldeCoeff}\ h^\vee\ N$, where
+$h^\vee=4,9,12,18,30$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneCharacterStarBound.lean}.
+\begin{leancode}
+def StarBoundQ (hilb : ℕ → ℕ → ℕ) (c : ℕ → ℚ) : Prop :=
+  ∀ N, (demazureSumCoeff hilb N : ℚ) ≤ c N
+\end{leancode}
+\begin{leancode}
+abbrev G2StarBound : Prop := StarBoundQ g2DemazureHilb (mldeCoeff 4)
+abbrev F4StarBound : Prop := StarBoundQ f4DemazureHilb (mldeCoeff 9)
+abbrev E6StarBound : Prop := StarBoundQ e6DemazureHilb (mldeCoeff 12)
+abbrev E7StarBound : Prop := StarBoundQ e7DemazureHilb (mldeCoeff 18)
+abbrev E8StarBound : Prop := StarBoundQ e8DemazureHilb (mldeCoeff 30)
+\end{leancode}
+
+\begin{dictionary}
+\lean{demazureSumCoeff hilb N} is $\mathcal D_N=\sum_{j\le N}\sum_i\mathrm{hilb}(j,i)\,p_{\le j}(N-j-i)$, where $p_{\le j}(r)$ is the
+number of partitions of $r$ into parts $\le j$ (the coefficients of $1/(q)_j$); Definition~\ref{l25:def:dsum}. \lean{mldeCoeff h N}
+is the rational number $c_N$ defined by the Arakawa--Kawasetsu recurrence with parameter $h$ (Definition~\ref{l25:def:mlde}); it is
+\lean{VOA.DeligneAudit.DeligneCharacter.mldeCoeff}, not the homonym in \leanpath{VOA/Modularity/AKMLDE.lean}. The second arguments
+$4,9,12,18,30$ are $h^\vee$ of $G_2,F_4,E_6,E_7,E_8$, as they must be. All five use the clamped tables; for $G_2$ the final theorem's
+Input R uses the unclamped table, and the two agree under the other inputs (dictionary of Definition~\ref{l27:def:realization}).
+
+\textbf{One-sided form.} The paper states the star \emph{identity} $\mathcal D_N=c_N$. Only $\le$ is used, because it is chained with
+the proved $c_N\le\dim L_N$. The library's \lean{XStarIdentity} (equality) implies \lean{XStarBound} (\lean{g2StarBound_of_identity}
+and its four siblings). Under the other inputs the chain closes and equality follows (Remark~\ref{l27:rem:arc}).
+\end{dictionary}
+
+\textbf{Literature status: a conjecture.} For $X\in\{G_2,F_4,E_6,E_7,E_8\}$ we know of \emph{no published proof} of the star
+identity $\mathcal D_N=c_N$, nor of the bound $\mathcal D_N\le c_N$ alone (Section~\ref{l27:sec:starcore} explains why the bound
+is no cheaper). We therefore state it as a conjecture, and the five final theorems that use it are conditional on it.
+
+\begin{conjecture}[The exceptional star identities]\label{l27:conj:star}
+For $X\in\{G_2,F_4,E_6,E_7,E_8\}$, with $h^\vee=4,9,12,18,30$ and $\mathrm{Dem}_j$ the graded character of the level-one Demazure
+module $D(1,j\theta)$,
+\begin{equation*}
+\sum_{j\ge0}q^j\,\frac{\mathrm{Dem}_j(q)}{(q)_j}\ =\ \sum_{N\ge0}c_N\,q^N ,
+\end{equation*}
+where $c_N$ is the solution with $c_0=1$ of the Arakawa--Kawasetsu recurrence with parameter $h^\vee$. In particular
+\lean{XStarBound} holds.
+\end{conjecture}
+
+\textbf{Evidence.} Exact-integer checks of the coefficientwise equality $\mathcal D_N=c_N$ hold with no discrepancy through $q^{60}$ for $G_2$, $q^{25}$ for $F_4$, $q^{20}$ for $E_6$, $q^{16}$ for $E_7$ and $q^{14}$ for $E_8$ (scoping pass of 28 October 2026, \texttt{Notes/deligne/STAR\_IDENTITY\_SCOPING.md}; cross-validated against the library's Demazure algorithm). No published proof of the identity or of the inequality is known to us. These are evidence, not proof.
+
+\textbf{The $G_2$ reduction.} For $G_2$ the library has reduced Input S to one identity. The target half \lean{G2KWEqMLDE} (the
+Kac--Wakimoto-type product $\theta_{A_2}(q)(q^3;q^3)_\infty^6/(q;q)_\infty^8$ solves the $h^\vee=4$ recurrence) is a theorem,
+\lean{G2Star.g2KWEqMLDE}, and \lean{G2Star.g2StarIdentity_of_demazure} derives the star identity from the single named
+statement \lean{G2DemazureEqKW} (Demazure sum $=$ that product); \lean{g2StarBound_of_identity} then gives \lean{G2StarBound}
+(Chapter~\ref{ch:L25}, Definition~\ref{l25:def:starbounds}, where these declarations are quoted). \lean{G2DemazureEqKW} has no
+published proof known to us either. The library splits it into two named halves (Theorem~\ref{l27:thm:G2F4ladder}).
+\begin{itemize}
+\item \lean{G2DemazureFermionic} (the $G_2$ Demazure table equals the HKOTY fermionic formula) \emph{follows from published
+  results}, as recorded in the project note \texttt{Notes/deligne/G2\_STAR\_FERMIONIC.md} (28 October 2026). Fourier--Littelmann
+  (Adv.\ Math.\ 211 (2007), Theorem~8 and Theorem~B) give $D(1,j\theta)\cong\mathrm{KR}(\omega_2)^{*j}$ as graded modules, and
+  Chari--Moura identify $\mathrm{KR}(\omega_2)=W^{(2)}_1=V(\theta)\oplus\C$; Ardonne--Kedem (Theorem~5.2) bound the graded fusion
+  multiplicities by the fermionic sums; Di Francesco--Kedem (Corollary~5.19, with the HKOTY and Hernandez results as they state
+  them) give equality at $q=1$, hence coefficientwise equality by positivity. The conventions are those of Lin (IMRN 2021), and the
+  note checks that they match the Lean definition with no shift. The note read the theorem statements in the arXiv versions of
+  these sources; the primary texts of HKOTY and Hernandez were not opened. This is a reading of the literature, not a Lean proof:
+  \lean{G2DemazureFermionic} remains a hypothesis, and the identification of \lean{g2DemazureHilb} with
+  $\mathrm{Hilb}_q D(1,j\theta)$ is the same unformalized step (Demazure character formula) as for every Demazure table.
+\item \lean{G2FermionicKW} (the Demazure sum of the fermionic table equals the Kac--Wakimoto-type product) is \emph{open}: a
+  rank-two $q$-series identity with no known proof. It is checked numerically through $q^{60}$, and in a weight-refined form
+  (every branching function) through $q^{50}$ (same note).
+\end{itemize}
+So the $G_2$ star identity remains a conjecture, now reduced to the single open identity \lean{G2FermionicKW}.
+
+\begin{physics}
+\emph{Heuristic.} For the types with a four-dimensional theory ($E_6$, $E_7$, $E_8$, and $D_4$, $A_2$ where the identity is proved),
+the star identity would equate two counts of the Schur operators: the Demazure sum counts ``particle'' states ($j$ adjoint quanta with
+their Demazure excitations, dressed by the factor $1/(q)_j$ of their relative motion), and the MLDE solution is the Schur index as
+Beem and Rastelli computed it from a modular differential equation. For $G_2$ and $F_4$ no four-dimensional theory is known, and the
+identity is a statement about $q$-series only.
+\end{physics}
+
+\begin{status}
+Definitions. \lean{G2StarBound}, \lean{F4StarBound}, \lean{E6StarBound}, \lean{E7StarBound}, \lean{E8StarBound} are \textbf{named
+hypotheses}, and in the literature they are \textbf{conjectural} (Conjecture~\ref{l27:conj:star}; numerical evidence only). For
+$G_2$ the hypothesis is implied by the single named identity \lean{G2DemazureEqKW}. The $A_2$ star identity is a theorem (\lean{A2.starIdentity}, Chapter~\ref{ch:L25}); for $D_4$ the corresponding statement
+is proved (\lean{D4Wp.d4SchurEqE4}, Theorem~\ref{l25:thm:d4}), so the $D_4$ final theorem has no star hypothesis.
+\end{status}
+
+\subsection{An alternative form of the \texorpdfstring{$A_2$}{A2} Input T}\label{l27:sec:a2alt}
+
+Before Input T was proved for $A_2$, the library reduced it to a lower bound in a single model. That reduction is still the
+hypothesis of one of the two $A_2$ wrappers (Theorem~\ref{l27:thm:A2}), so we state it.
+
+\begin{definition}[Kernel lower bound]\label{l27:def:a2alt}
+\lean{RavinderKernelLower}: for all $a,b\ge0$ there is a current $\mathfrak{sl}_3$-module with a generator $w$ satisfying the
+relations of $M_{a+1,b}$, in which the cyclic span of the kernel vector $f_\theta(2a+b+1)w$ has total dimension at least $9^a8^b$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneFusionKernelLower.lean}.
+\begin{leancode}
+def RavinderKernelLower : Prop :=
+  ∀ a b : ℕ, ∃ (V : Type) (_ : AddCommGroup V) (_ : Module ℂ V) (ρ : CurrentModule (bracketTable) V)
+    (w : V), MabRel ρ w (a + 1) b ∧
+    ∃ B, 9 ^ a * 8 ^ b ≤ ∑ n ∈ Finset.range B,
+      Module.finrank ℂ (cycDeg ρ (ρ.op 5 (2 * a + b + 1) w) n)
+\end{leancode}
+
+\begin{dictionary}
+\lean{ρ.op 5 (2 * a + b + 1) w} is $f_\theta(2a+b+1)w$ (index $5$ is $f_\theta$). \lean{cycDeg ρ v n} is graded by the words applied to
+$v$, so the shift by $2a+b+1$ is not included; this does not affect a total dimension. $9^a8^b$ is the expected dimension of
+$M_{a,b}$. In Ravinder's sequence (\ref{l27:eq:ravinder}) with $(a+1,b)$ in place of $(a,b)$, the cyclic span of
+$f_\theta(2a+b+1)w$ is the kernel, and the statement says it is as large as $\tau M_{a,b}$: the injectivity half of the sequence,
+realized in a model.
+\end{dictionary}
+
+\begin{physics}
+\emph{Heuristic.} When one excitable adjoint particle loses its extra excitation, the states that disappear are as many as a
+whole smaller system of particles.
+\end{physics}
+
+\begin{status}
+Definition; \textbf{not proved}, and no longer needed: Input T for $A_2$ is proved by a different route. It is the hypothesis of
+\lean{A2_classicallyFree_final_S2} only.
+\end{status}
+
+\begin{theorem}[The kernel lower bound implies Input T for $A_2$]\label{l27:thm:a2alt}
+\lean{RavinderKernelLower} implies \lean{FusionTotalDim}.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneFusionKernelLower.lean}.
+\begin{leancode}
+theorem fusionTotalDim_of_kernelLower (hK : RavinderKernelLower) : FusionTotalDim := by
+\end{leancode}
+
+\begin{dictionary}
+An implication between named propositions; no other hypothesis. \lean{FusionTotalDim} here is \lean{SectorWeyl.FusionTotalDim}
+(the file opens \lean{SectorWeyl}). A second reduction, from an ``ideal lower bound'' \lean{IdealLower}, is presented in
+Chapter~\ref{ch:L26} (Theorem~\ref{l26:thm:a2red}); no final theorem uses it.
+\end{dictionary}
+
+\textbf{Proof on paper.} Let $U_{a,b}$ be the universal module for the relations of $M_{a,b}$ and $u_{a,b}$ its total
+dimension. The relations of $M_{a,b+1}$ imply those of $M_{a+1,b}$, so there is a surjection $U_{a+1,b}\to U_{a,b+1}$ that kills
+$f_\theta(2a+b+1)w$ and hence its cyclic span. Rank--nullity gives $u_{a,b+1}+\dim(\text{cyclic span of }f_\theta(2a+b+1)w)\le
+u_{a+1,b}$, and the hypothesis bounds the second term from below by $9^a8^b$ (it is at least its value in the model, of which the
+universal module maps onto). With $u_{a+1,b}\le9^{a+1}8^b$, this gives $u_{a,b+1}\le9^{a+1}8^b-9^a8^b=9^a8^{b+1}$. The base case
+$u_{a,0}\le9^a$ is the Chari--Loktev bound. Induction on $b$ gives $u_{0,m}\le8^m$. \qed
+
+\begin{physics}
+\emph{Heuristic.} A counting argument for the collision process, removing one excitation at a time.
+\end{physics}
+
+\begin{status}
+Proved; \texttt{\#print axioms} standard (re-checked at an earlier commit, Section~\ref{l27:sec:verification}). Conditional on the
+unproved \lean{RavinderKernelLower}.
+\end{status}
+
+%======================================================================
+\section{The seven final theorems}\label{l27:sec:finals}
+%======================================================================
+
+\subsection{How every final theorem is proved}\label{l27:sec:commonproof}
+
+The seven theorems are wrappers: \leanpath{VOA/DeligneAudit/DeligneSeries.lean} and
+\leanpath{VOA/DeligneAudit/DeligneSeriesA2.lean} prove no new mathematics, and each proof is a one-line composition of theorems
+from Chapters~\ref{ch:L24}--\ref{ch:L26} and Section~\ref{l27:sec:ladders}. Fix a type with Lie algebra $\ltwentyseveng$, VOA
+$W=L_k(\ltwentyseveng)$, explicit presentation $P$ and sector data $S$.
+\begin{enumerate}
+\item \emph{From Input T to the total bound with finiteness.} The degree pieces of every module with the relations of $M_{0,m}$
+  are finite-dimensional, proved for each type from a kernel-checked nilpotency certificate (\lean{X_fusionTotalBoundG_of_dim};
+  Chapter~\ref{ch:L26}, Section~\ref{l26:sec:finiteG}). Together with Input T this is \lean{FusionTotalBoundG S}.
+\item \emph{Ravinder's kernel lemma.} In a module with the relations of $M_{a+1,b}$, the vector $f_\theta(2a+b+1)w$ satisfies
+  the relations of $M_{a,b}$; proved for every type with no hypothesis (Chapter~\ref{ch:L26}, Section~\ref{l26:sec:kernelG}). This
+  gives the spanning inequality (K) of Example~\ref{l27:ex:sl3} for the universal modules.
+\item \emph{The squeeze} (Chapter~\ref{ch:L26}, Section~\ref{l26:sec:squeeze}). Let $F=\mathtt{fusionOf}\ \mathrm{Dem}$ be the family
+  defined from the Demazure table by the mixed recursion \emph{with equality}. Input R gives $\mathrm{Dem}_j\le\mathrm{ch}\,M_{j,0}$;
+  (K) propagates it downwards to a coefficientwise lower bound $\mathrm{ch}\,M_{0,m}\ge F_m$ (the subtractions are by known upper
+  bounds); the \emph{count} $F_m(1)=\ltwentysevendg^{\,m}$ is proved for every type (Chapter~\ref{ch:L25}, Section~\ref{l25:sec:counts});
+  and Input T gives $\mathrm{ch}\,M_{0,m}(1)\le\ltwentysevendg^{\,m}$. A coefficientwise lower bound with the same total forces
+  $\mathrm{ch}\,M_{0,m}=F_m$, as in Example~\ref{l27:ex:sl3}. This is U5 for $F$, and U6 holds for $F$ by its definition.
+\item \emph{The carrier side} (Chapter~\ref{ch:L24}): U5 and U6, with the divisor comparison, give statement (B).
+\item \emph{The character side} (Chapter~\ref{ch:L25}): $c_N\le\dim L_N$ for every type; with Input S this is statement (C).
+\item \emph{The capstone} (Chapter~\ref{ch:L24}): (B) and (C) give $\mathrm{carrierDim}(N)\le\dim L_N$, and with current-jet
+  surjectivity and the geometric carrier, classical freeness and $\ker=(\ltwentysevenIns)$ follow.
+\end{enumerate}
+For $A_2$ steps 1--3 run in the hand-written $\mathfrak{sl}_3$ setting (Chapter~\ref{ch:L26}, Sections~\ref{l26:sec:a2rel}
+to~\ref{l26:sec:u7}), and all three inputs are theorems.
+
+\subsection{The \texorpdfstring{$A_2$}{A2} theorem}
+
+\begin{theorem}[$A_2$: classical freeness of $L_{-3/2}(\mathfrak{sl}_3)$]\label{l27:thm:A2}
+Let $W=L_{-3/2}(\mathfrak{sl}_3)$ and let $P$ be its explicit current $C_2$ presentation, with generators the eight currents and
+ideal $(\ltwentysevenIns)$ generated by the eight quadrics $P_0,\dots,P_7$ of Definition~\ref{l24:def:A2rel}. Then $W$ is classically
+free for $P$, and $\ker(\operatorname{Sym}\mathfrak{sl}_3\to R_W)=(\ltwentysevenIns)$; that is, $R_W=\operatorname{Sym}\mathfrak{sl}_3/(\ltwentysevenIns)$
+and $\ltwentysevenJ R_W\to\ltwentysevengr^{\mathrm{Li}}W$ is an isomorphism. The same conclusion is also stated under the (unproved)
+hypothesis \lean{RavinderKernelLower}.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak A2Unconditional.lean}.
+\begin{leancode}
+theorem classicallyFree :
+    CaseClassicallyFree .A2 W explicitPresentation ∧
+      RingHom.ker (MvPolynomial.aeval fun i =>
+        liDegreeZeroClass W 1 ⟨explicitPresentation.gen i,
+          explicitPresentation.gen_weight_one i⟩).toRingHom = I2ns :=
+  classicallyFree_of_totalDim' CVUniv.fusionTotalDim
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneSeriesA2.lean}.
+\begin{leancode}
+theorem A2_classicallyFree_final :
+    CaseClassicallyFree .A2 VOA.DeligneAudit.A2.W VOA.DeligneAudit.A2.explicitPresentation ∧
+      RingHom.ker (MvPolynomial.aeval fun i =>
+        liDegreeZeroClass VOA.DeligneAudit.A2.W 1 ⟨VOA.DeligneAudit.A2.explicitPresentation.gen i,
+          VOA.DeligneAudit.A2.explicitPresentation.gen_weight_one i⟩).toRingHom =
+        VOA.DeligneAudit.A2.I2ns :=
+  VOA.DeligneAudit.A2.classicallyFree
+
+/-- The older A₂ S2 interface, retained for reuse. -/
+theorem A2_classicallyFree_final_S2 (hK : VOA.DeligneAudit.A2.RavinderKernelLower) :
+    CaseClassicallyFree .A2 VOA.DeligneAudit.A2.W VOA.DeligneAudit.A2.explicitPresentation ∧
+      RingHom.ker (MvPolynomial.aeval fun i =>
+        liDegreeZeroClass VOA.DeligneAudit.A2.W 1 ⟨VOA.DeligneAudit.A2.explicitPresentation.gen i,
+          VOA.DeligneAudit.A2.explicitPresentation.gen_weight_one i⟩).toRingHom =
+        VOA.DeligneAudit.A2.I2ns :=
+  VOA.DeligneAudit.A2.classicallyFree_of_kernelLower' hK
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Names.} \lean{classicallyFree} is \lean{VOA.DeligneAudit.A2.classicallyFree}; in its file the short names \lean{W},
+\lean{explicitPresentation}, \lean{I2ns} are those of the namespace \lean{VOA.DeligneAudit.A2}. The two wrappers are in the namespace
+\lean{VOA.DeligneAudit.DeligneSeries} and spell out the full names. \lean{A2_classicallyFree_final} is literally
+\lean{A2.classicallyFree}: the proof term is that constant.
+
+\textbf{The objects.} \lean{A2.W} is \lean{AffineSl3.simpleVOA (-3/2) _}, the quotient of the universal affine VOA of $\mathfrak{sl}_3$ at
+level $-3/2$ (trace form, $(\theta,\theta)=2$) by its maximal graded ideal; the library proves it simple, nonzero, of central charge
+$c=8k/(k+3)=-8$ (Chapter~\ref{ch:L24}, dictionary of Theorem~\ref{l24:thm:sevenpres}). \lean{A2.explicitPresentation} has generators the
+eight Chevalley currents $J^a_{(-1)}\ltwentysevenvac$, which form a basis of $W_1$, and ideal \lean{A2.I2ns}
+$=$ \lean{Ideal.span (Set.range relationPoly)}, generated by the eight quadrics (Warning ``What the relation lists are'' in
+Section~\ref{l27:sec:conclusion}). The conclusion is that of Definition~\ref{l27:def:conclusion} with $I=$ \lean{A2.I2ns}.
+
+\textbf{The hypotheses.} \lean{A2.classicallyFree} and \lean{A2_classicallyFree_final}: \textbf{none}. The statement is closed: it takes
+no arguments and the file has no section variables. Internal definitions used in its proof (\lean{bracketTable}, the universal modules
+of Chapter~\ref{ch:L26}) cannot weaken it, because the statement does not mention them; only axioms could, and the axiom report is
+standard (status box). \lean{A2_classicallyFree_final_S2}: one hypothesis, \lean{RavinderKernelLower}
+(Definition~\ref{l27:def:a2alt}); it is the older interface, kept for reuse, and is implied by the unconditional theorem in the sense
+that its conclusion is already proved.
+
+\textbf{The proof term.} \lean{classicallyFree_of_totalDim'} (\leanpath{VOA/DeligneAudit/DeligneFusionU7.lean}; Chapter~\ref{ch:L26},
+Theorem~\ref{l26:thm:u7final}) proves the conclusion from Input T, with Input R supplied by \lean{EvalModel.demazureRealization_all}.
+\lean{CVUniv.fusionTotalDim} is Input T (Chapter~\ref{ch:L26}, Theorem~\ref{l26:thm:cvtotal}).
+
+\textbf{Same as the intended statement?} Yes. Classical freeness in the sense of van Ekeren--Heluani for the genuine simple affine VOA
+$L_{-3/2}(\mathfrak{sl}_3)$, with $R_V$ presented by the explicit quadrics. The library proves no identification of
+$(\ltwentysevenIns)$ with an ideal from the literature, and none is claimed.
+\end{dictionary}
+
+\paragraph{How $A_2$ was closed.} The $A_2$ chain of Chapter~\ref{ch:L26} reduced the theorem to Input T,
+\lean{SectorWeyl.FusionTotalDim}, with Inputs R and S already proved. Input T is the theorem \lean{CVUniv.fusionTotalDim}: by
+\lean{CVUniv.fusionTotalDim_of_cvBases} it follows from two families of dimension bounds for universal Chari--Venkatesh modules of
+$\mathfrak{sl}_3$. The rectangular family (\lean{SharpRectangularBases}) asserts, for every $\nu,\rho$ and every
+$\varepsilon\in\{(0,0),(1,0),(0,1)\}$, with $j=0$, that the module is finite-dimensional with
+$\dim\le3^{|\varepsilon|}6^{|\nu|}10^{|\rho|}$. The residual family (\lean{ResidualTheta3Bound}) asserts, for every $\rho$ and with
+$j=1$, $\varepsilon=\nu=0$, that the module is finite-dimensional with $\dim\le8\cdot10^{|\rho|}$. Both families are proved, \lean{CVUniv.sharpRectangularBases} and \lean{CVUniv.residualTheta3Bound} (Chapter~\ref{ch:L26},
+Definition~\ref{l26:def:cvfamily} and Theorem~\ref{l26:thm:cvtotal}). \lean{A2.classicallyFree} is \lean{classicallyFree_of_totalDim'}
+applied to that term.
+
+\textbf{Proof on paper.} Section~\ref{l27:sec:commonproof} with all three inputs proved: Input T by the Chari--Venkatesh induction
+(Chapter~\ref{ch:L26}), Input R by the evaluation model, and Input S because the Demazure sum equals $[q^N]\prod_{r\ge1}(1+q^r)^8$
+(the star identity) and this product solves the $h^\vee=3$ Arakawa--Kawasetsu recurrence, while the vacuum quartic relation gives
+$c_N\le\dim W_N$ (Chapter~\ref{ch:L25}). \qed
+
+\begin{physics}
+$L_{-3/2}(\mathfrak{sl}_3)$ is the chiral algebra of the Argyres--Douglas theory usually called $H_2$ (or $(A_1,D_4)$), whose Higgs
+branch is the moduli space of one $SU(3)$ instanton. Granting the four-dimensional/two-dimensional correspondence of Beem et al.\
+(a physics input, not part of the Lean statement), the theorem says that the Schur index of $H_2$ equals the Hilbert series of the
+arc space of the scheme $\operatorname{Spec}\operatorname{Sym}\mathfrak{sl}_3/(\ltwentysevenIns)$. That scheme is non-reduced; its reduced
+variety is the minimal nilpotent orbit closure of $\mathfrak{sl}_3$ (Arakawa--Moreau; not in Lean). Independently, the library proves $\dim W_N=c_N$ (\lean{A2.finrank_eq_mldeCoeff'}) and that the coefficients of
+$\prod_{r\ge1}(1+q^r)^8$ satisfy the same recurrence; the composite $\dim W_N=[q^N]\prod_{r\ge1}(1+q^r)^8$ is derivable but not stated
+(Chapter~\ref{ch:L25}, Remark~\ref{l25:rem:a2cons}). That $\prod(1+q^r)^8$ is the character of eight free fermions is a statement about
+the $q$-series, not about the theory.
+\end{physics}
+
+\begin{status}
+\lean{A2.classicallyFree} and \lean{A2_classicallyFree_final}: \textbf{no hypotheses}. Machine-confirmed on 2026-10-28: the aggregate build \texttt{bash scripts/campaign\_build.sh VOA} (the full \texttt{lake build VOA} under the project's memory-capped wrapper) was green on 2026-10-28 (a pre-release build): 18{,}901 jobs, and again 18{,}907 jobs after merging the then-current \texttt{origin/main} (the aggregate target contains the umbrella \lean{VOA.Deligne}); \texttt{\#print axioms} (via \texttt{lake env lean
+-DmaxSynthPendingDepth=3}) on \lean{VOA.DeligneAudit.A2.classicallyFree} and
+\lean{VOA.DeligneAudit.DeligneSeries.A2_classicallyFree_final} reports \lean{[propext, Classical.choice, Quot.sound]}. Earlier record (27 October 2026): targeted builds of \lean{VOA.DeligneAudit.A2Unconditional} (9755 jobs) and
+\lean{DeligneSeriesA2} (9756 jobs) green, standard axioms. \lean{A2_classicallyFree_final_S2}: conditional on
+\lean{RavinderKernelLower}; axioms standard (re-checked on a verbatim copy at an earlier commit).
+\end{status}
+
+\subsection{The six conditional theorems}
+
+\begin{theorem}[$D_4$: the final theorem]\label{l27:thm:D4}
+Let $W=L_{-2}(\mathfrak{so}_8)$, built from the certificate-basis Lie data, with its explicit presentation by $105$ quadrics. Suppose
+Input T ($\dim\ltwentysevenF_m\le28^m$) and Input R for the unclamped $D_4$ Demazure series. Then $W$ is classically free for its
+presentation and $\ker$ is the ideal generated by the $105$ quadrics.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneSeries.lean}.
+\begin{leancode}
+theorem D4_classicallyFree_final (hF : VOA.DeligneAudit.FiniteG.FusionTotalDimG D4.D4sector)
+    (hD : ∀ n, DemazureRealizationG D4.D4sector (ravFam D4.D4sector)
+      VOA.DeligneAudit.DeligneCharacter.D4Wp.hilbSeriesZ n) :
+    CaseClassicallyFree .D4 VOA.DeligneAudit.D4Lie.W4 VOA.DeligneAudit.D4Lie.explicitPresentation4 ∧
+      RingHom.ker (MvPolynomial.aeval fun i =>
+        liDegreeZeroClass VOA.DeligneAudit.D4Lie.W4 1
+          ⟨VOA.DeligneAudit.D4Lie.explicitPresentation4.gen i,
+            VOA.DeligneAudit.D4Lie.explicitPresentation4.gen_weight_one i⟩).toRingHom =
+        VOA.DeligneAudit.D4Lie.explicitPresentation4.ideal :=
+  d4_classicallyFree_of_totalBound (VOA.DeligneAudit.FiniteG.D4.d4_fusionTotalBoundG_of_dim hF) hD
+\end{leancode}
+
+\begin{dictionary}
+\textbf{The objects.} \lean{D4Lie.W4} is \lean{simpleVOA d4CertData (-2) _} (Warning~\ref{l27:warn:scope}).
+\lean{explicitPresentation4.ideal} is \lean{DeligneCarrier.D4.D4data.I}, generated by the $105$ certified quadrics
+(Theorem~\ref{l24:thm:sevenpres}). \lean{D4.D4sector} resolves to \lean{DeligneSector.D4.D4sector} through the \lean{open} line of the
+file, with \lean{D4sector.n} $=28$. \lean{D4Wp.hilbSeriesZ n} is the unclamped $D_4$ Demazure series.
+
+\textbf{The hypotheses.} \lean{hF}: Input T for $D_4$. \lean{hD}: Input R, for all $n$, with \lean{spec = ravFam D4sector}. Nothing
+else: there is no star hypothesis, because the $D_4$ star identity is proved (\lean{D4Wp.d4SchurEqE4}, Theorem~\ref{l25:thm:d4}), and
+no positivity hypothesis, because of the unclamped route (dictionary of Definition~\ref{l27:def:realization}).
+
+\textbf{Same as the intended statement?} Yes, for the certificate-basis model of $L_{-2}(\mathfrak{so}_8)$ (Warning~\ref{l27:warn:scope}).
+\end{dictionary}
+
+\textbf{Proof on paper.} Section~\ref{l27:sec:commonproof}. Steps 1--3 are \lean{FiniteG.D4.d4_fusionTotalBoundG_of_dim} and
+\lean{UnivG.d4_classicallyFree_of_totalBound} (\leanpath{VOA/DeligneAudit/D4FusionKernelTheta.lean}); steps 4--6 are the $D_4$ headline
+of Section~\ref{l27:sec:ladders} (Theorem~\ref{l27:thm:D4ladder}) with the star identity, the Ramanujan identities, the divisor
+comparison and the vacuum quartic relation plugged in as theorems. \qed
+
+\begin{physics}
+$L_{-2}(\mathfrak{so}_8)$ is the chiral algebra of $SU(2)$ gauge theory with four fundamental hypermultiplets, with $SO(8)$ flavour
+symmetry. \emph{Heuristic:} its Higgs branch is the one-$SO(8)$-instanton moduli space, the minimal nilpotent orbit closure, the reduced
+variety of the scheme defined by the $105$ quadrics. Given the two inputs, the theorem says the Schur index (via the 4d/2d
+correspondence) is the arc-space Hilbert series of that scheme; its identification with $E_4'/(240\eta^{10})$ in Chapter~\ref{ch:L25}
+is a statement about a $q$-series whose reading as the gauge-theory Schur index is modelling, not Lean.
+\end{physics}
+
+\begin{status}
+Proved, \textbf{conditional} on \lean{FusionTotalDimG D4sector} and \lean{∀ n, DemazureRealizationG …}. \texttt{\#print axioms}
+standard (campaign record; the two theorems it composes were re-checked at an earlier commit). Not unconditional. This is the
+general form, with both inputs as hypotheses. The second hypothesis is now a theorem
+(\lean{D4Char.d4_demazureRealization}, Theorem~\ref{l27:thm:d4R}), and Theorem~\ref{l27:thm:d4inputT} below is this theorem with it
+plugged in: $D_4$ classical freeness is conditional on Input T alone.
+\end{status}
+
+\begin{theorem}[$D_4$: classical freeness from Input T alone]\label{l27:thm:d4inputT}
+Let $W=L_{-2}(\mathfrak{so}_8)$, built from the certificate-basis Lie data, with its explicit presentation by $105$ quadrics. Suppose
+Input T ($\dim\ltwentysevenF_m\le28^m$). Then $W$ is classically free for its presentation and $\ker$ is the ideal generated by the
+$105$ quadrics.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneSeriesD4.lean}.
+\begin{leancode}
+theorem D4_classicallyFree_of_inputT (hF : VOA.DeligneAudit.FiniteG.FusionTotalDimG D4.D4sector) :
+    CaseClassicallyFree .D4 VOA.DeligneAudit.D4Lie.W4 VOA.DeligneAudit.D4Lie.explicitPresentation4 ∧
+      RingHom.ker (MvPolynomial.aeval fun i =>
+        liDegreeZeroClass VOA.DeligneAudit.D4Lie.W4 1
+          ⟨VOA.DeligneAudit.D4Lie.explicitPresentation4.gen i,
+            VOA.DeligneAudit.D4Lie.explicitPresentation4.gen_weight_one i⟩).toRingHom =
+        VOA.DeligneAudit.D4Lie.explicitPresentation4.ideal :=
+\end{leancode}
+
+\begin{dictionary}
+\textbf{What it is.} The full name is \lean{VOA.DeligneAudit.DeligneSeries.D4_classicallyFree_of_inputT}. Its conclusion is word for
+word that of \lean{D4_classicallyFree_final} (Theorem~\ref{l27:thm:D4}); the objects are the same. Its proof is one line: it applies
+\lean{D4_classicallyFree_final} to \lean{hF} and to \lean{D4Char.d4_demazureRealization} (Theorem~\ref{l27:thm:d4R}) in place of
+\lean{hD}.
+
+\textbf{The hypothesis.} \lean{hF}: Input T for $D_4$, the bound $\dim W(m\theta,m)\le28^m$ for every $m$ (Definition~\ref{l27:def:totaldim}).
+Nothing else: Input R is proved, the star identity is proved, and the unclamped route needs no positivity hypothesis.
+
+\textbf{Same as the intended statement?} Yes, for the certificate-basis model of $L_{-2}(\mathfrak{so}_8)$ (Warning~\ref{l27:warn:scope}).
+\end{dictionary}
+
+\begin{status}
+Proved, \textbf{conditional} on \lean{hF : FusionTotalDimG D4sector} (Input T). Machine-confirmed: the aggregate build was green
+on 3 November 2026 (20{,}331 jobs), and \texttt{\#print axioms} reports \lean{[propext, Classical.choice, Quot.sound]}. Not
+unconditional. Input T is a published theorem (Kus--Littelmann, Theorem~4.2), with the caveat of item~(i): one step of the
+published proof is insufficient as written for $D_4$ at $m=2$, by a computational witness; the theorem is not known to fail.
+In Lean, Input T for $D_4$ is proved for $m\le2$ and reduced, for all $m$, to $\mathfrak{sl}_4$ core bounds that remain open
+(Section~\ref{l27:sec:partial} and the end of Section~\ref{l27:sec:feigin}); that progress is not part of the claim.
+\end{status}
+
+\begin{physics}
+$L_{-2}(\mathfrak{so}_8)$ is the chiral algebra of four-dimensional $\mathcal N=2$ $SU(2)$ gauge theory with four
+flavours, whose Higgs branch is the minimal nilpotent orbit of $\mathfrak{so}_8$. Classical freeness says that its
+Schur operators are exactly the derivatives of the Higgs-branch chiral ring: the Schur index is the arc-space
+Hilbert series of the $105$ moment-map relations. The theorem proves this assuming only a counting bound on
+current-algebra modules (Input~T).
+\end{physics}
+
+\begin{theorem}[$G_2$ and $F_4$: the final theorems]\label{l27:thm:G2F4}
+Let $X\in\{G_2,F_4\}$, $W=L_k(\ltwentyseveng_X)$ ($k=-5/3$, resp.\ $-5/2$) built from the certified structure-constant Lie data, with
+its explicit presentation ($27$, resp.\ $324$ quadrics). Suppose Input T ($\ltwentysevendg=14$, resp.\ $52$), Input R (unclamped table for
+$G_2$, clamped for $F_4$) and Input S ($h^\vee=4$, resp.\ $9$). Then $W$ is classically free for its presentation and $\ker$ is the ideal
+generated by the listed quadrics.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneSeries.lean}.
+\begin{leancode}
+theorem G2_classicallyFree_final (hF : VOA.DeligneAudit.FiniteG.FusionTotalDimG G2.G2sector)
+    (hD : ∀ n, DemazureRealizationG G2.G2sector (ravFam G2.G2sector)
+      VOA.DeligneAudit.DeligneCarrier.g2HilbSeriesZ n)
+    (hB : VOA.DeligneAudit.DeligneCharacter.G2StarBound) :
+    CaseClassicallyFree .G2 VOA.DeligneAudit.G2Lie.g2W VOA.DeligneAudit.G2Lie.explicitPresentation ∧
+      RingHom.ker (MvPolynomial.aeval fun i =>
+        liDegreeZeroClass VOA.DeligneAudit.G2Lie.g2W 1
+          ⟨VOA.DeligneAudit.G2Lie.explicitPresentation.gen i,
+            VOA.DeligneAudit.G2Lie.explicitPresentation.gen_weight_one i⟩).toRingHom =
+        VOA.DeligneAudit.G2Lie.explicitPresentation.ideal :=
+  g2_classicallyFree_of_totalBound (VOA.DeligneAudit.FiniteG.G2.g2_fusionTotalBoundG_of_dim hF) hD hB
+\end{leancode}
+\begin{leancode}
+theorem F4_classicallyFree_final (hF : VOA.DeligneAudit.FiniteG.FusionTotalDimG F4.F4sector)
+    (hD : ∀ n, DemazureRealizationG F4.F4sector (ravFam F4.F4sector)
+      (VOA.DeligneAudit.DeligneCarrier.hilbSeries VOA.DeligneAudit.DeligneCharacter.f4DemazureHilb) n)
+    (hB : VOA.DeligneAudit.DeligneCharacter.F4StarBound) :
+    CaseClassicallyFree .F4 VOA.DeligneAudit.F4Lie.f4W VOA.DeligneAudit.F4Lie.explicitPresentation ∧
+      RingHom.ker (MvPolynomial.aeval fun i =>
+        liDegreeZeroClass VOA.DeligneAudit.F4Lie.f4W 1
+          ⟨VOA.DeligneAudit.F4Lie.explicitPresentation.gen i,
+            VOA.DeligneAudit.F4Lie.explicitPresentation.gen_weight_one i⟩).toRingHom =
+        VOA.DeligneAudit.F4Lie.explicitPresentation.ideal :=
+\end{leancode}
+
+\begin{dictionary}
+\textbf{The objects.} \lean{G2Lie.g2W} and \lean{F4Lie.f4W} are \lean{simpleVOA} of \lean{g2CertData} at $-5/3$ and of \lean{f4CertData}
+at $-5/2$ (Warning~\ref{l27:warn:scope}). \lean{explicitPresentation.ideal} is \lean{G2data.I}, resp.\ \lean{F4data.I}. \lean{G2.G2sector},
+\lean{F4.F4sector} are the sector data (namespace \lean{DeligneSector}).
+
+\textbf{The hypotheses.} \lean{hF}: Input T. \lean{hD}: Input R against \lean{g2HilbSeriesZ} (unclamped) for $G_2$ and against
+\lean{hilbSeries f4DemazureHilb} (clamped) for $F_4$. \lean{hB}: Input S, \lean{G2StarBound}, resp.\ \lean{F4StarBound}. For $G_2$,
+\lean{hD} and \lean{hB} refer to the unclamped and the clamped table respectively; inside the proof U5 is derived from \lean{hF} and
+\lean{hD}, nonnegativity of the unclamped table follows (\lean{g2HilbInt_nonneg_of_U5Z}), and then the two tables agree
+(\lean{g2FusionF_eq_Z}); see the dictionary of Definition~\ref{l27:def:realization}.
+
+\textbf{Non-simply-laced types and the literature.} $G_2$ and $F_4$ are not simply laced, but this does not affect the literature
+status of their inputs. The header of \leanpath{VOA/DeligneAudit/F4LieHeadline.lean} says the Ravinder/Chari--Venkatesh route to U5 is
+``not literature-verified'' for $F_4$. That comment misplaces the issue: Ravinder's Theorem~1, Corollaries~1 and~2 and
+Proposition~1 are stated for every simple $\ltwentyseveng$ (only his Theorem~2 and Corollary~3 assume simply laced), and
+Kus--Littelmann's Theorem~4.2 with $\lambda_0=0$ has no type restriction. The live issues are the same as for every other type:
+Feigin's gap, and the flagged step of the Kus--Littelmann repair (Input T); the unformalized Demazure character formula
+(Input R); and Input S, which is conjectural. The short roots need no separate treatment (dictionary of
+Definition~\ref{l27:def:relspec}). The Lean statements are unaffected in any case: the literature only bears on whether the
+hypotheses are believed true.
+\end{dictionary}
+
+\textbf{Proof on paper.} Section~\ref{l27:sec:commonproof}. For $G_2$ steps 1--3 are \lean{g2_fusionTotalBoundG_of_dim} and
+\lean{UnivG.g2_classicallyFree_of_totalBound} (\leanpath{VOA/DeligneAudit/G2FusionKernelTheta.lean}), whose last step is the concrete
+headline \lean{G2Lie.g2_classicallyFree_concrete} (Theorem~\ref{l27:thm:G2F4ladder}); for $F_4$ they are \lean{f4_fusionTotalBoundG_of_dim}
+and \lean{DeligneCarrier.f4_classicallyFree_of_totalBound'} (\leanpath{VOA/DeligneAudit/F4FusionCountZ.lean}). The target bound
+$c_N\le\dim L_N$ is \lean{g2_targetLowerBound} and \lean{f4_targetLowerBound} (Chapter~\ref{ch:L25}); \lean{hB} closes (C). \qed
+
+\begin{physics}
+\emph{Heuristic.} The levels $-5/3$ and $-5/2$ continue the Deligne pattern $k=-1-h^\vee/6$, but no four-dimensional $\mathcal N=2$
+SCFT with $G_2$ or $F_4$ flavour symmetry and these central charges is known; they are ``would-be'' theories. The VOAs exist regardless;
+their associated varieties are again minimal nilpotent orbit closures (Arakawa--Moreau, for the Deligne series at these levels), and
+the theorem says the vacuum character is an arc-space Hilbert series.
+\end{physics}
+
+\begin{status}
+Proved, \textbf{conditional} on three named inputs each (\lean{hF}, \lean{hD}, \lean{hB}). \texttt{\#print axioms} standard (campaign
+record; the composed theorems re-checked at an earlier commit). Not unconditional. Since \lean{hB} is conjectural
+(Conjecture~\ref{l27:conj:star}), these theorems are conditional on a conjecture.
+\end{status}
+
+\begin{theorem}[$E_6$, $E_7$, $E_8$: the final theorems]\label{l27:thm:E}
+Let $X\in\{E_6,E_7,E_8\}$, $W=L_k(\ltwentyseveng_X)$ ($k=-3,-4,-6$) with its explicit presentation ($650$, $1539$, $3875$ quadrics).
+Suppose Input T ($\ltwentysevendg=78,133,248$), Input R for the clamped table, and Input S ($h^\vee=12,18,30$). Then $W$ is classically
+free for its presentation and $\ker$ is the ideal generated by the listed quadrics.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneSeries.lean}.
+\begin{leancode}
+theorem E6_classicallyFree_final
+    (hF : VOA.DeligneAudit.FiniteG.FusionTotalDimG VOA.DeligneAudit.DeligneCarrier.E6.E6sector)
+    (hD : ∀ n, DemazureRealizationG VOA.DeligneAudit.DeligneCarrier.E6.E6sector
+      (ravFam VOA.DeligneAudit.DeligneCarrier.E6.E6sector)
+      (VOA.DeligneAudit.DeligneCarrier.hilbSeries VOA.DeligneAudit.DeligneCharacter.e6DemazureHilb) n)
+    (hB : VOA.DeligneAudit.DeligneCharacter.E6StarBound) :
+    CaseClassicallyFree .E6 VOA.DeligneAudit.DeligneCarrier.E6.W6
+        VOA.DeligneAudit.DeligneCarrier.E6.explicitPresentation ∧
+      RingHom.ker (MvPolynomial.aeval fun i =>
+        liDegreeZeroClass VOA.DeligneAudit.DeligneCarrier.E6.W6 1
+          ⟨VOA.DeligneAudit.DeligneCarrier.E6.explicitPresentation.gen i,
+            VOA.DeligneAudit.DeligneCarrier.E6.explicitPresentation.gen_weight_one i⟩).toRingHom =
+        VOA.DeligneAudit.DeligneCarrier.E6.explicitPresentation.ideal :=
+\end{leancode}
+\begin{leancode}
+theorem E7_classicallyFree_final
+    (hF : VOA.DeligneAudit.FiniteG.FusionTotalDimG VOA.DeligneAudit.DeligneCarrier.E7.E7sector)
+    (hD : ∀ n, DemazureRealizationG VOA.DeligneAudit.DeligneCarrier.E7.E7sector
+      (ravFam VOA.DeligneAudit.DeligneCarrier.E7.E7sector)
+      (VOA.DeligneAudit.DeligneCarrier.hilbSeries VOA.DeligneAudit.DeligneCharacter.e7DemazureHilb) n)
+    (hB : VOA.DeligneAudit.DeligneCharacter.E7StarBound) :
+    CaseClassicallyFree .E7 VOA.DeligneAudit.E7Lie.W7 VOA.DeligneAudit.E7Lie.explicitPresentation7 ∧
+      RingHom.ker (MvPolynomial.aeval fun i =>
+        liDegreeZeroClass VOA.DeligneAudit.E7Lie.W7 1
+          ⟨VOA.DeligneAudit.E7Lie.explicitPresentation7.gen i,
+            VOA.DeligneAudit.E7Lie.explicitPresentation7.gen_weight_one i⟩).toRingHom =
+        VOA.DeligneAudit.E7Lie.explicitPresentation7.ideal :=
+\end{leancode}
+\begin{leancode}
+theorem E8_classicallyFree_final
+    (hF : VOA.DeligneAudit.FiniteG.FusionTotalDimG VOA.DeligneAudit.DeligneCarrier.E8.E8sector)
+    (hD : ∀ n, DemazureRealizationG VOA.DeligneAudit.DeligneCarrier.E8.E8sector
+      (ravFam VOA.DeligneAudit.DeligneCarrier.E8.E8sector)
+      (VOA.DeligneAudit.DeligneCarrier.hilbSeries VOA.DeligneAudit.DeligneCharacter.e8DemazureHilb) n)
+    (hB : VOA.DeligneAudit.DeligneCharacter.E8StarBound) :
+    CaseClassicallyFree .E8 VOA.DeligneAudit.E8Lie.W8 VOA.DeligneAudit.E8Lie.explicitPresentation8 ∧
+      RingHom.ker (MvPolynomial.aeval fun i =>
+        liDegreeZeroClass VOA.DeligneAudit.E8Lie.W8 1
+          ⟨VOA.DeligneAudit.E8Lie.explicitPresentation8.gen i,
+            VOA.DeligneAudit.E8Lie.explicitPresentation8.gen_weight_one i⟩).toRingHom =
+        VOA.DeligneAudit.E8Lie.explicitPresentation8.ideal :=
+\end{leancode}
+
+\begin{dictionary}
+\textbf{The objects.} \lean{DeligneCarrier.E6.W6} is \lean{simpleVOA e6LieData (-3) _} (structure-constant model); \lean{E7Lie.W7} and
+\lean{E8Lie.W8} are \lean{simpleVOA} of \lean{e7CertData}, \lean{e8CertData} at $-4$, $-6$ (Warning~\ref{l27:warn:scope}). The sector data
+\lean{E6sector}, \lean{E7sector}, \lean{E8sector} live in \lean{DeligneCarrier}; their fusion sets are exactly Ravinder's. The ideals are
+\lean{E6data.I}, \lean{E7data.I}, \lean{E8data.I}.
+
+\textbf{The hypotheses.} Three each: Input T (\lean{hF}), Input R against the clamped tables (\lean{hD}), and Input S (\lean{hB}).
+
+\textbf{Proof terms.} Each omitted proof is
+\lean{eX_classicallyFree_of_starBound (eX_fusionModuleBound_of_totalBound' (eX_fusionTotalBoundG_of_dim hF) hD) hB}, with the first
+theorem from \leanpath{VOA/DeligneAudit/E6Final.lean} (resp.\ \texttt{E7Final}, \texttt{E8Final}) and the second from
+\leanpath{VOA/DeligneAudit/DeligneCharacterEFusionCount.lean} ($E_6$, $E_7$) or \leanpath{VOA/DeligneAudit/DeligneCharacterE8FusionCount.lean}
+($E_8$).
+\end{dictionary}
+
+\textbf{Proof on paper.} Section~\ref{l27:sec:commonproof}; step 6 is Theorem~\ref{l27:thm:Eladder}. For the $E$-types the divisor
+comparison of step 4 is the largest certificate computation of the project (Chapter~\ref{ch:L24}, Section~\ref{l24:sec:certs}). \qed
+
+\begin{physics}
+$L_{-3}(\mathfrak e_6)$, $L_{-4}(\mathfrak e_7)$ and $L_{-6}(\mathfrak e_8)$ are the chiral algebras of the Minahan--Nemeschansky rank-one
+theories. \emph{Heuristic:} their Higgs branches are the one-instanton moduli spaces of $E_6$, $E_7$, $E_8$. Given the three inputs, the
+theorems say that the Schur indices of these non-Lagrangian theories (via the 4d/2d correspondence) are arc-space Hilbert series of the
+schemes defined by the quadrics, and equal the MLDE solutions.
+\end{physics}
+
+\begin{status}
+Proved, \textbf{conditional} on three named inputs each. \texttt{\#print axioms} standard: campaign record only for the three final
+theorems and their $E_7$, $E_8$ ingredients; \lean{E6.e6_classicallyFree_of_starBound} was re-checked at an earlier commit. Not
+unconditional. Since \lean{hB} is conjectural (Conjecture~\ref{l27:conj:star}), these theorems are conditional on a conjecture.
+\end{status}
+
+%======================================================================
+\section{The input ledger, type by type}\label{l27:sec:ledger}
+%======================================================================
+
+The long form of the table at the start of the chapter. ``Hypothesis'' means: not proved in Lean, and passed as an explicit argument
+of the final theorem. Table~\ref{l27:tab:precise} states, type by type, the precise mathematical content of each input, its status in
+the literature, and what the library has proved toward it. Abbreviations: \textbf{KL} = Kus--Littelmann, Pacific J.\ Math.\ 278 (2015),
+Theorem~4.2 at $\lambda=\theta$, $\lambda_0=0$, $N=m$ (through their Theorem~3.5 and Corollary~3.6(3)); \textbf{KL-step} = the
+annihilator-transfer step on p.~437 of KL, flagged by the project as unjustified as written, and for $D_4$ at $m=2$ shown by
+computation to be insufficient as written (no counterexample to the theorem is known);
+\textbf{F08} = Feigin, \emph{SIGMA} 4 (2008) 070, Proposition~1 and Corollary~2 (proof has a gap); \textbf{R14} = Ravinder,
+\emph{SIGMA} 10 (2014) 110; \textbf{DCF} = the Demazure character formula (Kumar 1987, Mathieu 1988); \textbf{FK} = Frenkel--Kac
+(1980). $W(m\theta,m)$ is the truncated Weyl module, equal to the Lean universal module by Lemma~\ref{l27:lem:truncweyl}.
+The status ``PROVED [ref]'' refers to the literature, never to Lean.
+\begin{center}\footnotesize
+\begin{longtable}{@{}p{0.05\textwidth}p{0.035\textwidth}p{0.25\textwidth}p{0.26\textwidth}p{0.29\textwidth}@{}}
+\caption{The inputs of the six conditional final theorems: precise statement, literature status, library progress.}\label{l27:tab:precise}\\
+\toprule
+type & in. & precise statement & literature status & library progress (Lean)\\
+\midrule\endfirsthead
+\toprule
+type & in. & precise statement & literature status & library progress (Lean)\\
+\midrule\endhead
+$G_2$ & T & $\dim W(m\theta,m)\le14^m$ for all $m$ (\lean{FusionTotalDimG G2sector}; fusion set: all negative roots) &
+  PROVED with flagged step: KL (KL-step); earlier F08 (gap); R14 Cor.~2 at $a=0$ is F08, not independent &
+  finiteness clause only (\lean{g2_fusionTotalBoundG_of_dim})\\
+$G_2$ & R & for all $n$, a module with $\mathrm{rav}(n,2n)$ whose degree-$N$ piece has dimension $\ge[q^N]$ of the unclamped
+  $G_2$ table &
+  PROVED: R14 Prop.~1 (after Chari--Venkatesh Cor.~3.5; short roots included) $+$ DCF; unformalized: the Lean algorithm $=$ DCF &
+  none (no lattice model)\\
+$G_2$ & S & $\mathcal D_N\le c_N$ for all $N$, $h^\vee=4$ (\lean{G2StarBound}) &
+  CONJECTURAL: no published source known; numerics through $q^{60}$ &
+  \lean{G2KWEqMLDE} proved; S follows from the single named identity \lean{G2DemazureEqKW}, split as \lean{G2DemazureFermionic}
+  (follows from published results) and \lean{G2FermionicKW} (open)\\
+\midrule
+$D_4$ & T & $\dim W(m\theta,m)\le28^m$ for all $m$ (fusion set: all negative roots) &
+  PROVED with flagged step: KL (KL-step, insufficient as written at $m=2$ by computation, witness $\tilde a$; theorem not known to fail); F08 (gap) &
+  $m=1,2$ proved (\lean{localWeyl_one_total_dim}, \lean{localWeyl_two_total_dim}: $\le28$, $\le784$); all-$m$ layers in progress
+  (Section~\ref{l27:sec:partial}); presented-module route (\lean{D4_classicallyFree_of_presentedRankBoundE}): $m=1,2$
+  proved; level route (\lean{d4_classicallyFree_of_twoAdjointCoreBounds}): reduced to $\mathfrak{sl}_4$ core bounds with $a\ge2$
+  adjoint sites, and $a=2$ reduced on paper to $\tilde Q_\kappa\le10\cdot6^\kappa$ and $(C)_{\kappa+1}$ (end of
+  Section~\ref{l27:sec:feigin}); all $m$ open. This is the one hypothesis of \lean{D4_classicallyFree_of_inputT}\\
+$D_4$ & R & for all $n$, a module with $\mathrm{rav}(n,2n)$ and graded dimension $\ge$ the unclamped $D_4$ table &
+  PROVED: R14 Prop.~1 $+$ DCF; FK realizes $D(1,n\theta)$ in $V_{D_4}$ &
+  $n=0,1,2$ proved (\lean{D4Small.}\allowbreak\lean{demazureRealization_}\allowbreak\lean{zero}, \lean{…_one}, \lean{D4Two.}\allowbreak\lean{demazureRealization_}\allowbreak\lean{two}); relation half
+  in the lattice model for all $n$ (\lean{d4_lattice_sat}); \textbf{all $n$ proved}:
+  \lean{D4Char.d4_demazureRealization} (Theorem~\ref{l27:thm:d4R}; aggregate build green, 3 November 2026)\\
+$D_4$ & S & none: the identity is proved & --- & \lean{D4Wp.d4SchurEqE4} with the unclamped Demazure $=$ Schur identity
+  (\lean{d4DemazureEqSchur_of_positivity}, positivity from \lean{D4Wp.d4DemazurePositivity_of_U5Z})\\
+\midrule
+$F_4$ & T & $\dim W(m\theta,m)\le52^m$ (fusion set: all negative roots) &
+  PROVED with flagged step: KL (KL-step); F08 (gap) & finiteness clause only\\
+$F_4$ & R & for all $n$, $\mathrm{rav}(n,2n)$ and graded dimension $\ge$ the clamped $F_4$ table (equivalent to the unclamped form) &
+  PROVED: R14 Prop.~1 $+$ DCF ($\theta$ long; short roots included) & none (no lattice model)\\
+$F_4$ & S & $\mathcal D_N\le c_N$, $h^\vee=9$ (\lean{F4StarBound}) &
+  CONJECTURAL: no published source known; numerics through $q^{25}$ & none\\
+\midrule
+$E_6$ & T & $\dim W(m\theta,m)\le78^m$ (fusion set: exactly Ravinder's) &
+  PROVED with flagged step: KL (KL-step); F08 (gap) & finiteness clause only\\
+$E_6$ & R & for all $n$, $\mathrm{rav}(n,2n)$ and graded dimension $\ge$ the clamped $E_6$ table &
+  PROVED: R14 Prop.~1 $+$ DCF; FK & relation half in the lattice model (\lean{e6_lattice_sat}); dimension half named
+  (\lean{E6LatticeDim})\\
+$E_6$ & S & $\mathcal D_N\le c_N$, $h^\vee=12$ (\lean{E6StarBound}) &
+  CONJECTURAL: no published source known; numerics through $q^{20}$ & none\\
+\midrule
+$E_7$ & T & $\dim W(m\theta,m)\le133^m$ (Ravinder's fusion set) &
+  PROVED with flagged step: KL (KL-step); F08 (gap) & finiteness clause only\\
+$E_7$ & R & for all $n$, $\mathrm{rav}(n,2n)$ and graded dimension $\ge$ the clamped $E_7$ table &
+  PROVED: R14 Prop.~1 $+$ DCF; FK & relation half in the lattice model (\lean{e7_lattice_sat}); dimension half named\\
+$E_7$ & S & $\mathcal D_N\le c_N$, $h^\vee=18$ (\lean{E7StarBound}) &
+  CONJECTURAL: no published source known; numerics through $q^{16}$ & none\\
+\midrule
+$E_8$ & T & $\dim W(m\theta,m)\le248^m$ (Ravinder's fusion set) &
+  PROVED with flagged step: KL (KL-step); F08 (gap) & finiteness clause only\\
+$E_8$ & R & for all $n$, $\mathrm{rav}(n,2n)$ and graded dimension $\ge$ the clamped $E_8$ table &
+  PROVED: R14 Prop.~1 $+$ DCF; FK & relation half in the lattice model (\lean{e8_lattice_sat}); dimension half named\\
+$E_8$ & S & $\mathcal D_N\le c_N$, $h^\vee=30$ (\lean{E8StarBound}) &
+  CONJECTURAL: no published source known; numerics through $q^{14}$ & none\\
+\bottomrule
+\end{longtable}
+\end{center}
+For $A_2$ all three inputs are \textbf{proved in Lean}: T by \lean{CVUniv.fusionTotalDim}, R by
+\lean{EvalModel.demazureRealization_all}, S by \lean{A2.starIdentity} (Chapter~\ref{ch:L25}). The older $A_2$ interface
+\lean{A2.RavinderKernelLower} (the injectivity half of Ravinder's sequence in a model) is not proved and not needed.
+
+\paragraph{Reading the table.} The final theorems of $G_2$, $F_4$, $E_6$, $E_7$, $E_8$ depend on Input S, which is
+\emph{conjectural}: they are theorems conditional on a conjecture. For $D_4$ Input R is proved in Lean
+(\lean{D4Char.d4_demazureRealization}), so the $D_4$ theorem \lean{D4_classicallyFree_of_inputT} depends on Input T alone. Input T
+is a published theorem (with the flagged KL-step); what is missing for $D_4$ is its formalization and a complete proof of the
+KL-step, whose written argument is insufficient at $m=2$ (the statement it is meant to prove is not known to fail). In Lean,
+Input T for $D_4$ has the cases $m\le2$ and a reduction for all $m$ (end of Section~\ref{l27:sec:feigin}); it stays a hypothesis.
+Everything else in the chain is proved for all seven types: the explicit presentation (as a containment), jet surjectivity, the
+geometric carrier, B1, the divisor comparison, the squeeze, Ravinder's kernel lemma, the finiteness clause of Input T, the $q=1$
+counts and energies, and the target lower bound $c_N\le\dim L_N$. The numerical checks are evidence, not proof, and they concern the
+identities, not their Lean statements. For $G_2$ the star identity is also split into two named halves, checked separately (the
+fermionic half for $j\le40$ in all degrees $\le40-j$, and it follows from published results; the $q$-series half through $q^{60}$,
+weight-refined through $q^{50}$; Theorem~\ref{l27:thm:G2F4ladder} and Section~\ref{l27:sec:starinput}); the $q^{60}$ figure in the
+table is for the combined identity.
+
+\begin{warning}[title={Source citations do not discharge hypotheses}]
+A named input with a published proof is still a hypothesis of the Lean theorem. The six conditional final theorems are
+\texttt{\#print axioms}-clean, conditional on the inputs above; they are not unconditional, and a citation in a docstring changes
+nothing about that.
+\end{warning}
+
+\subsection{Partial results toward Inputs T and R for \texorpdfstring{$D_4$}{D4}}\label{l27:sec:partial}
+
+The library proves some cases of the $D_4$ inputs outright. None of them is used by a final theorem (the final theorems need all
+$m$ and all $n$), but each is an exact instance of the corresponding hypothesis, so they show that the hypotheses are satisfiable in
+the cases covered and that the Lean statements mean what they are said to mean. All are in the files assigned to
+Chapter~\ref{ch:L26} and are imported by the \lean{VOA.Deligne} umbrella. Every quotation was checked against the source at
+the time of the 28 October revision. Input R for $D_4$ is now proved for every $n$ (Theorem~\ref{l27:thm:d4R}); the cases
+$n\le2$ below were proved first and are kept as worked instances.
+
+\begin{theorem}[Input T for $D_4$ at $m=1$ and $m=2$]\label{l27:thm:d4Tsmall}
+Let $V$ be a current module for the $D_4$ structure constants and $w\in V$ satisfy the local Weyl and fusion relations of $D_4$ for
+$m\theta$. If $m=1$, the cyclic span of $w$ has total dimension at most $28$; if $m=2$, at most $784=28^2$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak D4FusionContactOne.lean}.
+\begin{leancode}
+theorem localWeyl_one_total_dim (h : LocalWeylRelG D4sector R w 1) (B : ℕ) :
+    ∑ d ∈ Finset.range B, Module.finrank ℂ (cycDeg R w d) ≤ 28 := by
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak D4FusionContactTwo.lean}.
+\begin{leancode}
+theorem localWeyl_two_total_dim (h : LocalWeylRelG D4sector R w 2) (B : ℕ) :
+    ∑ d ∈ Finset.range B, Module.finrank ℂ (cycDeg R w d) ≤ 784 :=
+\end{leancode}
+
+\begin{dictionary}
+Both are in the namespace \lean{VOA.DeligneAudit.D4FusionContact}. The section variables are
+\lean{\{V : Type\} [AddCommGroup V] [Module ℂ V]} and \lean{\{R : CurrentModule D4sector.f V\} \{w : V\}}, the same universe and
+data over which \lean{FusionTotalDimG} quantifies (Definition~\ref{l27:def:totaldim}); \lean{D4sector} is
+\lean{DeligneSector.D4.D4sector}, the sector of the $D_4$ final theorem. So each theorem is literally the body of
+\lean{FusionTotalDimG D4sector} at $m=1$, resp.\ $m=2$, with $28^1=28$ and $28^2=784$. The finiteness of the degree pieces, needed to
+read the bound as a bound on dimension (dictionary of Definition~\ref{l27:def:totaldim}), is proved alongside
+(\lean{localWeyl_one_finite}, \lean{localWeyl_two_finite}). By Lemma~\ref{l27:lem:truncweyl} the statements say
+$\dim W(\theta,1)\le28$ and $\dim W(2\theta,2)\le784$; the first is the classical fact $W(\theta,1)=\mathfrak{so}_8$ as a
+$\mathfrak{so}_8$-module (the relations kill all positive modes), the second is the first nontrivial case of Kus--Littelmann's
+Theorem~4.2 for $D_4$. The docstrings say explicitly that these are not the all-$m$ input.
+\end{dictionary}
+
+\textbf{Proof on paper.} For $m=1$ every positive mode kills $w$ (Lemma~\ref{l27:lem:truncweyl} with $\mathcal I_1$), so the
+cyclic span is $U(\mathfrak{so}_8)w$, an irreducible module of highest weight $\theta$, the adjoint representation, of dimension
+$28$. For $m=2$ the library constructs an explicit finite-dimensional space (\lean{M2Model}) of dimension at most $784$
+(\lean{m2Model_bound}) together with a surjective linear map from it onto the universal module with the $m=2$ relations; every module
+with the relations is a quotient of the universal one, so its degree pieces sum to at most $784$. The proof is in the two files above
+and their imports. \qed
+
+\begin{physics}
+\emph{Heuristic.} One adjoint particle of $SO(8)$ flavour carries $28$ states; two of them fused carry at most $28^2$: bringing two
+particles together creates no new states.
+\end{physics}
+
+\begin{status}
+Proved, \textbf{unconditional} (no hypothesis beyond the relations). \texttt{\#print axioms} standard per the campaign record
+(entry ``D4 total bound'': the $m=0,1,2$ cases closed, targets green); not re-run by the author of this chapter.
+For $m\ge3$ the bound $28^m$ is \textbf{open} in Lean.
+\end{status}
+
+\begin{theorem}[Input R for $D_4$ at $n=0,1,2$]\label{l27:thm:d4Rsmall}
+For $n=0,1,2$ there is a current module for the $D_4$ structure constants with a vector satisfying the relations
+$\mathrm{rav}(n,2n)$ whose degree-$N$ piece has dimension at least $[q^N]$ of the unclamped $D_4$ Demazure series, for every $N$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak D4FusionRealizationSmall.lean}.
+\begin{leancode}
+theorem demazureRealization_zero :
+    DemazureRealizationG D4sector (ravFam D4sector) D4Wp.hilbSeriesZ 0 := by
+\end{leancode}
+\begin{leancode}
+theorem demazureRealization_one :
+    DemazureRealizationG D4sector (ravFam D4sector) D4Wp.hilbSeriesZ 1 := by
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak D4FusionRealizationTwoRealization.lean}.
+\begin{leancode}
+theorem demazureRealization_two :
+    DemazureRealizationG D4sector (ravFam D4sector) D4Wp.hilbSeriesZ 2 := by
+\end{leancode}
+
+\begin{dictionary}
+The first two are \lean{VOA.DeligneAudit.D4Small.demazureRealization_zero} and \lean{…_one} (not to be confused with the $A_2$
+\lean{demazureRealization_zero} of \leanpath{VOA/DeligneAudit/DeligneFusionDemazure.lean}); the third is
+\lean{VOA.DeligneAudit.D4Two.demazureRealization_two}. The type is exactly the hypothesis \lean{hD} of the $D_4$ final theorem
+(Theorem~\ref{l27:thm:D4}) at \lean{n}$\,=0,1,2$: same sector, same family \lean{ravFam}, same unclamped series
+\lean{D4Wp.hilbSeriesZ}. None takes an argument.
+\end{dictionary}
+
+\textbf{Proof on paper.} $n=0$: the trivial one-dimensional module, with $\mathrm{Dem}_0=1$. $n=1$: the module $D(1,\theta)=
+\mathfrak{so}_8\oplus\C$ of the primer (Section~\ref{l27:sec:fusionprimer}), with character $28+q$, built as an explicit one-site
+module. $n=2$: the library builds a cyclic graded module from an explicit source representation, checks Ravinder's relations on its
+generator, and computes its graded dimension degree by degree; it matches every coefficient of the unclamped Demazure series at
+$n=2$ (total $29^2=841$). \qed
+
+\begin{physics}
+\emph{Heuristic.} Explicit systems of zero, one and two excitable adjoint particles of $SO(8)$ whose energy spectra are exactly as rich
+as the level-one WZW vacuum module predicts.
+\end{physics}
+
+\begin{status}
+Proved, \textbf{unconditional}. \texttt{\#print axioms} standard per the campaign record (entries ``D4 ORIGINAL n=2
+REALIZATION CLOSED'' and ``D4 realizations: actual cases 0,1,2 are now closed''); not re-run by the author of this chapter. For
+$n\ge3$ a total-dimension count $29^n$ alone would not suffice, since the squeeze needs the graded inequality; the statement for
+every $n$ is \lean{D4Char.d4_demazureRealization} (Theorem~\ref{l27:thm:d4R}), which is proved and confirmed by the aggregate build.
+\end{status}
+
+\paragraph{Work in progress toward all $m$ (Input T for $D_4$).} The library contains research layers toward the bound $28^m$ for every
+$m$, in the files \leanpath{VOA/DeligneAudit/D4FusionContactAllMCountResearchCubeCurrentOrders.lean} and
+\leanpath{VOA/DeligneAudit/D4FusionContactAllMCountResearchCubeQuinticLeading.lean}. What Lean states there
+(\lean{raw_order_chain_counts_mem_ann}, \lean{quinticHead_mem_ann_sup_low}) is only this: for every $m\ge1$ and every module with
+\lean{LocalWeylRelG D4sector R x m}, certain explicit coefficients of products of currents lie in the annihilator ideal of the generator
+modulo an explicit span of lower ``colour'' layers. These are steps of a reduction, not a dimension bound; no Lean statement in these
+files bounds a dimension for $m\ge3$, and we describe them no further.
+
+%======================================================================
+\section{The inputs that remain open in Lean}\label{l27:sec:cores}
+%======================================================================
+
+For $G_2$, $D_4$, $F_4$, $E_6$, $E_7$, $E_8$ the remaining hypotheses are of two different kinds, and the distinction matters. Inputs T
+and R are \emph{published theorems} (T with one proof step flagged by the project); the library has formalized R for $D_4$ but
+neither input for the other five types, nor T for $D_4$, which is the only remaining hypothesis of the $D_4$ theorem. Input S is,
+as far as we know, an \emph{open mathematical problem}: a conjecture with numerical evidence. This section says what is known about
+each, and what made the $A_2$ case tractable.
+
+\subsection{Input T beyond \texorpdfstring{$A_2$}{A2}}\label{l27:sec:a2core}
+
+\paragraph{The statement.} $\dim M_{0,m}\le\ltwentysevendg^{\,m}$ for every $m$; the lower bound is free (the evaluation fusion product is
+a quotient). By Lemma~\ref{l27:lem:truncweyl}, $M_{0,m}=W(m\theta,m)$, and the bound is Kus--Littelmann's Theorem~4.2 at $\lambda=\theta$,
+$\lambda_0=0$, $N=m$, which for $\lambda_0=0$ carries no restriction on $\ltwentyseveng$; the specialization is identical for all six types.
+The earlier sources are Feigin's Corollary~2 (\emph{SIGMA} 4 (2008) 070), whose proof has the gap of Section~\ref{l27:sec:feigin}, and
+Ravinder's Corollary~2 at $a=0$, which is Feigin's statement imported as Ravinder's Proposition~5. \emph{Status:} published, with the
+flagged step on p.~437 of Kus--Littelmann, described at the end of Section~\ref{l27:sec:feigin}; it applies equally to all six types,
+and for $D_4$ at $m=2$ the step as written is shown by computation to be insufficient (the theorem is not known to fail).
+In Lean: $D_4$ for $m\le2$ (Theorem~\ref{l27:thm:d4Tsmall}); for $D_4$ and all $m$, a reduction to $\mathfrak{sl}_4$ core bounds
+with at least two adjoint sites, reduced further on paper (end of Section~\ref{l27:sec:feigin}); otherwise open.
+
+\paragraph{What made $A_2$ tractable.} The $A_2$ proof (Chapter~\ref{ch:L26}, Section~\ref{l26:sec:cv}) uses three ingredients that are
+special to $\mathfrak{sl}_3$: an enlarged family of modules with Chari--Venkatesh relations along the three positive roots, whose
+members are expected to be fusion products of the $\mathfrak{sl}_3$ Kirillov--Reshetikhin modules $V(\omega_i)$, $V(2\omega_i)$, $V(3\omega_i)$
+of dimensions $3,6,10$; explicit spanning arguments in the associated graded of these modules; and dimension splittings ($8=5+3$,
+$5=3+2$) of the adjoint site. For the other types an analogous family would involve many more Kirillov--Reshetikhin modules, and
+neither the family nor the base bounds are formalized.
+
+\subsubsection{Why the published proof needed repair: 55 versus 63}\label{l27:sec:feigin}
+
+Feigin realizes $D(1,m\theta)\cong D(1,\theta)^{*m}$ on the tensor product $T=\bigotimes_{j=1}^mD(1,\theta)(c_j)$ with its fusion filtration
+$\Phi_\bullet$ (by degree in $t$). Let $f(t)=\prod_j(t-c_j)$. On $T$ the image of $\ltwentyseveng\otimes f(t)\C[t]$ is exactly the subspace $K$
+of tensors with at least one factor in the trivial summand $\C$, and $T/K\cong\ltwentyseveng^{\otimes m}$. Input T is equivalent to
+$\ltwentysevengr K\subseteq(t^m)\cdot\ltwentysevengr T$: the associated graded of $K$ is contained in the image of the ideal $\mathcal I_m$.
+Feigin's Proposition~1 (\emph{SIGMA} 4 (2008) 070; Proposition~2.1 in arXiv v1) asserts that the associated graded of $T$ is a \emph{bigraded} fusion product in which a second degree $u$
+counts the trivial factors.
+
+Take $\mathfrak{sl}_3$ and $m=2$. Then $T=D(1,\theta)(c_1)\otimes D(1,\theta)(c_2)$ has dimension $81$, and by the number $u$ of trivial
+factors it splits as $81=64+16+1$ ($u=0$: $\mathfrak{sl}_3\otimes\mathfrak{sl}_3$; $u=1$: $\mathfrak{sl}_3\otimes\C\oplus\C\otimes\mathfrak{sl}_3$;
+$u=2$: $\C\otimes\C$). The fusion filtration has cumulative dimensions $\dim\Phi_0,\dots,\dim\Phi_4=27,55,72,80,81$ (the coefficients
+of $\mathrm{Dem}_2=27+28q+17q^2+8q^3+q^4$ summed up; Example~\ref{l27:ex:sl3}). If $\Phi_1$ were the direct sum of its projections to the
+three $u$-pieces, as the natural reading of Feigin's argument requires, the dimensions of those projections would add up to
+$\dim\Phi_1=55$. The project's exact computation gives $63$. For $m=3$ the computation gives, for $d=1,2$, the pair $(\dim\Phi_d,\ \text{sum of the dimensions of the projections of }\Phi_d\text{ to the }u\text{-pieces})$ equal to $(161,188)$ and $(313,403)$; the two entries of a pair would agree if the filtration were homogeneous for $u$. So the fusion
+filtration is not homogeneous for $u$, and the printed argument (labelled ``the idea of the proof'') does not prove Proposition~1; a rigorous
+Proposition~1 is as strong as the statement wanted.
+
+\paragraph{The repair and its flagged step.} Kus and Littelmann (Pacific J.\ Math.\ 278 (2015); the remark on p.~438 says their
+Theorem~3.5 generalizes Feigin's case $\ell=1$, $\lambda_0=0$, $\lambda_1=\theta$ and fixes its gap) prove the bigraded statement by
+handling all consequences of the defining relations in the associated graded. The upper bound needs the hard direction of their
+Theorem~3.5: the annihilator of the generator must pass to the associated graded. On p.~437 the written proof passes from ``the
+difference $M-M'$ lies in the left ideal generated by the relations'' to ``its symbol kills the fusion vector''. That step controls only
+the initial forms of the \emph{generators} of the ideal, not of every element of it. The project's source audits (for $A_2$,
+\texttt{Notes/deligne/campaign/A2\_SOURCE\_AUDIT\_2026\_10\_27.md}, and the audit of the literature inputs for all types) flag this step as
+unjustified as written. This is a gap in the written argument, not a counterexample: no counterexample to the theorem is known. Since the
+specialization $\lambda=\theta$, $\lambda_0=0$ is the same for every type, the caveat applies uniformly to $G_2$, $D_4$, $F_4$, $E_6$,
+$E_7$, $E_8$. That initial forms can misbehave is a real phenomenon: in a filtered algebra the initial forms of all consequences of a set of
+relations can differ from those of the relations themselves (in the Heisenberg algebra $[x,y]=z$ with filtration weights $0,0,1$ the
+left ideal $(x,y)$ contains $z$, but the symbols of $x$ and $y$ do not generate $z$ in the associated graded).
+
+\paragraph{The flagged step tested for $D_4$ (October 2026).} For $\mathfrak{so}_8$, $\lambda=\theta$, $\lambda_0=0$, $\ell=1$, the
+project tested both the statement that the p.~437 step is meant to establish and the step itself, by computation (Python, not
+Lean; \texttt{Notes/deligne/campaign/D4\_KL\_SYMBOL\_LEMMA\_TEST.md}, with the reproducible script
+\texttt{Notes/deligne/campaign/generators/D4KLSymbolLemmaTest.py}). The statement, that the symbols of all elements of the
+annihilator of the generator of $D(1,m\theta)$ kill the generator of the bigraded fusion product (so that the associated graded
+of $D(1,m\theta)$ is that fusion product), holds at $m=2$ (exact arithmetic over $\mathbb Q$) and at $m=3$ (modulo two primes),
+block by block. The step does not prove it: at $m=2$ the left ideal generated by the symbols of the \emph{defining} relations has
+codimension $842=29^2+1$, one more than the $29^2$ required (computed modulo a prime). The extra class is spanned by the symbol of
+\begin{equation*}
+  \tilde a=f_{\alpha_2}\,f_{\theta-\alpha_2}\,(f_\theta\otimes t^3)+(f_{\alpha_2}\otimes t)\,f_{\theta-\alpha_2}\,(f_\theta\otimes t^2),
+\end{equation*}
+which annihilates the generator of $D(1,2\theta)$ (checked both in the fusion model and in the module presented by the defining
+relations alone) while its symbol is not in the ideal generated by the symbols of the relations; that symbol does kill the fusion
+vector, as the theorem predicts. So the written step is insufficient at $m=2$: a proof must control symbols of consequences of the
+relations, not only of the relations. Nothing here contradicts Kus--Littelmann's Theorem~4.2; what is missing is a complete proof
+of that one step. The extra relations were identified by the same computations: they are the symbols of the Garland coefficients of
+the $\mathfrak{sl}_2(\theta)$-string.
+
+\paragraph{An independent route for $D_4$.} The library pursues a route to Input~T for $D_4$ that does not use the p.~437 step.
+An explicit family $J'_m$ of symbol relations (the symbols of the defining relations together with the Garland symbols above) is
+proved to lie in both annihilators, that of the associated graded of the universal module (\lean{Jprime_le_annGr}) and that of
+the fusion vector (\lean{StarB2.Jprime_le_annF}). This reduces the $D_4$ final theorem, with Input~R unchanged, to a rank bound
+$\dim\operatorname{PTE}_m\le29^m$ for every $m\ge1$ on an explicitly presented toroidal module
+(\lean{D4_classicallyFree_of_presentedRankBoundE}). The bound is proved for $m=1$ (\lean{presentedRankBoundE_one'}) and for
+$m=2$ (\lean{presentedRankBoundE_two}, which discharges the two layer bounds of \lean{presentedRankBoundE_two_of'}); for $m\ge3$ it
+is open on this route. Targeted builds are green and the printed axioms standard, and the files are compiled by the
+aggregate build of 3 November 2026. These results do not change the hypothesis of \lean{D4_classicallyFree_of_inputT}.
+
+\paragraph{The level route for $D_4$ (state on 2 November 2026).} A second route organizes $W(m\theta,m)$ by levels for a
+$\mathfrak{gl}_4$ Levi subalgebra and bounds each level by a truncated $\mathfrak{sl}_4$ module. We record its state, separating Lean
+from paper. Each Lean declaration named here was checked by a targeted build of its audit module (no
+\lean{sorryAx}; \texttt{\#print axioms} within \lean{[propext, Classical.choice, Quot.sound]}) and is compiled by the aggregate
+build of 3 November 2026. Only the first item changes a final theorem: it removes Input R from the $D_4$ theorem
+(Theorem~\ref{l27:thm:d4inputT}). The rest is progress toward Input T, which stays a hypothesis.
+\begin{itemize}
+\item \emph{Lean, Input R.} \lean{D4Char.d4_demazureRealization} proves
+  \lean{∀ n, DemazureRealizationG D4sector (ravFam D4sector) D4Wp.hilbSeriesZ n}, the hypothesis \lean{hD} of the final theorem,
+  with no hypotheses of its own, from a graded bound on the Levi side (\lean{D4Char.d4_gradedLeviBound}) and the squeeze
+  (Theorem~\ref{l27:thm:d4R}; \texttt{\#print axioms} standard, re-checked after the aggregate build of 3 November 2026).
+\item \emph{Lean, the reduction of Input T.} \lean{D4LevelReduction.d4_classicallyFree_of_coreBounds} derives the conclusion of the
+  final theorem from \lean{TruncatedCoreRankBound a b c} for all $a,c\ge1$, a dimension bound for finite-dimensional
+  $\mathfrak{sl}_4$ current modules with three proved relation families, truncated at $a+b+c$; Input R is supplied by
+  \lean{D4Char.d4_demazureRealization}. The levels with one adjoint site are proved (\lean{truncatedCoreRankBound_singleAdjoint}),
+  so \lean{d4_classicallyFree_of_twoAdjointCoreBounds} needs only the core bounds with $a\ge2$.
+\item \emph{Lean, toward $a=2$.} The levels with $a=2$ use the bound at one adjoint site,
+  \begin{equation*}
+    (\mathrm{III})_B:\qquad \dim W(\theta+B\omega_2,B)/\langle f_2(B-1)v\rangle\le300\cdot6^{B-2}.
+  \end{equation*}
+  The flat relation it needs holds for every truncation (\lean{SL4T.adjointSiteFlatTopRelation_holds},
+  \lean{SL4T.zeroAdjointFlatRelation_all}), so \lean{SL4T.adjointSiteLawB_of_stratumCount} derives the bound at one adjoint site
+  from a stratum count of a coefficient ring alone, and \lean{SL4T.oneAdjointStratumCount_of_low_strata} reduces that count to its
+  low strata. The marked full-flag rings behind the count have their exact dimensions and stratum bounds in Lean; the step still
+  missing is the descent from those rings to the coefficient ring.
+\item \emph{On paper (refereed by a Claude session, not by a human referee, and not in Lean).} $(\mathrm{III})_B$ holds for every
+  $B$ (a gap in the first version was found by the Lean formalization and repaired). Given $(\mathrm{III})$, every level with $a=2$
+  follows from the single family
+  \begin{equation*}
+    (\mathrm{II})_\kappa:\qquad \dim W(2\theta+\kappa\omega_2,\kappa+2)/\langle f_1(1)f_3(1)v\rangle\le205\cdot6^\kappa\qquad(\kappa\ge1),
+  \end{equation*}
+  proved at $\kappa=0$ and checked by machine for $\kappa\le3$. A same-point splitting reduces $(\mathrm{II})_\kappa$ to two
+  one-node statements: $\tilde Q_\kappa:=\dim W(2\omega_3+\kappa\omega_2,\kappa+1)/\langle f_3(1)v\rangle\le10\cdot6^\kappa$, and
+  $(C)_{\kappa+1}$, where $(C)_n$ says that in the same-point product $V(\omega_2)_0\otimes W(n\omega_2,n)$ the tensor of the
+  highest-weight vectors generates a module of dimension $20\cdot6^{n-1}$. Both are open in general; $(C)_n$ is proved for
+  $n\le2$, and both hold by machine in the ranges checked ($\kappa\le3$, $n\le4$). The levels with $a\ge3$ are reduced, by a
+  peeling argument, to local repairs and three base families, which are open.
+\end{itemize}
+So Input~T for $D_4$ remains open, in Lean and on paper; what is new is the precise form of what remains.
+
+An alternative route to the $A_2$ bound, through a \emph{slice lemma} in mixed evaluation models, is recorded on paper in
+Chapter~\ref{ch:L26}, Section~\ref{l26:sec:open}; it is not proved, and it is not used.
+
+\subsection{Input R beyond \texorpdfstring{$A_2$}{A2}}\label{l27:sec:demcore}
+
+\paragraph{What is needed.} For each $j$, a module with the relations of $M_{j,0}$ whose graded dimension is at least $\mathrm{Dem}_j$
+\emph{in every degree}. It has two halves: a model satisfying the relations (the \emph{relation half}), and a graded lower bound for its
+dimension (the \emph{graded half}).
+
+\paragraph{The literature: a theorem for every type.} Both halves are published for every simple $\ltwentyseveng$, including $G_2$ and
+$F_4$: the relation half is Ravinder's Proposition~1 (after Chari--Venkatesh, Corollary~3.5) together with Lemma~\ref{l27:lem:truncweyl},
+and the graded half is the Demazure character formula of Kumar and Mathieu (dictionary of Definition~\ref{l27:def:realization}). Input R
+is therefore \emph{not} an open mathematical problem. What is open is its formalization: a Lean model of $D(1,j\theta)$ with a proved
+graded dimension, and a proof that the Lean algorithm implements the Demazure character formula.
+
+\paragraph{What is formalized.}
+\begin{itemize}
+\item \emph{The relation half.} In the lattice VOA of the root lattice the vector $e^{j\theta}$ satisfies the $M_{j,0}$ relations, for $D_4$,
+  $E_6$, $E_7$ and $E_8$ (Frenkel--Kac: the level-one vacuum module is the lattice VOA; Chapter~\ref{ch:L26},
+  Section~\ref{l26:sec:lattice}). $G_2$ and $F_4$ are not simply laced and have no lattice model in the library; a formalization would need
+  another construction of $D(1,j\theta)$ (the mathematics is not in doubt).
+\item \emph{The graded half.} For $D_4$ the cases $j\le2$ are proved (Theorem~\ref{l27:thm:d4Rsmall}), and every $j$ is covered by
+  \lean{D4Char.d4_demazureRealization}, through a graded Levi bound and the squeeze rather than the Demazure character formula
+  (Theorem~\ref{l27:thm:d4R}; confirmed by the aggregate build of 3 November 2026). Numerically the lattice model is
+  graded-sharp ($A_2$ and $D_4$ for $j\le3$). For the other types a Lean proof for all $j$ would need a formalization of the Demazure character formula in
+  this setting, or an analogue for types $D$ and $E$ of the Chari--Loktev spanning basis, which for $\mathfrak{sl}_{r+1}$ gives the matching
+  upper bound; the library has neither.
+\item \emph{Total versus graded.} A lower bound on the \emph{total} dimension of $M_{j,0}$ (expected value $(\ltwentysevendg+1)^j$) would
+  not be enough: the squeeze uses the inequality $\mathrm{Dem}_j\le\mathrm{ch}\,M_{j,0}$ coefficient by coefficient (Example~\ref{l27:ex:sl3}).
+  For $A_2$ the passage from total to graded used the Chari--Loktev upper bound, special to type $A$.
+\end{itemize}
+
+\subsection{Input S for \texorpdfstring{$G_2$}{G2}, \texorpdfstring{$F_4$}{F4}, \texorpdfstring{$E_6$}{E6}, \texorpdfstring{$E_7$}{E7}, \texorpdfstring{$E_8$}{E8}}\label{l27:sec:starcore}
+
+\paragraph{Why the bound is no cheaper than the identity.} Write $\mathcal D=\sum_jq^j\mathrm{Dem}_j/(q)_j$, a sum of series with nonnegative
+coefficients. Suppose a proof of $\mathcal D\le c$ produced series $U_j\ge\mathrm{Dem}_j$ coefficientwise with $\sum_jq^jU_j/(q)_j=c$. If
+equality $\mathcal D=c$ holds (as it does numerically), then $\sum_jq^j(U_j-\mathrm{Dem}_j)/(q)_j=0$ with every term nonnegative, so
+$U_j=\mathrm{Dem}_j$. A domination proof therefore has to compute the Demazure characters exactly (Chapter~\ref{ch:L25},
+Proposition~\ref{l25:prop:rigidity}).
+
+\paragraph{What is known.} No published proof of the identity, or of the bound, is known to us at these five types: Input S is a
+conjecture (Conjecture~\ref{l27:conj:star}), supported by numerical checks only. The structural route is Macdonald theory at $t=0$: Demazure characters are specializations of nonsymmetric
+Macdonald polynomials (Sanderson; Ion), and the identity would be a constant-term summation of Cherednik type; we know of no reference
+proving the needed summation at the exceptional types. For $G_2$ the library has reduced the problem to one identity: the target half
+\lean{G2KWEqMLDE} is proved (\lean{G2Star.g2KWEqMLDE}), so the star identity follows from \lean{G2DemazureEqKW} alone
+(\lean{G2Star.g2StarIdentity_of_demazure}; Section~\ref{l27:sec:starinput}). That identity is in turn split into two named halves
+(Theorem~\ref{l27:thm:G2F4ladder}): the statement that the $G_2$ Demazure table equals a fermionic formula, and a pure $q$-series
+identity between the fermionic sum and the Kac--Wakimoto-type product. The first, \lean{G2DemazureFermionic}, follows from published results
+(Fourier--Littelmann, Chari--Moura, Ardonne--Kedem, Di Francesco--Kedem; conventions as in Lin, IMRN 2021; see
+Section~\ref{l27:sec:starinput} for the strength of this reading); the second, \lean{G2FermionicKW}, is open.
+
+%======================================================================
+\section{The per-type headline theorems}\label{l27:sec:ladders}
+%======================================================================
+
+The final theorems are assembled from per-type headline theorems, each with the same conclusion and a longer list of hypotheses. We
+present those the final theorems use, one for each mechanism, and list the others. Every theorem here has the conclusion of
+Definition~\ref{l27:def:conclusion} for its type.
+
+\subsection{\texorpdfstring{$A_2$}{A2}: classical freeness from U5 and U6}
+
+The $A_2$ headline files, in logical order (each hypothesis that disappears from one row to the next became a theorem):
+\begin{center}\small
+\begin{longtable}{p{0.20\textwidth}p{0.30\textwidth}p{0.40\textwidth}}
+\toprule
+file & theorem & named hypotheses\\
+\midrule\endhead
+\texttt{A2Assembly} & \lean{classicallyFree_}\allowbreak\lean{of_residualInputs} & carrier $\le$ Demazure sum, \lean{StarIdentity},
+  \lean{KacWakimotoLowerBound}\\
+\texttt{A2SectorAssembly} & \lean{classicallyFree_}\allowbreak\lean{of_sectorInputs} & \lean{CasimirLayerBound}, \lean{SectorFusionBound F},
+  U6, \lean{StarIdentity}, \lean{KacWakimotoLowerBound}\\
+\texttt{A2SectorHeadline} & \lean{classicallyFree_}\allowbreak\lean{of_weylInputs} & \lean{CasimirLayerBound}, \lean{CarrierGeneration},
+  U5, U6, \lean{StarIdentity}, \lean{KacWakimotoLowerBound}\\
+\texttt{A2Headline} & \lean{classicallyFree_}\allowbreak\lean{of_openInputs} and four siblings & \lean{MFreeness},
+  \lean{DivisorComparison}, U5, U6, \lean{KacWakimotoLowerBound}\\
+\texttt{A2SectorTop} & \lean{classicallyFree_}\allowbreak\lean{of_divisorAndLiterature} & \lean{DivisorComparison}, U5, U6, KW\\
+\texttt{A2Top} & \lean{classicallyFree_}\allowbreak\lean{of_pairAndLiterature} & \lean{PairComparison}, U5, U6, KW\\
+\texttt{A2DivisorTop} & \lean{classicallyFree_}\allowbreak\lean{of_literature} & U5, U6, KW\\
+\texttt{A2Final} & \lean{classicallyFree_}\allowbreak\lean{of_fusion} & U5, U6\\
+\bottomrule
+\end{longtable}
+\end{center}
+Here KW is \lean{KacWakimotoLowerBound} ($[q^N]\prod(1+q^r)^8\le\dim W_N$), proved from the $A_2$ product identity and the vacuum quartic
+relation (Chapter~\ref{ch:L25}); \lean{StarIdentity} is \lean{A2.starIdentity}; \lean{CasimirLayerBound}, \lean{MFreeness},
+\lean{CarrierGeneration}, \lean{PairComparison} and \lean{DivisorComparison} are steps B1, B6, B8 and B7 of the carrier chain, proved in
+Chapter~\ref{ch:L24}. After \texttt{A2Final}, Chapter~\ref{ch:L26} replaces U5 and U6 by Inputs T and R.
+
+\begin{theorem}[$A_2$ from U5 and U6]\label{l27:thm:A2ladder}
+For $W=L_{-3/2}(\mathfrak{sl}_3)$ with its explicit presentation, classical freeness and $\ker=(\ltwentysevenIns)$ follow from U5 and U6 for
+any family $F$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak A2Final.lean}.
+\begin{leancode}
+theorem classicallyFree_of_fusion (F : ℕ → PowerSeries ℚ)
+    (hU5 : SectorWeyl.FusionModuleBound F)
+    (hU6 : MixedFusionRecursion F demazureHilbSeries) :
+    CaseClassicallyFree .A2 W explicitPresentation ∧
+      RingHom.ker (MvPolynomial.aeval fun i =>
+        liDegreeZeroClass W 1 ⟨explicitPresentation.gen i,
+          explicitPresentation.gen_weight_one i⟩).toRingHom = I2ns :=
+\end{leancode}
+
+\begin{dictionary}
+Namespace \lean{VOA.DeligneAudit.A2}. \lean{SectorWeyl.FusionModuleBound F} is U5 in the $\mathfrak{sl}_3$ form
+(\leanpath{VOA/DeligneAudit/A2SectorWeyl.lean}): for every module with the local Weyl and fusion relations for $m\theta$,
+$\dim(\text{degree }b)\le[q^b]F_m$ and total $\le8^m$. \lean{MixedFusionRecursion F Dem} is the structure with the single field
+\lean{eq : ∀ n, Dem n = VOA.DeligneGaussian.mixed (X : PowerSeries ℚ) F n 0} (U6; \leanpath{VOA/DeligneAudit/A2CarrierChain.lean}), where
+\lean{mixed q F a b} is defined by $M_{0,b}=F_b$ and $M_{a+1,b}=M_{a,b+1}+q^{2a+b+1}M_{a,b}$
+(\leanpath{VOA/DeligneAudit/GaussianTransform.lean}); so the condition is $M_{j,0}=\mathrm{Dem}_j$. \lean{demazureHilbSeries} is the power
+series of the Gelfand--Tsetlin table \lean{demazureHilb} (\leanpath{VOA/DeligneAudit/A2SectorAssembly.lean}). $F$ is a free variable: U5
+and U6 together pin it down to the fusion characters. The file has no \lean{variable} lines.
+\end{dictionary}
+
+\textbf{Proof on paper.} The carrier chain of Chapter~\ref{ch:L24} gives $\mathrm{carrierDim}(N)\le\mathcal D_N$ from U5 and U6 (B1
+proved, B6 from U5, the divisor comparison proved, D3 proved). The star identity gives $\mathcal D_N=[q^N]\prod(1+q^r)^8$, and KW gives
+$[q^N]\prod(1+q^r)^8\le\dim W_N$; the capstone (Theorem~\ref{l24:thm:upper}) concludes. \qed
+
+\begin{physics}
+\emph{Heuristic.} With the fusion of adjoint particles described by its graded character, the count of classical states (the carrier) is
+bounded by the particle count (the Demazure sum), which equals the vacuum character; so no classical state fails to lift.
+\end{physics}
+
+\begin{status}
+Proved; axioms standard (campaign record). Conditional on U5 and U6 for $F$; Chapter~\ref{ch:L26} discharges both for $F=$ \lean{fusionF}.
+\end{status}
+
+\begin{lemma}[Two bookkeeping identities of the $A_2$ assembly]\label{l27:lem:A2book}
+$\mathrm{(i)}$ For every $j$, $1/(q)_j=\sum_Np_{\le j}(N)q^N$ in $\Q[[q]]$, where $p_{\le j}(N)$ is the number of partitions of $N$ into parts at most
+$j$. $\mathrm{(ii)}$ The concrete Demazure sum of Chapter~\ref{ch:L25} equals the coefficient $\sum_j[q^N]\,q^j\mathrm{Dem}_j/(q)_j$ used by the
+carrier chain, for $\mathrm{Dem}=$ \lean{demazureHilbSeries}.
+\end{lemma}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak A2SectorAssembly.lean}.
+\begin{leancode}
+theorem partitionsLe_series (n : ℕ) : (qpoch n)⁻¹ = partitionSeries n :=
+\end{leancode}
+\begin{leancode}
+theorem demazureCoeff_eq_demazureCoeffOf (N : ℕ) :
+    (demazureCoeff N : ℚ) = demazureCoeffOf demazureHilbSeries N := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{qpoch n} is $(q)_n$ in $\Q[[q]]$, invertible because its constant term is $1$; \lean{partitionSeries n} is
+\lean{PowerSeries.mk fun N => (partitionsLe n N : ℚ)}. \lean{demazureCoeffOf Dem N} is the chain's coefficient
+$\sum_{j\le N}[q^N]\,q^j\mathrm{Dem}_j/(q)_j$ (Chapter~\ref{ch:L24}); \lean{demazureCoeff N} is the natural number
+$\sum_j(\mathrm{hilb}_j\ast p_{\le j})(N-j)$ of Chapter~\ref{ch:L25}. The two lemmas say that two independently written definitions of
+$\mathcal D_N$ agree.
+\end{dictionary}
+
+\textbf{Proof on paper.} (i) Split partitions into parts $\le j+1$ by whether a part $j+1$ occurs:
+$p_{\le j+1}(N)=p_{\le j}(N)+p_{\le j+1}(N-j-1)$. Hence $P_{j+1}(1-q^{j+1})=P_j$ for the series $P_j$, and induction from $P_0=1$ gives
+$P_j(q)_j=1$. (ii) Expand $q^j\mathrm{Dem}_j/(q)_j$ with (i) and compare coefficients. \qed
+
+\begin{physics}
+$1/(q)_j$ is the partition function of the relative motion of $j$ identical bosonic particles on a line. The lemma checks that two
+programs counting the same particle states agree.
+\end{physics}
+
+\begin{status}
+Proved, unconditional; axioms standard (campaign record).
+\end{status}
+
+\subsection{\texorpdfstring{$D_4$}{D4}: the headline with every input visible}
+
+\begin{theorem}[$D_4$ headlines]\label{l27:thm:D4ladder}
+For $W=L_{-2}(\mathfrak{so}_8)$ (certificate basis) with its explicit presentation:
+\begin{enumerate}
+\item[(a)] $c(W)=-14=-2(6+1)$;
+\item[(b)] classical freeness and $\ker=$ the ideal of the $105$ quadrics follow from U5 and U6 for a family $F$, the divisor comparison,
+  Demazure positivity, the Schur-index evaluation, Ramanujan's identities and a vacuum quartic relation on $W$;
+\item[(c)] they follow from U5, U6 and Demazure positivity alone;
+\item[(d)] they follow from the squeeze inputs for a family $M$ together with the universal bound.
+\end{enumerate}
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak D4Top.lean}.
+\begin{leancode}
+theorem W4_centralCharge : W4.centralCharge = -2 * (((6 : ℕ) : ℂ) + 1) := by
+\end{leancode}
+\begin{leancode}
+theorem d4_headline (F : ℕ → PowerSeries ℚ) (hU5 : FusionModuleBoundG D4sector F)
+    (hD : DivisorComparisonG D4sector) (hU6 : MixedFusionRecursion F (hilbSeries d4DemazureHilb))
+    (hpos : D4K.D4DemazurePositivity) (hS : D4MLDE.D4SchurEqE4) (hR : D4MLDE.RamanujanIdentities)
+    {κ : ℂ} (hrel : VacuumQuarticRelation W4 κ) :
+    CaseClassicallyFree .D4 W4 explicitPresentation4 ∧
+      RingHom.ker (MvPolynomial.aeval fun i =>
+        liDegreeZeroClass W4 1 ⟨explicitPresentation4.gen i,
+          explicitPresentation4.gen_weight_one i⟩).toRingHom = explicitPresentation4.ideal :=
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak D4Final.lean}.
+\begin{leancode}
+theorem classicallyFree_of_fusion (F : ℕ → PowerSeries ℚ) (hU5 : FusionModuleBoundG D4sector F)
+    (hU6 : MixedFusionRecursion F (hilbSeries d4DemazureHilb))
+    (hpos : D4K.D4DemazurePositivity) :
+    CaseClassicallyFree .D4 W4 explicitPresentation4 ∧
+      RingHom.ker (MvPolynomial.aeval fun i =>
+        liDegreeZeroClass W4 1 ⟨explicitPresentation4.gen i,
+          explicitPresentation4.gen_weight_one i⟩).toRingHom = explicitPresentation4.ideal :=
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak D4Squeeze.lean}.
+\begin{leancode}
+theorem classicallyFree_of_squeeze {M : ℕ → ℕ → PowerSeries ℚ}
+    (h : FusionSqueezeInputsG D4Wp.hilbSeriesZ 28 M)
+    (huniv : ∀ (m : ℕ) (V : Type) [AddCommGroup V] [Module ℂ V]
+      (ρ : CurrentModule VOA.DeligneAudit.DeligneSector.D4.D4sector.f V) (w : V),
+      LocalWeylRelG VOA.DeligneAudit.DeligneSector.D4.D4sector ρ w m →
+        ∀ b, (Module.finrank ℂ (cycDeg ρ w b) : ℚ) ≤ coeff b (M 0 m)) :
+    CaseClassicallyFree .D4 W4 explicitPresentation4 ∧
+      RingHom.ker (MvPolynomial.aeval fun i =>
+        liDegreeZeroClass W4 1 ⟨explicitPresentation4.gen i,
+          explicitPresentation4.gen_weight_one i⟩).toRingHom = explicitPresentation4.ideal :=
+\end{leancode}
+
+\begin{dictionary}
+All in the namespace \lean{VOA.DeligneAudit.D4Lie}. \lean{W4.centralCharge} is the Sugawara central charge
+$k\ltwentysevendg/(k+h^\vee)=-2\cdot28/4=-14$, written as $-2(h^\vee+1)$ because that is the form the MLDE argument uses. In
+\lean{d4_headline}: \lean{FusionModuleBoundG D4sector F} is U5 (Definition~\ref{l24:def:U5}); \lean{DivisorComparisonG D4sector} is the
+divisor comparison (Chapter~\ref{ch:L24}); \lean{D4K.D4DemazurePositivity} says the algorithm's integer $D_4$ Demazure coefficients are
+nonnegative; \lean{D4MLDE.D4SchurEqE4} says the series \lean{d4SchurQ} equals the coefficients of $q^{-7/12}E_4'/(240\eta^{10})$, where
+$E_4'=q\,\frac{d}{dq}E_4$ and the factor $q^{-7/12}$ removes the leading power $q^{-c/24}=q^{7/12}$ of the normalised character;
+\lean{D4MLDE.RamanujanIdentities} are Ramanujan's three differential identities for $E_2,E_4,E_6$; and \lean{VacuumQuarticRelation W4 κ} is
+the weight-four identity of Chapter~\ref{ch:L25} (Definition~\ref{l25:def:vqr}) for some constant $\kappa$ (implicit argument
+\lean{\{κ : ℂ\}}). In \lean{classicallyFree_of_squeeze}: \lean{FusionSqueezeInputsG Dem 28 M} is the generic squeeze-input structure of
+Chapter~\ref{ch:L26} (Definition~\ref{l26:def:squeezeinputs}), and \lean{huniv} says every module with the $M_{0,m}$ relations has degree
+pieces bounded by $M_{0,m}$.
+
+\textbf{Which hypotheses became theorems.} Between (b) and (c): the divisor comparison (\lean{DeligneDivisor.D4.d4_divisorComparison}),
+the Ramanujan identities (\lean{D4MLDE.ramanujanIdentities}), the vacuum quartic relation (\lean{vacuumQuarticRelation4}) and the Schur
+evaluation (\lean{D4Wp.d4SchurEqE4}). Between (c) and the final theorem: U5 and U6 from Inputs T and R, and positivity, absorbed by the
+unclamped series (Chapter~\ref{ch:L26}). Last step: Input R itself (\lean{D4Char.d4_demazureRealization}), which leaves Input T as the
+only hypothesis (Theorem~\ref{l27:thm:d4inputT}).
+\end{dictionary}
+
+\textbf{Proof on paper.} (a) Substitute $k=-2$, $\ltwentysevendg=28$, $h^\vee=6$. (b) The vacuum quartic relation with $c=-14$ gives
+$c_N\le\dim W_N$ for $h^\vee=6$; with Ramanujan's identities and the Schur evaluation the Demazure sum equals the MLDE solution
+(Theorem~\ref{l25:thm:d4}), using positivity to read the algorithm's table as nonnegative; so $\mathcal D_N\le\dim W_N$. U5, U6 and the
+divisor comparison give the carrier bound (Chapter~\ref{ch:L24}), and the capstone concludes. (c) Plug in the four proved inputs.
+(d) The squeeze gives U5 for the unclamped fusion series (Chapter~\ref{ch:L26}), and the unclamped form of (c) applies. \qed
+
+\begin{physics}
+(a) is the relation $c_{2d}=-12c_{4d}$ of Beem et al.\ with $c_{4d}=7/6$ for $SU(2)$ with four flavours. The Kac--Wakimoto character formula
+used for $A_2$ is unavailable here, because $-2$ is not an \emph{admissible} level for $D_4$ (admissible levels are those whose vacuum
+module has a Kac--Wakimoto character formula; for simply laced $\ltwentyseveng$ they are $k+h^\vee=p/u$ with coprime positive integers
+$p\ge h^\vee$, $u$, and for $D_4$ at $k=-2$ one has $k+h^\vee=4<6$); the modular differential equation replaces it.
+\end{physics}
+
+\begin{status}
+All proved; axioms standard (campaign record). (a) unconditional; (b)--(d) conditional on the listed hypotheses. The files
+\texttt{D4LieTop} (\lean{d4_classicallyFree_of_sector}) and \texttt{D4Top} (\lean{W4_demazureBound}, \lean{W4_vacuum_ne_zero}) contain the
+intermediate steps.
+\end{status}
+
+\subsection{\texorpdfstring{$G_2$}{G2} and \texorpdfstring{$F_4$}{F4}: the concrete headlines and the two halves of the \texorpdfstring{$G_2$}{G2} star identity}
+
+\begin{theorem}[$G_2$ and $F_4$ concrete headlines]\label{l27:thm:G2F4ladder}
+For $W=L_{-5/3}(\mathfrak g_2)$, classical freeness and $\ker=$ the ideal of the listed quadrics follow from U5 for the clamped fusion series
+and Input S; or from U5 and the two halves of the star identity. For $W=L_{-5/2}(\mathfrak f_4)$ they follow from U5 and Input S.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak G2LieHeadline.lean}.
+\begin{leancode}
+theorem g2_classicallyFree_concrete (hU5 : FusionModuleBoundG G2sector g2FusionF)
+    (hB : G2StarBound) :
+    CaseClassicallyFree .G2 g2W explicitPresentation ∧
+      RingHom.ker (MvPolynomial.aeval fun i =>
+        liDegreeZeroClass g2W 1 ⟨explicitPresentation.gen i,
+          explicitPresentation.gen_weight_one i⟩).toRingHom = explicitPresentation.ideal :=
+\end{leancode}
+\begin{leancode}
+theorem g2_classicallyFree_concrete_of_fermionic (hU5 : FusionModuleBoundG G2sector g2FusionF)
+    (hF1 : G2Star.G2DemazureFermionic) (hF2 : G2Star.G2FermionicKW) :
+    CaseClassicallyFree .G2 g2W explicitPresentation ∧
+      RingHom.ker (MvPolynomial.aeval fun i =>
+        liDegreeZeroClass g2W 1 ⟨explicitPresentation.gen i,
+          explicitPresentation.gen_weight_one i⟩).toRingHom = explicitPresentation.ideal :=
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak F4LieHeadline.lean}.
+\begin{leancode}
+theorem f4_classicallyFree_concrete' (hU5 : FusionModuleBoundG F4sector f4FusionF)
+    (hB : F4StarBound) :
+    CaseClassicallyFree .F4 f4W explicitPresentation ∧
+      RingHom.ker (MvPolynomial.aeval fun i =>
+        liDegreeZeroClass f4W 1 ⟨explicitPresentation.gen i,
+          explicitPresentation.gen_weight_one i⟩).toRingHom = explicitPresentation.ideal :=
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak G2StarFermionic.lean}.
+\begin{leancode}
+structure G2DemazureFermionic : Prop where
+  eq : ∀ n N, g2DemazureHilb n N = g2FermHilb n N
+
+/-- **Named (one `q`-series identity)**: the fermionic Demazure sum is the Kac–Wakimoto form. -/
+structure G2FermionicKW : Prop where
+  eq : ∀ N, ((demazureSumCoeff g2FermHilb N : ℕ) : ℤ) = coeff N g2KW
+\end{leancode}
+
+\begin{dictionary}
+\lean{g2FusionF} and \lean{f4FusionF} are \lean{fusionOf (hilbSeries g2DemazureHilb)}, resp.\ \lean{fusionOf (hilbSeries f4DemazureHilb)}:
+the fusion characters determined by the clamped Demazure tables through the mixed recursion (Chapter~\ref{ch:L26},
+Definition~\ref{l26:def:fusionOf}). U6 holds for them by construction, so U5 is the only fusion hypothesis.
+
+\lean{G2DemazureFermionic} says that the $G_2$ Demazure table equals \lean{g2FermHilb}, the fermionic formula of Hatayama, Kuniba, Okado,
+Takagi and Yamada, $\sum_\lambda\dim V(\lambda)\,X_{j,\lambda}(q)$, for $j$ copies of the Kirillov--Reshetikhin module $W^{(2)}_1=V(\theta)\oplus\C$.
+On paper it follows from published results: $D(1,j\theta)\cong(W^{(2)}_1)^{*j}$ as graded modules (Fourier--Littelmann, Theorems~8
+and~B; Chari--Moura for $W^{(2)}_1$), and the graded multiplicities of this fusion product are the fermionic sums (Ardonne--Kedem's upper
+bound with Di Francesco--Kedem's equality at $q=1$; conventions as in Lin, IMRN 2021). Section~\ref{l27:sec:starinput} records the
+strength of this reading. In Lean it is a single named statement, a hypothesis of \lean{g2_classicallyFree_concrete_of_fermionic}. \lean{G2FermionicKW} says that the Demazure sum of
+the fermionic table equals the coefficients of \lean{g2KW}, the product
+$\theta_{A_2}(q)\,(q^3;q^3)_\infty^6/(q;q)_\infty^8$, where $(x;q)_\infty=\prod_{i\ge0}(1-xq^i)$ (so $(q;q)_\infty=\prod_{i\ge1}(1-q^i)$) and
+$\theta_{A_2}$ is the theta series of the $A_2$ root lattice; this product is the Kac--Wakimoto-type closed form of the target of
+Chapter~\ref{ch:L25} (Theorem~\ref{l25:thm:g2target}). It is a pure $q$-series identity, and it is open (checked through $q^{60}$).
+\end{dictionary}
+
+\textbf{Proof on paper.} Section~\ref{l27:sec:commonproof}, steps 4--6. For the fermionic form: the two halves give
+$\mathcal D_N=[q^N]$\lean{g2KW} (\lean{g2DemazureEqKW_of_fermionic}), and \lean{g2KW} equals the MLDE solution by a modular-forms argument
+(Lorenz--Borwein, Chapter~\ref{ch:L25}, Theorem~\ref{l25:thm:g2target}), which gives the star bound. \qed
+
+\begin{physics}
+\emph{Heuristic.} The fermionic formula is the Bethe-ansatz count of states of a spin chain built from Kirillov--Reshetikhin modules; its
+equality with a product formula is the ``bosonic $=$ fermionic'' kind of identity familiar from conformal field theory characters.
+\end{physics}
+
+\begin{status}
+Proved; axioms standard (\lean{g2_classicallyFree_concrete} and \lean{f4_classicallyFree_concrete'} re-checked at an earlier commit; the
+others campaign record). Conditional: U5 and the star input. The squeeze forms (\lean{g2_classicallyFree_concrete_of_squeeze},
+\lean{…_Z}, \lean{…_Z_of_fermionic}, \lean{f4_classicallyFree_concrete_of_squeeze} and its primed form) replace U5 by the squeeze inputs
+and the universal bound.
+\end{status}
+
+\subsection{\texorpdfstring{$E$}{E}-types}
+
+\begin{theorem}[$E_6$, $E_7$, $E_8$ headlines]\label{l27:thm:Eladder}
+For $X\in\{E_6,E_7,E_8\}$ and $W=L_k(\ltwentyseveng_X)$ with its explicit presentation, classical freeness and $\ker=$ the ideal of the listed
+quadrics follow from U5 for the clamped fusion series and Input S.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak E6Final.lean}.
+\begin{leancode}
+theorem e6_classicallyFree_of_starBound
+    (hU5 : FusionModuleBoundG E6sector (fusionOf (hilbSeries e6DemazureHilb)))
+    (hB : E6StarBound) :
+    CaseClassicallyFree .E6 W6 explicitPresentation ∧
+      RingHom.ker (MvPolynomial.aeval fun i =>
+        liDegreeZeroClass W6 1 ⟨explicitPresentation.gen i,
+          explicitPresentation.gen_weight_one i⟩).toRingHom = explicitPresentation.ideal :=
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak E7Final.lean}.
+\begin{leancode}
+theorem e7_classicallyFree_of_starBound
+    (hU5 : FusionModuleBoundG E7sector (fusionOf (hilbSeries e7DemazureHilb)))
+    (hB : E7StarBound) :
+    CaseClassicallyFree .E7 W7 explicitPresentation7 ∧
+      RingHom.ker (MvPolynomial.aeval fun i =>
+        liDegreeZeroClass W7 1 ⟨explicitPresentation7.gen i,
+          explicitPresentation7.gen_weight_one i⟩).toRingHom = explicitPresentation7.ideal :=
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak E8Final.lean}.
+\begin{leancode}
+theorem e8_classicallyFree_of_starBound
+    (hU5 : FusionModuleBoundG E8sector (fusionOf (hilbSeries e8DemazureHilb)))
+    (hB : E8StarBound) :
+    CaseClassicallyFree .E8 W8 explicitPresentation8 ∧
+      RingHom.ker (MvPolynomial.aeval fun i =>
+        liDegreeZeroClass W8 1 ⟨explicitPresentation8.gen i,
+          explicitPresentation8.gen_weight_one i⟩).toRingHom = explicitPresentation8.ideal :=
+\end{leancode}
+
+\begin{dictionary}
+Namespaces \lean{DeligneCarrier.E6}, \lean{E7Lie}, \lean{E8Lie}. U5 is stated directly for \lean{fusionOf (hilbSeries …)}. The same files
+contain siblings \lean{eX_classicallyFree} with the star \emph{identity} \lean{EXStarIdentity} in place of the bound; the bound is weaker
+and suffices. Inside, the divisor comparisons \lean{eX_divisorComparison}, jet surjectivity and the geometric carrier are plugged in as
+theorems, and the target bounds \lean{e6_targetLowerBound}, \lean{e7_targetLowerBound}, \lean{targetLowerBoundQ8} are unconditional.
+\end{dictionary}
+
+\textbf{Proof on paper.} Steps 4--6 of Section~\ref{l27:sec:commonproof}, through the generic
+\lean{DeligneCarrier.classicallyFree_of_sectorFusion} (Chapter~\ref{ch:L24}). \qed
+
+\begin{physics}
+\emph{Heuristic.} The Minahan--Nemeschansky statements of Theorem~\ref{l27:thm:E}, one step earlier: the fusion of adjoint particles is
+still assumed in the form of its graded character.
+\end{physics}
+
+\begin{status}
+Proved; conditional on U5 and \lean{EXStarBound}. Axioms standard: $E_6$ re-checked at an earlier commit; $E_7$, $E_8$ campaign record
+only.
+\end{status}
+
+%======================================================================
+\section{Approaches known to fail}\label{l27:sec:deadends}
+%======================================================================
+
+For the record, the following natural approaches to bounds of the kind in Inputs T and S are known to fail. Each comes with the reason.
+They were found while working on $A_2$, and they apply equally to attempts at the other types.
+
+\begin{warning}[title={Approaches to the total bound (Input T) that fail}]
+\emph{(i) Circular.}
+\begin{enumerate}
+\item \emph{The presentation route} (``$M_{0,m}$ is the associated graded of the fusion model''). The surjection from $M_{0,m}$ onto the
+  associated graded is free; its injectivity is exactly the statement to be proved.
+\end{enumerate}
+\emph{(ii) Numerically false.}
+\begin{enumerate}\setcounter{enumi}{1}
+\item \emph{The naive truncated box.} Imposing $f(k)w=0$ for $k\ge m$ together with ``box'' bounds on monomials overcounts: $72$ instead of
+  $64$ for $\mathfrak{sl}_3$ at $m=2$, $656$ instead of $512$ at $m=3$. The truncations do not capture all relations.
+\item \emph{Short truncation identities.} Reducing the truncation in $M_{0,m}$ to a single-letter recursion reproduces the correct count
+  for $m\le3$ but fails in $28$ of $256$ cases at $m=4$: the truncation is a normal-form problem for the whole relation ideal.
+\item \emph{Leading-term independence of Chari--Loktev words} against monomials of the lattice (Fock) model: the words are not independent
+  under any tested monomial order ($77$ of $81$ at $N=2$, $547$ of $729$ at $N=3$).
+\item \emph{Separating functionals in the lattice VOA $V_{A_2}$} by charge, $L_0$-weight or $\theta$-degree: these separate the pieces of
+  Ravinder's chain for $N=2$ but not for $N=3$, and the $\theta$-degree is not preserved by $U(\ltwentyseveng[t])$.
+\end{enumerate}
+\emph{(iii) False on an algebraic technicality.}
+\begin{enumerate}\setcounter{enumi}{5}
+\item \emph{Plain tensor induction} $T_m=T_{m-1}\otimes D(1,\theta)$: the image of the fusion filtration of $T_m$ in $T_{m-1}\otimes\ltwentyseveng$ is
+  a \emph{mixed} filtration, not a shifted tensor filtration (fusion products are not associative on the nose); one must work with mixed
+  models.
+\item \emph{Ungraded counting in the evaluation model.} At nonzero points $\mathcal I_m=\ltwentyseveng\otimes t^m\C[t]$ acts as all of
+  $\ltwentyseveng[t]$, so only the graded structure carries information.
+\item \emph{Treating a splitting of the modes as an algebra map before taking the associated graded.} Commutators do not transfer: with
+  $[h_\theta,f_\theta]=-2f_\theta$ the relation $h_\theta(1)f_\theta(m-1)-f_\theta(m-1)h_\theta(1)+2f_\theta(m)=0$ has terms of filtration degree
+  $0,0,1$; in the split algebra the commutator vanishes while the last term acts nontrivially. Checking only the initial forms of the
+  defining generators does not prove that annihilators transfer.
+\item \emph{Treating the image of the site-removing shift map of the polynomial model} (Feigin, Jimbo, Kedem, Loktev and Miwa) as an ideal.
+  That image is the linear subspace of polynomials independent of one zero-mode variable; it contains $1$, so an ideal with that image
+  would be everything. One must keep the actual target ideal modulo this subspace.
+\end{enumerate}
+\end{warning}
+
+\begin{warning}[title={Approaches to the star bounds (Input S) that fail}]
+\begin{enumerate}
+\item \emph{Positivity or domination proofs.} Excluded by rigidity (Section~\ref{l27:sec:starcore}): a dominating family must equal the
+  Demazure characters.
+\item \emph{Positive expansions of the MLDE solution.} The exponents of the product expansions of the MLDE solutions alternate in sign, so
+  there is no positive product to dominate.
+\item \emph{A rational certificate for the hardest step of the $G_2$ Macdonald route}: the needed identities have binomial denominators of
+  size $17$ to $41$, and an exhaustive search for a small local cancellation found none.
+\end{enumerate}
+\end{warning}
+
+%======================================================================
+\section{Verification record}\label{l27:sec:verification}
+%======================================================================
+
+\textbf{The commit.} Every \texttt{leancode} block of this chapter occurs verbatim in the sources of the state this chapter was written against
+(\texttt{sync.py check}).
+
+\textbf{What the machine confirmed (campaign records, 27 October 2026).}
+\begin{plaincode}
+VOA.Deligne umbrella      earlier: green, 11099 jobs, no sorryAx;
+                          every #print axioms in the campaign files standard
+lake build VOA            last green on 26 Oct (13868 jobs)
+A2Unconditional           targeted build green, 9755 jobs, max RSS 6.13 GB;
+                          CVUniv.fusionTotalDim, A2.classicallyFree:
+                          [propext, Classical.choice, Quot.sound]
+DeligneSeriesA2           targeted build green, 9756 jobs, standard axioms
+CVUniv.sharpRectangularBases  targeted build green, 8863 jobs, standard axioms
+CVUniv.residualTheta3Bound    targeted build green, 8887 jobs, standard axioms
+\end{plaincode}
+\textbf{What the machine confirmed (28 October 2026).}
+\begin{plaincode}
+bash scripts/campaign_build.sh VOA    (full lake build VOA, memory-capped wrapper)
+  pre-release: green, 18901 jobs
+  after merging the then-current origin/main: green, 18907 jobs
+python3 scripts/check_repository.py         PASS: 10431 library files, all reachable,
+                                            0 project axioms
+python3 scripts/audit/run_axiom_audits.py   PASS: 5958 reports across 24 probes
+#print axioms (lake env lean -DmaxSynthPendingDepth=3):
+  VOA.DeligneAudit.A2.classicallyFree
+  VOA.DeligneAudit.DeligneSeries.A2_classicallyFree_final
+    both: [propext, Classical.choice, Quot.sound]
+\end{plaincode}
+Both declarations have no hypotheses. The aggregate target contains the umbrella \lean{VOA.Deligne}, which imports
+\leanpath{VOA/DeligneAudit/A2Unconditional.lean}. The final theorems of the six conditional types are in
+\leanpath{VOA/DeligneAudit/DeligneSeries.lean}, which is built within that aggregate build (earlier, within the umbrella build at
+an earlier commit); the statements quoted here are unchanged since. A source scan of the import closure of \lean{A2Unconditional} (release audit,
+\texttt{Notes/Textbook/referee/RELEASE\_AUDIT\_L24\_L25\_A2.md}) found no \lean{sorry}, \lean{admit}, \lean{axiom}, \lean{native_decide} or
+\lean{implemented_by} outside comments.
+
+\textbf{What the machine confirmed (3 November 2026): $D_4$ Input R.}
+\begin{plaincode}
+lake build VOA (aggregate)                  green, 20331 jobs
+python3 scripts/check_repository.py         11859 library files, all reachable
+                                            except 4 held from the release;
+                                            0 axiom declarations
+python3 scripts/audit/run_axiom_audits.py   PASS: 5958 reports across 24 probes
+#print axioms:
+  VOA.DeligneAudit.D4Char.d4_demazureRealization
+  VOA.DeligneAudit.DeligneSeries.D4_classicallyFree_of_inputT
+    both: [propext, Classical.choice, Quot.sound]
+\end{plaincode}
+The first declaration has no hypotheses (Theorem~\ref{l27:thm:d4R}); the second has the single hypothesis \lean{hF}, Input T for
+$D_4$ (Theorem~\ref{l27:thm:d4inputT}). The four files held from the release are not imported by the $D_4$ theorems.
+
+\textbf{What this chapter's author re-checked.} At two earlier commits (not re-run for this edition), on scratch files importing a
+single module each, with \texttt{lake env lean -DmaxSynthPendingDepth=3} from the repository root (about 4\,s each, peak memory 5.8--5.95\,GB):
+\begin{plaincode}
+import VOA.DeligneAudit.DeligneFusionU7
+  A2.classicallyFree_of_totalDim', A2.classicallyFree_of_kernelLower',
+  A2.fusionTotalDim_of_kernelLower, EvalModel.demazureRealization_all,
+  (verbatim copies of) A2_classicallyFree_final_S2
+import VOA.DeligneAudit.G2FusionKernelTheta
+  UnivG.g2_classicallyFree_of_totalBound, G2Lie.g2_classicallyFree_concrete,
+  UnivG.g2_ravinderKernelRel
+import VOA.DeligneAudit.DeligneFusionFiniteGG2 / GD4 / GF4
+  FiniteG.G2.g2_fusionTotalBoundG_of_dim, FiniteG.fusionTotalBoundG_of_dim,
+  FiniteG.D4.d4_fusionTotalBoundG_of_dim, FiniteG.F4.f4_fusionTotalBoundG_of_dim
+import VOA.DeligneAudit.D4FusionKernelTheta
+  UnivG.d4_classicallyFree_of_totalBound, UnivG.d4_ravinderKernelRel'
+import VOA.DeligneAudit.F4FusionCountZ
+  DeligneCarrier.f4_classicallyFree_of_totalBound', F4Lie.f4_classicallyFree_concrete'
+import VOA.DeligneAudit.E6Final
+  DeligneCarrier.E6.e6_classicallyFree_of_starBound
+\end{plaincode}
+Every one of these (names prefixed by \lean{VOA.DeligneAudit.}) printed \lean{[propext, Classical.choice, Quot.sound]}. The statements
+concerned are unchanged in the state this chapter was written against. The $D_4$, $G_2$ and $F_4$ final theorems are compositions of two re-checked theorems each,
+so their axioms are the union (standard). The author did not re-run any check at that state: this checkout has no compiled
+objects for \lean{A2Unconditional}, \lean{DeligneSeriesA2} or the Chari--Venkatesh modules, and building them is outside the scope of a
+chapter revision. The $E_7$/$E_8$ modules were not imported (they load the large certificate libraries); for the three $E$-type final
+theorems the axiom status is the campaign record. The author did not run \texttt{lake build}.
+
+\textbf{The literature-precision revision (28 October 2026).} The statements of the literature inputs were corrected following
+\texttt{Notes/Textbook/referee/DELIGNE\_INPUTS\_PRECISION.md}. The Lean names cited in that revision (Section~\ref{l27:sec:partial},
+the $G_2$ reduction of Input S, the lattice relation halves) were checked by reading the source at the time of that revision, and the six new
+quotations occur verbatim there; their files are in the import closure of \leanpath{VOA/Deligne.lean}. Their axiom status is the
+campaign record; no Lean check was re-run for this revision, and no \texttt{lake build} was run. The literature
+claims are those of the audit, which read the papers' own text (Feigin arXiv v1/v2, Ravinder arXiv v4, Kus--Littelmann published
+PDF); the Kumar, Mathieu, Frenkel--Kac and Chari--Venkatesh citations were not re-fetched.
+
+%======================================================================
+\section{Remarks on the Lean sources}\label{l27:sec:defects}
+%======================================================================
+
+The statements of the final theorems say what the mathematics says, about genuine simple affine VOAs, with every hypothesis explicit.
+Some docstrings in the sources describe an earlier state and contradict the theorems; a reader of the source should rely on the
+statements.
+\begin{warning}[title={Docstrings that are out of date}]
+\begin{enumerate}
+\item \leanpath{VOA/DeligneAudit/DeligneFusionCVTotal.lean}: \lean{SharpRectangularBases} and \lean{ResidualTheta3Bound} are labelled
+  ``UNPROVED \dots\ explicit mathematical input'', and the module docstring says the file ``does not assert unconditional $A_2$ classical
+  freeness''. Both base families are now proved (\lean{CVUniv.sharpRectangularBases}, \lean{CVUniv.residualTheta3Bound}); the file itself
+  is correct as an implication.
+\item \leanpath{VOA/DeligneAudit/DeligneFusionU7.lean}, module docstring: ``$A_2$ classical freeness rests on the single named residual
+  \lean{RavinderKernelLower}''. It no longer does.
+\item \leanpath{VOA/DeligneAudit/A2Instance.lean}: ``The three remaining packages \dots\ as explicit hypotheses''; all are now discharged
+  for $A_2$.
+\item \leanpath{VOA/DeligneAudit/A2Assembly.lean}, \leanpath{VOA/DeligneAudit/A2Headline.lean} and \leanpath{VOA/DeligneAudit/A2Top.lean} list
+  as ``remaining'' inputs (\lean{StarIdentity}, \lean{KacWakimotoLowerBound}, \lean{PairComparison}) that are proved in the library.
+\end{enumerate}
+\end{warning}
+Two remarks on formulation. There is no Lean theorem from \lean{IdealLower} directly to the $A_2$ conclusion (the composite is a one-line
+term, and the unconditional theorem makes it unnecessary). The short names \lean{explicitPresentation}, \lean{classicallyFree_of_fusion}
+and \lean{mldeCoeff} denote different declarations in different namespaces; use full names.
+
+%======================================================================
+\section{Referee's checklist}\label{l27:sec:checklist}
+%======================================================================
+
+\begingroup\small
+\begin{longtable}{p{0.30\textwidth}p{0.30\textwidth}p{0.22\textwidth}p{0.10\textwidth}}
+\toprule
+Lean declaration & Intended meaning & Hypotheses / status & Fidelity check\\
+\midrule\endhead
+\lean{A2.}\allowbreak\lean{classicallyFree}, \lean{A2_classicallyFree_}\allowbreak\lean{final} & $L_{-3/2}(\mathfrak{sl}_3)$ classically free,
+  $R_V=\operatorname{Sym}\mathfrak{sl}_3/(\ltwentysevenIns)$ & \textbf{none}; aggregate build green 2026-10-28;
+  axioms standard & Thm.~\ref{l27:thm:A2}\\
+\lean{A2_classicallyFree_}\allowbreak\lean{final_S2} & same & \lean{Ravinder}\allowbreak\lean{KernelLower} & Thm.~\ref{l27:thm:A2}\\
+\lean{CaseClassicallyFree} & classical freeness of a presentation & definition & Def.~\ref{l27:def:conclusion}\\
+\lean{RelSpec}, \lean{Sat}, \lean{ravSpec}, \lean{ravFam}, \lean{MabRel} & relations of $M_{a,b}$ & definitions & Def.~\ref{l27:def:relspec}\\
+\lean{FusionTotalDimG}, \lean{SectorWeyl.}\allowbreak\lean{FusionTotalDim} & Input T & $A_2$: proved; others: \textbf{hypothesis} & Def.~\ref{l27:def:totaldim}\\
+\lean{DemazureRealizationG}, \lean{hilbSeries}, \lean{g2HilbSeriesZ} & Input R & $A_2$, $D_4$: proved; others: \textbf{hypothesis} & Def.~\ref{l27:def:realization}\\
+\lean{StarBoundQ}, \lean{G2StarBound} \dots\ \lean{E8StarBound} & Input S & \textbf{hypothesis} ($A_2$, $D_4$: proved) & Def.~\ref{l27:def:star}\\
+\lean{RavinderKernelLower} & $A_2$ kernel lower bound in a model & not proved; not needed & Def.~\ref{l27:def:a2alt}\\
+\lean{fusionTotalDim_}\allowbreak\lean{of_kernelLower} & reduction of the $A_2$ Input T & implication; proved & Thm.~\ref{l27:thm:a2alt}\\
+\lean{D4_classicallyFree_final} & $D_4$ target, general form & T, R & Thm.~\ref{l27:thm:D4}\\
+\lean{D4_classicallyFree_}\allowbreak\lean{of_inputT} & $D_4$ target & T only; aggregate build green 2026-11-03; axioms standard & Thm.~\ref{l27:thm:d4inputT}\\
+\lean{D4Char.}\allowbreak\lean{d4_demazureRealization} & Input R for $D_4$, all $n$ & unconditional; aggregate build green 2026-11-03; axioms standard & Thm.~\ref{l27:thm:d4R}\\
+\lean{G2_classicallyFree_final}, \lean{F4_classicallyFree_final} & $G_2$, $F_4$ targets & T, R, S & Thm.~\ref{l27:thm:G2F4}\\
+\lean{E6_}/\lean{E7_}/\lean{E8_}\allowbreak\lean{classicallyFree_}\allowbreak\lean{final} & $E$-type targets & T, R, S & Thm.~\ref{l27:thm:E}\\
+\lean{A2.}\allowbreak\lean{classicallyFree_of_fusion} and the $A_2$ headline table & $A_2$ from U5, U6 & listed & Thm.~\ref{l27:thm:A2ladder}\\
+\lean{partitionsLe_series}, \lean{demazureCoeff_}\allowbreak\lean{eq_}\allowbreak\lean{demazureCoeffOf} & bookkeeping & unconditional & Lem.~\ref{l27:lem:A2book}\\
+\lean{W4_centralCharge}, \lean{d4_headline}, \lean{D4Lie.}\allowbreak\lean{classicallyFree_of_fusion}, \lean{classicallyFree_}\allowbreak\lean{of_squeeze} & $D_4$ headlines & listed & Thm.~\ref{l27:thm:D4ladder}\\
+\lean{g2_classicallyFree_}\allowbreak\lean{concrete}, \lean{…_of_fermionic}, \lean{f4_classicallyFree_}\allowbreak\lean{concrete'}, \lean{G2DemazureFermionic}, \lean{G2FermionicKW} & $G_2$, $F_4$ headlines & U5, star input & Thm.~\ref{l27:thm:G2F4ladder}\\
+\lean{eX_classicallyFree_}\allowbreak\lean{of_starBound} ($X=6,7,8$) & $E$-type headlines & U5, star & Thm.~\ref{l27:thm:Eladder}\\
+\lean{D4FusionContact.}\allowbreak\lean{localWeyl_one_total_dim}, \lean{localWeyl_two_total_dim} & Input T for $D_4$ at $m=1,2$ & unconditional & Thm.~\ref{l27:thm:d4Tsmall}\\
+\lean{D4Small.}\allowbreak\lean{demazureRealization_zero}, \lean{…_one}, \lean{D4Two.}\allowbreak\lean{demazureRealization_two} & Input R for $D_4$ at $n=0,1,2$ & unconditional & Thm.~\ref{l27:thm:d4Rsmall}\\
+(paper only) & $M_{0,m}=W(m\theta,m)$ & on paper; no Lean statement & Lem.~\ref{l27:lem:truncweyl}\\
+(paper only) & exceptional star identities & \textbf{conjecture} & Conj.~\ref{l27:conj:star}\\
+\bottomrule
+\end{longtable}
+\endgroup
+
+%======================================================================
+\section{Notes and references}\label{l27:sec:notes}
+%======================================================================
+
+\textbf{Classical freeness, Li's filtration, the $C_2$-algebra.} Y.~Zhu, ``Modular invariance of characters of vertex operator
+algebras'', \emph{J.\ Amer.\ Math.\ Soc.} 9 (1996), 237--302 (the $C_2$-algebra); H.~Li, ``Abelianizing vertex algebras'',
+\emph{Comm.\ Math.\ Phys.} 259 (2005), 391--411 (Li's filtration and the surjection from the arc algebra); J.~van~Ekeren and R.~Heluani,
+``Chiral homology of elliptic curves and the Zhu algebra'', \emph{Comm.\ Math.\ Phys.} 386 (2021), 495--550, arXiv:1804.00017 (classical
+freeness); T.~Arakawa and A.~Moreau, ``Joseph ideals and lisse minimal $W$-algebras'', \emph{J.\ Inst.\ Math.\ Jussieu} 17 (2018), 397--417,
+arXiv:1506.00710 (the associated variety of $L_k(\ltwentyseveng)$ for the Deligne series at $k=-1-h^\vee/6$ is the minimal nilpotent orbit
+closure); P.~Deligne, ``La s\'erie exceptionnelle de groupes de Lie'', \emph{C.\ R.\ Acad.\ Sci.\ Paris} 322 (1996), 321--326.
+
+\textbf{Fusion products, Weyl and Demazure modules.} B.~Feigin and S.~Loktev, ``On generalized Kostka polynomials and the quantum Verlinde
+rule'', Amer.\ Math.\ Soc.\ Transl.\ Ser.~2, vol.~194 (1999), 61--79, arXiv:math/9812093; V.~Chari and A.~Pressley, ``Weyl modules for classical
+and quantum affine algebras'', \emph{Represent.\ Theory} 5 (2001), 191--223; V.~Chari and S.~Loktev, ``Weyl, Demazure and fusion modules for the
+current algebra of $\mathfrak{sl}_{r+1}$'', \emph{Adv.\ Math.} 207 (2006), 928--960 (the spanning theorem used for the $A_2$ realizations);
+G.~Fourier and P.~Littelmann, ``Weyl modules, Demazure modules, KR-modules, crystals, fusion products and limit constructions'',
+\emph{Adv.\ Math.} 211 (2007), 566--593, arXiv:math/0509276 ($D(1,j\theta)\cong D(1,\theta)^{*j}$; Theorem~8 is stated for every
+simple $\ltwentyseveng$, and Theorem~B identifies $D(1,\omega_i^\vee)$ with a Kirillov--Reshetikhin module);
+V.~Chari and A.~Moura, ``Kirillov--Reshetikhin modules associated to $G_2$'', \emph{Contemp.\ Math.} 442 (2007), arXiv:math/0604281;
+E.~Ardonne and R.~Kedem, ``Fusion products of Kirillov--Reshetikhin modules and fermionic multiplicity formulas'', \emph{J.\ Algebra}
+308 (2007), arXiv:math/0602177 (Theorem~5.2); P.~Di~Francesco and R.~Kedem, ``Proof of the combinatorial Kirillov--Reshetikhin
+conjecture'', \emph{Int.\ Math.\ Res.\ Not.} 2008, arXiv:0710.4415 (Corollary~5.19); M.~S.~Lin, ``Quantum $Q$-systems and fermionic
+sums---the non-simply laced case'', \emph{Int.\ Math.\ Res.\ Not.} 2021, 805--854, arXiv:1903.11492 (conventions); D.~Hernandez,
+\emph{J.\ reine angew.\ Math.} 596 (2006) (the $Q$-system, cited as stated by Di Francesco--Kedem). The theorem statements of the first five of these were read in their arXiv
+versions for \texttt{Notes/deligne/G2\_STAR\_FERMIONIC.md}; Hernandez and the HKOTY paper were not opened; V.~Chari, P.~Shereen,
+R.~Venkatesh and J.~Wand, arXiv:1408.4090 (cited by Kus--Littelmann, with Fourier--Littelmann, for the decomposition at
+$\lambda_0=0$ in all types; this attribution was not verified by the project); V.~Chari and R.~Venkatesh, ``Demazure modules, fusion products and
+$Q$-systems'', \emph{Comm.\ Math.\ Phys.} 333 (2015), 799--830, arXiv:1305.2523 (Corollary~3.5, on which Ravinder's Proposition~1
+rests; not re-checked by the project); B.~Ravinder, ``Demazure modules, Chari--Venkatesh modules and
+fusion products'', \emph{SIGMA} 10 (2014), 110, arXiv:1409.0274 (Proposition~1: the presentation of $D(1,j\theta)$; Theorem~1 and
+Corollaries~1--2: the exact sequences and $M_{0,m}\cong\ltwentyseveng^{*m}$, all stated for every simple $\ltwentyseveng$; only
+Theorem~2 and Corollary~3 assume $\ltwentyseveng$ simply laced; Proposition~5 quotes Feigin's Corollary~2, so Corollary~2 at $a=0$ is
+not independent of Feigin; numbering of arXiv v4); H.~Garland, ``The arithmetic theory of loop algebras'',
+\emph{J.\ Algebra} 53 (1978), 480--551 (Garland's lemma).
+
+\textbf{The total bound.} E.~Feigin, ``The PBW filtration, Demazure modules and toroidal current algebras'', \emph{SIGMA} 4 (2008), 070,
+arXiv:0806.4851 (Proposition~1 and Corollary~2 in the \emph{SIGMA} and arXiv v2 numbering; Proposition~2.1 and Corollary~2.2 in
+arXiv v1; the proof of Proposition~1 has a gap); D.~Kus and P.~Littelmann, ``Fusion products and toroidal algebras'', \emph{Pacific J.\
+Math.} 278 (2015), 427--445, arXiv:1411.5272 (Definition~4.1: the truncated Weyl module; Theorem~3.5, Corollary~3.6(3) and
+Theorem~4.2: the total bound for every simple $\ltwentyseveng$ when $\lambda_0=0$; p.~437: the step flagged by the project; p.~438:
+the remark on Feigin's gap. The hypothesis of Theorem~4.2 was read from a PDF extraction that loses some glyphs); S.~Setia, S.~Rani and T.~Khandai, ``Filtration of tensor
+product of local Weyl modules for $\mathfrak{sl}(n+1)[t]$'', arXiv:2405.11944 (2024), \S8 (the route formalized for $A_2$); B.~Feigin, M.~Jimbo,
+R.~Kedem, S.~Loktev and T.~Miwa, arXiv:math/0208156, \S2 (the polynomial realization of fusion products).
+
+\textbf{Demazure characters and Macdonald theory.} S.~Kumar, ``Demazure character formula in arbitrary Kac--Moody setting'', \emph{Invent.\
+Math.} 89 (1987), 395--423; O.~Mathieu, ``Formules de caract\`eres pour les alg\`ebres de Kac--Moody g\'en\'erales'', \emph{Ast\'erisque}
+159--160 (1988); Y.~Sanderson, ``On the connection between Macdonald polynomials and Demazure characters'', \emph{J.\ Algebraic Combin.} 11
+(2000), 269--275; B.~Ion, ``Nonsymmetric Macdonald polynomials and Demazure characters'', \emph{Duke Math.\ J.} 116 (2003), 299--318;
+I.~Cherednik, ``Nonsymmetric Macdonald polynomials'', \emph{Int.\ Math.\ Res.\ Not.} 1995, 483--515; G.~Hatayama, A.~Kuniba, M.~Okado,
+T.~Takagi and Y.~Yamada, ``Remarks on fermionic formula'', \emph{Contemp.\ Math.} 248 (1999), 243--291 (the fermionic formula and the
+$X=M$ conjecture).
+
+\textbf{Lattice VOAs and the character side.} I.~Frenkel and V.~Kac, ``Basic representations of affine Lie algebras and dual resonance
+models'', \emph{Invent.\ Math.} 62 (1980), 23--66; T.~Arakawa and K.~Kawasetsu, ``Quasi-lisse vertex algebras and modular linear
+differential equations'', in \emph{Lie Groups, Geometry, and Representation Theory}, Progr.\ Math.\ 326 (2018), arXiv:1610.05865.
+
+\textbf{Physics.} C.~Beem, M.~Lemos, P.~Liendo, W.~Peelaers, L.~Rastelli and B.~C.~van~Rees, ``Infinite chiral symmetry in four
+dimensions'', \emph{Comm.\ Math.\ Phys.} 336 (2015), 1359--1433, arXiv:1312.5344 (including $c_{2d}=-12c_{4d}$); C.~Beem and L.~Rastelli,
+``Vertex operator algebras, Higgs branches, and modular differential equations'', \emph{JHEP} 2018(8), 114, arXiv:1707.07679;
+J.~A.~Minahan and D.~Nemeschansky, ``An $N=2$ superconformal fixed point with $E_6$ global symmetry'', \emph{Nucl.\ Phys.\ B} 482 (1996),
+142--152; A.~D.~Shapere and Y.~Tachikawa, ``Central charges of $\mathcal N=2$ superconformal field theories in four dimensions'',
+\emph{JHEP} 2008(09), 109, arXiv:0804.1957.
+
+\endgroup

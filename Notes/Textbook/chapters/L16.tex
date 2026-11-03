@@ -1,0 +1,2523 @@
+\chapter{Quasi-lisse vertex algebras and the Arakawa--Kawasetsu theorem}\label{ch:L16}
+\begingroup\setlength{\emergencystretch}{3em}\sloppy
+
+\providecommand{\lsixteenvac}{\mathbf{1}}
+\providecommand{\lsixteenHP}{\mathrm{HP}_0}
+\providecommand{\lsixteensl}{\mathfrak{sl}_2}
+\providecommand{\lsixteenCas}{\mathrm{Cas}}
+\providecommand{\lsixteenNil}{\mathcal{N}}
+\providecommand{\lsixteenR}{R}
+\providecommand{\lsixteenVA}{V_{\mathcal A}}
+\providecommand{\lsixteenOq}{O_q(V)}
+
+This chapter documents the release of the LeanVOA library named in the front matter; it was first written against an earlier state of the library (``the snapshot'' below), and checks that were
+run at an earlier state of the library and not re-run for this edition are marked as such. Every Lean quotation below is taken from the source files of the release
+and is machine-checked by \texttt{scripts/textbook/sync.py} to occur verbatim (up to whitespace and
+comments) in the source. The chapter covers the thirteen files assigned to it in
+\texttt{Notes/Textbook/assignment.txt}, about seven thousand three hundred lines of Lean:
+\begin{itemize}
+\item \leanpath{VOA/\allowbreak Modules/\allowbreak PoissonTrace.lean},
+  \leanpath{VOA/\allowbreak Modules/\allowbreak PoissonQuotient.lean},
+  \leanpath{VOA/\allowbreak Modules/\allowbreak QuasiLisseFinite.lean} --- the Poisson-trace side of the
+  theory and the finiteness half of Arakawa--Kawasetsu;
+\item \leanpath{VOA/\allowbreak Modularity/\allowbreak AKGrading.lean},
+  \leanpath{AKModularODE.lean}, \leanpath{AKUniformODE.lean}, \leanpath{AKMLDE.lean},
+  \leanpath{AKZhuModularity.lean}, \leanpath{AKSl2Payoff.lean}, \leanpath{AKSl2Instance.lean},
+  \leanpath{AKGradingInstance.lean}, \leanpath{AKGradingTotal.lean}, \leanpath{AKMLDEUnconditional.lean}
+  (all in \leanpath{VOA/\allowbreak Modularity/}) --- the differential-equation and modularity half;
+\item \leanpath{VOA/\allowbreak Examples/\allowbreak AffineSl2QuasiLisse.lean},
+  \leanpath{AffineSl2Presentation.lean}, \leanpath{AffineSl2NonLisse.lean} (in
+  \leanpath{VOA/\allowbreak Examples/}) --- the example $L_{-4/3}(\lsixteensl)$.
+\end{itemize}
+
+We rely on earlier chapters for the following, and do not repeat them: Lean idioms
+(\lean{Submodule}, quotients \lean{⧸}, \lean{FiniteDimensional}, \lean{∃}/\lean{∀}, coercions) in
+Chapter~\ref{ch:01}; the $C_2$-algebra $R_V = V/C_2(V)$ (the library's \lean{A₂ W}), its Poisson
+structure, $C_2$-cofiniteness and finite strong generation in Chapter~\ref{ch:L12}
+(Section~\ref{l12:sec:c2}); filtrations, symbols and associated graded objects in
+Chapter~\ref{ch:L11}; modules, characters and conformal weights in Chapter~\ref{ch:L12}; the
+universal affine vertex algebra $V^k(\lsixteensl)$, its singular vectors and symbols in
+Chapter~\ref{ch:L08}; the simple quotient $L_{-4/3}(\lsixteensl)$ and Li's invariant-form radical in
+Chapter~\ref{ch:L09}; the modular-forms toolkit (formal $q$-series, Eisenstein series, the Serre
+derivative, the ring $\C[E_4,E_6]$) in Chapter~\ref{ch:L14}; and Zhu's modularity theorem, square
+bracket modes, genus-one conformal blocks and the growth data in Chapter~\ref{ch:L15}.
+
+\paragraph{What this chapter is about, in one paragraph.} Zhu's theorem says that if a vertex
+operator algebra $V$ is $C_2$-cofinite (``lisse''), the characters of its modules are modular.
+Arakawa and Kawasetsu observed that Zhu's argument uses $C_2$-cofiniteness only to make a certain
+module over the ring of modular forms finitely generated, and that a much weaker hypothesis does
+the same job: \emph{finiteness of the zeroth Poisson homology} $\lsixteenHP(R_V) = R_V/\{R_V,R_V\}$.
+By a theorem of Etingof and Schedler this holds whenever the \emph{associated variety}
+$X_V = \operatorname{Specm}R_V$ has finitely many symplectic leaves (``$V$ is quasi-lisse''). Their
+conclusion is that the character of every ordinary module of a quasi-lisse $V$ satisfies a
+\emph{modular linear differential equation} (MLDE). The motivating examples are admissible affine
+vertex algebras such as $L_{-4/3}(\lsixteensl)$, and the chiral algebras of four-dimensional
+$\mathcal N=2$ superconformal field theories, whose vacuum characters are Schur indices.
+\textbf{The library does not prove this theorem for any vertex algebra} (finding~3 below): this chapter explains it, and
+then records exactly which parts of it are formalised, and under which hypotheses.
+
+\paragraph{The findings of this chapter, in brief.} Read these before anything else; each is
+explained where it occurs.
+\begin{enumerate}
+\item \textbf{Quasi-lisseness is not formalised.} No associated variety, no symplectic leaf and no
+  part of Etingof--Schedler exists in the library. Every theorem is stated under the hypothesis
+  \lean{EtingofFinite W}, which \emph{is} the finiteness of $\lsixteenHP(R_V)$, i.e.\ the
+  \emph{conclusion} of Etingof--Schedler. So ``quasi-lisse'' in the file names means ``Etingof-finite''
+  in the statements. This is honest (every docstring says it) and mathematically it makes the
+  theorems \emph{stronger} (they assume less), but no theorem mentions symplectic leaves.
+  \textbf{What is formalised instead} is the following, and nothing more: for
+  $L_{-4/3}(\lsixteensl)$, (a) it is not $C_2$-cofinite and its zeroth Poisson homology $\lsixteenHP(R_V)$ is
+  finite-dimensional (``Etingof-finite''); (b) its character $q$-series converges on the upper half plane; (c) its
+  space of genus-one conformal blocks is finite-dimensional. And for every VOA, $C_2$-cofinite $\Rightarrow$
+  Etingof-finite. Wherever this chapter says ``quasi-lisse'' about a Lean statement it means ``Etingof-finite''; that a
+  quasi-lisse VOA is Etingof-finite is the Etingof--Schedler theorem, \emph{known on paper, not formalised}.
+\item \textbf{The hypothesis is discharged for a genuinely non-lisse example.} For
+  $L_{-4/3}(\lsixteensl)$, the simple affine vertex algebra at the admissible level $-4/3$, the
+  library proves both \lean{EtingofFinite} (\lean{VOA.Sl2Pres.}\allowbreak\lean{etingofFinite_}\allowbreak\lean{simpleSl2QL'}) and
+  $\neg$\lean{C2Cofinite} (\lean{VOA.Sl2NonLisse.}\allowbreak\lean{not_C2Cofinite_}\allowbreak\lean{simpleSl2QL}), unconditionally
+  (\texttt{\#print axioms}: Lean's three standard axioms only). So the strictness of ``$C_2$-cofinite $\Rightarrow$ Etingof-finite'' is a
+  theorem. \textbf{Namespace warning:} the unconditional non-lisseness theorem is
+  \lean{VOA.Sl2NonLisse.}\allowbreak\lean{not_C2Cofinite_}\allowbreak\lean{simpleSl2QL} (file \leanpath{AffineSl2NonLisse.lean}). A
+  second declaration with the same short name, \lean{VOA.QuasiLisseSl2.}\allowbreak\lean{not_C2Cofinite_}\allowbreak\lean{simpleSl2QL}
+  (file \leanpath{AKSl2Payoff.lean}), \emph{formerly} took a presentation \lean{S} and an exactness hypothesis
+  \lean{hex}. After this chapter's finding, a later revision of the library restated it without
+  hypotheses, as the one-line proof \lean{:= Sl2NonLisse.not_C2Cofinite_simpleSl2QL}; the two twins now have
+  \emph{identical} types, and so do the twins \lean{QuasiLisseSl2.}\allowbreak\lean{etingofFinite_}\allowbreak\lean{simpleSl2QL} and
+  \lean{Sl2Pres.}\allowbreak\lean{etingofFinite_}\allowbreak\lean{simpleSl2QL'}. The conditional forms survive only as
+  \lean{Sl2Pres.}\allowbreak\lean{not_C2Cofinite_}\allowbreak\lean{simpleSl2QL_}\allowbreak\lean{of_exact} and
+  \lean{Sl2Pres.}\allowbreak\lean{quasiLisseWitness_}\allowbreak\lean{simpleSl2QL_}\allowbreak\lean{of_exact}, whose hypothesis
+  \lean{hex : Sl2ExactSymbol} is unproved and redundant. Throughout this chapter we always write the namespace.
+\item \textbf{What ``modularity'' means in the proved theorems. Arakawa--Kawasetsu Theorem~5.1 (an analytic MLDE
+  for all characters of a quasi-lisse VOA) is proved in the form: for every Etingof-finite VOA, one monic MLDE of
+  unbounded order for all abstract analytic genus-one blocks (Theorem~\ref{l16:thm:mlde-uncond}); quasi-lisseness is not
+  formalised.} Its one concrete instance is $L_{-4/3}(\lsixteensl)$ at the vacuum, of unspecified order. The only MLDEs of
+  \emph{specified order} the library proves for specific VOAs are the formal, coefficientwise second-order equations for the \emph{vacuum} characters of the seven Deligne-series
+  VOAs, obtained by Zhu's recursion in Chapter~\ref{ch:L25}. At $L_{-4/3}(\lsixteensl)$ the
+  library proves, unconditionally: (a) the character satisfies a monic linear ODE in $q\,d/dq$ whose
+  coefficients are power series with subexponentially growing coefficients
+  (\lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{simpleSl2QL_}\allowbreak\lean{uncond}); (b) the character $q$-series converges on the
+  upper half plane; (c) the space of genus-one conformal blocks is finite-dimensional (Zhu's
+  Theorem~5.3.2). \textbf{Statement (a) is not an MLDE and is not AK Theorem~5.1, although the source calls
+  it ``AK equation (2), formal form'': by Proposition~\ref{l16:prop:weak} (on paper) every convergent
+  $q$-series with nonzero leading term and zeros of bounded multiplicity in the unit disc satisfies such an
+  equation, so (a) is near-vacuous --- it carries almost no information beyond the convergence (b).} A
+  \emph{genuine} MLDE (iterated Serre derivatives, coefficients modular forms of the forced weights,
+  Theorem~\ref{l16:thm:mlde}) is proved \textbf{conditionally only on \lean{EtingofFinite W}}. Its two former
+  side inputs are now theorems: the Arakawa--Kawasetsu weight grading \lean{AKWeightGrading W} holds for every VOA of the
+  library (CFT type), \lean{akWeightGrading W} (Definition~\ref{l16:def:akgrading}), and the Ramanujan/Serre closure
+  \lean{E46SerreClosed} is \lean{e46SerreClosed} (Chapter~\ref{ch:L14}). The resulting statement is
+  \lean{IsSqPrimary.}\allowbreak\lean{exists_}\allowbreak\lean{monicMLDEOn_}\allowbreak\lean{all_analyticBlocks_}\allowbreak\lean{of_etingofFinite_uncond}
+  (conditional on \lean{EtingofFinite} despite the suffix), and at $L_{-4/3}(\lsixteensl)$ it gives the unconditional
+  \lean{exists_}\allowbreak\lean{monicMLDEOn_}\allowbreak\lean{all_analyticBlocks_}\allowbreak\lean{simpleSl2QL}: one monic MLDE of
+  some unspecified order $s\ge1$ satisfied by the vacuum one-point function of every analytic genus-one block (AK's order~2 is
+  not proved). Both are \texttt{\#print axioms}-clean (recorded by WS-RELEASE2); the aggregate build at the release commit is
+  pending. Zhu-style
+  $SL_2(\Z)$-invariance of the span of characters under \lean{EtingofFinite} needs two more
+  hypotheses (\lean{hfib}, \lean{hrank}), discharged only for the trivial VOA; and at the flagship
+  $L_{-4/3}(\lsixteensl)$ \lean{hrank} is \emph{expected to be false} for every family containing the adjoint module
+  (a paper argument of the release audit, not machine-checked; Section~\ref{l16:sec:zhu}). So the library contains
+  \emph{no} modularity theorem for any non-lisse VOA.
+\item \textbf{Lean defects found} (listed in Section~\ref{l16:sec:defects}): the hypothesis
+  \lean{hex : Sl2ExactSymbol} of several theorems was redundant (now removed from the flagship ODE theorems); a dozen
+  docstrings said that non-lisseness of $L_{-4/3}(\lsixteensl)$ is unproved or that only the
+  trivial VOA is Etingof-finite (the declaration docstrings have since been corrected); two theorems share the short name
+  \lean{not_C2Cofinite_}\allowbreak\lean{simpleSl2QL} (namespaces \lean{VOA.Sl2NonLisse} and \lean{VOA.QuasiLisseSl2};
+  formerly with different hypotheses, now with identical types); the headline docstring of
+  \lean{Sl2Pres.}\allowbreak\lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{simpleSl2QL_}\allowbreak\lean{uncond}
+  (\leanpath{AKSl2Instance.lean}, ll.~97--105 at the release audit) calls the near-vacuous formal equation ``THE
+  HEADLINE'' and ``the Arakawa--Kawasetsu character equation''; and the citation attached to
+  \lean{Sl2ExactSymbol} (``Arakawa's associated-variety theorem'') names a strictly weaker result.
+\item \textbf{What may be said about this chapter, in one sentence} (independent release audit, 2026-10-27,
+  \texttt{Notes/\allowbreak Textbook/\allowbreak referee/\allowbreak RELEASE\_AUDIT\_L16.md}): \emph{Lean proves that
+  $L_{-4/3}(\lsixteensl)$ is not $C_2$-cofinite but has finite-dimensional zeroth Poisson homology, and that for every
+  VOA with this finiteness property characters of ordinary modules converge on the upper half plane and the space of
+  genus-one conformal blocks is finite-dimensional; the Arakawa--Kawasetsu MLDE is formalised conditionally only on
+  \lean{EtingofFinite} (its grading and Serre-closure inputs are theorems), with an unbounded order, for Zhu's abstract
+  analytic one-point blocks, and holds unconditionally for $L_{-4/3}(\lsixteensl)$ at the vacuum, order unspecified.}
+  (The audit's sentence, written before \lean{akWeightGrading} landed, said the MLDE was instantiated for no VOA; that is
+  superseded.) It would be false to say that ``the Arakawa--Kawasetsu theorem for quasi-lisse VOAs'' is formalised:
+  quasi-lisseness is not formalised, and \lean{EtingofFinite} stands in for it.
+\end{enumerate}
+
+%======================================================================
+\section{The mathematics: lisse, quasi-lisse, and the Arakawa--Kawasetsu theorem}\label{l16:sec:math}
+%======================================================================
+
+\subsection{The associated variety}
+
+Let $V$ be a vertex operator algebra; in the library every VOA is of CFT type
+($V=\bigoplus_{n\ge0}V_n$, $V_0=\C\lsixteenvac$, $\dim V_n<\infty$; Chapter~\ref{ch:L12},
+Section~\ref{l12:sec:recall}). Zhu's subspace $C_2(V)$ is the span of all $u_{(-2)}v$, and
+$R_V = V/C_2(V)$. Chapter~\ref{ch:L12} (Theorem~\ref{l12:thm:poisson}) shows that $R_V$ is a
+commutative, associative, unital algebra under $[u]\cdot[v] = [u_{(-1)}v]$, and a Poisson algebra under
+$\{[u],[v]\} = [u_{(0)}v]$: the bracket is a Lie bracket and a derivation of the product in each
+argument. If $V$ is strongly generated by fields $a^1,\dots,a^r$ (every state is a linear combination of
+monomials $a^{i_1}_{(-n_1)}\cdots a^{i_r}_{(-n_r)}\lsixteenvac$ with $n_j\ge1$, i.e.\ normally ordered products of the
+fields $a^i$ and their derivatives $\partial^{n-1}a^i\leftrightarrow a^i_{(-n)}\lsixteenvac$), then $R_V$ is generated as a commutative
+algebra by the classes $[a^i]$, so it is a finitely generated commutative $\C$-algebra: the coordinate ring
+of an affine scheme. The \emph{associated variety} of Arakawa is the reduced affine variety
+\begin{equation*}
+X_V = \operatorname{Specm} R_V \subseteq \C^r ,
+\end{equation*}
+the set of maximal ideals of $R_V$ (equivalently, of points of the reduced affine scheme), i.e.\ the common zero set of
+the relations among the generators. It inherits a Poisson structure from $R_V$. \emph{None of this geometry is formalised}:
+the library works with the algebra $R_V$ and assumes finiteness of $\lsixteenHP(R_V)$ directly
+(Definition~\ref{l16:def:etingof}).
+
+\begin{example}[Three associated varieties]\label{l16:ex:three}
+\begin{enumerate}
+\item If $V$ is \emph{lisse} ($C_2$-cofinite, $\dim R_V<\infty$), $X_V$ is a finite set; since $R_V$ is
+  graded by conformal weight with $(R_V)_0 = \C$, the only point is the origin: $X_V=\{0\}$.
+\item For the Heisenberg (free boson) VOA $M(1)$ generated by one field $a$ of weight $1$,
+  $R_{M(1)} = \C[x]$, $x=[a]$, with zero bracket (since $a_{(0)}a = 0$). So $X_{M(1)} = \C$, a line.
+\item For the universal affine vertex algebra $V^k(\mathfrak g)$, PBW gives $R_{V^k(\mathfrak g)} = \C[\mathfrak g^*]$
+  (symmetric algebra of $\mathfrak g$) with the Kirillov--Kostant bracket, so $X = \mathfrak g^*$. For the simple
+  quotient $L_k(\lsixteensl)$ at an admissible level $k$, Arakawa proved $X_{L_k} = \lsixteenNil$, the
+  nilpotent cone $\{h^2+4ef = 0\}\subset\lsixteensl^*\cong\C^3$, a two-dimensional cone isomorphic to
+  $\C^2/\Z_2$.
+\end{enumerate}
+\end{example}
+
+\subsection{Symplectic leaves, quasi-lisseness, Poisson homology}
+
+The Poisson bracket of $R_V$ makes $X_V$ a Poisson variety. Each function $g$ generates a Hamiltonian vector
+field $\{g,\cdot\}$; following these vector fields partitions (the smooth locus of each stratum of) $X_V$ into
+\emph{symplectic leaves}, the maximal connected immersed submanifolds on which the Poisson structure is
+non-degenerate. For the nilpotent cone there are exactly two leaves: the origin and the regular nilpotent orbit
+$\lsixteenNil\setminus\{0\}$. For the line with zero bracket every point is its own leaf: infinitely many.
+
+\begin{definition}[Quasi-lisse; Arakawa--Kawasetsu 2018]\label{l16:def:quasilisse}
+A finitely strongly generated VOA $V$ is \emph{quasi-lisse} if $X_V$ has finitely many symplectic leaves.
+\end{definition}
+
+\begin{physics}
+For the chiral algebra of a four-dimensional $\mathcal N=2$ theory, $X_V$ is (conjecturally) the Higgs branch, a
+hyperk\"ahler cone stratified by finitely many symplectic leaves (the strata of partial Higgsing); quasi-lisse is the
+two-dimensional shadow of ``the moduli space of vacua is a finite union of nice strata''.
+\end{physics}
+
+Lisse implies quasi-lisse (a point has one leaf). $M(1)$ is not quasi-lisse. Admissible $L_k(\lsixteensl)$ is
+quasi-lisse but not lisse.
+
+\begin{definition}[Zeroth Poisson homology, Poisson traces]\label{l16:def:hp0}
+For a Poisson algebra $R$, let $\{R,R\}\subseteq R$ be the \emph{linear span} of all brackets $\{a,b\}$. The
+zeroth Poisson homology is the vector space $\lsixteenHP(R) = R/\{R,R\}$. A \emph{Poisson trace} is a linear
+functional $\varphi:R\to\C$ with $\varphi(\{a,b\})=0$ for all $a,b$; the Poisson traces form the dual space
+$\lsixteenHP(R)^*$.
+\end{definition}
+
+\begin{physics}
+A torus one-point function of a CFT is $\langle v\rangle_\tau = \operatorname{tr}_{\mathcal H}\,o(v)\,q^{L_0-c/24}$, the
+expectation value of the zero mode of the field $v$ in the thermal ensemble at modular parameter $\tau$. It is a linear
+functional of $v$ which, by cyclicity of the trace, vanishes on commutators $[o(a),o(v)] = o(a_{(0)}v)$, i.e.\ on the symmetry
+variations of $v$ (this is condition (i) of a genus-one block, Definition~\ref{l16:def:formalblock}). In the semiclassical
+limit $R_V$ replaces the operators, $u_{(0)}$ becomes the Hamiltonian vector field $\{u,\cdot\}$, and the trace becomes a
+functional on phase-space functions invariant under all Hamiltonian flows: a Poisson trace. So Poisson traces are the
+classical limits of torus one-point functions (``classical torus amplitudes'').
+\end{physics}
+
+\begin{theorem}[Etingof--Schedler 2010]\label{l16:thm:ES}
+If $R$ is a finitely generated Poisson algebra whose variety $\operatorname{Specm}R$ has finitely many
+symplectic leaves, then $\dim\lsixteenHP(R)<\infty$.
+\end{theorem}
+
+\begin{physics}
+Heuristically: an invariant functional is determined by its behaviour on each leaf, where Hamiltonian flows act
+transitively, so finitely many leaves allow only finitely many independent invariant functionals. (This heuristic is not the
+proof, which is $D$-module theoretic.)
+\end{physics}
+
+This is a deep theorem (its proof uses $D$-modules: the Poisson traces are the solutions of a holonomic
+$D$-module). It is \emph{not} formalised in the library and is never used as a black box either; instead its
+conclusion is the hypothesis of every theorem. We shall call a VOA \emph{Etingof-finite} if
+$\dim\lsixteenHP(R_V)<\infty$.
+
+\subsection{The Arakawa--Kawasetsu theorem}
+
+Recall (Chapter~\ref{ch:L14}) that the Serre derivative of weight $k$ is
+$\vartheta_k f = \frac{1}{2\pi i}f' - \frac{k}{12}E_2 f$; it maps modular forms of weight $k$ to modular forms of
+weight $k+2$. Its iterates are $\vartheta^{0}_{(k)} f = f$ and $\vartheta^{i+1}_{(k)}f =
+\vartheta_{k+2i}\vartheta^{i}_{(k)}f$.
+
+\begin{theorem}[Arakawa--Kawasetsu 2018, Theorem~5.1 and its proof]\label{l16:thm:AK}
+Let $V$ be a quasi-lisse VOA (conformal, of CFT type). There are $s\ge1$ and modular forms $p_i$ of weight
+$2(s-i)$ for $SL_2(\Z)$, i.e.\ $p_i\in\C[E_4,E_6]$ homogeneous, such that for every ordinary $V$-module $M$ the
+normalised character $\chi_M(\tau) = \operatorname{tr}_M q^{L_0-c/24}$, $q = e^{2\pi i\tau}$, satisfies
+\begin{equation}\label{l16:eq:mlde}
+\vartheta^{s}_{(0)}\chi_M + \sum_{i=0}^{s-1}p_i(\tau)\,\vartheta^{i}_{(0)}\chi_M = 0 .
+\end{equation}
+Consequently $V$ has finitely many ordinary irreducible modules, and the characters $\chi_M$ lie in the
+finite-dimensional, $SL_2(\Z)$-invariant solution space of~\eqref{l16:eq:mlde}.
+\end{theorem}
+
+Arakawa and Kawasetsu's proof runs as follows. (i) Etingof--Schedler gives
+$\dim\lsixteenHP(R_V)<\infty$ (their Theorem~2.2). (ii) Over the ring $\mathcal A = \C[G_4,G_6]$ (or
+$\C[G_2,G_4,G_6]$), the module $\lsixteenVA/\lsixteenOq$ of Zhu --- $\lsixteenVA = \mathcal A\otimes V$ modulo
+the relations that all genus-one one-point functions satisfy --- is finitely generated (their
+Proposition~5.2); in Zhu's proof this was where $C_2$-cofiniteness entered, and the new observation is that the
+relations $a[0]v$, which Zhu never used, have leading term $a_{(0)}v$, the Poisson bracket. (iii) Hence the
+tower $L[-2]^i\lsixteenvac$ satisfies a monic relation modulo $\lsixteenOq$ (Lemma~5.3). (iv) The
+$\omega$-recursion of Zhu, $Z(L[-2]v) = q\frac{d}{dq}Z(v) + \sum_{m\ge0}G_{2m+2}Z(L[2m]v)$ for every torus one-point
+function $Z$ (condition (iii) of Definition~\ref{l16:def:formalblock}), converts $L[-2]$ into a Serre derivative up to lower-order terms (Lemmas~5.4--5.6). (v)
+Substituting gives~\eqref{l16:eq:mlde}.
+
+\begin{physics}
+\textbf{Associated varieties are Higgs branches.} Beem, Lemos, Liendo, Peelaers, Rastelli and van Rees (2015)
+showed that every four-dimensional $\mathcal N=2$ superconformal field theory contains a protected sector,
+the \emph{Schur operators}, whose operator product expansion on a plane is that of a two-dimensional chiral
+algebra (a VOA) $V_{4d}$, with central charge $c_{2d} = -12\,c_{4d}$. Its vacuum character is the \emph{Schur
+limit of the superconformal index}. Beem and Rastelli (2018) conjectured, and verified in many examples,
+that the associated variety $X_{V_{4d}}$ is the \emph{Higgs branch} of the four-dimensional theory --- the
+moduli space of vacua on which the scalars of the hypermultiplets get expectation values. Higgs branches are
+hyperk\"ahler cones with finitely many symplectic leaves, so these chiral algebras are quasi-lisse but (whenever
+the Higgs branch is not a point) not lisse. The Arakawa--Kawasetsu theorem then predicts that the Schur index
+satisfies a modular linear differential equation, which Beem and Rastelli found and used. The example of this
+chapter, $L_{-4/3}(\lsixteensl)$ with $c = -6$, is the chiral algebra of the Argyres--Douglas theory
+$(A_1,D_3)\cong(A_1,A_3)$, whose $c_{4d} = 1/2$ and whose Higgs branch is $\C^2/\Z_2$, the nilpotent cone of
+$\lsixteensl$. Such theories are non-rational in the two-dimensional sense (the chiral algebra has infinitely
+many non-ordinary modules) yet have finitely many ordinary modules, whose characters lie in the finite-dimensional,
+modular-invariant solution space of an MLDE. (The span of the ordinary characters alone need not be invariant; for
+$L_{-4/3}(\lsixteensl)$ it is expected not to be, by the paper argument in the warning after
+Theorem~\ref{l16:thm:zhuEt}.) Poisson traces are the classical shadow of torus one-point functions: a one-point function
+$v\mapsto\operatorname{tr}_M o(v)q^{L_0-c/24}$ kills $a[0]v$, whose leading term is a Poisson bracket.
+\end{physics}
+
+\subsection{What the library formalises: a map}
+
+\begin{center}\small
+\begin{tabular}{p{0.38\textwidth}p{0.55\textwidth}}
+\toprule
+Mathematics & Library\\
+\midrule
+associated variety, symplectic leaves, quasi-lisse & \emph{not defined}\\
+Etingof--Schedler (Thm.~\ref{l16:thm:ES}) & \emph{not proved}; its conclusion is the hypothesis \lean{EtingofFinite W}\\
+$C_2$-cofinite $\Rightarrow$ Etingof-finite & \lean{EtingofFinite_}\allowbreak\lean{of_C2Cofinite}, unconditional\\
+AK Prop.~5.2 (finite generation) & \lean{exists_}\allowbreak\lean{finite_}\allowbreak\lean{gen_sup_}\allowbreak\lean{blockRelSpanG_}\allowbreak\lean{of_etingofFinite} ($\C[G_2,G_4,G_6]$) and \lean{exists_}\allowbreak\lean{finite_}\allowbreak\lean{gen_sup_}\allowbreak\lean{blockRelSpanE_}\allowbreak\lean{of_etingofFinite} ($\C[E_4,E_6]$), from \lean{EtingofFinite}\\
+AK Lemma 5.3, 5.5 & proved, from \lean{EtingofFinite}; Lemma 5.5 for square-bracket primary vectors\\
+AK eq.~(2) in formal $q$-series form (\textbf{near-vacuous}, Prop.~\ref{l16:prop:weak}) & \lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{of_etingofFinite}: $(q\frac{d}{dq})$-basis, subexponential coefficients; \emph{not an MLDE}\\
+AK weight grading & \lean{akWeightGrading W : AKWeightGrading W}, for every VOA of the library (CFT type)\\
+AK Thm.~5.1 (genuine MLDE) & \lean{IsSqPrimary.}\allowbreak\lean{exists_}\allowbreak\lean{monicMLDEOn_}\allowbreak\lean{all_analyticBlocks_}\allowbreak\lean{of_etingofFinite_uncond}, conditional only on \lean{EtingofFinite W} (grading and Serre closure discharged); order $s\ge1$ existential, unbounded; for Zhu's abstract analytic blocks\\
+AK example $L_{-4/3}(\lsixteensl)$ & \lean{exists_}\allowbreak\lean{monicMLDEOn_}\allowbreak\lean{all_analyticBlocks_}\allowbreak\lean{simpleSl2QL}, unconditional, vacuum insertion, order unspecified (AK's order~2 \emph{not} proved)\\
+Zhu modularity under Etingof-finiteness & \lean{exists_}\allowbreak\lean{zhuModularity_}\allowbreak\lean{of_sqAnalyticRank_}\allowbreak\lean{le_irr_}\allowbreak\lean{etingofFinite}, conditional on \lean{hfib}, \lean{hrank}; discharged only for the trivial VOA, and \lean{hrank} expected false at $L_{-4/3}(\lsixteensl)$ (paper argument)\\
+$L_{-4/3}(\lsixteensl)$ Etingof-finite & \lean{Sl2Pres.}\allowbreak\lean{etingofFinite_}\allowbreak\lean{simpleSl2QL'}, unconditional\\
+$L_{-4/3}(\lsixteensl)$ not lisse & \lean{Sl2NonLisse.}\allowbreak\lean{not_C2Cofinite_}\allowbreak\lean{simpleSl2QL}, unconditional\\
+$X_{L_{-4/3}} = \lsixteenNil$ (Arakawa) & \emph{not proved}; a stronger scheme-theoretic form is the named \lean{Sl2ExactSymbol}, now unneeded\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+%======================================================================
+\section{The Poisson algebra as a $\C$-algebra, and quotients}\label{l16:sec:quot}
+%======================================================================
+
+Chapter~\ref{ch:L12} builds the commutative ring \lean{A₂CommRing W} and the Lie ring \lean{A₂LieRing W} on
+\lean{A₂ W} $=R_V$, writes \lean{mk₂ W : 𝒱 →ₗ[ℂ] A₂ W} for the projection $u\mapsto[u]$, \lean{A₂mul} and
+\lean{A₂bracket} for the descended bilinear maps, and proves the Leibniz rule. Two small pieces of
+infrastructure are added in \leanpath{VOA/\allowbreak Modules/\allowbreak PoissonQuotient.lean}.
+
+\begin{definition}[$R_V$ as a $\C$-algebra]\label{l16:def:algebra}
+$R_V$ is a $\C$-algebra with structure map $c\mapsto c[\lsixteenvac]$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak PoissonQuotient.lean}.
+\begin{leancode}
+theorem A₂_smul_mul (W : VertexOperatorAlgebra 𝒱) (c : ℂ) (p q : A₂ W) :
+    (c • p) * q = c • (p * q) := by
+
+theorem A₂_mul_smul (W : VertexOperatorAlgebra 𝒱) (c : ℂ) (p q : A₂ W) :
+    p * (c • q) = c • (p * q) :=
+
+noncomputable instance A₂Algebra (W : VertexOperatorAlgebra 𝒱) : Algebra ℂ (A₂ W) :=
+  Algebra.ofModule (A₂_smul_mul W) (A₂_mul_smul W)
+
+theorem A₂_algebraMap_apply (W : VertexOperatorAlgebra 𝒱) (c : ℂ) :
+    algebraMap ℂ (A₂ W) c = c • (1 : A₂ W) := rfl
+\end{leancode}
+
+\begin{dictionary}
+\lean{c • p} is the scalar multiplication that \lean{A₂ W} inherits as a quotient vector space; \lean{p * q} is the
+product of \lean{A₂CommRing}. \lean{Algebra.ofModule} is Mathlib's constructor that turns a ring which is
+already a vector space, with the two interchange laws $(cp)q = c(pq) = p(cq)$, into a $\C$-algebra; it reuses
+the existing scalar multiplication, so there is no second, possibly different, $\C$-action (no ``diamond''),
+and \lean{A₂_algebraMap_apply} is true by \lean{rfl} (by unfolding). Same as the textbook. Why it matters:
+with an \lean{Algebra} instance, Mathlib's \lean{MvPolynomial.aeval} defines algebra homomorphisms out of a
+polynomial ring by choosing images of the variables, which is how the symbol map
+$\C[e,h,f]\to R_V$ of Section~\ref{l16:sec:pres} is built.
+\end{dictionary}
+
+\textbf{Proof on paper.} The product is bilinear, hence $\C$-linear in each slot. \qed
+
+\begin{physics}
+Scalars multiply states; the classical limit $R_V$ of the chiral algebra is an algebra of functions on the
+classical phase space, and constants $c\cdot 1$ are the constant functions (multiples of the identity
+operator).
+\end{physics}
+
+\begin{status}
+Proved; \texttt{\#print axioms} of the four declarations: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (the
+file's own audit block, compiled in the aggregate build).
+\end{status}
+
+\begin{theorem}[$R$ is functorial for quotients]\label{l16:thm:quot}
+Let $I\subseteq V$ be a graded ideal and $V/I$ the quotient VOA. The map $[u]\mapsto[u+I]$ is a well-defined
+surjective homomorphism of $\C$-algebras $R_V\to R_{V/I}$ which also preserves the Poisson bracket.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak PoissonQuotient.lean}.
+\begin{leancode}
+noncomputable def A₂quot (hI : W.IsIdeal I) (hgr : IsGradedIdeal W I) :
+    A₂ W →ₐ[ℂ] A₂ (quotientVOA W I hI hgr) :=
+
+@[simp] theorem A₂quot_mk₂ (hI : W.IsIdeal I) (hgr : IsGradedIdeal W I) (u : 𝒱) :
+    A₂quot hI hgr (mk₂ W u) = mk₂ (quotientVOA W I hI hgr) (I.mkQ u) := rfl
+
+theorem A₂quot_surjective (hI : W.IsIdeal I) (hgr : IsGradedIdeal W I) :
+    Function.Surjective (A₂quot hI hgr) := A₂quotₗ_surjective hI hgr
+
+theorem A₂quot_bracket (hI : W.IsIdeal I) (hgr : IsGradedIdeal W I) (p q : A₂ W) :
+    A₂quot hI hgr (A₂bracket W p q)
+      = A₂bracket (quotientVOA W I hI hgr) (A₂quot hI hgr p) (A₂quot hI hgr q) :=
+\end{leancode}
+
+\begin{dictionary}
+\lean{→ₐ[ℂ]} is a homomorphism of $\C$-algebras. \lean{quotientVOA W I hI hgr} is the quotient VOA of
+Chapter~\ref{ch:L04} (Section~\ref{l04:sec:quot}); its two arguments \lean{hI} ($I$ is a two-sided ideal) and
+\lean{hgr} ($I$ is the sum of its intersections with the weight spaces) are exactly what is needed for the
+quotient to be a VOA. \lean{I.mkQ} is the quotient map $V\to V/I$. The four statements are: the map exists
+and is an algebra map (multiplicative, unital, linear); it sends $[u]$ to $[u+I]$; it is surjective; it is a
+Poisson map. Same as the textbook. Could it be vacuous? It is a construction, and the formula
+\lean{A₂quot_mk₂} pins it down.
+\end{dictionary}
+
+\textbf{Proof on paper.} Modes of the quotient are computed on representatives, $[u]_{(n)}[v] = [u_{(n)}v]$; so
+$C_2(V)$ maps into $C_2(V/I)$ and the composite $V\to V/I\to R_{V/I}$ factors through $R_V$. The same formula at
+$n=-1$ and $n=0$ gives compatibility with product and bracket; surjectivity is inherited from $V\to V/I$. \qed
+
+\begin{physics}
+Setting null states to zero (passing to a quotient) can only add relations among the classical fields: the
+classical phase space of the quotient is a closed Poisson subvariety, $X_{V/I}\subseteq X_V$. This is how the
+nilpotent cone appears inside $\lsixteensl^*$ for $L_k(\lsixteensl)$.
+\end{physics}
+
+\begin{status}
+Proved; axioms \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (re-run for this chapter on \lean{VOA.QuotVOA.A₂quot}
+with \texttt{lake env lean -DmaxSynthPendingDepth=3}).
+\end{status}
+
+%======================================================================
+\section{Poisson traces and the Etingof--Schedler hypothesis}\label{l16:sec:traces}
+%======================================================================
+
+\begin{definition}[Bracket span, $\lsixteenHP$, Poisson traces]\label{l16:def:poissonSpan}
+$\{R_V,R_V\}$ is the linear span of all $\{p,q\}$, $p,q\in R_V$; $\lsixteenHP(R_V) = R_V/\{R_V,R_V\}$; the Poisson
+traces are the linear functionals on $R_V$ vanishing on $\{R_V,R_V\}$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak PoissonTrace.lean}.
+\begin{leancode}
+noncomputable def poissonSpan (W : VertexOperatorAlgebra 𝒱) : Submodule ℂ (A₂ W) :=
+  bilinSpan (A₂bracket W)
+
+theorem poissonSpan_def (W : VertexOperatorAlgebra 𝒱) :
+    poissonSpan W = Submodule.span ℂ {x : A₂ W | ∃ p q : A₂ W, x = A₂bracket W p q} := rfl
+
+noncomputable abbrev HP₀ (W : VertexOperatorAlgebra 𝒱) : Type u := A₂ W ⧸ poissonSpan W
+
+noncomputable def poissonTraces (W : VertexOperatorAlgebra 𝒱) :
+    Submodule ℂ (Module.Dual ℂ (A₂ W)) :=
+  vanishingFunctionals ℂ (A₂ W) (poissonSpan W)
+
+theorem mem_poissonTraces {W : VertexOperatorAlgebra 𝒱} {φ : Module.Dual ℂ (A₂ W)} :
+    φ ∈ poissonTraces W ↔ ∀ p q : A₂ W, φ (A₂bracket W p q) = 0 :=
+\end{leancode}
+
+\begin{dictionary}
+\lean{bilinSpan B} (file \leanpath{VOA/\allowbreak Modularity/\allowbreak TraceSpace.lean}, Chapter~\ref{ch:L15}) is the
+span of the range of a bilinear map $B$; \lean{poissonSpan_def} unfolds it to ``the span of all
+$\{p,q\}$'', by \lean{rfl}. \lean{Module.Dual ℂ X} is the space of linear functionals $X\to\C$;
+\lean{vanishingFunctionals ℂ X S} is the subspace of those vanishing on $S$, so \lean{poissonTraces} is literally
+$\{R_V,R_V\}^{\perp}$, and \lean{mem_poissonTraces} says so. The library also proves
+\lean{poissonTracesEquiv : poissonTraces W ≃ₗ[ℂ] Module.}\allowbreak\lean{Dual ℂ (HP₀ W)} (traces = dual of $\lsixteenHP$) and
+\lean{poissonSpan_eq_map} (the span downstairs is the image of the span of the representatives
+$u_{(0)}v$ upstairs). Note that $\lsixteenHP$ is defined as a \emph{vector space}: $\{R,R\}$ is not an ideal, and no
+ring structure is claimed. All the same as Definition~\ref{l16:def:hp0}.
+\end{dictionary}
+
+\begin{physics}
+A Poisson trace is a ``classical torus one-point function'': a linear functional on classical observables
+invariant under all Hamiltonian flows. On a symplectic leaf, invariance under all Hamiltonian flows forces a
+functional to be (up to the measure) constant along the leaf, which is the heuristic reason why finitely many
+leaves give finitely many independent traces.
+\end{physics}
+
+\begin{status}
+Definitions and membership lemmas; axioms \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (file docstring and
+aggregate audit).
+\end{status}
+
+\begin{definition}[Etingof-finite]\label{l16:def:etingof}
+$V$ is \emph{Etingof-finite} if $\dim_\C\lsixteenHP(R_V)<\infty$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak PoissonTrace.lean}.
+\begin{leancode}
+def EtingofFinite (W : VertexOperatorAlgebra 𝒱) : Prop := FiniteDimensional ℂ (HP₀ W)
+\end{leancode}
+
+\begin{dictionary}
+\lean{FiniteDimensional ℂ (HP₀ W)}: the vector space $R_V/\{R_V,R_V\}$ is finite-dimensional. This is exactly
+Definition~\ref{l16:def:etingof}. \textbf{Is it quasi-lisseness?} No. Quasi-lisseness
+(Definition~\ref{l16:def:quasilisse}) implies it by Etingof--Schedler (Theorem~\ref{l16:thm:ES}); the converse is
+not claimed anywhere and we do not know it to be true in general. Every theorem of this chapter assumes
+\lean{EtingofFinite}, not quasi-lisseness, so each is (mathematically) a \emph{stronger} statement than the
+literature's version with ``quasi-lisse'' --- provided its conclusion matches, which is the question for the
+later sections. The docstring of \lean{EtingofFinite} states all of this in capitals; it is a deliberate
+choice that removes all algebraic geometry from the formalisation. \textbf{Could it be vacuous?} It holds for
+every $C_2$-cofinite VOA (next theorem) and for $L_{-4/3}(\lsixteensl)$ (Theorem~\ref{l16:thm:presL}); it fails
+for the free boson on paper (Remark~\ref{l16:rem:boson}).
+\end{dictionary}
+
+\begin{warning}[title={``Quasi-lisse'' is a file name, not a definition}]
+No declaration of the library defines quasi-lisseness, associated varieties or symplectic leaves (a search of
+\leanpath{VOA/} for declarations whose names contain \texttt{QuasiLisse}, \texttt{AssociatedVariety},
+\texttt{Leaf} or \texttt{Symplectic} finds none; the word ``symplectic'' occurs only in comments and in the
+unrelated symplectic-fermion files of Chapter~\ref{ch:L17}). The
+files \leanpath{QuasiLisseFinite.lean} and \leanpath{AffineSl2QuasiLisse.lean} prove statements about
+\lean{EtingofFinite}. A referee should read ``quasi-lisse'' in a Lean name as ``Etingof-finite''.
+\end{warning}
+
+\begin{physics}
+Physically, $\dim\lsixteenHP<\infty$ says that the chiral algebra has finitely many independent ``classical
+torus amplitudes''. For a four-dimensional $\mathcal N=2$ theory it is the statement that the Higgs branch
+chiral ring has finite-dimensional Poisson homology, true because the Higgs branch is a hyperk\"ahler cone with
+finitely many leaves.
+\end{physics}
+
+\begin{status}
+Definition. Satisfiable (Theorems~\ref{l16:thm:c2etingof} and~\ref{l16:thm:presL}).
+\end{status}
+
+\begin{theorem}[Lisse implies Etingof-finite; the trace space]\label{l16:thm:c2etingof}
+(i) If $V$ is $C_2$-cofinite then $V$ is Etingof-finite. (ii) If $V$ is Etingof-finite, the space of Poisson
+traces on $R_V$ is finite-dimensional. (iii) If the bracket of $R_V$ vanishes identically, Etingof-finite is
+equivalent to $C_2$-cofinite.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak PoissonTrace.lean}.
+\begin{leancode}
+theorem EtingofFinite_of_C2Cofinite (W : VertexOperatorAlgebra 𝒱) (h : C2Cofinite W) :
+    EtingofFinite W := by
+
+theorem finiteDimensional_poissonTraces (W : VertexOperatorAlgebra 𝒱) (h : EtingofFinite W) :
+    FiniteDimensional ℂ (poissonTraces W) := by
+
+theorem EtingofFinite_iff_C2Cofinite_of_poissonSpan_eq_bot (W : VertexOperatorAlgebra 𝒱)
+    (h : poissonSpan W = ⊥) : EtingofFinite W ↔ C2Cofinite W := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{C2Cofinite W} is \lean{FiniteDimensional ℂ (A₂ W)} (Chapter~\ref{ch:L12}, Definition~\ref{l12:def:c2}).
+\lean{poissonSpan W = ⊥} says the bracket span is zero. Statements (i)--(iii) exactly. These are easy facts; their
+role is sanity: (i) shows the hypothesis is not stronger than Zhu's, (iii) shows where it is not weaker.
+\end{dictionary}
+
+\textbf{Proof on paper.} (i) $\lsixteenHP(R_V)$ is a quotient of $R_V$. (ii) The traces are the dual of the
+finite-dimensional space $\lsixteenHP(R_V)$. (iii) If $\{R_V,R_V\}=0$ then $\lsixteenHP(R_V)=R_V$. \qed
+
+\begin{remark}[The free boson is not a witness]\label{l16:rem:boson}
+For the free boson $M(1)$, $R_{M(1)}\cong\C[x]$ with zero bracket, so by (iii) $M(1)$ is Etingof-finite iff it is
+$C_2$-cofinite, and it is not (Chapter~\ref{ch:L12}, Example~\ref{l12:ex:c2}). The library does \emph{not} prove
+\lean{poissonSpan (heisenbergVOA k hk) = ⊥} (the closing note of \leanpath{PoissonTrace.lean} explains that the
+identification of $R_{M(1)}$ with $\C[x]$ \emph{as a ring} is missing), so ``$M(1)$ is not Etingof-finite'' is an
+argument on paper only. Geometrically: $X_{M(1)}$ is a line with zero Poisson structure, with infinitely many
+leaves.
+\end{remark}
+
+\begin{physics}
+A lisse chiral algebra has a zero-dimensional phase space, so trivially finitely many classical amplitudes. A
+free boson has a continuous family of vacua (the expectation value of $a$, a flat direction or ``modulus''), and
+the classical traces $\varphi(x^n)$ are independent: infinitely many. Its characters $1/\eta$ are modular for a
+different reason (it is a free theory), not because of Etingof-finiteness.
+\end{physics}
+
+\begin{status}
+Proved, unconditional; axioms of \lean{VOA.EtingofFinite_}\allowbreak\lean{of_C2Cofinite} and
+\lean{VOA.finiteDimensional_}\allowbreak\lean{poissonTraces}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (re-run for this
+chapter).
+\end{status}
+
+%======================================================================
+\section{The finiteness half: Arakawa--Kawasetsu Proposition 5.2}\label{l16:sec:prop52}
+%======================================================================
+
+\subsection{The augmented relation space}
+
+The first step is to move the Etingof--Schedler hypothesis from $R_V$ up to $V$.
+
+\begin{definition}[$O_2^P(V)$]\label{l16:def:O2P}
+$O_2^P(V) = C_2(V) + \operatorname{span}\{u_{(0)}v : u,v\in V\}\subseteq V$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak QuasiLisseFinite.lean}.
+\begin{leancode}
+noncomputable def poissonUp (W : VertexOperatorAlgebra 𝒱) : Submodule ℂ 𝒱 :=
+  Submodule.span ℂ {x : 𝒱 | ∃ u v : 𝒱, x = poissonBracket W u v}
+
+noncomputable def O₂P (W : VertexOperatorAlgebra 𝒱) : Submodule ℂ 𝒱 := O₂ W ⊔ poissonUp W
+\end{leancode}
+
+\begin{dictionary}
+\lean{poissonBracket W u v} is \lean{W.smul u 0 v} $=u_{(0)}v$ (Chapter~\ref{ch:L12}); \lean{⊔} of subspaces is
+their sum. Same as Definition~\ref{l16:def:O2P}.
+\end{dictionary}
+
+\begin{physics}
+$O_2^P(V)$ consists of states that are classically derivatives or symmetry variations; both are invisible to torus
+one-point functions at leading order.
+\end{physics}
+
+\begin{theorem}[AK Theorem 2.2 read upstairs]\label{l16:thm:O2P}
+$V$ is Etingof-finite iff $V/O_2^P(V)$ is finite-dimensional. Moreover $O_2^P(V)$ is a graded subspace, and
+for $a\in V_p$, $b\in V_q$ one has $a_{(0)}b\in V_{p+q-1}$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak QuasiLisseFinite.lean}.
+\begin{leancode}
+theorem map_mkQ_O₂P (W : VertexOperatorAlgebra 𝒱) :
+    Submodule.map (O₂ W).mkQ (O₂P W) = poissonSpan W := by
+
+theorem etingofFinite_iff_quot_O₂P (W : VertexOperatorAlgebra 𝒱) :
+    EtingofFinite W ↔ FiniteDimensional ℂ (𝒱 ⧸ O₂P W) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{Submodule.}\allowbreak\lean{map (O₂ W).}\allowbreak\lean{mkQ (O₂P W)} is the image of $O_2^P(V)$ in $R_V$; \lean{map_mkQ_O₂P} says it is
+$\{R_V,R_V\}$. Then the third isomorphism theorem $(V/C_2)/(O_2^P/C_2)\cong V/O_2^P$ gives the equivalence.
+The gradedness statements are \lean{O₂P_eq_span_O₂PhomGen} and \lean{piHom_maps_O₂P} (projections to weight
+spaces preserve $O_2^P$), and \lean{brk_mem_grading} (the bracket lowers total weight by one). Same as AK's
+Theorem 2.2 combined with their remark that $\lsixteenHP(R_V)$ is graded.
+\end{dictionary}
+
+\textbf{Proof on paper.} The image of $C_2(V)$ in $R_V$ is $0$ and the image of $u_{(0)}v$ is $\{[u],[v]\}$,
+so the image of $O_2^P$ is $\{R_V,R_V\}$; then apply the isomorphism theorem. For weights: $a_{(n)}b$ has
+weight $p+q-n-1$, so $a_{(0)}b\in V_{p+q-1}$ and $a_{(-2)}b\in V_{p+q+1}$; both generating families are made of
+homogeneous vectors, hence the spans are graded. \qed
+
+\begin{physics}
+$V/O_2^P(V)$ is the space of states modulo ``derivatives'' (the $u_{(-2)}v$, which involve $\partial u$) and
+modulo ``charge commutators'' $u_{(0)}v$ (the infinitesimal symmetry transformation of $v$ generated by the charge
+$\oint u$). A one-point function on the torus kills both kinds of state up to modular corrections, so its value is
+determined by finitely many numbers when this quotient is finite.
+\end{physics}
+
+\begin{status}
+Proved, unconditional; \lean{VOA.etingofFinite_}\allowbreak\lean{iff_quot_}\allowbreak\lean{O₂P}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}
+(re-run for this chapter).
+\end{status}
+
+\subsection{Mode-zero triangularity}
+
+Zhu's genus-one theory uses the \emph{square-bracket modes} $a[m]$ of a homogeneous vector $a$ of weight
+$k$ (Chapter~\ref{ch:L15}):
+\begin{equation*}
+a[m] = \Res_z\,Y(a,z)\,(1+z)^{k-1}\bigl(\log(1+z)\bigr)^m = \sum_{j\ge0}c^{(k,m)}_j\,a_{(m+j)} ,
+\end{equation*}
+where $c^{(k,m)}_j$ is the coefficient of $z^j$ in $(1+z)^{k-1}\bigl(\log(1+z)/z\bigr)^m$. In Lean this is
+\lean{vSqZ W a k m}, with coefficients \lean{sqBracketCoeffZ k m i} (file
+\leanpath{VOA/\allowbreak Modularity/\allowbreak OnePointFunctions.lean}, Chapter~\ref{ch:L15}).
+The leading coefficient is $c^{(k,m)}_0 = 1$. At $m=0$:
+$a[0]b = a_{(0)}b + \sum_{i\ge1}c^{(k,0)}_i a_{(i)}b$.
+
+\begin{theorem}[Mode-$0$ triangularity]\label{l16:thm:triang}
+For $a\in V_p$ and $b\in V_q$, $a[0]b - a_{(0)}b$ lies in $\bigoplus_{m<p+q-1}V_m$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak QuasiLisseFinite.lean}.
+\begin{leancode}
+noncomputable def sqDefect0 (W : VertexOperatorAlgebra 𝒱) (a : 𝒱) (p : ℕ) (b : 𝒱) : 𝒱 :=
+  ∑ᶠ i : ℤ, (if i = 0 then (0 : ℂ) else sqBracketCoeffZ p 0 i) • mode (W.Y a) i b
+
+theorem vSqZ_zero_eq (W : VertexOperatorAlgebra 𝒱) (a : 𝒱) (p : ℕ) (b : 𝒱) :
+    vSqZ W a p 0 b = mode (W.Y a) 0 b + sqDefect0 W a p b := by
+
+theorem sqDefect0_mem_of_lower (W : VertexOperatorAlgebra 𝒱) {p q n : ℤ} {a b : 𝒱}
+    (ha : a ∈ W.grading p) (hb : b ∈ W.grading q)
+    (hpq : p + q - 1 = n) (T : Submodule ℂ 𝒱)
+    (hT : ∀ m : ℤ, m < n → W.grading m ≤ T) :
+    sqDefect0 W a p.toNat b ∈ T := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{mode (W.Y a) i b} is $a_{(i)}b$. \lean{sqDefect0} is the tail $\sum_{i\ne0}c_i a_{(i)}b$ (the \lean{∑ᶠ} has
+finite support by \lean{sqDefect0_}\allowbreak\lean{support_}\allowbreak\lean{finite}). \lean{sqDefect0_mem_of_lower} is the lower-weight statement in
+the form used by an induction: any subspace $T$ containing all $V_m$, $m<p+q-1$, contains the tail. \lean{p.toNat} is
+$p$ as a natural number (harmless: $p\ge0$ whenever $a\ne0$). Same as Theorem~\ref{l16:thm:triang}.
+\end{dictionary}
+
+\textbf{Proof on paper.} $c^{(p,0)}_j$ is the coefficient of $z^j$ in $(1+z)^{p-1}$: it is $1$ at $j=0$ and $0$ for
+$j<0$, and $a_{(i)}b\in V_{p+q-i-1}$, which for $i\ge1$ is below $p+q-1$. \qed
+
+\begin{physics}
+The square-bracket modes are the modes of the field on the \emph{cylinder} (or torus) coordinate $w$, $z = e^w-1$.
+This statement says: the charge $\oint a$ measured on the torus equals the charge on the plane up to corrections
+of lower energy. Hence ``torus one-point functions kill $a[0]v$'' (global symmetry Ward identity on the torus)
+becomes ``they kill Poisson brackets modulo lower energy''.
+\end{physics}
+
+\begin{status}
+Proved, unconditional (file audit, \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}).
+\end{status}
+
+\subsection{Proposition 5.2}
+
+Let $\mathcal G = \C[G_2,G_4,G_6]\subseteq\C[[q]]$ be the algebra generated by Zhu's normalised Eisenstein series
+$G_{2j}(q) = -\frac{B_{2j}}{(2j)!} + \frac{2}{(2j-1)!}\sum_{n\ge1}\sigma_{2j-1}(n)q^n$ (\lean{GSeries}, Chapter~\ref{ch:L14};
+the Lean coefficient sequence \lean{zhuG} is quoted in Definition~\ref{l16:def:formalblock}), and $\lsixteenVA = \mathcal G\otimes_\C V$ (\lean{𝒱G 𝒱}, with
+\lean{ιG v} $=1\otimes v$). Zhu's relation module $\lsixteenOq\subseteq\lsixteenVA$ (\lean{blockRelSpanG W}) is the
+$\mathcal G$-span of
+\begin{equation*}
+a[0]v \qquad\text{and}\qquad a[-2]v + \sum_{m\ge0}(2m+3)\,G_{2m+4}\otimes a[2m+2]v ,
+\end{equation*}
+for homogeneous $a$ of weight $\ge1$ and $v\in V$; these are exactly the relations satisfied by every genus-one
+one-point function (Chapter~\ref{ch:L15}).
+
+\begin{leancode}
+noncomputable def blockRelSpanG : Submodule (↥GSeries) (𝒱G 𝒱) :=
+  Submodule.span (↥GSeries)
+    ({x : 𝒱G 𝒱 | ∃ (ka : ℕ) (a v : 𝒱), 1 ≤ ka ∧ a ∈ W.grading (ka : ℤ) ∧
+        x = ιG (vSqZ W a ka 0 v)} ∪
+     {x : 𝒱G 𝒱 | ∃ (ka K : ℕ) (a v : 𝒱), 1 ≤ ka ∧ a ∈ W.grading (ka : ℤ) ∧
+        (∀ m : ℕ, K ≤ m → vSqZ W a ka (2 * (m + 1) - 2 : ℤ) v = 0) ∧
+        x = ιG (vSqZ W a ka (-2) v) + ∑ m ∈ Finset.range K,
+              coefG m • ιG (vSqZ W a ka (2 * (m + 2) - 2 : ℤ) v)})
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak BlockRelSpanG.lean} (Chapter~\ref{ch:L15}).
+Here \lean{coefG m} is $(2(m+2)-1)G_{2(m+2)}$, and the cut-off $K$ beyond which all $a[2m]v$ vanish makes the
+sum finite.
+
+\begin{theorem}[Arakawa--Kawasetsu Proposition 5.2]\label{l16:thm:prop52}
+If $V$ is Etingof-finite, there is a finite set $T\subseteq\lsixteenVA$ with
+$\lsixteenVA = \mathcal G\cdot T + \lsixteenOq$; i.e.\ $\lsixteenVA/\lsixteenOq$ is a finitely generated
+$\mathcal G$-module.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak QuasiLisseFinite.lean}.
+\begin{leancode}
+theorem exists_finite_gen_sup_blockRelSpanG_of_etingofFinite (hzero : VacuumGradeZero W)
+    (hE : EtingofFinite W) :
+    ∃ T : Set (𝒱G 𝒱), T.Finite ∧
+      (⊤ : Submodule (↥GSeries) (𝒱G 𝒱))
+        = Submodule.span (↥GSeries) T ⊔ blockRelSpanG W := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{VacuumGradeZero W} is \lean{W.grading 0 ≤ Submodule.span ℂ ({W.vacuum} : Set 𝒱)}, i.e.\ $V_0\subseteq\C\lsixteenvac$
+(file \leanpath{VOA/\allowbreak Modularity/\allowbreak BlockZeroMode.lean}). It is \textbf{free}: every library VOA has
+$V_0=\C\lsixteenvac$ as an axiom, and \lean{QuasiLisseSl2.}\allowbreak\lean{vacuumGradeZero_}\allowbreak\lean{of_vacuum_}\allowbreak\lean{grade} proves
+\lean{VacuumGradeZero W} for every \lean{W} (Section~\ref{l16:sec:payoff}). \lean{hE} is the only real hypothesis.
+\lean{⊤ = span T ⊔ blockRelSpanG W} says every element of $\lsixteenVA$ is a $\mathcal G$-combination of $T$ plus a
+relation, which is finite generation of the quotient. The docstring explains why the quotient module itself is not
+named in the statement: a typeclass mismatch prevents restating \lean{Module.}\allowbreak\lean{Finite (↥GSeries) (𝒱G 𝒱 ⧸ blockRelSpanG W)}
+outside its home file; the formulation with the finite generating family is equivalent. Same as AK Proposition~5.2
+with ``quasi-lisse'' replaced by the weaker Etingof-finiteness and AK's $\mathcal A$ replaced by
+$\C[G_2,G_4,G_6]$. (An $E_4,E_6$-version, \lean{exists_}\allowbreak\lean{finite_}\allowbreak\lean{gen_sup_}\allowbreak\lean{blockRelSpanE_}\allowbreak\lean{of_etingofFinite}, is in
+Section~\ref{l16:sec:mlde}.)
+\end{dictionary}
+
+\textbf{Proof on paper.} By Theorem~\ref{l16:thm:O2P} choose finitely many homogeneous $s_1,\dots,s_g$ of positive
+weight with $V = \operatorname{span}\{\lsixteenvac,s_i\} + O_2^P(V)$ (lift a basis of the finite-dimensional graded
+space $V/O_2^P$). Let $T = \{1\otimes\lsixteenvac,1\otimes s_i\}$ and $N = \mathcal G T + \lsixteenOq$. We prove
+$1\otimes V_n\subseteq N$ by strong induction on $n$. A vector of weight $n$ is a combination of the $s_i$ of weight $n$,
+of homogeneous generators $a_{(-2)}b$ with $p+q+1 = n$, and of homogeneous generators $a_{(0)}b$ with $p+q-1 = n$.
+\begin{itemize}
+\item For $a_{(-2)}b$: $a[-2]b = a_{(-2)}b + (\text{weight}<n)$, and modulo $\lsixteenOq$,
+  $a[-2]b\equiv-\sum(2m+3)G_{2m+4}a[2m+2]b$, each $a[2m+2]b$ of weight $<n$. This is Zhu's original step.
+\item For $a_{(0)}b$ (the new step): by Theorem~\ref{l16:thm:triang} $a_{(0)}b = a[0]b - (\text{weight}<n)$, and
+  $a[0]b\in\lsixteenOq$ exactly, with no Eisenstein tail.
+\item If $a$ has weight $0$, then $a = c\lsixteenvac$ and $\lsixteenvac_{(0)}b = 0$, $\lsixteenvac_{(-2)}b = 0$.
+\end{itemize}
+Lower weights are in $N$ by induction. Hence $1\otimes V\subseteq N$, and since $1\otimes V$ generates $\lsixteenVA$ over
+$\mathcal G$, $N = \lsixteenVA$. \qed
+
+\begin{physics}
+The torus one-point functions of a theory form a module over the ring of quasi-modular forms; this says that, if
+there are finitely many classical amplitudes, every torus one-point function is determined by finitely many
+``basic'' ones with modular-form coefficients. It is the algebraic shadow of ``finitely many conformal blocks on the
+torus''.
+\end{physics}
+
+\begin{status}
+Proved; \lean{VOA.exists_}\allowbreak\lean{finite_}\allowbreak\lean{gen_sup_}\allowbreak\lean{blockRelSpanG_}\allowbreak\lean{of_etingofFinite}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}
+(re-run). Conditional only on \lean{hE}; \lean{hzero} is free.
+\end{status}
+
+\begin{theorem}[Growth of one-point functions from Etingof-finiteness]\label{l16:thm:growth}
+If $V$ is Etingof-finite and $M$ is an ordinary module of conformal weight $h$ (that is, $M_h\ne0$ and every nonzero
+weight space $M_\alpha$ has $\alpha\in h+\N$, Chapter~\ref{ch:L12}), then for every $v\in V$ the
+coefficients of the torus one-point function $Z_M(v;q) = \operatorname{tr}_M o(v)q^{L_0-c/24}$ grow subexponentially:
+for each $r>1$ there is $C$ with $|[q^{h-c/24+n}]Z_M(v;q)|\le C r^n$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak QuasiLisseFinite.lean}.
+\begin{leancode}
+theorem onePointSubexp_of_etingofFinite {M : Type u} [AddCommGroup M] [Module ℂ M]
+    (N : OrdVModule W M) {hw : ℂ} (hcw : HasConformalWeight N hw)
+    (hzero : VacuumGradeZero W) (hE : EtingofFinite W) :
+    OnePointSubexp N (hw - W.centralCharge / 24) := by
+\end{leancode}
+\noindent Files \leanpath{VOA/\allowbreak Modularity/\allowbreak AnalyticBlock.lean},
+\leanpath{VOA/\allowbreak Modularity/\allowbreak ConvergenceBridge.lean}.
+\begin{leancode}
+def OnePointSubexp (N : OrdVModule W M) (h : ℂ) : Prop :=
+  ∀ v : 𝒱, Subexponential (fun n : ℕ => ‖torusOnePoint N v (h + (n : ℂ))‖)
+
+def Subexponential (a : ℕ → ℝ) : Prop :=
+  ∀ r : ℝ, 1 < r → ∃ C : ℝ, ∀ n : ℕ, a n ≤ C * r ^ n
+\end{leancode}
+
+\begin{dictionary}
+\lean{OrdVModule W M} is an ordinary module (Chapter~\ref{ch:L12}, Definition~\ref{l12:def:ordmodule});
+\lean{HasConformalWeight N hw} says $M_{hw}\ne0$ and every nonzero weight lies in $hw+\N$
+(file \leanpath{VOA/\allowbreak Modules/\allowbreak Rationality.lean}, Chapter~\ref{ch:L12}). A formal $q$-series is a
+function \lean{FormalQSeries := ℂ → ℂ}, $e\mapsto[q^e]$ (Chapter~\ref{ch:L14}); \lean{torusOnePoint N v} is the
+formal series $e\mapsto\operatorname{tr}_{M_{e+c/24}}o(v)$. \lean{Subexponential a} is the growth condition of
+Theorem~\ref{l16:thm:growth}, which is equivalent to: $\sum a_nq^n$ converges on the open unit disc. So the
+conclusion is: every one-point function converges for $|q|<1$, i.e.\ on the upper half plane. Same as Zhu's
+convergence theorem, with $C_2$-cofinite weakened to Etingof-finite (Zhu's version is
+\lean{onePointSubexp_of_c2}, Chapter~\ref{ch:L15}).
+\end{dictionary}
+
+\textbf{Proof on paper.} Let $S(v) = Z_M(v;q)$. By Theorem~\ref{l16:thm:prop52} and the fact that $S$ kills
+$\lsixteenOq$ (Zhu's genus-one relations, \lean{IsFormalBlock}), the $\mathcal G$-span of all $S(v)$ is spanned by
+finitely many $y_1,\dots,y_g$. Zhu's $\omega$-recursion $S(L[-2]v) = q\frac{d}{dq}S(v) +
+\sum_{m}G_{2m+2}S(L[2m]v)$ shows that $q\frac{d}{dq}$ maps this span into its span over the larger ring of
+subexponential power series; so $q\frac{d}{dq}y = Ay$ for a $g\times g$ matrix $A$ with subexponential entries. In
+coefficients, $(h+n)y_n = \sum_j A_jy_{n-j}$, and a discrete Gr\"onwall argument shows the $y_n$, hence all
+coefficients of all $S(v)$, grow subexponentially. \qed
+
+\begin{physics}
+Convergence of the torus partition function $\operatorname{tr}q^{L_0-c/24}$ for $|q|<1$, i.e.\ at every positive
+temperature: the density of states grows slower than any exponential in the energy (for a CFT,
+like $e^{2\pi\sqrt{c_{\mathrm{eff}}n/6}}$). For non-unitary or quasi-lisse theories this is not automatic, and here
+it follows from finitely many classical amplitudes.
+\end{physics}
+
+\begin{status}
+Proved; \lean{VOA.onePointSubexp_}\allowbreak\lean{of_etingofFinite}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (re-run).
+Non-vacuity: \lean{trivial_}\allowbreak\lean{onePointSubexp_}\allowbreak\lean{adjoint} instantiates it at the trivial VOA, and Section~\ref{l16:sec:payoff}
+at $L_{-4/3}(\lsixteensl)$.
+\end{status}
+
+\begin{warning}[title={Stale ``no witness'' documentation (documentation only)}]
+When this chapter was first written, the module docstring of \leanpath{QuasiLisseFinite.lean} (Status item~4 and the note of \S7) said that ``every theorem
+here is currently instantiated only at VOAs that are already $C_2$-cofinite'', that the trivial VOA is ``the
+\emph{only} unconditional instance'', and that $L_{-4/3}(\lsixteensl)$ is ``conditional on a
+\lean{Sl2Presentation simpleSl2QL} bundle that is not constructed''. All three claims were already false at that time:
+the bundle is constructed (Theorem~\ref{l16:thm:presL}), \lean{EtingofFinite} is unconditional for
+$L_{-4/3}(\lsixteensl)$, and that algebra is proved not $C_2$-cofinite (Theorem~\ref{l16:thm:nonlisse}). The same stale
+claims occurred in the headers of \leanpath{AKModularODE.lean}, \leanpath{AKUniformODE.lean} and
+\leanpath{AKZhuModularity.lean} (its ``honest statement'' item~1). These docstrings have since been corrected (by a later revision of the library;
+see the update in Section~\ref{l16:sec:nonlisse}).
+\end{warning}
+
+%======================================================================
+\section{The character equation in formal form}\label{l16:sec:formal}
+%======================================================================
+
+\subsection{The formal objects}
+
+We recall the formal $q$-series vocabulary of Chapter~\ref{ch:L14} that appears in the statements.
+
+\noindent Files \leanpath{VOA/\allowbreak Modules/\allowbreak Character.lean},
+\leanpath{VOA/\allowbreak Modularity/\allowbreak ZhuBlockConditions.lean},
+\leanpath{VOA/\allowbreak Modularity/\allowbreak ZhuRecursion.lean},
+\leanpath{VOA/\allowbreak Modularity/\allowbreak SubexpSeriesRing.lean},
+\leanpath{VOA/\allowbreak Modularity/\allowbreak OnePointFunctions.lean}.
+\begin{leancode}
+abbrev FormalQSeries : Type := ℂ → ℂ
+
+noncomputable def gradedDim (N : OrdVModule W M) : FormalQSeries :=
+  fun e => (Module.finrank ℂ (N.weight (e + W.centralCharge / 24)) : ℂ)
+
+noncomputable def qDeriv (χ : FormalQSeries) : FormalQSeries := fun e => e * χ e
+
+noncomputable def qConv (f : ℕ → ℂ) (g : FormalQSeries) : FormalQSeries :=
+  fun e => ∑ᶠ n : ℕ, f n * g (e - (n : ℂ))
+
+def SubexpPS : Subalgebra ℂ (PowerSeries ℂ) where
+  carrier := {F : PowerSeries ℂ | Subexponential fun n : ℕ => ‖PowerSeries.coeff n F‖}
+
+noncomputable def torusPartition (N : OrdVModule W M) : FormalQSeries := gradedDim N
+\end{leancode}
+
+\begin{dictionary}
+A formal $q$-series $\chi$ is the coefficient function $e\mapsto[q^e]\chi$, $e\in\C$. \lean{gradedDim N} is the
+character $\chi_M = q^{-c/24}\sum_\alpha\dim M_\alpha\,q^\alpha$: the coefficient of $q^e$ is $\dim M_{e+c/24}$.
+\lean{torusPartition N} is the same series under its physical name (\lean{rfl}). \lean{qDeriv} is the Euler operator
+$\theta = q\frac{d}{dq}$, $q^e\mapsto e\,q^e$; \lean{qDeriv^[i]} is $\theta^i$. \lean{qConv f g} is the product of the
+ordinary power series $\sum_nf_nq^n$ with $g$: $[q^e](fg) = \sum_nf_n[q^{e-n}]g$ (a finite sum on the series used,
+whose exponents lie in $h+\N$). \lean{SubexpPS} is the subalgebra of $\C[[q]]$ of series with subexponential
+coefficients, i.e.\ series converging on the open unit disc; it contains $\mathcal G=\C[G_2,G_4,G_6]$ (the
+Eisenstein coefficients grow polynomially). We write $\mathcal S$ for \lean{SubexpPS}.
+\end{dictionary}
+
+\subsection{Square-bracket primaries and the Virasoro tower}
+
+Zhu's square-bracket Virasoro operators are $L[n] = \omega[n+1] - \frac{c}{24}\lsixteenvac[n+1]$ (\lean{Lsq W n},
+Chapter~\ref{ch:L15}); they satisfy the Virasoro algebra with the same central charge $c$.
+
+\begin{definition}[Square-bracket primary]\label{l16:def:sqprimary}
+$a\in V$ is square-bracket primary of weight $\Delta$ if $L[0]a = \Delta a$ and $L[n]a = 0$ for $n\ge1$. (Here $L[n]$ are the
+Virasoro modes for Zhu's second VOA structure $Y[a,w] = Y(a,e^w-1)e^{w\,\mathrm{wt}\,a}$ on $V$, i.e.\ in the cylinder
+coordinate; ordinary primaries, $L_na = 0$ for $n\ge1$, are a different notion in general. The vacuum is primary in both
+senses.)
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak AKModularODE.lean}.
+\begin{leancode}
+def IsSqPrimary (W : VertexOperatorAlgebra 𝒱) (a : 𝒱) (Δ : ℂ) : Prop :=
+  Lsq W 0 a = Δ • a ∧ ∀ n : ℤ, 1 ≤ n → Lsq W n a = 0
+
+theorem vacuum_isSqPrimary (W : VertexOperatorAlgebra 𝒱) : IsSqPrimary W W.vacuum 0 :=
+\end{leancode}
+
+\begin{dictionary}
+Exactly Definition~\ref{l16:def:sqprimary}, which is the hypothesis of AK Lemma~5.5 (``Let $a$ be a primary vector of
+weight $\Delta$, that is $L[0]a = \Delta a$ and $L[n]a = 0$ for $n\ge1$''). It is the \emph{square-bracket} notion, not
+the ordinary one; the vacuum is primary of weight $0$ in both senses, which is all the character needs.
+\end{dictionary}
+
+\begin{physics}
+A square-bracket primary is a primary field for the Virasoro algebra on the cylinder (torus) coordinate; the vacuum
+(identity operator) is the primary whose one-point function is the partition function itself.
+\end{physics}
+
+\begin{theorem}[The Virasoro tower over a primary]\label{l16:thm:tower}
+Let $a$ be square-bracket primary of weight $\Delta$, and consider the \emph{tower} $L[-2]^na$ ($a$ dressed by $n$ insertions
+of the cylinder stress tensor). For all $n,j\ge0$,
+$L[2j]\,L[-2]^n a = \gamma_{\Delta,c}(j,n)\,L[-2]^{n-j}a$, where $\gamma$ is defined by $\gamma(j,0) = \Delta\delta_{j0}$,
+$\gamma(0,n+1) = \gamma(0,n)+2$, $\gamma(j+1,n+1) = (2j+4)\gamma(j,n) + \delta_{j0}\frac c2 + \gamma(j+1,n)$; and
+$\gamma(j,n) = 0$ for $j>n$. In closed form $\gamma(0,n) = \Delta+2n$ and $\gamma(1,n) = n(4\Delta+4n-4+\frac c2)$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak AKModularODE.lean}.
+\begin{leancode}
+noncomputable def towerScalar (Δ c : ℂ) : ℕ → ℕ → ℂ
+  | j, 0 => if j = 0 then Δ else 0
+  | 0, (n + 1) => towerScalar Δ c 0 n + 2
+  | (j + 1), (n + 1) =>
+      (2 * (j : ℂ) + 4) * towerScalar Δ c j n
+        + (if j = 0 then c / 2 else 0) + towerScalar Δ c (j + 1) n
+
+theorem Lsq_tower (W : VertexOperatorAlgebra 𝒱) {a : 𝒱} {Δ : ℂ} (ha : IsSqPrimary W a Δ) :
+    ∀ (n j : ℕ), Lsq W (2 * (j : ℤ)) ((⇑(Lsq W (-2)))^[n] a)
+      = towerScalar Δ W.centralCharge j n • ((⇑(Lsq W (-2)))^[n - j] a) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{(⇑(Lsq W (-2)))^[n] a} is $L[-2]^na$ (\lean{^[n]} is $n$-fold iteration of a function). \lean{n - j} is truncated
+subtraction in $\N$; for $j>n$ the scalar is $0$ (\lean{towerScalar_}\allowbreak\lean{eq_zero_}\allowbreak\lean{of_lt}), so the truncation is harmless.
+The closed forms are \lean{towerScalar_zero_left} and \lean{towerScalar_one_left}. Same as AK's
+``$L[2k-2]L[-2]^{i-1}a = c_kL[-2]^{i-k}a$'' with $j = k-1$, $n = i-1$; the Lean scalar is computed rather than left
+implicit, and it depends on $i$ as well as $k$ (AK suppress the dependence).
+\end{dictionary}
+
+\textbf{Proof on paper.} Induction on $n$. For $n=0$ this is primarity. For the step write
+$L[2j]L[-2]y = L[-2]L[2j]y + (2j+2)L[2j-2]y + \delta_{j1}\frac{c}{12}(8-2)y$ with $y = L[-2]^na$ and use the induction
+hypothesis on both terms; the case $j=0$ is $L[0]L[-2]y = L[-2](L[0]+2)y$. Collecting gives the recursion. \qed
+
+\begin{physics}
+$L[-2]$ inserts the stress tensor on the torus; $L[-2]^na$ is $a$ dressed by $n$ stress tensors. The statement is the
+torus Ward identity's algebraic core: moving a positive Virasoro mode through the dressing produces only the same
+tower with explicit coefficients (involving $c$ through the Schwarzian/central term).
+\end{physics}
+
+\begin{status}
+Proved, unconditional; \lean{VOA.Lsq_tower}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (re-run).
+\end{status}
+
+\subsection{Lemma 5.5: from $L[-2]$ to $q\,d/dq$}
+
+\begin{definition}[Formal genus-one block; Zhu Def.~5.1.1, formal form]\label{l16:def:formalblock}
+A linear map $S:V\to\{\text{formal }q\text{-series}\}$ is a \emph{formal block} if for every homogeneous $a$ of weight
+$k_a\ge1$ and every $v\in V$:
+(i) $S(a[0]v) = 0$;
+(ii) $S(a[-2]v) + \sum_{m\ge0}(2m+1)\,G_{2m+2}\star S(a[2m]v) = 0$;
+(iii) $S(L[-2]v) = \theta S(v) + \sum_{m\ge0}G_{2m+2}\star S(L[2m]v)$,
+where $\star$ is the product of a power series with a formal $q$-series (\lean{qConv}) and $G_{2j}$ is Zhu's normalised
+Eisenstein series (below).
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak ZhuBlockConditions.lean} (Chapter~\ref{ch:L15}).
+\begin{leancode}
+structure IsFormalBlock (W : VertexOperatorAlgebra 𝒱) (S : 𝒱 →ₗ[ℂ] FormalQSeries) : Prop where
+  vanish : ∀ (ka : ℕ), 1 ≤ ka → ∀ a ∈ W.grading (ka : ℤ), ∀ v : 𝒱, S (vSqZ W a ka 0 v) = 0
+  negTwo : ∀ (ka : ℕ), 1 ≤ ka → ∀ a ∈ W.grading (ka : ℤ), ∀ v : 𝒱,
+    S (vSqZ W a ka (-2) v)
+      + ∑ᶠ m : ℕ, ((2 * (m + 1) - 1 : ℕ) : ℂ)
+          • qConv (zhuG (m + 1)) (S (vSqZ W a ka (2 * (m + 1) - 2 : ℤ) v)) = 0
+  omega : ∀ v : 𝒱, S (Lsq W (-2) v)
+    = qDeriv (S v) + ∑ᶠ m : ℕ, qConv (zhuG (m + 1)) (S (Lsq W (2 * (m + 1) - 2 : ℤ) v))
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak ZhuNormalization.lean} (Chapter~\ref{ch:L14}).
+\begin{leancode}
+noncomputable def zhuG (j : ℕ) : ℕ → ℂ :=
+  fun m =>
+    if m = 0 then -(((bernoulli (2 * j) : ℚ) : ℂ) / (Nat.factorial (2 * j) : ℂ))
+    else (2 / (Nat.factorial (2 * j - 1) : ℂ)) * lambertCoeff (2 * j - 1) m
+\end{leancode}
+
+\begin{dictionary}
+\lean{vSqZ W a ka m} is the square-bracket mode $a[m]$; \lean{Lsq W n} is $L[n]$; \lean{qDeriv} is $\theta$; \lean{qConv f}
+multiplies by the power series with coefficients $f$. \lean{zhuG j} is the coefficient sequence of Zhu's
+$G_{2j}(q) = -\frac{B_{2j}}{(2j)!} + \frac{2}{(2j-1)!}\sum_{n\ge1}\sigma_{2j-1}(n)q^n$ (\lean{lambertCoeff (2j-1) n}
+$=\sigma_{2j-1}(n)$), i.e.\ the Eisenstein series normalised so that $G_{2j} = \frac{2\zeta(2j)}{(2\pi i)^{2j}}E_{2j}$; the
+index shift $m\mapsto m+1$ makes the three fields exactly (i)--(iii) above, with $(2m+1)G_{2m+2}$ in (ii). The \lean{∑ᶠ} sums
+are finite because $a[n]v = 0$ and $L[n]v = 0$ for $n\gg0$. Same as Zhu's Definition 5.1.1 in formal $q$-series form (Zhu
+uses holomorphic functions on $\mathbb H$; that is the analytic version, Definition~\ref{l16:def:analyticblock}).
+$\mathcal G = \C[G_2,G_4,G_6]$ (\lean{GSeries}) is the algebra generated by the series \lean{PowerSeries.}\allowbreak\lean{mk (zhuG j)},
+$j = 1,2,3$; it contains every $G_{2j}$.
+\end{dictionary}
+
+\begin{physics}
+A genus-one block is a candidate torus one-point function $v\mapsto\langle v\rangle_\tau$: (i) is the Ward identity for the
+global symmetry charges on the torus, (ii) expresses that ``derivative'' insertions are total derivatives up to Eisenstein
+contact terms, and (iii) is the conformal Ward identity --- inserting the stress tensor equals differentiating in the modular
+parameter $\tau$ ($\theta = \frac1{2\pi i}\partial_\tau$), plus contact terms.
+\end{physics}
+
+\begin{status}
+Definition; satisfiable: \lean{torusOnePointHom_}\allowbreak\lean{isFormalBlock} (every module's trace functions form a formal block).
+\end{status}
+
+The basic example is $S = Z_M(\cdot;q)$
+(\lean{torusOnePointHom N}, a block by \lean{torusOnePointHom_}\allowbreak\lean{isFormalBlock}). \lean{QSeriesAt h} is the space of
+series supported on $h+\N$, and \lean{psSMul F χ} is \lean{qConv} with the coefficient sequence of $F\in\C[[q]]$.
+
+\begin{theorem}[AK Lemma 5.5, for primary vectors]\label{l16:thm:huni}
+Let $S$ be a formal block supported on $h+\N$ and $a$ square-bracket primary. For each $i$ there are
+$\eta_{i,0},\dots,\eta_{i,i}\in\mathcal S$ with $\eta_{i,i} = 1$ and
+$S(L[-2]^ia) = \sum_{j=0}^{i}\eta_{i,j}\,\theta^jS(a)$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak AKModularODE.lean}.
+\begin{leancode}
+theorem huni_of_sqPrimary (W : VertexOperatorAlgebra 𝒱)
+    {S : 𝒱 →ₗ[ℂ] FormalQSeries} {hbase : ℂ} (hsupp : ∀ v, S v ∈ QSeriesAt hbase)
+    (hS : IsFormalBlock W S) {a : 𝒱} {Δ : ℂ} (ha : IsSqPrimary W a Δ) (i : ℕ) :
+    ∃ hc : ℕ → PowerSeries ℂ, (∀ j, hc j ∈ SubexpPS) ∧ hc i = 1 ∧ (∀ j, i < j → hc j = 0) ∧
+      S ((⇑(Lsq W (-2)))^[i] a)
+        = ∑ j ∈ Finset.range (i + 1), psSMul (hc j) (qDeriv^[j] (S a)) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{hc j} is $\eta_{i,j}$; ``\lean{hc i = 1} and \lean{hc j = 0} for $j>i$'' is unitriangularity. The coefficients
+are in $\mathcal S$, not in AK's $\C[G_4,G_6]$ (see Section~\ref{l16:sec:weak}), and in the Euler basis $\theta^j$, not
+the Serre basis. They are produced by an existence statement inside the span of the block values, so they may depend on
+$S$; AK's depend only on $(a,\Delta,c)$. \textbf{Why primarity is essential.} The file \leanpath{UniCollapse.lean}
+(Chapter~\ref{ch:L15}) refutes the same conclusion quantified over all $v$, via $v = L[-1]x$, which is not primary; the
+present statement is for a fixed primary $a$, which is the only case AK use.
+\end{dictionary}
+
+\textbf{Proof on paper.} Induction on $i$. By (iii) and Theorem~\ref{l16:thm:tower},
+$S(L[-2]^{i+1}a) = \theta S(L[-2]^ia) + \sum_{m}G_{2m+2}\gamma(m,i)S(L[-2]^{i-m}a)$. By induction each
+$S(L[-2]^{i'}a)$, $i'\le i$, is a unitriangular $\mathcal S$-combination of $\theta^jS(a)$; applying $\theta$ uses the
+Leibniz rule $\theta(\eta\chi) = (\theta\eta)\chi + \eta\theta\chi$, and $\theta\eta\in\mathcal S$. The leading
+coefficient stays $1$. \qed
+
+\begin{physics}
+Inserting the stress tensor on the torus is the same as differentiating with respect to the modular parameter
+(``$T(z)$ is $\partial_\tau$'') up to contact terms with Eisenstein coefficients. This is the conformal Ward identity on
+the torus.
+\end{physics}
+
+\begin{status}
+Proved, unconditional; \lean{VOA.huni_of_sqPrimary}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (re-run).
+\end{status}
+
+\subsection{Lemma 5.3 and the formal character equation}
+
+\begin{theorem}[AK Lemma 5.3, block form]\label{l16:thm:lemma53}
+If $V$ is Etingof-finite and $S$ is a formal block, then for every $v$ there are $s\ge1$ and $G_0,\dots,G_{s-1}\in\mathcal G$
+with $S(L[-2]^sv) = \sum_{i<s}G_i\,S(L[-2]^iv)$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak AKModularODE.lean}.
+\begin{leancode}
+theorem exists_monic_Lsq_relation_of_etingofFinite {S : 𝒱 →ₗ[ℂ] FormalQSeries} {hbase : ℂ}
+    (hsupp : ∀ v, S v ∈ QSeriesAt hbase) (hS : IsFormalBlock W S)
+    (hzero : VacuumGradeZero W) (hE : EtingofFinite W) (v : 𝒱) :
+    ∃ (s : ℕ) (G : ℕ → PowerSeries ℂ), 1 ≤ s ∧ (∀ i, G i ∈ GSeries) ∧
+      S ((⇑(Lsq W (-2)))^[s] v)
+        = ∑ i ∈ Finset.range s, psSMul (G i) (S ((⇑(Lsq W (-2)))^[i] v)) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{G i ∈ GSeries}: the coefficients are in $\mathcal G = \C[G_2,G_4,G_6]$. The quantifier order is
+$\forall S\,\forall v\,\exists s\,\exists G$: $s$ and $G$ may depend on the block $S$ (hence on the module). AK's
+Lemma~5.3 gives one relation in $\lsixteenVA$ independent of the module; that is the uniform version
+(Theorem~\ref{l16:thm:uniform}).
+\end{dictionary}
+
+\textbf{Proof on paper.} $\mathcal G$ is Noetherian (a finitely generated $\C$-algebra) and the $\mathcal G$-span of the
+values of $S$ is finitely generated (Theorem~\ref{l16:thm:prop52}, as in the proof of Theorem~\ref{l16:thm:growth}),
+hence Noetherian. The ascending chain $\operatorname{span}_{\mathcal G}\{S(L[-2]^iv): i\le r\}$ stabilises, so some
+$S(L[-2]^{n+1}v)$ is a combination of the earlier ones. \qed
+
+\begin{physics}
+Finitely many independent torus amplitudes force the stress-tensor tower to close: dressing a state by enough stress
+tensors produces nothing new.
+\end{physics}
+
+\begin{status}
+Proved, conditional on \lean{hE} (\lean{hzero} free); \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (re-run).
+\end{status}
+
+\begin{theorem}[Formal character equation (``AK equation (2), formal form'' in the source); \emph{not} AK Theorem~5.1, near-vacuous]\label{l16:thm:formalODE}
+Let $V$ be Etingof-finite and $M$ an ordinary module with a conformal weight. There are $s\ge1$ and power series
+$g_0,\dots,g_{s-1}\in\mathcal S$ such that the character satisfies
+\begin{equation}\label{l16:eq:formalODE}
+\theta^s\chi_M + \sum_{i<s}g_i\,\theta^i\chi_M = 0 .
+\end{equation}
+\textbf{Caution.} This is not a modular linear differential equation and not Arakawa--Kawasetsu's
+Theorem~5.1: $\theta$ is not the Serre derivative, the $g_i$ are arbitrary convergent power series rather than
+modular forms, and $s,g$ depend on $M$. By Proposition~\ref{l16:prop:weak} the conclusion holds for every
+convergent $q$-series with nonzero leading coefficient and zeros of bounded multiplicity in the unit disc, so it
+says almost nothing beyond convergence of $\chi_M$ (Theorem~\ref{l16:thm:growth}).
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak AKModularODE.lean}.
+\begin{leancode}
+theorem character_formalODE_of_etingofFinite (W : VertexOperatorAlgebra 𝒱) (N : OrdVModule W M)
+    {hw : ℂ} (hcw : HasConformalWeight N hw) (hzero : VacuumGradeZero W) (hE : EtingofFinite W) :
+    ∃ (s : ℕ) (g : ℕ → ℕ → ℂ), 1 ≤ s ∧ (∀ i, Subexponential (fun k => ‖g i k‖)) ∧
+      ∀ e : ℂ, (qDeriv^[s] (torusPartition N)) e
+        + ∑ i ∈ Finset.range s, qConv (g i) (qDeriv^[i] (torusPartition N)) e = 0 := by
+
+theorem character_formalODE_adjoint_of_etingofFinite (W : VertexOperatorAlgebra 𝒱)
+    (hne : W.vacuum ≠ 0) (hzero : VacuumGradeZero W) (hE : EtingofFinite W) :
+    ∃ (s : ℕ) (g : ℕ → ℕ → ℂ), 1 ≤ s ∧ (∀ i, Subexponential (fun k => ‖g i k‖)) ∧
+      ∀ e : ℂ, (qDeriv^[s] (torusPartition (adjointModule W))) e
+        + ∑ i ∈ Finset.range s,
+            qConv (g i) (qDeriv^[i] (torusPartition (adjointModule W))) e = 0 :=
+\end{leancode}
+
+\begin{dictionary}
+\lean{g i : ℕ → ℂ} is the coefficient sequence of $g_i$, and \lean{Subexponential (fun k => ‖g i k‖)} says
+$g_i\in\mathcal S$. The equation is asserted coefficientwise, \lean{∀ e : ℂ}, i.e.\ as an identity of formal
+series. \lean{adjointModule W} is $V$ as a module over itself (Chapter~\ref{ch:L12},
+Definition~\ref{l12:def:adjoint}); \lean{hne} (nonzero vacuum) makes its conformal weight $0$. \textbf{Comparison with
+AK.} AK's~\eqref{l16:eq:mlde} uses (1) iterated Serre derivatives, (2) coefficients $p_i\in\C[E_4,E_6]$ of weight
+$2(s-i)$, (3) one equation for all $M$. The Lean statement has (1) the Euler operator $\theta$ instead --- this alone
+would be harmless, since $\vartheta^i_{(0)} = \theta^i + (\text{lower terms with coefficients in }\C[E_2,E_4,E_6])$ is a
+unitriangular change of basis; (2) coefficients in $\mathcal S$, an enormous ring; (3) $s$ and $g$ depending on $M$. The
+statement is therefore much \textbf{weaker} than AK's equation, and the docstrings say so (``This is NOT
+Arakawa--Kawasetsu Theorem 5.1 and NOT a modular linear differential equation''). How much weaker is the subject of
+Section~\ref{l16:sec:weak}.
+\end{dictionary}
+
+\textbf{Proof on paper.} Apply Theorem~\ref{l16:thm:lemma53} to $S = Z_M(\cdot;q)$ and $v=\lsixteenvac$, and substitute
+Theorem~\ref{l16:thm:huni} (the vacuum is primary of weight $0$) into the monic relation: since $\eta_{i,i}=1$ the result is
+monic in $\theta^s$, with coefficients $g_j = \eta_{s,j} - \sum_iG_i\eta_{i,j}\in\mathcal S$. Finally
+$Z_M(\lsixteenvac;q) = \chi_M$. \qed
+
+\begin{physics}
+In AK's form this would be the statement that the Schur index (vacuum character) of a four-dimensional $\mathcal N=2$
+theory satisfies an MLDE. In the formal form proved here it is the statement that the stress-tensor tower closes on
+the torus with coefficients that are convergent functions of $q$ --- a statement about the vacuum character's
+analytic behaviour at $|q|<1$ rather than about its modular properties.
+\end{physics}
+
+\begin{status}
+Proved; \lean{VOA.character_}\allowbreak\lean{formalODE_}\allowbreak\lean{of_etingofFinite}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (re-run).
+\textbf{Content warning:} near-vacuous (Proposition~\ref{l16:prop:weak}, argued on paper); \textbf{not} AK Theorem~5.1
+and not an MLDE.
+Conditional on \lean{hE} (\lean{hzero} free). Instantiated at the trivial VOA (\lean{trivial_}\allowbreak\lean{character_}\allowbreak\lean{formalODE})
+and, unconditionally, at $L_{-4/3}(\lsixteensl)$ (Section~\ref{l16:sec:payoff}).
+\end{status}
+
+\subsection{Uniformity in the module}
+
+\begin{theorem}[AK Lemma 5.3 in $\lsixteenVA$; one order for all modules]\label{l16:thm:uniform}
+Let $V$ be Etingof-finite and $a\in V$. (i) There are $s\ge1$ and $G_i\in\mathcal G$ such that \emph{every} formal block
+$S$ satisfies $S(L[-2]^sa) = \sum_{i<s}G_iS(L[-2]^ia)$. (ii) There is $s\ge1$ such that for every ordinary module $M$ with a
+conformal weight there are $g_i\in\mathcal S$ with $\theta^s\chi_M + \sum_{i<s}g_i\theta^i\chi_M = 0$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak AKUniformODE.lean}.
+\begin{leancode}
+theorem exists_uniform_monic_Lsq_relation_of_etingofFinite
+    (hzero : VacuumGradeZero W) (hE : EtingofFinite W) (a : 𝒱) :
+    ∃ (s : ℕ) (G : ℕ → PowerSeries ℂ), 1 ≤ s ∧ (∀ i, G i ∈ GSeries) ∧
+      ∀ (hbase : ℂ) (S : 𝒱 →ₗ[ℂ] FormalQSeries) (hsupp : ∀ v, S v ∈ QSeriesAt hbase),
+        IsFormalBlock W S →
+          S ((⇑(Lsq W (-2)))^[s] a)
+            = ∑ i ∈ Finset.range s, psSMul (G i) (S ((⇑(Lsq W (-2)))^[i] a)) := by
+
+theorem uniform_order_character_formalODE_of_etingofFinite (W : VertexOperatorAlgebra 𝒱)
+    (hzero : VacuumGradeZero W) (hE : EtingofFinite W) :
+    ∃ s : ℕ, 1 ≤ s ∧
+      ∀ {M : Type u} [AddCommGroup M] [Module ℂ M] (N : OrdVModule W M) (hw : ℂ),
+        HasConformalWeight N hw →
+          ∃ g : ℕ → ℕ → ℂ, (∀ i, Subexponential (fun k => ‖g i k‖)) ∧
+            ∀ e : ℂ, (qDeriv^[s] (torusPartition N)) e
+              + ∑ i ∈ Finset.range s,
+                  qConv (g i) (qDeriv^[i] (torusPartition N)) e = 0 := by
+\end{leancode}
+
+\begin{dictionary}
+Quantifier order is the content. In (i), $\exists s\,\exists G$ precedes $\forall S$: the relation is uniform, exactly
+AK's Lemma~5.3. In (ii), $\exists s$ precedes $\forall M$ but $\exists g$ follows it: \textbf{only the order is uniform}, the
+coefficients depend on $M$. The docstring is explicit: ``one order, many equations'', not ``one equation''. The reason
+is that Lemma~5.5 (Theorem~\ref{l16:thm:huni}) produces block-dependent coefficients. The universe of \lean{M} is that of
+\lean{𝒱}. So (ii) is weaker than AK's closing sentence (all characters solve one equation).
+\end{dictionary}
+
+\textbf{Proof on paper.} (i) Run the Noetherian argument of Theorem~\ref{l16:thm:lemma53} in the finitely generated
+module $\lsixteenVA/\lsixteenOq$ itself, which is independent of any block, to get
+$1\otimes L[-2]^sa - \sum G_i\otimes L[-2]^ia\in\lsixteenOq$; every block kills $\lsixteenOq$. (ii) Combine (i) with
+Theorem~\ref{l16:thm:huni} as before. \qed
+
+\begin{physics}
+AK's statement ``all characters lie in the solution space of one MLDE'' is what turns ``finitely many ordinary modules''
+into a theorem: an order-$s$ equation has an $s$-dimensional solution space. With module-dependent coefficients this
+conclusion is lost.
+\end{physics}
+
+\begin{status}
+Proved, conditional on \lean{hE}; both \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (re-run). Instantiated at the
+trivial VOA (\lean{trivial_}\allowbreak\lean{uniform_}\allowbreak\lean{order_}\allowbreak\lean{character_}\allowbreak\lean{formalODE}) and at $L_{-4/3}(\lsixteensl)$.
+\end{status}
+
+\subsection{How weak is the formal equation?}\label{l16:sec:weak}
+
+The following observation is ours; it is argued on paper and not machine-checked.
+
+\begin{proposition}[The formal equation is almost a growth statement]\label{l16:prop:weak}
+Let $\chi = q^h F(q)$ with $F = \sum_{n\ge0}F_nq^n$, $F_0\ne0$, and suppose $F$ converges on the open unit disc $D$ and its
+zeros in $D$ have multiplicity at most $m$. Then for $s = m+1$ there are $g_0,\dots,g_{s-1}\in\mathcal S$ with
+$\theta^s\chi + \sum_{i<s}g_i\theta^i\chi = 0$.
+\end{proposition}
+
+\begin{proof}[Proof on paper]
+Since $\theta(q^hF) = q^h(h+\theta)F$, it suffices to solve $(h+\theta)^sF\in\sum_{i<s}\mathcal O(D)\,(h+\theta)^iF$, where
+$\mathcal O(D)$ is the ring of holomorphic functions on $D$; the span on the right equals
+$\sum_{i<s}\mathcal O(D)\theta^iF$. The functions $F,\theta F,\dots,\theta^{s-1}F$ have no common zero in $D$: at $q=0$,
+$F(0)=F_0\ne0$; at $q_0\ne0$, $\theta = q\,d/dq$ differs from $d/dq$ by a unit, and a zero of $F$ of order $\le m<s$ is not
+a zero of its $m$-th derivative. In $\mathcal O(D)$ a finitely generated ideal without common zeros is the unit ideal (a
+classical theorem of Wedderburn and Helmer: $\mathcal O(D)$ is a B\'ezout domain, and the generator of a finitely generated
+ideal is a gcd, which here has no zeros). So $1 = \sum_{i<s}u_i\theta^iF$ with $u_i\in\mathcal O(D)$, and
+$\theta^sF = \sum_i(u_i\theta^sF)\theta^iF$. Finally, a function holomorphic on $D$ has Taylor coefficients with
+$|a_n|\le C_rr^n$ for every $r>1$ (Cauchy's estimate on the circle of radius $1/r$), i.e.\ lies in $\mathcal S$. Rewriting
+$(h+\theta)^s$ in terms of $\theta^i$ changes coefficients by constants.
+\end{proof}
+
+\begin{physics}
+A linear ODE in $q$ with coefficients merely holomorphic in the disc constrains nothing physical: the content of an MLDE is
+the \emph{modularity} and finite dimensionality of the coefficient space, which ties the low-temperature expansion to the
+high-temperature (Cardy) behaviour.
+\end{physics}
+
+\begin{warning}[title={The formal ODE theorems say little beyond convergence (moderate)}]
+By Proposition~\ref{l16:prop:weak}, the conclusion of \lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{of_etingofFinite} (and of its
+instances and uniform-order variant) holds for \emph{every} convergent $q$-series with nonzero leading coefficient
+and zeros of bounded multiplicity in the unit disc, whether or not it has anything to do with a vertex algebra or with
+modularity. Together with Theorem~\ref{l16:thm:growth}, which already gives convergence, the formal ODE theorems add
+essentially only the bounded-multiplicity information. The library's docstrings correctly say the result is ``not an
+MLDE'' and ``genuinely weaker'' on the coefficient axis, but they present it as ``AK equation~(2)'', and the
+Lean names (\lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{...}) invite over-reading. A referee should treat these theorems as growth
+statements. The genuine MLDE is Section~\ref{l16:sec:mlde}. (Also: the uniform order of
+Theorem~\ref{l16:thm:uniform}(ii) is upward closed --- applying $\theta$ to an order-$s$ equation with coefficients in
+$\mathcal S$ gives one of order $s+1$ --- so ``one order'' is likewise weak.)
+\end{warning}
+
+%======================================================================
+\section{The genuine modular differential equation}\label{l16:sec:mlde}
+%======================================================================
+
+The file \leanpath{AKMLDE.lean} keeps the three rungs that \leanpath{AKModularODE.lean} had to merge apart, and works
+analytically on the upper half plane with genuine modular forms.
+
+\subsection{Modular coefficients and Serre derivatives}
+
+\noindent Files \leanpath{VOA/\allowbreak Modularity/\allowbreak LevelOneStructure.lean},
+\leanpath{VOA/\allowbreak Modularity/\allowbreak EisensteinRamanujan.lean},
+\leanpath{VOA/\allowbreak Modularity/\allowbreak SerreDerivative.lean} (Chapter~\ref{ch:L14}).
+\begin{leancode}
+noncomputable def E46 : Subalgebra ℂ (UpperHalfPlane → ℂ) :=
+  Algebra.adjoin ℂ {(⇑ModularForm.E₄ : UpperHalfPlane → ℂ), (⇑ModularForm.E₆ : UpperHalfPlane → ℂ)}
+
+noncomputable def e46C (f : E46) (z : ℂ) : ℂ :=
+  (f : UpperHalfPlane → ℂ) (UpperHalfPlane.ofComplex z)
+
+def E46Weight (k : ℤ) (f : E46) : Prop :=
+  ∃ F : ModularForm 𝒮ℒ k, (f : UpperHalfPlane → ℂ) = F
+
+noncomputable def serreDerivC (k : ℤ) (f : ℂ → ℂ) (z : ℂ) : ℂ :=
+  (2 * (Real.pi : ℂ) * Complex.I)⁻¹ * _root_.deriv f z
+    + (k : ℂ) * ((2 * (Real.pi : ℂ) * Complex.I)⁻¹) ^ 2 * (G2C z * f z)
+
+def E46SerreClosed : Prop :=
+  ∀ (k : ℤ) (f : E46), E46Weight k f →
+    ∃ g : E46, E46Weight (k + 2) g ∧
+      ∀ z ∈ imGT 0, e46C g z = serreDerivC k (e46C f) z
+\end{leancode}
+
+\begin{dictionary}
+\lean{E46} is the algebra of functions on $\mathbb H$ generated by $E_4,E_6$ (Mathlib's normalised Eisenstein series);
+\lean{e46C} extends such a function to $\C$ by Mathlib's retraction (values off $\mathbb H$ are never used: every
+statement is restricted to \lean{imGT 0} $=\{\operatorname{Im}z>0\}$). \lean{E46Weight k f}: $f$ is (the function of) a
+modular form of weight $k$ for $SL_2(\Z)$ (\lean{𝒮ℒ}), holomorphic at the cusp. \lean{serreDerivC k f} is
+$\frac{1}{2\pi i}f' + k(2\pi i)^{-2}G_2f$; with the normalisation $E_2 = G_2/(2\zeta(2)) = 3G_2/\pi^2$ recorded in
+the source, this is $\frac1{2\pi i}f' - \frac{k}{12}E_2f$, the Serre derivative $\vartheta_k$ (Chapter~\ref{ch:L14}).
+\lean{E46SerreClosed} says: $\vartheta_k$ maps weight-$k$ elements of $\C[E_4,E_6]$ to weight-$(k+2)$ elements. This is true
+(Ramanujan's identities $\vartheta_4E_4 = -\frac13E_6$, $\vartheta_6E_6 = -\frac12E_4^2$ and the Leibniz rule), and it is
+\textbf{proved} in the library: \lean{e46SerreClosed} (\leanpath{VOA/\allowbreak Modularity/\allowbreak EisensteinSerreClosure.lean},
+Chapter~\ref{ch:L14}), via \lean{serreForm}, which shows that the Serre derivative of a level-one modular form is a
+level-one modular form. Mathlib defines the derivative of modular forms but does not prove this preservation. The
+Arakawa--Kawasetsu MLDE theorems of this chapter keep \lean{E46SerreClosed} as a hypothesis \lean{hclose} in their
+statements; the primed versions
+\lean{IsSqPrimary.}\allowbreak\lean{exists_}\allowbreak\lean{monicMLDEOn_}\allowbreak\lean{all_analyticBlocks_}\allowbreak\lean{of_etingofFinite'}
+and \lean{IsSqPrimary.}\allowbreak\lean{exists_}\allowbreak\lean{monicMLDEOn_}\allowbreak\lean{all_analyticBlocks_}\allowbreak\lean{of_fin_gen'}
+discharge it.
+\end{dictionary}
+
+\begin{definition}[Monic MLDE on $\mathbb H$]\label{l16:def:mlde}
+For $f:\mathbb H\to\C$, $f$ satisfies a monic MLDE of order $s\ge1$ and weight $w$ with coefficients $p_0,\dots,p_{s-1}$
+if each $p_i$ is a modular form of weight $2(s-i)$ and $\vartheta^s_{(w)}f + \sum_{i<s}p_i\vartheta^i_{(w)}f = 0$ on $\mathbb H$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak AKMLDE.lean}.
+\begin{leancode}
+noncomputable def serreIterC (wt : ℤ) : ℕ → (ℂ → ℂ) → (ℂ → ℂ)
+  | 0, f => f
+  | i + 1, f => serreDerivC (wt + 2 * (i : ℤ)) (serreIterC wt i f)
+
+def MonicMLDEOn (wt : ℤ) (f : ℂ → ℂ) (s : ℕ) (p : ℕ → E46) : Prop :=
+  1 ≤ s ∧
+    (∀ i < s, E46Weight (2 * ((s - i : ℕ) : ℤ)) (p i)) ∧
+    ∀ z ∈ imGT 0, serreIterC wt s f z
+      + ∑ i ∈ Finset.range s, e46C (p i) z * serreIterC wt i f z = 0
+\end{leancode}
+
+\begin{dictionary}
+\lean{serreIterC wt i f} is $\vartheta^i_{(w)}f$ with the weight raised by $2$ at each step. \lean{MonicMLDEOn} is exactly
+Definition~\ref{l16:def:mlde}; the weights of the coefficients are forced, as in AK's~\eqref{l16:eq:mlde}. This is a
+genuine MLDE: unlike \lean{SubexpPS}, the coefficient space $M_{2(s-i)}$ is finite-dimensional, and the solution space of
+such an equation is $SL_2(\Z)$-invariant.
+\end{dictionary}
+
+\begin{physics}
+This is the form in which Schur indices of four-dimensional $\mathcal N=2$ theories, and characters of rational CFTs
+(Mathur--Mukhi--Sen), are classified: a monic MLDE whose coefficients are a finite number of constants times monomials
+in $E_4,E_6$.
+\end{physics}
+
+\begin{status}
+Definitions. \lean{E46SerreClosed} is a \textbf{theorem} (\lean{e46SerreClosed}, Chapter~\ref{ch:L14}).
+\end{status}
+
+\subsection{The weight grading interface}
+
+To make the coefficients of AK's relation modular forms of the \emph{right weight}, one needs the relation module to be
+homogeneous for the total weight (modular weight of the coefficient plus square-bracket weight of the vector).
+
+\begin{definition}[AK weight grading]\label{l16:def:akgrading}
+Let $\lsixteenVA^{E} = \C[E_4,E_6]\otimes V$ and let its total-weight-$n$ subspace be spanned by $f\otimes v$ with $f$ of
+modular weight $p$, $L[0]v = qv$, $p+q=n$. An \emph{AK weight grading} consists of: a direct-sum decomposition of $\C[E_4,E_6]$
+into its weight spaces; a direct-sum decomposition of $\lsixteenVA^E$ into total-weight spaces; and the statement that the
+relation module $O^E_q(V)$ (\lean{blockRelSpanE W}, the $E_4,E_6$-version of $\lsixteenOq$) is homogeneous.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak AKGrading.lean}.
+\begin{leancode}
+noncomputable def e46WeightSpace (k : ℤ) : Submodule ℂ E46 where
+  carrier := {f | E46Weight k f}
+
+noncomputable def akTotalWeightSpace (W : VertexOperatorAlgebra 𝒱) (n : ℤ) :
+    Submodule ℂ (𝒱E 𝒱) :=
+  Submodule.span ℂ {x | ∃ (p q : ℤ) (f : E46) (v : 𝒱), p + q = n ∧
+    f ∈ e46WeightSpace p ∧ v ∈ sqWeightSpace W (q : ℂ) ∧ x = f ⊗ₜ[ℂ] v}
+
+structure AKWeightGrading (W : VertexOperatorAlgebra 𝒱) where
+  coeffDecomposition : DirectSum.Decomposition e46WeightSpace
+  totalDecomposition : DirectSum.Decomposition (akTotalWeightSpace W)
+  relationHomogeneous :
+    letI := totalDecomposition
+    DirectSum.SetLike.IsHomogeneous (akTotalWeightSpace W)
+      ((blockRelSpanE W).restrictScalars ℂ)
+\end{leancode}
+
+\begin{dictionary}
+\lean{𝒱E 𝒱} is \lean{↥E46 ⊗[ℂ] 𝒱} (file \leanpath{VOA/\allowbreak Modularity/\allowbreak BlockRelSpanE.lean});
+\lean{sqWeightSpace W q} $=\ker(L[0]-q)$ (file \leanpath{VOA/\allowbreak Modularity/\allowbreak SquareBracketGrading.lean}).
+\lean{DirectSum.}\allowbreak\lean{Decomposition A} is Mathlib's data of an internal direct-sum decomposition into the family $A$, with the
+projections; \lean{IsHomogeneous} says a submodule is the sum of its intersections with the pieces. The structure is
+\emph{data plus a proposition}, not a theorem. The first two fields hold for every VOA of CFT type: modular
+forms of different weights are linearly independent, and $L[0]$ is diagonalisable on $V$ with eigenvalues in $\N$ (Zhu's
+theorem that $(V,Y[\,],\tilde\omega)$ is again a VOA). The third field, \lean{relationHomogeneous}, is the real
+VOA-side content: it says that Zhu's relation module is homogeneous for the \emph{total} weight. Arakawa
+and Kawasetsu use a grading of this kind as a standard fact, but it is not a triviality, because the relation generators
+$a[0]v$ are indexed by the \emph{ordinary} weight of $a\in V_{k_a}$ while the grading uses the square-bracket weight. So
+the third field needs an argument (Zhu covariance of the square-bracket modes). \textbf{All three fields are now proved,
+for every VOA of the library} (Theorem~\ref{l16:thm:akgrading} below); the earlier statement of this book that
+\lean{AKWeightGrading} had no instance, not even for the trivial VOA, recorded a gap in the library, not a mathematical
+obstruction, and is superseded.
+\end{dictionary}
+
+\begin{physics}
+The weight grading is the statement that torus amplitudes are quasi-modular forms of definite weight, the weight of an
+insertion being its scaling dimension on the cylinder. It is the bookkeeping that makes ``modular form of weight
+$2(s-i)$'' meaningful.
+\end{physics}
+
+\begin{status}
+Definition (structure with three fields). Inhabited for every VOA of the library (Theorem~\ref{l16:thm:akgrading}).
+\end{status}
+
+\begin{theorem}[The AK weight grading exists]\label{l16:thm:akgrading}
+For every vertex operator algebra $V$ of the library (in particular of CFT type: $V_0=\C\lsixteenvac$ and positive grading),
+\lean{AKWeightGrading V} is inhabited.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak AKGradingTotal.lean} (section variable
+\lean{(W : VertexOperatorAlgebra 𝒱)}).
+\begin{leancode}
+noncomputable def akWeightGrading : AKWeightGrading W where
+  coeffDecomposition := e46Decomposition
+  totalDecomposition := akTotalDecomposition W
+  relationHomogeneous := by
+    letI := akTotalDecomposition W
+    rw [blockRelSpanE_eq_span]
+    exact isHomogeneous_span _ (relHomE_homog W)
+\end{leancode}
+
+\textbf{Proof on paper.} (A) \emph{Coefficients.} $E_4$, $E_6$ and the constants are homogeneous, so the weight spaces
+span $\C[E_4,E_6]$. They are independent: if $\sum_kf_k=0$ with $f_k$ modular of weight $k$, evaluate at
+$\gamma_n z$ with $\gamma_n=\left(\begin{smallmatrix}1&0\\n&1\end{smallmatrix}\right)$ to get
+$\sum_k(nz+1)^kf_k(z)=0$ for all $n$; the polynomial $\sum_kf_k(z)X^k$ has infinitely many roots, so every $f_k(z)=0$
+(\lean{e46WeightSpace_isInternal}, file \leanpath{AKGradingInstance.lean}). (B) \emph{Total weight.} The tensors
+$f\otimes v$ split into homogeneous pieces because $L[0]$ is diagonalisable with eigenvalues in $\N$; independence holds
+because the total-weight space of weight $n$ lies in the $n$-eigenspace of $\mathrm{Wt}\otimes1+1\otimes L[0]$
+(\lean{akTotalWeightSpace_isInternal}). (C) \emph{Relations.} Zhu covariance ($a[j]$ maps $V_{[K]}\otimes V_{[n]}$ to
+$V_{[K+n-j-1]}$) shows that each generator $a[0]v$ or $a[-2]v+\sum(2k-1)G_{2k}a[2k-2]v$ is a sum of total-homogeneous
+relations; the weight-zero component of $a$ is a multiple of $\lsixteenvac$ (CFT type), and $\lsixteenvac[j]=0$ for $j\neq-1$
+(\lean{sqMode_vacuum_eq_zero}). So Zhu's relation module is the $\C$-span of homogeneous elements
+(\lean{blockRelSpanE_eq_span}), hence homogeneous. \qed
+
+\begin{status}
+\texttt{\#print axioms VOA.akWeightGrading}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]},
+recorded in \texttt{Notes/\allowbreak release/\allowbreak WS-RELEASE2.md} (commit \texttt{34b74b85}); independently
+audited as faithful (\texttt{Notes/\allowbreak Textbook/\allowbreak referee/\allowbreak RELEASE\_AUDIT\_QUEUE2.md}).
+The aggregate \texttt{lake build} at the release commit is pending. Scope: ``every VOA'' means every
+\lean{VertexOperatorAlgebra} in the library's sense, which builds in CFT type.
+\end{status}
+
+\begin{physics}
+On the torus a field of cylinder scaling dimension $q$ (its $L[0]$-weight) contributes like a modular form of weight $q$,
+and the Ward identities of Definition~\ref{l16:def:formalblock} relate insertions of different dimension with Eisenstein
+series as coefficients. The theorem says these Ward identities never mix total weights: every relation among torus
+one-point functions splits into relations each of definite total weight (modular weight of the coefficient plus scaling
+dimension of the insertion). This is the dimensional analysis physicists take for granted when they write the
+coefficient of $\vartheta^{(i)}$ in an order-$s$ MLDE as a modular form of weight $2(s-i)$; here it is checked for every
+VOA of CFT type, with no finiteness assumption. By itself it produces no differential equation.
+\end{physics}
+
+\subsection{The conditional MLDE}
+
+\begin{definition}[Analytic genus-one block; Zhu Def.~5.1.1]\label{l16:def:analyticblock}
+A map $F:V\to\{\text{functions }\C\to\C\}$ is an \emph{analytic block} if it is linear in $v$, each $F(v)$ is holomorphic on
+$\mathbb H$, and for homogeneous $a$ of weight $k_a\ge1$, all $v$ and all $z\in\mathbb H$: (i) $F(a[0]v) = 0$; (ii)
+$F(a[-2]v)(z) + \sum_{m\ge0}(2m+1)G_{2m+2}(z)F(a[2m]v)(z) = 0$; (iii)
+$F(L[-2]v)(z) = \frac1{2\pi i}F(v)'(z) + \sum_{m\ge0}G_{2m+2}(z)F(L[2m]v)(z)$, with $G_{2j}(z)$ the Eisenstein
+\emph{functions} (the sums of Definition~\ref{l16:def:formalblock} evaluated at $q = e^{2\pi iz}$).
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak AnalyticBlock.lean} (Chapter~\ref{ch:L15}).
+\begin{leancode}
+structure IsAnalyticBlock (W : VertexOperatorAlgebra 𝒱) (F : 𝒱 → ℂ → ℂ) : Prop where
+  holo : ∀ v : 𝒱, DifferentiableOn ℂ (F v) (imGT 0)
+  addv : ∀ (v w : 𝒱) (z : ℂ), F (v + w) z = F v z + F w z
+  smulv : ∀ (c : ℂ) (v : 𝒱) (z : ℂ), F (c • v) z = c * F v z
+  vanish : ∀ (ka : ℕ), 1 ≤ ka → ∀ a ∈ W.grading (ka : ℤ), ∀ v : 𝒱, F (vSqZ W a ka 0 v) = 0
+  negTwo : ∀ (ka : ℕ), 1 ≤ ka → ∀ a ∈ W.grading (ka : ℤ), ∀ (v : 𝒱), ∀ z ∈ imGT 0,
+    F (vSqZ W a ka (-2) v) z
+      + ∑ᶠ m : ℕ, ((2 * (m + 1) - 1 : ℕ) : ℂ)
+          * (zhuGC (m + 1) z * F (vSqZ W a ka (2 * (m + 1) - 2 : ℤ) v) z) = 0
+  omega : ∀ (v : 𝒱), ∀ z ∈ imGT 0,
+    F (Lsq W (-2) v) z
+      = (2 * (Real.pi : ℂ) * Complex.I)⁻¹ * _root_.deriv (F v) z
+        + ∑ᶠ m : ℕ, zhuGC (m + 1) z * F (Lsq W (2 * (m + 1) - 2 : ℤ) v) z
+\end{leancode}
+
+\begin{dictionary}
+\lean{DifferentiableOn ℂ (F v) (imGT 0)}: holomorphic on $\mathbb H$. \lean{zhuGC j z} is the function $G_{2j}(z)$
+(Chapter~\ref{ch:L14}); \lean{_root_.deriv} is the complex derivative in $z$, so
+$(2\pi i)^{-1}F'$ is $\theta F$ in the variable $q = e^{2\pi iz}$. Exactly Definition~\ref{l16:def:analyticblock}; the
+difference from Definition~\ref{l16:def:formalblock} is only that functions replace formal series. Note that \lean{vanish}
+is required for all $z$ (the function is identically $0$), including off $\mathbb H$, which is harmless. The space of all
+analytic blocks is \lean{analyticBlocks W}.
+\end{dictionary}
+
+\begin{physics}
+The same Ward identities as Definition~\ref{l16:def:formalblock}, now for honest functions of the modular parameter: these
+are the torus conformal blocks of the chiral algebra.
+\end{physics}
+
+\begin{status}
+Definition; trace functions of modules with subexponential growth are instances (\lean{traceBlock_}\allowbreak\lean{isAnalyticBlock}).
+\end{status}
+
+\begin{theorem}[AK Theorem 5.1, conditional form]\label{l16:thm:mlde}
+Let $V$ be Etingof-finite, $a\in V$ square-bracket primary of integer weight $w$, and assume an AK weight grading for $V$
+and \lean{E46SerreClosed}. Then there are $s\ge1$ and $p_0,\dots,p_{s-1}$ such that for \emph{every} analytic genus-one
+block $F$ the function $F(a)$ satisfies the monic MLDE of Definition~\ref{l16:def:mlde} of weight $w$ with these
+coefficients. Both side hypotheses are theorems: \lean{AKWeightGrading W} is \lean{akWeightGrading W}
+(Theorem~\ref{l16:thm:akgrading}) and \lean{E46SerreClosed} is \lean{e46SerreClosed};
+\lean{IsSqPrimary.}\allowbreak\lean{exists_}\allowbreak\lean{monicMLDEOn_}\allowbreak\lean{all_analyticBlocks_}\allowbreak\lean{of_etingofFinite'}
+discharges the second and Theorem~\ref{l16:thm:mlde-uncond} below discharges both.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak AKMLDE.lean}.
+\begin{leancode}
+theorem IsSqPrimary.exists_monicMLDEOn_all_analyticBlocks_of_etingofFinite
+    {W : VertexOperatorAlgebra 𝒱} {a : 𝒱} {wt : ℤ}
+    (ha : IsSqPrimary W a (wt : ℂ)) (hgrade : AKWeightGrading W)
+    (hclose : E46SerreClosed) (hzero : VacuumGradeZero W) (hE : EtingofFinite W) :
+    ∃ (s : ℕ) (p : ℕ → E46), 1 ≤ s ∧
+      ∀ (F : 𝒱 → ℂ → ℂ), IsAnalyticBlock W F → MonicMLDEOn wt (F a) s p := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{IsAnalyticBlock W F} (file \leanpath{VOA/\allowbreak Modularity/\allowbreak AnalyticBlock.lean},
+Chapter~\ref{ch:L15}) says $F:V\to(\C\to\C)$ is linear in $v$, each $F(v)$ is holomorphic on $\mathbb H$, and Zhu's three
+conditions hold with the Eisenstein \emph{functions}: $F(a[0]v)=0$, the $[-2]$-identity, and
+$F(L[-2]v) = \frac1{2\pi i}F(v)' + \sum_mG_{2m+2}F(L[2m]v)$. The trace functions $v\mapsto Z_M(v;\tau)$ of irreducible modules with a
+conformal weight and subexponential one-point functions are analytic blocks (\lean{traceBlock_}\allowbreak\lean{isAnalyticBlock}, file
+\leanpath{VOA/\allowbreak Modularity/\allowbreak SlashAmbientObstruction.lean}, Chapter~\ref{ch:L15}), and the growth
+hypothesis is supplied by Theorem~\ref{l16:thm:growth}; so at $a = \lsixteenvac$ the theorem would give one MLDE for all
+such characters. (No library theorem composes the two; the composition is immediate.) \textbf{Quantifier order:} $\exists s\,\exists p$ before $\forall F$ --- one equation
+for all blocks, exactly AK's uniformity. \textbf{Hypotheses:} \lean{hzero} free; \lean{hE} the Etingof hypothesis;
+\lean{hclose} is the classical Ramanujan closure of $\C[E_4,E_6]$ under the Serre derivative, \textbf{proved}
+(\lean{e46SerreClosed}) and discharged in the primed form; \lean{hgrade} is \textbf{proved} for every VOA
+(\lean{akWeightGrading}, Theorem~\ref{l16:thm:akgrading}). Only \lean{hE} remains.
+\textbf{Comparison with AK Theorem 5.1:} same conclusion (with ``quasi-lisse'' weakened to Etingof-finite and the
+character replaced by any analytic block evaluated at a primary insertion, which is more general). The conclusion is
+not vacuous in the sense of Section~\ref{l16:sec:weak}: the coefficient spaces are finite-dimensional.
+\end{dictionary}
+
+\textbf{Proof on paper.} (1) Proposition~5.2 over $\C[E_4,E_6]$
+(\lean{exists_}\allowbreak\lean{finite_}\allowbreak\lean{gen_sup_}\allowbreak\lean{blockRelSpanE_}\allowbreak\lean{of_etingofFinite}): Zhu's $G_2$ never needs to appear, because the only
+relation in which $G_2$ would occur is $a[-2]v + 3G_4a[2]v+\cdots + G_2(\ldots)a[0]v$, and the $a[0]v$ term is itself a
+relation. (2) Noetherianity of $\C[E_4,E_6]$ gives a uniform monic relation
+$L[-2]^sa - \sum c_iL[-2]^ia\in O^E_q(V)$ (\lean{exists_}\allowbreak\lean{uniform_}\allowbreak\lean{monic_}\allowbreak\lean{Lsq_relationE_}\allowbreak\lean{mem_of_}\allowbreak\lean{etingofFinite}); the weight
+grading lets one project it onto total weight $w+2s$, which forces $c_i$ to have modular weight $2(s-i)$. (3) Every analytic
+block evaluates this relation to $F(L[-2]^sa) = \sum c_iF(L[-2]^ia)$. (4) Using \lean{E46SerreClosed} and the
+$\omega$-recursion, in which the $G_2L[0]$-term combines with the derivative into a Serre derivative, one shows by
+induction (\lean{IsSqPrimary.}\allowbreak\lean{exists_}\allowbreak\lean{uniformSerreExpansionUpTo}) that
+$F(L[-2]^ia) = \vartheta^i_{(w)}F(a) + \sum_{j<i}h_{ij}\vartheta^j_{(w)}F(a)$ with $h_{ij}$ modular of weight $2(i-j)$,
+independently of $F$. (5) Substitute. \qed
+
+\begin{physics}
+This is the theorem physicists use: the Schur index, and more generally every torus one-point function of a primary,
+satisfies an MLDE whose order and coefficients are fixed by the chiral algebra alone. In the library it holds for every
+Etingof-finite chiral algebra (a stand-in for quasi-lisse; Etingof--Schedler is not formalised), for Zhu's abstract
+one-point blocks, with an order that is not bounded; at the $(A_1,A_3)$ example $L_{-4/3}(\lsixteensl)$ it is
+unconditional, but AK's order~2 is not proved.
+\end{physics}
+
+\begin{status}
+Proved; \texttt{\#print axioms} of \lean{VOA.IsSqPrimary.}\allowbreak\lean{exists_}\allowbreak\lean{monicMLDEOn_}\allowbreak\lean{all_analyticBlocks_}\allowbreak\lean{of_etingofFinite}:
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (re-run). \textbf{Conditional} on \lean{hE}, \lean{hgrade},
+\lean{hclose}; \lean{hclose} is discharged by \lean{e46SerreClosed} in \lean{IsSqPrimary.}\allowbreak\lean{exists_}\allowbreak\lean{monicMLDEOn_}\allowbreak\lean{all_analyticBlocks_}\allowbreak\lean{of_etingofFinite'}
+(\leanpath{EisensteinSerreClosure.lean}); \lean{hgrade} is discharged by \lean{akWeightGrading} in
+Theorem~\ref{l16:thm:mlde-uncond}, which leaves \lean{hE} as the only hypothesis.
+\end{status}
+
+\begin{theorem}[AK Theorem 5.1 under Etingof-finiteness; the $L_{-4/3}(\lsixteensl)$ instance]\label{l16:thm:mlde-uncond}
+(i) Let $V$ be Etingof-finite and $a\in V$ square-bracket primary of integer weight $w$. Then there are $s\ge1$ and
+coefficients $p_i\in\C[E_4,E_6]$, modular of weight $2(s-i)$, such that for every analytic genus-one block $F$ the
+function $F(a)$ satisfies $\vartheta^{(s)}F(a)+\sum_{i<s}p_i\vartheta^{(i)}F(a)=0$ on $\mathbb H$ (iterated Serre
+derivatives). (ii) For $V=L_{-4/3}(\lsixteensl)$ and $a=\lsixteenvac$ this holds with no hypothesis.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak AKMLDEUnconditional.lean}.
+\begin{leancode}
+theorem IsSqPrimary.exists_monicMLDEOn_all_analyticBlocks_of_etingofFinite_uncond
+    {W : VertexOperatorAlgebra 𝒱} {a : 𝒱} {wt : ℤ}
+    (ha : IsSqPrimary W a (wt : ℂ)) (hE : EtingofFinite W) :
+    ∃ (s : ℕ) (p : ℕ → E46), 1 ≤ s ∧
+      ∀ (F : 𝒱 → ℂ → ℂ), IsAnalyticBlock W F → MonicMLDEOn wt (F a) s p :=
+  ha.exists_monicMLDEOn_all_analyticBlocks_of_etingofFinite' (akWeightGrading W)
+    (VOA.QuasiLisseSl2.vacuumGradeZero_of_vacuum_grade W) hE
+
+theorem exists_monicMLDEOn_all_analyticBlocks_simpleSl2QL :
+    ∃ (s : ℕ) (p : ℕ → E46), 1 ≤ s ∧
+      ∀ F, IsAnalyticBlock simpleSl2QL F →
+        MonicMLDEOn 0 (F simpleSl2QL.vacuum) s p :=
+  IsSqPrimary.exists_monicMLDEOn_all_analyticBlocks_of_etingofFinite_uncond
+    (wt := 0) (by exact_mod_cast vacuum_isSqPrimary simpleSl2QL) VOA.Sl2Pres.etingofFinite_simpleSl2QL'
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Read the name with care.} Despite the suffix \lean{_uncond}, (i) is \emph{conditional on \lean{EtingofFinite W}}
+(finite zeroth Poisson homology, the conclusion of Etingof--Schedler); quasi-lisseness is not formalised. The order $s$
+comes from Noetherianity and is \emph{existential and unbounded}. ``Analytic block'' means Zhu's abstract one-point
+conditions (\lean{IsAnalyticBlock}; the zero function is one). Module traces are blocks by a separate lemma,
+\lean{torusOnePoint_isAnalyticBlock}, whose growth input \lean{OnePointSubexp} is supplied under \lean{EtingofFinite} by
+\lean{onePointSubexp_of_etingofFinite} (\leanpath{Modules/\allowbreak QuasiLisseFinite.lean}). (ii) is genuinely
+unconditional, with $s$ unspecified: \textbf{AK's order~2 for $L_{-4/3}(\lsixteensl)$ is not proved}. That the vacuum
+character of $L_{-4/3}(\lsixteensl)$ is such a block follows from \lean{torusOnePoint_isAnalyticBlock},
+\lean{onePointSubexp_adjoint_of_etingofFinite} and the support lemma, but no single library theorem states ``the character
+satisfies a monic MLDE''. Do not confuse (ii) with \lean{Sl2Pres.}\allowbreak\lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{simpleSl2QL_}\allowbreak\lean{uncond},
+the near-vacuous formal $q\frac{d}{dq}$-equation of Section~\ref{l16:sec:weak}.
+\end{dictionary}
+
+\begin{physics}
+For a quasi-lisse chiral algebra (in four-dimensional terms, a theory whose Higgs branch is a finite union of symplectic
+leaves) the characters of modules are expected to solve a modular linear differential equation fixed by the chiral
+algebra alone, as for rational theories. Part (i) proves this for every torus one-point function of a primary, with
+Etingof-finiteness standing in for quasi-lisseness; the order $s$ is only shown to exist. Part (ii) is the first
+unconditional instance: $L_{-4/3}(\lsixteensl)$ is the chiral algebra of the $(A_1,A_3)$ Argyres--Douglas theory under the
+SCFT/VOA correspondence of Beem et al., so its vacuum character, the Schur index of that theory, lies in the solution
+space of one monic MLDE (once one composes with the trace-function lemmas listed above). The second-order equation of
+Arakawa--Kawasetsu and the identification of the remaining solutions with module characters are not proved.
+\end{physics}
+
+\begin{status}
+Proved, conditional on \lean{EtingofFinite} for (i), unconditional for (ii). \texttt{\#print axioms} of both:
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}, recorded in
+\texttt{Notes/\allowbreak release/\allowbreak WS-RELEASE2.md} (commit \texttt{34b74b85}); audited as stated, with the
+caveats above, in \texttt{RELEASE\_AUDIT\_QUEUE2.md}. The aggregate \texttt{lake build} at the release commit is pending.
+\end{status}
+
+%======================================================================
+\section{Zhu modularity and conformal blocks under Etingof-finiteness}\label{l16:sec:zhu}
+%======================================================================
+
+\begin{theorem}[Zhu's Theorem 5.3.2 under Etingof-finiteness]\label{l16:thm:blocks}
+If $V$ is Etingof-finite, the space of analytic genus-one blocks (restricted to $\mathbb H$) is finite-dimensional.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak AKZhuModularity.lean}.
+\begin{leancode}
+theorem finiteDimensional_analyticBlocks_of_etingofFinite (hzero : VacuumGradeZero W)
+    (hE : EtingofFinite W) :
+    FiniteDimensional ℂ (Submodule.map restrictImGT (analyticBlocks W)) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{analyticBlocks W} is the subspace of all \lean{F} with \lean{IsAnalyticBlock W F}
+(\leanpath{VOA/\allowbreak Modularity/\allowbreak BlockSpace.lean}); \lean{restrictImGT} extends by zero off $\mathbb H$
+(\leanpath{VOA/\allowbreak Modularity/\allowbreak BlockRank.lean}), so two blocks agreeing on $\mathbb H$ are identified. Same as
+Zhu's Theorem~5.3.2 with $C_2$ weakened. The proof avoids the two places where the $C_2$-route needs $C_2$-cofiniteness
+(finite-dimensionality of Zhu's algebra $A(V)$ and finite generation of the $E$-relation module).
+\end{dictionary}
+
+\textbf{Proof on paper.} At a fixed $z_0\in\mathbb H$, evaluating the relations of $\lsixteenOq$ at $z_0$ gives numerical
+relations; the spanning argument of Theorem~\ref{l16:thm:prop52} with numbers in place of $\mathcal G$ shows that $V$ is
+spanned by a finite set modulo these, so a block is determined at $z_0$ by finitely many values; by the
+$\omega$-recursion and holomorphy, the block is determined on $\mathbb H$ by finitely many initial data. \qed
+
+\begin{physics}
+Finitely many independent torus conformal blocks: a quasi-lisse chiral algebra on the torus has a finite-dimensional
+space of ``partition functions with insertions'', even though the theory may have infinitely many non-ordinary sectors.
+\end{physics}
+
+\begin{status}
+Proved, conditional on \lean{hE}; \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (re-run).
+\end{status}
+
+\begin{theorem}[Zhu modularity under Etingof-finiteness, conditional]\label{l16:thm:zhuEt}
+Let $V$ be Etingof-finite and $(M_i)_{i\in\iota}$ a finite family of irreducible modules. If the trace functions are
+independent on each $T$-eigenvalue fibre (\lean{hfib}) and the restricted analytic blocks together with the $S$-slashes of
+the traces span a space of dimension at most $|\iota|$ (\lean{hrank}), then there is an $SL_2(\Z)$-representation
+$\rho$ with $Z_{M_i}(v;A\tau) = (c\tau+d)^n\sum_j\rho(A)_{ij}Z_{M_j}(v;\tau)$ for all $v$ of $L[0]$-weight $n$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak AKZhuModularity.lean}.
+\begin{leancode}
+theorem exists_zhuModularity_of_sqAnalyticRank_le_irr_etingofFinite
+    (hE : EtingofFinite W)
+    (hfib : FibreIndependent Mfam (fun i => conformalWeightOf (Mfam i)))
+    (hrank : Module.rank ℂ
+        (sqAnalyticSlashAmbient Mfam (fun i => conformalWeightOf (Mfam i)))
+      ≤ (Fintype.card ι : Cardinal)) :
+    ∃ D : ModularData W ι, ZhuModularityAnalytic D :=
+\end{leancode}
+
+\begin{dictionary}
+\lean{Mfam : ι → IrrModule W} is the family; \lean{conformalWeightOf} picks its conformal weights; \lean{ModularData},
+\lean{ZhuModularityAnalytic}, \lean{FibreIndependent}, \lean{sqAnalyticSlashAmbient} are the objects of Zhu's theorem in
+Chapter~\ref{ch:L15} (\lean{ZhuModularityAnalytic D} is the displayed transformation law for every $A\in SL_2(\Z)$).
+The statement is \lean{exists_}\allowbreak\lean{zhuModularity_}\allowbreak\lean{of_sqAnalyticRank_}\allowbreak\lean{le_irr_}\allowbreak\lean{c2} of Chapter~\ref{ch:L15} with \lean{C2Cofinite}
+replaced by \lean{EtingofFinite}; a kernel-checked \lean{example} in the same file shows that the $C_2$ theorem, re-proved
+through this one, has literally the same type. \textbf{Hypotheses:} \lean{hfib}, \lean{hrank} are open inputs, and for
+the motivating non-lisse examples \lean{hrank} is expected to be \emph{false} (warning below).
+The file's honesty block records that \lean{hrank} is discharged only at the trivial VOA, and that Etingof-finiteness
+\emph{cannot} supply it on this route (it bounds $V/O_2^P$, not Zhu's algebra $A(V) = V/O(V)$, since $a_{(0)}b\notin O(V)$
+in general).
+\end{dictionary}
+
+\textbf{Proof on paper.} Zhu's argument (Chapter~\ref{ch:L15}) uses $C_2$-cofiniteness at exactly one place on this route,
+the growth of one-point functions; Theorem~\ref{l16:thm:growth} supplies it. \qed
+
+\begin{physics}
+The characters of the ordinary sectors transform into each other under the modular group --- the statement that the torus
+partition function of the full CFT can be made modular invariant. For quasi-lisse theories AK only predict that characters
+lie in an invariant solution space; whether the span of characters itself is invariant is a separate question, and here it is
+reduced to \lean{hfib} and \lean{hrank}. For the Argyres--Douglas example the answer is expected to be no (warning below):
+the single ordinary character, with $c=-6$, cannot be modular invariant by itself.
+\end{physics}
+
+\begin{status}
+Proved; \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (re-run). Conditional on \lean{hE}, \lean{hfib}, \lean{hrank}. Fully
+discharged only at the trivial VOA (\lean{trivial_}\allowbreak\lean{exists_}\allowbreak\lean{zhuModularity_}\allowbreak\lean{etingofFinite}), which is lisse.
+Expected \emph{not} to be instantiable at $L_{-4/3}(\lsixteensl)$ (warning below; paper argument). This is Zhu's theorem with
+\lean{C2Cofinite} replaced by \lean{EtingofFinite} in one step; it is not a modularity theorem for quasi-lisse VOAs. The file also gives the
+character-convergence corollary \lean{qSummable_}\allowbreak\lean{gradedDim_}\allowbreak\lean{of_etingofFinite} and a holomorphic $c=24$ corollary
+\lean{char_SL2Z_}\allowbreak\lean{invariant_}\allowbreak\lean{of_sqAnalyticRank_}\allowbreak\lean{of_etingofFinite} (conditional on a rank bound \lean{hle}).
+\end{status}
+
+\begin{warning}[title={\texttt{hrank} is expected to fail at $L_{-4/3}(\mathfrak{sl}_2)$ (paper argument, release audit)}]
+The following argument is due to the release audit (\texttt{Notes/\allowbreak Textbook/\allowbreak referee/\allowbreak
+RELEASE\_AUDIT\_L16.md}, finding~5). It is argued on paper and \textbf{not machine-checked}.
+\begin{enumerate}
+\item At $k=-4/3=-2+2/3$ the admissible highest weights have $\lambda_1\in\{0,-2/3,-4/3\}$, and only $\lambda_1 = 0$ gives a
+  finite-dimensional top space. So (Adamovi\'c--Milas; Arakawa) $L = L_{-4/3}(\lsixteensl)$ has exactly one ordinary
+  irreducible module, $L$ itself.
+\item \lean{FibreIndependent} forbids repeating a module, so a family containing the adjoint module is a singleton, and
+  \lean{ZhuModularityAnalytic} would make $\chi_L(\tau)$ a weight-$0$ modular function for a character $\rho$ of
+  $SL_2(\Z)$.
+\item $c=-6$, so the leading power of $\chi_L$ is $q^{-c/24} = q^{1/4}$, which forces $\rho(T) = i$; hence $\rho = \varepsilon^6$
+  with $\varepsilon$ the multiplier of $\eta$. Then $\chi_L/\eta^6$ would be a holomorphic modular form of level one and
+  weight $-3$, nonzero at the cusp. No nonzero modular form of odd weight for $SL_2(\Z)$ exists ($-I$ acts by $(-1)^k$).
+\end{enumerate}
+Hence \lean{hrank} must fail for every family containing the adjoint module of $L_{-4/3}(\lsixteensl)$. This agrees with
+what Arakawa and Kawasetsu actually prove: the \emph{solution space} of the MLDE is $SL_2(\Z)$-stable, not the span of
+the ordinary characters. So for the motivating class of examples the hypotheses of Theorem~\ref{l16:thm:zhuEt} are not
+merely open but expected to be false, and the theorem must not be described as ``modularity for quasi-lisse VOAs''.
+\end{warning}
+
+%======================================================================
+\section{The example: the classical Poisson model of $L_{-4/3}(\mathfrak{sl}_2)$}\label{l16:sec:model}
+%======================================================================
+
+A theorem with hypothesis \lean{EtingofFinite W} is only interesting if the hypothesis holds for some $V$ that is
+\emph{not} $C_2$-cofinite (otherwise Zhu's theorem already applies). The canonical example is the simple affine vertex
+algebra $L_k(\lsixteensl)$ at an admissible level. Recall (Chapter~\ref{ch:L09}, where \lean{AdmissibleLevel} is defined)
+that $k$ is \emph{admissible} for $\widehat{\lsixteensl}$ if $k+2 = p/q$ with $p,q$ coprime positive integers and $p\ge2$;
+for $q\ge2$ these levels are non-integral and $L_k$ is not lisse. The library takes $(p,q) = (2,3)$: $\gcd(2,3)=1$,
+$k = -2+\frac23 = -\frac43$, $k+2 = \frac23\ne0$ (non-critical, which is what \lean{hkQL} below records), and
+$c = 3k/(k+2) = 3(-\frac43)/\frac23 = -6$. The library's proof of admissibility is
+\lean{Admissible.}\allowbreak\lean{admissibleLevel_}\allowbreak\lean{neg_four_}\allowbreak\lean{thirds} (\leanpath{AdmissibleLevel.lean}, Chapter~\ref{ch:L09}). This section does the commutative algebra on the classical side, unconditionally; the
+next two transport it to the vertex algebra.
+
+\subsection{The symbol of the singular vector}
+
+By Chapter~\ref{ch:L08} (Theorem~\ref{l08:thm:sing43}) $V^{-4/3}(\lsixteensl)$ has the singular vector
+\begin{equation*}
+s = 20\,e_{-3}\lsixteenvac - 12\,e_{-2}h_{-1}\lsixteenvac - 6\,h_{-2}e_{-1}\lsixteenvac + 36\,e_{-1}e_{-1}f_{-1}\lsixteenvac
++ 9\,e_{-1}h_{-1}h_{-1}\lsixteenvac
+\end{equation*}
+of weight $3$, and (Theorem~\ref{l08:thm:symbol}) its class $[s]$ in $R_{V^k} = V^k/C_2(V^k)$ (the image of $s$ under the quotient map, called its
+\emph{symbol}) is $9[e](4[e][f]+[h]^2) = 9\,e\,\lsixteenCas$. The reason: a current mode $x_{-n}$ with $n\ge2$ acting on a state
+$w$ is $(x_{-1}\lsixteenvac)_{(-n)}w$, and $u_{(-n)}w\in C_2(V)$ for $n\ge2$ (for $n=2$ by definition, for $n>2$ by
+$u_{(-n)} = \frac1{n-1}(L_{-1}u)_{(-n+1)}$ and induction, Chapter~\ref{ch:L12}, Theorem~\ref{l12:thm:poisson}); so the first three terms of
+$s$ have zero class, while $x_{-1}w = (x_{-1}\lsixteenvac)_{(-1)}w$ has class $[x]\cdot[w]$, giving
+$[s] = 36[e]^2[f] + 9[e][h]^2$. Here $\lsixteenCas = h^2+4ef$ is the Casimir. In
+$\operatorname{Sym}(\lsixteensl) = \C[e,h,f]$ with the Kirillov--Kostant bracket $\{e,f\} = h$, $\{h,e\} = 2e$,
+$\{h,f\} = -2f$, the Casimir is Poisson-central, so $\{x, e\lsixteenCas\} = \{x,e\}\lsixteenCas$, and the Poisson ideal
+generated by $e\lsixteenCas$ is
+\begin{equation*}
+\lsixteenCas\cdot\mathfrak m = (\lsixteenCas\,e,\ \lsixteenCas\,h,\ \lsixteenCas\,f),\qquad \mathfrak m = (e,h,f).
+\end{equation*}
+
+\begin{definition}[The classical model]\label{l16:def:model}
+$\operatorname{Sym}(\lsixteensl) = \C[X_0,X_1,X_2]$ with $e = X_0$, $h = X_1$, $f = X_2$; $\lsixteenCas = h^2+4ef$; the three
+derivations $\operatorname{ad}_e = -2e\,\partial_h + h\,\partial_f$, $\operatorname{ad}_h = 2e\,\partial_e - 2f\,\partial_f$,
+$\operatorname{ad}_f = -h\,\partial_e + 2f\,\partial_h$ (the brackets $\{e,\cdot\}$, $\{h,\cdot\}$, $\{f,\cdot\}$); the ideal
+$\lsixteenCas\cdot\mathfrak m$; and the model algebra $\lsixteenR = \operatorname{Sym}(\lsixteensl)/\lsixteenCas\cdot\mathfrak m$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak AffineSl2QuasiLisse.lean}.
+\begin{leancode}
+abbrev SymSl2 : Type := MvPolynomial (Fin 3) ℂ
+
+def eSym : SymSl2 := X 0
+def hSym : SymSl2 := X 1
+def fSym : SymSl2 := X 2
+
+def casSym : SymSl2 := hSym ^ 2 + 4 * eSym * fSym
+
+def adOf (a : SymSl2) (i : Fin 3) (b : SymSl2) (j : Fin 3) : SymSl2 →ₗ[ℂ] SymSl2 :=
+  (LinearMap.mulLeft ℂ a).comp (pderiv i).toLinearMap
+    + (LinearMap.mulLeft ℂ b).comp (pderiv j).toLinearMap
+
+def adE : SymSl2 →ₗ[ℂ] SymSl2 := adOf (-2 * eSym) 1 hSym 2
+def adH : SymSl2 →ₗ[ℂ] SymSl2 := adOf (2 * eSym) 0 (-2 * fSym) 2
+def adF : SymSl2 →ₗ[ℂ] SymSl2 := adOf (-hSym) 0 (2 * fSym) 1
+
+def casIdeal : Ideal SymSl2 := Ideal.span (Set.range fun i : Fin 3 => casSym * X i)
+
+def casSub : Submodule ℂ SymSl2 := Submodule.restrictScalars ℂ casIdeal
+
+abbrev NilpAlg : Type := SymSl2 ⧸ casSub
+\end{leancode}
+
+\begin{dictionary}
+\lean{MvPolynomial (Fin 3) ℂ} is $\C[X_0,X_1,X_2]$; \lean{pderiv i} is $\partial/\partial X_i$; \lean{adOf a i b j} is the
+first-order operator $p\mapsto a\,\partial_ip + b\,\partial_jp$. So \lean{adE} $=-2e\partial_h + h\partial_f$, etc., exactly
+Definition~\ref{l16:def:model}; \lean{adE_f}, \lean{adE_h}, \lean{adH_e}, \ldots\ (in
+\leanpath{AffineSl2Presentation.lean}) check the nine values on generators against $\lsixteensl$. \textbf{Index warning}
+(from the source): the polynomial variables are ordered $(e,h,f)$, whereas the affine colours of Chapter~\ref{ch:L08} are
+$(e,f,h)$ = $(0,1,2)$; the two \lean{Fin 3}'s are different. \lean{casIdeal} is the ideal generated by
+$\lsixteenCas X_i$, i.e.\ $\lsixteenCas\cdot\mathfrak m$ --- \textbf{not} the principal ideal $(\lsixteenCas)$, whose
+generator has degree $2$. \lean{casSub} is the same set viewed as a vector subspace, and \lean{NilpAlg} is $\lsixteenR$ as a
+vector space (no ring structure on the quotient is used). The library proves that \lean{casIdeal} is a Poisson ideal
+(\lean{adE_casIdeal}, \lean{adH_casIdeal}, \lean{adF_casIdeal}) and that the Casimir is central (\lean{adE_cas}, \ldots).
+\end{dictionary}
+
+\begin{warning}[title={A retracted objection, recorded in the source}]
+An earlier version of the source claimed that the hypothesis ``the symbol ideal dies'' was unsatisfiable because it would
+force $R_V$ to be reduced; the error was to read \lean{casIdeal} as $(\lsixteenCas)$. As the docstring of
+\lean{Sl2Presentation} now explains, $\lsixteenCas\notin\lsixteenCas\cdot\mathfrak m$, and indeed $R_{L_k}$ is
+non-reduced: $[\lsixteenCas]\ne0$ but $[\lsixteenCas]^2 = 0$, i.e.\ the Sugawara vector, which is proportional to the
+Casimir, is nilpotent in $R_V$. As a vector space $\lsixteenR = \C[\lsixteenNil]\oplus\C\lsixteenCas$, a one-dimensional
+thickening of the coordinate ring of the nilpotent cone (not formalised).
+\end{warning}
+
+\begin{physics}
+$e,h,f$ are the classical moment maps of the $SU(2)$ flavour symmetry. In the four-dimensional theory they are the
+Higgs-branch moment-map operators; $\lsixteenCas = 0$ is the F-term (hyperk\"ahler moment map) relation cutting out
+$\C^2/\Z_2$ as the nilpotent cone, $\{h^2+4ef = 0\}$. The nilpotence of $[\lsixteenCas]$ is the chiral-algebra statement
+that the stress tensor is, classically, a nilpotent element: the Sugawara construction identifies $T$ with the Casimir of
+the currents, and in Beem--Rastelli's dictionary this is why the 2d stress tensor is not a Higgs-branch chiral ring
+element.
+\end{physics}
+
+\begin{status}
+Definitions, plus the Poisson-ideal lemmas, all \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}.
+\end{status}
+
+\begin{theorem}[The classical quasi-lisse phenomenon, unconditionally]\label{l16:thm:model}
+(i) $\operatorname{Sym}(\lsixteensl) = \lsixteenCas\cdot\mathfrak m + \{\lsixteensl,\operatorname{Sym}(\lsixteensl)\} +
+\operatorname{span}\{1,h^2,ef\}$, where $\{\lsixteensl,\operatorname{Sym}\}$ is the sum of the ranges of the three
+derivations. (ii) $\lsixteenR$ is infinite-dimensional. (iii)
+$\operatorname{Sym}(\lsixteensl)/(\lsixteenCas\cdot\mathfrak m + \{\lsixteensl,\operatorname{Sym}\})$ is finite-dimensional; a
+fortiori $\lsixteenHP(\lsixteenR)$ is.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak AffineSl2QuasiLisse.lean}.
+\begin{leancode}
+def adRange : Submodule ℂ SymSl2 :=
+  LinearMap.range adE ⊔ LinearMap.range adH ⊔ LinearMap.range adF
+
+def lowSpan : Submodule ℂ SymSl2 := Submodule.span ℂ {1, hSym ^ 2, eSym * fSym}
+
+def bigSub : Submodule ℂ SymSl2 := casSub ⊔ adRange ⊔ lowSpan
+
+theorem bigSub_eq_top : bigSub = ⊤ := by
+
+theorem not_finiteDimensional_NilpAlg : ¬ FiniteDimensional ℂ NilpAlg := by
+
+theorem finiteDimensional_quot_adRange :
+    FiniteDimensional ℂ (SymSl2 ⧸ (casSub ⊔ adRange)) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{LinearMap.range adE} is $\{e,\operatorname{Sym}\}$, etc.; \lean{adRange} is contained in the full bracket span, so (iii)
+as stated (quotient by \lean{casSub ⊔ adRange}) is \emph{stronger} than finiteness of $\lsixteenHP(\lsixteenR)$, which the
+library does not state separately for the model. Exactly Theorem~\ref{l16:thm:model}. Note that (ii) and (iii) together
+are the whole point: an infinite-dimensional Poisson algebra with finite zeroth Poisson homology.
+\end{dictionary}
+
+\textbf{Proof on paper.} (i) It suffices to treat monomials $e^ah^cf^b$; induct on $a+b$. Since $\operatorname{ad}_h$ acts on
+$e^ah^cf^b$ by $2(a-b)$, monomials with $a\ne b$ are brackets. If $a = b\ge1$, write $u = e^{a-1}h^cf^{a-1}$, so $e^ah^cf^a = u\cdot ef$. Since $4ef = \lsixteenCas - h^2$,
+\begin{equation*}
+e^ah^cf^a = \tfrac14\,u\,\lsixteenCas - \tfrac14\,u\,h^2 = \tfrac14\,\lsixteenCas\cdot u - \tfrac14\,e^{a-1}h^{c+2}f^{a-1}.
+\end{equation*}
+Unless $(a,c) = (1,0)$ (then $e^ah^cf^a = ef\in\operatorname{span}\{1,h^2,ef\}$), the monomial $u$ has positive degree, i.e.\
+$u\in\mathfrak m$, so $\lsixteenCas\cdot u\in\lsixteenCas\cdot\mathfrak m$, and therefore
+$e^ah^cf^a\equiv-\frac14e^{a-1}h^{c+2}f^{a-1}$ modulo $\lsixteenCas\cdot\mathfrak m$, a monomial with smaller $a+b$, to which
+the induction hypothesis applies. Remain the powers $h^c$: $c = 0,2$ are in the span; $h =
+\operatorname{ad}_e f$; for $c\ge3$, $\operatorname{ad}_e(fh^{c-1}) = h\cdot h^{c-1} + f\cdot(c-1)h^{c-2}(-2e) = h^c - 2(c-1)efh^{c-2}$, and by the
+same computation with $u = h^{c-2}\in\mathfrak m$, $efh^{c-2} = \frac14\lsixteenCas h^{c-2} - \frac14h^c\equiv
+-\frac14h^c$ modulo $\lsixteenCas\mathfrak m$, so $h^c - 2(c-1)(-\frac14)h^c =$ $(1+\frac{c-1}2)h^c$ is in the sum, and the coefficient is nonzero. (ii) The
+algebra map $e\mapsto t$, $h,f\mapsto0$ to $\C[t]$ kills $\lsixteenCas$, hence $\lsixteenCas\mathfrak m$, and sends $e^n$ to
+$t^n$; so the classes $[e^n]$ are linearly independent. (iii) By (i) the quotient is spanned by the images of
+$1,h^2,ef$. \qed
+
+\begin{physics}
+(ii): the Higgs branch is not a point --- the moment map $e$ has arbitrarily high nonzero powers, the holomorphic functions
+$\mu^n$ on $\C^2/\Z_2$. (iii): yet only three classical torus amplitudes survive. The leaves of $\lsixteenNil$: the Poisson bivector of
+$\lsixteensl^*$ at a point $\xi$ has rank $\dim$ of the coadjoint orbit through $\xi$; it vanishes at $\xi=0$ (the origin is a
+leaf by itself) and has rank $2$ on $\lsixteenNil\setminus\{0\}$, which is a single coadjoint orbit (the regular nilpotent
+orbit, connected). So $\lsixteenNil$ has exactly two leaves, the situation of Theorem~\ref{l16:thm:ES}.
+\end{physics}
+
+\begin{status}
+Proved, unconditional; the three theorems: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (re-run).
+\end{status}
+
+%======================================================================
+\section{Transport to a vertex algebra: symbol presentations}\label{l16:sec:pres}
+%======================================================================
+
+\begin{definition}[An $\lsixteensl$ symbol presentation of $R_V$]\label{l16:def:pres}
+A presentation for $V$ is a linear surjection $\sigma:\operatorname{Sym}(\lsixteensl)\to R_V$ that kills
+$\lsixteenCas\cdot\mathfrak m$ and intertwines $\operatorname{ad}_x$ with $\{\sigma(x),\cdot\}$ for $x = e,h,f$. It is
+\emph{exact} if $\ker\sigma\subseteq\lsixteenCas\cdot\mathfrak m$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak AffineSl2QuasiLisse.lean}.
+\begin{leancode}
+structure Sl2Presentation (W : VertexOperatorAlgebra 𝒱) where
+  map : SymSl2 →ₗ[ℂ] A₂ W
+  surjective : Function.Surjective map
+  cas_vanishes : ∀ p ∈ casIdeal, map p = 0
+  adE_compat : ∀ p, map (adE p) = A₂bracket W (map eSym) (map p)
+  adH_compat : ∀ p, map (adH p) = A₂bracket W (map hSym) (map p)
+  adF_compat : ∀ p, map (adF p) = A₂bracket W (map fSym) (map p)
+
+def IsExact : Prop := ∀ p : SymSl2, S.map p = 0 → p ∈ casIdeal
+\end{leancode}
+
+\begin{dictionary}
+Field by field, Definition~\ref{l16:def:pres}; \lean{IsExact} is defined inside \lean{namespace Sl2Presentation} with
+\lean{S : Sl2Presentation W}. \textbf{Is it a disguised finiteness assumption?} No: none of the fields mentions
+dimension, and the model $\lsixteenR$ itself (with its own bracket) satisfies all of them while being
+infinite-dimensional. \textbf{Is it satisfiable for an interesting $V$?} Yes: it is constructed for $L_{-4/3}(\lsixteensl)$
+(Theorem~\ref{l16:thm:presL}). Note that \lean{map} is only required to be linear, not multiplicative; the
+constructed one is an algebra map.
+\end{dictionary}
+
+\begin{physics}
+A presentation identifies the classical phase space of the chiral algebra as (a thickening of) a subvariety of
+$\lsixteensl^*$ cut out by the null vector's symbol; exactness says no further classical relations are imposed.
+\end{physics}
+
+\begin{status}
+Structure and predicate. Inhabited at $L_{-4/3}(\lsixteensl)$; \lean{IsExact} for that instance is not proved (but no longer
+needed, Section~\ref{l16:sec:nonlisse}).
+\end{status}
+
+\begin{theorem}[Consequences of a presentation]\label{l16:thm:presCons}
+Let $\sigma$ be a presentation for $V$. (i) $V$ is Etingof-finite (without $C_2$-cofiniteness). (ii) If $\sigma$ is exact,
+$V$ is not $C_2$-cofinite, and $\sigma$ induces a linear isomorphism $\lsixteenR\cong R_V$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak AffineSl2QuasiLisse.lean}.
+\begin{leancode}
+theorem etingofFinite (S : Sl2Presentation W) : EtingofFinite W := by
+
+theorem not_C2Cofinite (hex : S.IsExact) : ¬ C2Cofinite W := by
+
+def nilpEquiv (S : Sl2Presentation W) (hex : S.IsExact) : NilpAlg ≃ₗ[ℂ] A₂ W :=
+
+theorem quasiLisseWitness (S : Sl2Presentation W) (hex : S.IsExact) :
+    ¬ C2Cofinite W ∧ EtingofFinite W :=
+\end{leancode}
+
+\begin{dictionary}
+All in \lean{namespace VOA.}\allowbreak\lean{QuasiLisseSl2.}\allowbreak\lean{Sl2Presentation}. \lean{≃ₗ[ℂ]} is a linear isomorphism. Exactly
+Theorem~\ref{l16:thm:presCons}.
+\end{dictionary}
+
+\textbf{Proof on paper.} (i) $R_V = \sigma(\operatorname{Sym}) = \sigma(\lsixteenCas\mathfrak m + \{\lsixteensl,\operatorname{Sym}\}
++ \operatorname{span}\{1,h^2,ef\})$ by Theorem~\ref{l16:thm:model}(i); the first summand maps to $0$, the second into
+$\{R_V,R_V\}$ by the intertwining, the third onto a space of dimension $\le3$. So $\dim\lsixteenHP(R_V)\le3$. (ii) Exactness
+makes the induced map $\lsixteenR\to R_V$ injective; it is surjective; and $\lsixteenR$ is infinite-dimensional by
+Theorem~\ref{l16:thm:model}(ii). \qed
+
+\begin{physics}
+Once the classical phase space is known to be (a thickening of) the nilpotent cone, both halves of ``quasi-lisse but not
+lisse'' follow: a two-dimensional Higgs branch (not lisse) with finitely many leaves (finitely many classical amplitudes).
+\end{physics}
+
+\begin{status}
+Proved; all \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (re-run for \lean{etingofFinite}, \lean{not_C2Cofinite}). (i) is
+conditional only on the presentation; (ii) also on exactness.
+\end{status}
+
+\subsection{The flagship algebra}
+
+\begin{definition}[$V^{-4/3}(\lsixteensl)$ and $L_{-4/3}(\lsixteensl)$]\label{l16:def:flagship}
+$V^{-4/3}(\lsixteensl)$ is the universal affine vertex operator algebra of $\lsixteensl$ at level $-4/3$, and
+$L_{-4/3}(\lsixteensl)$ is its quotient by the maximal proper graded ideal.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak AffineSl2QuasiLisse.lean}.
+\begin{leancode}
+theorem hkQL : (-4 / 3 : ℂ) + 2 ≠ 0 :=
+  Admissible.AdmissibleLevel.add_two_ne_zero Admissible.admissibleLevel_neg_four_thirds
+
+def affineSl2QL : VertexOperatorAlgebra (AffineVOA.WakModule (-4 / 3 : ℂ)) :=
+  AffineVOA.affineSl2VOA_closed (-4 / 3 : ℂ) hkQL
+
+def simpleSl2QL :
+    VertexOperatorAlgebra (AffineVOA.WakModule (-4 / 3 : ℂ) ⧸ QuotVOA.maxGradedIdeal affineSl2QL) :=
+  QuotVOA.maxQuotientVOA affineSl2QL
+\end{leancode}
+
+\begin{dictionary}
+\lean{affineSl2VOA_}\allowbreak\lean{closed k hk} is the universal affine VOA $V^k(\lsixteensl)$ on the vacuum module \lean{WakModule k}
+(despite its name, not a Wakimoto module), Chapter~\ref{ch:L08}, Definition~\ref{l08:def:Vk}; \lean{hkQL} is the
+non-criticality $k+2\ne0$, obtained from admissibility of $-4/3$. \lean{maxQuotientVOA} is the quotient by the maximal proper
+graded ideal (Chapter~\ref{ch:L04}). So \lean{simpleSl2QL} is $L_{-4/3}(\lsixteensl)$. It is definitionally the algebra
+\lean{LQ43.L43} of Chapter~\ref{ch:L09} (the two differ only in the proof of non-criticality, and proofs are
+irrelevant; \lean{affineSl2QL_}\allowbreak\lean{eq_voaSl2Adm} is \lean{rfl}), which is proved simple, nonzero, and a proper quotient of
+$V^{-4/3}$, all without \lean{VOA.pbw}. So the example is the intended object and is not the zero algebra.
+\end{dictionary}
+
+\begin{physics}
+$L_{-4/3}(\lsixteensl)$, $c=-6$: the chiral algebra of the $(A_1,D_3)\cong(A_1,A_3)$ Argyres--Douglas theory (Beem et al.,
+Creutzig), with $c_{4d} = 1/2$ and Higgs branch $\C^2/\Z_2$. It is non-unitary and non-rational: in category $\mathcal O$ it has
+three irreducible highest-weight modules (admissible weights $0,-2/3,-4/3$), of which only the vacuum module has
+finite-dimensional conformal-weight spaces (standard admissible-level representation theory, Adamovi\'c--Milas; not
+formalised).
+\end{physics}
+
+\begin{status}
+Definitions; \lean{simpleSl2QL} nonzero by \lean{Sl2Pres.}\allowbreak\lean{vacuum_}\allowbreak\lean{simpleSl2QL_}\allowbreak\lean{ne_zero'} (\lean{pbw}-free).
+\end{status}
+
+\begin{theorem}[The presentation of $R_{L_{-4/3}}$ is constructed]\label{l16:thm:presL}
+(i) For every non-critical $k$, the algebra map $\operatorname{Sym}(\lsixteensl)\to R_{V^k(\lsixteensl)}$, $x\mapsto[x_{-1}\lsixteenvac]$, is
+surjective. (ii) In $R_{L_{-4/3}}$, $[e]\cdot\lsixteenCas = 0$, and the whole ideal $\lsixteenCas\cdot\mathfrak m$ maps to $0$. (iii)
+These maps form an $\lsixteensl$ symbol presentation of $L_{-4/3}(\lsixteensl)$. (iv) Hence $L_{-4/3}(\lsixteensl)$ is
+Etingof-finite.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak AffineSl2Presentation.lean}.
+\begin{leancode}
+def symbolAlg : SymSl2 →ₐ[ℂ] A₂ (affineSl2VOA_closed k hk) :=
+  MvPolynomial.aeval ![eCl k hk, hCl k hk, fCl k hk]
+
+theorem symbolAlg_surjective : Function.Surjective (symbolAlg k hk) := by
+
+def symbolAlgL : SymSl2 →ₐ[ℂ] A₂ simpleSl2QL := MvPolynomial.aeval ![eL, hL, fL]
+
+theorem eL_mul_casL : eL * casL = 0 := by
+
+theorem cas_vanishes_L : ∀ p ∈ casIdeal, symbolAlgL p = 0 := by
+
+def sl2PresentationSimpleSl2QL : Sl2Presentation simpleSl2QL where
+
+theorem etingofFinite_simpleSl2QL' : EtingofFinite simpleSl2QL :=
+  sl2PresentationSimpleSl2QL.etingofFinite
+\end{leancode}
+
+\begin{dictionary}
+\lean{eCl k hk}, \lean{hCl}, \lean{fCl} are the classes $[e_{-1}\lsixteenvac]$, $[h_{-1}\lsixteenvac]$, $[f_{-1}\lsixteenvac]$ in
+$R_{V^k}$ (\leanpath{AffineSl2Symbol.lean}, Chapter~\ref{ch:L08}); \lean{MvPolynomial.}\allowbreak\lean{aeval ![x,y,z]} is the algebra map
+sending $X_0,X_1,X_2$ to $x,y,z$ (note the order $e,h,f$). \lean{eL}, \lean{hL}, \lean{fL} are their images in
+$R_{L_{-4/3}}$ under the map of Theorem~\ref{l16:thm:quot}, and \lean{casL} $=4\,eL\,fL + hL^2$. The structure
+\lean{sl2PresentationSimpleSl2QL} has \lean{map := symbolAlgL.}\allowbreak\lean{toLinearMap}, \lean{surjective := symbolAlgL_}\allowbreak\lean{surjective},
+\lean{cas_vanishes := cas_}\allowbreak\lean{vanishes_}\allowbreak\lean{L} and the three compatibilities \lean{adE_compat_L}, \ldots. Exactly
+Theorem~\ref{l16:thm:presL}. (i) is only the surjective half of $R_{V^k} = \operatorname{Sym}(\lsixteensl)$; injectivity is not
+used.
+\end{dictionary}
+
+\textbf{Proof on paper.} (i) $V^k$ is spanned by word states $J^{a_1}_{-n_1-1}\cdots J^{a_r}_{-n_r-1}\lsixteenvac$
+(\lean{wordStateA_span}, Chapter~\ref{ch:L08}). If some mode is $\le-2$ the word lies in $C_2$; otherwise it is the iterated
+product $[J^{a_1}]\cdots[J^{a_r}]$ in $R_{V^k}$, because $x_{-1}v = (x_{-1}\lsixteenvac)_{(-1)}v$. (ii) $s$ lies in the maximal ideal
+of $V^{-4/3}$ (Chapter~\ref{ch:L09}: \lean{LQ43.mkQ_}\allowbreak\lean{sl2Singular_}\allowbreak\lean{eq_zero}, via Li's theorem that the maximal ideal is the radical of
+the invariant form), so $0 = [s] = 9[e]\lsixteenCas$ in $R_{L}$. Then, $\lsixteenCas$ being central,
+$[h]\lsixteenCas = -\{[f],[e]\lsixteenCas\} = 0$ and $2[f]\lsixteenCas = \{[f],[h]\lsixteenCas\} = 0$. (iii) The
+compatibilities hold on generators by the nine brackets of currents ($\{[x],[y]\} = [[x,y]]$) and propagate to all
+polynomials by the Leibniz rule. (iv) Theorem~\ref{l16:thm:presCons}(i). \qed
+
+\begin{physics}
+The null vector at level $-4/3$ imposes, classically, $e\cdot\lsixteenCas = 0$; the $SU(2)$ symmetry then forces
+$\lsixteenCas\cdot\mathfrak m = 0$. That is enough to leave only three classical torus amplitudes. In four-dimensional terms:
+the Higgs-branch relation is implied by the chiral algebra's null state.
+\end{physics}
+
+\begin{status}
+Proved, unconditional, \lean{pbw}-free; \lean{VOA.Sl2Pres.}\allowbreak\lean{symbolAlg_}\allowbreak\lean{surjective}, \lean{VOA.Sl2Pres.}\allowbreak\lean{eL_mul_}\allowbreak\lean{casL},
+\lean{VOA.Sl2Pres.}\allowbreak\lean{sl2PresentationSimpleSl2QL}, \lean{VOA.Sl2Pres.}\allowbreak\lean{etingofFinite_}\allowbreak\lean{simpleSl2QL'}: \lean{[propext,
+Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (re-run).
+\end{status}
+
+\begin{definition}[The exactness citation]\label{l16:def:exact}
+\lean{Sl2ExactSymbol} is the proposition that the constructed presentation of $R_{L_{-4/3}}$ is exact, i.e.\ that
+$\ker(\operatorname{Sym}(\lsixteensl)\to R_{L_{-4/3}})\subseteq\lsixteenCas\cdot\mathfrak m$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak AffineSl2Presentation.lean}.
+\begin{leancode}
+def Sl2ExactSymbol : Prop := sl2PresentationSimpleSl2QL.IsExact
+
+theorem not_C2Cofinite_simpleSl2QL_of_exact (hex : Sl2ExactSymbol) : ¬ C2Cofinite simpleSl2QL :=
+  sl2PresentationSimpleSl2QL.not_C2Cofinite hex
+\end{leancode}
+
+\begin{dictionary}
+\lean{Sl2ExactSymbol} says that the kernel of the constructed symbol map is contained in $\lsixteenCas\cdot\mathfrak m$, i.e.\
+$R_{L_{-4/3}}\cong\operatorname{Sym}(\lsixteensl)/\lsixteenCas\cdot\mathfrak m$. It is a named, \textbf{unproved}
+proposition; the library never assumes it globally, only as an explicit hypothesis.
+\end{dictionary}
+
+\begin{warning}[title={The citation attached to \texttt{Sl2ExactSymbol} names a weaker theorem (documentation only)}]
+The docstring calls \lean{Sl2ExactSymbol} ``Arakawa's associated-variety theorem for $L_{-4/3}(\lsixteensl)$, in the form this
+repository consumes'' and says that it is ``a lower bound on $A_2$'' supplied by $X_{L_k(\lsixteensl)} = \lsixteenNil$. Arakawa's
+theorem is a statement about the \emph{reduced} variety: it gives $\sqrt{\ker\sigma} = (\lsixteenCas)$, not
+$\ker\sigma = \lsixteenCas\cdot\mathfrak m$. The scheme-theoretic statement \lean{Sl2ExactSymbol} is true, but its proof
+(on paper) uses different inputs: (a) the maximal ideal of $V^{-4/3}$ is generated by $s$ (a standard fact of admissible-level
+$\widehat{\lsixteensl}$ representation theory, going back to Kac--Wakimoto and Malikov--Feigin--Fuchs), so by PBW it equals $U(\hat{\mathfrak g}_{<0})\cdot\operatorname{span}\{s,f_0s,f_0^2s\}$; (b) in
+$R_{V^k} = \operatorname{Sym}(\lsixteensl)$ (which needs PBW injectivity) the image of this space is the ideal generated by the
+$\lsixteensl$-orbit of $e\lsixteenCas$, which is $\lsixteenCas\cdot\mathfrak m$. Since non-lisseness is now proved without it
+(Section~\ref{l16:sec:nonlisse}), the hypothesis has become \textbf{redundant} wherever it occurs (checked in Lean against the
+library; the check is not part of this release).
+\end{warning}
+
+\begin{physics}
+Exactness would say that the chiral algebra's classical phase space is \emph{exactly} the thickened nilpotent cone, with no
+further nilpotent relations --- a scheme-theoretic refinement of ``associated variety = Higgs branch''.
+\end{physics}
+
+\begin{status}
+\lean{Sl2ExactSymbol}: unproved named proposition. \lean{not_C2Cofinite_}\allowbreak\lean{simpleSl2QL_}\allowbreak\lean{of_exact}: proved from it,
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}; superseded by Theorem~\ref{l16:thm:nonlisse}.
+\end{status}
+
+%======================================================================
+\section{$L_{-4/3}(\mathfrak{sl}_2)$ is not lisse}\label{l16:sec:nonlisse}
+%======================================================================
+
+The file \leanpath{AffineSl2NonLisse.lean} proves the lower bound on $R_{L_{-4/3}}$ that exactness was meant to give, by a
+direct and much weaker argument: only the tower $[e^r]$ is shown to survive.
+
+\begin{theorem}[Non-lisseness of $L_{-4/3}(\lsixteensl)$]\label{l16:thm:nonlisse}
+Let $E_r = e_{-1}^r\lsixteenvac$ and $F_r = f_{-1}^r\lsixteenvac$ in $V = V^{-4/3}(\lsixteensl)$, and $\langle\cdot,\cdot\rangle$ the
+canonical invariant bilinear form. (i) $\langle F_r, x\rangle = 0$ for all $x\in C_2(V)$. (ii) $\langle F_r,E_r\rangle =
+(-1)^r\,r!\,\prod_{j<r}(k-j)\ne0$ at $k=-4/3$. (iii) The class of $E_r$ in $R_{L}$, $L = L_{-4/3}(\lsixteensl)$, is nonzero,
+and these classes are linearly independent. (iv) $L$ is not $C_2$-cofinite. (v) $L$ is not $C_2$-cofinite and is
+Etingof-finite.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak AffineSl2NonLisse.lean}.
+\begin{leancode}
+theorem form_fHarmonic_O₂_zero (r : ℕ) {x : WakModule kk} (hx : x ∈ O₂ W43) :
+    LQ43.formAdm.form (fHarmonic kk r) x = 0 := by
+
+theorem form_fHarmonic_eHarmonic_ne_zero (r : ℕ) :
+    LQ43.formAdm.form (fHarmonic kk r) (eHarmonic kk r) ≠ 0 := by
+
+theorem eHarmonicL_not_mem_O₂ (r : ℕ) : eHarmonicL r ∉ O₂ L43 := by
+
+theorem eHarmonicL_C₂_linearIndependent :
+    LinearIndependent ℂ (fun r : ℕ => mk₂ L43 (eHarmonicL r)) := by
+
+theorem not_C2Cofinite_simpleSl2QL : ¬ C2Cofinite L43 := by
+
+theorem strictEtingofFinite_simpleSl2QL :
+    ¬ C2Cofinite L43 ∧ EtingofFinite L43 :=
+  ⟨not_C2Cofinite_simpleSl2QL, Sl2Pres.etingofFinite_simpleSl2QL'⟩
+\end{leancode}
+
+\begin{dictionary}
+\lean{kk}, \lean{W43}, \lean{I43}, \lean{L43} are \emph{local notations} of the file for $-4/3$, \lean{affineSl2QL},
+\lean{QuotVOA.}\allowbreak\lean{maxGradedIdeal affineSl2QL} and \lean{simpleSl2QL}; so \lean{VOA.Sl2NonLisse.}\allowbreak\lean{not_C2Cofinite_}\allowbreak\lean{simpleSl2QL} is literally
+\lean{¬ C2Cofinite simpleSl2QL}. \lean{eHarmonic k r}, \lean{fHarmonic k r} are $E_r$, $F_r$
+(\leanpath{AffineSl2HarmonicNorm.lean}), and \lean{eHarmonicL r} is the image of $E_r$ in $L$. \lean{LQ43.formAdm} is the
+canonical invariant form on $V^{-4/3}$ of Chapter~\ref{ch:L09}. (ii) is \lean{form_fHarmonic_}\allowbreak\lean{eHarmonic}
+(\leanpath{AffineSl2HarmonicNorm.lean}) evaluated at $k=-4/3$: $k-j\ne0$ because $k$ is not a non-negative integer. Exactly
+Theorem~\ref{l16:thm:nonlisse}; (iv) is unconditional. \textbf{Name clash:} the full name is
+\lean{VOA.Sl2NonLisse.}\allowbreak\lean{not_C2Cofinite_}\allowbreak\lean{simpleSl2QL}; the declaration \lean{VOA.QuasiLisseSl2.}\allowbreak\lean{not_C2Cofinite_}\allowbreak\lean{simpleSl2QL}
+(\leanpath{AKSl2Payoff.lean}) has the same short name. At the snapshot it took a presentation \lean{S} and
+\lean{hex : S.IsExact}; a Lean check (not part of this release) showed the two are equal as proofs, so the hypotheses were redundant, and the
+library has since restated it without hypotheses, as \lean{¬ C2Cofinite simpleSl2QL} proved by
+\lean{Sl2NonLisse.not_C2Cofinite_simpleSl2QL}. The two twins now have identical types.
+\end{dictionary}
+
+\textbf{Proof on paper.} Write $h_0$-charge for the eigenvalue of $h_0$ ($e$ has charge $2$, $f$ has $-2$, $h$ has $0$). (i) The
+form is invariant, so $\langle h_0x,y\rangle = -\langle x,h_0y\rangle$ and vectors of different charge $\gamma,\gamma'$ with
+$\gamma\ne-\gamma'$ are orthogonal; also different conformal weights are orthogonal. $F_r$ has weight $r$ and charge $-2r$. A
+homogeneous generator $u_{(-2)}v$ of $C_2(V)$ of weight $r$ has $\operatorname{wt}u + \operatorname{wt}v = r-1$; writing $u,v$ in
+the word basis, each current contributes charge $\le2$ and weight $\ge1$, so the charge is $\le2(r-1)<2r$. Hence
+$\langle F_r,u_{(-2)}v\rangle = 0$. (ii) Move $f_{-1}$ across with invariance ($f_{-1}^\dagger\sim e_1$) and use
+$e_1E_{r} = $ an explicit multiple of $E_{r-1}$: one gets the recursion $\langle F_{r+1},E_{r+1}\rangle =
+-(r+1)(k-r)\langle F_r,E_r\rangle$. (iii) If $\bar E_r\in C_2(L)$, lift: $C_2(L)$ is the image of $C_2(V)$, so $E_r = x+n$ with $x\in
+C_2(V)$ and $n$ in the maximal ideal, which is the (right) radical $\{y : \langle x,y\rangle = 0\ \forall x\}$ of the form (Li's theorem: for a VOA of CFT type with
+$L_1V_1=0$ the maximal proper ideal equals the radical of the canonical invariant form; Chapter~\ref{ch:L09},
+\lean{LiRadical.}\allowbreak\lean{rightRadical_}\allowbreak\lean{eq_maxGradedIdeal}). Pairing
+with $F_r$ gives $\langle F_r,E_r\rangle = 0$, contradicting (ii). The classes have distinct weights, so are independent. (iv)
+An infinite independent family. (v) Add Theorem~\ref{l16:thm:presL}. \qed
+
+\begin{physics}
+$E_r = (J^+_{-1})^r\lsixteenvac$ is the chiral-algebra image of the Higgs-branch operator $\mu^r$, the $r$-th power of the
+moment map's highest component, of $SU(2)_R$-spin $r$; and $F_r$ is its conjugate. Their two-point function is nonzero, so these
+states are not null; and they are not ``derivatives'' (in $C_2$) because an excited mode costs energy without supplying charge.
+The infinite tower of Higgs-branch chiral ring elements is what makes the chiral algebra non-lisse.
+\end{physics}
+
+\begin{status}
+Proved, unconditional, \lean{pbw}-free: \texttt{\#print axioms} of \lean{VOA.Sl2NonLisse.}\allowbreak\lean{eHarmonicL_}\allowbreak\lean{not_mem_}\allowbreak\lean{O₂},
+\lean{VOA.Sl2NonLisse.}\allowbreak\lean{not_C2Cofinite_}\allowbreak\lean{simpleSl2QL}, \lean{VOA.Sl2NonLisse.}\allowbreak\lean{strictEtingofFinite_}\allowbreak\lean{simpleSl2QL}:
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (re-run for this chapter).
+\end{status}
+
+\begin{warning}[title={Stale ``non-lisseness is not proved'' documentation (documentation only)}]
+The module docstrings of \leanpath{AffineSl2QuasiLisse.lean} (``\lean{¬ C2Cofinite (simpleSl2QL)} is still NOT proved''),
+\leanpath{AffineSl2Presentation.lean} (``\lean{L₋₄⁄₃(𝔰𝔩₂)} may NOT be described as `proved non-lisse'\,''),
+\leanpath{AKSl2Payoff.lean} (``\lean{¬ C2Cofinite (L_{-4/3}(𝔰𝔩₂))} is NOT proved''), \leanpath{AKSl2Instance.lean} (item~1,
+``NOT a non-lisse instance''), and the docstrings of \lean{VOA.Sl2Pres.}\allowbreak \lean{not_C2Cofinite_}\allowbreak\lean{simpleSl2QL_}\allowbreak\lean{of_exact},
+\lean{VOA.QuasiLisseSl2.}\allowbreak\lean{not_C2Cofinite_}\allowbreak\lean{simpleSl2QL}, \lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{of_non_}\allowbreak\lean{lisse_}\allowbreak\lean{simpleSl2QL} and
+\lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{adjoint_}\allowbreak\lean{of_non_}\allowbreak\lean{lisse_}\allowbreak\lean{simpleSl2QL} all said that non-lisseness is conditional on
+\lean{Sl2ExactSymbol}. Already at the snapshot it was the unconditional Theorem~\ref{l16:thm:nonlisse}. \emph{Update
+(release audit, 2026-10-27):} these declaration docstrings and module headers have been corrected (by a later revision of
+the library); what remains in \leanpath{AffineSl2Presentation.lean} is the correct statement that
+\lean{Sl2Presentation.IsExact} (and \lean{Sl2ExactSymbol}) is not proved.
+\end{warning}
+
+\begin{theorem}[$R_{L_{-4/3}}\ne0$, two proofs]\label{l16:thm:nontriv}
+$R_{L_{-4/3}}$ is a nonzero vector space.
+\end{theorem}
+\noindent Files \leanpath{VOA/\allowbreak Examples/\allowbreak AffineSl2QuasiLisse.lean},
+\leanpath{VOA/\allowbreak Examples/\allowbreak AffineSl2Presentation.lean}.
+\begin{leancode}
+theorem A₂_simpleSl2QL_nontrivial : Nontrivial (A₂ simpleSl2QL) :=
+  A₂_nontrivial simpleSl2QL vacuum_simpleSl2QL_ne_zero
+
+theorem A₂_simpleSl2QL_nontrivial' : Nontrivial (A₂ simpleSl2QL) :=
+  A₂_nontrivial simpleSl2QL vacuum_simpleSl2QL_ne_zero'
+\end{leancode}
+
+\begin{dictionary}
+\lean{Nontrivial X}: $X$ has two distinct elements. The two proofs differ only in how the nonzero vacuum is obtained: the
+first (namespace \lean{QuasiLisseSl2}) uses \lean{AffineVOA.}\allowbreak\lean{vacuumA_}\allowbreak\lean{ne_zero}, which goes through
+\lean{VOA.pbw} (an axiom at the snapshot, a theorem now); the second (namespace \lean{Sl2Pres}) uses the Wakimoto realisation and
+does not use \lean{VOA.pbw}. Since \lean{VOA.pbw} is now a theorem, the difference has no axiom significance: both
+report Lean's three standard axioms only. Both are now
+implied by Theorem~\ref{l16:thm:nonlisse} (an infinite-dimensional space is nonzero).
+\end{dictionary}
+
+\textbf{Proof on paper.} $C_2(V)\subseteq\bigoplus_{n\ne0}V_n$ since $a_{(-2)}b$ has weight $\operatorname{wt}a+\operatorname{wt}b+1\ge1$;
+so $[\lsixteenvac]\ne0$ when $\lsixteenvac\ne0$. \qed
+
+\begin{physics}
+The identity operator is not a derivative: the classical phase space is non-empty.
+\end{physics}
+
+\begin{status}
+\lean{VOA.QuasiLisseSl2.}\allowbreak\lean{A₂_simpleSl2QL_}\allowbreak\lean{nontrivial}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound, VOA.}\allowbreak\lean{pbw]} at the snapshot;
+now \lean{[propext, Classical.choice, Quot.sound]} (re-probed at a later commit, after \lean{VOA.pbw} became a theorem, not re-run for this edition; confirmed by the release audit). Its
+proof passes through the theorem \lean{VOA.pbw}, which is no longer an axiom, so this carries no axiom significance.
+\lean{A₂_simpleSl2QL_}\allowbreak\lean{nontrivial'}: standard three only.
+\end{status}
+
+%======================================================================
+\section{The payoff at $L_{-4/3}(\mathfrak{sl}_2)$}\label{l16:sec:payoff}
+%======================================================================
+
+\begin{theorem}[\texttt{VacuumGradeZero} is free]\label{l16:thm:vgz}
+For every library VOA, $V_0\subseteq\C\lsixteenvac$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak AKSl2Payoff.lean}.
+\begin{leancode}
+theorem vacuumGradeZero_of_vacuum_grade (W : VertexOperatorAlgebra 𝒱) : VacuumGradeZero W :=
+  le_of_eq W.vacuum_grade
+\end{leancode}
+
+\begin{dictionary}
+\lean{W.vacuum_}\allowbreak\lean{grade : W.}\allowbreak\lean{grading 0 = ℂ ∙ W.}\allowbreak\lean{vacuum} is a structure field of \lean{VertexOperatorAlgebra} (CFT type); \lean{le_of_eq}
+weakens $=$ to $\le$. So the hypothesis \lean{hzero} carried by every theorem of Sections~\ref{l16:sec:prop52}--\ref{l16:sec:zhu}
+is redundant in the strict sense (always satisfied); it is harmless.
+\end{dictionary}
+
+\begin{physics}
+The vacuum is the unique state of zero energy.
+\end{physics}
+
+\begin{status}
+Proved, unconditional.
+\end{status}
+
+\begin{theorem}[Generic payoff from a presentation]\label{l16:thm:payoffGen}
+If $V$ has an $\lsixteensl$ symbol presentation, then the character of every ordinary module with a conformal weight satisfies
+a formal equation~\eqref{l16:eq:formalODE}; if the presentation is exact, $V$ is moreover not $C_2$-cofinite.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak AKSl2Payoff.lean}.
+\begin{leancode}
+theorem character_formalODE_of_sl2Presentation (W : VertexOperatorAlgebra 𝒱)
+    (P : Sl2Presentation W) (N : OrdVModule W M) {hw : ℂ} (hcw : HasConformalWeight N hw) :
+    ∃ (s : ℕ) (g : ℕ → ℕ → ℂ), 1 ≤ s ∧ (∀ i, Subexponential (fun k => ‖g i k‖)) ∧
+      ∀ e : ℂ, (qDeriv^[s] (torusPartition N)) e
+        + ∑ i ∈ Finset.range s, qConv (g i) (qDeriv^[i] (torusPartition N)) e = 0 :=
+
+theorem character_formalODE_of_non_lisse (W : VertexOperatorAlgebra 𝒱)
+    (P : Sl2Presentation W) (hex : P.IsExact)
+    (N : OrdVModule W M) {hw : ℂ} (hcw : HasConformalWeight N hw) :
+    ¬ C2Cofinite W ∧
+      ∃ (s : ℕ) (g : ℕ → ℕ → ℂ), 1 ≤ s ∧ (∀ i, Subexponential (fun k => ‖g i k‖)) ∧
+        ∀ e : ℂ, (qDeriv^[s] (torusPartition N)) e
+          + ∑ i ∈ Finset.range s, qConv (g i) (qDeriv^[i] (torusPartition N)) e = 0 :=
+\end{leancode}
+
+\begin{dictionary}
+Compositions of Theorems~\ref{l16:thm:presCons} and~\ref{l16:thm:formalODE}. For a general $V$ the hypotheses \lean{P},
+\lean{hex} are genuine; the conclusion inherits the weakness discussed in Section~\ref{l16:sec:weak}.
+\end{dictionary}
+
+\textbf{Proof on paper.} Theorem~\ref{l16:thm:presCons} gives Etingof-finiteness (and non-lisseness from \lean{hex}); then
+Theorem~\ref{l16:thm:formalODE}. \qed
+
+\begin{physics}
+Any chiral algebra whose classical phase space is a thickened nilpotent cone of $\lsixteensl$ has characters that are
+convergent and solve a closed stress-tensor recursion.
+\end{physics}
+
+\begin{status}
+Proved; \lean{VOA.QuasiLisseSl2.}\allowbreak\lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{of_non_}\allowbreak\lean{lisse}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (re-run).
+\end{status}
+
+\begin{theorem}[Unconditional consequences at $L_{-4/3}(\lsixteensl)$]\label{l16:thm:payoffL}
+For $L = L_{-4/3}(\lsixteensl)$: (i) its character satisfies a formal equation~\eqref{l16:eq:formalODE}; (ii) so does the
+character of every ordinary module with a conformal weight, (iii) with an order $s$ independent of the module; (iv) the
+character $q$-series converges at every $\tau\in\mathbb H$; (v) the space of analytic genus-one blocks is finite-dimensional.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak AKSl2Instance.lean}.
+\begin{leancode}
+theorem character_formalODE_simpleSl2QL_uncond :
+    ∃ (s : ℕ) (g : ℕ → ℕ → ℂ), 1 ≤ s ∧ (∀ i, Subexponential (fun k => ‖g i k‖)) ∧
+      ∀ e : ℂ, (qDeriv^[s] (torusPartition (adjointModule simpleSl2QL))) e
+        + ∑ i ∈ Finset.range s,
+            qConv (g i) (qDeriv^[i] (torusPartition (adjointModule simpleSl2QL))) e = 0 :=
+
+theorem character_formalODE_module_simpleSl2QL {M : Type} [AddCommGroup M] [Module ℂ M]
+    (N : OrdVModule simpleSl2QL M) {hw : ℂ} (hcw : HasConformalWeight N hw) :
+    ∃ (s : ℕ) (g : ℕ → ℕ → ℂ), 1 ≤ s ∧ (∀ i, Subexponential (fun k => ‖g i k‖)) ∧
+      ∀ e : ℂ, (qDeriv^[s] (torusPartition N)) e
+        + ∑ i ∈ Finset.range s, qConv (g i) (qDeriv^[i] (torusPartition N)) e = 0 :=
+
+theorem uniform_order_character_formalODE_simpleSl2QL :
+    ∃ s : ℕ, 1 ≤ s ∧
+      ∀ {M : Type} [AddCommGroup M] [Module ℂ M] (N : OrdVModule simpleSl2QL M) (hw : ℂ),
+        HasConformalWeight N hw →
+          ∃ g : ℕ → ℕ → ℂ, (∀ i, Subexponential (fun k => ‖g i k‖)) ∧
+            ∀ e : ℂ, (qDeriv^[s] (torusPartition N)) e
+              + ∑ i ∈ Finset.range s,
+                  qConv (g i) (qDeriv^[i] (torusPartition N)) e = 0 :=
+
+theorem qSummable_character_simpleSl2QL (τ : UpperHalfPlane) :
+    QSummableAt (gradedDim (adjointModule simpleSl2QL))
+      ((0 : ℂ) - simpleSl2QL.centralCharge / 24) τ :=
+
+theorem finiteDimensional_analyticBlocks_simpleSl2QL :
+    FiniteDimensional ℂ (Submodule.map restrictImGT (analyticBlocks simpleSl2QL)) :=
+\end{leancode}
+
+\begin{dictionary}
+All in \lean{namespace VOA.Sl2Pres}. No hypotheses at all. \lean{QSummableAt χ h τ} is
+\lean{Summable (fun n : ℕ => χ (h + n) * (qParam τ) ^ n)} (\leanpath{VOA/\allowbreak Modularity/\allowbreak ConvergenceBridge.lean}),
+the convergence of $\sum_n\dim L_n\,q^n$ at $q = e^{2\pi i\tau}$; here $h = -c/24 = 1/4$. Module carriers \lean{M : Type} live in
+universe $0$, matching \lean{simpleSl2QL}. (i)--(iii) are formal equations in the weak sense of Section~\ref{l16:sec:weak},
+\textbf{not} MLDEs; the file header says so (``NOT AK Theorem 5.1, and NOT a modular linear differential equation''). (iv)
+is genuine convergence. (v) is genuine (Theorem~\ref{l16:thm:blocks}). \textbf{What is not here:} an MLDE for the character
+of $L_{-4/3}$ packaged as a statement about the character (the genuine MLDE for abstract analytic blocks is
+Theorem~\ref{l16:thm:mlde-uncond}(ii), of unspecified order), and Zhu-type modular
+invariance (Theorem~\ref{l16:thm:zhuEt} needs \lean{hfib}, \lean{hrank}).
+\end{dictionary}
+
+\textbf{Proof on paper.} Theorem~\ref{l16:thm:presL}(iv) gives Etingof-finiteness; Theorem~\ref{l16:thm:vgz} gives
+\lean{hzero}; the vacuum of $L$ is nonzero (\lean{pbw}-free); now apply Theorems~\ref{l16:thm:formalODE},
+\ref{l16:thm:uniform}, \ref{l16:thm:growth} and~\ref{l16:thm:blocks}. \qed
+
+\begin{physics}
+For the $(A_1,A_3)$ Argyres--Douglas theory: the Schur index converges for $|q|<1$ (the protected spectrum has subexponential
+growth) and the torus conformal blocks of its chiral algebra form a finite-dimensional space. The MLDE that Beem--Rastelli
+observe for this Schur index has order~2; the library proves only that the vacuum insertion of every analytic block satisfies
+\emph{some} monic MLDE (Theorem~\ref{l16:thm:mlde-uncond}(ii)), not one of these formal equations, and not the order.
+\end{physics}
+
+\begin{status}
+Proved, unconditional, \lean{pbw}-free: \lean{VOA.Sl2Pres.}\allowbreak\lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{simpleSl2QL_}\allowbreak\lean{uncond},
+\lean{uniform_}\allowbreak\lean{order_}\allowbreak\lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{simpleSl2QL}, \lean{qSummable_}\allowbreak\lean{character_}\allowbreak\lean{simpleSl2QL},
+\lean{finiteDimensional_}\allowbreak\lean{analyticBlocks_}\allowbreak\lean{simpleSl2QL}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (re-run).
+\end{status}
+
+\begin{theorem}[The ``non-lisse'' conjunctions, as stated in the library]\label{l16:thm:nonlissePayoff}
+$L_{-4/3}(\lsixteensl)$ is not $C_2$-cofinite and its character satisfies a formal equation~\eqref{l16:eq:formalODE}.
+\end{theorem}
+\noindent Files \leanpath{VOA/\allowbreak Modularity/\allowbreak AKSl2Instance.lean},
+\leanpath{VOA/\allowbreak Modularity/\allowbreak AKSl2Payoff.lean}.
+\begin{leancode}
+theorem character_formalODE_of_non_lisse_simpleSl2QL :
+    ¬ C2Cofinite simpleSl2QL ∧
+      ∃ (s : ℕ) (g : ℕ → ℕ → ℂ), 1 ≤ s ∧ (∀ i, Subexponential (fun k => ‖g i k‖)) ∧
+        ∀ e : ℂ, (qDeriv^[s] (torusPartition (adjointModule simpleSl2QL))) e
+          + ∑ i ∈ Finset.range s,
+              qConv (g i) (qDeriv^[i] (torusPartition (adjointModule simpleSl2QL))) e = 0 :=
+
+theorem character_formalODE_simpleSl2QL :
+    ∃ (s : ℕ) (g : ℕ → ℕ → ℂ), 1 ≤ s ∧ (∀ i, Subexponential (fun k => ‖g i k‖)) ∧
+      ∀ e : ℂ, (qDeriv^[s] (torusPartition (adjointModule simpleSl2QL))) e
+        + ∑ i ∈ Finset.range s,
+            qConv (g i) (qDeriv^[i] (torusPartition (adjointModule simpleSl2QL))) e = 0 :=
+
+theorem character_formalODE_adjoint_of_non_lisse_simpleSl2QL :
+    ¬ C2Cofinite simpleSl2QL ∧
+      ∃ (s : ℕ) (g : ℕ → ℕ → ℂ), 1 ≤ s ∧ (∀ i, Subexponential (fun k => ‖g i k‖)) ∧
+        ∀ e : ℂ, (qDeriv^[s] (torusPartition (adjointModule simpleSl2QL))) e
+          + ∑ i ∈ Finset.range s,
+              qConv (g i) (qDeriv^[i] (torusPartition (adjointModule simpleSl2QL))) e = 0 :=
+\end{leancode}
+
+\begin{dictionary}
+The first is \lean{VOA.Sl2Pres.}\allowbreak\lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{of_non_}\allowbreak\lean{lisse_}\allowbreak\lean{simpleSl2QL} (\leanpath{AKSl2Instance.lean}); the other two are
+in \lean{namespace VOA.}\allowbreak\lean{QuasiLisseSl2} (\leanpath{AKSl2Payoff.lean}). The hypotheses \lean{hex : Sl2ExactSymbol}, \lean{P},
+\lean{hex : P.IsExact} were \textbf{all redundant}: the conclusions hold hypothesis-free (checked in Lean; the check is not part of this release). After this
+finding the library removed them from these three flagships, whose current, hypothesis-free statements are quoted above.
+\end{dictionary}
+
+\textbf{Proof on paper.} Theorem~\ref{l16:thm:nonlisse}(iv) and Theorem~\ref{l16:thm:payoffL}(i). \qed
+
+\begin{physics}
+This is the configuration in which Arakawa--Kawasetsu say something Zhu cannot: a chiral algebra with a continuous Higgs
+branch whose characters are nonetheless controlled. In the form proved, the control is convergence and a closed recursion,
+not modularity.
+\end{physics}
+
+\begin{status}
+Library: \lean{Sl2Pres.}\allowbreak\lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{of_non_}\allowbreak\lean{lisse_}\allowbreak\lean{simpleSl2QL} standard three; the two \lean{QuasiLisseSl2} flagship
+statements \lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{simpleSl2QL} and \lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{adjoint_}\allowbreak\lean{of_non_}\allowbreak\lean{lisse_}\allowbreak\lean{simpleSl2QL}:
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound, VOA.}\allowbreak\lean{pbw]} at the snapshot;
+now \lean{[propext, Classical.choice, Quot.sound]} (re-probed at a later commit, after \lean{VOA.pbw} became a theorem, not re-run for this edition; confirmed by the release audit,
+2026-10-27). At the snapshot they used \lean{VOA.pbw} via \lean{vacuum_}\allowbreak\lean{simpleSl2QL_}\allowbreak\lean{ne_zero}; the
+current source routes \lean{QuasiLisseSl2.}\allowbreak\lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{simpleSl2QL} through the Wakimoto
+\lean{Sl2Pres.}\allowbreak\lean{vacuum_}\allowbreak\lean{simpleSl2QL_}\allowbreak\lean{ne_zero'} instead. Either way, since \lean{VOA.pbw} is now a
+theorem, ``\lean{pbw}-free'' is no longer a property that \texttt{\#print axioms} can detect or that carries any weight.
+\textbf{Content:} these are the near-vacuous formal equations of Section~\ref{l16:sec:weak}, not MLDEs.
+\end{status}
+
+%======================================================================
+\section{Traps, dead ends, and Lean defects}\label{l16:sec:defects}
+%======================================================================
+
+\begin{warning}[title={Primarity is essential in Lemma 5.5 (recorded dead end)}]
+\leanpath{VOA/\allowbreak Modularity/\allowbreak UniCollapse.lean} refutes the unitriangular conversion
+(Theorem~\ref{l16:thm:huni}) when quantified over \emph{all} vectors, via $v = L[-1]x$. An earlier note in
+\leanpath{QuasiLisseFinite.lean} wrongly identified that refutation with AK Lemmas~5.4--5.6; the corrected note (Status item~1)
+explains that only Lemma~5.5 needs primarity and that the refuted instance is not primary.
+\end{warning}
+
+\begin{warning}[title={Etingof-finiteness cannot supply Zhu's rank bound}]
+\lean{EtingofFinite W} bounds $V/O_2^P(V)$, not Zhu's algebra $A(V)$, since $a_{(0)}b\notin O(V)$ in general. So the rank
+hypothesis \lean{hrank} of Theorem~\ref{l16:thm:zhuEt} stays open on the Etingof route (\leanpath{AKZhuModularity.lean},
+honesty item~2). Its satisfiability is witnessed only at the trivial VOA, which (the file notes) cannot distinguish it from a
+refuted legacy hypothesis.
+\end{warning}
+
+\paragraph{Lean defects found while writing this chapter.}
+\begin{enumerate}
+\item \textbf{Moderate: redundant hypotheses.} \lean{hex : Sl2ExactSymbol} in \lean{VOA.Sl2Pres.}\allowbreak\lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{of_non_}\allowbreak\lean{lisse_}\allowbreak\lean{simpleSl2QL},
+  \lean{not_C2Cofinite_}\allowbreak\lean{simpleSl2QL_}\allowbreak\lean{of_exact}, \lean{quasiLisseWitness_}\allowbreak\lean{simpleSl2QL_}\allowbreak\lean{of_exact},
+  \lean{nilpEquiv_}\allowbreak\lean{simpleSl2QL_}\allowbreak\lean{of_exact} (the first three; the fourth needs it genuinely), and \lean{S}, \lean{hex} in
+  \lean{VOA.QuasiLisseSl2.}\allowbreak\lean{not_C2Cofinite_}\allowbreak\lean{simpleSl2QL}, \lean{quasiLisseWitness_}\allowbreak\lean{simpleSl2QL},
+  \lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{adjoint_}\allowbreak\lean{of_non_}\allowbreak\lean{lisse_}\allowbreak\lean{simpleSl2QL}, and \lean{S} or \lean{P} in
+  \lean{QuasiLisseSl2.}\allowbreak\lean{etingofFinite_}\allowbreak\lean{simpleSl2QL}, \lean{finiteDimensional_}\allowbreak\lean{poissonTraces_}\allowbreak\lean{simpleSl2QL},
+  \lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{simpleSl2QL} (\leanpath{AffineSl2Presentation.lean},
+  \leanpath{AffineSl2QuasiLisse.lean}, \leanpath{AKSl2Instance.lean}, \leanpath{AKSl2Payoff.lean}). Evidence: a Lean check against the library (not part of this
+  release). Fix: restate with \lean{Sl2NonLisse.}\allowbreak\lean{not_C2Cofinite_}\allowbreak\lean{simpleSl2QL}.
+\item \textbf{Moderate: near-vacuous conclusion.} The formal ODE theorems (\lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{of_etingofFinite},
+  \lean{uniform_}\allowbreak\lean{order_}\allowbreak\lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{of_etingofFinite} and their instances) hold for any convergent $q$-series with zeros of
+  bounded multiplicity in the disc (Proposition~\ref{l16:prop:weak}, on paper). Fix: state them as growth results, or use the
+  $E_4,E_6$ route.
+\item \textbf{Closed gap (formerly open): the genuine MLDE's side inputs.} \lean{AKWeightGrading} is now inhabited for every
+  VOA (\lean{akWeightGrading}) and \lean{E46SerreClosed} is \lean{e46SerreClosed}, so
+  \lean{IsSqPrimary.}\allowbreak\lean{exists_}\allowbreak\lean{monicMLDEOn_}\allowbreak\lean{all_analyticBlocks_}\allowbreak\lean{of_etingofFinite_uncond}
+  is conditional only on \lean{EtingofFinite} (Theorem~\ref{l16:thm:mlde-uncond}). \textbf{Documentation only:} the
+  suffix \lean{_uncond} is misleading, since the theorem keeps \lean{hE}.
+\item \textbf{Documentation only: stale docstrings} saying $L_{-4/3}(\lsixteensl)$ is not proved non-lisse / only the trivial VOA is
+  Etingof-finite / the presentation is never constructed: \leanpath{QuasiLisseFinite.lean} (Status item~4, \S7),
+  \leanpath{AKModularODE.lean} (header and \lean{trivial_}\allowbreak\lean{character_}\allowbreak\lean{formalODE}), \leanpath{AKUniformODE.lean}
+  (\lean{trivial_}\allowbreak\lean{uniform_}\allowbreak\lean{order_}\allowbreak\lean{character_}\allowbreak\lean{formalODE}), \leanpath{AKZhuModularity.lean} (honesty item~1, headline docstring),
+  \leanpath{AffineSl2QuasiLisse.lean}, \leanpath{AffineSl2Presentation.lean}, \leanpath{AKSl2Payoff.lean},
+  \leanpath{AKSl2Instance.lean}.
+\item \textbf{Documentation only: name clash} (\emph{partly resolved}). \lean{VOA.QuasiLisseSl2.}\allowbreak\lean{not_C2Cofinite_}\allowbreak\lean{simpleSl2QL} (needed \lean{S}, \lean{hex} at the snapshot) and
+  \lean{VOA.Sl2NonLisse.}\allowbreak\lean{not_C2Cofinite_}\allowbreak\lean{simpleSl2QL} (unconditional); similarly \lean{QuasiLisseSl2.}\allowbreak\lean{etingofFinite_}\allowbreak\lean{simpleSl2QL}
+  (needed \lean{S}) versus \lean{Sl2Pres.}\allowbreak\lean{etingofFinite_}\allowbreak\lean{simpleSl2QL'}. At the release audit (2026-10-27) the
+  \lean{QuasiLisseSl2} twins in \leanpath{AKSl2Payoff.lean} are hypothesis-free and have the same types as their
+  \lean{Sl2NonLisse}/\lean{Sl2Pres} counterparts; the duplicate names remain.
+\item \textbf{Documentation only: imprecise citation.} \lean{Sl2ExactSymbol} is described as Arakawa's associated-variety theorem, which only
+  gives the radical of the kernel (Definition~\ref{l16:def:exact} and its warning).
+\item \textbf{Documentation only: unnecessary \lean{pbw}} (\emph{moot}). At the snapshot \lean{QuasiLisseSl2.}\allowbreak\lean{A₂_simpleSl2QL_}\allowbreak\lean{nontrivial},
+  \lean{QuasiLisseSl2.}\allowbreak\lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{simpleSl2QL}, \lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{adjoint_}\allowbreak\lean{of_non_}\allowbreak\lean{lisse_}\allowbreak\lean{simpleSl2QL} depended on
+  the then-axiom \lean{VOA.pbw} although \lean{pbw}-free twins existed. The two formal-ODE statements are now routed
+  through the Wakimoto vacuum, and \lean{VOA.pbw} is a theorem (\leanpath{VOA/\allowbreak Foundations/\allowbreak AffineLie.lean}), so
+  every declaration of this chapter reports Lean's three standard axioms and ``without \lean{VOA.pbw}'' is not a
+  meaningful selling point.
+\item \textbf{Documentation only: overclaiming headline docstring} (release audit, finding~3). The docstring of
+  \lean{Sl2Pres.}\allowbreak\lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{simpleSl2QL_}\allowbreak\lean{uncond} (\leanpath{AKSl2Instance.lean})
+  calls the near-vacuous formal equation ``THE HEADLINE'' and ``the Arakawa--Kawasetsu character equation'', contradicting
+  the disclaimers elsewhere in the same files. It should say ``formal growth equation''.
+\item \textbf{Minor: redundant \lean{hzero : VacuumGradeZero W}} (release audit, finding~6). It holds for every VOA
+  (\lean{vacuumGradeZero_holds}, \leanpath{VOA/\allowbreak Modularity/\allowbreak BlockZeroMode.lean}) but is still an argument of
+  \lean{IsSqPrimary.}\allowbreak\lean{exists_}\allowbreak\lean{monicMLDEOn_}\allowbreak\lean{all_analyticBlocks_}\allowbreak\lean{of_etingofFinite},
+  \lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{of_etingofFinite}, \lean{onePointSubexp_}\allowbreak\lean{of_etingofFinite} and
+  \lean{finiteDimensional_}\allowbreak\lean{analyticBlocks_}\allowbreak\lean{of_etingofFinite}. Harmless.
+\end{enumerate}
+
+%======================================================================
+\section{Referee's checklist}\label{l16:sec:checklist}
+%======================================================================
+
+\begingroup\small
+\begin{longtable}{p{0.30\textwidth}p{0.27\textwidth}p{0.24\textwidth}p{0.11\textwidth}}
+\toprule
+Lean declaration & Intended meaning & Hypotheses / status & Fidelity check\\
+\midrule\endhead
+\lean{A₂Algebra}, \lean{QuotVOA.A₂quot} & $R_V$ is a $\C$-algebra; $R_V\twoheadrightarrow R_{V/I}$ Poisson & graded ideal; unconditional & Def.~\ref{l16:def:algebra}, Thm.~\ref{l16:thm:quot}\\
+\lean{poissonSpan}, \lean{HP₀}, \lean{poissonTraces} & $\{R,R\}$, $\lsixteenHP(R_V)$, Poisson traces & definitions; standard & Def.~\ref{l16:def:poissonSpan}\\
+\lean{EtingofFinite} & $\dim\lsixteenHP(R_V)<\infty$ & definition; \textbf{not} quasi-lisseness (weaker, by Etingof--Schedler) & Def.~\ref{l16:def:etingof}\\
+\lean{EtingofFinite_}\allowbreak\lean{of_C2Cofinite}, \lean{finiteDimensional_}\allowbreak\lean{poissonTraces} & lisse $\Rightarrow$ Etingof-finite; finite trace space & unconditional & Thm.~\ref{l16:thm:c2etingof}\\
+\lean{etingofFinite_}\allowbreak\lean{iff_quot_}\allowbreak\lean{O₂P} & AK Thm.~2.2 upstairs & unconditional & Thm.~\ref{l16:thm:O2P}\\
+\lean{vSqZ_zero_eq}, \lean{sqDefect0_mem_of_lower} & $a[0]b = a_{(0)}b+$lower & unconditional & Thm.~\ref{l16:thm:triang}\\
+\lean{exists_finite_gen_sup_}\allowbreak\lean{blockRelSpanG_}\allowbreak\lean{of_etingofFinite} & AK Prop.~5.2 & \lean{hE}; \lean{hzero} free & Thm.~\ref{l16:thm:prop52}\\
+\lean{onePointSubexp_}\allowbreak\lean{of_etingofFinite} & one-point functions converge & \lean{hcw}, \lean{hE} & Thm.~\ref{l16:thm:growth}\\
+\lean{IsSqPrimary}, \lean{Lsq_tower} & primaries; Virasoro tower & unconditional & Def.~\ref{l16:def:sqprimary}, Thm.~\ref{l16:thm:tower}\\
+\lean{huni_of_sqPrimary} & AK Lemma 5.5 ($\theta$-basis, $\mathcal S$-coefficients, block-dependent) & primary $a$ & Thm.~\ref{l16:thm:huni}\\
+\lean{exists_}\allowbreak\lean{monic_}\allowbreak\lean{Lsq_relation_}\allowbreak\lean{of_etingofFinite} & AK Lemma 5.3 (block form) & \lean{hE} & Thm.~\ref{l16:thm:lemma53}\\
+\lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{of_etingofFinite} & ``AK eq.~(2)'' formal; \textbf{not an MLDE, not AK Thm.~5.1; near-vacuous} (Prop.~\ref{l16:prop:weak}) & \lean{hcw}, \lean{hE} & Thm.~\ref{l16:thm:formalODE}, Prop.~\ref{l16:prop:weak}\\
+\lean{exists_}\allowbreak\lean{uniform_}\allowbreak\lean{monic_}\allowbreak\lean{Lsq_relation_}\allowbreak\lean{of_etingofFinite}, \lean{uniform_}\allowbreak\lean{order_}\allowbreak\lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{of_etingofFinite} & uniform Lemma 5.3; uniform order only & \lean{hE} & Thm.~\ref{l16:thm:uniform}\\
+\lean{MonicMLDEOn}, \lean{AKWeightGrading}, \lean{E46SerreClosed} & genuine MLDE; grading data; Ramanujan closure & definitions; \lean{AKWeightGrading} inhabited for every VOA (\lean{akWeightGrading}); \lean{E46SerreClosed} proved (\lean{e46SerreClosed}) & Defs.~\ref{l16:def:mlde}, \ref{l16:def:akgrading}, Thm.~\ref{l16:thm:akgrading}\\
+\lean{IsSqPrimary.}\allowbreak\lean{exists_}\allowbreak\lean{monicMLDEOn_}\allowbreak\lean{all_analyticBlocks_}\allowbreak\lean{of_etingofFinite} & AK Thm.~5.1 (one MLDE for all blocks) & \lean{hE}, \lean{hgrade}, \lean{hclose}; \lean{hclose} discharged in the primed form & Thm.~\ref{l16:thm:mlde}\\
+\lean{IsSqPrimary.}\allowbreak\lean{exists_}\allowbreak\lean{monicMLDEOn_}\allowbreak\lean{all_analyticBlocks_}\allowbreak\lean{of_etingofFinite_uncond} & AK Thm.~5.1, side inputs discharged & \lean{hE} only (despite the name); order unbounded & Thm.~\ref{l16:thm:mlde-uncond}\\
+\lean{exists_}\allowbreak\lean{monicMLDEOn_}\allowbreak\lean{all_analyticBlocks_}\allowbreak\lean{simpleSl2QL} & one monic MLDE for all blocks of $L_{-4/3}$ at the vacuum & unconditional; order unspecified (AK's order~2 not proved) & Thm.~\ref{l16:thm:mlde-uncond}\\
+\lean{finiteDimensional_}\allowbreak\lean{analyticBlocks_}\allowbreak\lean{of_etingofFinite} & Zhu 5.3.2 under \lean{hE} & \lean{hE} & Thm.~\ref{l16:thm:blocks}\\
+\lean{exists_}\allowbreak\lean{zhuModularity_}\allowbreak\lean{of_}\allowbreak\lean{sqAnalyticRank_}\allowbreak\lean{le_irr_}\allowbreak\lean{etingofFinite} & Zhu modularity under \lean{hE} & \lean{hE}, \lean{hfib}, \lean{hrank} (discharged only for the trivial VOA; \lean{hrank} expected \textbf{false} at $L_{-4/3}$, paper argument) & Thm.~\ref{l16:thm:zhuEt}\\
+\lean{QuasiLisseSl2.}\allowbreak\lean{bigSub_}\allowbreak\lean{eq_top}, \lean{not_finiteDimensional_}\allowbreak\lean{NilpAlg}, \lean{finiteDimensional_}\allowbreak\lean{quot_adRange} & classical model: infinite $\lsixteenR$, finite $\lsixteenHP$ & unconditional & Thm.~\ref{l16:thm:model}\\
+\lean{Sl2Presentation}, \lean{.etingofFinite}, \lean{.not_C2Cofinite} & presentations and consequences & presentation (+ exactness) & Def.~\ref{l16:def:pres}, Thm.~\ref{l16:thm:presCons}\\
+\lean{affineSl2QL}, \lean{simpleSl2QL} & $V^{-4/3}(\lsixteensl)$, $L_{-4/3}(\lsixteensl)$ & definitions; $=$ \lean{L43} of L09 & Def.~\ref{l16:def:flagship}\\
+\lean{Sl2Pres.}\allowbreak\lean{sl2PresentationSimpleSl2QL}, \lean{etingofFinite_}\allowbreak\lean{simpleSl2QL'} & presentation constructed; $L_{-4/3}$ Etingof-finite & \textbf{unconditional}, \lean{pbw}-free & Thm.~\ref{l16:thm:presL}\\
+\lean{Sl2ExactSymbol} & exactness of the presentation & \textbf{unproved}; now redundant; citation imprecise & Def.~\ref{l16:def:exact}\\
+\lean{Sl2NonLisse.}\allowbreak\lean{not_C2Cofinite_}\allowbreak\lean{simpleSl2QL}, \lean{strictEtingofFinite_}\allowbreak\lean{simpleSl2QL} & $L_{-4/3}$ not lisse, and Etingof-finite & \textbf{unconditional}, \lean{pbw}-free & Thm.~\ref{l16:thm:nonlisse}\\
+\lean{A₂_simpleSl2QL_}\allowbreak\lean{nontrivial} (and \lean{'}) & $R_{L}\neq0$ & unconditional; standard axioms (unprimed passes through the theorem \lean{VOA.pbw}) & Thm.~\ref{l16:thm:nontriv}\\
+\lean{Sl2Pres.}\allowbreak\lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{simpleSl2QL_}\allowbreak\lean{uncond} and siblings & formal ODE, convergence, finite blocks at $L_{-4/3}$ & unconditional; formal ODE \textbf{near-vacuous}, not an MLDE & Thm.~\ref{l16:thm:payoffL}\\
+\lean{character_}\allowbreak\lean{formalODE_}\allowbreak\lean{of_non_}\allowbreak\lean{lisse_}\allowbreak\lean{simpleSl2QL} and \lean{QuasiLisseSl2} flagships & not lisse $\wedge$ formal ODE (\textbf{not an MLDE}) & none (\lean{hex}/\lean{P} removed); standard axioms & Thm.~\ref{l16:thm:nonlissePayoff}\\
+\bottomrule
+\end{longtable}
+\endgroup
+
+%======================================================================
+\section{Notes and references}\label{l16:sec:notes}
+%======================================================================
+
+\textbf{The main theorem.} T.~Arakawa and K.~Kawasetsu, ``Quasi-lisse vertex algebras and modular linear differential
+equations'', in \emph{Lie Groups, Geometry, and Representation Theory} (V.~G.~Kac and V.~L.~Popov, eds.), Progr.\ Math.\ 326,
+Birkh\"auser (2018), 41--57, arXiv:1610.05865. The numbering used in this chapter (Theorem~2.2, Proposition~5.2,
+Lemmas~5.3--5.6, Theorems~5.1 and~5.7, equation~(2)) follows arXiv version~4, which is the version cited in the source.
+
+\textbf{Associated varieties.} T.~Arakawa, ``A remark on the $C_2$-cofiniteness condition on vertex algebras'', \emph{Math.\
+Z.} 270 (2012), 559--575, arXiv:1004.1492 (definition of the associated variety; lisse iff $X_V$ is a point); T.~Arakawa,
+``Associated varieties of modules over Kac--Moody algebras and $C_2$-cofiniteness of W-algebras'', \emph{Int.\ Math.\ Res.\
+Not.} 2015, 11605--11666, arXiv:1004.1554 ($X_{L_k(\mathfrak g)}$ at admissible level is a nilpotent orbit closure; for
+$\lsixteensl$, the nilpotent cone).
+
+\textbf{Poisson traces.} P.~Etingof and T.~Schedler, ``Poisson traces and $D$-modules on Poisson varieties'',
+\emph{Geom.\ Funct.\ Anal.} 20 (2010), 958--987, arXiv:0908.3868 (finitely many symplectic leaves $\Rightarrow$
+$\dim\lsixteenHP<\infty$).
+
+\textbf{Zhu's theorem.} Y.~Zhu, ``Modular invariance of characters of vertex operator algebras'', \emph{J.\ Amer.\ Math.\
+Soc.} 9 (1996), 237--302 (relation module, Lemmas~4.4.1--4.4.2, Theorem~5.3.2). C.~Dong, H.~Li and G.~Mason,
+``Modular-invariance of trace functions in orbifold theory and generalized Moonshine'', \emph{Comm.\ Math.\ Phys.} 214
+(2000), 1--56 (Lemma~5.2, the $\mathcal G$-module form).
+
+\textbf{Admissible $\widehat{\lsixteensl}$.} V.~G.~Kac and M.~Wakimoto, ``Modular invariant representations of
+infinite-dimensional Lie algebras and superalgebras'', \emph{Proc.\ Nat.\ Acad.\ Sci.\ USA} 85 (1988), 4956--4960;
+F.~G.~Malikov, B.~L.~Feigin and D.~B.~Fuchs, ``Singular vectors in Verma modules over Kac--Moody algebras'', \emph{Funct.\
+Anal.\ Appl.} 20 (1986), 103--113; D.~Adamovi\'c and A.~Milas, ``Vertex operator algebras associated to modular invariant
+representations for $A_1^{(1)}$'', \emph{Math.\ Res.\ Lett.} 2 (1995), 563--575 (classification of $L_k(\lsixteensl)$-modules
+at admissible level).
+
+\textbf{Ideals of holomorphic functions} (used in Proposition~\ref{l16:prop:weak}). J.~H.~M.~Wedderburn, ``On matrices whose
+coefficients are functions of a single variable'', \emph{Trans.\ Amer.\ Math.\ Soc.} 16 (1915), 328--332; O.~Helmer,
+``Divisibility properties of integral functions'', \emph{Duke Math.\ J.} 6 (1940), 345--356.
+
+\textbf{Physics.} C.~Beem, M.~Lemos, P.~Liendo, W.~Peelaers, L.~Rastelli and B.~C.~van~Rees, ``Infinite chiral symmetry in
+four dimensions'', \emph{Comm.\ Math.\ Phys.} 336 (2015), 1359--1433, arXiv:1312.5344 (the chiral algebra of a 4d
+$\mathcal N=2$ SCFT, $c_{2d} = -12c_{4d}$, Schur index as vacuum character). C.~Beem and L.~Rastelli, ``Vertex operator
+algebras, Higgs branches, and modular differential equations'', \emph{J.\ High Energy Phys.} 2018(8), 114,
+arXiv:1707.07679 (Higgs branch $=$ associated variety, quasi-lisseness, MLDEs for Schur indices). T.~Creutzig, ``W-algebras for
+Argyres--Douglas theories'', \emph{Eur.\ J.\ Math.} 3 (2017), 659--690, arXiv:1701.05926, and C.~Cordova and S.-H.~Shao,
+``Schur indices, BPS particles, and Argyres--Douglas theories'', \emph{J.\ High Energy Phys.} 2016(1), 040, arXiv:1506.00265
+(the $(A_1,D_{2n+1})$ theories and $L_{-4n/(2n+1)}(\lsixteensl)$). S.~D.~Mathur, S.~Mukhi and A.~Sen, ``On the classification of
+rational conformal field theories'', \emph{Phys.\ Lett.\ B} 213 (1988), 303--308 (MLDEs in CFT).
+
+\paragraph{Verification record.} Statements re-checked against the source for this chapter at the earlier commits indicated in its
+status boxes (the snapshot and a later re-probe); they were not re-run for this edition.
+Release audit 2026-10-27: see Notes/Textbook/referee/RELEASE\_AUDIT\_L16.md.
+
+\textbf{Project records.} The honesty blocks in the module docstrings of the thirteen files of this chapter; the axiom audit
+\texttt{scripts/\allowbreak audit/\allowbreak AKZhuModularityAxiomAudit.lean}.
+
+\endgroup

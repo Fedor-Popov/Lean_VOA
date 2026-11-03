@@ -1,0 +1,30 @@
+import VOA.Examples
+-- Axiom probe: boundary affine GU => Lee-Yang GU (2026-10-16). Headline and closed key inputs.
+#print axioms VOA.KoszulResidual.leeYang_gradedUnitary_of_affine_strict
+#print axioms VOA.KoszulResidual.koszulResidual_endpoint
+#print axioms VOA.AffineSl2BelowCritical.universal_gradedUnitary_belowCritical_unconditional
+#print axioms VOA.Sl2SemiInfinite.semiInfiniteQ_sq_zero_iff
+#print axioms VOA.Sl2CosetConcrete.cosetVOA
+#print axioms VOA.LevelOneUnitary.bUnitary
+#print axioms VOA.LevelOneHeis.levelOneHeisenbergSingular
+#print axioms VOA.LevelOneHeis.levelOneBottomDetected
+#print axioms VOA.ConcreteHodge.ghostConjBE_proved
+#print axioms VOA.ConcreteHodge.ghostConjRhoD_proved
+#print axioms VOA.LeeYangCharacter.leeYangPBWCharacter_iff_lowerBound
+#print axioms VOA.LeeYangCharacter.finrank_pieceIn_le
+#print axioms VOA.SymbolModel.jetCyclicDual
+#print axioms VOA.LeeYangCosetTransfer.maps_eq_of_finrank_squeeze
+#print axioms VOA.RRLower.leeYangRRLowerBound_holds
+#print axioms VOA.RRLower.leeYangRochaCaridiCharacter_holds
+#print axioms VOA.RRLower.sum_gapTwoCoefficient_eq_rc
+#print axioms VOA.AdamovicSymbol.leeYang_gradedUnitary_of_affine_wordSymbols_final
+#print axioms VOA.AdamovicSymbol.leeYang_gradedUnitary_of_affine
+#print axioms VOA.AdamovicSymbol.Desc.wordSymbolDescends
+#print axioms VOA.TwoSeries.JetPoincareTwo.twoSeries_gradedUnitary_M27_of_affine
+#print axioms VOA.TwoSeries.SliceMap.twoSeries_gradedUnitary_of_affine
+#print axioms VOA.TwoSeries.SliceMap.twoSeries_sliceArakawa
+#print axioms VOA.TwoSeries.twoSeries_character
+#print axioms VOA.TwoSeries.twoSeriesLevels_c
+#print axioms VOA.TwoSeries.JetPoincareTwo.twoSeries_gradedUnitary_of_affine_final
+#print axioms VOA.TwoSeries.GenIncl.genInclusion
+#print axioms VOA.TwoSeries.GenIncl.arrangementInclusion

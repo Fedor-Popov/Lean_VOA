@@ -1,0 +1,983 @@
+/-
+Copyright (c) 2026 Leonardo Rastelli and Fedor K. Popov. All rights reserved.
+Released under the Apache 2.0 license; see the LICENSE file.
+Authors: Fedor K. Popov
+-/
+import VOA.Modules.SuperZhuRingDischarge
+import VOA.Examples.SympFermZhuEval
+import Mathlib.RingTheory.TwoSidedIdeal.Operations
+
+/-!
+# `O(SF)`: the symplectic-fermion half of the super Zhu program
+
+`Modules/SuperZhuRing.lean` builds the Dong–Zhao super Zhu algebra `A(V) = V / O(V)` and proves,
+already in `𝒱`, the exterior relations `χᵃ ∗ χᵇ + χᵇ ∗ χᵃ = 0`, `χᵃ ∗ χᵃ = 0`, and the products
+`χ⁰ ∗ χ¹ = -ω`, `χ¹ ∗ χ⁰ = ω`.  This file proves `[χᵃ] ≠ 0` without computing all of
+`O(SF)`: a concrete normal-order induction shows that the exterior evaluation kills every Zhu
+circle generator.  It then constructs a nonzero square-zero two-sided ideal and concludes that
+the canonical ring `A(SF)` is not semisimple.
+
+## What `O(SF)` is, in this repository's convention
+
+`SuperNearVOA.superO hV = span {(L₋₁u + L₀u) ∗ v}` — a **single** generator family, no parity
+case split, no extra generators (`Modules/SuperZhuRing.lean`, §4; it is the verbatim shape of the
+bosonic `VOA.O` of `Modules/ZhuAlgebra.lean`).  For `u` of weight `k` it is Zhu's circle
+product
+`u ∘ v = ∑_{m=0}^{k} C(k,m) u₍ₘ₋₂₎ v`
+— ⚠ *checked by hand, not formalised here*: the Pascal identity
+`(1-m)C(k+1,m) + k·C(k,m-1) = C(k,m)` turns the file's generator `(L₋₁u + L₀u) ∗ v` into that
+sum, using `(L₋₁u)₍ₙ₎ = -n·u₍ₙ₋₁₎`.  What §2 formalises is the *evaluation* of the generator at
+`u = L₋₁ᵏχᵃ`, directly, without going through the identity.  The circle-product form is quoted
+only because it is what makes the weight bookkeeping below transparent: the top (`m = 0`) term
+`u₍₋₂₎v` is a `C₂`-element of weight `wt u + wt v + 1`, and the bottom (`m = k`) term has weight
+`wt v + 1`.  Both ends matter, and this is where the naive descent breaks.
+
+## ⚠ The proposed "top-in-`C₂`" weight descent does **not** prove `[χᵃ] ≠ 0`
+
+The top-symbol observation is *true*: every generator's leading term is `u₍₋₂₎v ∈ C₂(SF)`, and
+`C₂(SF)` is concentrated in weights `≥ 2`.  What is false is the conclusion `O(SF) ∩ F₁ = 0`
+drawn from it (`F₁ = span{|0⟩, χ⁰, χ¹}`).  The obstruction is at the *bottom* of the generator,
+not the top: taking `v = 𝟙` gives `u ∘ 𝟙 = L₋₁u + (wt u)·u ∈ O(SF)`, so for every homogeneous `x`
+of weight `w ≥ 1`,
+`L₋₁x + w·x ∈ O(SF)` — an element of `O(SF)` whose **lowest** weight is exactly `w`.
+At `w = 1` these are `χᵃ₋₂|0⟩ + χᵃ₋₁|0⟩`, whose weight-`1` components `χ⁰, χ¹` span all of
+`𝒱₁`.  A downward induction on the weight therefore never terminates: `O(SF)` meets every weight
+`≥ 1` in a nonzero subspace, and no weight truncation can separate `χᵃ` from `O(SF)`.
+
+What the weight argument *does* give — and this file proves it — is the statement one weight
+lower: `O(SF)` has no weight-`0` component at all (`wtProj_zero_superO`), hence `|0⟩ ∉ O(SF)` and
+`A(SF) ≠ 0`.  That is the honest yield of the descent: it settles weight `0`, not weight `1`.
+
+## What is proved here
+
+* §2 `superZhuMul_Tpow_chi` — `(L₋₁ᵏχᵃ) ∗ v = k!·χᵃ₋ₖ₋₁v`.  Every other term of the Zhu sum dies:
+  for `1 ≤ m ≤ k` the translation-covariance factor `∏_{i<k}(-(m-1-i))` contains a zero, and the
+  top term `m = k+1` carries the zero mode `χᵃ_0`, which is the **zero operator** on `FockSF`
+  (`SympFerm.VirB.chiM_zero_mode`).
+* §2 `sfCre_rel_mem_superO` — `χᵃ₋ₖ₋₂ v + χᵃ₋ₖ₋₁ v ∈ O(SF)` for **all** `k, a, v`.  This is
+  the first explicit family of elements of `O(SF)` in the repository.
+* §2 `superZhuMul_chiStateSF_omega` — `χᵃ ∗ ω = 0`, unconditionally in `𝒱`.  With
+  `superZhuMul_chiStateSF_zero_one` / `_one_zero` / `_self` of `Modules/SuperZhuRing.lean` this
+  pins the whole multiplication table on `{χ⁰, χ¹}` at the level of `𝒱`.
+* §3 `wtProj_zero_superO`, `vacSF_notMem_superO`, `superOne_ne_zero` — `O(SF)` is
+  concentrated in strictly positive weight, so `[𝟙] ≠ 0` and **`A(SF) ≠ 0`**.  Unconditional.
+* §4 `sfBottom_sup_superO_eq_top`, `ASF_span`, `finrank_ASF_le_four` — `A(SF)` is spanned by
+  the four classes `[|0⟩], [χ⁰], [χ¹], [χ⁰₋₁χ¹₋₁|0⟩] = -[ω]`, so **`dim A(SF) ≤ 4`**; with §3,
+  `1 ≤ dim A(SF) ≤ 4` (`one_le_finrank_ASF`).  Unconditional, and no ring structure is used.
+* §5 `sfEval` — the evaluation homomorphism `FockSF → ℂ[ε]`, `χᵃ₋ₖ₋₁ ↦ (-1)ᵏδ_{a,c}ε`, which
+  exists because the quadratic form is `0` and `ε² = 0`.  It kills every level-lowering relation,
+  so `chiStateSF_notMem_sfRel`: `χᵃ ∉ sfRel`, **unconditionally**.
+* §5 `sfWordCircleEvalVanishes`, `chiClass_ne_zero` — the normal-order recursion for
+  `YwordSF` makes the evaluation vanish on every arbitrary-word circle generator, hence
+  `[χᵃ] ≠ 0` in `A(SF)`, **unconditionally**.
+* §6 `eq_zero_of_isSemisimpleRing_of_sandwich` — the correct ring-theoretic obstruction: in a
+  semisimple ring, `s·R·s = 0` forces `s = 0`, because the left ideal `Rs` is then a square-zero
+  direct summand, hence generated by a square-zero idempotent.  (A nonzero nilpotent *element* is
+  no obstruction at all: `M₂(ℂ)` is semisimple and full of them.)
+* §6 `ASF_not_isSemisimpleRing` — the two-sided ideal generated by `[χ⁰]` is nonzero and
+  square-zero, so the canonical super Zhu ring is not semisimple, **unconditionally**.
+
+## The stronger equality route remains open
+
+Write `sfRel = span{χᵃ₋ₖ₋₂v + χᵃ₋ₖ₋₁v}`.  This file proves `sfRel ≤ O(SF)` (§2) and
+`χᵃ ∉ sfRel` (§5).  The reverse inclusion
+`SuperOLeRel : O(SF) ≤ sfRel`
+is **open**, but it is not needed for nonvanishing or non-semisimplicity: the evaluation
+descent proves exactly the kernel inclusion those endpoints require.  `SuperOLeRel` is retained
+as a stronger optional route to the full equality.  It is *expected* to hold — the
+`c = -2` literature has `A(SF) ≅ Λ(χ⁰,χ¹)`, four-dimensional, which is exactly `FockSF ⧸ sfRel`
+and is consistent with the bound `dim A(SF) ≤ 4` proved in §4 — but expectation is not proof and
+nothing here relies on it silently.
+
+The full equality is stronger than the endpoint proved here: the evaluation detects the two
+fermion classes but does not identify the entire kernel with `sfRel`.
+
+## ⚠ Three dead ends, recorded
+
+1. **The weight descent** — see above.  `O(SF)` meets every weight `≥ 1`.
+2. **`T(O) ⊆ O` is false**, so the level-`0` relation `χᵃ₋₂v + χᵃ₋₁v ∈ O` cannot be propagated to
+   higher levels by applying `T`.  Counterexample: `T(χᵃ₋₂|0⟩ + χᵃ₋₁|0⟩) = 2χᵃ₋₃|0⟩ + χᵃ₋₂|0⟩`,
+   whose image under `sfEval a` is `2ε - ε = ε ≠ 0`, while `sfEval a` kills `sfRel ⊆ O(SF)`.
+   (§2 climbs the levels by an honest computation instead.)
+3. **The module-theoretic route to `[χᵃ] ≠ 0` cannot work.**  If `[χᵃ] ≠ 0` then it lies in the
+   Jacobson radical (§6 shows `[χ⁰]·A·[χ⁰] = 0`), so `o(χᵃ)` acts as `0` on every irreducible
+   module.  Exhibiting a module with `o(χᵃ) ≠ 0` on its top level therefore requires a
+   *non-semisimple* module — the logarithmic `Λ(χ⁰₀,χ¹₀)`-module of the `c = -2` literature — and
+   the theorem `o(u ∘ v) = 0` needed to make its top level an `A(V)`-module is again the super
+   Borcherds identity.  So this route is blocked on the same thing.
+
+## Status
+
+Everything below is `sorry`-free, `native_decide`-free and axiom-clean (`propext`,
+`Classical.choice`, `Quot.sound` only); `VOA.pbw` is not used.
+
+**Unconditional**: `sfCre_rel_mem_superO`, `wtProj_zero_superO`, `vacSF_notMem_superO`,
+`superOne_ne_zero`, `sfRel_le_superO`, `sfBottom_sup_superO_eq_top`, `finrank_ASF_le_four`,
+`one_le_finrank_ASF`, `chiStateSF_notMem_sfRel`, `superZhuMul_chiStateSF_omega`,
+`sfWordCircleEvalVanishes`, `chiClass_ne_zero`, `eq_zero_of_isSemisimpleRing_of_sandwich`,
+`ASF_not_isSemisimpleRing`.
+
+**Conditional on the stronger `SuperOLeRel` route** (visible binder):
+`chiStateSF_notMem_superO`, `superO_eq_sfRel`.
+
+**Unconditional ring structure**: `SympFerm.sympFermSuperZhuRingData`, `instRingASF`, and
+`instAlgebraASF` are imported from `Modules/SuperZhuRingDischarge.lean`.
+
+**Evaluation/Wick residual discharged**: nonvanishing of `[χᵃ]`, the nonzero square-zero
+two-sided ideal generated by `[χ⁰]`, and non-semisimplicity are all unconditional.
+
+## References
+* Dong–Zhao, arXiv:math/0601571, §3 — the `O_g(V)` used (at `g = 1`).
+* Zhu, Thm 2.1.1–2.1.2; Gannon §5.3.2 — the bosonic original.
+* Abe, Math. Z. 255 (2007) 755–792 — the symplectic-fermion Zhu algebras in the literature.
+* Kausch, Nucl. Phys. B583 (2000) 513 — the `c = -2` logarithmic theory.
+-/
+namespace VOA.SympFerm
+
+open VOA
+open scoped BigOperators
+
+/-! ## §0  Local translation covariance -/
+
+section Local
+
+variable {𝒲 : Type*} [AddCommGroup 𝒲] [Module ℂ 𝒲]
+
+/-- `Y(L₋₁u, z) = ∂_z Y(u,z)` (VOA3, restated). -/
+private theorem Y_Tr (V : SuperNearVOA 𝒲) (u : 𝒲) : V.Y (V.L (-1) u) = deriv (V.Y u) := by
+  rw [SuperNearVOA.L_def, show (-1 : ℤ) + 1 = 0 by ring]
+  exact V.translation u
+
+/-- `(L₋₁w)₍ₙ₎v = -n · w₍ₙ₋₁₎v`. -/
+private theorem smul_T_apply (V : SuperNearVOA 𝒲) (w v : 𝒲) (n : ℤ) :
+    V.smul (V.L (-1) w) n v = (-n) • V.smul w (n - 1) v := by
+  rw [SuperVertexAlgebra.smul_def, Y_Tr, mode_deriv, LinearMap.smul_apply]
+  rfl
+
+/-- `(L₋₁ᵏw)₍ₙ₎v = (∏_{i<k} -(n-i)) · w₍ₙ₋ₖ₎v`. -/
+private theorem smul_Tpow (V : SuperNearVOA 𝒲) (u v : 𝒲) (k : ℕ) (n : ℤ) :
+    V.smul ((V.L (-1) ^ k) u) n v
+      = (∏ i ∈ Finset.range k, (-(n - (i : ℤ)))) • V.smul u (n - (k : ℤ)) v := by
+  induction k generalizing n with
+  | zero => simp
+  | succ j ih =>
+      rw [pow_succ', Module.End.mul_apply, smul_T_apply, ih, smul_smul,
+        Finset.prod_range_succ' (fun i => -(n - (i : ℤ))) j]
+      have hidx : n - 1 - (j : ℤ) = n - ((j + 1 : ℕ) : ℤ) := by push_cast; ring
+      rw [hidx]
+      congr 1
+      rw [show (-(n - ((0 : ℕ) : ℤ))) = -n by push_cast; ring, mul_comm]
+      congr 1
+      exact Finset.prod_congr rfl (fun i _ => by push_cast; ring)
+
+/-- A linear map out of `𝒲` that kills every integer weight space is zero. -/
+private theorem linear_eq_zero_of_gradingZ {M : Type*} [AddCommGroup M] [Module ℂ M]
+    (V : SuperNearVOA 𝒲) (hV : V.IntegralWeights) {f : 𝒲 →ₗ[ℂ] M}
+    (h : ∀ (k : ℤ), ∀ u ∈ V.gradingZ k, f u = 0) : f = 0 := by
+  have htop : (⨆ k : ℤ, V.gradingZ k) = ⊤ := by
+    have hint := V.gradingZ_isInternal hV
+    rw [DirectSum.isInternal_submodule_iff_iSupIndep_and_iSup_eq_top] at hint
+    exact hint.2
+  have hker : (⨆ k : ℤ, V.gradingZ k) ≤ LinearMap.ker f :=
+    iSup_le fun k => fun x hx => by rw [LinearMap.mem_ker]; exact h k x hx
+  refine LinearMap.ext fun u => ?_
+  have hu : u ∈ LinearMap.ker f := hker (by rw [htop]; exact Submodule.mem_top)
+  rw [LinearMap.mem_ker] at hu
+  rw [hu, LinearMap.zero_apply]
+
+end Local
+
+/-! ## §1  Notation for the symplectic-fermion super near-VOA -/
+
+/-- The symplectic fermions as a `SuperNearVOA`. -/
+noncomputable abbrev sfN : SuperNearVOA FockSF := sympFermSVOA.toSuperNearVOA
+
+/-- The integrality gate. -/
+theorem hSF : sfN.IntegralWeights := sympFerm_integralWeights
+
+/-- `O(SF)`, the Dong–Zhao subspace whose quotient is the super Zhu algebra. -/
+noncomputable abbrev OSF : Submodule ℂ FockSF := sfN.superO hSF
+
+/-- `A(SF) = FockSF ⧸ O(SF)`. -/
+noncomputable abbrev ASF : Type := sfN.superA hSF
+
+/-- `L₋₁` of the super near-VOA is the repo's translation operator `T`. -/
+theorem L_neg_one_eq_T : sfN.L (-1) = T := by
+  have h : sympFermSVOA.L (-1) = LSF (-1) := sympFermSVOA_L (-1)
+  rw [show sfN.L (-1) = sympFermSVOA.L (-1) from rfl, h, LSF_neg_one_eq_T]
+
+/-- `χᵃ` as a Clifford generator. -/
+theorem chiStateSF_eq_sfCre (a : Fin 2) : chiStateSF a = sfCre 0 a := by
+  rw [chiStateSF, stWordSF_cons, stWordSF_nil, mul_one]
+  rfl
+
+/-- `stWordSF [(k,a)] = sfCre k a`. -/
+theorem stWordSF_singleton_eq (k : ℕ) (a : Fin 2) : stWordSF [(k, a)] = sfCre k a := by
+  rw [stWordSF_cons, stWordSF_nil, mul_one]
+  rfl
+
+/-- The Clifford generator `χᵃ₋ₖ₋₁|0⟩` has conformal weight `k+1`. -/
+theorem sfCre_mem_gradingZ (k : ℕ) (a : Fin 2) : sfCre k a ∈ sfN.gradingZ ((k : ℤ) + 1) := by
+  have h := stWordSF_mem_gradingSF [(k, a)]
+  rw [stWordSF_singleton_eq, show sfWeight [(k, a)] = k + 1 from rfl] at h
+  have hc : (((k + 1 : ℕ) : ℕ) : ℂ) = (((k : ℤ) + 1 : ℤ) : ℂ) := by push_cast; ring
+  rw [hc] at h
+  exact h
+
+/-- `T` iterated on `χᵃ` is the Clifford generator of level `k`, up to `k!`. -/
+theorem Tpow_chiStateSF (k : ℕ) (a : Fin 2) :
+    ((sfN.L (-1)) ^ k) (chiStateSF a) = (k.factorial : ℂ) • sfCre k a := by
+  induction k with
+  | zero => rw [pow_zero, Module.End.one_apply, chiStateSF_eq_sfCre]; simp
+  | succ n ih =>
+      rw [pow_succ', Module.End.mul_apply, ih, map_smul, L_neg_one_eq_T, T_sfCre, smul_smul]
+      congr 1
+      rw [Nat.factorial_succ]
+      push_cast
+      ring
+
+/-- Hence `L₋₁ᵏχᵃ` has conformal weight `k+1`. -/
+theorem Tpow_chiStateSF_mem_gradingZ (k : ℕ) (a : Fin 2) :
+    ((sfN.L (-1)) ^ k) (chiStateSF a) ∈ sfN.gradingZ ((k : ℤ) + 1) := by
+  rw [Tpow_chiStateSF]
+  exact Submodule.smul_mem _ _ (sfCre_mem_gradingZ k a)
+
+/-- The negative modes of `χᵃ` are the Clifford creation operators. -/
+theorem chiM_neg_mul (k : ℕ) (a : Fin 2) (v : FockSF) :
+    chiM a (-(k : ℤ) - 1) v = sfCre k a * v := by
+  have h : (chiM a (-(k : ℤ) - 1) : Module.End ℂ FockSF) = creBase (k, a) :=
+    VirB.chiM_creBase (k, a)
+  rw [show chiM a (-(k : ℤ) - 1) v = (chiM a (-(k : ℤ) - 1) : Module.End ℂ FockSF) v from rfl, h]
+  rfl
+
+/-! ## §2  The Zhu product of a `T`-power of `χ`, and the generators of `O(SF)` -/
+
+/-- **`(L₋₁ᵏχᵃ) ∗ v = k! · χᵃ₋ₖ₋₁ v`.**  All but one term of the Zhu sum dies: for
+`1 ≤ m ≤ k` the translation-covariance product `∏_{i<k}(-(m-1-i))` contains the factor `0`,
+and the top term `m = k+1` carries the zero mode `χᵃ_0`, which is the zero operator on
+`FockSF`. -/
+theorem superZhuMul_Tpow_chi (k : ℕ) (a : Fin 2) (v : FockSF) :
+    sfN.superZhuMul hSF (((sfN.L (-1)) ^ k) (chiStateSF a)) v
+      = (k.factorial : ℂ) • chiM a (-(k : ℤ) - 1) v := by
+  rw [sfN.superZhuMul_homogeneous hSF (Tpow_chiStateSF_mem_gradingZ k a) v,
+    show (((k : ℤ) + 1).toNat + 1) = k + 2 from by omega]
+  have hterm : ∀ m : ℕ,
+      cbz ((k : ℤ) + 1) (m : ℤ) •
+          sfN.smul (((sfN.L (-1)) ^ k) (chiStateSF a)) ((m : ℤ) - 1) v
+        = cbz ((k : ℤ) + 1) (m : ℤ) •
+            ((∏ i ∈ Finset.range k, (-(((m : ℤ) - 1) - (i : ℤ)))) •
+              chiM a ((m : ℤ) - 1 - (k : ℤ)) v) := by
+    intro m
+    rw [smul_Tpow, smul_chiStateSF]
+  rw [Finset.sum_congr rfl (fun m _ => hterm m)]
+  have hzero : ∀ b ∈ Finset.range (k + 2), b ≠ 0 →
+      cbz ((k : ℤ) + 1) (b : ℤ) •
+        ((∏ i ∈ Finset.range k, (-(((b : ℤ) - 1) - (i : ℤ)))) •
+          chiM a ((b : ℤ) - 1 - (k : ℤ)) v) = 0 := by
+    intro b hb hb0
+    rw [Finset.mem_range] at hb
+    by_cases hbk : b = k + 1
+    · rw [show ((b : ℤ) - 1 - (k : ℤ)) = 0 from by omega,
+        show (chiM a 0 : Module.End ℂ FockSF) = 0 from VirB.chiM_zero_mode a]
+      simp
+    · have hb1 : 1 ≤ b := by omega
+      have hble : b ≤ k := by omega
+      rw [Finset.prod_eq_zero (i := b - 1) (Finset.mem_range.mpr (by omega))
+        (by have : (((b - 1 : ℕ)) : ℤ) = (b : ℤ) - 1 := by omega
+            rw [this]; ring)]
+      simp
+  rw [Finset.sum_eq_single_of_mem 0 (Finset.mem_range.mpr (by omega)) hzero]
+  have hprod : (∏ i ∈ Finset.range k, (-((((0 : ℕ) : ℤ) - 1) - (i : ℤ))))
+      = (k.factorial : ℤ) := by
+    rw [← VertexOperatorAlgebra.prod_one_add_factorial]
+    exact Finset.prod_congr rfl (fun i _ => by push_cast; ring)
+  rw [hprod, Nat.cast_zero, cbz_zero, one_smul,
+    show ((0 : ℤ) - 1 - (k : ℤ)) = -(k : ℤ) - 1 from by ring,
+    ← Int.cast_smul_eq_zsmul ℂ]
+  push_cast
+  ring_nf
+
+/-- **The generating relation of `O(SF)`**: `χᵃ₋ₖ₋₂ v + χᵃ₋ₖ₋₁ v ∈ O(SF)` for every `k` and
+every `v`.  This is `(L₋₁u + L₀u) ∗ v` at `u = L₋₁ᵏχᵃ`, divided by `(k+1)!`. -/
+theorem sfCre_rel_mem_superO (k : ℕ) (a : Fin 2) (v : FockSF) :
+    sfCre (k + 1) a * v + sfCre k a * v ∈ OSF := by
+  set X : FockSF := ((sfN.L (-1)) ^ k) (chiStateSF a) with hX
+  have hXmem : X ∈ sfN.gradingZ ((k : ℤ) + 1) := Tpow_chiStateSF_mem_gradingZ k a
+  have hgen : sfN.superZhuMul hSF (sfN.L (-1) X + sfN.L 0 X) v ∈ OSF :=
+    sfN.superO_mem_of_L hSF X v
+  have hL1 : sfN.L (-1) X = ((sfN.L (-1)) ^ (k + 1)) (chiStateSF a) := by
+    rw [hX, pow_succ', Module.End.mul_apply]
+  have hL0 : sfN.L 0 X = (((k : ℤ) + 1 : ℤ) : ℂ) • X := sfN.L0_eigenvalue hXmem
+  rw [hL1, hL0, sfN.superZhuMul_add_left hSF, sfN.superZhuMul_smul_left hSF,
+    superZhuMul_Tpow_chi, superZhuMul_Tpow_chi, chiM_neg_mul, chiM_neg_mul] at hgen
+  have hcoef : ((k + 1).factorial : ℂ) • (sfCre (k + 1) a * v)
+      + (((k : ℤ) + 1 : ℤ) : ℂ) • ((k.factorial : ℂ) • (sfCre k a * v))
+      = ((k + 1).factorial : ℂ) • (sfCre (k + 1) a * v + sfCre k a * v) := by
+    rw [smul_add, smul_smul]
+    congr 2
+    rw [Nat.factorial_succ]
+    push_cast
+    ring
+  rw [hcoef] at hgen
+  have hne : ((k + 1).factorial : ℂ) ≠ 0 := by
+    exact_mod_cast Nat.cast_ne_zero.mpr (Nat.factorial_ne_zero (k + 1))
+  have h2 := Submodule.smul_mem OSF (((k + 1).factorial : ℂ))⁻¹ hgen
+  rwa [inv_smul_smul₀ hne] at h2
+
+/-- `ω = -χ⁰₋₁χ¹₋₁|0⟩` in Clifford-generator form. -/
+theorem omegaSF_eq_neg_mul : ωSF = -(sfCre 0 0 * sfCre 0 1) := by
+  rw [ωSF, stWordSF_cons, stWordSF_singleton_eq]
+  rfl
+
+/-- **`χᵃ ∗ ω = 0`, already in `𝒱`.**  The Zhu product of a weight-one state is
+`χᵃ₍₋₁₎ + χᵃ₍₀₎`, the zero mode is the zero operator, and `χᵃ₋₁ω = 0` because one of the two
+Clifford generators of `ω` repeats.  Together with `χ⁰ ∗ χ¹ = -ω`, `χ¹ ∗ χ⁰ = ω`, `χᵃ ∗ χᵃ = 0`
+(`Modules/SuperZhuRing.lean`) this pins the multiplication table on the odd generators without
+any ring structure. -/
+theorem superZhuMul_chiStateSF_omega (a : Fin 2) :
+    sfN.superZhuMul hSF (chiStateSF a) ωSF = 0 := by
+  rw [sfN.superZhuMul_gradingZ_one hSF (chiStateSF_mem_gradingZ_one a),
+    smul_chiStateSF, smul_chiStateSF,
+    show (chiM a 0 : Module.End ℂ FockSF) = 0 from VirB.chiM_zero_mode a,
+    show ((-1 : ℤ)) = -((0 : ℕ) : ℤ) - 1 from by norm_num, chiM_neg_mul,
+    omegaSF_eq_neg_mul, mul_neg]
+  rw [LinearMap.zero_apply, add_zero, neg_eq_zero]
+  rcases sfFin2_cases a with rfl | rfl
+  · rw [← mul_assoc, sfCre_sq, zero_mul]
+  · rw [sfCre_mul_sfCre_swap, sfCre_sq, mul_zero, neg_zero]
+
+/-! ## §3  `O(SF)` lives in strictly positive weight, so `[𝟙] ≠ 0` -/
+
+/-- The symplectic fermions carry no negative conformal weight. -/
+theorem gradingZ_eq_bot_of_neg {k : ℤ} (hk : k < 0) : sfN.gradingZ k = ⊥ := by
+  have hempty : sfWordsAt ((k : ℤ) : ℂ) = (∅ : Set SFWord) := by
+    ext l
+    simp only [sfWordsAt, Set.mem_setOf_eq, Set.mem_empty_iff_false, iff_false]
+    intro h
+    have h2 : ((sfWeight l : ℕ) : ℤ) = k := by exact_mod_cast h
+    omega
+  change gradingSF ((k : ℤ) : ℂ) = ⊥
+  rw [gradingSF, hempty, Set.image_empty, Submodule.span_empty]
+
+/-- The weight-zero piece is the line spanned by the vacuum. -/
+theorem gradingZ_zero_eq : sfN.gradingZ 0 = ℂ ∙ (vacSF : FockSF) := by
+  have hset : sfWordsAt (((0 : ℤ) : ℂ)) = ({([] : SFWord)} : Set SFWord) := by
+    ext l
+    simp only [sfWordsAt, Set.mem_setOf_eq, Set.mem_singleton_iff]
+    constructor
+    · intro h
+      have h2 : sfWeight l = 0 := by exact_mod_cast h
+      have h3 := sfWeight_length_le l
+      exact List.eq_nil_of_length_eq_zero (by omega)
+    · rintro rfl
+      simp
+  change gradingSF ((0 : ℤ) : ℂ) = _
+  rw [gradingSF, hset, Set.image_singleton, stWordSF_nil]
+
+/-- On a homogeneous pair of *positive* right weight, the Zhu product has no weight-zero
+component: every term `x₍ₘ₋₁₎v` sits in weight `j + l - m ≥ l ≥ 1`. -/
+theorem wtProj_zero_superZhuMul_pos {j l : ℤ} (hj : 0 ≤ j) (hl : 1 ≤ l) {x v : FockSF}
+    (hx : x ∈ sfN.gradingZ j) (hv : v ∈ sfN.gradingZ l) :
+    sfN.wtProj 0 (sfN.superZhuMul hSF x v) = 0 := by
+  rw [sfN.superZhuMul_homogeneous hSF hx v, map_sum]
+  refine Finset.sum_eq_zero fun m hm => ?_
+  rw [map_smul]
+  have hmem : sfN.smul x ((m : ℤ) - 1) v
+      ∈ sfN.grading (((j : ℤ) : ℂ) + ((l : ℤ) : ℂ) - (((m : ℤ) - 1 : ℤ) : ℂ) - 1) :=
+    sfN.smul_mem_grading hx hv _
+  have hmle : (m : ℤ) ≤ j := by
+    rw [Finset.mem_range] at hm
+    omega
+  have hidx : ((j : ℤ) : ℂ) + ((l : ℤ) : ℂ) - (((m : ℤ) - 1 : ℤ) : ℂ) - 1
+      = ((j + l - (m : ℤ) : ℤ) : ℂ) := by push_cast; ring
+  rw [hidx] at hmem
+  have hne : ((j + l - (m : ℤ) : ℤ) : ℂ) ≠ (0 : ℂ) :=
+    Int.cast_ne_zero.mpr (by omega)
+  rw [sfN.wtProj_of_mem_ne hne hmem, smul_zero]
+
+/-- `x ∗ 0 = 0`. -/
+theorem superZhuMul_zero_right (x : FockSF) : sfN.superZhuMul hSF x 0 = 0 := by
+  simpa using sfN.superZhuMul_smul_right hSF 0 x 0
+
+/-- `0 ∗ v = 0`. -/
+theorem superZhuMul_zero_left (v : FockSF) : sfN.superZhuMul hSF 0 v = 0 := by
+  simpa using sfN.superZhuMul_smul_left hSF 0 0 v
+
+/-- **Every generator of `O(SF)` has vanishing weight-zero component**, for homogeneous
+inputs. -/
+theorem wtProj_zero_gen_homog {k l : ℤ} {u v : FockSF} (hu : u ∈ sfN.gradingZ k)
+    (hv : v ∈ sfN.gradingZ l) :
+    sfN.wtProj 0 (sfN.superZhuMul hSF (sfN.L (-1) u + sfN.L 0 u) v) = 0 := by
+  rcases lt_or_ge k 0 with hk | hk
+  · have hu0 : u = 0 := by
+      rw [gradingZ_eq_bot_of_neg hk, Submodule.mem_bot] at hu; exact hu
+    rw [hu0, map_zero, map_zero, add_zero, superZhuMul_zero_left, map_zero]
+  rcases lt_or_ge l 0 with hl | hl
+  · have hv0 : v = 0 := by
+      rw [gradingZ_eq_bot_of_neg hl, Submodule.mem_bot] at hv; exact hv
+    rw [hv0, superZhuMul_zero_right, map_zero]
+  have hL1 : sfN.L (-1) u ∈ sfN.gradingZ (k + 1) := by
+    have h := sfN.smul_mem_grading sfN.conformal_mem hu (0 : ℤ)
+    have hidx : (2 : ℂ) + ((k : ℤ) : ℂ) - ((0 : ℤ) : ℂ) - 1 = (((k + 1 : ℤ)) : ℂ) := by
+      push_cast; ring
+    rw [hidx] at h
+    exact h
+  have hL0 : sfN.L 0 u = ((k : ℤ) : ℂ) • u := sfN.L0_eigenvalue hu
+  rw [sfN.superZhuMul_add_left hSF, hL0, sfN.superZhuMul_smul_left hSF, map_add, map_smul]
+  rcases eq_or_lt_of_le hl with hl0 | hl1
+  · -- `v` is a multiple of the vacuum
+    have hvmem : v ∈ ℂ ∙ (vacSF : FockSF) := by
+      rw [← gradingZ_zero_eq]
+      rw [← hl0] at hv
+      exact hv
+    obtain ⟨c, rfl⟩ := Submodule.mem_span_singleton.mp hvmem
+    rw [sfN.superZhuMul_smul_right hSF, sfN.superZhuMul_smul_right hSF,
+      show (vacSF : FockSF) = sfN.vacuum from rfl,
+      sfN.superZhuMul_vacuum_right hSF, sfN.superZhuMul_vacuum_right hSF,
+      map_smul, map_smul]
+    have h1 : sfN.wtProj 0 (sfN.L (-1) u) = 0 :=
+      sfN.wtProj_of_mem_ne (Int.cast_ne_zero.mpr (by omega : k + 1 ≠ 0)) hL1
+    rcases eq_or_lt_of_le hk with hk0 | hk1
+    · rw [h1, ← hk0]
+      simp
+    · have h2 : sfN.wtProj 0 u = 0 :=
+        sfN.wtProj_of_mem_ne (Int.cast_ne_zero.mpr (by omega : k ≠ 0)) hu
+      rw [h1, h2]
+      simp
+  · have h1 := wtProj_zero_superZhuMul_pos (by omega : (0 : ℤ) ≤ k + 1) (by omega : (1 : ℤ) ≤ l)
+      hL1 hv
+    have h2 := wtProj_zero_superZhuMul_pos hk (by omega : (1 : ℤ) ≤ l) hu hv
+    rw [h1, h2, smul_zero, add_zero]
+
+/-- The bilinear map `(u,v) ↦ (L₋₁u + L₀u) ∗ v`, packaged so that the homogeneous case can be
+propagated by linearity. -/
+private noncomputable def genMapSF : FockSF →ₗ[ℂ] FockSF →ₗ[ℂ] FockSF :=
+  (sfN.superZhuMulₗ hSF).comp (sfN.L (-1) + sfN.L 0)
+
+private theorem genMapSF_apply (u v : FockSF) :
+    genMapSF u v = sfN.superZhuMul hSF (sfN.L (-1) u + sfN.L 0 u) v := rfl
+
+/-- **Every generator of `O(SF)` has vanishing weight-zero component** — arbitrary inputs. -/
+theorem wtProj_zero_gen (u v : FockSF) :
+    sfN.wtProj 0 (sfN.superZhuMul hSF (sfN.L (-1) u + sfN.L 0 u) v) = 0 := by
+  have hQ : genMapSF.compr₂ (sfN.wtProj 0) = 0 := by
+    refine linear_eq_zero_of_gradingZ sfN hSF (fun k u hu => ?_)
+    refine linear_eq_zero_of_gradingZ sfN hSF (fun l v hv => ?_)
+    exact wtProj_zero_gen_homog hu hv
+  have := LinearMap.congr_fun (LinearMap.congr_fun hQ u) v
+  simpa [genMapSF_apply] using this
+
+/-- **`O(SF)` carries no weight-zero component.** -/
+theorem wtProj_zero_superO {x : FockSF} (hx : x ∈ OSF) : sfN.wtProj 0 x = 0 := by
+  rw [show OSF = Submodule.span ℂ {y : FockSF | ∃ u v : FockSF,
+      y = sfN.superZhuMul hSF (sfN.L (-1) u + sfN.L 0 u) v} from rfl] at hx
+  induction hx using Submodule.span_induction with
+  | mem y hy => obtain ⟨u, v, rfl⟩ := hy; exact wtProj_zero_gen u v
+  | zero => exact map_zero _
+  | add y z _ _ hy hz => rw [map_add, hy, hz, add_zero]
+  | smul c y _ hy => rw [map_smul, hy, smul_zero]
+
+/-- **The vacuum survives**: `|0⟩ ∉ O(SF)`. -/
+theorem vacSF_notMem_superO : (vacSF : FockSF) ∉ OSF := by
+  intro hmem
+  have h := wtProj_zero_superO hmem
+  rw [sfN.wtProj_of_mem (show (vacSF : FockSF) ∈ sfN.grading 0 from vacSF_mem)] at h
+  exact VirB.vacSF_ne_zero h
+
+/-- **`A(SF) ≠ 0`**: the unit of the super Zhu algebra of the symplectic fermions is
+nonzero.  Unconditional — no ring structure is used. -/
+theorem superOne_ne_zero : sfN.superOne hSF ≠ 0 := by
+  intro h
+  exact vacSF_notMem_superO ((sfN.superMk_eq_zero_iff hSF).mp h)
+
+
+/-! ## §4  `O(SF)` is big enough: `dim A(SF) ≤ 4` -/
+
+/-- The span of the level-lowering relations `χᵃ₋ₖ₋₂v + χᵃ₋ₖ₋₁v`.  It is a subspace of `O(SF)`
+(`sfRel_le_superO`) and, unlike `O(SF)`, it is *visibly* stable under left multiplication by any
+Clifford generator, which is what makes the word induction close. -/
+noncomputable def sfRel : Submodule ℂ FockSF :=
+  Submodule.span ℂ {x | ∃ (k : ℕ) (a : Fin 2) (v : FockSF),
+    x = sfCre (k + 1) a * v + sfCre k a * v}
+
+theorem sfRel_def :
+    sfRel = Submodule.span ℂ {x | ∃ (k : ℕ) (a : Fin 2) (v : FockSF),
+      x = sfCre (k + 1) a * v + sfCre k a * v} := rfl
+
+/-- `sfRel ≤ O(SF)` — the content of §2. -/
+theorem sfRel_le_superO : sfRel ≤ OSF := by
+  rw [sfRel_def, Submodule.span_le]
+  rintro _ ⟨k, a, v, rfl⟩
+  exact sfCre_rel_mem_superO k a v
+
+/-- `sfRel` is stable under left multiplication by **any** Clifford generator: anticommutation
+moves the generator past the relation at the cost of a sign. -/
+theorem sfRel_mul_closed (j : ℕ) (b : Fin 2) {y : FockSF} (hy : y ∈ sfRel) :
+    sfCre j b * y ∈ sfRel := by
+  rw [sfRel_def] at hy
+  induction hy using Submodule.span_induction with
+  | mem z hz =>
+      obtain ⟨k, a, v, rfl⟩ := hz
+      rw [mul_add, sfCre_mul_sfCre_swap j (k + 1) b a v, sfCre_mul_sfCre_swap j k b a v,
+        ← neg_add]
+      exact Submodule.neg_mem _ (Submodule.subset_span ⟨k, a, sfCre j b * v, rfl⟩)
+  | zero => rw [mul_zero]; exact Submodule.zero_mem _
+  | add y z _ _ hy hz => rw [mul_add]; exact Submodule.add_mem _ hy hz
+  | smul c y _ hy => rw [mul_smul_comm]; exact Submodule.smul_mem _ _ hy
+
+/-- Left multiplication by a generator of **any** level maps the four bottom states into
+`sfBottom ⊔ sfRel`: induction on the level, each step traded for one relation. -/
+theorem sfCre_mul_sfBottom_mem (k : ℕ) (a : Fin 2) {y : FockSF} (hy : y ∈ sfBottom) :
+    sfCre k a * y ∈ sfBottom ⊔ sfRel := by
+  induction k with
+  | zero => exact Submodule.mem_sup_left (sfBottom_mul_closed a hy)
+  | succ n ih =>
+      have hrel : sfCre (n + 1) a * y + sfCre n a * y ∈ sfRel :=
+        Submodule.subset_span ⟨n, a, y, rfl⟩
+      have hsplit : sfCre (n + 1) a * y
+          = (sfCre (n + 1) a * y + sfCre n a * y) - sfCre n a * y := by abel
+      rw [hsplit]
+      exact Submodule.sub_mem _ (Submodule.mem_sup_right hrel) ih
+
+/-- Every creation word is a bottom state modulo `sfRel`. -/
+theorem stWordSF_mem_sup_sfRel (l : SFWord) : stWordSF l ∈ sfBottom ⊔ sfRel := by
+  induction l with
+  | nil =>
+      rw [stWordSF_nil]
+      exact Submodule.mem_sup_left one_mem_sfBottom
+  | cons p rest ih =>
+      obtain ⟨k, a⟩ := p
+      have hcons : stWordSF ((k, a) :: rest) = sfCre k a * stWordSF rest := rfl
+      rw [hcons]
+      obtain ⟨y, hy, z, hz, hyz⟩ := Submodule.mem_sup.mp ih
+      rw [← hyz, mul_add]
+      exact Submodule.add_mem _ (sfCre_mul_sfBottom_mem k a hy)
+        (Submodule.mem_sup_right (sfRel_mul_closed k a hz))
+
+theorem sfBottom_sup_sfRel_eq_top : sfBottom ⊔ sfRel = ⊤ := by
+  refine eq_top_iff.mpr ?_
+  rw [← stWordSF_span, Submodule.span_le]
+  rintro _ ⟨l, rfl⟩
+  exact stWordSF_mem_sup_sfRel l
+
+/-- **The four bottom states together with `O(SF)` exhaust `FockSF`.** -/
+theorem sfBottom_sup_superO_eq_top : sfBottom ⊔ OSF = ⊤ := by
+  refine top_le_iff.mp ?_
+  rw [← sfBottom_sup_sfRel_eq_top]
+  exact sup_le_sup_left sfRel_le_superO sfBottom
+
+theorem map_mkQ_sfBottom_eq_top_superO : sfBottom.map OSF.mkQ = ⊤ := by
+  refine eq_top_iff.mpr fun q _ => ?_
+  obtain ⟨x, rfl⟩ := OSF.mkQ_surjective q
+  obtain ⟨y, hy, z, hz, rfl⟩ := Submodule.mem_sup.mp
+    (by rw [sfBottom_sup_superO_eq_top]; trivial : x ∈ sfBottom ⊔ OSF)
+  have hz0 : OSF.mkQ z = 0 := (Submodule.Quotient.mk_eq_zero OSF).mpr hz
+  rw [map_add, hz0, add_zero]
+  exact Submodule.mem_map_of_mem hy
+
+/-- **The explicit spanning set of `A(SF)`**: the classes of
+`|0⟩, χ⁰₋₁|0⟩, χ¹₋₁|0⟩, χ⁰₋₁χ¹₋₁|0⟩ = -ω`. -/
+theorem ASF_span : Submodule.span ℂ (OSF.mkQ '' sfBottomSet) = (⊤ : Submodule ℂ ASF) := by
+  rw [Submodule.span_image, ← sfBottom_def]
+  exact map_mkQ_sfBottom_eq_top_superO
+
+/-- **`A(SF)` is finite-dimensional.** -/
+theorem ASF_finiteDimensional : FiniteDimensional ℂ ASF :=
+  Module.finite_def.mpr
+    (Submodule.fg_def.mpr ⟨_, sfBottomSet_finite.image _, ASF_span⟩)
+
+/-- **`dim A(SF) ≤ 4`** — the first bound on the super Zhu algebra of the symplectic
+fermions.  Unconditional: no ring structure, hence no `SuperZhuRingData`, is used. -/
+theorem finrank_ASF_le_four : Module.finrank ℂ ASF ≤ 4 := by
+  classical
+  have hcoe : ((({OSF.mkQ 1, OSF.mkQ (sfCre 0 0), OSF.mkQ (sfCre 0 1),
+      OSF.mkQ (sfCre 0 0 * sfCre 0 1)} : Finset ASF) : Set ASF))
+        = OSF.mkQ '' sfBottomSet := by
+    simp [sfBottomSet, Set.image_insert_eq]
+  have hspan : Submodule.span ℂ ((({OSF.mkQ 1, OSF.mkQ (sfCre 0 0), OSF.mkQ (sfCre 0 1),
+      OSF.mkQ (sfCre 0 0 * sfCre 0 1)} : Finset ASF) : Set ASF)) = ⊤ := by
+    rw [hcoe]; exact ASF_span
+  have hcard : (({OSF.mkQ 1, OSF.mkQ (sfCre 0 0), OSF.mkQ (sfCre 0 1),
+      OSF.mkQ (sfCre 0 0 * sfCre 0 1)} : Finset ASF)).card ≤ 4 := by
+    have a1 := Finset.card_insert_le (OSF.mkQ 1)
+      ({OSF.mkQ (sfCre 0 0), OSF.mkQ (sfCre 0 1),
+        OSF.mkQ (sfCre 0 0 * sfCre 0 1)} : Finset ASF)
+    have a2 := Finset.card_insert_le (OSF.mkQ (sfCre 0 0))
+      ({OSF.mkQ (sfCre 0 1), OSF.mkQ (sfCre 0 0 * sfCre 0 1)} : Finset ASF)
+    have a3 := Finset.card_insert_le (OSF.mkQ (sfCre 0 1))
+      ({OSF.mkQ (sfCre 0 0 * sfCre 0 1)} : Finset ASF)
+    have a4 : (({OSF.mkQ (sfCre 0 0 * sfCre 0 1)} : Finset ASF)).card = 1 :=
+      Finset.card_singleton _
+    omega
+  have hle : Module.finrank ℂ
+      (Submodule.span ℂ ((({OSF.mkQ 1, OSF.mkQ (sfCre 0 0), OSF.mkQ (sfCre 0 1),
+        OSF.mkQ (sfCre 0 0 * sfCre 0 1)} : Finset ASF) : Set ASF)))
+      ≤ (({OSF.mkQ 1, OSF.mkQ (sfCre 0 0), OSF.mkQ (sfCre 0 1),
+        OSF.mkQ (sfCre 0 0 * sfCre 0 1)} : Finset ASF)).card :=
+    finrank_span_finset_le_card (R := ℂ) _
+  rw [hspan, finrank_top] at hle
+  omega
+
+/-- `1 ≤ dim A(SF) ≤ 4`: the algebra is nonzero (§3) and at most four-dimensional (§4). -/
+theorem one_le_finrank_ASF : 1 ≤ Module.finrank ℂ ASF := by
+  haveI : FiniteDimensional ℂ ASF := ASF_finiteDimensional
+  haveI : Nontrivial ASF := nontrivial_of_ne _ _ superOne_ne_zero
+  exact Module.finrank_pos
+
+
+/-! ## §5  The exterior evaluation and unconditional nonvanishing of `[χᵃ]` -/
+
+/-- The evaluation kills the level-lowering relations: `(-1)^{k+1} + (-1)^k = 0`. -/
+theorem sfEval_rel (c : Fin 2) (k : ℕ) (a : Fin 2) (v : FockSF) :
+    sfEval c (sfCre (k + 1) a * v + sfCre k a * v) = 0 := by
+  rw [map_add, map_mul, map_mul, sfEval_sfCre, sfEval_sfCre, ← add_mul, ← add_smul]
+  by_cases ha : a = c
+  · rw [if_pos ha, if_pos ha, pow_succ]
+    norm_num
+  · rw [if_neg ha, if_neg ha]
+    simp
+
+theorem sfRel_le_ker_sfEval (c : Fin 2) :
+    sfRel ≤ LinearMap.ker (sfEval c).toLinearMap := by
+  rw [sfRel_def, Submodule.span_le]
+  rintro _ ⟨k, a, v, rfl⟩
+  exact sfEval_rel c k a v
+
+/-- **`χᵃ ∉ sfRel`.**  The evaluation homomorphism sends `χᵃ` to `ε ≠ 0` and kills `sfRel`. -/
+theorem chiStateSF_notMem_sfRel (a : Fin 2) : chiStateSF a ∉ sfRel := by
+  intro h
+  have h1 : sfEval a (chiStateSF a) = 0 := sfRel_le_ker_sfEval a h
+  rw [chiStateSF_eq_sfCre, sfEval_sfCre, if_pos rfl, pow_zero, one_smul] at h1
+  exact eps_ne_zero h1
+
+/-- The exact arbitrary-word residual needed by the evaluation descent.
+
+This is deliberately phrased at the level actually required to separate `χᶜ`: for every creation
+word `l` and arbitrary right state `v`, the dual-number evaluation must kill the corresponding
+circle generator.  It is stable under arbitrary `u ∘ v`, because `stWordSF` spans `FockSF` and
+the generator is linear in `u`.  Proving this statement requires the concrete Wick/length
+recursion for `YwordSF` modes; the general super Borcherds identity does not perform that basis
+calculation by itself. -/
+def SfWordCircleEvalVanishes : Prop :=
+  ∀ (c : Fin 2) (l : SFWord) (v : FockSF),
+    sfEval c (sfN.superZhuMul hSF
+      (sfN.L (-1) (stWordSF l) + sfN.L 0 (stWordSF l)) v) = 0
+
+/-- The arbitrary-word Wick calculation: every symplectic-fermion Zhu circle generator is
+killed by the exterior evaluation. -/
+theorem sfWordCircleEvalVanishes : SfWordCircleEvalVanishes := by
+  intro c l v
+  have hl : stWordSF l ∈ sfN.gradingZ (sfWeight l : ℤ) := by
+    change stWordSF l ∈ gradingSF (((sfWeight l : ℤ) : ℂ))
+    simpa using stWordSF_mem_gradingSF l
+  rw [sfN.superZhuMul_L_base hSF hl v, map_sum]
+  convert sfEval_word_circle_modes c l v using 1
+  exact Finset.sum_congr rfl fun i hi => by
+    rw [map_smul, SuperVertexAlgebra.smul_eq_coeff]
+    change cbz (sfWeight l : ℤ) (i : ℤ) •
+        sfEval c ((YSF (stWordSF l)) (-((i : ℤ) - 2) - 1) v) = _
+    rw [YSF_word]
+    congr 2
+    ring_nf
+
+/-- Word-level circle vanishing extends to an arbitrary left state by the spanning theorem. -/
+theorem sfEval_genMap_zero_of_words (h : SfWordCircleEvalVanishes)
+    (c : Fin 2) (u v : FockSF) : sfEval c (genMapSF u v) = 0 := by
+  have hmap : (sfEval c).toLinearMap.comp (genMapSF.flip v) = 0 := by
+    refine LinearMap.ext_on stWordSF_span ?_
+    rintro _ ⟨l, rfl⟩
+    simpa [genMapSF_apply] using h c l v
+  have hu := LinearMap.congr_fun hmap u
+  simpa using hu
+
+/-- The word-level residual is sufficient for the full, arbitrary-generator inclusion
+`O(SF) ≤ ker(sfEval c)`.  This is the sound replacement for the false weight truncation. -/
+theorem superO_le_ker_sfEval_of_words (h : SfWordCircleEvalVanishes) (c : Fin 2) :
+    OSF ≤ LinearMap.ker (sfEval c).toLinearMap := by
+  intro x hx
+  rw [show OSF = Submodule.span ℂ {y : FockSF | ∃ u v : FockSF,
+      y = genMapSF u v} from rfl] at hx
+  induction hx using Submodule.span_induction with
+  | mem y hy =>
+      obtain ⟨u, v, rfl⟩ := hy
+      exact sfEval_genMap_zero_of_words h c u v
+  | zero => exact Submodule.zero_mem _
+  | add y z _ _ hy hz => exact Submodule.add_mem _ hy hz
+  | smul a y _ hy => exact Submodule.smul_mem _ a hy
+
+/-- The honest evaluation descent: once the arbitrary-word Wick residual is supplied, `χᵃ`
+cannot lie in `O(SF)`. -/
+theorem chiStateSF_notMem_superO_of_words (h : SfWordCircleEvalVanishes) (a : Fin 2) :
+    chiStateSF a ∉ OSF := by
+  intro ha
+  have hz : sfEval a (chiStateSF a) = 0 := superO_le_ker_sfEval_of_words h a ha
+  rw [chiStateSF_eq_sfCre, sfEval_sfCre, if_pos rfl, pow_zero, one_smul] at hz
+  exact eps_ne_zero hz
+
+/-- Consequently `[χᵃ] ≠ 0` in `A(SF)`, without computing the whole of `O(SF)`. -/
+theorem chiClass_ne_zero_of_words (h : SfWordCircleEvalVanishes) (a : Fin 2) :
+    sfN.superMk hSF (chiStateSF a) ≠ 0 :=
+  fun hz => chiStateSF_notMem_superO_of_words h a ((sfN.superMk_eq_zero_iff hSF).mp hz)
+
+/-- **The stronger, still open inclusion.**  `sfRel ≤ O(SF)` is proved
+(`sfRel_le_superO`, §2); a complete computation of `O(SF)` would supply the reverse inclusion.
+The evaluation residual above is strictly all that the nonvanishing endpoint needs. -/
+def SuperOLeRel : Prop := OSF ≤ sfRel
+
+/-- Given the missing inclusion, `O(SF) = sfRel` exactly. -/
+theorem superO_eq_sfRel (h : SuperOLeRel) : OSF = sfRel :=
+  le_antisymm h sfRel_le_superO
+
+/-- **Target 1, conditionally**: `χᵃ ∉ O(SF)`. -/
+theorem chiStateSF_notMem_superO (h : SuperOLeRel) (a : Fin 2) : chiStateSF a ∉ OSF :=
+  fun hx => chiStateSF_notMem_sfRel a (h hx)
+
+/-- The older, stronger `O(SF) ≤ sfRel` route to `[χᵃ] ≠ 0`. -/
+theorem chiClass_ne_zero_of_superO_le_rel (h : SuperOLeRel) (a : Fin 2) :
+    sfN.superMk hSF (chiStateSF a) ≠ 0 :=
+  fun hz => chiStateSF_notMem_superO h a ((sfN.superMk_eq_zero_iff hSF).mp hz)
+
+/-- **Target 1, unconditional**: `[χᵃ] ≠ 0` in the super Zhu algebra `A(SF)`. -/
+theorem chiClass_ne_zero (a : Fin 2) : sfN.superMk hSF (chiStateSF a) ≠ 0 :=
+  chiClass_ne_zero_of_words sfWordCircleEvalVanishes a
+
+
+/-! ## §6  Target 2: `A(SF)` is not semisimple -/
+
+section Semisimple
+
+/-- **The ring-theoretic obstruction.**  If `s` sandwiches to zero (`s b s = 0` for every `b`)
+then the left ideal `Rs` squares to zero; in a semisimple ring it is a direct summand, hence
+generated by an idempotent, and a square-zero idempotent is `0`.  This is the correct form of
+"not semisimple": a nonzero *nilpotent ideal*, not merely a nonzero nilpotent element — `M₂(ℂ)`
+is semisimple and full of nilpotents, but in it no nonzero `s` has `s M₂(ℂ) s = 0`. -/
+theorem eq_zero_of_isSemisimpleRing_of_sandwich {R : Type*} [Ring R] [IsSemisimpleRing R]
+    {s : R} (h : ∀ b : R, s * b * s = 0) : s = 0 := by
+  obtain ⟨J, hJ⟩ := exists_isCompl (Submodule.span R {s})
+  set I : Submodule R R := Submodule.span R {s} with hI
+  set π := Submodule.projectionOnto I J hJ with hπ
+  have hproj : ∀ r : R, ((π r : R)) = r * ((π 1 : I) : R) := by
+    intro r
+    have hs : π (r • (1 : R)) = r • π 1 := map_smul π r 1
+    have h1 : (r : R) • (1 : R) = r := by rw [smul_eq_mul, mul_one]
+    rw [h1] at hs
+    rw [hs]
+    rfl
+  have hfix : ∀ x : R, ∀ hx : x ∈ I, ((π x : I) : R) = x := by
+    intro x hx
+    have := Submodule.projectionOnto_apply_left hJ ⟨x, hx⟩
+    exact congrArg Subtype.val this
+  set e : R := ((π 1 : I) : R) with he
+  have hemem : e ∈ I := (π 1).2
+  have hidem : ∀ x : R, x ∈ I → x = x * e := fun x hx => by rw [← hproj x, hfix x hx]
+  obtain ⟨a, ha⟩ := Submodule.mem_span_singleton.mp hemem
+  have hee : e * e = 0 := by
+    rw [← ha, smul_eq_mul, mul_assoc, ← mul_assoc s a s, h a, mul_zero]
+  have he0 : e = 0 := by
+    have := hidem e hemem
+    rw [hee] at this
+    exact this
+  have hs : s ∈ I := Submodule.mem_span_singleton_self s
+  have := hidem s hs
+  rw [he0, mul_zero] at this
+  exact this
+
+/-- A nonzero square-zero two-sided ideal obstructs semisimplicity.
+
+The two-sided hypothesis is used essentially: if `x ∈ I`, then `x * b ∈ I`, so `I² = 0`
+gives `x * b * x = 0` for every `b`.  Semisimplicity forces every `x ∈ I` to vanish by
+`eq_zero_of_isSemisimpleRing_of_sandwich`, contradicting `I ≠ ⊥`. -/
+theorem not_isSemisimpleRing_of_nonzero_sq_zero_twoSidedIdeal {R : Type*} [Ring R]
+    (I : TwoSidedIdeal R) (hI : I ≠ ⊥)
+    (hsq : ∀ {x y : R}, x ∈ I → y ∈ I → x * y = 0) :
+    ¬ IsSemisimpleRing R := by
+  intro hss
+  letI : IsSemisimpleRing R := hss
+  apply hI
+  apply le_antisymm
+  · intro x hx
+    have hx0 : x = 0 := eq_zero_of_isSemisimpleRing_of_sandwich fun b =>
+      hsq (I.mul_mem_right x b hx) hx
+    subst x
+    exact (⊥ : TwoSidedIdeal R).zero_mem
+  · exact bot_le
+
+end Semisimple
+
+section Target2
+
+variable (hZ : SuperZhuRingData sfN hSF)
+
+/-- The class of `χᵃ` in `A(SF)`. -/
+noncomputable def chiClass (a : Fin 2) : ASF := sfN.superMk hSF (chiStateSF a)
+
+/-- `[χ⁰][χ¹] = [χ⁰₋₁χ¹₋₁|0⟩] = -[ω]`. -/
+theorem chiClass_mul_chiClass_eq :
+    letI := hZ.AsRing
+    chiClass 0 * chiClass 1 = OSF.mkQ (sfCre 0 0 * sfCre 0 1) := by
+  letI := hZ.AsRing
+  rw [hZ.AsRing_mul_eq, chiClass, chiClass, hZ.superAmul_mk,
+    superZhuMul_chiStateSF_zero_one, ωSF, neg_neg]
+  congr 1
+  rw [stWordSF_cons, stWordSF_singleton_eq]
+  rfl
+
+/-- **`χ⁰` sandwiches to zero in `A(SF)`**: `[χ⁰] · b · [χ⁰] = 0` for **every** `b`.  The four
+spanning classes of §4 are checked one by one, using only the exterior relations `[χᵃ]² = 0` and
+`[χᵃ][χᵇ] = -[χᵇ][χᵃ]` and associativity. -/
+theorem chiClass_sandwich_zero (b : ASF) :
+    letI := hZ.AsRing
+    chiClass 0 * b * chiClass 0 = 0 := by
+  letI := hZ.AsRing
+  have hsq : ∀ a : Fin 2, chiClass a * chiClass a = 0 := fun a => chiStateSF_sq_eq_zero hZ a
+  have hyx : chiClass 1 * chiClass 0 = -(chiClass 0 * chiClass 1) := by
+    have h := chiStateSF_anticomm hZ 1 0
+    rwa [add_eq_zero_iff_eq_neg] at h
+  have hone : OSF.mkQ (1 : FockSF) = (1 : ASF) := rfl
+  have hchi : ∀ a : Fin 2, OSF.mkQ (sfCre 0 a) = chiClass a := by
+    intro a
+    rw [chiClass, chiStateSF_eq_sfCre]
+    rfl
+  set F : ASF →ₗ[ℂ] ASF :=
+    (hZ.superAmul.flip (chiClass 0)).comp (hZ.superAmul (chiClass 0)) with hFdef
+  have hFapply : ∀ c : ASF, F c = chiClass 0 * c * chiClass 0 := by
+    intro c
+    rw [hZ.AsRing_mul_eq, hZ.AsRing_mul_eq]
+    rfl
+  have hFzero : F = 0 := by
+    refine LinearMap.ext_on ASF_span ?_
+    rintro _ ⟨z, hz, rfl⟩
+    simp only [sfBottomSet, Set.mem_insert_iff, Set.mem_singleton_iff] at hz
+    rw [LinearMap.zero_apply, hFapply]
+    rcases hz with rfl | rfl | rfl | rfl
+    · rw [hone, mul_one, hsq 0]
+    · rw [hchi 0, hsq 0, zero_mul]
+    · rw [hchi 1, mul_assoc, hyx, mul_neg, ← mul_assoc, hsq 0, zero_mul, neg_zero]
+    · rw [← chiClass_mul_chiClass_eq hZ, ← mul_assoc (chiClass 0) (chiClass 0), hsq 0,
+        zero_mul, zero_mul]
+  rw [← hFapply b, hFzero, LinearMap.zero_apply]
+
+/-- **The obstructing ideal.**  The left ideal `A(SF)·[χ⁰]` squares to zero. -/
+theorem chiClass_left_ideal_sq_zero (u v : ASF) :
+    letI := hZ.AsRing
+    (u * chiClass 0) * (v * chiClass 0) = 0 := by
+  letI := hZ.AsRing
+  rw [mul_assoc, ← mul_assoc (chiClass 0) v, chiClass_sandwich_zero hZ, mul_zero]
+
+/-- The two-sided ideal generated by `[chi^0]` is square-zero.
+
+This is stronger than `chiClass_left_ideal_sq_zero`: the carrier here is an actual
+`TwoSidedIdeal`, so both left and right multiplication closure are part of the bundled object.
+The proof uses span induction twice.  Every monomial in the ideal contains `[chi^0]`; a product
+of two such monomials contains a middle factor `[chi^0] * b * [chi^0]`, which vanishes by
+`chiClass_sandwich_zero`. -/
+theorem exists_chiClass_twoSidedIdeal_sq_zero_of_ne (hx0 : chiClass 0 ≠ 0) :
+    letI := hZ.AsRing
+    ∃ I : TwoSidedIdeal ASF, I ≠ ⊥ ∧
+      ∀ {u v : ASF}, u ∈ I → v ∈ I → u * v = 0 := by
+  letI := hZ.AsRing
+  let x : ASF := chiClass 0
+  let I : TwoSidedIdeal ASF := TwoSidedIdeal.span {x}
+  have hxI : x ∈ I := TwoSidedIdeal.subset_span (Set.mem_singleton x)
+  have hx0 : x ≠ 0 := hx0
+  have hmiddle : ∀ a b : ASF, x * a * x * b = 0 := by
+    intro a b
+    rw [chiClass_sandwich_zero hZ a, zero_mul]
+  have hx_middle : ∀ {v : ASF}, v ∈ I → ∀ a b : ASF, x * a * v * b = 0 := by
+    intro v hv
+    induction hv using TwoSidedIdeal.span_induction with
+    | mem y hy =>
+        rw [Set.mem_singleton_iff] at hy
+        subst y
+        exact hmiddle
+    | zero => simp
+    | add y z _ _ hy hz =>
+        intro a b
+        simp only [mul_add, add_mul, hy a b, hz a b, add_zero]
+    | neg y _ hy =>
+        intro a b
+        simp only [mul_neg, neg_mul, hy a b, neg_zero]
+    | left_absorb c y _ hy =>
+        intro a b
+        simpa [mul_assoc] using hy (a * c) b
+    | right_absorb c y _ hy =>
+        intro a b
+        simpa [mul_assoc] using hy a (c * b)
+  have hx_right : ∀ {v : ASF}, v ∈ I → x * v = 0 := by
+    intro v hv
+    simpa using hx_middle hv 1 1
+  have hsq : ∀ {u v : ASF}, u ∈ I → v ∈ I → u * v = 0 := by
+    intro u v hu
+    revert v
+    induction hu using TwoSidedIdeal.span_induction with
+    | mem y hy =>
+        intro v hv
+        rw [Set.mem_singleton_iff] at hy
+        subst y
+        exact hx_right hv
+    | zero => intro v hv; rw [zero_mul]
+    | add y z _ _ hy hz =>
+        intro v hv
+        rw [add_mul, hy hv, hz hv, add_zero]
+    | neg y _ hy =>
+        intro v hv
+        rw [neg_mul, hy hv, neg_zero]
+    | left_absorb a y _ hy =>
+        intro v hv
+        rw [mul_assoc, hy hv, mul_zero]
+    | right_absorb b y _ hy =>
+        intro v hv
+        rw [mul_assoc]
+        exact hy (I.mul_mem_left b v hv)
+  refine ⟨I, ?_, hsq⟩
+  intro hbot
+  have : x = 0 := by
+    have : x ∈ (⊥ : TwoSidedIdeal ASF) := hbot ▸ hxI
+    simpa using this
+  exact hx0 this
+
+/-- The square-zero two-sided ideal obtained from the stronger computation `O(SF) ≤ sfRel`. -/
+theorem exists_chiClass_twoSidedIdeal_sq_zero (h : SuperOLeRel) :
+    letI := hZ.AsRing
+    ∃ I : TwoSidedIdeal ASF, I ≠ ⊥ ∧
+      ∀ {u v : ASF}, u ∈ I → v ∈ I → u * v = 0 :=
+  exists_chiClass_twoSidedIdeal_sq_zero_of_ne hZ (chiClass_ne_zero_of_superO_le_rel h 0)
+
+/-- The same honest two-sided ideal from only the exact arbitrary-word evaluation residual. -/
+theorem exists_chiClass_twoSidedIdeal_sq_zero_of_words (h : SfWordCircleEvalVanishes) :
+    letI := hZ.AsRing
+    ∃ I : TwoSidedIdeal ASF, I ≠ ⊥ ∧
+      ∀ {u v : ASF}, u ∈ I → v ∈ I → u * v = 0 :=
+  exists_chiClass_twoSidedIdeal_sq_zero_of_ne hZ (chiClass_ne_zero_of_words h 0)
+
+/-- **Target 2** (conditional on the missing inclusion `SuperOLeRel`): the super Zhu
+algebra of the symplectic fermions is **not semisimple**.  The obstruction passed to the general
+ring-theoretic theorem is the nonzero square-zero **two-sided** ideal generated by `[χ⁰]`, not
+merely a nilpotent element. -/
+theorem ASF_not_isSemisimpleRing_of_superO_le_rel (h : SuperOLeRel) :
+    letI := hZ.AsRing
+    ¬ IsSemisimpleRing ASF := by
+  letI := hZ.AsRing
+  obtain ⟨I, hI, hsq⟩ := exists_chiClass_twoSidedIdeal_sq_zero hZ h
+  exact not_isSemisimpleRing_of_nonzero_sq_zero_twoSidedIdeal I hI hsq
+
+/-- With the canonical discharged ring structure, the arbitrary-word evaluation residual alone
+implies non-semisimplicity through a nonzero square-zero two-sided ideal. -/
+theorem ASF_not_isSemisimpleRing_of_words (h : SfWordCircleEvalVanishes) :
+    letI := instRingASF
+    ¬ IsSemisimpleRing ASF := by
+  letI := instRingASF
+  obtain ⟨I, hI, hsq⟩ :=
+    exists_chiClass_twoSidedIdeal_sq_zero_of_words sympFermSuperZhuRingData h
+  exact not_isSemisimpleRing_of_nonzero_sq_zero_twoSidedIdeal I hI hsq
+
+/-- **Target 2, unconditional**: the canonical super Zhu ring of the symplectic fermions
+is not semisimple, witnessed by the nonzero square-zero two-sided ideal generated by `[χ⁰]`. -/
+theorem ASF_not_isSemisimpleRing :
+    letI := instRingASF
+    ¬ IsSemisimpleRing ASF :=
+  ASF_not_isSemisimpleRing_of_words sfWordCircleEvalVanishes
+
+end Target2
+
+end VOA.SympFerm

@@ -1,0 +1,87 @@
+/-
+Copyright (c) 2026 Leonardo Rastelli. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Leonardo Rastelli
+-/
+import VOA.DeligneAudit.D4FusionRealizationTwoWordTypes
+
+set_option maxRecDepth 100000
+
+namespace VOA.DeligneAudit.D4Two.Certificate
+
+def wordData22 : List WordNode := [
+  { level := 2, parent := 311, color := 26, mode := 1,
+    vector := [(761, Int.ofNat 1), (835, Int.ofNat 1)] },
+  { level := 2, parent := 311, color := 27, mode := 1,
+    vector := [(764, Int.negSucc 0)] },
+  { level := 2, parent := 312, color := 27, mode := 1,
+    vector := [(765, Int.negSucc 0), (831, Int.negSucc 0)] },
+  { level := 2, parent := 313, color := 27, mode := 1,
+    vector := [(766, Int.negSucc 0), (829, Int.ofNat 1)] },
+  { level := 2, parent := 314, color := 27, mode := 1,
+    vector := [(767, Int.negSucc 0), (828, Int.ofNat 1)] },
+  { level := 2, parent := 315, color := 27, mode := 1,
+    vector := [(768, Int.negSucc 0), (798, Int.negSucc 0), (812, Int.ofNat 1), (814, Int.ofNat 1),
+    (815, Int.ofNat 1), (840, Int.negSucc 1)] },
+  { level := 2, parent := 316, color := 27, mode := 1,
+    vector := [(769, Int.negSucc 1), (818, Int.negSucc 1)] },
+  { level := 2, parent := 317, color := 25, mode := 1,
+    vector := [(667, Int.ofNat 1), (669, Int.ofNat 1), (670, Int.negSucc 0), (695, Int.negSucc 0),
+    (793, Int.ofNat 1)] },
+  { level := 2, parent := 317, color := 26, mode := 1,
+    vector := [(671, Int.ofNat 1), (795, Int.ofNat 1)] },
+  { level := 2, parent := 317, color := 27, mode := 1,
+    vector := [(675, Int.ofNat 1), (829, Int.negSucc 0)] },
+  { level := 2, parent := 318, color := 24, mode := 1,
+    vector := [(667, Int.ofNat 1), (669, Int.negSucc 0), (670, Int.ofNat 1), (695, Int.negSucc 0),
+    (793, Int.ofNat 1)] },
+  { level := 2, parent := 318, color := 26, mode := 1,
+    vector := [(672, Int.ofNat 1), (796, Int.ofNat 1)] },
+  { level := 2, parent := 318, color := 27, mode := 1,
+    vector := [(676, Int.ofNat 1), (828, Int.negSucc 0)] },
+  { level := 2, parent := 319, color := 27, mode := 1,
+    vector := [(678, Int.ofNat 1), (798, Int.ofNat 1), (812, Int.ofNat 1), (813, Int.negSucc 0),
+    (814, Int.negSucc 0), (815, Int.negSucc 0), (840, Int.ofNat 2)] },
+  { level := 2, parent := 320, color := 27, mode := 1,
+    vector := [(679, Int.ofNat 1)] },
+  { level := 2, parent := 321, color := 27, mode := 1,
+    vector := [(680, Int.ofNat 1)] },
+  { level := 2, parent := 322, color := 27, mode := 1,
+    vector := [(681, Int.ofNat 1), (819, Int.ofNat 1)] },
+  { level := 2, parent := 323, color := 27, mode := 1,
+    vector := [(682, Int.ofNat 2), (822, Int.negSucc 1)] },
+  { level := 2, parent := 329, color := 25, mode := 1,
+    vector := [(696, Int.negSucc 0), (698, Int.negSucc 0), (699, Int.ofNat 1), (724, Int.ofNat 1),
+    (792, Int.negSucc 0)] },
+  { level := 2, parent := 329, color := 26, mode := 1,
+    vector := [(700, Int.negSucc 0), (794, Int.negSucc 0)] },
+  { level := 2, parent := 329, color := 27, mode := 1,
+    vector := [(704, Int.negSucc 0), (831, Int.negSucc 0)] },
+  { level := 2, parent := 330, color := 23, mode := 1,
+    vector := [(696, Int.ofNat 1), (698, Int.negSucc 0), (699, Int.negSucc 0), (724, Int.ofNat 1),
+    (792, Int.negSucc 0)] },
+  { level := 2, parent := 330, color := 26, mode := 1,
+    vector := [(703, Int.ofNat 1), (796, Int.negSucc 0)] },
+  { level := 2, parent := 330, color := 27, mode := 1,
+    vector := [(706, Int.negSucc 0), (828, Int.ofNat 1)] },
+  { level := 2, parent := 331, color := 27, mode := 1,
+    vector := [(707, Int.negSucc 0)] },
+  { level := 2, parent := 332, color := 27, mode := 1,
+    vector := [(708, Int.negSucc 0), (798, Int.negSucc 0), (812, Int.ofNat 1), (813, Int.ofNat 1),
+    (814, Int.negSucc 0), (815, Int.ofNat 1), (840, Int.negSucc 1)] },
+  { level := 2, parent := 333, color := 27, mode := 1,
+    vector := [(709, Int.negSucc 0)] },
+  { level := 2, parent := 334, color := 27, mode := 1,
+    vector := [(710, Int.negSucc 0), (817, Int.ofNat 1)] },
+  { level := 2, parent := 335, color := 27, mode := 1,
+    vector := [(711, Int.negSucc 1), (821, Int.ofNat 2)] },
+  { level := 2, parent := 336, color := 24, mode := 1,
+    vector := [(725, Int.negSucc 0), (727, Int.ofNat 1), (728, Int.negSucc 0), (753, Int.ofNat 1),
+    (791, Int.negSucc 0)] },
+  { level := 2, parent := 336, color := 26, mode := 1,
+    vector := [(730, Int.negSucc 0), (794, Int.negSucc 0)] },
+  { level := 2, parent := 336, color := 27, mode := 1,
+    vector := [(734, Int.negSucc 0), (831, Int.negSucc 0)] }
+]
+
+end VOA.DeligneAudit.D4Two.Certificate

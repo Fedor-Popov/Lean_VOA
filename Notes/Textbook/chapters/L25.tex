@@ -1,0 +1,2939 @@
+\chapter{The Deligne series II: characters, the Arakawa--Kawasetsu MLDE and \texorpdfstring{$q$}{q}-series identities}\label{ch:L25}
+\begingroup\setlength{\emergencystretch}{3em}\sloppy
+
+\providecommand{\ltwentyfiveg}{\mathfrak g}
+\providecommand{\ltwentyfivevac}{|0\rangle}
+\providecommand{\ltwentyfiveD}{\mathcal D}
+\providecommand{\ltwentyfivehv}{h^{\vee}}
+\providecommand{\ltwentyfiveEu}{\delta_q}
+
+This chapter was written against an earlier state of the LeanVOA library. For this edition, \texttt{scripts/textbook/sync.py} checks that every Lean quotation below occurs verbatim (up to whitespace and comments) in the source files of that release. The machine
+record (builds and \texttt{\#print axioms}) is older than that release; Section~\ref{l25:sec:machine} states exactly
+what it covers. The list of files covered by the chapter is in Section~\ref{l25:sec:files}.
+
+%======================================================================
+\section{Overview: the chain, its status, and how to read this chapter}\label{l25:sec:overview}
+%======================================================================
+
+\subsection{What this chapter is about}
+
+The \emph{Deligne exceptional series} is
+$A_1\subset A_2\subset G_2\subset D_4\subset F_4\subset E_6\subset E_7\subset E_8$. For its seven higher-rank
+members, the level $k=-1-\ltwentyfivehv/6$ gives a simple affine vertex algebra $V=L_k(\ltwentyfiveg)$ of central
+charge $c=-2(\ltwentyfivehv+1)$. Physicists know these as the chiral algebras of the rank-one four-dimensional
+$\mathcal N=2$ theories (for $A_2$, $D_4$, $E_{6,7,8}$). The project's main theorem (Chapter~\ref{ch:L27}) is
+\emph{classical freeness}. Its statement uses three objects, glossed in Section~\ref{l25:sec:glossary}: the
+$C_2$-algebra $R_V=V/C_2(V)$, the arc space $J_\infty$ of a scheme, and an explicit space $I_2^{\rm ns}$ of
+quadrics (the $C_2$-symbols of the weight-two singular vectors). It says that the graded algebra of $V$ for Li's
+filtration is the coordinate ring of the arc space of $\operatorname{Spec}\operatorname{Sym}(\ltwentyfiveg)/(I_2^{\rm ns})$.
+For $A_2$ this is now a Lean theorem with no hypotheses (\lean{VOA.DeligneAudit.A2.classicallyFree},
+Chapter~\ref{ch:L27}; aggregate build green on 2026-10-28, standard axioms); for the other six types it is proved conditionally on named inputs.
+
+For counting purposes, classical freeness comes down to one equality of dimensions for each conformal weight $N$.
+On one side is $\dim V_N$, the number of quantum states of weight $N$. On the other is the number of classical
+states, $\sum_p\dim\mathrm{Carrier}_{p,N}$. Here the \emph{carrier} is a combinatorial model of the arc space
+(Chapter~\ref{ch:L24}), bigraded by Li degree $p$ and weight $N$. One inequality,
+$\dim V_N\le\sum_p\dim\mathrm{Carrier}_{p,N}$, comes from the presentation (Chapter~\ref{ch:L24}). The other,
+$\sum_p\dim\mathrm{Carrier}_{p,N}\le\dim V_N$, is a \emph{lower bound on $\dim V_N$}, and this chapter supplies the
+part of it that is about $V$. That part has three layers.
+\begin{enumerate}
+\item \textbf{The VOA side} (Sections~\ref{l25:sec:recurrence}--\ref{l25:sec:alltypes}). For every type,
+  $\dim V_N\ge c_N$, where $c_N$ are the coefficients of the unique normalised solution of a second-order
+  \emph{modular linear differential equation} (MLDE; primer in Section~\ref{l25:sec:recurrence}). The proof is
+  formal. One relation among states of weight four, the \emph{vacuum quartic relation}, forces the MLDE, and the
+  indicial equation then forces the equation's constant. These are the first MLDEs in the library proved for specific
+  vertex algebras. They are identities of \emph{formal} $q$-series (equivalently, recurrences for the coefficients
+  $\dim V_N$): nothing analytic is formalised, neither convergence nor modular invariance nor a second solution. The general Arakawa--Kawasetsu theorem of Chapter~\ref{ch:L16}
+  (\lean{IsSqPrimary.exists_monicMLDEOn_all_analyticBlocks_of_etingofFinite_uncond}) is conditional only on
+  Etingof-finiteness (\lean{EtingofFinite}, which holds for every $C_2$-cofinite VOA by \lean{EtingofFinite_of_C2Cofinite});
+  its side inputs \lean{AKWeightGrading} and \lean{E46SerreClosed} are now theorems (\lean{VOA.akWeightGrading},
+  \lean{VOA.e46SerreClosed}). It gives, for abstract analytic genus-one blocks, a monic MLDE of \emph{some} order with
+  unspecified coefficients; it does not give the second-order equations proved here. The route here needs neither that
+  theorem nor modularity (warning in Section~\ref{l25:sec:block}).
+\item \textbf{The $q$-series side} (Sections~\ref{l25:sec:qseries}--\ref{l25:sec:closed}). A library of formal
+  $q$-series identities, proved from scratch: the Jacobi triple product, Euler's pentagonal theorem, the
+  sum side of the quintuple product, Legendre's four-triangular-numbers theorem, Ramanujan's three differential identities, and
+  Lorenz's and Borwein's level-three identities. These give closed forms of $c_N$ for $A_2$, $G_2$, $D_4$, $E_6$,
+  $E_7$, $E_8$.
+\item \textbf{The Demazure side} (Sections~\ref{l25:sec:demazure}--\ref{l25:sec:star}). Level-one affine Demazure
+  characters, computed by an algorithm. The \emph{star identity} ``Demazure sum $=c_N$'' is proved for $A_2$,
+  proved for $D_4$ on the unclamped route (Chapter~\ref{ch:L27}), and is a named input for the other five types,
+  where it is a conjecture (Conjecture~\ref{l27:conj:star}).
+\end{enumerate}
+
+\subsection{The chain of inequalities and its status}\label{l25:sec:chain}
+
+Write $\mathcal C_N=\sum_{p=0}^N\dim\mathrm{Carrier}_{p,N}$ (the classical count), $D_N$ for the Demazure sum
+(Definition~\ref{l25:def:dsum}), and $c_N=$\lean{DeligneCharacter.mldeCoeff h N} (Definition~\ref{l25:def:mlde}).
+The whole argument, at each weight $N$, is the chain
+\begin{equation}\label{l25:eq:chain}
+\mathcal C_N\ \overset{\text{(a)}}{\le}\ D_N\ \overset{\text{(b)}}{\le}\ c_N\ \overset{\text{(c)}}{\le}\ \dim V_N
+\ \overset{\text{(d)}}{\le}\ \mathcal C_N .
+\end{equation}
+The chain starts and ends at $\mathcal C_N$. Once every link is proved, every link is an equality, and
+$\mathcal C_N=\dim V_N$ is the counting content of classical freeness. The links are as follows.
+\begin{itemize}
+\item[(a)] \emph{The carrier side}, $\mathcal C_N\le D_N$: Chapters~\ref{ch:L24} and~\ref{ch:L26}, conditional on
+  the fusion inputs U5 and U6 (Section~\ref{l25:sec:glossary}); for $A_2$ these inputs are proved, so (a) holds
+  unconditionally there (Chapter~\ref{ch:L27}). Not in this chapter.
+\item[(b)] \emph{The star bound}, $D_N\le c_N$: Section~\ref{l25:sec:star}. This is the one-sided form of the star
+  identity $D_N=c_N$.
+\item[(c)] \emph{The target lower bound}, $c_N\le\dim V_N$: Sections~\ref{l25:sec:recurrence}--\ref{l25:sec:alltypes}.
+  It is proved for all seven types, with no hypothesis.
+\item[(d)] \emph{The upper bound}, $\dim V_N\le\mathcal C_N$: current-jet surjectivity plus the geometric carrier
+  embedding (Chapter~\ref{ch:L24}; Theorem~\ref{l25:thm:ofle} below).
+\end{itemize}
+Links (b) and (c) together are the \emph{Demazure bound} $D_N\le\dim V_N$ (Definition~\ref{l25:def:inputs}), which
+is what Chapter~\ref{ch:L27} consumes. The table below records, for each type and each claim, what is a Lean
+theorem. The entries mean the following. \emph{Theorem}: a Lean theorem with no hypotheses. \emph{Derivable}: it
+follows by composing exported Lean theorems, but no single Lean statement says it. \emph{Conditional}: a Lean
+theorem with the named hypothesis. \emph{Open}: a named \lean{Prop} that is not proved.
+\begin{center}\small
+\begin{tabular}{p{0.06\textwidth}p{0.12\textwidth}p{0.15\textwidth}p{0.28\textwidth}p{0.23\textwidth}}
+\toprule
+type & (c) $\dim V_N\ge c_N$ & $\dim V_N=c_N$ & (b) star: $D_N\le c_N$ or $=$ & closed form of $c_N$\\
+\midrule
+$A_2$ & theorem & theorem & theorem ($=$; Thm.~\ref{l25:thm:a2star}) & theorem: $\prod_{r\ge1}(1+q^r)^8$\\
+$G_2$ & theorem & derivable$^\dagger$ & \textbf{open} (\lean{G2StarBound}; Conj.~\ref{l27:conj:star}) & theorem: $\theta_{A_2}(q)\frac{(q^3;q^3)_\infty^6}{(q;q)_\infty^8}$\\
+$D_4$ & theorem & derivable$^\dagger$ & $\mathtt{d4SchurQ}=c_N$ theorem; $D_N=\mathtt{d4SchurQ}$ conditional on \lean{D4DemazurePositivity} & theorem: $\frac{\delta_qE_4}{240\,(q)_\infty^{10}}$ (shifted)\\
+$F_4$ & theorem & derivable$^\dagger$ & \textbf{open} (\lean{F4StarBound}; Conj.~\ref{l27:conj:star}) & none in the library\\
+$E_6$ & theorem & derivable$^\ddagger$ & \textbf{open} (\lean{E6StarBound}; Conj.~\ref{l27:conj:star}) & theorem (Thm.~\ref{l25:thm:closed})\\
+$E_7$ & theorem & derivable$^\ddagger$ & \textbf{open} (\lean{E7StarBound}; Conj.~\ref{l27:conj:star}) & theorem (Thm.~\ref{l25:thm:closed})\\
+$E_8$ & theorem & derivable$^\ddagger$ & \textbf{open} (\lean{E8StarBound}; Conj.~\ref{l27:conj:star}) & theorem (Thm.~\ref{l25:thm:closed})\\
+\bottomrule
+\end{tabular}
+\end{center}
+\noindent $^\dagger$The composition was typechecked in a scratch file for this chapter. $^\ddagger$The composition
+was not typechecked, because the $E_{6,7,8}$ modules are too heavy to import for a single check. For both marks see
+Caveat~\ref{l25:cav:equality}. The $A_2$ product entry has a further gap: the equality
+$\dim V_N=[q^N]\prod(1+q^r)^8$ is itself only derivable (Remark~\ref{l25:rem:a2cons}). Every ``theorem'' of the
+star column is a statement about the computed Demazure tables. Reading those tables as characters of Demazure
+modules is the input U7 (Caveat~\ref{l25:cav:U7}).
+
+\paragraph{What Chapter~\ref{ch:L27} still needs from this chapter.} Its final theorems for $G_2$, $F_4$, $E_6$,
+$E_7$, $E_8$ take the star bound \lean{XStarBound} as an explicit hypothesis, the open entry of column (b). The
+$A_2$ final theorem takes no hypothesis at all: (b) and (c) are both proved here, and the carrier-side inputs are proved
+in Chapters~\ref{ch:L26} and~\ref{ch:L27}. The $D_4$ final theorem
+takes no star hypothesis either, because it works with the unclamped Demazure series (see
+Chapter~\ref{ch:L27}). Link (c) is used in full for all seven types.
+
+\subsection{Which sections are on the critical path}
+
+The \textbf{critical path}, needed for links (b) and (c) in Chapter~\ref{ch:L27}, consists of these sections:
+Section~\ref{l25:sec:interface} (the interface), Sections~\ref{l25:sec:recurrence}--\ref{l25:sec:alltypes} (link (c)),
+Section~\ref{l25:sec:demazure} (the Demazure tables), Section~\ref{l25:sec:star} (link (b)), and those $q$-series
+results that feed the $A_2$ and $D_4$ star identities: the triple product, Legendre, Ramanujan's identities, the
+$A_2$ product, and the $D_4$ closed form.
+
+The following are \textbf{side results}, off the critical path at this commit. They are marked as such where they
+occur.
+\begin{itemize}
+\item The $G_2$ target side (Lorenz, Borwein, Theorem~\ref{l25:thm:g2target}). It becomes critical only if the open
+  \lean{G2DemazureEqKW} is proved.
+\item Euler's pentagonal theorem and the sum side of the quintuple product (Theorem~\ref{l25:thm:pent}), except as ingredients of
+  Lorenz's formula.
+\item The $E_6$, $E_7$, $E_8$ closed forms (Theorem~\ref{l25:thm:closed}). The star bounds target $c_N$ directly.
+\item The $q=1$ counts and the energy bounds (Section~\ref{l25:sec:counts}). They serve Chapter~\ref{ch:L26} and the
+  \lean{energy} field of the $D_4$ positivity input.
+\end{itemize}
+
+\subsection{Glossary of terms and named inputs}\label{l25:sec:glossary}
+
+The terms below are used in this chapter but defined elsewhere. Each gets a one-line gloss here and a pointer to
+where it is developed.
+\begin{itemize}
+\item \textbf{$C_2$-algebra} $R_V=V/C_2(V)$, where $C_2(V)$ is spanned by the states $a_{(-2)}b$. It is a
+  commutative Poisson algebra, the ``classical limit'' of $V$ (Chapter~\ref{ch:L12}). Its spectrum is the
+  \textbf{associated scheme}; the reduced variety underneath is the \textbf{associated variety}.
+\item \textbf{Li filtration}: a decreasing filtration of $V$ whose degree-$0$ graded piece is $R_V$. Its associated
+  graded $\mathrm{gr}V$ is a quotient of the \textbf{arc space} (jet ring) $J_\infty R_V$, the ring of functions on
+  formal curves $t\mapsto x(t)$ in $\operatorname{Spec}R_V$ (Chapters~\ref{ch:L11} and~\ref{ch:L24}).
+\item \textbf{Quasi-lisse}: the associated variety has finitely many symplectic leaves. Arakawa and Kawasetsu prove
+  that the characters of such VOAs satisfy an MLDE (the general theorem is in Chapter~\ref{ch:L16}).
+\item \textbf{Higgs branch}: in the 4d $\mathcal N=2$ theory, the moduli space on which the associated variety of the
+  chiral algebra is realised. For the Deligne series it is the minimal nilpotent orbit closure.
+\item \textbf{Joseph relations, $I_2$, $I_2^{\rm ns}$.} $\operatorname{Sym}^2\ltwentyfiveg=V(2\theta)\oplus
+  I_2^{\rm ns}\oplus\C Q$, with $Q$ the Casimir quadric. For $\ltwentyfiveg$ not of type $A$, $I_2=I_2^{\rm ns}\oplus\C Q$
+  generates the associated graded of the Joseph ideal (literature, not Lean); for $A_2$ there is no Joseph ideal, and
+  in Lean $I_2^{\rm ns}$ is simply the ideal spanned by explicit lists of quadrics (Chapter~\ref{ch:L24}). The superscript ``ns'' means \emph{non-singlet}: $I_2^{\rm ns}$ is the part of $I_2$ without
+  the $\ltwentyfiveg$-invariant $Q$. These are the $C_2$-symbols of the weight-two singular vectors (Chapter~\ref{ch:L24},
+  ``The Deligne series'').
+\item \textbf{U3}: $X_a\,Q\in(I_2^{\rm ns})$ in $\operatorname{Sym}^3\ltwentyfiveg$ for every current $X_a$, so $Q^2$ lies in
+  the ideal too. It is certified per type, as the field \lean{u3} of \lean{DeligneCarrierData} (Chapter~\ref{ch:L24}).
+\item \textbf{U5}: the fusion bound (Input~T of Chapter~\ref{ch:L27}). The fusion module $\mathcal F_m$ has dimension
+  $\le(\dim\ltwentyfiveg)^m$, with graded character $F_m$. Its published source for the total dimension is
+  Kus--Littelmann, Pacific J.\ Math.\ 278, Theorem~4.2, with one flagged step (p.~437); Feigin's earlier proof has a
+  gap (Chapter~\ref{ch:L27}). It is a named hypothesis, reduced in Chapter~\ref{ch:L26}.
+\item \textbf{U6}: Ravinder's mixed fusion recursion, which expresses $\mathrm{Hilb}_qD(1,n\theta)$ through the
+  $F_m$. Named; Chapter~\ref{ch:L26}.
+\item \textbf{U7}: the identification of a \emph{computed} table with the graded character of the level-one Demazure
+  module $D(1,n\theta)$. It rests on the Demazure character formula (Kumar, Mathieu) and on the identification of
+  $D(1,n\theta)$ with a fusion product (Fourier--Littelmann, Chari--Venkatesh); for $A_2$, on Sanderson's and Ion's
+  $q$-Whittaker formula. It is not formalised; in Chapters~\ref{ch:L26}--\ref{ch:L27} it appears as the hypothesis
+  \lean{DemazureRealizationG} (Input~R of Chapter~\ref{ch:L27}). The star bound $D_N\le c_N$ is Input~S there.
+\item \textbf{Demazure module} $D(1,n\theta)$: the subspace of the level-one integrable module $L(\Lambda_0)$ of
+  $\widehat{\ltwentyfiveg}$ generated by an extremal vector of weight $n\theta$ under the positive part. Its
+  weight-$0$ part is the irreducible $V(n\theta)$, and $D(1,\theta)=\ltwentyfiveg\oplus\C$.
+\item \textbf{Kirillov--Reshetikhin module} $\mathrm{KR}(\theta)$: $\ltwentyfiveg\oplus\C$ as a module for the current
+  algebra $\ltwentyfiveg[t]$. Fusion products of copies of it give the $D(1,n\theta)$.
+\item \textbf{$q$-Whittaker polynomial} $P_\lambda(x;q,0)$: the Macdonald polynomial at $t=0$. \textbf{Gelfand--Tsetlin
+  branching}: computing it by restricting $GL_3\to GL_2\to GL_1$ along interlacing patterns. At $t=0$ each step
+  contributes a product of $q$-binomials (dictionary of Theorem~\ref{l25:thm:a2star}).
+\item \textbf{Rogers--Szeg\H{o} polynomial} $H_M(x)=\sum_{r=0}^M\binom Mr_qx^r$. We write $G_M=H_M(1)$.
+\item \textbf{HKOTY fermionic formula}: a sum over quasi-particle configurations, weighted by $q$-binomials. For
+  graded fusion products of KR modules it is proved to give the character, for every $\ltwentyfiveg$ (Ardonne--Kedem,
+  Di Francesco--Kedem); the $X=M$ form, with one-dimensional sums, is a separate statement.
+\item \textbf{Plethystic (product) exponents} of a series $1+\sum_{n\ge1}b_nq^n$: the integers $a_n$ with
+  $1+\sum b_nq^n=\prod_n(1-q^n)^{-a_n}$.
+\end{itemize}
+
+\subsection{Notation}\label{l25:sec:notation}
+
+Several letters have more than one job in the sources. We fix them as follows; Lean names keep their Lean spelling.
+\begin{center}\small
+\begin{tabular}{p{0.12\textwidth}p{0.62\textwidth}p{0.18\textwidth}}
+\toprule
+symbol & meaning in this chapter & where\\
+\midrule
+$\delta_q$ & the Euler operator $q\,\frac{d}{dq}$ on $q$-series (Lean \lean{qDeriv}, \lean{eulerOp}) & \S\ref{l25:sec:recurrence}\\
+$\theta$ & the highest root of $\ltwentyfiveg$ (only); $\theta^\vee$ its coroot & \S\ref{l25:sec:demazure}\\
+$\theta_{A_2}$, $\theta_2$, $\Theta(x)$ & the $A_2$ lattice theta series; the Jacobi theta constant; the $D_4$ theta function in $x$ & Thms.~\ref{l25:thm:g2target}, \ref{l25:thm:legendre}, \ref{l25:thm:d4}\\
+$\Theta$ (with $u$) & the triple-product sum $\sum(-1)^ju^jq^{j(j-1)/2}$ in the heat-equation proof & Thm.~\ref{l25:thm:ramanujan}\\
+$\kappa$ & the constant of the vacuum quartic relation (Lean \lean{κ} in \lean{VacuumQuarticRelation W κ}); the bilinear form in \lean{LieData κ …} is written $\kappa_{\ltwentyfiveg}$ & Def.~\ref{l25:def:vqr}\\
+$h$ & the dual Coxeter number $\ltwentyfivehv$ when it parametrises the MLDE; \lean{D.h} is the same number read off a \lean{LieData} & \S\ref{l25:sec:recurrence}\\
+$\mathrm{hilb}(n,N)$ & a table of Demazure coefficients $[q^N]\mathrm{Hilb}_qD(1,n\theta)$ & Def.~\ref{l25:def:dsum}\\
+$c$ & the central charge; $c_N$ the AK coefficients; $c_0$ (Lean \lean{c₀}) the Casimir ratio of Thm.~\ref{l25:thm:carrierdata} & \\
+$z(k,m,m{+}p)$ & Zhu's change-of-coordinate coefficients & Thm.~\ref{l25:thm:sqcomm}\\
+$k$ & the level $-1-h/6$; elsewhere a modular weight (said explicitly) & \\
+$(a;q)_n$, $(q)_n$ & $\prod_{i=0}^{n-1}(1-aq^i)$; $(q)_n=(q;q)_n$; $n=\infty$ allowed. $(q)_\infty=(q;q)_\infty$ is the Euler product (Lean \lean{euler}) & \S\ref{l25:sec:qseries}\\
+$p$, $r$ & $p$: Li degree; in the quintuple product, a nome. $r=q^{1/2}$ in the $D_4$ section; elsewhere $r$ is a summation index & \\
+$P_\lambda$, $P_1,P_3$, $P$ & the $q$-Whittaker polynomial; the divisor series $\sum\sigma_1(n)q^n$, $\sum\sigma_3(n)q^n$ (Lean \lean{P1}, \lean{P3}); in the proof of Thm.~\ref{l25:thm:ramanujan} only, $P$ is the triple-product side & \\
+$D_N$; $D_i$ & the Demazure sum; Demazure operators (with subscript) & \\
+$W$ & the VOA in a Lean statement (Lean \lean{W}); the Lambert series of the $D_4$ proof is $\mathcal W_1$ & \\
+$S_M(v)$ & the torus one-point function $\tr_Mo(v)q^{L_0-c/24}$ & \S\ref{l25:sec:block}\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Reading the Lean in this chapter}\label{l25:sec:readlean}
+
+Chapter~\ref{ch:01}, Section~\ref{ch01:sec:lean}, is the general primer. The idioms that the printed code of this
+chapter needs are these.
+\begin{itemize}
+\item \textbf{Truncated blocks.} Proof bodies are omitted. A printed block therefore ends at \lean{:=},
+  \lean{:= by} or \lean{where}, and the proof follows in the file. \lean{theorem foo : S where} with nothing after
+  it is such a block: the omitted body fills the fields of the structure \lean{S} one by one. It is not a syntax
+  error.
+\item \textbf{Binders.} \lean{(x : T)} is an explicit argument, \lean{{x : T}} an implicit one inferred by Lean, and
+  \lean{[Field K]} an instance argument (a structure found automatically). \lean{(K := ℚ)} supplies the named
+  implicit argument \lean{K}. \lean{section} variables are arguments shared by all declarations of a section; we
+  list them in the dictionaries.
+\item \textbf{\lean{Prop}-valued structures.} \lean{structure S : Prop where eq : …} is a bundled hypothesis. A
+  proof \lean{h : S} gives \lean{h.eq}. A theorem that takes \lean{(h : S)} is conditional on \lean{S}, and
+  \#\lean{print axioms} does not show this.
+\item \textbf{\lean{abbrev} vs \lean{def}}: both define, and \lean{abbrev} unfolds automatically.
+\item \textbf{Finite sums.} \lean{∑ i ∈ s, f i} is a sum over the finite set \lean{s}. \lean{Finset.range n}
+  $=\{0,\dots,n-1\}$. \lean{Finset.antidiagonal n} $=\{(i,j):i+j=n\}$. \lean{Finset.Icc a b} $=[a,b]$, and
+  \lean{Finset.Icc a b with e n = d} is its subset where $e(n)=d$.
+\item \textbf{Small notation.} \lean{•} is scalar multiplication. \lean{x⁻¹} is the inverse. \lean{l.getD i 0} is
+  entry $i$ of a list (default $0$). \lean{f^[m]} is the $m$-fold iterate of \lean{f}. \lean{x.1.2} is the second
+  component of the first component of a pair.
+\item \textbf{Algebra.} \lean{(n : ℚ)} is a cast. \lean{MvPolynomial ι ℂ} is $\C[X_i:i\in\iota]$.
+  \lean{Submodule.span ℂ s} is the span. \lean{V ⧸ U} is the quotient space and \lean{U.mkQ} the quotient map.
+  \lean{PowerSeries R} is $R[[q]]$ (Chapter~\ref{ch:01}).
+\item \textbf{Kernel checks.} \lean{decide +kernel} proves a decidable statement by evaluating it in Lean's trusted
+  kernel. \lean{native_decide}, which would trust compiled code, is never used. \lean{d4_precompute}\texttt{\%} is a custom
+  elaborator that only \emph{proposes} literals; the kernel re-checks them.
+\end{itemize}
+
+\subsection{What was machine-checked, and when}\label{l25:sec:machine}
+
+The quotations were re-verified against the state of the library this chapter was written against. The last complete build of the umbrella module
+\lean{VOA.Deligne} is older: it was built green at an earlier commit. At that commit it imported, directly or transitively, all $239$ files of this chapter, including the $E_6$, $E_7$, $E_8$ modules
+(we checked the import closure). The build took 11099 jobs and reported no
+\lean{sorryAx}. The \#\lean{print axioms} commands in those files all reported a subset of
+\lean{[propext, Classical.choice, Quot.sound]}. The \emph{aggregate} \lean{lake build VOA} was last run green on
+26~October (13868 jobs), at an earlier commit. Neither has been re-run at the state this chapter was written against. Between
+that umbrella build and that state the Lean sources changed (the diff of \texttt{VOA} touches
+1390 files): certificate files were split to fit the memory budget (among them the $D_4$ divisor and the $A_2$ divisor
+certificates), a few files of this chapter were edited (for example \leanpath{VOA/DeligneAudit/DeligneMLDE.lean}, a
+docstring-only change), and the unconditional $A_2$ files were added. According to the project's internal build record of
+27 October 2026 (not re-run for this chapter) the exported statements of the split files are unchanged and the repaired targets were built green in
+targeted builds with standard axioms; every statement this chapter quotes occurs verbatim in the state this chapter was written against. On 2026-10-28 the aggregate build \texttt{bash scripts/campaign\_build.sh VOA} (the full \texttt{lake build VOA} under the project's memory-capped wrapper) was green on 2026-10-28 (a pre-release build): 18{,}901 jobs, and again 18{,}907 jobs after merging the then-current \texttt{origin/main}; the aggregate target contains the umbrella. The ``standard axioms'' of the
+status boxes are campaign records of the earlier umbrella build and of the later targeted builds. For this chapter we re-ran
+\#\lean{print axioms} on the generic lemmas named in the status boxes, plus the scratch checks reported in
+Caveat~\ref{l25:cav:equality} and Example~\ref{l25:ex:a2}. We ran no build.
+
+\textbf{Axioms.} Unless a status box says otherwise, every theorem of this chapter depends only on Lean's three
+standard axioms \lean{propext}, \lean{Classical.choice} and \lean{Quot.sound}. The library has no project axiom
+(\lean{VOA.pbw} is a theorem, Chapter~\ref{ch:L02}), and nothing here uses it. The status boxes therefore say
+``standard axioms''. They separately say whether we re-ran the check for this chapter.
+
+\subsection{Recurring caveats, stated once}\label{l25:sec:caveats}
+
+\begin{enumerate}
+\item\label{l25:cav:equality} \textbf{Equality is a Lean theorem only for $A_2$.} $\dim V_N=c_N$ is stated in Lean for
+  $A_2$ only (\lean{A2.finrank_eq_mldeCoeff'}). For the other six types only $\ge$ is stated. The equality is
+  derivable (warning after Theorem~\ref{l25:thm:alltypes}).
+\item\label{l25:cav:U7} \textbf{Demazure tables are algorithms.} \lean{levelOneDemazureHilb} and the $A_2$ formula
+  \lean{demazureHilb} are computable tables. Reading them as characters of $D(1,n\theta)$ is input U7, which is not
+  formalised.
+\item\label{l25:cav:hyp} \textbf{Named inputs are hypotheses, never axioms.} A star identity or bound is a
+  \lean{Prop}. A theorem that uses one takes it as an argument, and \#\lean{print axioms} does not show it.
+\item\label{l25:cav:docs} \textbf{Stale documentation.} Several docstrings call proved statements ``named'' or
+  ``literature'' inputs. They are listed once, in Section~\ref{l25:sec:defects}, and not repeated next to the
+  theorems.
+\end{enumerate}
+
+%======================================================================
+\section{The character side of classical freeness}\label{l25:sec:interface}
+%======================================================================
+
+\subsection{Where the characters enter}
+
+Let $V=L_k(\ltwentyfiveg)$ and let $R_V=V/C_2(V)$ be Zhu's $C_2$-algebra (Chapter~\ref{ch:L12}). Classical
+freeness asserts that the Li filtration of $V$ has associated graded equal to the coordinate ring of the arc
+space $J_\infty X$ of the scheme $X=\operatorname{Spec}R_V$, and that $R_V=\operatorname{Sym}(\ltwentyfiveg)/(I_2^{\rm
+ns})$ for an explicit ideal $I_2^{\rm ns}$ of quadrics. Chapter~\ref{ch:L24} reduces this to three
+\emph{packages} for a presentation $P$ of $V$ and a ``carrier'' family of vector spaces
+$\mathrm{Carrier}_{p,N}$ (bigraded by Li degree $p$ and conformal weight $N$):
+current-jet surjectivity, an injective geometric carrier embedding, and the \emph{ordinary carrier character}
+identity $\sum_{p\le N}\dim\mathrm{Carrier}_{p,N}=\dim V_N$. The first two give one inequality
+for free (link (d) of \eqref{l25:eq:chain}); the third is the character side. Its lower half, links (b) and (c), is
+the subject of this chapter.
+
+\begin{definition}[Carrier character lower bound]\label{l25:def:cclb}
+For a VOA $V$ and a bigraded family $\mathrm{Carrier}_{p,N}$, the \emph{carrier character lower bound} is the
+statement
+\begin{equation*}
+\forall N\ge0:\qquad \sum_{p=0}^{N}\dim_\C\mathrm{Carrier}_{p,N}\;\le\;\dim_\C V_N .
+\end{equation*}
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak A2Character.lean}.
+\begin{leancode}
+def CarrierCharacterLowerBound (W : VertexOperatorAlgebra V)
+    (Carrier : ℕ → ℕ → Type uC)
+    [∀ p N, AddCommGroup (Carrier p N)]
+    [∀ p N, Module ℂ (Carrier p N)] : Prop :=
+  ∀ N,
+    (∑ p ∈ Finset.range (N + 1), Module.finrank ℂ (Carrier p N)) ≤
+      Module.finrank ℂ (W.grading N)
+\end{leancode}
+\begin{dictionary}
+\lean{W.grading N} is the weight-$N$ subspace $V_N$ (a \lean{Submodule}; the natural number $N$ is coerced to
+$\Z$); \lean{Module.finrank ℂ} is its complex dimension (Mathlib's \lean{finrank}, which is $0$ for an
+infinite-dimensional space --- harmless here, since every $V_N$ is finite-dimensional for the VOAs of this
+chapter). \lean{Finset.range (N + 1)} is $\{0,\dots,N\}$. The definition is exactly
+Definition~\ref{l25:def:cclb}. It is a \lean{Prop}-valued \lean{def}, not a structure, so it is used by
+applying it to $N$.
+\end{dictionary}
+\begin{physics}
+$\dim V_N$ counts the states of conformal weight $N$ in the vacuum module of the chiral CFT: the vacuum
+character $\tr_V q^{L_0}$. The carrier is a model of the classical (``$\hbar\to0$'') phase space of the
+theory, the arc space of the Higgs branch. The inequality says the quantum theory has at least as many
+states as its classical limit predicts --- the nontrivial direction, since quantum corrections usually
+\emph{remove} states (null vectors).
+\end{physics}
+\begin{status}
+Definition. Unconditional by construction.
+\end{status}
+
+\begin{theorem}[The lower bound suffices]\label{l25:thm:ofle}
+Given a presentation $P$, current-jet surjectivity and an injective geometric carrier embedding, the carrier
+character lower bound implies the ordinary carrier character identity.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak A2Character.lean}.
+\begin{leancode}
+theorem ordinaryCarrierCharacter_of_le
+    (P : CurrentC2Presentation case W)
+    (Carrier : ℕ → ℕ → Type uC)
+    [∀ p N, AddCommGroup (Carrier p N)]
+    [∀ p N, Module ℂ (Carrier p N)]
+    [∀ p N, FiniteDimensional ℂ (Carrier p N)]
+    (hsurj : CurrentJetSurjectivity case W P)
+    (hgeom : GeometricCarrierEmbedding case W P Carrier)
+    (hlow : CarrierCharacterLowerBound W Carrier) :
+    OrdinaryCarrierCharacter W Carrier
+\end{leancode}
+\begin{dictionary}
+The packages \lean{CurrentC2Presentation}, \lean{CurrentJetSurjectivity}, \lean{GeometricCarrierEmbedding},
+\lean{OrdinaryCarrierCharacter} are defined in Chapter~\ref{ch:L24}. \lean{OrdinaryCarrierCharacter W Carrier}
+is the \emph{equality} $\sum_p\dim\mathrm{Carrier}_{p,N}=\dim V_N$ for all $N$. The theorem is the
+statement for any \lean{case} and any VOA, so the same reduction serves all seven types. A companion,
+\lean{carrierCharacterLowerBound_of_ordinary}, gives the converse, so in the presence of the two other
+packages the lower bound and the identity are \emph{equivalent}: nothing is lost. \textbf{Implicit data and an
+extra hypothesis.} \lean{case : HigherRankDeligneCase} (the Deligne type), the carrier space \lean{V : Type uV} with
+its VOA \lean{W}, and the universe \lean{uC} of the carrier are section variables (implicit). The instance
+\lean{[∀ p N, FiniteDimensional ℂ (Carrier p N)]} is a hypothesis not visible in
+Theorem~\ref{l25:thm:ofle} as stated: it makes \lean{finrank} the true dimension of each carrier space. Without it
+\lean{finrank} would be $0$ on an infinite-dimensional carrier and \lean{hlow} would be weaker than it reads.
+\end{dictionary}
+\begin{proof}[Proof on paper]
+Current-jet surjectivity says each Li layer $\mathrm{gr}^{\rm Li}_{p}V_N$ is a quotient of a finite-dimensional
+jet space $J_{p,N}$, and the carrier embedding injects the dual $J_{p,N}^*$ into $\mathrm{Carrier}_{p,N}$.
+Hence $\dim\mathrm{gr}^{\rm Li}_pV_N\le\dim\mathrm{Carrier}_{p,N}$; summing over $p$ and using that the Li
+layers of $V_N$ add up to $\dim V_N$ gives $\dim V_N\le\sum_p\dim\mathrm{Carrier}_{p,N}$ (the library's
+\lean{finrank_grading_le_carrier_sum}). Combined with the hypothesis, equality.
+\end{proof}
+\begin{physics}
+The upper bound is ``every state is generated by currents, modulo the classical relations''; the lower bound
+is ``no further quantum relations occur''. Together: the chiral algebra is \emph{classically free}, its
+quantum states are in bijection with classical arc-space functions.
+\end{physics}
+\begin{status}
+Standard axioms. Unconditional as an implication.
+\end{status}
+
+\subsection{The split at the Demazure sum}
+
+The carrier is too complicated to compare with $\dim V_N$ directly. The project interposes a combinatorial
+series, the \emph{Demazure sum}, built from Hilbert series of level-one affine Demazure modules $D(1,n\theta)$:
+\begin{equation}\label{l25:eq:dsum}
+\sum_{N\ge0}D_Nq^N \;=\;\sum_{n\ge0}\frac{q^n\,\mathrm{Hilb}_q D(1,n\theta)}{(q;q)_n},\qquad
+(q;q)_n=\prod_{i=1}^n(1-q^i).
+\end{equation}
+The carrier side (Chapter~\ref{ch:L24} and Chapter~\ref{ch:L26}) proves $\sum_p\dim\mathrm{Carrier}_{p,N}\le D_N$,
+link (a) of \eqref{l25:eq:chain}; this chapter must prove $D_N\le\dim V_N$, links (b) and (c).
+
+\begin{definition}[Coefficient arithmetic; the Demazure sum]\label{l25:def:dsum}
+For coefficient tables $f,g:\N\to\N$ let $(f\ast g)(N)=\sum_{i=0}^Nf(i)g(N-i)$ (the Cauchy product), and let
+$p_{\le n}(N)$ be the number of partitions of $N$ into parts of size at most $n$, i.e.\ $[q^N]1/(q;q)_n$. For a
+table $\mathrm{hilb}(n,N)=[q^N]\mathrm{Hilb}_qD(1,n\theta)$, the Demazure sum is
+\begin{equation*}
+D_N=\sum_{n=0}^{N}\big(\mathrm{hilb}(n,\cdot)\ast p_{\le n}\big)(N-n),
+\end{equation*}
+which is the $q^N$ coefficient of \eqref{l25:eq:dsum}.
+\end{definition}
+\noindent Files \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak A2CharacterInterface.lean} and
+\leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneCharacter.lean}.
+\begin{leancode}
+def conv (f g : ℕ → ℕ) (N : ℕ) : ℕ :=
+  ∑ i ∈ Finset.range (N + 1), f i * g (N - i)
+
+def partitionsLe : ℕ → ℕ → ℕ
+  | 0, N => if N = 0 then 1 else 0
+  | n + 1, N => ∑ j ∈ Finset.range (N / (n + 1) + 1), partitionsLe n (N - j * (n + 1))
+
+def demazureSumCoeff (hilb : ℕ → ℕ → ℕ) (N : ℕ) : ℕ :=
+  ∑ n ∈ Finset.range (N + 1), conv (hilb n) (partitionsLe n) (N - n)
+\end{leancode}
+\begin{dictionary}
+\lean{partitionsLe n N}: the recursion conditions on the number $j$ of parts equal to $n+1$, which is
+exactly how $1/(q;q)_{n+1}=\frac{1}{1-q^{n+1}}\cdot\frac{1}{(q;q)_n}$ expands. So
+\lean{partitionsLe n N} $=[q^N]1/(q;q)_n$. In \lean{demazureSumCoeff}, the shift $N-n$ accounts for the
+factor $q^n$ in \eqref{l25:eq:dsum}, and terms with $n>N$ vanish, so the finite range $n\le N$ is exact. All of
+this is $\N$-valued and computable, so small cases are checked by \lean{decide +kernel} (kernel evaluation,
+not \lean{native_decide}). \textbf{What is \lean{hilb}?} Any table; the definition does not know about
+Demazure modules. \emph{All} Demazure content enters through the choice of table, and its reading as
+$\mathrm{Hilb}_qD(1,n\theta)$ is the input U7 (Caveat~\ref{l25:cav:U7}). The concrete tables are built in
+Section~\ref{l25:sec:demazure}, and the $A_2$ table in Theorem~\ref{l25:thm:a2star}; in Lean a table is only what it
+computes.
+\end{dictionary}
+\begin{physics}
+\emph{Heuristic.} In the fusion picture (Chapter~\ref{ch:L26}), $D(1,n\theta)$ is the graded fusion product of $n$
+copies of the adjoint-plus-singlet representation, and $1/(q;q)_n$ counts the ways of distributing $n$
+indistinguishable excitations among levels. The sum \eqref{l25:eq:dsum} then reads as a ``fermionic''
+(quasi-particle) form of a character: states built from $n$ quasi-particles of adjoint type, with momenta encoded by
+the Demazure grading. As a statement about the vacuum module this is conjectural; its mathematical content is links
+(a) and (b) of \eqref{l25:eq:chain}, i.e.\ U5--U7 and the star identity.
+\end{physics}
+\begin{status}
+Definitions; computable; unconditional.
+\end{status}
+
+\begin{definition}[Named inputs of the character side, integer form]\label{l25:def:inputs}
+For a table \lean{hilb}, a target sequence $t:\N\to\N$ and a VOA $W$:
+\begin{itemize}
+\item the \emph{star identity} $D_N=t_N$ for all $N$;
+\item the \emph{target lower bound} $t_N\le\dim W_N$ for all $N$;
+\item the \emph{Demazure bound} $D_N\le\dim W_N$ for all $N$.
+\end{itemize}
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneCharacter.lean}.
+\begin{leancode}
+structure StarIdentityFor (hilb : ℕ → ℕ → ℕ) (target : ℕ → ℕ) : Prop where
+  eq : ∀ N, demazureSumCoeff hilb N = target N
+
+structure TargetLowerBound (W : VertexOperatorAlgebra V) (target : ℕ → ℕ) : Prop where
+  le : ∀ N : ℕ, target N ≤ Module.finrank ℂ (W.grading N)
+
+structure DemazureBoundFor (W : VertexOperatorAlgebra V) (hilb : ℕ → ℕ → ℕ) : Prop where
+  le : ∀ N : ℕ, demazureSumCoeff hilb N ≤ Module.finrank ℂ (W.grading N)
+
+theorem demazureBoundFor_of_inputs {W : VertexOperatorAlgebra V} {hilb : ℕ → ℕ → ℕ}
+    {target : ℕ → ℕ} (hstar : StarIdentityFor hilb target) (hlow : TargetLowerBound W target) :
+    DemazureBoundFor W hilb
+\end{leancode}
+\begin{dictionary}
+Each is a \lean{Prop}-valued \lean{structure} with one field; a proof of \lean{StarIdentityFor hilb t} is a
+proof of $\forall N,\ D_N=t_N$, accessed as \lean{h.eq N}. \textbf{These are hypotheses, never axioms}: a
+theorem taking \lean{(hstar : StarIdentityFor …)} is conditional on it, and \#\lean{print axioms} does not
+show this (Caveat~\ref{l25:cav:hyp}). \lean{demazureBoundFor_of_inputs} is the transitivity
+$D_N=t_N\le\dim W_N$.
+\end{dictionary}
+\begin{physics}
+The ``target'' is the vacuum character of the VOA as predicted by representation theory or by the MLDE; the
+star identity says the quasi-particle (fermionic) form of the character equals it. Such ``fermionic $=$
+bosonic'' identities are the hallmark of integrable structure in 2d CFT (Rogers--Ramanujan being the
+prototype for the Lee--Yang model).
+\end{physics}
+\begin{status}
+Definitions and a one-line transitivity; standard axioms.
+\end{status}
+
+\begin{theorem}[The glue]\label{l25:thm:glue}
+If $\sum_p\dim\mathrm{Carrier}_{p,N}\le D_N$ for all $N$ and the Demazure bound holds, the carrier character lower
+bound holds.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneCharacter.lean}.
+\begin{leancode}
+theorem carrierCharacterLowerBound_of_demazureSum {W : VertexOperatorAlgebra V}
+    {hilb : ℕ → ℕ → ℕ}
+    (Carrier : ℕ → ℕ → Type uC)
+    [∀ p N, AddCommGroup (Carrier p N)] [∀ p N, Module ℂ (Carrier p N)]
+    (hcar : ∀ N, (∑ p ∈ Finset.range (N + 1), Module.finrank ℂ (Carrier p N)) ≤
+      demazureSumCoeff hilb N)
+    (hchr : DemazureBoundFor W hilb) :
+    CarrierCharacterLowerBound W Carrier
+\end{leancode}
+\begin{dictionary}
+Exactly Theorem~\ref{l25:thm:glue}, a transitivity in $\N$. \lean{hcar} is the carrier side
+(Chapter~\ref{ch:L26}); \lean{hchr} is this chapter's goal.
+\end{dictionary}
+\begin{proof}[Proof on paper]
+$\sum_p\dim\mathrm{Carrier}_{p,N}\le D_N\le\dim W_N$.
+\end{proof}
+\begin{physics}
+Classical states $\le$ quasi-particle states $\le$ quantum states. The first inequality is a statement about
+the classical phase space, the second about the quantum theory.
+\end{physics}
+\begin{status}
+Standard axioms; unconditional as an implication.
+\end{status}
+
+\subsection{The rational form and the one-sided form}
+
+The natural targets are rational sequences (the MLDE has rational coefficients), so the library also has
+$\Q$-valued versions.
+
+\begin{definition}[Rational inputs]\label{l25:def:Qinputs}
+For $t:\N\to\Q$: \lean{StarIdentityQ hilb t} is $D_N=t_N$, \lean{TargetLowerBoundQ W t} is $t_N\le\dim W_N$
+(both in $\Q$), and \lean{StarBoundQ hilb t} is the one-sided $D_N\le t_N$.
+\end{definition}
+\noindent Files \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneCharacterTypes.lean} and
+\leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneCharacterStarBound.lean}.
+\begin{leancode}
+structure StarIdentityQ (hilb : ℕ → ℕ → ℕ) (target : ℕ → ℚ) : Prop where
+  eq : ∀ N, (demazureSumCoeff hilb N : ℚ) = target N
+
+structure TargetLowerBoundQ {V : Type*} [AddCommGroup V] [Module ℂ V]
+    (W : VertexOperatorAlgebra V) (target : ℕ → ℚ) : Prop where
+  le : ∀ N : ℕ, target N ≤ (Module.finrank ℂ (W.grading N) : ℚ)
+
+theorem demazureBoundFor_of_Q {V : Type*} [AddCommGroup V] [Module ℂ V]
+    {W : VertexOperatorAlgebra V} {hilb : ℕ → ℕ → ℕ} {target : ℕ → ℚ}
+    (hstar : StarIdentityQ hilb target) (hlow : TargetLowerBoundQ W target) :
+    DemazureBoundFor W hilb
+\end{leancode}
+\begin{leancode}
+def StarBoundQ (hilb : ℕ → ℕ → ℕ) (c : ℕ → ℚ) : Prop :=
+  ∀ N, (demazureSumCoeff hilb N : ℚ) ≤ c N
+
+theorem demazureBoundFor_of_bound {V : Type*} [AddCommGroup V] [Module ℂ V]
+    {W : VertexOperatorAlgebra V} {hilb : ℕ → ℕ → ℕ} {target : ℕ → ℚ}
+    (hstar : StarBoundQ hilb target) (hlow : TargetLowerBoundQ W target) :
+    DemazureBoundFor W hilb
+\end{leancode}
+\begin{dictionary}
+The casts \lean{(… : ℚ)} send $\N\to\Q$; the inequalities are in $\Q$ and \lean{exact_mod_cast} transports them
+back to $\N$. \textbf{Why the one-sided form?} Downstream, the star identity is only ever used through
+$D_N=t_N\le\dim W_N$, so $D_N\le t_N$ suffices; \lean{StarIdentityQ.toStarBoundQ} shows the $=$ form implies
+it. Whether the $\le$ form is \emph{easier to prove} is a separate question. For proofs by termwise domination it
+is not (Section~\ref{l25:sec:rigidity}); for other proofs the question is open.
+\end{dictionary}
+\begin{physics}
+The same three statements as before, with the target allowed to be any rational sequence --- in practice the
+MLDE solution, whose coefficients are a priori rational and turn out to be integers.
+\end{physics}
+\begin{status}
+Definitions and transitivities; standard axioms.
+\end{status}
+
+\begin{warning}[title={Two different \texttt{mldeCoeff}}]
+\lean{VOA.DeligneAudit.DeligneCharacter.mldeCoeff (h N : ℕ) : ℚ} (Definition~\ref{l25:def:mlde} below) is the
+$N$-th coefficient of the AK solution. \lean{VOA.mldeCoeff (s : ℕ) (c : ℕ → E46) (h : ℕ → ℕ → E46) (j : ℕ) : E46}
+in \leanpath{VOA/\allowbreak Modularity/\allowbreak AKMLDE.lean} (Chapter~\ref{ch:L16}) is the $j$-th coefficient
+of a generic monic MLDE over $\C[E_4,E_6]$. They share only the short name (Section~\ref{l25:sec:defects}). In
+this chapter \lean{mldeCoeff} always means the first.
+\end{warning}
+
+%======================================================================
+\section{The Arakawa--Kawasetsu recurrence}\label{l25:sec:recurrence}
+%======================================================================
+
+\subsection{A primer on modular linear differential equations}\label{l25:sec:primer}
+
+Write $\ltwentyfiveEu=q\,\frac{d}{dq}$ for the Euler operator, $\sigma_k(n)=\sum_{d\mid n}d^k$, and use the normalised
+Eisenstein series $E_2=1-24\sum_{n\ge1}\sigma_1(n)q^n$, $E_4=1+240\sum_{n\ge1}\sigma_3(n)q^n$ and
+$E_6=1-504\sum_{n\ge1}\sigma_5(n)q^n$ (Chapter~\ref{ch:L14}). This primer explains the shape of the equation. None of
+it is used in the proofs, which are purely formal.
+
+\paragraph{Modular forms and the Serre derivative.} A modular form $f$ of weight $k$ for $SL_2(\Z)$ satisfies
+$f(\frac{a\tau+b}{c\tau+d})=(c\tau+d)^kf(\tau)$. Here $q=e^{2\pi i\tau}$, so $\ltwentyfiveEu=\frac1{2\pi i}\frac{d}{d\tau}$.
+The ring of such forms is $\C[E_4,E_6]$. In particular there is no nonzero form of weight $2$, the forms of weight $4$
+are the multiples of $E_4$, and the space of weight $8$ is spanned by $E_4^2$. The derivative $\ltwentyfiveEu f$ of a
+weight-$k$ form is not modular, because differentiating $(c\tau+d)^k$ produces an extra term. The quasimodular series
+$E_2$ has exactly the compensating transformation law, so the \emph{Serre derivative}
+\begin{equation*}
+\vartheta_k=\ltwentyfiveEu-\tfrac{k}{12}E_2
+\end{equation*}
+maps weight-$k$ forms to weight-$(k+2)$ forms. Ramanujan's identities (Theorem~\ref{l25:thm:ramanujan}) are the formal
+shadow of this fact.
+
+\paragraph{MLDEs.} Zhu's theorem says that the characters $f_M=\tr_Mq^{L_0-c/24}$ of a rational, $C_2$-cofinite VOA
+form a vector-valued modular function, i.e.\ have weight $0$. Arakawa and Kawasetsu extend this to quasi-lisse VOAs.
+For weight $0$, the natural order-$n$ operator is
+$\vartheta^n=\vartheta_{2n-2}\circ\dots\circ\vartheta_2\circ\vartheta_0$, which raises the weight by $2n$. A
+\emph{monic MLDE of order $n$} is
+$\vartheta^nf+\sum_{j=1}^{n}\phi_j\,\vartheta^{n-j}f=0$, where each coefficient $\phi_j$ is a modular form of weight
+$2j$. At order two the coefficient $\phi_1$ has weight $2$, so it vanishes, and $\phi_2$ has weight $4$, so it is a
+multiple $-\lambda E_4$. Hence every second-order MLDE has the one-parameter form
+\begin{equation*}
+\vartheta_2\vartheta_0f=\lambda E_4f,\qquad \vartheta_2\vartheta_0=\big(\ltwentyfiveEu-\tfrac16E_2\big)\ltwentyfiveEu .
+\end{equation*}
+
+\paragraph{Why order two, and why weight four.} Zhu's recursion (Section~\ref{l25:sec:block}) assigns to each state
+$v$ of square-bracket weight $k$ a torus one-point function $S_M(v)$, which is quasimodular of weight $k$. A relation
+among states of weight $2n$ that expresses the ``$n$-th power of the stress tensor'' through simpler states becomes an
+MLDE of order $n$. The state $L[-2]^2\ltwentyfivevac$, the square $(TT)$ of the stress tensor, has $L_0$-weight $4$.
+Its one-point function is $\vartheta_2\vartheta_0f$ up to the Eisenstein terms of Theorem~\ref{l25:thm:tower}, a
+weight-four quasimodular object. That the $L_0$-weight of $(TT)$ equals the modular weight of $E_4$ is therefore no
+coincidence: Zhu's recursion turns the one into the other. A relation saying that $(TT)$ is, up to states with
+vanishing or Eisenstein-type traces, ``classically zero'' (the vacuum quartic relation of
+Section~\ref{l25:sec:block}) produces exactly a second-order MLDE. \textbf{No modularity is used in this chapter}: all
+equations are identities of formal $q$-series, coefficient by coefficient.
+
+\subsection{The Arakawa--Kawasetsu equation and its recurrence}
+
+Arakawa and Kawasetsu proved (arXiv:1610.05865, \S7) the following. Let $V=L_k(\ltwentyfiveg)$ be in the Deligne series,
+with $h=\ltwentyfivehv$ and $k=-1-h/6$. Then the normalised vacuum character $f=q^{-c/24}\sum_Nd_Nq^N$, with
+$d_N=\dim V_N$, satisfies
+\begin{equation}\label{l25:eq:mlde}
+\Big(\ltwentyfiveEu-\tfrac{1}{6}E_2\Big)\ltwentyfiveEu f \;=\; \frac{h^2-1}{144}\,E_4\,f ,
+\end{equation}
+which is the second-order MLDE above with $\lambda=(h^2-1)/144$.
+
+Substitute $f=q^{e}\sum d_Nq^N$ and read off the coefficient of $q^{N+e}$. Since $\ltwentyfiveEu q^{N+e}=(N+e)q^{N+e}$,
+the coefficient of $q^e$ (the \emph{indicial equation}) is $e^2-e/6-(h^2-1)/144=0$. Equivalently
+$(12e)^2-2(12e)-(h^2-1)=0$, with roots $12e=1\pm h$. The character has $e=-c/24=(h+1)/12$, the larger root. For
+$N\ge1$ the coefficient of $d_N$ becomes $(N+e)^2-(N+e)/6-(h^2-1)/144=N(6N+h)/6$. Multiplying the $q^{N+e}$ equation by
+$6$ gives
+\begin{equation}\label{l25:eq:rec}
+N(6N+h)\,d_N=\sum_{r=1}^{N}\Big[10(h^2-1)\sigma_3(r)-\big(24(N-r)+2(h+1)\big)\sigma_1(r)\Big]\,d_{N-r}.
+\end{equation}
+The factor $N(6N+h)$ never vanishes for $N\ge1$, so \eqref{l25:eq:rec} with $d_0=1$ determines the sequence. At $N=1$
+only $r=1$ contributes, and $(6+h)d_1=10(h^2-1)-2(h+1)=2(h+1)(5h-6)$, so
+\begin{equation*}
+d_1=\frac{2(h+1)(5h-6)}{h+6}.
+\end{equation*}
+Deligne's dimension formula for the series is $\dim\ltwentyfiveg=2(h+1)(5h-6)/(h+6)$, so $d_1=\dim\ltwentyfiveg$. The
+equation knows the number of currents $J^a_{-1}\ltwentyfivevac$, but only because $k$ is the Deligne level: the value
+$c=-2(h+1)$ was used to fix $e$.
+
+\begin{definition}[The AK coefficients]\label{l25:def:mlde}
+$\sigma_k(n)=\sum_{d\mid n}d^k$. For $h\in\N$, $c_N=\mathtt{mldeCoeff}\ h\ N\in\Q$ is defined by $c_0=1$
+and \eqref{l25:eq:rec} solved for $c_N$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneCharacterTypes.lean}.
+\begin{leancode}
+def sigmaK (k n : ℕ) : ℕ := ∑ d ∈ n.divisors, d ^ k
+
+def mldeList (h : ℕ) : ℕ → List ℚ
+  | 0 => [1]
+  | n + 1 =>
+      let l := mldeList h n
+      let N := n + 1
+      l ++ [(∑ r ∈ Finset.range N,
+          ((10 * ((h : ℚ) ^ 2 - 1) * sigmaK 3 (r + 1) -
+            (24 * ((N : ℚ) - (r + 1)) + 2 * ((h : ℚ) + 1)) * sigmaK 1 (r + 1)) *
+              l.getD (N - (r + 1)) 0)) / ((N : ℚ) * (6 * N + h))]
+
+def mldeCoeff (h N : ℕ) : ℚ := (mldeList h N).getD N 0
+\end{leancode}
+\begin{dictionary}
+\lean{n.divisors} is Mathlib's finset of positive divisors ($\emptyset$ for $n=0$, so $\sigma_k(0)=0$).
+\lean{mldeList h n} is the list $[c_0,\dots,c_n]$, built by appending one entry at a time;
+\lean{l.getD i 0} reads entry $i$ (default $0$ out of range). The summation index $r\in\{0,\dots,N-1\}$ in Lean is
+$r+1\in\{1,\dots,N\}$ on paper. The appended entry is exactly \eqref{l25:eq:rec} divided by $N(6N+h)$.
+\lean{mldeCoeff h N} reads the last entry. \textbf{Division by zero?} \lean{(N : ℚ) * (6 * N + h)} with
+$N\ge1$ is positive; Lean's $x/0=0$ convention never fires. \textbf{Is it the AK equation?} That the list
+satisfies the recurrence is the next theorem; that the recurrence is \eqref{l25:eq:mlde} is the derivation above,
+and the library re-derives it from the VOA (Theorem~\ref{l25:thm:kappa}).
+\end{dictionary}
+\begin{physics}
+$c_N$ is the predicted number of states of weight $N$ in the vacuum module: the MLDE ``knows'' the vacuum character
+once it knows $c$. The first values are in Table~\ref{l25:tab:cN}. The weight-one value $c_1=\dim\ltwentyfiveg$ counts
+the currents $J^a_{-1}\ltwentyfivevac$ (derivation above).
+\end{physics}
+\begin{status}
+Definition; computable.
+\end{status}
+
+\begin{table}[ht]\centering\small
+\caption{The first AK coefficients $c_N=\mathtt{mldeCoeff}\ h^\vee\ N$. Every entry was computed from
+\eqref{l25:eq:rec} in exact rational arithmetic for this chapter. Kernel-checked in the library: $A_2$ through $c_3$
+(\lean{A2.mldeCoeff_A2_small}) and $G_2$ through $c_2$ (\lean{mldeCoeff_G2_small}). Kernel-checked in a scratch file for
+this chapter, not in the library: $D_4$ through $c_2$.}\label{l25:tab:cN}
+\begin{tabular}{llllllll}
+\toprule
+type & $h^\vee$ & $k$ & $c$ & $c_1$ & $c_2$ & $c_3$ & $c_4$\\
+\midrule
+$A_2$ & 3 & $-3/2$ & $-8$ & 8 & 36 & 128 & 394\\
+$G_2$ & 4 & $-5/3$ & $-10$ & 14 & 92 & 456 & 1848\\
+$D_4$ & 6 & $-2$ & $-14$ & 28 & 329 & 2632 & 16380\\
+$F_4$ & 9 & $-5/2$ & $-20$ & 52 & 1106 & 14808 & 147239\\
+$E_6$ & 12 & $-3$ & $-26$ & 78 & 2509 & 49270 & 698425\\
+$E_7$ & 18 & $-4$ & $-38$ & 133 & 7505 & 254885 & 6093490\\
+$E_8$ & 30 & $-6$ & $-62$ & 248 & 27249 & 1821002 & 85118126\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{theorem}[The recurrence, and uniqueness]\label{l25:thm:unique}
+Call $d:\N\to K$ ($K$ a field of characteristic $0$) a \emph{normalised AK solution} with parameter $h$ if $d_0=1$
+and \eqref{l25:eq:rec} holds for all $N\ge1$. Then $c=\mathtt{mldeCoeff}\ h$ is one, and every normalised AK
+solution equals $c$ (cast into $K$).
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneMLDE.lean}.
+\begin{leancode}
+def akKernel (h N r : ℕ) : ℚ :=
+  10 * ((h : ℚ) ^ 2 - 1) * sigmaK 3 r - (24 * ((N : ℚ) - r) + 2 * ((h : ℚ) + 1)) * sigmaK 1 r
+
+structure IsAKSolution {K : Type*} [Field K] [CharZero K] (h : ℕ) (d : ℕ → K) : Prop where
+  zero : d 0 = 1
+  step : ∀ N : ℕ, 1 ≤ N →
+    (N : K) * (6 * N + h) * d N
+      = ∑ r ∈ Finset.range N, (akKernel h N (r + 1) : K) * d (N - (r + 1))
+
+theorem mldeCoeff_isAKSolution (h : ℕ) : IsAKSolution (K := ℚ) h (mldeCoeff h) where
+
+theorem eq_mldeCoeff_of_isAKSolution {K : Type*} [Field K] [CharZero K] {h : ℕ} {d : ℕ → K}
+    (hd : IsAKSolution h d) : ∀ N, d N = (mldeCoeff h N : K)
+\end{leancode}
+\begin{dictionary}
+\lean{akKernel h N r} is the bracket in \eqref{l25:eq:rec} with $r$ the summation index. \lean{IsAKSolution} is the
+definition in Theorem~\ref{l25:thm:unique}: \lean{zero} is $d_0=1$, \lean{step} is \eqref{l25:eq:rec} for $N\ge1$. The
+field $K$ is arbitrary of characteristic $0$; the library uses $K=\Q$ (for $q$-series) and $K=\C$ (for graded
+dimensions of a complex VOA). The cast \lean{(mldeCoeff h N : K)} is the image of a rational under $\Q\to K$.
+Same statement as on paper.
+\end{dictionary}
+\begin{proof}[Proof on paper]
+The first claim is the definition unfolded (the list's last entry is the recurrence's right side divided by
+$N(6N+h)$). Uniqueness: by strong induction on $N$, the right side of \eqref{l25:eq:rec} involves only $d_{N-r}$ with
+$r\ge1$, equal to $c_{N-r}$ by induction, and $N(6N+h)\ne0$ in characteristic $0$, so $d_N=c_N$.
+\end{proof}
+\begin{physics}
+A second-order ODE with a regular singularity at $q=0$ has a two-dimensional solution space, with characteristic
+exponents $(1\pm h)/12$. \textbf{Uniqueness is not delicate here.} For the larger exponent, the vacuum's, the leading
+factor of the recurrence is $N(6N+h)$, which is nonzero for every $N\ge1$, so the normalised solution exists and is
+unique. A logarithmic solution can arise only from the \emph{smaller} exponent, when the exponent difference $h/6$ is a
+positive integer ($h=6,12,18,30$), and that solution is never used. \emph{Heuristic reading:} the smaller exponent
+$(1-h)/12$ would be the leading exponent of a second ``character'' of the two-character theory. That character would
+belong to a module whose lowest conformal weight differs from the vacuum's by $-h/6$. Nothing in this chapter depends on
+this reading.
+\end{physics}
+\begin{status}
+Standard axioms (re-run for this chapter with \lean{lake env lean -DmaxSynthPendingDepth=3}). Unconditional.
+\end{status}
+
+\begin{theorem}[Graded dimensions solving the recurrence are the AK coefficients]\label{l25:thm:fromAK}
+If the graded dimensions $N\mapsto\dim W_N\in\C$ of a VOA form a normalised AK solution with parameter $h$, then
+$\dim W_N=c_N$ for all $N$, and in particular \lean{TargetLowerBoundQ W (mldeCoeff h)}.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneMLDE.lean}.
+\begin{leancode}
+theorem finrank_eq_mldeCoeff_of_isAKSolution (W : VertexOperatorAlgebra V) {h : ℕ}
+    (hW : IsAKSolution h (fun N : ℕ => (Module.finrank ℂ (W.grading N) : ℂ))) (N : ℕ) :
+    (Module.finrank ℂ (W.grading N) : ℚ) = mldeCoeff h N
+
+theorem targetLowerBoundQ_of_isAKSolution (W : VertexOperatorAlgebra V) {h : ℕ}
+    (hW : IsAKSolution h (fun N : ℕ => (Module.finrank ℂ (W.grading N) : ℂ))) :
+    TargetLowerBoundQ W (mldeCoeff h)
+\end{leancode}
+\begin{dictionary}
+The hypothesis casts $\dim W_N\in\N$ into $\C$; the conclusion is an equality in $\Q$ (the cast $\Q\to\C$ is
+injective). The second theorem uses only the $\ge$ half of the equality and discards the rest: this is why the
+per-type theorems of Section~\ref{l25:sec:alltypes}, which go through it, export only an inequality.
+\end{dictionary}
+\begin{proof}[Proof on paper]
+Uniqueness (Theorem~\ref{l25:thm:unique}) over $K=\C$, then injectivity of $\Q\to\C$.
+\end{proof}
+\begin{physics}
+``If the character satisfies the MLDE with the right leading exponent, it \emph{is} the MLDE solution.'' The
+whole difficulty is moved into proving the MLDE for the VOA.
+\end{physics}
+\begin{status}
+Standard axioms; unconditional as an implication.
+\end{status}
+
+\begin{example}[Kernel checks of small values]\label{l25:ex:small}
+The library checks by \lean{decide +kernel}:
+\begin{leancode}
+theorem mldeCoeff_G2_small : (List.range 3).map (mldeCoeff 4) = [1, 14, 92] := by decide +kernel
+\end{leancode}
+\noindent (file \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneCharacterTypes.lean}) and
+\lean{A2.mldeCoeff_A2_small}: $[c_0,\dots,c_3]=[1,8,36,128]$ for $h=3$ (file \leanpath{DeligneMLDE.lean}). These pin
+the conventions (a wrong sign in \lean{akKernel} would already fail at $c_1$, which must be $\dim\ltwentyfiveg$).
+\end{example}
+
+\begin{example}[$A_2$ from scratch]\label{l25:ex:a2}
+This example runs every layer of the chapter on the smallest case, $\ltwentyfiveg=\mathfrak{sl}_3$, $h=3$, $k=-3/2$,
+$c=-8$. All numbers below were recomputed by hand. The statements marked (L) are kernel checks in the library, and
+those marked (S) are kernel checks (\lean{decide +kernel}) that we ran in a scratch file for this chapter.
+
+\emph{The recurrence.} With $h=3$ the bracket in \eqref{l25:eq:rec} is $80\,\sigma_3(r)-(24(N-r)+8)\,\sigma_1(r)$.
+\begin{itemize}
+\item $N=1$: $1\cdot9\cdot d_1=(80-8)\cdot d_0=72$, so $d_1=8=\dim\mathfrak{sl}_3$.
+\item $N=2$: the bracket is $80-32=48$ at $r=1$ and $80\cdot9-8\cdot3=696$ at $r=2$, so $2\cdot15\cdot d_2=48\cdot8+696\cdot1=1080$
+  and $d_2=36$.
+\end{itemize}
+So $c_0,c_1,c_2=1,8,36$, as in Table~\ref{l25:tab:cN} and \lean{A2.mldeCoeff_A2_small} (L).
+
+\emph{The constant.} $\kappa=\frac54c^2+\frac{11}2c=80-44=36=(h+1)(5h-6)$, the number in \lean{A2.vacuumQuarticRelation}
+(Theorem~\ref{l25:thm:alltypes}).
+
+\emph{The product.} $\prod_{r\ge1}(1+q^r)^8=(1+q)^8(1+q^2)^8\cdots=1+8q+(28+8)q^2+\dots=1+8q+36q^2+\dots$, matching
+$c_N$ (\lean{productCoeff_small} (L): $1,8,36,128,394$; Theorem~\ref{l25:thm:a2prod} proves it for all $N$).
+
+\emph{The Demazure sum.} Write $\mathrm{hilb}(n,\cdot)$ for the $A_2$ table (Theorem~\ref{l25:thm:a2star}). It has
+$\mathrm{hilb}(0,\cdot)=1$ and $\mathrm{hilb}(1,\cdot)=8+q$ (\lean{demazureHilb_one} (L)), and
+$\mathrm{hilb}(2,\cdot)=27+28q+17q^2+8q^3+q^4$ (S). Its total $81=9^2$ is the $q=1$ factorisation of
+Theorem~\ref{l25:thm:total}, and its constant term $27=\dim V(2\theta)$ is the weight-$0$ part of $D(1,2\theta)$.
+Finally $\mathrm{hilb}(3,0)=64=\dim V(3\theta)$ (S). (For $\mathfrak{sl}_3$, $\dim V(a\omega_1+b\omega_2)=(a+1)(b+1)(a+b+2)/2$
+and $\theta=\omega_1+\omega_2$.) Then by Definition~\ref{l25:def:dsum}:
+\begin{align*}
+D_1&=\mathrm{hilb}(1,0)=8,\\
+D_2&=\big[\mathrm{hilb}(1,0)+\mathrm{hilb}(1,1)\big]+\mathrm{hilb}(2,0)=9+27=36,\\
+D_3&=\big[\mathrm{hilb}(1,0)+\mathrm{hilb}(1,1)\big]+\big[\mathrm{hilb}(2,0)+\mathrm{hilb}(2,1)\big]+\mathrm{hilb}(3,0)=9+55+64=128 .
+\end{align*}
+In $D_2$, the term with $n=1$ is $[q^1]\,(8+q)/(1-q)=9$ and the term with $n=2$ is $[q^0]\,\mathrm{hilb}(2,\cdot)/((1-q)(1-q^2))=27$.
+These agree with \lean{demazureCoeff_small} (L) and with $c_N$: the star identity holds at $N\le3$. The GT table
+$\mathrm{hilb}(2,\cdot)$ also agrees with the affine algorithm \lean{levelOneDemazureHilb cartanA2 thetaA2 wordA2 2} in
+degrees $0$--$3$ (S). This is a second instance of the comparison between the two descriptions (Caveat~\ref{l25:cav:U7}).
+
+\emph{The VOA.} \lean{A2.finrank_grading_one} gives $\dim V_1=8$, and \lean{A2.finrank_grading_two_ge} gives
+$\dim V_2\ge36$ by a Gram determinant. Both are independent of the MLDE. The chain \eqref{l25:eq:chain} therefore
+reads $8\le8\le8$ at $N=1$ and $36\le36\le\dim V_2$ at $N=2$.
+
+\emph{A $D_4$ check.} At $h=6$: $(6+6)d_1=10\cdot35-2\cdot7=336$, so $d_1=28=\dim\mathfrak{so}_8$. The closed form of
+Theorem~\ref{l25:thm:closed} gives $[q^{N+1}]\,\big(\tfrac1{240}\ltwentyfiveEu E_4\big)\,(q)_\infty^{-10}$. Here
+$\frac1{240}\ltwentyfiveEu E_4=q+18q^2+\dots$ and $(q)_\infty^{-10}=1+10q+\dots$, giving $1$ at $N=0$ and $18+10=28$ at $N=1$.
+\end{example}
+
+%======================================================================
+\section{From one weight-four trace identity to the MLDE}\label{l25:sec:block}
+%======================================================================
+
+\subsection{The Virasoro tower over the vacuum}
+
+\paragraph{Torus one-point functions.} Put a chiral CFT on a torus with modular parameter $\tau$, $q=e^{2\pi i\tau}$,
+and insert one field $v$ at a point. Translation invariance along the torus makes the answer independent of the point.
+It equals the trace
+\begin{equation*}
+S_M(v)=\tr_M\,o(v)\,q^{L_0-c/24},
+\end{equation*}
+where $M$ is the module propagating around the cycle and $o(v)=v_{(\wt v-1)}$ is the zero mode of $v$, the part of the
+field that preserves $L_0$-weight (Chapter~\ref{ch:L15}, Definition~\ref{l15:def:torusonepoint}). Three examples fix
+the meaning.
+\begin{itemize}
+\item $v=\ltwentyfivevac$: $o(\ltwentyfivevac)=\mathrm{id}$, so $S_M(\ltwentyfivevac)=\tr_Mq^{L_0-c/24}=:f_M$ is the
+  character. For $M=V$ it is the normalised vacuum character $f=q^{-c/24}\sum_N\dim V_N\,q^N$.
+\item $v=\omega$, the conformal vector: $o(\omega)=L_0$, so $S_M(\omega)=\tr_ML_0q^{L_0-c/24}$, which is
+  $\ltwentyfiveEu f_M+\frac c{24}f_M$.
+\item $v=(TT)$, the normal-ordered square of the stress tensor: its one-point function is what the MLDE is about.
+\end{itemize}
+The library stores $S_M(v)$ as a formal $q$-series with complex exponents, i.e.\ a function $\C\to\C$ sending an
+exponent to its coefficient. The exponents lie in $-c/24+\N$ for the modules used here.
+
+\paragraph{Zhu's recursion and square-bracket modes.} The one idea of this section is Zhu's: there is a second set of
+modes $a[n]$, the \emph{square-bracket modes}, defined from the change of coordinate $z\mapsto e^z-1$ from the plane to
+the cylinder (Chapter~\ref{ch:L15}, Definition~\ref{l15:def:sqmode}). For them the trace of a descendant reduces to
+traces of simpler states with \emph{Eisenstein series as coefficients}. For the stress tensor, with $L[n]$ the
+square-bracket Virasoro modes (\lean{Lsq W n}), it reads
+\begin{equation}\label{l25:eq:zhurec}
+S_M\big(L[-2]v\big)=\ltwentyfiveEu\,S_M(v)+\sum_{m\ge1}G_{2m}\star S_M\big(L[2m-2]v\big).
+\end{equation}
+Here $\star$ is the product of $q$-series (Lean \lean{qConv}, the Cauchy product of an $\N$-indexed series with a
+formal series), and $G_{2m}$ is Zhu's normalisation of the Eisenstein series (\lean{zhuG m}). These have
+$G_2=-E_2/12$ and $G_4=E_4/720$: constant term $-B_{2m}/(2m)!$ and $q^n$-coefficient $\frac{2}{(2m-1)!}\sigma_{2m-1}(n)$.
+\lean{qDeriv} multiplies the coefficient at exponent $e$ by $e$, i.e.\ it is $\ltwentyfiveEu$. Physically,
+\eqref{l25:eq:zhurec} is the torus Ward identity for $T$. Integrating $T$ around the cycle gives the derivative in
+$\tau$, and the OPE of $T$ with $v$, weighted by the Weierstrass function of the torus, gives the Eisenstein
+corrections.
+
+\emph{Check at $v=\ltwentyfivevac$.} $L[n]\ltwentyfivevac=0$ for $n\ge-1$, so every term of the sum vanishes, and
+$S_M(L[-2]\ltwentyfivevac)=\ltwentyfiveEu f_M$. This agrees with the second example above, because
+$L[-2]\ltwentyfivevac=\omega-\frac c{24}\ltwentyfivevac$: the shift by $c/24$ is the Schwarzian of the change to the
+cylinder. Write $f=S_V(\ltwentyfivevac)$ (\lean{torusPartition}) for the normalised vacuum character of $V$.
+
+\begin{theorem}[The second Virasoro descendant of the vacuum]\label{l25:thm:tower}
+For every VOA $W$ and every ordinary module $M$,
+\begin{equation*}
+S_M\big(L[-2]^2\ltwentyfivevac\big)=\ltwentyfiveEu^2f_M+G_2\star(2\ltwentyfiveEu f_M)+G_4\star\big(\tfrac c2f_M\big),
+\qquad f_M=S_M(\ltwentyfivevac).
+\end{equation*}
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneMLDEBlock.lean}.
+\begin{leancode}
+theorem torusOnePoint_Lsq_sq_vacuum (N : OrdVModule W M) :
+    torusOnePoint N (Lsq W (-2) (Lsq W (-2) W.vacuum))
+      = qDeriv (qDeriv (torusPartition N))
+        + (qConv (zhuG 1) ((2 : ℂ) • qDeriv (torusPartition N))
+          + qConv (zhuG 2) ((W.centralCharge / 2) • torusPartition N))
+\end{leancode}
+\begin{dictionary}
+\lean{OrdVModule W M}: an ordinary module (Chapter~\ref{ch:L12}). \lean{Lsq W (-2) (Lsq W (-2) W.vacuum)} is
+$L[-2]L[-2]\ltwentyfivevac$. \lean{zhuG 1} is $G_2$ and \lean{zhuG 2} is $G_4$ (index $j$ means weight $2j$). The
+statement is exactly the display. No hypothesis on $W$ or $M$ beyond their structures. The traces make sense
+because an \lean{OrdVModule} carries, as a field, that each weight space is finite-dimensional, and that the weights are
+bounded below (Chapter~\ref{ch:L12}).
+\end{dictionary}
+\begin{proof}[Proof on paper]
+Apply Zhu's recursion \eqref{l25:eq:zhurec} to
+$v=L[-2]\ltwentyfivevac$: the square-bracket Virasoro relations give $L[0]L[-2]\ltwentyfivevac=2L[-2]\ltwentyfivevac$,
+$L[2]L[-2]\ltwentyfivevac=\frac c2\ltwentyfivevac$ and $L[2m-2]L[-2]\ltwentyfivevac=0$ for $m\ge3$ (the exact tower
+\lean{Lsq_tower} of Chapter~\ref{ch:L16}); and $S(L[-2]\ltwentyfivevac)=\ltwentyfiveEu f$ by the check above. So
+$S(L[-2]^2\ltwentyfivevac)=\ltwentyfiveEu(\ltwentyfiveEu f)+G_2\star S(2L[-2]\ltwentyfivevac)+G_4\star S(\frac c2\ltwentyfivevac)$,
+which is the display.
+\end{proof}
+\begin{physics}
+$L[-2]^2\ltwentyfivevac$ is the state of the normal-ordered square $(TT)$ of the stress tensor on the
+torus (in Zhu's coordinates). Its torus one-point function is the second $\tau$-derivative of the partition
+function, corrected by the Eisenstein series that implement the change from the plane to the torus. This is the
+standard physics derivation of MLDEs (Mathur--Mukhi--Sen; Beem--Rastelli for 4d theories): a null-type relation for
+$(TT)$ becomes a differential equation for the character.
+\end{physics}
+\begin{status}
+Standard axioms. Unconditional.
+\end{status}
+
+\subsection{The vacuum quartic relation and the indicial equation}
+
+\begin{definition}[Vacuum quartic relation; formal MLDE]\label{l25:def:vqr}
+For a VOA $W$ and $\kappa\in\C$, the \emph{vacuum quartic relation} with constant $\kappa$ is the trace identity
+$S_W(L[-2]^2\ltwentyfivevac)=\kappa\,G_4\star f$ on the adjoint module. The \emph{formal MLDE} with constant $\kappa$ is
+$\ltwentyfiveEu^2f+G_2\star(2\ltwentyfiveEu f)+G_4\star(\frac c2f)=\kappa\,G_4\star f$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneMLDEBlock.lean}.
+\begin{leancode}
+structure VacuumQuarticRelation (W : VertexOperatorAlgebra 𝒱) (κ : ℂ) : Prop where
+  eq : torusOnePoint (adjointModule W) (Lsq W (-2) (Lsq W (-2) W.vacuum))
+    = κ • qConv (zhuG 2) (torusPartition (adjointModule W))
+
+def FormalMLDE (κ : ℂ) : Prop :=
+  qDeriv (qDeriv (torusPartition (adjointModule W)))
+      + (qConv (zhuG 1) ((2 : ℂ) • qDeriv (torusPartition (adjointModule W)))
+        + qConv (zhuG 2) ((W.centralCharge / 2) • torusPartition (adjointModule W)))
+    = κ • qConv (zhuG 2) (torusPartition (adjointModule W))
+\end{leancode}
+\begin{dictionary}
+\lean{adjointModule W} is $W$ as a module over itself; \lean{torusPartition (adjointModule W)} is the formal series
+with coefficient $\dim W_n$ at exponent $n-c/24$ (\lean{torusPartition_adjoint}). By
+Theorem~\ref{l25:thm:tower}, the relation implies the formal MLDE with the same $\kappa$
+(\lean{formalMLDE_of_vacuumQuarticRelation}, the only direction used); the converse follows from
+Theorem~\ref{l25:thm:tower} by the same rewriting but is not stated in Lean. \textbf{Section variables.}
+\lean{W : VertexOperatorAlgebra 𝒱} is a section variable; in the \lean{Coefficients} and \lean{Algebraic} sections of
+\leanpath{DeligneMLDEBlock.lean} it is \emph{explicit} (\lean{FormalMLDE W κ}, \lean{kappa_eq_of_formalMLDE W h …},
+\lean{isAKSolution_of_vacuumQuarticRelation W h …}), in the \lean{Tower} section implicit. Rewriting with
+$G_2=-E_2/12$, $G_4=E_4/720$, the formal MLDE reads $(\ltwentyfiveEu-\frac16E_2)\ltwentyfiveEu f=\frac{\kappa-c/2}{720}E_4f$, which
+is \eqref{l25:eq:mlde} exactly when $\kappa-c/2=5(h^2-1)$. \textbf{Formal, not analytic:} equality of functions
+$\C\to\C$ of exponents, i.e.\ coefficientwise; no convergence or modularity enters.
+\end{dictionary}
+\begin{physics}
+Why a state of the form $a[-2]b$ contributes \emph{exactly} a multiple of $E_4$: Zhu's recursion for $a[-2]$ has
+coefficients $(2m-1)G_{2m}$ multiplying the traces of $a[2m-2]b$. The $m=1$ term is the trace of a zero mode, which
+vanishes. When $a[2]b$ is a multiple $\lambda\ltwentyfivevac$ of the vacuum and higher positive modes kill $b$, only
+$m=2$ survives, and $S(a[-2]b)=-3\lambda G_4\star f$ (Definition~\ref{l25:def:sqc2}). In CFT terms, the OPE $a(z)b(0)$ has
+a single vacuum term at order $z^{-4}$ in the cylinder coordinate, and the torus propagator turns that term into
+$E_4$. The relation says that $(TT)$ behaves like such a state on the torus. Its one-point function is then $E_4$ times
+the partition function, which is the MLDE.
+\end{physics}
+\begin{status}
+Definitions (a named \lean{Prop}); satisfiable --- it is proved for seven VOAs in
+Section~\ref{l25:sec:alltypes}.
+\end{status}
+
+\begin{theorem}[The constant is forced; the AK recurrence]\label{l25:thm:kappa}
+Let $W$ have central charge $c=-2(h+1)$ and $\ltwentyfivevac\ne0$. If the formal MLDE (or the vacuum
+quartic relation, which implies it) holds with \emph{some} constant $\kappa$, then $\kappa=(h+1)(5h-6)$, and the graded dimensions
+$N\mapsto\dim W_N$ form a normalised AK solution with parameter $h$. Hence $\dim W_N=c_N$ and
+\lean{TargetLowerBoundQ W (mldeCoeff h)}.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneMLDEBlock.lean}.
+\begin{leancode}
+theorem kappa_eq_of_formalMLDE (h : ℕ) (hc : W.centralCharge = -2 * ((h : ℂ) + 1))
+    (hvac : W.vacuum ≠ 0) {κ : ℂ} (hE : FormalMLDE W κ) :
+    κ = ((h : ℂ) + 1) * (5 * h - 6)
+
+theorem isAKSolution_of_vacuumQuarticRelation (h : ℕ)
+    (hc : W.centralCharge = -2 * ((h : ℂ) + 1)) (hvac : W.vacuum ≠ 0) {κ : ℂ}
+    (hrel : VacuumQuarticRelation W κ) :
+    IsAKSolution h (fun N : ℕ => (Module.finrank ℂ (W.grading N) : ℂ))
+
+theorem targetLowerBoundQ_of_vacuumQuarticRelation (W : VertexOperatorAlgebra 𝒱) (h : ℕ)
+    (hc : W.centralCharge = -2 * ((h : ℂ) + 1)) (hvac : W.vacuum ≠ 0)
+    {κ : ℂ} (hrel : VacuumQuarticRelation W κ) :
+    DeligneCharacter.TargetLowerBoundQ W (DeligneCharacter.mldeCoeff h)
+\end{leancode}
+\begin{dictionary}
+Three hypotheses: \lean{hc} ($c=-2(h+1)$, true for $L_k(\ltwentyfiveg)$ in the Deligne series because
+$\dim\ltwentyfiveg=2(h+1)(5h-6)/(h+6)$ and $c=k\dim\ltwentyfiveg/(k+h)$), \lean{hvac} ($W$ is not the zero space; it
+makes $\dim W_0=1$, because the library's \lean{VertexOperatorAlgebra} has as a field \lean{vacuum_grade} that
+$W_0=\C\ltwentyfivevac$, i.e.\ CFT type, Chapter~\ref{ch:01}), and the relation with an \emph{existentially free} $\kappa$. \textbf{Why is $\kappa$ free?}
+Because it is determined: Lean need not be told its value, which removes a possible source of error (a wrong
+$\kappa$ in a hypothesis would make it unsatisfiable, hence the theorem vacuous). \textbf{Could the conclusion be
+vacuous?} No: \lean{TargetLowerBoundQ} asserts $\dim W_N\ge c_N$ with $c_1=\dim\ltwentyfiveg>0$ etc., which fails for
+the zero VOA; and the hypotheses are discharged for seven concrete VOAs below.
+\end{dictionary}
+\begin{proof}[Proof on paper]
+Read the formal MLDE at the exponent $e+N$, $e=-c/24$, where the coefficient of $f$ is $\dim W_N$. At $N=0$ only
+the constant terms of $G_2,G_4$ contribute, and $\dim W_0=1$:
+$e^2-\frac{1}{12}\cdot2e+\frac1{720}\cdot\frac c2=\frac{\kappa}{720}$, i.e.\ $\kappa=720e^2-120e+\frac c2
+=\frac54c^2+\frac{11}2c$. At $c=-2(h+1)$ this is $5(h+1)^2-11(h+1)=(h+1)(5h-6)$. Then
+$\kappa-c/2=5c(c+4)/4=5(h^2-1)$, so the MLDE is \eqref{l25:eq:mlde}, and the $q^{e+N}$ coefficient for $N\ge1$ is
+\eqref{l25:eq:rec} after multiplying by $6$ (the computation of Section~\ref{l25:sec:recurrence}).
+Theorem~\ref{l25:thm:fromAK} concludes.
+\end{proof}
+\begin{physics}
+The indicial equation says that the vacuum (weight $-c/24$ on the torus) is a solution's leading term; this fixes
+the coefficient of $E_4$ in terms of $c$ alone. In physics language this is the ``holomorphic modular bootstrap''
+with the vacuum as input: the one free parameter of a second-order MLDE is fixed by the central charge.
+\emph{Observation (heuristic, not used):} Mathur, Mukhi and Sen classified the second-order MLDEs at positive central
+charge whose vacuum solution has nonnegative integer coefficients, and level-one WZW models of the Deligne series
+appear among them. That the same Lie algebras reappear here at negative central charge, in the 4d chiral algebras,
+is a known coincidence of the two families. It is not a theorem of either source, and nothing here depends on it.
+\end{physics}
+\begin{status}
+Standard axioms for \lean{isAKSolution_of_vacuumQuarticRelation} and \lean{kappa_eq_of_formalMLDE} (re-run for this
+chapter). Conditional on \lean{hc}, \lean{hvac},
+\lean{hrel} as stated.
+\end{status}
+
+\begin{warning}[title={No modular forms, no Etingof-finiteness: what this replaces}]
+Chapter~\ref{ch:L16} shows that the library's general AK theorem
+(\lean{IsSqPrimary.exists_monicMLDEOn_all_analyticBlocks_of_etingofFinite_uncond}) is conditional on
+\lean{EtingofFinite} only (its side inputs \lean{AKWeightGrading} and \lean{E46SerreClosed} are now the theorems
+\lean{VOA.akWeightGrading} and \lean{VOA.e46SerreClosed}) but bounds neither the order nor the coefficients of its
+MLDE, and that the unconditional \lean{character_formalODE_of_etingofFinite} is near-vacuous. Those files are
+\emph{not used} here. The route of this section needs only Zhu's formal recursion and the exact Virasoro tower; the
+target is coefficientwise, so the formal version suffices, and $\kappa$ comes from the indicial equation. \textbf{Dead end recorded:} do not route a coefficient identity through
+\lean{AKModularODE.character_formalODE_of_etingofFinite}; it does not determine the character.
+\end{warning}
+
+\subsection{The algebraic form of the relation}
+
+The trace identity is a statement about traces. Arakawa and Kawasetsu derive it from an algebraic statement,
+$\bar\omega^2=0$ in $R_V$, and the library has a square-bracket version of that statement. To motivate the definitions,
+start from Zhu's recursion for a square-bracket mode $a[-2]$, with $a$ homogeneous:
+\begin{equation}\label{l25:eq:zhuminus2}
+S\big(a[-2]b\big)=-\sum_{m\ge1}(2m-1)\,G_{2m}\star S\big(a[2m-2]b\big).
+\end{equation}
+In general the right side involves infinitely many unknown traces. It collapses to a single known term in exactly
+the following situation. The $m=1$ term is $S(a[0]b)$, the trace of a commutator-type state, which vanishes; we
+therefore call such states \emph{trace-null}. The $m=2$ term is $3G_4\star S(a[2]b)$, which is a multiple of $G_4\star f$
+precisely when $a[2]b$ is a multiple of the vacuum. The terms $m\ge3$ vanish if $a[2m-2]b=0$. The definition records
+exactly these conditions.
+
+\begin{definition}[Trace-null vectors; square-bracket $C_2$ terms]\label{l25:def:sqc2}
+The \emph{trace-null} subspace is spanned by the $a[0]v$ ($a$ homogeneous of weight $\ge1$) and by the $L[-1]v$. A
+\emph{square-bracket $C_2$ term of weight four} is a state $a[-2]b$ with $a$ homogeneous of weight $k_a\ge1$,
+$a[2]b=\lambda\ltwentyfivevac$, and $a[2m]b=0$ for $m\ge2$. By \eqref{l25:eq:zhuminus2} its one-point function is
+$-3\lambda\,G_4\star f$. The \emph{square-bracket $C_2$ quartic relation} with constant $\kappa$ says that
+$L[-2]^2\ltwentyfivevac\equiv\sum_ia_i[-2]b_i$ modulo trace-null vectors, for finitely many such terms, with
+$\kappa=-3\sum_i\lambda_i$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneMLDEBlock.lean}.
+\begin{leancode}
+noncomputable def traceNull : Submodule ℂ 𝒱 :=
+  Submodule.span ℂ ({x | ∃ (ka : ℕ) (a v : 𝒱), 1 ≤ ka ∧ a ∈ W.grading (ka : ℤ) ∧ x = vSqZ W a ka 0 v}
+    ∪ Set.range (Lsq W (-1)))
+
+structure SqC2Term (W : VertexOperatorAlgebra 𝒱) where
+  ka : ℕ
+  a : 𝒱
+  b : 𝒱
+  lam : ℂ
+  one_le : 1 ≤ ka
+  mem : a ∈ W.grading (ka : ℤ)
+  two : vSqZ W a ka 2 b = lam • W.vacuum
+  high : ∀ m : ℕ, 2 ≤ m → vSqZ W a ka (2 * (m : ℤ)) b = 0
+
+structure SqC2QuarticRelation (W : VertexOperatorAlgebra 𝒱) (κ : ℂ) : Prop where
+  rel : ∃ (s : Finset ℕ) (t : ℕ → SqC2Term W),
+    Lsq W (-2) (Lsq W (-2) W.vacuum) - ∑ i ∈ s, vSqZ W (t i).a (t i).ka (-2) (t i).b
+        ∈ traceNull W
+      ∧ κ = -3 * ∑ i ∈ s, (t i).lam
+
+theorem vacuumQuarticRelation_of_sqC2 {κ : ℂ} (h : SqC2QuarticRelation W κ) :
+    VacuumQuarticRelation W κ
+\end{leancode}
+\begin{dictionary}
+\lean{vSqZ W a ka n} is the square-bracket mode $a[n]$ of a state $a$ of $L_0$-weight \lean{ka}
+(Chapter~\ref{ch:L15}, Definition~\ref{l15:def:sqmode}); the weight must be supplied because square modes depend
+on it. \lean{Set.range (Lsq W (-1))} is the image of $L[-1]$. \lean{SqC2Term} is data (a \lean{structure} in
+\lean{Type}), carrying the two vanishing conditions as fields.
+\end{dictionary}
+\begin{proof}[Proof on paper]
+Every one-point function kills trace-null vectors (cyclicity of the trace for $a[0]$; $S(L[-1]v)=0$). For one term,
+Zhu's recursion for $a[-2]$ gives $S(a[-2]b)=-\sum_{m\ge1}(2m-1)G_{2m}\star S(a[2m-2]b)$; the $m=1$ term is a
+zero-mode trace and vanishes, the $m=2$ term is $3G_4\star S(\lambda\ltwentyfivevac)$, and $m\ge3$ vanish by
+\lean{high}. So $S(a[-2]b)=-3\lambda G_4\star f$; sum.
+\end{proof}
+\begin{physics}
+Modulo zero modes and derivatives, which have vanishing torus one-point functions, $(TT)$ is a sum of
+``$\partial^2$-descendant'' states, each contributing a multiple of $E_4$. This is the trace version of
+``$\bar\omega^2=0$ in $R_V$'', i.e.\ the square of the Sugawara Casimir vanishes on the Higgs branch.
+\end{physics}
+\begin{status}
+Standard axioms. Unconditional as an implication. Not itself used by the per-type instances, which go through the
+current calculus of the next section.
+\end{status}
+
+%======================================================================
+\section{The square-bracket current calculus}\label{l25:sec:zhu}
+%======================================================================
+
+To prove the vacuum quartic relation for $L_k(\ltwentyfiveg)$ one needs to compute with square-bracket modes of the
+currents $J^a\in V_1$. The ``obvious'' route --- Zhu's isomorphism $(V,Y)\cong(V,Y[\,])$ --- is not in the
+library and would be a large project (recorded as a dead end at the end of this section). Instead, the files
+\leanpath{VOA/\allowbreak Modularity/\allowbreak ZhuCoordinate*.lean} prove directly the three relations needed.
+
+\begin{theorem}[Square-bracket current algebra]\label{l25:thm:sqcomm}
+Let $W$ be any VOA. For $a,b\in W_1$ with $a_{(1)}b=\beta\ltwentyfivevac$, and all $m,n\in\Z$,
+\begin{equation*}
+[a[m],b[n]]=(a_{(0)}b)[m+n]+m\beta\,\delta_{m+n,0}.
+\end{equation*}
+If moreover $a$ is primary ($L_1a=0$), then $[L[m],a[n]]=-n\,a[m+n]$. For $a\in W_{P+1}$,
+$(L_{-1}a)[n]=-n\,a[n-1]-(P+1)\,a[n]$ (the translation rule).
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak ZhuCoordinateCurrent.lean}.
+\begin{leancode}
+theorem sqCurrent_comm {a b : 𝒱} (ha : a ∈ W.grading 1) (hb : b ∈ W.grading 1)
+    {β : ℂ} (hp : W.smul a 1 b = β • W.vacuum) (m n : ℤ) (x : 𝒱) :
+    vSqZ W a 1 m (vSqZ W b 1 n x) - vSqZ W b 1 n (vSqZ W a 1 m x)
+      = vSqZ W (W.smul a 0 b) 1 (m + n) x + (if m + n = 0 then ((m : ℂ) * β) • x else 0)
+
+theorem Lsq_sqCurrent_comm {a : 𝒱} (ha : a ∈ W.grading 1) (ha1 : W.L 1 a = 0) (m n : ℤ)
+    (x : 𝒱) :
+    Lsq W m (vSqZ W a 1 n x) - vSqZ W a 1 n (Lsq W m x) = (-(n : ℂ)) • vSqZ W a 1 (m + n) x
+
+theorem vSqZ_L_neg_one {a : 𝒱} (P : ℕ) (ha : a ∈ W.grading ((P + 1 : ℕ) : ℤ)) (n : ℤ) :
+    vSqZ W (W.L (-1) a) (P + 2) n
+      = (-(n : ℂ)) • vSqZ W a (P + 1) (n - 1) - ((P : ℂ) + 1) • vSqZ W a (P + 1) n
+\end{leancode}
+\begin{dictionary}
+\lean{W.smul a n b} is the ordinary mode product $a_{(n)}b$ (Chapter~\ref{ch:01}); so \lean{hp} is
+$a_{(1)}b=\beta\ltwentyfivevac$ and \lean{W.smul a 0 b} is $a_{(0)}b$. \lean{vSqZ W a 1 m} is $a[m]$ for a weight-one
+state. \lean{W.L 1 a = 0}: $a$ is primary. The ``if'' encodes the Kronecker delta. All three are the displays,
+for an arbitrary VOA.
+\end{dictionary}
+\begin{proof}[Proof on paper]
+\emph{Square modes as residues.} Zhu's definition is $a[n]=\Res_z Y(a,e^z-1)e^{z\,\wt a}z^{n}$. Substitute
+$w=e^z-1$, so that $z=L(w):=\log(1+w)$ and $dz=dw/(1+w)$. Then
+\begin{equation*}
+a[n]=\Res_w\,Y(a,w)\,(1+w)^{\wt a-1}L(w)^n .
+\end{equation*}
+Since $L(w)=w\,u(w)$ with $u=\log(1+w)/w=1-\frac w2+\dots$ invertible, this is a finite combination
+$a[n]=\sum_{p\ge0}z(\wt a,n,n+p)\,a_{(n+p)}$ of ordinary modes, with $z(k,m,m+p)=[w^p]\big((1+w)^{k-1}u^m\big)$. For
+$\wt a=1$ the factor $(1+w)^0$ disappears, and $a[n]=\Res_wY(a,w)L(w)^n$.
+
+\emph{The bracket, in residue form.} For weight-one $a,b$ the ordinary commutator formula is
+$[a_{(i)},b_{(j)}]=(a_{(0)}b)_{(i+j)}+i\,(a_{(1)}b)_{(i+j-1)}$, since $a_{(k)}b=0$ for $k\ge2$ by weight. With
+$a_{(1)}b=\beta\ltwentyfivevac$ and $\ltwentyfivevac_{(n)}=\delta_{n,-1}$, the second term is $i\beta\,\delta_{i+j,0}$.
+Write $a[m]=\sum_ix_ia_{(i)}$ and $b[n]=\sum_jy_jb_{(j)}$, where $\sum_ix_iw^i=L(w)^m$ and $\sum_jy_jw^j=L(w)^n$.
+\begin{itemize}
+\item \emph{Bracket term.} $\sum_{i,j}x_iy_j(a_{(0)}b)_{(i+j)}$ is the square mode of $a_{(0)}b$ whose
+  coefficient series is the product $L^m\cdot L^n=L^{m+n}$. That is $(a_{(0)}b)[m+n]$, the identity
+  $u^mu^n=u^{m+n}$.
+\item \emph{Central term, worked out completely.} $\sum_{i,j}x_iy_j\,i\,\beta\,\delta_{i+j,0}=\beta\sum_iix_iy_{-i}$.
+  For two Laurent series $F=\sum x_iw^i$ and $G=\sum y_jw^j$, the sum $\sum_i i x_iy_{-i}$ is $\Res_w F'(w)G(w)$. So the
+  central term is $\beta\,\Res_w\,\frac{d}{dw}\big(L^m\big)\,L^n=\beta\,m\,\Res_w L^{m+n-1}\,dL$. If $m+n\ne0$, the
+  integrand is $\frac{m}{m+n}\,d\big(L^{m+n}\big)$, the derivative of a Laurent series in $w$, whose residue is $0$. If
+  $m+n=0$, it is $m\,dL/L=m\,\frac{dw}{(1+w)\,w\,u(w)}$, whose residue is $m/u(0)=m$. Hence the central term is
+  $m\beta\,\delta_{m+n,0}$, as claimed.
+\end{itemize}
+\emph{The Virasoro and translation rules.} These are proved the same way, as residue identities for the coefficient
+series. For $[L[m],a[n]]$ one needs the transformation of $\omega$ under $w=e^z-1$ (the Schwarzian shift
+$-c/24$) and the primarity of $a$. For $(L_{-1}a)[n]$ one uses $Y(L_{-1}a,w)=\partial_wY(a,w)$ and integrates by parts,
+which produces the two terms $-n\,a[n-1]$ and $-(P+1)\,a[n]$. In every case the needed coefficient identity comes down
+to the one-line differential equation $(1+w)(u+wu')=1$, i.e.\ $\frac{d}{dw}\log(1+w)=\frac1{1+w}$. The proofs are in
+\leanpath{ZhuCoordinateCoeff.lean}.
+\end{proof}
+\begin{physics}
+Zhu's coordinates are the map from the plane to the cylinder $w=e^{2\pi i z}-1$. Currents transform as primaries of
+weight one, so their modes in the new coordinate obey the same affine Kac--Moody algebra at the same level; the
+stress tensor picks up the Schwarzian ($c/24$ shift), which is why $L[n]$ differs from $L_n$ but still acts on
+currents as $-n$.
+\end{physics}
+\begin{status}
+Standard axioms. Unconditional.
+\end{status}
+
+\begin{definition}[The weighted square-bracket $C_2$ span; the current $C_2$ span]\label{l25:def:spans}
+$\mathrm{sqC2Span}(N)$ is spanned by $a[-2]b$ with $a\in W_p$, $p\ge1$, $b$ of $L_0$-degree $\le N-p-1$.
+For a family of currents $g_i$, $\mathrm{currentC2}$ is spanned by $g_i[-n]y$ with $n\ge2$.
+\end{definition}
+\noindent Files \leanpath{VOA/\allowbreak Modularity/\allowbreak ZhuCoordinateGrading.lean}.
+\begin{leancode}
+def sqC2Span (N : ℤ) : Submodule ℂ 𝒱 :=
+  Submodule.span ℂ {x | ∃ (p : ℕ) (a b : 𝒱), 1 ≤ p ∧ a ∈ W.grading (p : ℤ) ∧
+    b ∈ gradeLE W (N - p - 1) ∧ x = vSqZ W a p (-2) b}
+
+def currentC2 : Submodule ℂ 𝒱 :=
+  Submodule.span ℂ {x | ∃ (i : ι) (n : ℕ) (y : 𝒱), 2 ≤ n ∧ x = vSqZ W (g i) 1 (-(n : ℤ)) y}
+\end{leancode}
+\begin{dictionary}
+\lean{gradeLE W d} $=\bigoplus_{j\le d}W_j$ (\leanpath{ChangeCoord.lean}). The weight bound on $b$ makes every
+$a[2m]b$ with $m\ge2$ vanish and $a[2]b\in W_0=\C\ltwentyfivevac$ (\lean{vSqZ_mem_gradeLE}), so every generator of
+\lean{sqC2Span W 4} is a \lean{SqC2Term}. The translation rule shows $a[-n]b\in\mathrm{sqC2Span}$ for all $n\ge2$
+(\lean{vSqZ_neg_mem_sqC2Span}).
+\end{dictionary}
+\begin{physics}
+A state $g[-n]y$ with $n\ge2$ is a field with at least one derivative, $\partial^{n-1}g$, multiplying $y$. On
+the torus its one-point function is a pure Eisenstein correction, with no $\ltwentyfiveEu$ term, because
+\eqref{l25:eq:zhuminus2} has no derivative term. Quotienting by these states is passing to the ``classical'' algebra
+$R_V$ (no derivatives) in the cylinder coordinate. The computation in which these spans appear is the reduction of
+$(TT)$ to $C_2$ terms.
+\end{physics}
+\begin{status}
+Definitions.
+\end{status}
+
+\begin{theorem}[$\kappa$ from a membership]\label{l25:thm:membership}
+If $\ltwentyfivevac\ne0$ and $L[-2]^2\ltwentyfivevac\in\mathrm{sqC2Span}(4)$, then the vacuum quartic relation holds with
+$\kappa=\frac54c^2+\frac{11}2c$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneVacuumRelation.lean}.
+\begin{leancode}
+theorem vacuumQuarticRelation_of_mem_sqC2Span (hvac : W.vacuum ≠ 0)
+    (hx : Lsq W (-2) (Lsq W (-2) W.vacuum) ∈ sqC2Span W 4) :
+    VacuumQuarticRelation W (5 / 4 * W.centralCharge ^ 2 + 11 / 2 * W.centralCharge)
+\end{leancode}
+\begin{dictionary}
+The membership needs no coefficients: \lean{exists_kappa_of_mem_sqC2Span} shows every element of
+\lean{sqC2Span W 4} has one-point function $\kappa'G_4\star f$ for \emph{some} $\kappa'$, and
+\lean{kappa_eq_of_vacuumQuarticRelation} pins $\kappa'$ by the indicial computation of
+Theorem~\ref{l25:thm:kappa}.
+\end{dictionary}
+\begin{proof}[Proof on paper]
+Linearity of $S$ and the computation for one \lean{SqC2Term} (proof of \lean{vacuumQuarticRelation_of_sqC2}) give
+existence; the lowest coefficient fixes $\kappa$.
+\end{proof}
+\begin{physics}
+If $(TT)$ is, in the cylinder coordinate, a sum of states of the form $\partial g\cdot y$ of total weight four,
+then each of them contributes a multiple of $E_4$ times the partition function, by \eqref{l25:eq:zhuminus2}. The MLDE
+follows, and its constant is then fixed by the vacuum's exponent, so no coefficient of the decomposition needs to be
+computed.
+\end{physics}
+\begin{status}
+Standard axioms. Unconditional as an implication.
+\end{status}
+
+\begin{definition}[Affine current data]\label{l25:def:sqcd}
+\lean{SqCurrentData W ι} packages: primary weight-one currents $g_i$ ($i\in\iota$), structure constants $T_{ij}^c$
+with $g_{i(0)}g_j=\sum_cT_{ij}^cg_c$, a form $F$ and level $k$ with $g_{i(1)}g_j=kF_{ij}\ltwentyfivevac$, an inverse form
+$K$, a dual Coxeter number $h^\vee$ with $k+h^\vee\ne0$, the Sugawara formula
+$\omega=\frac{1}{2(k+h^\vee)}\sum K_{ij}g_{i(-1)}g_j$, the trace condition $\sum K_{ij}T_{ij}^c=0$, and
+$c(k+h^\vee)=k\sum K_{ij}F_{ij}$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneVacuumRelation.lean}.
+\begin{leancode}
+structure SqCurrentData (ι : Type*) [Fintype ι] where
+  g : ι → 𝒱
+  mem : ∀ i, g i ∈ W.grading 1
+  primary : ∀ i, W.L 1 (g i) = 0
+  T : ι → ι → ι → ℂ
+  bracket : ∀ i j, W.smul (g i) 0 (g j) = ∑ c, T i j c • g c
+  F : ι → ι → ℂ
+  level : ℂ
+  form : ∀ i j, W.smul (g i) 1 (g j) = (level * F i j) • W.vacuum
+  K : ι → ι → ℂ
+  hdual : ℂ
+  ne : level + hdual ≠ 0
+  sugawara : W.conformalVector
+    = (2 * (level + hdual))⁻¹ • ∑ i, ∑ j, K i j • W.smul (g i) (-1) (g j)
+  bracket_trace : ∀ c, ∑ i, ∑ j, K i j * T i j c = 0
+  central : W.centralCharge * (level + hdual) = level * ∑ i, ∑ j, K i j * F i j
+\end{leancode}
+\begin{dictionary}
+Every field is an identity checkable in an affine VOA; \lean{affineCurrentData D k hk}
+(\leanpath{DeligneVacuumRelationAffine.lean}) constructs an instance for $L_k(\ltwentyfiveg)$ from any \lean{LieData}
+(Chapter~\ref{ch:L23}), with $T$ the structure constants and $F$ the form table. The structure does not require
+the $g_i$ to generate $W$; it is used only to compute $L[-2]\ltwentyfivevac$ and its descendants.
+\end{dictionary}
+\begin{physics}
+A WZW-type current algebra with its Sugawara stress tensor. \lean{bracket_trace} is the statement that the
+Casimir is invariant, so the Sugawara vector has no weight-one correction term.
+\end{physics}
+\begin{status}
+Definition; instantiated for every simple $\ltwentyfiveg$.
+\end{status}
+
+\begin{theorem}[Square Sugawara; the symbol calculus]\label{l25:thm:symbols}
+Given affine current data, $L[-2]\ltwentyfivevac=\frac{1}{2(k+h^\vee)}\sum K_{ij}g_i[-1]g_j[-1]\ltwentyfivevac$. In
+$Q=V/\mathrm{currentC2}$ the operators $g_i[-1]$ commute, so each polynomial $p\in\C[X_i]$ acts; put
+$\mathrm{sym}(p)=p(g[-1])\ltwentyfivevac\in Q$ and $\mathrm{Cas}=\sum K_{ij}X_iX_j$. If $\mathrm{sym}(X_i\,\mathrm{Cas})=0$
+for every $i$, and $\ltwentyfivevac\ne0$, then the vacuum quartic relation holds with $\kappa=\frac54c^2+\frac{11}2c$.
+Moreover $\mathrm{sym}$ vanishes on the ideal generated by polynomials with vanishing symbol, and
+$\mathrm{sym}(\mathrm{ad}_b\,p)=g_b[0]\,\mathrm{sym}(p)$ for the coadjoint derivation $\mathrm{ad}_b$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneVacuumRelation.lean}.
+\begin{leancode}
+theorem Lsq_neg_two_vacuum_eq :
+    Lsq W (-2) W.vacuum = (2 * (D.level + D.hdual))⁻¹ •
+      ∑ i, ∑ j, D.K i j • D.sq i (-1) (D.sq j (-1) W.vacuum)
+
+noncomputable def sym (p : MvPolynomial ι ℂ) : 𝒱 ⧸ currentC2 W D.g :=
+  D.ev p ((currentC2 W D.g).mkQ W.vacuum)
+
+noncomputable def casPoly : MvPolynomial ι ℂ :=
+  ∑ i, ∑ j, MvPolynomial.C (D.K i j) * (X i * X j)
+
+theorem sym_eq_zero_of_mem_span {κ : Type*} (r : κ → MvPolynomial ι ℂ)
+    (hr : ∀ e, D.sym (r e) = 0) {p : MvPolynomial ι ℂ} (hp : p ∈ Ideal.span (Set.range r)) :
+    D.sym p = 0
+
+theorem sym_adG (c : ι) (p : MvPolynomial ι ℂ) : D.sym (adG D.T c p) = D.Zq c (D.sym p)
+
+theorem vacuumQuarticRelation_of_symbols (hvac : W.vacuum ≠ 0)
+    (h : ∀ i, D.sym (X i * D.casPoly) = 0) :
+    VacuumQuarticRelation W (5 / 4 * W.centralCharge ^ 2 + 11 / 2 * W.centralCharge)
+\end{leancode}
+\begin{dictionary}
+\lean{D.sq i n} is $g_i[n]$. \lean{D.ev p} is the evaluation of a polynomial at the commuting operators
+\lean{D.Tq i} $=g_i[-1]$ on the quotient (built by \lean{MvPolynomial.aeval} into the commutative subalgebra they
+generate). \lean{D.Zq c} $=g_c[0]$ on the quotient. \lean{adG T b} is the derivation $X_i\mapsto\sum_cT_{bi}^cX_c$ of
+$\C[X]$. \lean{X i * D.casPoly} is $X_i\cdot\mathrm{Cas}$. The key hypothesis says the cubic polynomials
+$X_i\mathrm{Cas}$ act trivially on the vacuum modulo $\mathrm{currentC2}$. \textbf{Section variables.} In
+\leanpath{DeligneVacuumRelation.lean} the VOA \lean{W : VertexOperatorAlgebra 𝒱} is implicit here and
+\lean{D : SqCurrentData W ι} (with \lean{[Fintype ι]}) is an explicit section variable: the ambient square-current data,
+which is why the declarations are written \lean{D.sym}, \lean{D.casPoly}. Its fields \lean{D.level}, \lean{D.hdual},
+\lean{D.K} are $k$, $h^\vee$ and the inverse form $K_{ij}$.
+\end{dictionary}
+\begin{proof}[Proof on paper]
+\emph{Square Sugawara.} Expand $g_i[-1]g_j[-1]\ltwentyfivevac=g_{i(-1)}g_j+\frac12g_{i(0)}g_j-\frac1{12}g_{i(1)}g_j$,
+using the coefficients $z(1,-1,0)=\frac12$ and $z(1,-1,1)=-\frac1{12}$, read off from
+$u^{-1}=1+\frac w2-\frac{w^2}{12}+\dots$. Then use \lean{bracket_trace}, which kills the $g_{i(0)}g_j$ sum, and \lean{central}, which
+turns the $g_{i(1)}g_j$ sum into the $c/24$ shift between $\omega$ and $L[-2]\ltwentyfivevac$.
+
+\emph{Stability of $\mathrm{currentC2}$ (needed for everything that follows).} For $m\le0$ the operator $g_i[m]$ maps
+$\mathrm{currentC2}$ into itself (\lean{sq_mem_currentC2}). Take a generator $g_c[-n]y$ with $n\ge2$. By
+Theorem~\ref{l25:thm:sqcomm},
+\begin{equation*}
+g_i[m]\,g_c[-n]y=g_c[-n]\,\big(g_i[m]y\big)+\sum_eT_{ic}^e\,g_e[m-n]y ,
+\end{equation*}
+and there is no central term, because $m-n\le-2\ne0$. The first term is a generator, and so is each $g_e[m-n]y$, since
+$m-n\le-2$. So $g_i[-1]$ and $g_i[0]$ descend to operators \lean{D.Tq i}, \lean{D.Zq i} on $Q=V/\mathrm{currentC2}$.
+The $g_i[-1]$ commute on $Q$, since their commutator $(g_{i(0)}g_j)[-2]$ maps into $\mathrm{currentC2}$. So
+$\mathrm{sym}$ is well defined, and $[g_c[0],g_i[-1]]=(g_{c(0)}g_i)[-1]$ gives \lean{sym_adG}. The span property is
+linearity.
+
+\emph{The reduction.} Put $\omega'=L[-2]\ltwentyfivevac=s\sum K_{ij}g_i[-1]g_j[-1]\ltwentyfivevac$, with
+$s=(2(k+h^\vee))^{-1}$. The rule $[L[m],g[n]]=-n\,g[m+n]$ at $m=-2$, $n=-1$ reads
+$L[-2]\,g_i[-1]=g_i[-1]\,L[-2]+g_i[-3]$ (\lean{Lsq_neg_two_sq}). Applying it twice,
+\begin{equation*}
+L[-2]^2\ltwentyfivevac=L[-2]\,\omega'=s\sum_{i,j}K_{ij}\Big(g_i[-1]\big(g_j[-1]\,\omega'+g_j[-3]\ltwentyfivevac\big)
++g_i[-3]\,g_j[-1]\ltwentyfivevac\Big).
+\end{equation*}
+Here $g_i[-3]g_j[-1]\ltwentyfivevac$ is a generator of $\mathrm{currentC2}$. Also $g_j[-3]\ltwentyfivevac$ is a
+generator, and $g_i[-1]$ preserves $\mathrm{currentC2}$ by stability, so $g_i[-1]g_j[-3]\ltwentyfivevac$ lies in it too.
+It remains to show $g_j[-1]\,\omega'\in\mathrm{currentC2}$ for every $j$. In $Q$, $\omega'$ has class
+$s\,\mathrm{sym}(\mathrm{Cas})$, so $g_j[-1]\omega'$ has class $s\,\mathrm{sym}(X_j\mathrm{Cas})$, which is $0$ by
+hypothesis. Hence $L[-2]^2\ltwentyfivevac\in\mathrm{currentC2}$. Each term has square-bracket weight four, so it lies in
+the weight-four part, which is contained in $\mathrm{sqC2Span}(4)$ (\lean{currentC2At_le_sqC2Span}).
+Theorem~\ref{l25:thm:membership} concludes.
+\end{proof}
+\begin{physics}
+This is the statement ``the Higgs branch relation $J^a\cdot\mathrm{Cas}=0$ holds in $R_V$'' lifted to Zhu's
+coordinates. \emph{Heuristic, not Lean:} in the Deligne series the Higgs branch is expected to be the minimal
+nilpotent orbit closure (for types other than $A$, its ideal is the associated graded of the Joseph ideal), and
+$J^a\,\mathrm{Cas}$ vanishes on it; in particular $\mathrm{Cas}^2=0$ in $R_V$ while $\mathrm{Cas}\ne0$ ($R_V$ is
+non-reduced). Nilpotency of order two of the stress tensor's symbol is what makes the MLDE second order.
+\end{physics}
+\begin{status}
+Standard axioms. Unconditional as an implication.
+\end{status}
+
+\begin{warning}[title={Dead end: Zhu's change of coordinates as a VOA isomorphism}]
+A first attempt tried to transport ``$\omega_{(-1)}\omega\in C_2(V)$'' through Zhu's isomorphism
+$(V,Y)\cong(V,Y[\,])$. The repository's \lean{changeCoord} has no transformation law and there is no square Borcherds
+identity; formalising them is a large project. The symbol calculus above avoids it entirely. A Lean trap recorded
+on the way: in $L_{-3/2}(\mathfrak{sl}_3)$, \lean{rw} with equations between quotient expressions times out in
+\lean{isDefEq}; proving the combination as one \lean{mkQ} of a vector (\lean{sym_three}) fixes it.
+\end{warning}
+
+%======================================================================
+\section{The vacuum quartic relation for every Deligne type}\label{l25:sec:alltypes}
+%======================================================================
+
+\begin{theorem}[From carrier data to the target bound]\label{l25:thm:carrierdata}
+Suppose given the following data and hypotheses.
+\begin{enumerate}
+\item \emph{Carrier data} $CD$ (Chapter~\ref{ch:L24}): a number $n$ of currents (for the intended use,
+  $n=\dim\ltwentyfiveg$); quadrics $\mathrm{rel}_r\in\operatorname{Sym}^2$ spanning $I_2^{\rm ns}$; a Casimir quadric $Q$;
+  and a certificate of U3, i.e.\ $X_aQ\in(\mathrm{rel}_r)_r$ for every $a$.
+\item A Lie algebra record $D$ (a \lean{LieData}, Chapter~\ref{ch:L23}) on the index set $\{0,\dots,n-1\}$, with dual
+  Coxeter number $D.h$ in the normalisation of its invariant form.
+\item A level $k\in\C$ with $k+D.h\ne0$, so that the Sugawara construction and $L_k=$\lean{simpleVOA D k hk} exist.
+\item \lean{hcas}: a number $c_0\in\C$ with $\mathrm{Cas}=c_0\,Q$. Here $\mathrm{Cas}=\sum K_{ij}X_iX_j$ is the Sugawara
+  quadric of $D$, and $Q$ is the certificate's Casimir.
+\item \lean{hrel}: every relation $\mathrm{rel}_r$ has vanishing symbol in $L_k$ (Theorem~\ref{l25:thm:symbols}).
+\end{enumerate}
+Then the vacuum quartic relation holds for $L_k$ with $\kappa=\frac54c^2+\frac{11}2c$. If moreover
+\begin{enumerate}\setcounter{enumi}{5}
+\item \lean{hc}: $h\in\N$ satisfies $nk/(k+D.h)=-2(h+1)$, i.e.\ the central charge is $-2(h+1)$,
+\end{enumerate}
+then $\dim L_k(\ltwentyfiveg)_N\ge c_N=\mathtt{mldeCoeff}\ h\ N$ for all $N$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneVacuumRelationCarrier.lean}.
+\begin{leancode}
+theorem vacuumQuarticRelation_of_carrierData (CD : DeligneCarrierData) (D : LieData κ (Fin CD.n))
+    (k : ℂ) (hk : k + D.h ≠ 0) (c₀ : ℂ)
+    (hcas : (affineCurrentData D k hk).casPoly = MvPolynomial.C c₀ * CD.Q)
+    (hrel : ∀ r, (affineCurrentData D k hk).sym (quadraticRelation (CD.rel r)) = 0) :
+    VacuumQuarticRelation (simpleVOA D k hk)
+      (5 / 4 * (simpleVOA D k hk).centralCharge ^ 2 + 11 / 2 * (simpleVOA D k hk).centralCharge) :=
+
+theorem targetLowerBound_of_carrierData (CD : DeligneCarrierData) (D : LieData κ (Fin CD.n))
+    (k : ℂ) (hk : k + D.h ≠ 0) (h : ℕ)
+    (hc : (CD.n : ℂ) * k / (k + D.h) = -2 * ((h : ℂ) + 1)) (c₀ : ℂ)
+    (hcas : (affineCurrentData D k hk).casPoly = MvPolynomial.C c₀ * CD.Q)
+    (hrel : ∀ r, (affineCurrentData D k hk).sym (quadraticRelation (CD.rel r)) = 0) :
+    DeligneCharacter.TargetLowerBoundQ (simpleVOA D k hk) (DeligneCharacter.mldeCoeff h)
+\end{leancode}
+\begin{dictionary}
+\lean{CD.Q} $=$ \lean{quadraticRelation CD.cas}, the Casimir as a quadratic polynomial; \lean{quadraticRelation q} is
+$\sum_{x,y}q(x,y)X_xX_y$. \lean{simpleVOA D k hk} is $L_k(\ltwentyfiveg)$ for the Lie algebra encoded by $D$
+(Chapter~\ref{ch:L23}). \lean{hc} is the central charge condition ($c=k\dim\ltwentyfiveg/(k+h^\vee)$ by
+\lean{simple_centralCharge'}). \lean{hcas} identifies the Sugawara quadric with the certificate Casimir (needed because
+U3 is stated for the latter). \lean{hrel} is the vanishing of the relation symbols. \textbf{$c_0\ne0$ is not required}:
+if $c_0=0$, U3 is not even used. The conclusion's $W$ is the concrete simple VOA. \textbf{Notation clash.} The
+\lean{κ} in \lean{LieData κ (Fin CD.n)} is a bilinear form \lean{κ : LinearMap.BilinForm ℂ 𝔤} on a finite-dimensional
+Lie algebra \lean{𝔤} (implicit section variables, with \lean{[FiniteDimensional ℂ 𝔤]}), not the constant $\kappa$ of
+Definition~\ref{l25:def:vqr}. \lean{D.h} is the dual Coxeter number \emph{in the normalisation of that form} (the
+adjoint Casimir acts by $2\,$\lean{D.h}), and $k$ is the level relative to the same form; the concrete records of
+Chapter~\ref{ch:L23} are normalised so that \lean{D.h} is the usual $h^\vee$. The theorem assumes neither that
+$\ltwentyfiveg$ is simple nor that \lean{D.h} equals the ambient $h$: the two are related only through \lean{hc}.
+\lean{simpleVOA D k hk} is the simple quotient of the universal affine VOA for whatever $D$ encodes. The first
+theorem is the same statement stopped one step earlier, before \lean{hc} is used; it is the input to the equality
+route recorded in the warning after Theorem~\ref{l25:thm:alltypes}.
+\end{dictionary}
+\begin{proof}[Proof on paper]
+By U3 and \lean{hcas}, $X_a\mathrm{Cas}=c_0X_aQ$ lies in the ideal generated by the relations, whose symbols vanish;
+\lean{sym_eq_zero_of_mem_span} gives $\mathrm{sym}(X_a\mathrm{Cas})=0$; Theorem~\ref{l25:thm:symbols} gives the vacuum
+quartic relation; Theorem~\ref{l25:thm:kappa} the bound. How \lean{hrel} is proved per type: the symbol of the
+highest-weight relation vanishes because the weight-two singular vector dies in $L_k$ and two finite ``shadow''
+checks hold (\lean{sym_singular}: the bracket and form contractions of the relation vanish). All other relations are
+obtained from it by the coadjoint action, and vanishing \emph{propagates} as follows. Since
+$\mathrm{sym}(\mathrm{ad}_b R)=g_b[0]\,\mathrm{sym}(R)$ (Theorem~\ref{l25:thm:symbols}), if $\mathrm{sym}(R)=0$ and
+$\lambda\,\mathrm{ad}_bR=\mu\,R'$ with $\mu\ne0$, then $\mathrm{sym}(R')=0$. Think of the relations as the vertices of a
+graph, with an edge $R\to R'$ for each such identity, labelled by $(b,\lambda,\mu)$. A breadth-first search from the
+highest-weight relation that reaches every vertex is then a proof that all symbols vanish (\lean{sym_step}). The
+certificates of Section~\ref{l25:sec:data} are such searches: 102 steps for $D_4$, the 1539 relations of $E_7$, and
+3874 steps for the 3875 relations of $E_8$. Each step is an identity of explicit quadrics, checked by
+\lean{decide +kernel}.
+\end{proof}
+\begin{physics}
+\emph{Heuristic:} the quadrics of $I_2^{\rm ns}$ are the Higgs branch chiral-ring relations; they hold in $R_V$ because the weight-two singular vector
+(the 4d ``Higgs branch chiral ring relation'') is null in the simple quotient. The theorem says these classical
+relations, plus invariance of the Casimir, already force the full vacuum character.
+\end{physics}
+\begin{status}
+Standard axioms (re-run for this chapter). Unconditional as an
+implication.
+\end{status}
+
+\begin{theorem}[The character bound for every Deligne type]\label{l25:thm:alltypes}
+For each row of the table, the simple affine VOA $W=L_k(\ltwentyfiveg)$ satisfies, with no hypothesis,
+$\dim W_N\ge c_N=\mathtt{mldeCoeff}\ h^\vee\ N$ for all $N$ (\lean{TargetLowerBoundQ W (mldeCoeff h∨)}). The last column
+says what else is stated as a Lean theorem.
+\begin{center}\small
+\begin{tabular}{p{0.05\textwidth}p{0.06\textwidth}p{0.04\textwidth}p{0.05\textwidth}p{0.27\textwidth}p{0.38\textwidth}}
+\toprule
+type & $k$ & $h^\vee$ & $\kappa$ & bound $\dim W_N\ge c_N$ & also stated\\
+\midrule
+$A_2$ & $-3/2$ & 3 & 36 & via \lean{finrank_eq_mldeCoeff'} & the equality $\dim W_N=c_N$; \lean{vacuumQuarticRelation} ($\kappa=36$)\\
+$G_2$ & $-5/3$ & 4 & 70 & \lean{g2_targetLowerBound} & \lean{g2_vacuumQuarticRelation} (as $\frac54c^2+\frac{11}2c$); $c$ and $\ltwentyfivevac\ne0$\\
+$D_4$ & $-2$ & 6 & 168 & \lean{targetLowerBoundQ4} & \lean{vacuumQuarticRelation4} ($\kappa=168$)\\
+$F_4$ & $-5/2$ & 9 & 390 & \lean{f4_targetLowerBound} & \lean{f4_vacuumQuarticRelation} (as $\frac54c^2+\frac{11}2c$); $c$ and $\ltwentyfivevac\ne0$\\
+$E_6$ & $-3$ & 12 & 702 & \lean{e6_targetLowerBound} & only the inputs: \lean{e6_hc}, \lean{e6_casimir_match}, \lean{e6_hrel}\\
+$E_7$ & $-4$ & 18 & 1596 & \lean{e7_targetLowerBound} & only the inputs: \lean{e7_hc}, \lean{e7_casimir_match}, \lean{e7_hrel}\\
+$E_8$ & $-6$ & 30 & 4464 & \lean{targetLowerBoundQ8} & \lean{vacuumQuarticRelation8} ($\kappa=4464$)\\
+\bottomrule
+\end{tabular}
+\end{center}
+In every row $\kappa=(h^\vee+1)(5h^\vee-6)$, as Theorem~\ref{l25:thm:kappa} forces.
+\end{theorem}
+\noindent Files \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneVacuumRelationA2.lean},
+\leanpath{DeligneVacuumRelationD4.lean}, \leanpath{E6Vacuum.lean}, \leanpath{E7LieVacuum.lean}, \leanpath{E7LieZhu.lean},
+\leanpath{DeligneVacuumRelationE8.lean}, \leanpath{G2LieVacuum.lean}, \leanpath{F4LieVacuum.lean} (all in
+\leanpath{VOA/\allowbreak DeligneAudit/}). Proof bodies are omitted: each block ends at \lean{:=} or \lean{:= by}. The
+line above each block names the type and its \lean{W}.
+
+\noindent$A_2$, namespace \lean{VOA.DeligneAudit.A2}, \lean{W} $=L_{-3/2}(\mathfrak{sl}_3)$:
+\begin{leancode}
+theorem vacuumQuarticRelation : VacuumQuarticRelation W 36 := by
+
+theorem finrank_eq_mldeCoeff' (N : ℕ) :
+    (Module.finrank ℂ (W.grading N) : ℚ) = DeligneCharacter.mldeCoeff 3 N :=
+\end{leancode}
+\noindent$D_4$, namespace \lean{VOA.DeligneAudit.D4Lie}, \lean{W4 := simpleVOA d4CertData (-2) hk4}:
+\begin{leancode}
+theorem vacuumQuarticRelation4 : VacuumQuarticRelation W4 168 := by
+
+theorem targetLowerBoundQ4 : DeligneCharacter.TargetLowerBoundQ W4 (DeligneCharacter.mldeCoeff 6) :=
+\end{leancode}
+\noindent$E_6$, namespace \lean{VOA.DeligneAudit.DeligneCarrier.E6}, \lean{W6 := simpleVOA e6LieData k6 hk6} with
+$k_6=-3$; \lean{E6cd} is its \lean{affineCurrentData}:
+\begin{leancode}
+theorem e6_hc : ((E6data.n : ℕ) : ℂ) * k6 / (k6 + e6LieData.h) = -2 * (((12 : ℕ) : ℂ) + 1) := by
+
+theorem e6_casimir_match : E6cd.casPoly = MvPolynomial.C (2 / 3 : ℂ) * E6data.Q :=
+
+theorem e6_hrel (r : Fin 650) : E6cd.sym (quadraticRelation (E6data.rel r)) = 0 := by
+
+theorem e6_targetLowerBound : DeligneCharacter.TargetLowerBoundQ W6 (DeligneCharacter.mldeCoeff 12) :=
+\end{leancode}
+\noindent$E_7$, namespace \lean{VOA.DeligneAudit.E7Lie}, \lean{W7 := simpleVOA e7CertData (-4) hk7}:
+\begin{leancode}
+theorem e7_hc : ((DeligneCarrier.E7.E7data.n : ℕ) : ℂ) * (-4) / (-4 + e7CertData.h) =
+    -2 * (((18 : ℕ) : ℂ) + 1) := by
+
+theorem e7_casimir_match :
+    (VacuumRelation.affineCurrentData (ι := Fin DeligneCarrier.E7.E7data.n) e7CertData (-4)
+      hk7).casPoly = MvPolynomial.C (1 / 2 : ℂ) * DeligneCarrier.E7.E7data.Q :=
+
+theorem e7_hrel (r' : Fin 1539) :
+    (affineCurrentData (ι := Fin DeligneCarrier.E7.E7data.n) e7CertData (-4) hk7).sym
+      (quadraticRelation (DeligneCarrier.E7.E7data.rel r')) = 0 :=
+
+theorem e7_targetLowerBound : DeligneCharacter.TargetLowerBoundQ W7 (DeligneCharacter.mldeCoeff 18) :=
+\end{leancode}
+\noindent$E_8$, namespace \lean{VOA.DeligneAudit.E8Lie}, \lean{W8 := simpleVOA e8CertData (-6) hk8}:
+\begin{leancode}
+theorem targetLowerBoundQ8 :
+    DeligneCharacter.TargetLowerBoundQ W8 (DeligneCharacter.mldeCoeff 30) :=
+
+theorem vacuumQuarticRelation8 : VacuumQuarticRelation W8 4464 := by
+\end{leancode}
+\noindent$G_2$, namespace \lean{VOA.DeligneAudit.G2Lie}, \lean{g2W := simpleVOA g2CertData (-5/3) g2_level_ne}:
+\begin{leancode}
+theorem g2_vacuumQuarticRelation :
+    DeligneMLDE.VacuumQuarticRelation g2W
+      (5 / 4 * g2W.centralCharge ^ 2 + 11 / 2 * g2W.centralCharge) :=
+
+theorem g2W_centralCharge : g2W.centralCharge = -2 * (((4 : ℕ) : ℂ) + 1) := by
+
+theorem g2W_vacuum_ne_zero : g2W.vacuum ≠ 0 := simple_vacuum_ne_zero' _ _ _
+
+theorem g2_targetLowerBound :
+    DeligneCharacter.TargetLowerBoundQ g2W (DeligneCharacter.mldeCoeff 4) :=
+\end{leancode}
+\noindent$F_4$, namespace \lean{VOA.DeligneAudit.F4Lie}, \lean{f4W := simpleVOA f4CertData (-5/2) f4_level_ne}:
+\begin{leancode}
+theorem f4_vacuumQuarticRelation :
+    DeligneMLDE.VacuumQuarticRelation f4W
+      (5 / 4 * f4W.centralCharge ^ 2 + 11 / 2 * f4W.centralCharge) :=
+
+theorem f4W_centralCharge : f4W.centralCharge = -2 * (((9 : ℕ) : ℂ) + 1) := by
+
+theorem f4W_vacuum_ne_zero : f4W.vacuum ≠ 0 := simple_vacuum_ne_zero' _ _ _
+
+theorem f4_targetLowerBound :
+    DeligneCharacter.TargetLowerBoundQ f4W (DeligneCharacter.mldeCoeff 9) :=
+\end{leancode}
+\begin{dictionary}
+The \lean{LieData} records are constructed and checked in Chapter~\ref{ch:L23}. \textbf{All these theorems have no
+hypotheses.} \textbf{Same as, stronger or weaker?} For $A_2$ the Lean statement is the mathematical equality. For the
+other six types the exported conclusion is \lean{TargetLowerBoundQ}, which by definition is the one-sided
+$\forall N,\ c_N\le\dim W_N$. That is \emph{weaker} than the equality, and Theorem~\ref{l25:thm:alltypes} claims only
+that (Caveat~\ref{l25:cav:equality}). The proofs pass through \lean{targetLowerBoundQ_of_isAKSolution}, which discards
+the other half of an equality it has in hand (Theorem~\ref{l25:thm:fromAK}). The numbers: $36=4\cdot9$, $70=5\cdot14$,
+$168=7\cdot24$, $390=10\cdot39$, $702=13\cdot54$, $1596=19\cdot84$, $4464=31\cdot144$, each $(h+1)(5h-6)$. For $G_2$ and
+$F_4$ the library states $\kappa$ as $\frac54c^2+\frac{11}2c$, which at $c=-10,-20$ gives $70$ and $390$.
+
+\textbf{What is known about the Lie algebras.} For each record, Chapter~\ref{ch:L23} proves in Lean that the
+algebra is a simple Lie algebra of the right dimension, with the invariant form normalised so that \lean{D.h} is the
+usual $h^\vee$ (Theorem~\ref{l23:thm:g2f4e6} and the lattice theorems there). It does \emph{not} prove that, say,
+\lean{e6LieData} is isomorphic to the Bourbaki $\mathfrak e_6$, because the Cartan--Killing classification is not
+formalised. For dimensions $14,28,52,133,248$ the identification follows on paper from the classification and the
+dimension. Dimension $78$ is ambiguous ($B_6$, $C_6$, $E_6$), and for the structure-constant $\mathfrak e_6$ used here
+the ambiguity is settled on paper by the value of the Killing form on a long coroot (Remark~\ref{l23:rem:type}). The
+library has three Lean models of $\mathfrak e_6$, and no isomorphism between them is formalised; the $E_6$ theorem is
+about \lean{e6LieData}. So each theorem is literally about $L_k$ of the algebra the record encodes, and that algebra is
+the intended one by an argument on paper.\end{dictionary}
+\begin{proof}[Proof on paper]
+Theorem~\ref{l25:thm:carrierdata} with each type's carrier data. The work is in \lean{hrel}: one singular-vector
+computation per type and a propagation search through all relations of $I_2^{\rm ns}$, as described in the proof of
+Theorem~\ref{l25:thm:carrierdata} (certificates in Section~\ref{l25:sec:data}). The Casimir match \lean{hcas} is checked
+entrywise (\lean{quadraticRelation_eq_of_symm}). Then the central charge is computed from \lean{hc}, and
+Theorem~\ref{l25:thm:kappa} applies.
+\end{proof}
+\begin{physics}
+This is the vacuum character of the rank-one Minahan--Nemeschansky theories ($E_6,E_7,E_8$), of $SU(2)$ with four
+flavours ($D_4$) and of the $(A_1,D_4)$ Argyres--Douglas theory ($A_2$): their Schur indices satisfy the second-order
+MLDE \eqref{l25:eq:mlde}, as Beem--Rastelli predicted and Arakawa--Kawasetsu proved. $G_2$ at $k=-5/3$ and $F_4$ at
+$-5/2$ have no known 4d origin, but the VOA statement is the same. What the library contains, as Lean theorems: the
+equality $\dim L_N=c_N$ for $A_2$, and the lower bound $\dim L_N\ge c_N$ (the half that classical freeness needs) for
+all seven types (Caveat~\ref{l25:cav:equality}). For $A_2$ the further equality with the product $\prod(1+q^r)^8$ is
+derivable but not stated (Remark~\ref{l25:rem:a2cons}).
+\end{physics}
+\begin{status}
+\textbf{Verdict.} Every theorem in the blocks above is a Lean theorem with no hypotheses and standard axioms, and the
+$\ge$ bound is unconditional for all seven types; the equality only for $A_2$. \textbf{Machine evidence}
+(Section~\ref{l25:sec:machine}). These files were built green in the \lean{VOA.Deligne} umbrella build at
+an earlier commit; the quoted statements are unchanged in the state this chapter was written against, and a pre-release aggregate build, which contains the umbrella,
+was green on 2026-10-28 (18{,}901 jobs; 18{,}907 after a merge). The axiom lists are the \#\lean{print axioms} commands in the files, as run in that build
+and in the later targeted builds. For this chapter we re-ran \#\lean{print axioms} on the generic lemmas
+\lean{targetLowerBound_of_carrierData}, \lean{vacuumQuarticRelation_of_carrierData},
+\lean{isAKSolution_of_vacuumQuarticRelation} and \lean{finrank_eq_mldeCoeff_of_isAKSolution} (standard), and we did not
+import the $E_6$, $E_7$, $E_8$ modules.
+\end{status}
+
+\begin{warning}[title={LEAN DEFECT: equality is not a Lean theorem for six types}]
+The equality $\dim L_k(\ltwentyfiveg)_N=c_N$ is \textbf{not stated} in the library for $G_2$, $D_4$, $F_4$, $E_6$, $E_7$,
+$E_8$; only $A_2$ has it (\lean{A2.finrank_eq_mldeCoeff'}). It is derivable from exported lemmas, in one line per type:
+\begin{itemize}
+\item $G_2$, $F_4$: \lean{finrank_eq_mldeCoeff_of_isAKSolution _ (isAKSolution_of_vacuumQuarticRelation _ h
+  xW_centralCharge xW_vacuum_ne_zero x_vacuumQuarticRelation) N} with $h=4$, $9$.
+\item $D_4$, $E_8$: the same with \lean{vacuumQuarticRelation4} / \lean{vacuumQuarticRelation8}, $h=6$ / $30$; the
+  central-charge hypothesis is \lean{simple_centralCharge'} plus \lean{d4CertData_h} / \lean{e8CertData_h}, and
+  \lean{hvac} is \lean{simple_vacuum_ne_zero'}.
+\item $E_6$, $E_7$: no \lean{VacuumQuarticRelation} theorem is exported, so first apply
+  \lean{vacuumQuarticRelation_of_carrierData} to \lean{(E6data, e6LieData, k6, hk6, 2/3, e6_casimir_match, e6_hrel)}
+  and \lean{(E7data, e7CertData, -4, hk7, 1/2, e7_casimir_match, e7_hrel)}, then proceed as above with
+  \lean{e6_hc}/\lean{e7_hc} turned into the central-charge hypothesis by \lean{simple_centralCharge'}.
+\end{itemize}
+\emph{What the machine confirmed for this chapter:} the $G_2$, $F_4$ and $D_4$ compositions typecheck in a scratch
+file (\lean{lake env lean -DmaxSynthPendingDepth=3}, no errors), namely
+\begin{plaincode}
+example (N : ℕ) : (Module.finrank ℂ (G2Lie.g2W.grading N) : ℚ) = DeligneCharacter.mldeCoeff 4 N :=
+  DeligneMLDE.finrank_eq_mldeCoeff_of_isAKSolution _
+    (DeligneMLDE.isAKSolution_of_vacuumQuarticRelation _ 4 G2Lie.g2W_centralCharge
+      G2Lie.g2W_vacuum_ne_zero G2Lie.g2_vacuumQuarticRelation) N
+\end{plaincode}
+and its $F_4$ and $D_4$ analogues. The $E_6$, $E_7$, $E_8$ compositions were \emph{not} checked (heavy modules not
+imported). The scratch file is not part of the library. Recommended fix: a generic
+\lean{finrank_eq_mldeCoeff_of_carrierData} beside \lean{targetLowerBound_of_carrierData}, and per-type
+\lean{*_finrank_eq_mldeCoeff} corollaries. Until then, cite the equality for these six types as ``derivable, not
+stated''. This is the authoritative statement of Caveat~\ref{l25:cav:equality}; elsewhere the chapter refers here.
+\end{warning}
+
+\begin{remark}[The $A_2$ consequences]\label{l25:rem:a2cons}
+What exists in Lean for $A_2$, exactly:
+\begin{itemize}
+\item \lean{A2.finrank_eq_mldeCoeff'}: $\dim V_N=c_N$ (with \lean{mldeCoeff 3});
+\item \lean{A2.productCoeff_eq_mldeCoeff'}: $[q^N]\prod_{r\ge1}(1+q^r)^8=c_N$ (from \lean{A2.a2ProductMLDE},
+  Theorem~\ref{l25:thm:a2prod});
+\item \lean{A2.kacWakimotoLowerBound_of_quartic}: the Kac--Wakimoto lower half $[q^N]\prod(1+q^r)^8\le\dim V_N$
+  (structure \lean{KacWakimotoLowerBound}), from any vacuum quartic relation and \lean{a2ProductMLDE}, with no
+  literature input;
+\item \lean{A2.finrank_grading_two_ge}: $36\le\dim V_2$, by an explicit $36\times36$ Gram determinant at $k=-3/2$
+  (\leanpath{A2CharacterGram.lean}), an independent low-weight check.
+\end{itemize}
+The \emph{character formula} $\dim V_N=[q^N]\prod_{r\ge1}(1+q^r)^8$ itself is \textbf{not stated} as one Lean theorem.
+It follows in one line from the first two items, and the proof of \lean{kacWakimotoLowerBound_of_isAKSolution} even
+derives it internally before weakening it to $\le$. It is a further instance of ``derivable, not stated'', recorded in
+Section~\ref{l25:sec:defects}.
+\end{remark}
+
+%======================================================================
+\section{Formal \texorpdfstring{$q$}{q}-series: the toolkit and the classical identities}\label{l25:sec:qseries}
+%======================================================================
+
+All identities in this section are equalities in a formal power series ring $A[[q]]$ (Mathlib's
+\lean{PowerSeries A}), proved from scratch. Nothing analytic is used except one appeal to Mathlib's level-one
+Sturm bound (Theorem~\ref{l25:thm:ramanujan}). The infrastructure lives in
+\leanpath{VOA/\allowbreak Commutative/\allowbreak JacobiTripleCore.lean}. We use the $q$-Pochhammer symbols
+\begin{equation*}
+(a;q)_n=\prod_{i=0}^{n-1}(1-aq^i),\qquad (a;q)_\infty=\prod_{i\ge0}(1-aq^i),\qquad (q)_n=(q;q)_n,
+\end{equation*}
+and $\binom nk_q=(q)_n/((q)_k(q)_{n-k})$ for the Gaussian binomial.
+
+\paragraph{Which identity is used where.}
+\begin{center}\small
+\begin{tabular}{p{0.3\textwidth}p{0.6\textwidth}}
+\toprule
+identity & used for\\
+\midrule
+Jacobi triple product & everything below: Ramanujan (via the heat equation), Legendre (via Gauss), Lorenz\\
+pentagonal, quintuple product & side results; the quintuple product feeds Lorenz\\
+Legendre & the last step of the $A_2$ star identity (critical)\\
+Ramanujan & the $A_2$ product (critical), the closed forms of Section~\ref{l25:sec:closed} ($D_4$ critical), $G_2$\\
+$A_2$ product & $c_N$ for $A_2$ as a product; Kac--Wakimoto lower half (critical for $A_2$)\\
+Lorenz, Borwein, $G_2$ target & the target side of the open $G_2$ star identity (side result)\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{definition}[Agreement, the Euler operator, infinite products, sums over $\Z$]\label{l25:def:toolkit}
+$f$ and $g$ \emph{agree to order $K$} if $q^K\mid f-g$. The Euler operator is $\ltwentyfiveEu f=\sum_nn\,a_nq^n$. For factors
+$u_k$ with $u_k\equiv1\pmod{q^{k+1}}$, the infinite product $\prod_{k\ge0}u_k$ has $q^d$-coefficient that of the
+finite product $\prod_{k<d}u_k$. For $c:\Z\to A$, $e:\Z\to\N$ with finite fibres inside $[-d-1,d+1]$,
+$\sum_{n\in\Z}c(n)q^{e(n)}$ has $q^d$-coefficient $\sum_{e(n)=d}c(n)$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Commutative/\allowbreak JacobiTripleCore.lean}.
+\begin{leancode}
+def AgreeTo (K : ℕ) (f g : PowerSeries R) : Prop := (X : PowerSeries R) ^ K ∣ f - g
+
+def eulerOp (f : PowerSeries R) : PowerSeries R := mk fun n => (n : R) * coeff n f
+
+def ProdFactors (u : ℕ → PowerSeries R) : Prop := ∀ k, AgreeTo (k + 1) (u k) 1
+
+def infProd (u : ℕ → PowerSeries R) : PowerSeries R :=
+  mk fun d => coeff d (∏ k ∈ Finset.range d, u k)
+
+def zSeries (c : ℤ → R) (e : ℤ → ℕ) : PowerSeries R :=
+  mk fun d => ∑ n ∈ Finset.Icc (-(d : ℤ) - 1) (d + 1) with e n = d, c n
+\end{leancode}
+\begin{dictionary}
+\textbf{Junk values.} \lean{infProd u} is defined for \emph{every} sequence, but it is the infinite product only
+when \lean{ProdFactors u} holds; every theorem that uses it carries or proves that condition
+(e.g.\ \lean{prodFactors_tripleFactor}). Likewise \lean{zSeries c e} truncates the sum to $|n|\le d+1$ and is
+the intended sum only when every $n$ with $e(n)=d$ satisfies this (\lean{natAbs_le_pentExp} etc.). The Euler
+product $(q;q)_\infty$ is Mathlib-style \lean{euler} of \leanpath{QPochhammer.lean} (Chapter~\ref{ch:L14}), with
+inverse \lean{reciprocalEuler}.
+\end{dictionary}
+\begin{physics}
+Formal $q$-series are partition functions counted state by state; infinite products are free-field (Fock space)
+partition functions, sums over $\Z$ are lattice (momentum) sums. Every identity below is a boson--fermion or
+product--sum identity of 2d CFT.
+\end{physics}
+\begin{status}
+Definitions.
+\end{status}
+
+\begin{theorem}[Jacobi triple product]\label{l25:thm:jtp}
+For any commutative ring $A$ and unit $u\in A^\times$, in $A[[q]]$:
+\begin{equation*}
+(1-u)\prod_{m\ge1}(1-uq^m)(1-u^{-1}q^m)(1-q^m)=\sum_{j\in\Z}(-1)^ju^jq^{j(j-1)/2}.
+\end{equation*}
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Commutative/\allowbreak JacobiTriple.lean}.
+\begin{leancode}
+def pentExp (j : ℤ) : ℕ := (j * (j - 1) / 2).toNat
+
+def tripleCoeff (u : Aˣ) (j : ℤ) : A := negSign j * ((u ^ j : Aˣ) : A)
+
+def tripleSum (u : Aˣ) : PowerSeries A := zSeries (tripleCoeff u) pentExp
+
+def tripleFactor (u : Aˣ) (m : ℕ) : PowerSeries A :=
+  (1 - C (u : A) * X ^ (m + 1)) * (1 - C ((u⁻¹ : Aˣ) : A) * X ^ (m + 1)) * (1 - X ^ (m + 1))
+
+theorem jacobiTriple (u : Aˣ) :
+    (1 - C (u : A)) * infProd (tripleFactor u) = tripleSum u
+\end{leancode}
+\begin{dictionary}
+\lean{negSign j} $=(-1)^{|j|}=(-1)^j$. \lean{pentExp j} $=j(j-1)/2\ge0$ (\lean{toNat} is harmless: the value is
+a nonnegative integer). \lean{tripleFactor u m} is the $(m+1)$-st factor. $u$ is any unit, e.g.\ a monomial
+$x^n$ in $\Z[x^{\pm1}]$, giving the two-variable identity coefficientwise (\lean{twoVariableJTP},
+\leanpath{JacobiTripleD4.lean}).
+\end{dictionary}
+\begin{proof}[Proof on paper]
+\emph{Step 1: Cauchy's finite $q$-binomial theorem.} For every $m$,
+$\prod_{i=0}^{m-1}(1+zq^i)=\sum_{k=0}^m\binom mk_qq^{k(k-1)/2}z^k$. This is proved by induction on $m$ from the
+$q$-Pascal rule.
+
+\emph{Step 2: the finite triple product.} Pull a factor $-q^i/u$ out of each $1-q^i/u$:
+\begin{equation*}
+(u;q)_n\,(q/u;q)_n=\prod_{i=0}^{n-1}(1-uq^i)\prod_{i=1}^{n}(1-q^i/u)
+=(-1)^nu^{-n}q^{n(n+1)/2}\prod_{i=0}^{2n-1}\big(1-uq^{-n}q^{i}\big).
+\end{equation*}
+Apply Step 1 with $m=2n$ and $z=-uq^{-n}$, and write $k=n+j$. The exponent of $q$ becomes
+$\binom{n+j}{2}-n(n+j)+\binom{n+1}{2}=\binom j2$, so
+\begin{equation*}
+(u;q)_n(q/u;q)_n=\sum_{j=-n}^{n}(-1)^ju^jq^{j(j-1)/2}\binom{2n}{n+j}_q .
+\end{equation*}
+
+\emph{Step 3: the limit.} For fixed $j$, $\binom{2n}{n+j}_q=(q)_{2n}/((q)_{n+j}(q)_{n-j})$ agrees with
+$(q)_\infty/((q)_\infty(q)_\infty)=1/(q)_\infty$ to order $n-|j|$. Similarly the left side agrees with
+$(u;q)_\infty(q/u;q)_\infty$ to order $n$. Letting $n\to\infty$ coefficientwise and multiplying by $(q)_\infty$ gives
+$(u;q)_\infty(q/u;q)_\infty(q)_\infty=\sum_j(-1)^ju^jq^{j(j-1)/2}$, which is the statement, since
+$(u;q)_\infty=(1-u)\prod_{m\ge1}(1-uq^m)$.
+\end{proof}
+\begin{physics}
+Boson--fermion correspondence: the partition function of a complex fermion with a fugacity $u$ for the $U(1)$ charge
+equals the sum over charge sectors of a free boson (charge $j$, energy $j^2/2$).
+\end{physics}
+\begin{status}
+Standard axioms (re-run for this chapter). Unconditional. Not in Mathlib.
+\end{status}
+
+\noindent\emph{Side result} (feeds Lorenz's formula only).
+\begin{theorem}[Euler's pentagonal theorem; the sum side of the quintuple product]\label{l25:thm:pent}
+$(q;q)_\infty=\sum_{r\in\Z}(-1)^rq^{r(3r-1)/2}$. With $J_1(u)=\sum(-1)^nu^np^{n(n-1)/2}$ and $J_2(u)=\sum u^mp^{m^2}$,
+$J_1(u)J_2(u)=(p;p)_\infty\sum_j\big(u^{3j}p^{j(3j-1)}-u^{3j+1}p^{j(3j+1)}\big)$ (the sum side of the quintuple
+product identity).
+\end{theorem}
+\noindent Files \leanpath{VOA/\allowbreak Commutative/\allowbreak JacobiTriplePentagonal.lean},
+\leanpath{VOA/\allowbreak Commutative/\allowbreak JacobiTripleQuintuple.lean}.
+\begin{leancode}
+def pentSeries : PowerSeries R := zSeries (fun r => negSign r) pentagonal
+
+theorem euler_eq_pentagonal : (euler : PowerSeries R) = pentSeries := by
+
+theorem quintuple_sum (u : Rˣ) :
+    fsr (fun n : ℤ => negSign n * ((u ^ n : Rˣ) : R)) pentExp *
+        fsr (fun m : ℤ => ((u ^ m : Rˣ) : R)) sqExp =
+      euler * (fsr (fun j : ℤ => ((u ^ (3 * j) : Rˣ) : R)) (fun j => 2 * pentagonal j) -
+        fsr (fun j : ℤ => ((u ^ (3 * j + 1) : Rˣ) : R)) (fun j => 2 * pentagonal (-j)))
+\end{leancode}
+\begin{dictionary}
+\lean{pentagonal} is Mathlib's $k\mapsto k(3k-1)/2$ (Mathlib defines the numbers but does not prove the theorem).
+\lean{fsr c e} $=\sum_ic_iq^{e(i)}$ coefficientwise as a \lean{finsum} (\leanpath{JacobiTripleFiber.lean}).
+\lean{sqExp n} $=n^2$. With $q=p^2$ the second statement is the sum-side form of the classical quintuple product identity
+(the sum $J_1J_2$ rewritten as $(p;p)_\infty$ times a two-term theta-type sum); the product form of the quintuple
+product identity was not needed and is not formalised, so the library does not contain ``the quintuple product
+identity'' in its usual product form.
+\end{dictionary}
+\begin{proof}[Proof on paper]
+\emph{Pentagonal.} Formally this is the triple product with base $q^3$ and $u=q$:
+$(q;q^3)_\infty(q^2;q^3)_\infty(q^3;q^3)_\infty=\sum_j(-1)^jq^{j}q^{3j(j-1)/2}=\sum_j(-1)^jq^{j(3j-1)/2}$, and the left side
+is $(q)_\infty$, because every $n\ge1$ is $\equiv0,1,2\pmod3$. Since $u=q$ is not a unit of $A[[q]]$,
+Theorem~\ref{l25:thm:jtp} cannot be applied directly. One reruns Steps 1--3 of its proof with $z=-q\cdot q^{-3n}$ at
+base $q^3$, which gives the finite identity
+$\prod_{m<n}(1-q^{3m+2})\prod_{i<n}(1-q^{3i+1})=\sum_{k\le2n}(-1)^{k-n}q^{(k-n)(3(k-n)-1)/2}\binom{2n}{k}_{q^3}$, and lets
+$n\to\infty$.
+
+\emph{Quintuple.} The coefficient of $u^k$ in $J_1(u)J_2(u)$ is $\sum_{n}(-1)^np^{E(n)}$ with
+$E(n)=\binom n2+(k-n)^2$. Write $k=3j+t$ with $t\in\{0,1,2\}$ and complete the square.
+\begin{itemize}
+\item $t=0$, $n=r+2j$: $E=\frac{r(3r-1)}2+j(3j-1)$, and the sign is $(-1)^r$. By the pentagonal theorem the sum is
+  $p^{j(3j-1)}(p;p)_\infty$.
+\item $t=1$, $n=r+2j+1$: $E=\frac{r(3r+1)}2+j(3j+1)$, and the sign is $-(-1)^r$. Replacing $r$ by $-r$ gives
+  $-p^{j(3j+1)}(p;p)_\infty$.
+\item $t=2$, $n=r+2j+1$: $E=\frac{3r(r-1)}2+\text{const}$, and the sign is $-(-1)^r$. The terms $r$ and $1-r$ have the
+  same exponent and opposite signs, so the sum is $0$.
+\end{itemize}
+Summing over $k$ gives the display.
+\end{proof}
+\begin{physics}
+$(q;q)_\infty=q^{-1/24}\eta$ is the inverse partition function of one boson; the pentagonal theorem is the
+character of the trivial $c=0$ minimal model written as a Virasoro Verma-module alternating sum.
+\end{physics}
+\begin{status}
+Standard axioms. Unconditional.
+\end{status}
+
+\begin{theorem}[Legendre's four-triangular-numbers theorem]\label{l25:thm:legendre}
+In $\Z[[q]]$: $\displaystyle\sum_{v\ge0}\frac{(2v+1)q^v}{1-q^{2v+1}}=(q;q)_\infty^4\prod_{k\ge1}(1+q^k)^8$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Commutative/\allowbreak FourTriangular.lean}.
+\begin{leancode}
+def lambertS : PowerSeries R :=
+  powerShiftSum 1 fun v => ((2 * v + 1 : ℕ) : PowerSeries R) * geomInvSeries (2 * v + 1)
+
+theorem lambertS_eq :
+    (lambertS : PowerSeries ℤ) = euler ^ 4 * infProd fun k => (1 + X ^ (k + 1)) ^ 8
+\end{leancode}
+\begin{dictionary}
+\lean{geomInvSeries m} $=1/(1-q^m)$; \lean{powerShiftSum 1 f} $=\sum_vq^vf(v)$. The right side is
+$\psi(q)^4$ with $\psi=\sum q^{n(n+1)/2}=(q;q)_\infty(-q;q)_\infty^2$ (Gauss), and the left side is
+$\sum_n\sigma(2n+1)q^n$ --- so this is Legendre's count of representations by four triangular numbers.
+\end{dictionary}
+\begin{proof}[Proof on paper]
+Work in $\Z[[x]]$ with $q=x^2$ and $\ltwentyfiveEu=x\frac d{dx}$. Put $\varphi(x)=\sum_{n\in\Z}x^{n^2}$,
+$Q_\pm=(\mp x;x^2)_\infty$, $P_2=(x^2;x^2)_\infty$, and let $S(q)$ be the left side of the theorem.
+\begin{enumerate}
+\item \emph{Gauss} (the triple product at $u=\mp x$, base $x^2$): $\varphi(x)=P_2Q_+^2$ and $\varphi(-x)=P_2Q_-^2$.
+\item \emph{Log-derivative of the products.} $Q_+=\prod_k(1+x^{2k+1})$ and $Q_-=\prod_k(1-x^{2k+1})$, and
+  $\ltwentyfiveEu\log\frac{1+y}{1-y}=\frac{2\ltwentyfiveEu y}{1-y^2}$ with $y=x^{2k+1}$, $\ltwentyfiveEu y=(2k+1)y$.
+  Summing over $k$ gives $\frac{\ltwentyfiveEu Q_+}{Q_+}-\frac{\ltwentyfiveEu Q_-}{Q_-}=2xS(x^2)$.
+\item \emph{The Wronskian as a product.} Let $W=\ltwentyfiveEu\varphi(x)\cdot\varphi(-x)-\varphi(x)\cdot\ltwentyfiveEu\varphi(-x)$.
+  By items 1--2, $W=\varphi(x)\varphi(-x)\cdot2\big(\frac{\ltwentyfiveEu Q_+}{Q_+}-\frac{\ltwentyfiveEu Q_-}{Q_-}\big)
+  =4xS(x^2)\,P_2^2Q_+^2Q_-^2$.
+\item \emph{The Wronskian as a sum.} $W=\sum_{m,n}(m^2-n^2)(-1)^nx^{m^2+n^2}$. Pairs of equal parity cancel under
+  $(m,n)\mapsto(n,m)$. Opposite-parity pairs are $(m,n)=(a+b+1,a-b)$, up to the swap, with $m^2-n^2=(2a+1)(2b+1)$ and
+  $m^2+n^2=2a(a+1)+2b(b+1)+1$. The sum factorises: $W=xZ^2$, where $Z=\sum_{a\in\Z}(-1)^a(2a+1)x^{2a(a+1)}$.
+\item \emph{Jacobi's cube identity} $(q)_\infty^3=\sum_{a\ge0}(-1)^a(2a+1)q^{a(a+1)/2}$, at $q=x^4$, gives $Z=2(x^4;x^4)_\infty^3$.
+\item Equate items 3 and 4 and cancel $4x$: $S(x^2)P_2^2Q_+^2Q_-^2=(x^4;x^4)^6_\infty$. Undo $q=x^2$: $Q_+Q_-=(q;q^2)_\infty$
+  and $P_2=(q)_\infty$. Euler's $(q;q^2)_\infty(-q;q)_\infty=1$ and $(q^2;q^2)_\infty=(q)_\infty(-q;q)_\infty$ then give
+  $S=(q)_\infty^4(-q;q)_\infty^8$.
+\end{enumerate}
+\end{proof}
+\begin{physics}
+$\psi(q)^4$ is, up to normalisation, the fourth power of the Jacobi theta constant $\theta_2(\tau)=2q^{1/8}\psi(q)$, the \emph{numerator} of the
+Ramond-sector character of eight Majorana--Weyl fermions ($SO(8)$ level one). The character itself is
+$\theta_2^4/(2\eta^4)=8q^{1/3}\psi^4/(q;q)_\infty^4=8q^{1/3}\prod(1+q^r)^8$. The identity is the $A_2$ star identity's
+last step, where $\prod(1+q^r)^8=q^{-1/3}(\eta(2\tau)/\eta(\tau))^8$ is the character of
+$L_{-3/2}(\mathfrak{sl}_3)$.
+\end{physics}
+\begin{status}
+Standard axioms (re-run for this chapter). Unconditional. Discharges \lean{A2.FourTriangular}
+(\lean{A2.fourTriangular}, \leanpath{FourTriangularDeligne.lean}).
+\end{status}
+
+\subsection{Ramanujan's identities from the heat equation}
+
+\begin{theorem}[Ramanujan's three identities]\label{l25:thm:ramanujan}
+With $E_2=1-24\sum\sigma_1q^n$, $E_4=1+240\sum\sigma_3q^n$, $E_6=1-504\sum\sigma_5q^n$ in $\Q[[q]]$:
+\begin{equation*}
+12\ltwentyfiveEu E_2=E_2^2-E_4,\qquad 3\ltwentyfiveEu E_4=E_2E_4-E_6,\qquad 2\ltwentyfiveEu E_6=E_2E_6-E_4^2 .
+\end{equation*}
+\end{theorem}
+\noindent Files \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneCharacterD4MLDE.lean},
+\leanpath{DeligneMLDERamanujan.lean}, \leanpath{DeligneMLDERamanujanFull.lean},
+\leanpath{DeligneMLDERamanujanAdapters.lean}, \leanpath{DeligneMLDEEightSq.lean}.
+\begin{leancode}
+def sigS (k : ℕ) : PowerSeries ℚ := PowerSeries.mk fun n => if n = 0 then 0 else (sigmaK k n : ℚ)
+
+def E2s : PowerSeries ℚ := 1 - 24 * sigS 1
+def E4s : PowerSeries ℚ := 1 + 240 * sigS 3
+def E6s : PowerSeries ℚ := 1 - 504 * sigS 5
+
+structure RamanujanIdentities : Prop where
+  e2 : 12 * eulerOp E2s = E2s ^ 2 - E4s
+  e4 : 3 * eulerOp E4s = E2s * E4s - E6s
+  e6 : 2 * eulerOp E6s = E2s * E6s - E4s ^ 2
+
+theorem ramanujanIdentities : RamanujanIdentities := by
+\end{leancode}
+\begin{leancode}
+theorem ramanujan : C 12 * (P1 * P1) = C 5 * P3 + P1 - C 6 * eulerOp P1 := by
+
+theorem eight_sq (n : ℕ) :
+    ∑ p ∈ Finset.antidiagonal n, e4 p.1 * e4 p.2 = e8 n := by
+\end{leancode}
+\begin{dictionary}
+Namespace \lean{VOA.DeligneAudit.DeligneCharacter.D4MLDE} for the first block; \lean{P1}, \lean{P3} are
+$\sum\sigma_1q^n$, $\sum\sigma_3q^n$ built from the divisor series \lean{lamQ}; \lean{ramanujan} is
+$12P_1^2=5P_3+P_1-6\ltwentyfiveEu P_1$, which is $12\ltwentyfiveEu E_2=E_2^2-E_4$ after substituting $E_2=1-24P_1$ and
+$E_4=1+240P_3$. \lean{eight_sq} is $E_4^2=E_8$ coefficientwise ($e_4(0)=1$, $e_4(n)=240\sigma_3(n)$, $e_8(n)=480\sigma_7(n)$).
+The structure \lean{RamanujanIdentities} is a \lean{Prop}, and \lean{ramanujanIdentities} proves it.
+\end{dictionary}
+\begin{proof}[Proof on paper]
+\emph{Setting.} Let $A=\Q[[x]]$ and $u=\varepsilon e^x\in A^\times$ with $\varepsilon=\pm1$. Write $\partial=d/dx$, acting on
+coefficients, and note $\partial u=u$. The triple product (Theorem~\ref{l25:thm:jtp}) in $A[[q]]$ reads
+$\Theta=(1-u)P$, where
+\begin{equation*}
+\Theta=\sum_{j\in\Z}(-1)^ju^jq^{j(j-1)/2},\qquad P=\prod_{m\ge1}(1-uq^m)(1-u^{-1}q^m)(1-q^m).
+\end{equation*}
+
+\emph{Two derivatives of the two sides.} On the sum side, $\partial u^j=ju^j$ and $\ltwentyfiveEu q^{j(j-1)/2}=\frac{j(j-1)}2q^{j(j-1)/2}$,
+so $\Theta$ satisfies the \emph{heat equation} $\partial^2\Theta-\partial\Theta=2\ltwentyfiveEu\Theta$. On the product side,
+the logarithmic derivatives are
+\begin{equation*}
+R:=\frac{\partial P}{P}=\sum_{m\ge1}\Big(\frac{u^{-1}q^m}{1-u^{-1}q^m}-\frac{uq^m}{1-uq^m}\Big),\qquad
+T:=\frac{\ltwentyfiveEu P}{P}=-\sum_{m\ge1}m\Big(\frac{uq^m}{1-uq^m}+\frac{u^{-1}q^m}{1-u^{-1}q^m}+\frac{q^m}{1-q^m}\Big).
+\end{equation*}
+
+\emph{The master identity.} Substitute $\Theta=(1-u)P$ into the heat equation. Since $\partial(1-u)=-u$,
+\begin{equation*}
+\partial^2\Theta-\partial\Theta=P\big[(1-u)(\partial R+R^2)-(1+u)R\big],\qquad 2\ltwentyfiveEu\Theta=2(1-u)PT .
+\end{equation*}
+Dividing by the unit $P$ gives
+\begin{equation*}
+(1-u)\big(\partial R+R^2-2T\big)=(1+u)R. \tag{$*$}
+\end{equation*}
+
+\emph{Reading off the identities.} At $\varepsilon=1$, expand $R$ and $T$ in powers of $x$. The coefficient of $x^{k}$ in
+$\frac{e^{\pm x}q^m}{1-e^{\pm x}q^m}$ is $\frac{(\pm1)^k}{k!}\sum_{d\ge1}d^kq^{md}$. So the $x$-coefficients of $R$ and $T$ are,
+up to constants, the divisor series $\sum_n\sigma_k(n)q^n$ and $\sum_nn\sigma_{k}(n)q^n=\ltwentyfiveEu\sum_n\sigma_k(n)q^n$.
+Comparing the coefficients of $x^1$ in $(*)$ gives a tautology (the involution $d\leftrightarrow n/d$ of divisors). The
+coefficient of $x^3$ gives $12P_1^2=5P_3+P_1-6\ltwentyfiveEu P_1$, i.e.\ $12\ltwentyfiveEu E_2=E_2^2-E_4$. The coefficient
+of $x^5$ gives $3\ltwentyfiveEu E_4=E_2E_4-E_6$. The coefficient of $x^7$ gives a relation of weight eight,
+$2\ltwentyfiveEu E_6=E_2E_6-E_8$, with $E_8=1+480\sum\sigma_7(n)q^n$.
+
+\emph{The step $E_4^2=E_8$.} This does \emph{not} come out of the heat equation (warning below). The space $M_8$ of
+level-one modular forms of weight $8$ is one-dimensional, spanned by $E_4^2$, and contains no cusp form. So $E_4^2-E_8$,
+being in $M_8$ with constant term $1-1=0$, is zero. This is Mathlib's level-one Sturm bound
+(\lean{ModularForm.sturm_bound_levelOne_nat}) applied at weight $8$, where it says that a form whose constant term vanishes is
+zero. It is the one analytic input of the section.
+\end{proof}
+\begin{physics}
+Ramanujan's identities say that $\vartheta_k=\ltwentyfiveEu-\frac k{12}E_2$ (the Serre derivative) maps modular forms to modular
+forms: they are the formal shadow of modularity, and they are exactly what is needed to verify that an explicit
+$q$-series solves an MLDE.
+\end{physics}
+\begin{status}
+Standard axioms for \lean{ramanujanIdentities} (re-run for this chapter). Unconditional. Uses Mathlib's modular forms
+only through \lean{eight_sq}.
+\end{status}
+
+\begin{warning}[title={Dead end: the heat equation alone does not give $E_4^2=E_8$}]
+The single-variable heat equation for the theta function gives one relation per weight; at weight 8 the $x^6$
+relation contains $\sigma_7$, and no combination eliminates it. Do not retry; the cheapest source is Mathlib's
+dimension formula, as used.
+\end{warning}
+
+\begin{theorem}[$A_2$: the product solves the $h=3$ recurrence]\label{l25:thm:a2prod}
+$f=\prod_{r\ge1}(1+q^r)^8$ satisfies $6\ltwentyfiveEu^2f+3\ltwentyfiveEu f+24P_1\ltwentyfiveEu f+8P_1f-80P_3f=0$; hence
+$[q^N]f=\mathtt{mldeCoeff}\ 3\ N$.
+\end{theorem}
+\noindent Files \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneMLDEProduct.lean},
+\leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneMLDE.lean}.
+\begin{leancode}
+def fQ : PowerSeries ℚ := infProd fun k => (1 + X ^ (k + 1)) ^ 8
+
+theorem product_mlde :
+    6 * eulerOp (eulerOp fQ) + 3 * eulerOp fQ + 24 * (P1 * eulerOp fQ) + 8 * (P1 * fQ)
+      - 80 * (P3 * fQ) = 0 := by
+
+structure A2ProductMLDE : Prop where
+  sol : IsAKSolution (K := ℚ) 3 (fun N => (productCoeff N : ℚ))
+
+theorem a2ProductMLDE : A2ProductMLDE :=
+\end{leancode}
+\begin{dictionary}
+\lean{productCoeff N} $=[q^N]\prod(1+q^r)^8$ (computable, \leanpath{A2CharacterInterface.lean}). The displayed ODE is
+\eqref{l25:eq:mlde} at $h=3$ for $g=q^{1/3}f$ (exponent $(h+1)/12=1/3$), multiplied by $6$ and rewritten with
+$E_2=1-24P_1$, $E_4=1+240P_3$: indeed $(\ltwentyfiveEu-\frac16E_2)\ltwentyfiveEu g=\frac1{18}E_4g$ becomes
+$\ltwentyfiveEu^2f+\frac12\ltwentyfiveEu f+4P_1\ltwentyfiveEu f+\frac43P_1f-\frac{40}3P_3f=0$.
+\end{dictionary}
+\begin{proof}[Proof on paper]
+\emph{The log-derivative.} Since $\frac{q^r}{1+q^r}=\frac{q^r}{1-q^r}-\frac{2q^{2r}}{1-q^{2r}}$,
+\begin{equation*}
+\ltwentyfiveEu\log f=8\sum_r\frac{rq^r}{1+q^r}=8P_1(q)-16P_1(q^2)=\tfrac13\big(2E_2(q^2)-E_2(q)-1\big).
+\end{equation*}
+Put $g=q^{1/3}f$ and $F=2E_2(q^2)-E_2(q)$. Then $\ltwentyfiveEu g=\frac13Fg$ and
+$\ltwentyfiveEu^2g=\big(\frac19F^2+\frac13\ltwentyfiveEu F\big)g$.
+
+\emph{Reduction to an Eisenstein identity.} The MLDE $(\ltwentyfiveEu-\frac16E_2)\ltwentyfiveEu g=\frac1{18}E_4g$, multiplied by
+$18/g$, becomes $6\ltwentyfiveEu F+2F^2-E_2F-E_4=0$. By Ramanujan at $q$ and at $q^2$,
+$\ltwentyfiveEu F=\frac13\big(E_2(q^2)^2-E_4(q^2)\big)-\frac1{12}\big(E_2^2-E_4\big)$. Substituting, the equation becomes
+\begin{equation*}
+F^2=\tfrac15\big(E_4(q)+4E_4(q^2)\big),
+\end{equation*}
+the classical level-two identity $\big(2E_2(2\tau)-E_2(\tau)\big)^2=\frac15\big(E_4(\tau)+4E_4(2\tau)\big)$.
+
+\emph{The level-two identity.} It comes from the master identity $(*)$ of Theorem~\ref{l25:thm:ramanujan}, now at
+$\varepsilon=-1$, i.e.\ $u=-e^x$. There the geometric series of $R$ and $T$ carry signs: their $x$-coefficients
+are the alternating divisor sums $\sum_{dk=n}(-1)^kd^j$, which are combinations of $\sigma_j(n)$ and $\sigma_j(n/2)$,
+i.e.\ of series in $q$ and in $q^2$. The coefficients of $x^0$ and $x^2$ of $(*)$ give the needed identity
+(\lean{level_two}). Uniqueness (Theorem~\ref{l25:thm:unique}) then gives $[q^N]f=c_N$.
+\end{proof}
+\begin{physics}
+$q^{1/3}\prod(1+q^r)^8=(\eta(2\tau)/\eta(\tau))^8$: the $A_2$ vacuum character is a $\Gamma_0(2)$ eta quotient, the
+Schur index of the $(A_1,D_4)$ theory.
+\end{physics}
+\begin{status}
+Standard axioms. Unconditional.
+\end{status}
+
+\subsection{Level three: Lorenz and Borwein, for \texorpdfstring{$G_2$}{G2}}
+
+\noindent\emph{Side result} at this commit: it proves the target side of the open $G_2$ star identity.
+\begin{theorem}[Lorenz's formula; Borwein's cubic identity; the $G_2$ target]\label{l25:thm:g2target}
+Let $a=\theta_{A_2}=\sum_{x,y\in\Z}q^{x^2-xy+y^2}$, $b^3=(q;q)^9_\infty/(q^3;q^3)^3_\infty$, $c^3=27q(q^3;q^3)^9_\infty/(q;q)^3_\infty$.
+Then $a=1+6\sum_{n\ge1}\big(\sum_{d\mid n}\chi_{-3}(d)\big)q^n$ (Lorenz), $a^3=b^3+c^3$ (Borwein), $2a^2=3E_2(q^3)-E_2$,
+$10a^4=E_4+9E_4(q^3)$. Consequently the Kac--Wakimoto form $T=\theta_{A_2}(q)(q^3;q^3)^6_\infty/(q;q)^8_\infty$ has
+$[q^N]T=\mathtt{mldeCoeff}\ 4\ N$.
+\end{theorem}
+\noindent Files \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak G2StarRiccati.lean},
+\leanpath{G2StarMLDE.lean}, \leanpath{G2StarLorenz.lean}, \leanpath{G2StarReduction.lean},
+\leanpath{G2StarUnconditional.lean}.
+\begin{leancode}
+def lambertA2 : PowerSeries ℚ :=
+  PowerSeries.mk fun n => if n = 0 then 1 else 6 * ∑ d ∈ n.divisors, chi3 d
+
+def LorenzA2 : Prop := AQ = lambertA2
+
+theorem lorenzA2 : LorenzA2 := aq_eq_one_add_six_L0.trans lambertA2_eq_L0.symm
+
+structure G2Level3Core : Prop where
+  l1 : AQ ^ 3 = BQ + CQ
+  l2 : 2 * AQ ^ 2 = 3 * E2q3 - E2q
+  l3 : 10 * AQ ^ 4 = E4q + 9 * E4q3
+
+theorem g2Level3Core : G2Level3Core := g2Level3Core_of_eisLambert g2Level3EisLambert
+
+def g2KW : PowerSeries ℤ := thetaA2 * euler3 ^ 6 * reciprocalEuler ^ 8
+
+structure G2KWEqMLDE : Prop where
+  eq : ∀ N, ((coeff N g2KW : ℤ) : ℚ) = mldeCoeff 4 N
+
+theorem g2KWEqMLDE : G2KWEqMLDE := g2KWEqMLDE_of_eisLambert g2Level3EisLambert
+\end{leancode}
+\begin{dictionary}
+Namespace \lean{VOA.DeligneAudit.G2Star}. \lean{chi3 k} is $\chi_{-3}(k)$ ($1,-1,0$ for $k\equiv1,2,0$ mod 3). \lean{AQ} is
+\lean{thetaA2} over $\Q$; \lean{thetaA2} counts $(x,y)\in[-N,N]^2$ with $x^2-xy+y^2=N$ (a correct finite box: $x^2-xy+y^2\ge\frac34\max(x^2,y^2)$, so every solution has
+$|x|,|y|\le\sqrt{4N/3}\le N$ for $N\ge1$). \lean{BQ},
+\lean{CQ} are $b^3$, $c^3$; \lean{E2q3} etc.\ are $E_k(q^3)$ via \lean{expand 3}. \lean{LorenzA2} and
+\lean{G2KWEqMLDE} are \lean{Prop}s, and \lean{lorenzA2} and \lean{g2KWEqMLDE} prove them.
+\end{dictionary}
+\begin{proof}[Proof on paper]
+\emph{Where $T$ comes from.} $T$ was found by a numerical search, as a closed form matching the first coefficients of
+$\mathtt{mldeCoeff}\ 4$. It has the shape that Kac and Wakimoto's admissible-character formula would give. The theorem
+does not depend on that origin: it proves that $T$ solves the $h=4$ equation.
+
+\emph{Lorenz.} Split the $A_2$ lattice by parity ($4(m^2-mn+n^2)=(2m-n)^2+3n^2$), compute the $u$-Wronskian of the triple
+product at the cube roots of unity, and identify two weight-$3/2$ sums by $z$-derivatives of the quintuple product
+(\lean{quintuple_deriv₀}). The Lambert-form relations $l_2,l_3$ (and a weight-8 $l_6$) come from the heat-equation identity
+(*) at $u=\omega e^x$, orders $x^0$--$x^4$, splitting over $\Q(\sqrt{-3})$ (\leanpath{DeligneMLDECubic*.lean}). Borwein's
+cubic identity is then proved by a Riccati-type uniqueness argument. First, $d:=E_4-9E_4(q^3)+8a^4-16ac^3$ satisfies a
+first-order equation $48a^2\,\ltwentyfiveEu d=d\,\big(d+32a^4+16a^2E_2+16ac^3\big)$ (an explicit polynomial identity),
+and $d\equiv0\bmod q^2$. If $d\ne0$ had lowest term $\gamma q^n$, comparing the coefficients of $q^n$ would give
+$48n\gamma=48\gamma$ (the bracket has constant term $32+16=48$), so $n=1$, contradicting $n\ge2$. Hence $d=0$. Then
+$\psi=b^3+c^3-a^3$ satisfies $4\ltwentyfiveEu\psi=(E_2-a^2)\psi$ and $\psi(0)=0$, so $\psi=0$ (\lean{borweinCubic_of_eis}).
+These give the level-three relations of Ramanujan's ``theory of signature 3'':
+\begin{equation*}
+E_4=a^4+8ac^3,\qquad E_6=a^6-20a^3c^3-8c^6,\qquad 48\,\ltwentyfiveEu a=a\big(4E_2-6a^2+2E_4a^{-2}\big),
+\end{equation*}
+the last from $l_2$, $l_3$ and Ramanujan for $E_2$.
+
+\emph{$T$ solves the $h=4$ equation.} Put $f=q^{5/12}T$ (exponent $(h+1)/12=5/12$). From
+$\ltwentyfiveEu\log(q)_\infty=(E_2-1)/24$ and the analogous formula at $q^3$,
+\begin{equation*}
+\ltwentyfiveEu\log f=\ltwentyfiveEu\log a+\tfrac34E_2(q^3)-\tfrac13E_2 .
+\end{equation*}
+Eliminate $E_2(q^3)$ by $l_2$ and $\ltwentyfiveEu\log a$ by the formula above. The $E_2$ terms cancel, leaving
+\begin{equation*}
+\ltwentyfiveEu\log f=:g=\frac{5a^3+4c^3}{12a}=\frac38a^2+\frac{E_4}{24a^2}.
+\end{equation*}
+The MLDE \eqref{l25:eq:mlde} at $h=4$ is $(\ltwentyfiveEu-\frac16E_2)\ltwentyfiveEu f=\frac{15}{144}E_4f$, i.e.\ the Riccati
+equation $\ltwentyfiveEu g+g^2-\frac16E_2g=\frac{15}{144}E_4$. Compute $\ltwentyfiveEu g$ with the formula for
+$\ltwentyfiveEu a$ and $3\ltwentyfiveEu E_4=E_2E_4-E_6$, and express $E_4$, $E_6$ through $a$ and $c^3$. The equation
+becomes a polynomial identity in $a$, $c^3$, $E_2$ that holds identically. We checked this by computer algebra for this
+chapter; in Lean it is a \lean{linear_combination} certificate (\lean{mldeExpr_TQ}). Uniqueness
+(Theorem~\ref{l25:thm:unique}) gives $[q^N]T=c_N$.
+\end{proof}
+\begin{physics}
+$\theta_{A_2}/\eta^2$ is the character of the $A_2$ lattice VOA, i.e.\ of the $SU(3)$ level-one WZW model. Here it
+appears twisted by the level-three eta quotient $(q^3;q^3)^6_\infty/(q;q)^6_\infty$. \emph{Heuristic:} $T$ should be the
+Kac--Wakimoto admissible character of $L_{-5/3}(G_2)$, written as a theta function over free bosons. The library does
+not derive $T$ from the Kac--Wakimoto formula; it only proves that $T$ solves the MLDE.
+\end{physics}
+\begin{status}
+Standard axioms. Unconditional.
+\end{status}
+
+%======================================================================
+\section{Closed forms of the MLDE solution}\label{l25:sec:closed}
+%======================================================================
+
+For $h=6(t+1)$ ($D_4,E_6,E_7,E_8$ at $t=0,1,2,4$) the exponent $-c/24=(h+1)/12$ and the weight work out so that
+$\eta^{2h-2}\cdot\mathrm{ch}$ is a quasimodular form $H$ of weight $h$ and depth $\le1$. Here $\mathrm{ch}$ is the
+normalised vacuum character and $\eta=q^{1/24}(q)_\infty$. The $D_4$ case is on the critical path, since it feeds
+Theorem~\ref{l25:thm:d4}. The $E_6$, $E_7$, $E_8$ cases are \emph{side results}: the open star bounds compare with $c_N$
+directly.
+
+\begin{theorem}[Generic closed form]\label{l25:thm:HOde}
+Let $h=6t+6$, and let $H\in\Q[[q]]$ satisfy
+$144\ltwentyfiveEu^2H-24hE_2\ltwentyfiveEu H+h(h-1)(E_2^2-E_4)H=0$. Suppose $G=H\cdot(q)_\infty^{-(12t+10)}$ vanishes
+below $q^{t+1}$, with $[q^{t+1}]G=\gamma\ne0$. Then $[q^{N+t+1}]G/\gamma=\mathtt{mldeCoeff}\ (6t+6)\ N$ for all $N$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneCharacterMLDEClosed.lean}.
+\begin{leancode}
+def Qk (k : ℕ) : PowerSeries ℚ := reciprocalEuler ^ k
+
+def HOde (t : ℕ) (H : PowerSeries ℚ) : Prop :=
+  144 * eulerOp (eulerOp H) - 24 * (6 * (t : PowerSeries ℚ) + 6) * E2s * eulerOp H +
+    (6 * (t : PowerSeries ℚ) + 6) * (6 * (t : PowerSeries ℚ) + 5) * (E2s ^ 2 - E4s) * H = 0
+
+theorem eq_mldeCoeff_of_HOde (t : ℕ) (H : PowerSeries ℚ)
+    (hH : HOde t H) (hlow : ∀ n < t + 1, coeff n (H * Qk (12 * t + 10)) = 0) (c : ℚ)
+    (hc : coeff (t + 1) (H * Qk (12 * t + 10)) = c) (hc0 : c ≠ 0) (N : ℕ) :
+    coeff (N + (t + 1)) (H * Qk (12 * t + 10)) / c = mldeCoeff (6 * t + 6) N
+\end{leancode}
+\begin{dictionary}
+Namespace \lean{VOA.DeligneAudit.DeligneCharacter.MLDEClosed}. Ramanujan's identities are used inside the proof
+(\lean{ramanujanIdentities}), not as a hypothesis. \lean{Qk k} is $(q)_\infty^{-k}$, and the Lean \lean{c} is
+$\gamma$. The shift by $t+1$ is the order of vanishing of $H$: $\eta^{2h-2}=q^{(h-1)/12}(q)_\infty^{2h-2}$ and the
+character starts at $q^{-c/24}=q^{(h+1)/12}$, so $H=\eta^{2h-2}\mathrm{ch}$ starts at $q^{2h/12}=q^{t+1}$.
+\end{dictionary}
+\begin{proof}[Proof on paper]
+Put $k=12t+10=2h-2$, $G=H(q)_\infty^{-k}$ and $f=q^{-(h-1)/12}G$. Since $\ltwentyfiveEu\log(q)_\infty=(E_2-1)/24$,
+the prefactor $\Phi=q^{-(h-1)/12}(q)_\infty^{-k}$ of $f=\Phi H$ has $\ltwentyfiveEu\log\Phi=\varphi:=-\frac{h-1}{12}E_2$.
+Then $\ltwentyfiveEu f=\Phi(\ltwentyfiveEu H+\varphi H)$ and
+$\ltwentyfiveEu^2f=\Phi\big(\ltwentyfiveEu^2H+2\varphi\ltwentyfiveEu H+(\ltwentyfiveEu\varphi+\varphi^2)H\big)$, where Ramanujan
+gives $\ltwentyfiveEu\varphi=-\frac{h-1}{144}(E_2^2-E_4)$. Substituting into \eqref{l25:eq:mlde} and multiplying by
+$144/\Phi$, the coefficient of $\ltwentyfiveEu H$ is $144(2\varphi-\frac16E_2)=-24hE_2$, and the coefficient of $H$ is
+\begin{equation*}
+-(h-1)(E_2^2-E_4)+(h-1)^2E_2^2+2(h-1)E_2^2-(h^2-1)E_4=h(h-1)(E_2^2-E_4).
+\end{equation*}
+So \lean{HOde} is exactly \eqref{l25:eq:mlde} for $f$. Moreover $f=q^{(h+1)/12}\cdot(G/q^{t+1})$, because
+$(h-1)/12+(h+1)/12=t+1$. Hence $G/(\gamma q^{t+1})$ is a normalised solution of \eqref{l25:eq:rec}, and uniqueness
+(Theorem~\ref{l25:thm:unique}) concludes.
+\end{proof}
+\begin{physics}
+$\eta^{2h-2}\mathrm{ch}=H$: the character is a quasimodular form divided by the partition function $\eta^{2h-2}$ of
+$2h-2$ free bosons. For $E_6$ one finds $\eta^{22}\mathrm{ch}=(\sum n\sigma_9(n)q^n-\Delta)/1050$ (numerical evidence
+through $q^{30}$, not machine-checked).
+\end{physics}
+\begin{status}
+Standard axioms. Unconditional as an implication.
+\end{status}
+
+\begin{theorem}[$D_4$, $E_6$, $E_7$, $E_8$ closed forms]\label{l25:thm:closed}
+With $H_{E_6}=7E_6^2+5E_4^3-12E_2E_4E_6$, $H_{E_7}=211E_2E_4E_6^2+77E_2E_4^4-91E_6^3-197E_4^3E_6$,
+$H_{E_8}=318910E_2E_4^4E_6^2+145105E_2E_4E_6^4+33649E_2E_4^7-43225E_6^5-139129E_4^6E_6-315310E_4^3E_6^3$:
+\begin{align*}
+\mathtt{mldeCoeff}\ 12\ N&=[q^{N+2}]\,H_{E_6}(q)_\infty^{-22}/3991680,\\
+\mathtt{mldeCoeff}\ 18\ N&=[q^{N+3}]\,H_{E_7}(q)_\infty^{-34}/42343741440,\\
+\mathtt{mldeCoeff}\ 30\ N&=[q^{N+5}]\,H_{E_8}(q)_\infty^{-58}/13909248338175590400,\\
+\mathtt{mldeCoeff}\ 6\ N&=[q^{N+1}]\,\tfrac1{240}\big(\ltwentyfiveEu E_4\big)(q)_\infty^{-10}.
+\end{align*}
+The last is the coefficientwise form of $[q^N]\,q^{-7/12}\,\ltwentyfiveEu E_4/(240\,\eta^{10})$: since
+$\eta^{10}=q^{10/24}(q)_\infty^{10}$, the prefactor is $q^{-7/12-5/12}=q^{-1}$. Check: $\frac1{240}\ltwentyfiveEu E_4=\sum
+n\sigma_3(n)q^n=q+18q^2+\dots$, so $c_0=1$ and $c_1=18+10=28$ (Example~\ref{l25:ex:a2}).
+\end{theorem}
+\noindent Files \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneCharacterE6MLDE.lean},
+\leanpath{DeligneCharacterE78MLDE.lean}, \leanpath{DeligneCharacterD4MLDE.lean}.
+\begin{leancode}
+def H6 : PowerSeries ℚ := 7 * E6s ^ 2 + 5 * E4s ^ 3 - 12 * E2s * E4s * E6s
+
+def e6Target (N : ℕ) : ℚ := coeff N g6 / 3991680
+
+theorem e6Target_eq_mldeCoeff (N : ℕ) : e6Target N = mldeCoeff 12 N := by
+\end{leancode}
+\begin{leancode}
+theorem e7Target_eq_mldeCoeff (N : ℕ) :
+    coeff (N + 3) (HE7 * Qk 34) / 42343741440 = mldeCoeff 18 N := by
+
+theorem e8Target_eq_mldeCoeff (N : ℕ) :
+    coeff (N + 5) (HE8 * Qk 58) / 13909248338175590400 = mldeCoeff 30 N := by
+\end{leancode}
+\begin{leancode}
+def d4E4Target (N : ℕ) : ℚ := coeff N gser / 240
+
+theorem d4E4Target_eq_mldeCoeff (hR : RamanujanIdentities) (N : ℕ) :
+    d4E4Target N = mldeCoeff 6 N := by
+\end{leancode}
+\begin{dictionary}
+\lean{g6} is $N\mapsto[q^{N+2}](H_6\cdot P^{-22})$ (\lean{G6 := H6 * Q22}). \lean{HE7}, \lean{HE8} are defined in
+\leanpath{DeligneCharacterE78MLDE.lean} with the integer coefficients displayed above (written as nested products).
+\lean{gser} is the shift by one of $\ltwentyfiveEu E_4\cdot(q)_\infty^{-10}$. The $D_4$ statement carries \lean{hR}, discharged by
+\lean{ramanujanIdentities}. The integer polynomials $H$ were found by a computer fit outside the library. The Lean proof
+only \emph{verifies} \lean{HOde} by a certificate and the low coefficients by \lean{decide}, so the provenance of the
+numbers does not matter.
+\end{dictionary}
+\begin{proof}[Proof on paper]
+Theorem~\ref{l25:thm:HOde} at $t=1,2,4$ (and the analogous direct proof at $t=0$), with \lean{HOde} verified by an
+explicit linear combination of Ramanujan's identities and the low coefficients computed exactly.
+\end{proof}
+\begin{physics}
+These are the closed forms of the Schur indices of the rank-one $E_6,E_7,E_8$ Minahan--Nemeschansky theories and of
+$SU(2)$, $N_f=4$, as quasimodular forms over $\eta^{2h-2}$.
+\end{physics}
+\begin{status}
+Standard axioms (re-run for this chapter for \lean{e7Target_eq_mldeCoeff} and \lean{e8Target_eq_mldeCoeff}).
+Unconditional.
+\end{status}
+
+\begin{remark}[No closed form of this shape for $A_2$, $G_2$, $F_4$; side remark]
+When $h/6\notin\Z$ no such level-one form exists: a search over $\eta^k\mathrm{ch}$, $k<80$, against level-one
+quasimodular forms of weight $<40$ found nothing (a computer search; evidence, not proof). $A_2$ and $G_2$ have closed forms of
+level $2$ and $3$ instead (Theorems~\ref{l25:thm:a2prod}, \ref{l25:thm:g2target}); $F_4$ has none in the library.
+\end{remark}
+
+%======================================================================
+\section{Level-one affine Demazure characters}\label{l25:sec:demazure}
+%======================================================================
+
+\begin{definition}[The Demazure algorithm]\label{l25:def:demazure}
+Fix a Cartan matrix $A$ (rows $A_{ij}=\langle\alpha_j,\alpha_i^\vee\rangle$), the highest root $\theta$ in simple-root
+coordinates, and a reduced word for $s_\theta$. Characters are finite sums of $z^\mu q^e$. The finite Demazure operator
+$D_i e^\lambda=(e^\lambda-e^{-\alpha_i}e^{s_i\lambda})/(1-e^{-\alpha_i})$ acts by the $\alpha_i$-string formula, and the
+level-one affine $D_0$ uses $\langle\Lambda_0+\mu,\alpha_0^\vee\rangle=1-\langle\mu,\theta^\vee\rangle$ and
+$e^{-\alpha_0}=q^{-1}z^\theta$. Then $C_m=q^{m^2}(D_{s_\theta}D_0)^m e^{\Lambda_0}$, and
+$\mathrm{hilb}(m,N)$ is the sum of coefficients of $C_m$ in $q$-degree $N$ after setting $z=1$, clamped at $0$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneCharacterDemazure.lean}.
+\begin{leancode}
+def demazureStep (A : List (List ℤ)) (θ : List ℤ) (word : List ℕ) (f : LPoly) : LPoly :=
+  word.foldr (fun i g => demazureFin A i g) (demazureZero A θ f)
+
+def demazureChar (A : List (List ℤ)) (θ : List ℤ) (word : List ℕ) (m : ℕ) : LPoly :=
+  (demazureStep A θ word)^[m] [((List.replicate θ.length 0, 0), 1)]
+
+def levelOneDemazureHilb (A : List (List ℤ)) (θ : List ℤ) (word : List ℕ) (m N : ℕ) : ℕ :=
+  (((demazureChar A θ word m).filter fun (t : Term) => decide (t.1.2 + (m : ℤ) * m = N)).map
+    fun (t : Term) => t.2).sum.toNat
+\end{leancode}
+\begin{dictionary}
+\lean{LPoly} is a list of terms $((\mu,e),\text{coefficient})$, merged by \lean{normalize}. \lean{demazureFin A i}
+and \lean{demazureZero A θ} apply the string formulas termwise (definitions in the file). \lean{f^[m]} is $m$-fold
+iteration starting from $e^{\Lambda_0}$ (the zero weight with energy $0$). \lean{levelOneDemazureHilb} selects terms of
+energy $N-m^2$ and \textbf{clamps} the integer sum with \lean{toNat}. \textbf{Fidelity caveats.} (1) Reading
+\lean{levelOneDemazureHilb A θ word m} as $\mathrm{Hilb}_qD(1,m\theta)$ needs the Demazure character formula
+(Kumar, Mathieu) and the identification of $D(1,m\theta)$ with the Demazure module $V_{(s_\theta s_0)^m}(\Lambda_0)$
+(Fourier--Littelmann, Chari--Venkatesh). This is U7 (Caveat~\ref{l25:cav:U7}); in Lean it is an algorithm. (2) The clamp
+hides negative values; the ``unclamped'' integer version \lean{hilbIntG} is used where positivity matters
+(Section~\ref{l25:sec:counts}). (3) The algorithm is correct for the non-simply-laced $G_2$ and $F_4$ as well. The
+affine step needs $\langle\mu,\theta^\vee\rangle$, and the code computes $\sum_i\langle\theta,\alpha_i^\vee\rangle\mu_i$
+from the Cartan matrix. In simple-root coordinates the two differ termwise by the factor
+$(\theta,\theta)/(\alpha_i,\alpha_i)$, multiplying $(\theta,\alpha_i)$. For $G_2$ and $F_4$ every simple root is either
+long, so the factor is $1$, or orthogonal to the long root $\theta$, so $(\theta,\alpha_i)=0$. Hence they agree
+(\leanpath{DeligneCharacterExceptional.lean} explains this).
+\end{dictionary}
+\begin{physics}
+The algorithm is the affine Weyl-group computation of a level-one integrable character (the $\widehat{\ltwentyfiveg}_1$
+WZW vacuum module) truncated to a Schubert cell, so it is a piece of a genuine CFT character. \emph{Heuristic:}
+$D(1,m\theta)$ is the graded fusion product of $m$ copies of $\ltwentyfiveg\oplus\C$ (the KR module
+$\mathrm{KR}(\theta)$), and its $q$-grading is the energy of the corresponding quasi-particle configuration. That reading
+is a theorem in the literature (Fourier--Littelmann, Chari--Venkatesh), but here it is input U7.
+\end{physics}
+\begin{status}
+Definitions; computable; small cases kernel-checked: $\mathrm{Hilb}D(1,\theta)=\dim\ltwentyfiveg+q$ for $A_2$, $G_2$,
+$F_4$, $E_6$ (\lean{levelOneDemazureHilb_A2_one}, \lean{g2DemazureHilb_one}, \lean{f4DemazureHilb_one},
+\lean{e6DemazureHilb_one}), all in the library. For $E_7$ the corresponding check lies outside the library
+(Section~\ref{l25:sec:defects}). For $E_8$ a single \lean{decide} at $m=1$ exceeded 10 minutes (a dead end); $C_1$ is
+instead pinned by the chain files of Section~\ref{l25:sec:data}.
+\end{status}
+
+\begin{definition}[Per-type data and the named star identities]\label{l25:def:typedata}
+For $X\in\{G_2,F_4,E_6,E_7,E_8\}$ the library fixes Bourbaki Cartan matrices, $\theta$ and reduced words of lengths
+$5,15,21,33,57$, defines \lean{xDemazureHilb}, and names the star identity and target bound.
+\end{definition}
+\noindent Files \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneCharacterExceptionalParameters.lean} (the Cartan
+data, words and \lean{g2DemazureHilb}), \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneCharacterExceptionalData.lean}
+(the star identities) and \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneCharacterExceptional.lean} (the finite
+guards).
+\begin{leancode}
+def cartanG2 : List (List ℤ) := [[2, -3], [-1, 2]]
+def thetaG2 : List ℤ := [3, 2]
+def wordG2 : List ℕ := [1, 0, 1, 0, 1]
+
+def g2DemazureHilb (m N : ℕ) : ℕ := levelOneDemazureHilb cartanG2 thetaG2 wordG2 m N
+
+abbrev G2StarIdentity : Prop := StarIdentityQ g2DemazureHilb (mldeCoeff 4)
+abbrev F4StarIdentity : Prop := StarIdentityQ f4DemazureHilb (mldeCoeff 9)
+abbrev E6StarIdentity : Prop := StarIdentityQ e6DemazureHilb (mldeCoeff 12)
+abbrev E7StarIdentity : Prop := StarIdentityQ e7DemazureHilb (mldeCoeff 18)
+abbrev E8StarIdentity : Prop := StarIdentityQ e8DemazureHilb (mldeCoeff 30)
+
+theorem g2_star_upto_two : ∀ N ∈ List.range 3,
+    (demazureSumCoeff g2DemazureHilb N : ℚ) = mldeCoeff 4 N := by
+\end{leancode}
+\begin{dictionary}
+Indices are $0$-based (Bourbaki node $i$ is list index $i-1$). For $G_2$, $\theta=3\alpha_1+2\alpha_2$ with $\alpha_1$
+short: \lean{cartanG2} row $0$ is $\langle\cdot,\alpha_1^\vee\rangle$. The other types are analogous (quoted in the
+file). The \lean{XStarIdentity} are \lean{abbrev}s of \lean{Prop}s, never axioms: a theorem that uses one takes it
+as an explicit hypothesis. The finite guards \lean{g2_star_upto_two}, \lean{f4_star_upto_one} are kernel checks of the star identity at
+$N\le2$, $N\le1$.
+\end{dictionary}
+\begin{physics}
+\emph{Heuristic:} each named identity says ``quasi-particle (fermionic) character $=$ MLDE character'' for the
+corresponding chiral algebra. Its mathematical content is the equality of two explicit $q$-series.
+\end{physics}
+\begin{status}
+Definitions and small kernel checks. The identities themselves are \textbf{named inputs} (open), see
+Section~\ref{l25:sec:star}.
+\end{status}
+
+%======================================================================
+\section{The star identities}\label{l25:sec:star}
+%======================================================================
+
+\subsection{\texorpdfstring{$A_2$}{A2}: proved by an elementary route}
+
+\begin{theorem}[The $A_2$ star identity]\label{l25:thm:a2star}
+With $\mathrm{Hilb}_qD(1,n\theta)=P_{(2n,n,0)}(1,1,1;q,0)$ (the $q$-Whittaker polynomial, by Gelfand--Tsetlin
+branching at $t=0$),
+\begin{equation*}
+\sum_{n\ge0}\frac{q^nP_{(2n,n,0)}(1,1,1;q,0)}{(q;q)_n}=\prod_{r\ge1}(1+q^r)^8 .
+\end{equation*}
+\end{theorem}
+\noindent Files \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak A2CharacterInterface.lean},
+\leanpath{A2CharacterStarChain.lean}, \leanpath{A2Headline.lean}.
+\begin{leancode}
+def demazureHilb (n N : ℕ) : ℕ := gl3Hilb (2 * n) n 0 N
+
+structure StarIdentity : Prop where
+  eq : ∀ N, demazureCoeff N = productCoeff N
+
+structure StarReduction : Prop where
+  eq : (euler : PowerSeries ℤ) * starF = powerShiftSum 1 fun v => shiftedU (2 * v)
+
+structure ShiftedMehler : Prop where
+  eq : ∀ m : ℕ, shiftedU m * (euler : PowerSeries ℤ) ^ 3 * (1 - q ^ (m + 1)) = (m + 1 : ℕ)
+
+structure FourTriangular : Prop where
+  eq : (powerShiftSum 1 fun v => ((2 * v + 1 : ℕ) : PowerSeries ℤ) * geomInv (2 * v + 1)) =
+    (euler : PowerSeries ℤ) ^ 4 * fermionInf
+
+theorem starIdentity : StarIdentity := starIdentity_of_fourTriangular fourTriangular
+\end{leancode}
+\begin{dictionary}
+Namespace \lean{VOA.DeligneAudit.A2}. \textbf{The table.} The $q$-Whittaker polynomial
+$P_\lambda(x_1,x_2,x_3;q,0)$ at $x=(1,1,1)$ is computed by Gelfand--Tsetlin branching: restrict from $GL_3$ to $GL_2$ by
+summing over partitions $\mu=(m_1,m_2)$ that interlace $\lambda$ ($\lambda_1\ge m_1\ge\lambda_2\ge m_2\ge\lambda_3$), then
+from $GL_2$ to $GL_1$ likewise. At $t=0$ each step contributes the branching coefficient
+$\psi_{\lambda/\mu}=\prod_i\binom{\lambda_i-\lambda_{i+1}}{\lambda_i-\mu_i}_q$. \lean{gl3Hilb l₁ l₂ l₃ N} is the $q^N$
+coefficient of the result (\leanpath{A2CharacterInterface.lean}), and \lean{demazureHilb n} takes $\lambda=(2n,n,0)$.
+Unwinding gives the closed form $\mathrm{Hilb}_qD(1,n\theta)=\sum_{i,j\le n}\binom ni_q\binom nj_qG_{n-i+j}$, with
+$G_M=\sum_r\binom Mr_q$ the Rogers--Szeg\H{o} polynomial at $1$. \lean{demazureCoeff} $=$
+\lean{demazureSumCoeff demazureHilb} by \lean{rfl}.
+
+\textbf{The proof structures.} \lean{starF} and \lean{fermionInf} are the two sides as series, and
+$\lean{shiftedU m}=U_m=\sum_sq^sG_sG_{s+m}/(q)_s$. The three structures are the three steps of the proof below, each a
+\lean{Prop}, and each proved (\lean{starReduction}, \lean{shiftedMehler}, \lean{fourTriangular}).
+
+\textbf{Reading.} The reading of \lean{demazureHilb} as $\mathrm{Hilb}_qD(1,n\theta)$ is U7 (Sanderson, Ion;
+Caveat~\ref{l25:cav:U7}). It was compared with the affine algorithm \lean{levelOneDemazureHilb} for small $n$ and $N$;
+the extent and location of those checks are in Section~\ref{l25:sec:defects}, and Example~\ref{l25:ex:a2} adds $n=2$,
+$N\le3$.
+\end{dictionary}
+\begin{proof}[Proof on paper]
+Write $F=\sum_nq^n\,\mathrm{Hilb}_qD(1,n\theta)/(q)_n$ for the left side.
+
+\emph{Step 1} (\lean{StarReduction}: $(q)_\infty F=\sum_{v\ge0}q^vU_{2v}$). Use the $q$-Vandermonde identity in its
+``overlapping subsets'' form,
+\begin{equation*}
+\binom ni_q\binom nj_q=\sum_kq^{(i-k)(j-k)}\frac{(q)_n}{(q)_k(q)_{i-k}(q)_{j-k}(q)_{n-i-j+k}} .
+\end{equation*}
+It counts pairs of subspaces of $\mathbb F_q^n$ (an $i$-dimensional and a $j$-dimensional one) by the dimension $k$ of
+their intersection. Substituting into the closed form of $\mathrm{Hilb}_qD(1,n\theta)$ and reindexing turns $F$ into
+\begin{equation*}
+F=\sum_{k,u,v,w\ge0}\frac{q^{k+u+v+w+uv}\,G_{k+2v+w}}{(q)_k(q)_u(q)_v(q)_w}.
+\end{equation*}
+Euler's sum $\sum_u\frac{q^{u(1+v)}}{(q)_u}=\frac{(q)_v}{(q)_\infty}$ removes $u$. The convolution
+$\sum_{k+w=s}\frac1{(q)_k(q)_w}=\frac{G_s}{(q)_s}$, which holds because $\binom sk_q=\frac{(q)_s}{(q)_k(q)_{s-k}}$,
+collapses $k,w$ into $s=k+w$. The
+result is $(q)_\infty F=\sum_vq^v\sum_s\frac{q^sG_sG_{s+2v}}{(q)_s}=\sum_vq^vU_{2v}$.
+
+\emph{Step 2} (\lean{ShiftedMehler}: $U_m(q)_\infty^3(1-q^{m+1})=m+1$). A second use of $q$-Vandermonde gives
+$U_m=\sum_{p\le m}\binom mp_qW_p$, where $W_p=\sum_{l,u}\frac{q^{l+u(p+1)}G_{l+u}}{(q)_l(q)_u}$. Rogers' Mehler formula for
+the Rogers--Szeg\H{o} polynomials,
+\begin{equation*}
+\sum_{M\ge0}\frac{H_M(x)H_M(y)\,t^M}{(q)_M}=\frac{(xyt^2;q)_\infty}{(t;q)_\infty(xt;q)_\infty(yt;q)_\infty(xyt;q)_\infty},
+\end{equation*}
+at $x=1$, $y=q^p$, $t=q$ gives $W_p=\frac{(q)_p}{(1-q^{p+1})(q)_\infty^3}$. Since $\binom mp_q(q)_p=(q)_m/(q)_{m-p}$, it
+remains to prove the finite identity
+\begin{equation*}
+\sum_{p=0}^m\frac{(q)_m}{(q)_{m-p}\,(1-q^{p+1})}=\frac{m+1}{1-q^{m+1}},
+\end{equation*}
+an identity of rational functions in $q$, valid for every $m$ (the Lean proof of \lean{shiftedMehler} is in
+\leanpath{A2CarrierMehler.lean}).
+
+\emph{Step 3} (\lean{FourTriangular}). By Steps 1 and 2,
+$(q)_\infty^4F=(q)_\infty^3\sum_vq^vU_{2v}=\sum_v\frac{(2v+1)q^v}{1-q^{2v+1}}$. This is
+$(q)_\infty^4\prod_r(1+q^r)^8$ by Legendre (Theorem~\ref{l25:thm:legendre}). Cancel $(q)_\infty^4$.
+
+\emph{On novelty.} The paper's proof uses flavoured Macdonald polynomials at $t=0$. This route avoids them. It was found
+in this project, and we do not know it in the literature.
+\end{proof}
+\begin{physics}
+Fermionic sum over fusion products of adjoints $=$ the $(A_1,D_4)$ Schur index $(\eta(2\tau)/\eta(\tau))^8$ (the fermionic
+reading being the heuristic of Definition~\ref{l25:def:dsum}). In free-field terms, $\prod(1+q^r)^8$ is the partition
+function of eight Ramond-sector free fermions with their zero modes removed. So the identity says that the
+quasi-particle description of the vacuum module counts states like eight free fermions.
+\end{physics}
+\begin{status}
+Standard axioms; \textbf{unconditional} as a $q$-series identity. Its use as ``$D_N\le\dim V_N$'' for the true
+Demazure modules needs U7.
+\end{status}
+
+\subsection{\texorpdfstring{$D_4$}{D4}: the elliptic evaluation}
+
+\begin{theorem}[$D_4$: the series \lean{d4SchurQ} $=$ MLDE solution; Demazure $=$ \lean{d4SchurQ} under positivity]\label{l25:thm:d4}
+Work over $\Bbbk=\Q((r))$, $r=q^{1/2}$. Let
+\begin{equation*}
+\Theta(x)=\sum_{k\in\Z}(-1)^k\big(q^{\binom k2}+q^{\binom{k+1}2}\big)x^{2k},\qquad
+M(s,x,z)=\frac{(s^2;q)_\infty(s^2x^2;q)_\infty(s^2x^{-2};q)_\infty}
+{\prod_{\epsilon=\pm1}\prod_{i=1}^4\prod_{\sigma=\pm1}(s\,x^\epsilon z_i^\sigma;q)_\infty},
+\end{equation*}
+a power series in $s$ with coefficients Laurent polynomials in $x,z_1,\dots,z_4$ over $\Bbbk$; let
+$I(s,z)=\mathrm{CT}_x\,\Theta(x)M(s,x,z)$ (constant term in $x$), and let
+\begin{equation*}
+\mathtt{d4SchurQ}_N=\sum_{m=0}^{N}\Big[r^{2(N-m)}\Big]\ \tfrac12\,[s^{2m}]\,I(s,z)\big|_{z=1}.
+\end{equation*}
+Then, unconditionally, $\mathtt{d4SchurQ}_N=[q^{N+1}]\,\frac1{240}(\ltwentyfiveEu E_4)\,(q)_\infty^{-10}=c_N$ for $h=6$; in
+modular notation this is $[q^N]\,q^{-7/12}\,\ltwentyfiveEu E_4/(240\eta^{10})$ (Theorem~\ref{l25:thm:closed}). If moreover
+\lean{D4DemazurePositivity} holds, the $D_4$ Demazure sum equals $\mathtt{d4SchurQ}_N$.
+\end{theorem}
+\noindent Files \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneCharacterD4MLDE.lean},
+\leanpath{DeligneCharacterD4Wp12.lean}, \leanpath{DeligneCharacterD4Schur.lean}, \leanpath{DeligneCharacterD4Final.lean},
+\leanpath{D4CharacterTop.lean}.
+\begin{leancode}
+def D4SchurEqE4 : Prop := ∀ N, D4K.d4SchurQ N = d4E4Target N
+
+theorem d4SchurEqE4 : D4MLDE.D4SchurEqE4 := by
+
+theorem d4SchurQ_eq_mldeCoeff_holds (N : ℕ) : D4K.d4SchurQ N = mldeCoeff 6 N :=
+\end{leancode}
+\noindent The defining objects, verbatim: \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneCharacterD4Euler.lean}
+($\Bbbk$), \leanpath{DeligneCharacterD4Series.lean} ($R$, $S$, $M$), \leanpath{DeligneCharacterD4Functional.lean}
+($\Theta$), \leanpath{DeligneCharacterD4Assembly2.lean} ($I$), \leanpath{DeligneCharacterD4Schur.lean} (\lean{ev1},
+\lean{d4SchurQ}).
+\begin{leancode}
+abbrev Kq := LaurentSeries ℚ
+
+abbrev R := AddMonoidAlgebra Kq V
+
+abbrev S := PowerSeries R
+
+def tFactors : S :=
+  EPos 1 0 2 two_ne_zero * EPos 1 (2 • xv) 2 two_ne_zero * EPos 1 (-2 • xv) 2 two_ne_zero
+
+def hyperFactors : S := (hyperVecs.map fun v => EInv 1 v 1 one_ne_zero).prod
+
+def kernelM : S := tFactors * hyperFactors
+
+def thK (i : ℤ) : Kq := if Even i then sgn (i / 2) * (qC (i / 2) + qC (i / 2 + 1)) else 0
+
+abbrev ctTheta : R →ₗ[Kq] R := ctFun thK
+
+def Ikernel : S := smap ctTheta kernelM
+
+def ev1 : R →ₗ[Kq] Kq := Finsupp.linearCombination Kq fun _ => (1 : Kq)
+
+def d4SchurQ (N : ℕ) : ℚ :=
+  ∑ m ∈ Finset.range (N + 1), ((2 : Kq)⁻¹ * ev1 (coeff (2 * m) Ikernel)).coeff (2 * ((N : ℤ) - m))
+\end{leancode}
+\noindent Files \leanpath{DeligneCharacterD4Schur.lean}, \leanpath{DeligneCharacterD4Final.lean},
+\leanpath{DeligneCharacterD4Positivity.lean}.
+\begin{leancode}
+structure D4DemazurePositivity : Prop where
+  energy : ∀ m : ℕ, ∀ t ∈ demazureChar cartanD4 thetaD4 wordD4 m, 0 ≤ t.1.2 + (m : ℤ) * m
+  coeff : ∀ (m : ℕ) (N : ℕ), 0 ≤ hilbInt m N
+
+def D4DemazureEqSchur : Prop := ∀ N, (demazureSumCoeff d4DemazureHilb N : ℚ) = d4SchurQ N
+
+theorem d4DemazureEqSchur_of_positivity (hpos : D4DemazurePositivity) : D4DemazureEqSchur :=
+
+theorem d4DemazurePositivity_of_U5Z
+    (hU5 : DeligneSector.FusionModuleBoundG DeligneSector.D4.D4sector d4FusionFZ) :
+    D4K.D4DemazurePositivity :=
+\end{leancode}
+\begin{dictionary}
+\textbf{Decoding the series.} \lean{Kq} is $\Bbbk=\Q((r))$ with $r=q^{1/2}$ (\lean{rr}; \lean{qq} $=r^2$), so
+half-integer $q$-shifts are ring maps. \lean{R} $=\Bbbk[x^{\pm1},z_1^{\pm1},\dots,z_4^{\pm1}]$ (exponent lattice
+\lean{V := Fin 5 → ℤ}, coordinate $0$ is $x$) and \lean{S} $=R[[s]]$. \lean{EPos c v k} and \lean{EInv c v k} are
+$(c\,z^vs^k;q)_\infty$ and its inverse; so \lean{tFactors} $=(t;q)(tx^2;q)(tx^{-2};q)$ with $t=s^2$, \lean{hyperFactors}
+$=1/\prod(sx^{\pm1}z_i^{\pm1};q)$ over the sixteen weights \lean{hyperVecs}, and \lean{kernelM} is $M$.
+\lean{thK i} is the coefficient $t_i$ of $x^i$ in $\Theta$ (\lean{qC j} $=q^{\binom j2}$, \lean{sgn} a sign; odd
+$i$ give $0$); \lean{ctFun θf} sends $c\,x^az^v$ to $c\,t_{-a}z^v$, i.e.\ it is $F\mapsto\mathrm{CT}_x\Theta F$.
+\lean{smap} applies it coefficientwise in $s$, so \lean{Ikernel} is $I$ (``$2I$'' in the file's docstring
+convention). \lean{ev1} sums the coefficients of a Laurent polynomial, i.e.\ sets $x=z_i=1$. \lean{coeff (2 * m)}
+takes $[s^{2m}]$, and \lean{.coeff (2 * (N - m))} reads off $r^{2(N-m)}=q^{N-m}$: the $s^{2m}$ term is weighted by
+$q^m$, i.e.\ the series is evaluated at $s^2=t=q$. So \lean{D4K.d4SchurQ N} is exactly the displayed
+$\mathtt{d4SchurQ}_N$. \textbf{Modelling step, not Lean.} That this series is the Schur index of the $SU(2)$,
+$N_f=4$ gauge theory (the contour integral of the vector-multiplet and Haar-measure factor against four
+hypermultiplets) is a hand transcription made when the file was written; no Lean statement relates
+\lean{d4SchurQ} to a gauge-theory integral. The theorem is about the series as defined.
+
+\textbf{Positivity.} \lean{hilbInt m N} is the unclamped integer Demazure coefficient. \lean{D4DemazurePositivity}:
+energies $\ge-m^2$ and \lean{hilbInt}$\ge0$. The \lean{energy} field is proved (\lean{D4Wp.energy_holds}, from
+integrality of the $D_4$ identity). The \lean{coeff} field is \emph{not} proved: the only route in the library is
+\lean{d4DemazurePositivity_of_U5Z}, which takes the unclamped fusion bound \lean{hU5} (input U5 of
+Chapter~\ref{ch:L26}, open) as an explicit hypothesis. So the $D_4$ Demazure-sum identity is conditional on
+\lean{D4DemazurePositivity}, whose remaining field is currently available only from the open U5. (On paper, positivity
+follows from the Demazure character formula, i.e.\ from U7; no Lean statement backs that reading.)
+\end{dictionary}
+\begin{proof}[Proof on paper]
+\emph{Schur $=\ltwentyfiveEu E_4$.} Prove the classical $\wp'(z)=-\sigma(2z)/\sigma(z)^4$ in theta form from a two-variable identity
+of lattice series (files \leanpath{DeligneCharacterD4Wp}--\leanpath{Wp3}). After the half-period substitution the Schur
+integrand becomes a perfect square $-\eta^{-10}\mathcal W_1^2$, with $\mathcal W_1$ an explicit Lambert series
+(\lean{integrand_sq}), and $\mathrm{CT}_x\mathcal W_1^2=-2\sum(N+1)\sigma_3(N+1)r^{2N}$. Since
+$\sum_N(N+1)\sigma_3(N+1)q^{N}=q^{-1}\cdot\frac1{240}\ltwentyfiveEu E_4$, this is the closed form up to normalisation, and no
+modular forms are used. Then $d4E4Target=c_N$ by Theorem~\ref{l25:thm:closed}. \emph{Demazure $=$ Schur.} The kernel $M$ satisfies a
+$q$-difference recursion $I-I(qt)=tq\,B\,I(q^2t)$ given the finite polynomial identity \lean{D4FiniteIdentity}
+(\lean{Ikernel_recursion}); its even coefficients are $\frac{2}{(q)_m}C_m$ with $C_m$ the Demazure characters
+(\lean{Ikernel_coeff_even}). The finite identity is proved by kernel checkpoints (Section~\ref{l25:sec:data}).
+Positivity is needed to compare with the clamped \lean{d4DemazureHilb}.
+\end{proof}
+\begin{physics}
+$D_4$ at $k=-2$ is the chiral algebra of $SU(2)$ with four flavours, a Lagrangian theory: its Schur index is a contour
+integral over the gauge fugacity $x$ of vector-multiplet and hypermultiplet contributions. With $s=q^{1/2}$ the
+factor $M$ is the four hypermultiplets ($sx^{\pm1}z_i^{\pm1}$, $z_i$ the $SO(8)$ flavour fugacities) and the
+$W$-boson part of the vector multiplet ($(s^2x^{\pm2};q)$), while $\Theta$ supplies the rest of the vector multiplet
+and the Haar measure. This reading is physics modelling; the Lean theorem is about the series \lean{d4SchurQ}. Granting
+it, the theorem evaluates the index in closed form and identifies it with the MLDE solution and with a fusion-product
+sum.
+\end{physics}
+\begin{status}
+Standard axioms for \lean{d4SchurEqE4} and \lean{d4SchurQ_eq_mldeCoeff_holds}. \lean{d4SchurQ}
+$=c_N$: \textbf{unconditional} as a $q$-series statement (its reading as a gauge-theory Schur index is modelling, not
+Lean). Demazure $=$ \lean{d4SchurQ}: conditional on \lean{D4DemazurePositivity}; the \lean{energy} field is proved, the
+\lean{coeff} field only from the open U5 (\lean{d4DemazurePositivity_of_U5Z}).
+Equivalently in one-sided form: \lean{d4StarBound_iff_leSchur}.
+\end{status}
+
+\subsection{\texorpdfstring{$G_2$}{G2}, \texorpdfstring{$F_4$}{F4}, \texorpdfstring{$E_6$}{E6}, \texorpdfstring{$E_7$}{E7}, \texorpdfstring{$E_8$}{E8}: named, in one-sided form}
+
+\begin{definition}[The open star bounds]\label{l25:def:starbounds}
+\lean{XStarBound} is $D_N\le c_N$ for all $N$, with the type's Demazure table and $h^\vee$.
+\end{definition}
+\noindent Files \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneCharacterStarBound.lean},
+\leanpath{G2StarReduction.lean}, \leanpath{G2StarUnconditional.lean}, \leanpath{G2StarFermionic.lean}.
+\begin{leancode}
+abbrev G2StarBound : Prop := StarBoundQ g2DemazureHilb (mldeCoeff 4)
+abbrev F4StarBound : Prop := StarBoundQ f4DemazureHilb (mldeCoeff 9)
+abbrev E6StarBound : Prop := StarBoundQ e6DemazureHilb (mldeCoeff 12)
+abbrev E7StarBound : Prop := StarBoundQ e7DemazureHilb (mldeCoeff 18)
+abbrev E8StarBound : Prop := StarBoundQ e8DemazureHilb (mldeCoeff 30)
+\end{leancode}
+\begin{leancode}
+structure G2DemazureEqKW : Prop where
+  eq : g2DemazureSeries = g2KW
+
+theorem g2StarIdentity_of_demazure (hD : G2DemazureEqKW) : G2StarIdentity :=
+
+structure G2DemazureFermionic : Prop where
+  eq : ∀ n N, g2DemazureHilb n N = g2FermHilb n N
+
+structure G2FermionicKW : Prop where
+  eq : ∀ N, ((demazureSumCoeff g2FermHilb N : ℕ) : ℤ) = coeff N g2KW
+\end{leancode}
+\begin{dictionary}
+For $G_2$ the target side is proved (\lean{g2KWEqMLDE}), so \lean{G2StarIdentity} rests only on
+\lean{G2DemazureEqKW}, which splits further into the representation-theoretic \lean{G2DemazureFermionic} (Demazure
+$=$ HKOTY fermionic formula, \lean{g2FermHilb}) and one $q$-series identity \lean{G2FermionicKW}
+(\lean{g2DemazureEqKW_of_fermionic}). For $F_4$, $E_{6,7,8}$ nothing is split.
+\end{dictionary}
+\begin{physics}
+Each is a Nahm-type ``fermionic $=$ bosonic'' identity of rank equal to the rank of $\ltwentyfiveg$; for $E_{6,7,8}$
+these are the conjectural quasi-particle forms of the Minahan--Nemeschansky Schur indices.
+\end{physics}
+\begin{status}
+\textbf{Named inputs; conjectural} (Conjecture~\ref{l27:conj:star}). Numerical evidence (Python, exact integers,
+the same Demazure recursion truncated in degree; not machine-checked; \leanpath{Notes/deligne/STAR\_IDENTITY\_SCOPING.md},
+2026-10-28): $D_N=c_N$ for $G_2$ through $q^{60}$, $F_4$ through $q^{25}$, $E_6$ through $q^{20}$, $E_7$ through
+$q^{16}$, $E_8$ through $q^{14}$; no negative Demazure coefficient occurred. For $G_2$,
+\lean{G2DemazureFermionic} follows from published results (Fourier--Littelmann, Chari--Moura, Ardonne--Kedem,
+Di Francesco--Kedem; conventions per Lin, IMRN 2021), not formalized; \lean{G2FermionicKW} is open (no known proof)
+and was checked through $q^{60}$ (\leanpath{Notes/deligne/G2\_STAR\_FERMIONIC.md}). Kernel-checked guards: $G_2$ $N\le2$, $F_4$ $N\le1$.
+\end{status}
+
+\subsection{Termwise domination cannot prove the star bound}\label{l25:sec:rigidity}
+
+The one-sided star bound $D_N\le c_N$ is all that is needed downstream. One might hope it is easier than the identity.
+The next proposition shows that, for the most natural kind of proof, it is not. It says nothing about other kinds of
+proof.
+
+\begin{proposition}[Rigidity of termwise domination; on paper]\label{l25:prop:rigidity}
+Write $D=\sum_nq^nH_n/(q)_n$ with $H_n\ge0$ coefficientwise. Suppose $U_n\ge H_n$ coefficientwise for every $n$ and
+$\sum_nq^nU_n/(q)_n\le c$ coefficientwise. If in fact $D=c$, then $U_n=H_n$ for every $n$.
+\end{proposition}
+\begin{proof}
+The series $\sum_nq^n(U_n-H_n)/(q)_n$ has nonnegative coefficients and is $\le c-D=0$, so it is $0$. Each summand has
+nonnegative coefficients, because $1/(q)_n$ does, so each summand is $0$. Since $1/(q)_n$ is a unit, $U_n=H_n$.
+\end{proof}
+\begin{physics}
+Downstream there is no slack either: $c_N=\dim L_N$ (Caveat~\ref{l25:cav:equality}), so $D_N\le\dim L_N$ \emph{is}
+classical freeness in counting form. A crystal-injection proof would have to be a bijection between Demazure-crystal
+data and a combinatorial model of $c_N$, and no such model is known.
+\end{physics}
+
+\begin{warning}[title={Dead ends for the star bound (do not retry)}]
+The status of each entry is stated: ``proved'' means on paper here; ``observed'' means a computer-algebra computation
+in exact arithmetic, outside Lean.
+\begin{itemize}
+\item \textbf{Termwise domination proofs of $\le$} are forced to be exact by Proposition~\ref{l25:prop:rigidity} (proved),
+  since numerically $D=c$ (observed).
+\item \textbf{Positive MLDE expansions.} The AK kernel $10(h^2-1)\sigma_3-(24(N-r)+2(h+1))\sigma_1$ changes sign (proved: it
+  is negative for large $N-r$). The product (plethystic) exponents $a_n$ of $\sum_Nc_Nq^N=\prod_n(1-q^n)^{-a_n}$
+  (glossary) alternate in sign for every type, e.g.\ $G_2$: $14,-13,78,-337,\dots$ (observed). The only positive form
+  found is $\mathrm{ch}=B\cdot(q)_\infty^{-(2h-2)}$ with $B\ge0$, observed through $q^{150}$ for $E_{6,7,8}$. For $E_6$,
+  $B_n=((n+2)\sigma_9(n+2)-\tau(n+2))/1050$, which is positive by Deligne's bound $|\tau(n)|\le d(n)n^{11/2}$ (proved on
+  paper). $B$ has no known combinatorial meaning.
+\item \textbf{$G_2$ via $D_4$'s kernel.} $G_2$ at $k=-5/3$ has no known 4d Lagrangian theory, so there is no Schur-index
+  contour integral to start from.
+\item \textbf{Non-product structure.} Introduce a variable $z$ counting $n$. The series $\sum_nz^nH_n/(q)_n$ is not an
+  infinite product in $(z,q)$, because its plethystic exponents grow and alternate (observed). The branching functions
+  of the $G_2$ level-one character into $\ltwentyfiveg$-isotypic pieces are not products either (observed).
+\end{itemize}
+\end{warning}
+
+\begin{warning}[title={The stopped Route A pilot for $G_2$}]
+\emph{Route A} is the paper's proof: Macdonald/Cherednik constant terms at $t=0$. A pilot for $G_2$ was run and
+stopped. Its first layer R1 is in the library, \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneCharacterG2RouteA.lean}
+($K=\mathrm{Frac}\,\Q[X^{\pm},Y^{\pm},q^{\pm}]$, monomial substitutions):
+\begin{leancode}
+def mono (v : E3) : K := algebraMap L K (monoL v)
+
+def substL (M : E3 →+ E3) : L →+* L := mapDomainRingHom ℚ M
+\end{leancode}
+Numerically (exact rationals) $HB=q^{-2}BH$ holds as an identity of difference operators with 19 vanishing shift
+coefficients, while $B=\text{(algorithm step)}$ and $H\circ\text{step}=q^{-2}\text{step}\circ H$ hold only on
+Weyl-group invariants. \textbf{Blocker.} Proving R3 ($HB=q^{-2}BH$) by certificate is infeasible: the shift identities
+carry 17--41 distinct binomial denominators, beyond what computer algebra could clear in reasonable time, and no
+small vanishing subgroup was found among the 28 terms of the single-root shifts. The only viable proofs are
+structural (DAHA/Cherednik $Y$-operators for $G_2$) or a citation of the literature (van Diejen--Emsiz plus Chari--Ion)
+as a named input. The pilot was therefore stopped, and \lean{G2DemazureEqKW} stays named. R1 is kept as infrastructure;
+it proves nothing about characters.
+\end{warning}
+
+%======================================================================
+\section{\texorpdfstring{$q=1$}{q=1} counts and energies}\label{l25:sec:counts}
+%======================================================================
+
+\noindent\emph{Side results} for this chapter's chain. They supply the count and positivity inputs of the U5 route in
+Chapter~\ref{ch:L26} and the \lean{energy} field of \lean{D4DemazurePositivity}.
+
+\begin{theorem}[Tensor factorisation at $q=1$]\label{l25:thm:total}
+Let $\theta$ have $r$ entries and let every operator of the word, and the affine one, have nonzero root $\alpha$. If
+$\chi=C_1|_{q=1}$ is invariant under every reflection of the word and under $s_\theta$, then
+$C_m|_{q=1}=\chi^m$; in particular the coefficient sum of $C_m$ is $(\dim\ltwentyfiveg+1)^m$. This holds (and is checked)
+for $D_4$ ($29^m$), $G_2$ ($15^m$), $F_4$ ($53^m$), $E_6$ ($79^m$), $E_7$ ($134^m$), $E_8$ ($249^m$).
+\end{theorem}
+\noindent Files \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneCharacterDemazureCount.lean},
+\leanpath{DeligneCharacterE8Count.lean}.
+\begin{leancode}
+theorem demazureChar_total (A : List (List ℤ)) (θ : List ℤ) (hθ : θ.length = r)
+    (word : List ℕ)
+    (hα : ∀ ρ ∈ ρZero (r := r) A θ :: word.map (ρFin A), ρ.α ≠ 0)
+    (hinv : ∀ ρ ∈ ρZero (r := r) A θ :: word.map (ρFin A),
+      ρ.sLin (toR1 r (demazureChar A θ word 1)) = toR1 r (demazureChar A θ word 1)) (m : ℕ) :
+    ((demazureChar A θ word m).map (·.2)).sum = (((demazureChar A θ word 1).map (·.2)).sum) ^ m
+
+theorem e8_demazure_total (m : ℕ) :
+    ((demazureChar cartanE8 thetaE8 wordE8 m).map (·.2)).sum = 249 ^ m := by
+\end{leancode}
+\begin{dictionary}
+Namespace \lean{VOA.DeligneAudit.DeligneCharacter.DemCount}. \lean{toR1 r} maps a term list into the group ring
+$\Z[\Z^r]$ at $q=1$; \lean{ρ.sLin} is the linear reflection of one operator. \lean{((…).map (·.2)).sum} is the sum of all
+coefficients. The hypotheses \lean{hθ} (length of $\theta$) and \lean{hα} (every operator's root $\alpha\ne0$; this is
+where the domain argument of the proof needs non-degeneracy) are listed in the statement above. Instances \lean{d4_demazure_total}, \lean{g2_demazure_total}, \lean{e6_demazure_total},
+\lean{e7_demazure_total} have the same shape.
+\end{dictionary}
+\begin{proof}[Proof on paper]
+At $q=1$ each operator satisfies $(1-e^{-\alpha})Df=f-e^{-\alpha}s^{\rm aff}(f)$ with $s^{\rm aff}(fg)=s(f)s^{\rm aff}(g)$; since
+$\Z[\Z^r]$ is a domain, $D(fg)=fD(g)$ whenever $sf=f$. Iterate. The invariance of $\chi$ is a finite check.
+\end{proof}
+\begin{physics}
+At $q=1$ the grading is forgotten, and the statement is the Fourier--Littelmann factorisation
+$D(1,m\theta)\cong D(1,\theta)^{\otimes m}$ as $\ltwentyfiveg$-modules, at the level of dimensions. In the quasi-particle
+picture (heuristic) it says that $m$ quasi-particles, each with internal states $\ltwentyfiveg\oplus\C$, are
+independent once energies are ignored: the $q$-grading records only their interaction energies.
+\end{physics}
+\begin{status}
+Standard axioms; unconditional; no literature input.
+\end{status}
+
+\begin{theorem}[Energies by a convexity invariant]\label{l25:thm:energy}
+Let $\theta$ have $r$ entries and every letter of the word be $<r$. Let $F$ be a finite list of functionals stable under
+the word's reflections and $s_\theta$, containing $-\theta^\vee$, with
+$\varphi(\theta)\le2$ for all $\varphi\in F$. Then every term $z^\mu q^e$ of $C_m$ has $e\ge-m^2$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneCharacterDemazureEnergy.lean}.
+\begin{leancode}
+structure OrbitData (r : ℕ) (A : List (List ℤ)) (θ : List ℤ) (word : List ℕ) (F : List (List ℤ)) :
+    Prop where
+  hθ : θ.length = r
+  hw : ∀ i ∈ word, i < r
+  hFin : ∀ i ∈ word, ∀ φ ∈ F, reflFunFin r A i φ ∈ F
+  hFθ : ∀ φ ∈ F, reflFunTheta r A θ φ ∈ F
+  hneg : negTheta r A θ ∈ F
+  hθ2 : ∀ φ ∈ F, (List.zipWith (· * ·) φ θ).sum ≤ 2
+
+theorem energy_of_orbit (hD : OrbitData r A θ word F) (m : ℕ) :
+    ∀ t ∈ demazureChar A θ word m, 0 ≤ t.1.2 + (m : ℤ) * m
+\end{leancode}
+\begin{dictionary}
+\lean{t.1.2} is the energy $e$; the conclusion is $e+m^2\ge0$. \lean{reflFunFin}, \lean{reflFunTheta} are $\varphi\circ s_i$,
+$\varphi\circ s_\theta$; \lean{negTheta} is $-\theta^\vee$. All hypotheses are decidable and checked per type with $F$ the
+$W$-orbit of $\theta^\vee$ (\lean{g2DemazureEnergy_holds}, \lean{e6DemazureEnergy}, \lean{e7DemazureEnergy},
+\lean{e8DemazureEnergy}, \lean{f4DemazureEnergy}).
+\end{dictionary}
+\begin{proof}[Proof on paper]
+Invariant: every term has $\varphi(\mu)\le2m$ for $\varphi\in F$. Finite $D_i$ move $\mu$ along the segment to $s_i\mu$
+(linear interpolation preserves the bound) and keep $e$. $D_0$ sends $\mu\mapsto\mu+k\theta$ with
+$0\le k\le1-\langle\mu,\theta^\vee\rangle\le2m-1$ (using $-\theta^\vee\in F$) and lowers $e$ by $k$; so
+$-(m-1)^2-(2m-1)=-m^2$.
+\end{proof}
+\begin{physics}
+In the character $C_m$ the variable $q$ records $L_0$-energy inside the level-one WZW module. The bound $e\ge-m^2$,
+together with the prefactor $q^{m^2}$ in $C_m$, says that the Demazure grading of $D(1,m\theta)$ starts at degree $0$. So $\mathrm{Hilb}_qD(1,m\theta)$ is a genuine polynomial in $q$ with no negative powers.
+This is what makes the clamped and unclamped tables comparable, and the $D_4$ positivity input partly provable.
+\end{physics}
+\begin{status}
+Standard axioms; unconditional. Replaces the $D_4$-only integrality trick.
+\end{status}
+
+\begin{remark}[Unclamped fusion series; Gaussian transform]
+With energies and totals, the unclamped series $\mathtt{hilbSeriesG}$ and $\mathtt{fusionFZ}=\mathtt{fusionOf}(\cdot)$
+(\leanpath{DeligneCharacterFusionZ.lean} and per-type \leanpath{DeligneCharacter*FusionZ.lean},
+\leanpath{F4FusionCountZ.lean}) have total $(\dim\ltwentyfiveg)^m$ (\lean{fusionFZ_count}), removing every count and
+positivity input from the U5 route of Chapter~\ref{ch:L26}. \leanpath{GaussianTransform.lean} proves Ravinder's mixed
+fusion recursion in closed form (\lean{VOA.DeligneGaussian.mixed_eq}, \lean{demazure_eq_gaussian}); both are used in
+Chapter~\ref{ch:L26}.
+\end{remark}
+
+%======================================================================
+\section{The large kernel-checked data, described collectively}\label{l25:sec:data}
+%======================================================================
+
+About half of this chapter's files are certificates. Each consists of literal data and theorems proved by
+\lean{decide +kernel} (the kernel evaluates the check; no \lean{native_decide}, no \lean{implemented_by}). A referee
+should check \emph{what} is asserted and that the bridge lemmas connect it to the definitions above; the literals
+themselves need no reading.
+\begin{center}\small
+\begin{tabular}{p{0.32\textwidth}p{0.6\textwidth}}
+\toprule
+files & what is checked\\
+\midrule
+\leanpath{E8VacuumSteps}, \leanpath{E8VacuumStepCheck00--30}, \leanpath{E8VacuumStepAll} & the 3874 steps
+$\lambda\,\mathrm{ad}_bR=\mu R'$ ($\mu\ne0$) of the breadth-first propagation search through the 3875 quadrics of
+$I_2^{\rm ns}$ for $E_8$, described in the proof of Theorem~\ref{l25:thm:carrierdata} (giving \lean{sym_rel_all}). These
+certify relation symbols, not characters\\
+\leanpath{E6VacuumChecks}, \leanpath{E7LieZhu} & Casimir match and divisibility checks for $E_6$, $E_7$; the $E_7$ chain of 1539
+relation symbols\\
+\leanpath{DeligneCharacterE8Chain0--57}, \leanpath{E8Inv0--9}, \leanpath{E8Light} & the intermediate Demazure characters
+$P_0,\dots,P_{57}$ of $C_1$ for $E_8$ pinned to literals, one operator per file, in a light-import copy of the algorithm
+bridged by \lean{rfl}/induction; nodup and reflection-membership checks for invariance\\
+\leanpath{E7Chain0--2}, \leanpath{E7Inv0--4}, \leanpath{E6Chain0}, \leanpath{E6Inv0--1}, \leanpath{F4FusionCountChain0--3},
+\leanpath{F4FusionCountInv} & the same for $E_7$, $E_6$, $F_4$\\
+\leanpath{D4FiniteCore}, \leanpath{D4FiniteCompute}, \leanpath{D4FiniteData}, \leanpath{D4FiniteCheckQ},
+\leanpath{D4FiniteCheckSteps}, \leanpath{D4FiniteCheckSteps2}, \leanpath{D4FiniteIdentity}, \leanpath{D4FiniteStatementProof}
+& the $D_4$ finite identity (P) in $\Z[q^\pm,s^\pm,x^\pm,z_1^\pm..z_4^\pm]$ (\lean{d4FiniteIdentity_holds}), via a
+$(q,u,t,z)$ world with 4$\times$ fewer terms and one-step literal checkpoints. The elaborator \lean{d4_precompute}\texttt{\%} only
+\emph{proposes} each literal; the kernel re-verifies it\\
+\leanpath{DeligneCharacterD4Wp--Wp12} (and the other \leanpath{DeligneCharacterD4*} layers) & the theta-product chain of
+Theorem~\ref{l25:thm:d4}; theory, not data, but long ($\wp'$ identity, half-period substitution, CT count)\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{The files of this chapter}\label{l25:sec:files}
+
+The chapter covers the $239$ files assigned to it in the book's assignment table. About $120$ are theory (roughly
+$26\,600$ lines), and the other $119$ are kernel-checked certificate and data files (roughly $3\,300$ lines).
+\begin{center}\small
+\begin{tabular}{p{0.45\textwidth}p{0.45\textwidth}}
+\toprule
+files & content\\
+\midrule
+\leanpath{VOA/\allowbreak DeligneAudit/\allowbreak DeligneCharacter*.lean} & interface, AK coefficients, Demazure algorithm, closed forms, $D_4$ evaluation, counts\\
+\leanpath{DeligneMLDE*.lean} & the recurrence, the trace identity, Ramanujan, the heat equation, level two and three\\
+\leanpath{DeligneVacuumRelation*.lean}, \leanpath{E6Vacuum*.lean}, \leanpath{E7LieVacuum.lean}, \leanpath{E7LieZhu.lean},
+\leanpath{F4LieVacuum.lean}, \leanpath{G2LieVacuum.lean}, \leanpath{E8VacuumStep*.lean} & the vacuum quartic relation per type,
+with propagation certificates\\
+\leanpath{A2Character*.lean} & the $A_2$ character side and star identity\\
+\leanpath{G2Star*.lean} & the $G_2$ target side and the named star reduction\\
+\leanpath{D4Finite*.lean}, \leanpath{D4CharacterTop.lean} & the $D_4$ finite identity\\
+\leanpath{F4FusionCount*.lean}, \leanpath{GaussianTransform.lean} & $F_4$ counts; Ravinder's mixed recursion in closed form\\
+\leanpath{VOA/\allowbreak Commutative/\allowbreak JacobiTriple*.lean}, \leanpath{FourTriangular*.lean} & formal $q$-series identities\\
+\leanpath{VOA/\allowbreak Modularity/\allowbreak ZhuCoordinate*.lean} & the square-bracket current calculus\\
+\bottomrule
+\end{tabular}
+\end{center}
+All paths without a directory are in \leanpath{VOA/\allowbreak DeligneAudit/}, except the \leanpath{FourTriangular*}
+files, which are in \leanpath{VOA/\allowbreak Commutative/}.
+
+\begin{warning}[title={Kernel-cost dead ends (recorded)}]
+One \lean{decide} over the whole $D_4$ identity: 650 s and 41 GB (killed; a memory incident). \lean{![…]} table
+lookups at high index: $O(\text{index})$ in the kernel (one 248-entry row 25 s / 8.7 GB vs 4 s / 2.4 GB with a literal
+\lean{List} and \lean{getD}). Heavy imports in check files: use light-import copies bridged by \lean{rfl}.
+\lean{decide} of \lean{e8DemazureHilb 1}: $>10$ min. The $A_2$ guard of $(\star)$ beyond $N=8$ did not finish.
+\end{warning}
+
+%======================================================================
+\section{Lean defects and stale documentation}\label{l25:sec:defects}
+%======================================================================
+
+This section is the single place where the chapter's documentation defects are listed (Caveat~\ref{l25:cav:docs}).
+Each is also entered in the project's defect log. No Lean statement of this chapter was found to be wrong, vacuous or
+mis-hypothesised.
+
+\paragraph{Missing statements and out-of-library checks (severity S3).}
+\begin{itemize}
+\item \textbf{Missing equality corollaries} (warning after Theorem~\ref{l25:thm:alltypes}). $\dim L_k(\ltwentyfiveg)_N=c_N$
+  is a Lean theorem only for $A_2$ (\lean{A2.finrank_eq_mldeCoeff'}). For $G_2$, $D_4$, $F_4$, $E_6$, $E_7$, $E_8$ only
+  \lean{TargetLowerBoundQ} ($\ge$) is exported. The equality is derivable by composing the per-type vacuum quartic
+  relation (for $E_6$, $E_7$: \lean{vacuumQuarticRelation_of_carrierData} with the \lean{*_hrel} data),
+  \lean{isAKSolution_of_vacuumQuarticRelation} and \lean{finrank_eq_mldeCoeff_of_isAKSolution}, but no such corollary is
+  written. Composition checked in a scratch file for $G_2$, $F_4$, $D_4$ only.
+\item \textbf{Missing $A_2$ character formula} (Remark~\ref{l25:rem:a2cons}). $\dim V_N=[q^N]\prod(1+q^r)^8$ for
+  $V=L_{-3/2}(\mathfrak{sl}_3)$ is not stated. It follows in one line from \lean{A2.finrank_eq_mldeCoeff'} and
+  \lean{A2.productCoeff_eq_mldeCoeff'}; only the inequality \lean{KacWakimotoLowerBound} is exported.
+\item \textbf{Checks outside the library.} \lean{e7DemazureHilb_one} ($\mathrm{Hilb}\,D(1,\theta)=133+q$ for $E_7$, about
+  50\,s) and \lean{A2_demazure_eq_GT_three} (agreement of the $A_2$ Gelfand--Tsetlin table with the affine algorithm, for
+  $m=3$ and $N<10$ only) live in a separate heavy-check file in the project's notes, outside \leanpath{VOA/}. They are
+  therefore not built by \lean{lake build}; they were run once by hand. For smaller $m$, the $A_2$ comparison was
+  carried out outside Lean (the docstring of \leanpath{A2CharacterInterface.lean} cites an audit for $n\le7$).
+\item \textbf{Untraced modelling.} No Lean statement connects \lean{D4K.d4SchurQ} to the $SU(2)$, $N_f=4$ Schur index,
+  although the docstring calls it ``the Schur index''. The identification is a hand transcription.
+\end{itemize}
+
+\paragraph{Stale documentation (severity S4).}
+\begin{itemize}
+\item \leanpath{DeligneCharacterExceptional.lean}: the docstring describes \lean{XTargetLowerBound W} as a literature input.
+  It is proved for the concrete $W$ (Theorem~\ref{l25:thm:alltypes}).
+\item \leanpath{A2CharacterInterface.lean} and \leanpath{A2Character.lean}: the docstrings call the star identity and
+  Kac--Wakimoto ``not formalized'' or ``literature input''. Both now follow (\lean{A2.starIdentity},
+  \lean{A2.kacWakimotoLowerBound_of_quartic}).
+\item \lean{A2ProductMLDE} (``checked numerically through $q^{40}$''), \lean{D4SchurEqE4} (``Named input''),
+  \lean{LorenzA2} (``named''), \lean{RamanujanFormal} and \lean{RamanujanIdentities} (``named input''): all are proved.
+\item \leanpath{D4CharacterTop.lean} calls \lean{D4DemazurePositivity} a literature input. Its \lean{energy} field is
+  proved, and \lean{coeff} is available only from the open U5 (\lean{d4DemazurePositivity_of_U5Z}). The docstring of
+  \leanpath{DeligneCharacterD4Schur.lean} calls positivity ``a consequence of the Demazure character formula'', a reading
+  that no Lean statement backs.
+\item \leanpath{DeligneCharacterDemazure.lean}: the title says ``simply-laced'', but the algorithm is used, correctly, for
+  $G_2$ and $F_4$ (dictionary of Definition~\ref{l25:def:demazure}).
+\item The name \lean{mldeCoeff} is used for two unrelated declarations (warning in Section~\ref{l25:sec:interface}).
+\end{itemize}
+
+%======================================================================
+\section{Referee's checklist}\label{l25:sec:checklist}
+%======================================================================
+
+\begingroup\small
+\begin{longtable}{p{0.37\textwidth}p{0.23\textwidth}p{0.19\textwidth}p{0.10\textwidth}}
+\toprule
+Lean declaration & Intended meaning & Hypotheses / status & Check\\
+\midrule\endhead
+\lean{CarrierCharacterLowerBound}, \lean{ordinaryCarrierCharacter_of_le} & lower half suffices & packages; uncond.\ impl. & Thm.~\ref{l25:thm:ofle}\\
+\lean{demazureSumCoeff}, \lean{StarIdentityFor}, \lean{DemazureBoundFor} & Demazure sum and split & definitions & Def.~\ref{l25:def:dsum}\\
+\lean{carrierCharacterLowerBound_of_demazureSum} & glue & \lean{hcar}, \lean{hchr} & Thm.~\ref{l25:thm:glue}\\
+\lean{DeligneCharacter.mldeCoeff} & AK coefficients & definition & Def.~\ref{l25:def:mlde}\\
+\lean{eq_mldeCoeff_of_isAKSolution} & uniqueness & unconditional & Thm.~\ref{l25:thm:unique}\\
+\lean{torusOnePoint_Lsq_sq_vacuum} & $S(L[-2]^2\ltwentyfivevac)$ formula & unconditional & Thm.~\ref{l25:thm:tower}\\
+\lean{VacuumQuarticRelation}, \lean{FormalMLDE} & trace identity / MLDE & definitions & Def.~\ref{l25:def:vqr}\\
+\lean{kappa_eq_of_formalMLDE}, \lean{isAKSolution_of_vacuumQuarticRelation} & $\kappa$ forced; recurrence & $c$, $\ltwentyfivevac\ne0$, relation & Thm.~\ref{l25:thm:kappa}\\
+\lean{sqCurrent_comm}, \lean{Lsq_sqCurrent_comm}, \lean{vSqZ_L_neg_one} & square current algebra & unconditional & Thm.~\ref{l25:thm:sqcomm}\\
+\lean{vacuumQuarticRelation_of_symbols} & symbols $\Rightarrow$ relation & symbol vanishing & Thm.~\ref{l25:thm:symbols}\\
+\lean{targetLowerBound_of_carrierData} & carrier data $\Rightarrow$ bound & \lean{hc}, \lean{hcas}, \lean{hrel} & Thm.~\ref{l25:thm:carrierdata}\\
+\lean{A2.vacuumQuarticRelation}, \lean{A2.finrank_eq_mldeCoeff'} & $\dim L_{-3/2}(\mathfrak{sl}_3)_N=c_N$ & \textbf{unconditional} & Thm.~\ref{l25:thm:alltypes}\\
+(none) & $\dim L_{-3/2}(\mathfrak{sl}_3)_N=[q^N]\prod(1+q^r)^8$ & derivable, \textbf{not stated} & Rem.~\ref{l25:rem:a2cons}\\
+\lean{g2_targetLowerBound} & $\dim L_{-5/3}(\mathfrak g_2)_N\ge c_N$, $h=4$ & no hypotheses ($\ge$ only) & Thm.~\ref{l25:thm:alltypes}\\
+\lean{targetLowerBoundQ4} & $\dim L_{-2}(\mathfrak{so}_8)_N\ge c_N$, $h=6$ & no hypotheses ($\ge$ only) & Thm.~\ref{l25:thm:alltypes}\\
+\lean{f4_targetLowerBound} & $\dim L_{-5/2}(\mathfrak f_4)_N\ge c_N$, $h=9$ & no hypotheses ($\ge$ only) & Thm.~\ref{l25:thm:alltypes}\\
+\lean{e6_targetLowerBound} & $\dim L_{-3}(\mathfrak e_6)_N\ge c_N$, $h=12$ & no hypotheses ($\ge$ only) & Thm.~\ref{l25:thm:alltypes}\\
+\lean{e7_targetLowerBound} & $\dim L_{-4}(\mathfrak e_7)_N\ge c_N$, $h=18$ & no hypotheses ($\ge$ only) & Thm.~\ref{l25:thm:alltypes}\\
+\lean{targetLowerBoundQ8} & $\dim L_{-6}(\mathfrak e_8)_N\ge c_N$, $h=30$ & no hypotheses ($\ge$ only) & Thm.~\ref{l25:thm:alltypes}\\
+(none) & $\dim L_k(\ltwentyfiveg)_N=c_N$ for $G_2,D_4,F_4,E_6,E_7,E_8$ & derivable, \textbf{not stated} & Caveat~\ref{l25:cav:equality}\\
+\lean{vacuumQuarticRelation_of_carrierData}, \lean{g2_/f4_vacuumQuarticRelation}, \lean{vacuumQuarticRelation4/8} & vacuum quartic relation & unconditional; none for $E_6$, $E_7$ & Thm.~\ref{l25:thm:alltypes}\\
+\lean{jacobiTriple}, \lean{euler_eq_pentagonal}, \lean{quintuple_sum}, \lean{lambertS_eq} & classical $q$-identities & unconditional & Thms.~\ref{l25:thm:jtp}--\ref{l25:thm:legendre}\\
+\lean{ramanujanIdentities} & Ramanujan & unconditional (Mathlib Sturm) & Thm.~\ref{l25:thm:ramanujan}\\
+\lean{A2.a2ProductMLDE}, \lean{g2KWEqMLDE}, \lean{lorenzA2}, \lean{g2Level3Core} & level 2, 3 targets & unconditional & Thms.~\ref{l25:thm:a2prod}, \ref{l25:thm:g2target}\\
+\lean{eq_mldeCoeff_of_HOde}, \lean{e6/e7/e8Target_eq_mldeCoeff} & closed forms & unconditional & Thms.~\ref{l25:thm:HOde}, \ref{l25:thm:closed}\\
+\lean{demazureChar}, \lean{levelOneDemazureHilb} & Demazure characters & algorithm; U7 to interpret & Def.~\ref{l25:def:demazure}\\
+\lean{A2.starIdentity} & $A_2$ star identity & unconditional ($q$-series) & Thm.~\ref{l25:thm:a2star}\\
+\lean{d4SchurEqE4}, \lean{d4DemazureEqSchur_of_positivity}, \lean{d4DemazurePositivity_of_U5Z} & series \lean{d4SchurQ} $=$ MLDE; Demazure $=$ \lean{d4SchurQ} & uncond.; \lean{D4DemazurePositivity} (\lean{coeff} only from open U5) & Thm.~\ref{l25:thm:d4}\\
+\lean{G2StarBound}, \lean{G2DemazureEqKW} & $D_N\le c_N$ for $G_2$; its Demazure half & \textbf{open, named}; conjectural; numerics through $q^{60}$ & Def.~\ref{l25:def:starbounds}\\
+\lean{F4StarBound} & $D_N\le c_N$ for $F_4$ & \textbf{open, named}; conjectural; numerics through $q^{25}$ & Def.~\ref{l25:def:starbounds}\\
+\lean{E6StarBound}, \lean{E7StarBound}, \lean{E8StarBound} & $D_N\le c_N$ for $E_6,E_7,E_8$ & \textbf{open, named}; conjectural; numerics through $q^{20},q^{16},q^{14}$ & Def.~\ref{l25:def:starbounds}\\
+\lean{D4DemazurePositivity} (field \lean{coeff}) & $D_4$ Demazure coefficients $\ge0$ & \textbf{open} except via U5 & Thm.~\ref{l25:thm:d4}\\
+\lean{demazureChar_total}, \lean{energy_of_orbit} & $q=1$ counts; energies & unconditional & Thms.~\ref{l25:thm:total}, \ref{l25:thm:energy}\\
+\bottomrule
+\end{longtable}
+\endgroup
+
+%======================================================================
+\section{Notes and references}\label{l25:sec:notes}
+%======================================================================
+
+The second-order MLDE for the Deligne series is due to T.~Arakawa and K.~Kawasetsu, ``Quasi-lisse vertex algebras and
+modular linear differential equations'', in \emph{Lie Groups, Geometry, and Representation Theory} (Kostant memorial
+volume), Progr.\ Math.\ 326 (2018), arXiv:1610.05865, \S7; the physics prediction is C.~Beem and L.~Rastelli, ``Vertex
+operator algebras, Higgs branches and modular differential equations'', JHEP 08 (2018) 114, arXiv:1707.07679. The
+square-bracket modes are from Y.~Zhu, ``Modular invariance of characters of vertex operator algebras'', J.\ AMS 9
+(1996). Second-order MLDEs: S.~Mathur, S.~Mukhi and A.~Sen, Phys.\ Lett.\ B 213 (1988). The Deligne series:
+P.~Deligne, ``La s\'erie exceptionnelle de groupes de Lie'', C.\ R.\ Acad.\ Sci.\ 322 (1996). Admissible characters:
+V.~Kac and M.~Wakimoto, arXiv:1612.07423. Demazure modules and fusion: B.~Ravinder, arXiv:1409.0274; E.~Feigin,
+SIGMA 4 (2008), arXiv:0806.4851; G.~Fourier and P.~Littelmann, Adv.\ Math.\ 211 (2007); V.~Chari and B.~Ion,
+Compos.\ Math.\ (2015); Y.~Sanderson, J.\ Algebraic Combin.\ 11 (2000); S.~Kumar, Invent.\ Math.\ 89 (1987);
+O.~Mathieu, Ast\'erisque 159--160 (1988). Fermionic formulas: Hatayama--Kuniba--Okado--Takagi--Yamada, ``Remarks on
+fermionic formula'', Contemp.\ Math.\ 248 (1999). Macdonald $t=0$ constant terms: J.~F.~van Diejen and E.~Emsiz.
+The $q$-series identities are classical (Jacobi, Euler, Gauss, Legendre, Ramanujan; the quintuple product: Watson;
+Lorenz's formula and the cubic identity: J.~M.~and P.~B.~Borwein and F.~Garvan, Trans.\ AMS 343 (1994)). Rogers'
+Mehler formula for the Rogers--Szeg\H{o} polynomials and $q$-Vandermonde: G.~E.~Andrews, \emph{The Theory of Partitions}
+(Addison--Wesley, 1976), Chapter~3 and its examples; Ramanujan's ``theory of signature 3'': B.~C.~Berndt,
+S.~Bhargava and F.~G.~Garvan, Trans.\ AMS 347 (1995). Rogers--Szeg\H{o} polynomials and $q$-Whittaker functions at $t=0$:
+I.~G.~Macdonald, \emph{Symmetric Functions and Hall Polynomials}, 2nd ed.\ (Oxford, 1995), Chapter~VI. Backward
+pointers: Chapters~\ref{ch:L14}, \ref{ch:L15}, \ref{ch:L16}, \ref{ch:L23}, \ref{ch:L24}; forward: Chapter~\ref{ch:L26}
+(fusion side, U5--U7) and Chapter~\ref{ch:L27} (the seven final theorems).
+
+\endgroup

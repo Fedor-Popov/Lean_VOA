@@ -1,0 +1,2425 @@
+\chapter{Zhu's bijection via the tower \texorpdfstring{$A_n(V)$}{A\_n(V)}}\label{ch:L13}
+\begingroup\setlength{\emergencystretch}{3em}
+
+\providecommand{\lthirteenvac}{\mathbf{1}}
+\providecommand{\lthirteenVh}{\widehat{V}}
+\providecommand{\lthirteenUE}{\mathcal{U}}
+\providecommand{\lthirteenMbar}{\overline{M}}
+\providecommand{\lthirteenIrr}{\mathrm{Irr}}
+\providecommand{\lthirteenO}{O}
+
+This chapter documents the release of the LeanVOA library named in the front matter; it was first written against an earlier state of the library (``the snapshot'' below), and checks that were
+run at an earlier state of the library and not re-run for this edition are marked as such. Every Lean quotation below is taken mechanically from the files of the release and is machine-checked by
+\texttt{scripts/textbook/sync.py} to occur verbatim (up to whitespace and comments) in the source. The chapter covers
+the $298$ files \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVerma*.lean} (about ninety thousand lines of Lean)
+assigned to it in \texttt{Notes/Textbook/assignment.txt}. They contain one headline: the \emph{hard direction of
+Zhu's correspondence} between irreducible modules of a vertex operator algebra $V$ and irreducible modules of its
+Zhu algebra $A(V)$. The easy direction, the algebra $A(V)$ itself, the bundled module types \lean{AMod} and
+\lean{LWModule}, and the definition of the library's higher Zhu spaces $A_n(V)$ were presented in
+Chapter~\ref{ch:L12}; we use them freely and point back to them.
+
+We do not tour $298$ files. Instead we (i) state exactly what the headline theorem says, (ii) present every
+definition on which the statement and its proof depend, in the order in which the proof uses them, (iii) explain the
+proof on paper, and (iv) describe the remaining files by role in one short section
+(Section~\ref{l13:sec:files}). The ``critical path'' was not taken from the library's own documentation: we computed it
+by a machine walk through the constants used by the proof term of the headline (Section~\ref{l13:sec:files}); it
+touches $101$ of the $298$ files.
+
+\emph{Release revision.} The chapter was revised for the first public release, applying the release audit \texttt{Notes/\allowbreak Textbook/\allowbreak referee/\allowbreak
+RELEASE\_AUDIT\_ZHU.md} (2026-10-27). Two results proved outside this chapter's files since the snapshot change what can be
+said about the full correspondence, and are presented in Section~\ref{l13:sec:scope}: the bottom of every irreducible module
+is a simple $A(V)$-module, for every $V$ (\leanpath{VOA/\allowbreak Huang/\allowbreak LWBottomRecovery.lean}, Chapter~\ref{ch:L21}); and
+the combined statement \lean{zhuCorrespondence_of_C2Cofinite}, a genuine bijection between $\Phi(V)$ and isomorphism classes of
+simple $A(V)$-modules for $C_2$-cofinite $V$ (\leanpath{VOA/\allowbreak Modularity/\allowbreak ZhuModularityCanonical.lean},
+Chapter~\ref{ch:L15}). Their quotations were copied at that revision.
+
+\emph{Second release revision (2026-10-28).} At this revision one more consumer of this chapter's machinery is
+recorded (finding F2 of \texttt{Notes/\allowbreak Textbook/\allowbreak referee/\allowbreak RELEASE\_AUDIT\_NEW\_DECLS.md}). The
+generalised Verma module induced from the regular $A(V)$-module, together with the datum \lean{Pr} and bottom recovery, also
+proves Zhu's semisimplicity theorem ``rational $\Rightarrow A(V)$ semisimple''
+(\lean{isSemisimpleRing_}\allowbreak\lean{A_of_}\allowbreak\lean{admissiblyRational}, \leanpath{VOA/\allowbreak Huang/\allowbreak
+ZhuSemisimple.lean}; presented in Chapter~\ref{ch:L12}, Theorem~\ref{l12:thm:zhuss}, and Chapter~\ref{ch:L15},
+Theorem~\ref{l15:thm:zhuss}). So for a $C_2$-cofinite rational $V$ (rational in the library's sense \lean{AdmissiblyRational})
+the simple $A(V)$-modules of Theorem~\ref{l13:thm:zhucorr} are exactly the simple modules of a semisimple algebra, and Zhu's
+modularity theorem holds for $V$ (Chapter~\ref{ch:L15}). No statement or quotation of this chapter changed.
+
+\paragraph{The findings of this chapter, in brief.} The reader who only wants the verdict should read this paragraph
+and the warning boxes.
+\begin{itemize}
+\item \textbf{What is proved.} The headline \lean{zhuBijective} states that a certain map
+  $[M]\mapsto[M_h]$ is a bijection. Its domain is the set of isomorphism classes of \emph{irreducible ordinary}
+  $V$-modules (with their lowest weight); its codomain is the set of isomorphism classes of $A(V)$-modules
+  \emph{that are isomorphic to the bottom of some irreducible ordinary module}. Because the codomain is defined as the
+  image, surjectivity is a tautology (the library says so itself). The genuine content is \emph{injectivity}:
+  \begin{quote}
+  two irreducible ordinary $V$-modules whose lowest-weight spaces are isomorphic $A(V)$-modules are isomorphic.
+  \end{quote}
+  This is Zhu's uniqueness theorem, and it is proved for \emph{every} vertex operator algebra of the library, with one
+  explicit datum \lean{Pr}. It is the \emph{uniqueness half} of Zhu's correspondence, and must be announced as such, not
+  as ``Zhu's bijection''. The equivalence ``\lean{zhuBijective} $\iff$ uniqueness'' was checked in Lean against the
+  library (the check is not part of this release).
+\item \textbf{The datum \lean{Pr}.} \lean{Pr : BottomProjection (parabolicRepOfAMod W (regularAMod W))} is a single
+  linear-algebra statement attached to $V$: in the module induced from the \emph{regular} $A(V)$-module along a
+  parabolic subalgebra of the Frenkel--Zhu Lie algebra $\lthirteenVh$, the canonical bottom copy of $A(V)$ is
+  embedded. The library proves that a \lean{BottomProjection} exists if and only if the bottom map is injective. It is a
+  consequence of the Poincar\'e--Birkhoff--Witt theorem, hence true mathematics, and it is proved in the library
+  for every $V$: \lean{voaPBWBottomProjection} builds it from the theorem \lean{VOA.pbw} (relative PBW,
+  Chapter~\ref{ch:L02}, Section~\ref{l02:sec:pbwproof}). The wrapper \lean{zhuBijective_of_voaPBW} uses it and is
+  unconditional; its \texttt{\#print axioms} is the standard three (at the snapshot, when
+  \lean{VOA.pbw} was an axiom, it contained \lean{pbw}). So Zhu's bijection in its uniqueness form is now
+  unconditional.
+\item \textbf{The genuine bijection, for $C_2$-cofinite $V$ (new).} The two halves of Zhu's correspondence that the
+  headline does not contain are now theorems: (1) the bottom of every irreducible module is a simple $A(V)$-module, for
+  \emph{every} $V$ (\lean{allBottomRecovers}, \lean{isSimpleAMod_toAMod_of_irreducible}); (2) every simple $A(V)$-module is
+  the bottom of an irreducible ordinary module, for $C_2$-cofinite $V$ (\lean{simpleAModsRealized_of_C2Cofinite}). Combined
+  with the headline they give \lean{zhuCorrespondence_of_C2Cofinite} (Theorem~\ref{l13:thm:zhucorr}): for every $C_2$-cofinite
+  $V$, $[M]\mapsto[M_h]$ is a bijection from $\Phi(V)$ onto the isomorphism classes of \emph{simple} $A(V)$-modules, where
+  ``simple'' is the intrinsic notion, not an image. $C_2$ is used only for existence (2); Zhu's own existence theorem does
+  not need it, because it produces admissible rather than ordinary modules.
+\item \textbf{What is not proved.} Existence (2) without $C_2$, i.e.\ for $V$ whose $L(U)$ might have infinite-dimensional
+  weight spaces; there the bijection is stated only onto its image (Section~\ref{l13:sec:scope}).
+\item \textbf{A misnamed file.} The file \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchCritPath.lean}
+  (``the critical path of the Zhu bijection'') is \emph{not} on the critical path of \lean{zhuBijective}, and its
+  headline \lean{zhuBijection_critpath} is vacuous: its hypothesis bundle cannot be inhabited (checked in Lean; the check is
+  not part of this release).
+\item \textbf{The tower.} The library's circle-only $O_n(V)$ (\lean{On}, which omits Dong--Li--Mason's
+  $(L_{-1}+L_0)a$ for $n\ge1$, Chapter~\ref{ch:L12}) is used on the critical path only at $n = 0$, where it equals
+  $O(V)$. The construction of the induced module uses the corrected \lean{OnFull} and Dong--Jiang's full ideals
+  \lean{OnmFull}; so that defect does not touch the headline.
+\item \textbf{A redundant hypothesis, since removed.} \lean{pHL0} used to carry the datum \lean{Pr} without using it
+  (checked in Lean; the check is not part of this release); the library has dropped it, and \lean{zhuBijective} now applies the hypothesis-free \lean{pHL0} directly.
+\end{itemize}
+
+%======================================================================
+\section{Zhu's correspondence: the mathematics and the plan}\label{l13:sec:plan}
+%======================================================================
+
+\subsection{The statement in the literature}
+
+Let $V$ be a vertex operator algebra. Recall from Chapter~\ref{ch:L12} (Section~\ref{l12:sec:zhu}) that Zhu's algebra is
+$A(V) = V/O(V)$ with product $[u][v] = [u*v]$, where for homogeneous $u$
+\begin{equation*}
+ u*v = \Res_z Y(u,z)v\,\frac{(1+z)^{\wt u}}{z},\qquad u\circ v = \Res_z Y(u,z)v\,\frac{(1+z)^{\wt u}}{z^{2}},
+ \qquad O(V) = \operatorname{span}\{u\circ v\}.
+\end{equation*}
+If $M = \bigoplus_{n\ge0}M_{h+n}$ is a $V$-module whose lowest weight $h$ is attained ($M_h\neq0$), then the zero modes
+$o(u) = u_{(\wt u-1)}$ preserve $M_h$, and $[u]\mapsto o(u)|_{M_h}$ makes $M_h$ an $A(V)$-module
+(Theorem~\ref{l12:thm:moduleMh}). Zhu's theorem says much more.
+
+\begin{theorem}[Zhu 1996, Theorems~2.2.1 and~2.2.2]\label{l13:thm:zhu-lit}
+Let $V$ be a vertex operator algebra.
+\begin{enumerate}
+\item If $M$ is an irreducible $\N$-gradable (admissible) $V$-module with lowest piece $M(0)$, then $M(0)$ is a simple
+  $A(V)$-module.
+\item For every simple $A(V)$-module $U$ there is an irreducible admissible $V$-module $L(U)$ with $L(U)(0)\cong U$.
+\item The assignments $M\mapsto M(0)$ and $U\mapsto L(U)$ are mutually inverse bijections between isomorphism classes
+  of irreducible admissible $V$-modules and isomorphism classes of simple $A(V)$-modules.
+\end{enumerate}
+\end{theorem}
+Restricting to \emph{ordinary} modules (finite-dimensional $L_0$-eigenspaces), one gets a bijection between irreducible
+ordinary modules and those simple $A(V)$-modules $U$ for which $L(U)$ has finite-dimensional weight spaces; when $V$
+is $C_2$-cofinite these are all simple $A(V)$-modules (finite-dimensionality of $A(V)$ alone does not control the higher
+weight spaces of $L(U)$).
+
+Part~(3) contains two assertions of very different difficulty. \emph{Well-definedness and surjectivity onto the simple
+modules} need the existence of $L(U)$, part~(2). \emph{Injectivity} --- an irreducible module is determined by its
+bottom --- needs a universal object: a ``generalized Verma module'' $M(U)$ generated by $U$ that maps onto every module
+whose bottom contains $U$. Both directions therefore require the same construction: given an $A(V)$-module $U$, build a
+$V$-module $M(U)$ whose bottom is \emph{exactly} $U$.
+
+\subsection{Why the construction is hard, and the tower}
+
+To build $M(U)$ one must know what the excited levels $M(U)(n)$, $n\ge1$, are. The vectors of $M(U)(n)$ are formally
+$a_{(p)}w$ with $w\in U$ and $\wt a - p - 1 = n$, subject to every relation that holds in every $V$-module. Frenkel and
+Zhu found that these relations are encoded by quotients of $V$ itself: Dong, Li and Mason introduced the associative
+algebras $A_n(V) = V/O_n(V)$ (``higher Zhu algebras'') acting on the first $n$ levels of any module, and Dong and Jiang
+introduced $A_{n,m}(V) = V/O_{n,m}(V)$, an $A_n(V)$--$A_m(V)$-bimodule which maps level $m$ to level $n$. Their
+construction is
+\begin{equation}\label{l13:eq:MU}
+ M(U) = \bigoplus_{n\ge0} A_{n,0}(V)\otimes_{A(V)}U,\qquad M(U)(n) = A_{n,0}(V)\otimes_{A(V)}U,
+\end{equation}
+with $a_{(p)}$ acting from level $n$ to level $\wt a-p-1+n$ by a residue product. The irreducible module is then
+$L(U) = M(U)/J(U)$, $J(U)$ the largest graded submodule meeting the bottom trivially.
+
+The delicate point is the bottom: one needs $M(U)(0) = A_{0,0}(V)\otimes_{A(V)}U\cong U$, i.e.\ $A_{0,0}(V) = A(V)$.
+Dong and Jiang prove this \emph{representation-theoretically}: they realize the regular $A(V)$-module $A(V)$ as the
+bottom of some module (by the induced-module construction of Dong--Li--Mason, which uses the
+Poincar\'e--Birkhoff--Witt theorem) and read off $O_{0,0}(V)\subseteq O(V)$. This is precisely where the library's
+datum \lean{Pr} enters.
+
+\subsection{The plan of the formal proof}
+
+The proof of \lean{zhuBijective} in the library is the following chain; each arrow is a section of this chapter.
+\begin{enumerate}
+\item \emph{The statement} (Section~\ref{l13:sec:statement}): the faithful forward map \lean{forwardMapIrr}; its
+  bijectivity is equivalent to \emph{bottom rigidity} of irreducibles.
+\item \emph{The Lie algebra $\lthirteenVh$ and induction} (Section~\ref{l13:sec:vhat}): the Frenkel--Zhu Lie algebra
+  $\lthirteenVh = V\otimes\C[t,t^{-1}]/\operatorname{Im}(L_{-1}\otimes1+1\otimes\tfrac{d}{dt})$, its parabolic
+  subalgebra $P_0$, the $P_0$-module structure on any $A(V)$-module, the induced module
+  $\lthirteenUE(\lthirteenVh)\otimes_{\lthirteenUE(P_0)}U$, and the datum \lean{BottomProjection}. \lean{VOA.pbw} (an axiom at
+  the snapshot, now a theorem) enters only here.
+\item \emph{The tower} (Section~\ref{l13:sec:tower}): circle products, $O_n$, $A_n$, and the Dong--Jiang ideals
+  $O_{n,m}$ and spaces $A_{n,m}$.
+\item \emph{The induced module $M(U)$} (Section~\ref{l13:sec:MU}): the carrier~\eqref{l13:eq:MU}, its $V$-action (a weak
+  module, unconditionally), and the ``gate'' $A_{0,0}(V) = A(V)$, proved from \lean{Pr} by realizing the regular module.
+\item \emph{$L(U)$ and the injectivity argument} (Section~\ref{l13:sec:LU}): $J(U)$, $L(U)$, the universal map
+  $M(\Omega(P))\to P$ for an irreducible $P$ with bottom $\Omega(P)$, the isomorphism $P\cong L(\Omega(P))$, and
+  functoriality $U_1\cong U_2\Rightarrow L(U_1)\cong L(U_2)$. Together: irreducibles are determined by their bottoms.
+\end{enumerate}
+
+\begin{physics}
+In a two-dimensional chiral conformal field theory with chiral algebra $V$, an irreducible module is a
+\emph{superselection sector}, and its lowest-weight space $M_h$ is the space of \emph{primary states} (ground states of
+the sector on the cylinder, all of energy $h-c/24$). The zero modes $o(u)$ of the fields are exactly the operators that
+preserve energy, so they act on the primaries; $A(V)$ is the algebra they generate, with all the relations imposed by
+the operator product expansion. Zhu's correspondence is the precise form of the physicist's slogan ``a sector is
+determined by its primary multiplet'': every sector is generated from its primaries by the negative modes (the
+descendants), and the only relations among descendants are those forced by the chiral algebra itself and by
+\emph{null states}. The induced module $M(U)$ is the ``Verma module'' of all descendants of the primary multiplet $U$
+with no null states removed; $J(U)$ is the space of null descendants (states orthogonal to everything); $L(U)$ is the
+physical sector. The higher algebras $A_n(V)$ and $A_{n,m}(V)$ describe the fields as maps between \emph{excited}
+levels: $A_{n,0}(V)\otimes U$ is the space of level-$n$ descendants of $U$.
+\end{physics}
+
+%======================================================================
+\section{The statement that is proved}\label{l13:sec:statement}
+%======================================================================
+
+We begin at the top, with the theorem and the definitions that occur in its statement. The bundled types
+\lean{AMod W} (an $A(V)$-module: a vector space $U$ with a linear $\rho:A(V)\to\End U$, unital and multiplicative),
+\lean{AModEquiv W U U'} (a linear isomorphism intertwining $\rho$), \lean{LWModule W} (an ordinary module
+\lean{isMod : OrdVModule W carrier} with a number \lean{h} such that all weights lie in $h+\N$ and $M_h\neq0$) and
+\lean{LWModule.toAMod} (the bottom $M_h$ with $[u]\mapsto o(u)$) are Definition~\ref{l12:def:lwmodule} of
+Chapter~\ref{ch:L12}; \lean{OrdVModule} is the library's ordinary module (Chapter~\ref{ch:01}): a weak module with an
+internal direct-sum decomposition into $L_0$-eigenspaces $M_\alpha$, $\alpha\in\C$, each finite-dimensional, with real
+parts bounded below.
+
+\subsection{Irreducibility and isomorphism}
+
+\begin{definition}[Irreducible lowest-weight module; isomorphism of modules]\label{l13:def:irr}
+An ordinary module $M$ is \emph{irreducible} if $M\neq0$ and its only subspaces stable under every mode $u_{(n)}$ are $0$
+and $M$. Two bundled lowest-weight modules are \emph{isomorphic} if there is a linear isomorphism of carriers
+intertwining every mode: $e(u_{(n)}x) = u_{(n)}e(x)$ for all $u\in V$, $n\in\Z$.
+\end{definition}
+\noindent Files \leanpath{VOA/\allowbreak Modules/\allowbreak WeakModule.lean},
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchRigidity.lean},
+\leanpath{VOA/\allowbreak Modules/\allowbreak Rationality.lean} and
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuBijection.lean}.
+\begin{leancode}
+def IsIrreducible (N : OrdVModule W M) : Prop :=
+  Nontrivial M ∧ ∀ P : WeakModule.Submodule' N.toWeakModule, P.carrier = ⊥ ∨ P.carrier = ⊤
+def LWModule.IsIrreducibleLW {W : VertexOperatorAlgebra 𝒱} (P : LWModule W) : Prop :=
+  OrdVModule.IsIrreducible P.isMod
+structure ModuleEquiv (W : VertexOperatorAlgebra 𝒱) {M N : Type u} [AddCommGroup M]
+    [Module ℂ M] [AddCommGroup N] [Module ℂ N] (A : OrdVModule W M) (B : OrdVModule W N) where
+  /-- The underlying linear equivalence. -/
+  toLinearEquiv : M ≃ₗ[ℂ] N
+  /-- Intertwining of the actions: `e(u₍ₙ₎ x) = u₍ₙ₎ e(x)`. -/
+  map_act : ∀ (u : 𝒱) (n : ℤ) (x : M),
+    toLinearEquiv (A.toWeakModule.act u n x) = B.toWeakModule.act u n (toLinearEquiv x)
+def LWModule.Iso (P Q : LWModule W) : Prop :=
+  Nonempty (ModuleEquiv W P.isMod Q.isMod)
+\end{leancode}
+
+\begin{dictionary}
+\lean{WeakModule.Submodule' N.toWeakModule} is a subspace of the carrier closed under every $u_{(n)}$ (no grading
+required); \lean{P.carrier = ⊥ ∨ P.carrier = ⊤} says it is $0$ or everything; \lean{Nontrivial M} says $M\neq0$. So
+\lean{OrdVModule.IsIrreducible} is the textbook irreducibility of the underlying weak module. Note that the submodules are
+\emph{not} required to be graded; for an ordinary module this makes no difference, because every mode-stable subspace is
+stable under $L_0 = \omega_{(1)}$ and hence is graded ($L_0$ acts semisimply with the weight spaces as eigenspaces;
+the library proves this in \leanpath{ZhuVermaAnArchLUGraded.lean}, \lean{submodule_isGraded}).
+\lean{ModuleEquiv} bundles a $\C$-linear equivalence with the intertwining of all modes; it automatically maps
+$M_\alpha$ onto $N_\alpha$ because $L_0$ is a mode. \lean{LWModule.Iso} is mere existence (\lean{Nonempty}) of such an
+equivalence, a \lean{Prop}, so that isomorphism classes can be formed as a quotient. All three are exactly the textbook
+notions.
+\end{dictionary}
+
+\begin{physics}
+An irreducible module is a sector that cannot be split into smaller sectors: every state can be reached from every other
+by acting with modes of the chiral fields. An isomorphism of sectors is a relabelling of states that commutes with all
+fields, i.e.\ the two sectors are physically the same.
+\end{physics}
+
+\subsection{The faithful domain and codomain}
+
+\begin{definition}[$\Phi(V)$ and the image-defined $\lthirteenIrr A(V)$]\label{l13:def:irrclasses}
+Let $\Phi(V)$ be the set of isomorphism classes of irreducible bundled lowest-weight modules. Call an $A(V)$-module $U$
+\emph{a bottom of an irreducible} if there is an irreducible lowest-weight module $P$ with $P_h\cong U$ as
+$A(V)$-modules, and let $\lthirteenIrr A(V)$ denote the set of isomorphism classes of such $U$. The \emph{faithful forward
+map} is
+\begin{equation*}
+ \mathrm{fwd}:\Phi(V)\to\lthirteenIrr A(V),\qquad [P]\mapsto[P_h].
+\end{equation*}
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchFaithfulBijection.lean}.
+\begin{leancode}
+def IrrLWModule (W : VertexOperatorAlgebra 𝒱) : Type (u + 1) :=
+  {P : LWModule W // P.IsIrreducibleLW}
+def Iso (P Q : IrrLWModule W) : Prop := LWModule.Iso W P.1 Q.1
+def IrrLWModuleIsoClass (W : VertexOperatorAlgebra 𝒱) : Type (u + 1) :=
+  Quotient (IrrLWModule.setoid W)
+def IsBottomOfIrr {W : VertexOperatorAlgebra 𝒱} (U : AMod W) : Prop :=
+  ∃ P : LWModule W, P.IsIrreducibleLW ∧ Nonempty (AModEquiv W P.toAMod U)
+def IrrAMod (W : VertexOperatorAlgebra 𝒱) : Type (u + 1) :=
+  {U : AMod W // IsBottomOfIrr U}
+def Iso (U V : IrrAMod W) : Prop := Nonempty (AModEquiv W U.1 V.1)
+def IrrAModIsoClass (W : VertexOperatorAlgebra 𝒱) : Type (u + 1) :=
+  Quotient (IrrAMod.setoid W)
+
+noncomputable def IrrLWModule.toIrrAMod {W : VertexOperatorAlgebra 𝒱} (P : IrrLWModule W) :
+    IrrAMod W :=
+  ⟨P.1.toAMod, ⟨P.1, P.2, ⟨AModEquiv.refl W P.1.toAMod⟩⟩⟩
+noncomputable def forwardMapIrr (W : VertexOperatorAlgebra 𝒱) :
+    IrrLWModuleIsoClass W → IrrAModIsoClass W :=
+  Quotient.lift
+    (fun P => (Quotient.mk (IrrAMod.setoid W) (IrrLWModule.toIrrAMod P) : IrrAModIsoClass W))
+    (fun _ _ ⟨e⟩ => Quotient.sound ⟨LWModule.isoToAModEquiv W e⟩)
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Decoding.} \lean{{P : LWModule W // P.IsIrreducibleLW}} is a \emph{subtype}: pairs $(P,\text{proof that }P$
+is irreducible$)$; \lean{P.1} is the module and \lean{P.2} the proof. \lean{IrrLWModule.setoid W} is the equivalence
+relation \lean{IrrLWModule.Iso} (isomorphism of the underlying modules) and \lean{Quotient} forms the set of classes; so
+\lean{IrrLWModuleIsoClass W} is $\Phi(V)$. On the other side, \lean{IsBottomOfIrr U} is literally ``there exist an
+irreducible $P$ and an $A(V)$-isomorphism $P_h\cong U$'', and \lean{IrrAModIsoClass W} is the set of $A(V)$-isomorphism
+classes of such $U$. \lean{Quotient.lift f h} defines a function on classes from a function \lean{f} on representatives,
+given a proof \lean{h} that isomorphic inputs give equal outputs; here the proof is \lean{LWModule.isoToAModEquiv}, the
+easy fact that an isomorphism of modules restricts to an $A(V)$-isomorphism of bottoms (Chapter~\ref{ch:L12}). So
+\lean{forwardMapIrr W} is $[P]\mapsto[P_h]$.
+
+\textbf{Universe bookkeeping.} The carriers of modules live in the same universe \lean{Type u} as $V$; the types of
+classes live one universe up. This is invisible mathematically: ``all modules'' means all modules whose carrier is a
+set of the same size class as $V$, which loses nothing (every irreducible module is a quotient of an object built from
+$V$ and a vector space of the same size).
+
+\textbf{The crucial point: the codomain is the image.} In Zhu's theorem the codomain is the set of
+\emph{simple} $A(V)$-modules. Here it is, by definition, the set of $A(V)$-modules that already arise as bottoms of
+irreducibles. Every such module is simple, for every $V$ (Theorem~\ref{l13:thm:simplebottom-all}); the converse, that every
+simple module is such a bottom, is proved for $C_2$-cofinite $V$, and for those $V$ the two sets are identified and the
+correspondence becomes a genuine bijection (Theorem~\ref{l13:thm:zhucorr}). For general $V$ the codomain remains the image;
+see Section~\ref{l13:sec:scope}.
+\end{dictionary}
+
+\begin{physics}
+$\Phi(V)$ is the \emph{spectrum of sectors} of the chiral theory; $\lthirteenIrr A(V)$, as defined here, is the list of
+primary multiplets \emph{that actually occur in some sector}. The forward map reads off the primary multiplet of each
+sector.
+\end{physics}
+
+\subsection{The headline}
+
+\begin{theorem}[Zhu's correspondence, uniqueness form]\label{l13:thm:headline}
+Let $V$ be any vertex operator algebra of the library and assume the datum \lean{Pr} of
+Definition~\ref{l13:def:bottomprojection} for the regular $A(V)$-module. Then $\mathrm{fwd}:\Phi(V)\to\lthirteenIrr A(V)$
+is a bijection. Equivalently: if $P,Q$ are irreducible bundled lowest-weight $V$-modules and $P_h\cong Q_{h'}$ as
+$A(V)$-modules, then $P\cong Q$. The datum \lean{Pr} is supplied, for every $V$, by the theorem \lean{VOA.pbw} (through \lean{voaPBWBottomProjection}).
+\end{theorem}
+\noindent Files \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchLUBijection.lean} and
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchLUBijectionPBW.lean}.
+\begin{leancode}
+theorem zhuBijective (Pr : BottomProjection (parabolicRepOfAMod W (regularAMod W))) :
+    Function.Bijective (forwardMapIrr W) :=
+theorem zhuBijective_of_voaPBW (W : VertexOperatorAlgebra 𝒱) :
+    Function.Bijective (forwardMapIrr W) :=
+  zhuBijective
+    (voaPBWBottomProjection (parabolicRepOfAMod W (regularAMod W)))
+\end{leancode}
+\noindent The equivalence with uniqueness is a library theorem, recorded in the file
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchZhu534.lean}; the uniqueness statement is named
+\lean{IrredBottomRigidity} and lives in the file \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchRigidity.lean}.
+\begin{leancode}
+def IrredBottomRigidity (W : VertexOperatorAlgebra 𝒱) : Prop :=
+  ∀ P Q : LWModule W, P.IsIrreducibleLW → Q.IsIrreducibleLW →
+    Nonempty (AModEquiv W P.toAMod Q.toAMod) → LWModule.Iso W P Q
+theorem forwardMapIrr_surjective_uncond (W : VertexOperatorAlgebra 𝒱) :
+    Function.Surjective (forwardMapIrr W) := by
+theorem forwardMapIrr_bijective_iff_rigidity :
+    Function.Bijective (forwardMapIrr W) ↔ IrredBottomRigidity W :=
+  ⟨fun hb => irredBottomRigidity_of_injective hb.1, forwardMapIrr_bijective_of_rigidity⟩
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Hypotheses.} The only explicit hypothesis of \lean{zhuBijective} is \lean{Pr}; the VOA \lean{W} is implicit and
+arbitrary (any \lean{VertexOperatorAlgebra 𝒱} on any complex vector space \lean{𝒱}). There is no simplicity, rationality,
+$C_2$, or finiteness hypothesis on $V$. \lean{Pr} is a structure (data, not a proposition) whose meaning is explained in
+Section~\ref{l13:sec:vhat}; its type mentions \lean{regularAMod W} ($A(V)$ as a module over itself) and
+\lean{parabolicRepOfAMod} (Definition~\ref{l13:def:parabolicrep}). \lean{zhuBijective_of_voaPBW} has no hypothesis at all:
+it applies \lean{zhuBijective} to the term \lean{voaPBWBottomProjection ...}, which is built from \lean{VOA.pbw}.
+
+\textbf{Conclusion.} \lean{Function.Bijective f} is Mathlib's ``injective and surjective''.
+
+\textbf{Exactly which bijection.} Between $\Phi(V)$ = isomorphism classes of irreducible \emph{ordinary} modules whose
+weights lie in one coset $h+\N$ with $M_h\neq0$, and $\lthirteenIrr A(V)$ = isomorphism classes of $A(V)$-modules
+occurring as such bottoms. Classes are taken up to isomorphism on both sides.
+
+\textbf{Same, weaker, or stronger than Zhu?} Compared with Theorem~\ref{l13:thm:zhu-lit}(3) restricted to ordinary
+modules:
+\begin{itemize}
+\item \emph{Surjectivity} is free: \lean{forwardMapIrr_surjective_uncond} proves it with no hypothesis, by unpacking the
+  definition of the codomain. It contains none of Zhu's existence theorem~(2).
+\item \emph{Injectivity} is exactly Zhu's uniqueness: by \lean{forwardMapIrr_bijective_iff_rigidity}, bijectivity
+  of \lean{forwardMapIrr W} is \emph{equivalent} to \lean{IrredBottomRigidity W}, which reads: for irreducible $P,Q$, an
+  $A(V)$-isomorphism $P_h\cong Q_{h'}$ implies $P\cong Q$. (The two lowest weights are then equal, because $[\omega]$ acts
+  on the bottom by the lowest weight.)
+\item \emph{Part~(1)} of Zhu's theorem (bottoms of irreducibles are simple) is not asserted by this theorem. It is a
+  separate library theorem, valid for every $V$ (Theorem~\ref{l13:thm:simplebottom-all}), so the codomain consists of
+  simple modules.
+\end{itemize}
+So the Lean theorem is \emph{weaker} than Zhu's full theorem~(3): it is precisely its uniqueness half. It is stated for a
+wider class of VOAs than many textbook versions (no CFT-type assumption is needed since every library VOA is of CFT type).
+
+\textbf{Could it be vacuous?} The hypothesis \lean{Pr} is satisfiable (it is a true consequence of PBW,
+Section~\ref{l13:sec:vhat}), and for the conclusion there is no trick: \lean{IrredBottomRigidity} is a non-trivial
+statement whenever $V$ has irreducible modules (e.g.\ the adjoint module of any simple VOA). A
+check in Lean against the library (not part of this release) derives \lean{IrredBottomRigidity}-shaped statements \lean{zhu_rigidity}
+and \lean{zhu_rigidity_voaPBW} directly from the two headlines, and conversely \lean{bijective_of_rigidity_statement}.
+\end{dictionary}
+
+\begin{warning}
+\textbf{The name oversells (moderate).} The docstrings call \lean{zhuBijective} ``Zhu Theorem 5.3.4 (faithful form)''. It
+is the \emph{uniqueness} half of Zhu's correspondence only: its codomain \lean{IrrAModIsoClass} is the image of the
+forward map by definition, so surjectivity is a tautology (as the library's own \lean{forwardMapIrr_surjective_uncond}
+and its docstring state). A reader who sees ``bijection $\Phi(V)\leftrightarrow\lthirteenIrr A(V)$'' must not conclude
+that every simple $A(V)$-module is realized; that is a separate theorem, proved only under $C_2$-cofiniteness
+(Section~\ref{l13:sec:scope}). For $C_2$-cofinite $V$ the genuine bijection onto all simple $A(V)$-modules is
+\lean{zhuCorrespondence_of_C2Cofinite} (Theorem~\ref{l13:thm:zhucorr}); cite that, not \lean{zhuBijective}, when announcing
+``Zhu's correspondence as a bijection''. Checked in Lean against the library (the check is not part of this release):
+theorems \lean{zhu_rigidity}, \lean{bijective_of_rigidity_statement},
+\lean{forwardMapIrr_surjective_free}.
+\end{warning}
+
+\textbf{Proof on paper (overview).} By \lean{forwardMapIrr_bijective_iff_rigidity} it suffices to prove uniqueness. Let
+$P$ be irreducible with bottom $\Omega(P) = P_h$. In Section~\ref{l13:sec:LU} we construct, from the $A(V)$-module
+$\Omega(P)$ alone, the module $L(\Omega(P))$ and prove $P\cong L(\Omega(P))$. We also prove that $L(U)$ depends only on
+the isomorphism class of $U$. If $\Omega(P)\cong\Omega(Q)$ then
+$P\cong L(\Omega(P))\cong L(\Omega(Q))\cong Q$. \qed
+
+\begin{status}
+\lean{zhuBijective}: proved, \emph{conditional on} the explicit datum \lean{Pr}; \texttt{\#print axioms VOA.zhuBijective}
+= \lean{[propext, Classical.choice, Quot.sound]}. \lean{zhuBijective_of_voaPBW}: proved with no hypothesis; \textbf{unconditional};
+\texttt{\#print axioms} = \lean{[propext, Classical.choice, Quot.sound]} in a later run, after \lean{VOA.pbw} became a theorem, not re-run for this edition (at the snapshot
+the list also contained \lean{pbw}, then an axiom). \lean{forwardMapIrr_surjective_uncond}, \lean{forwardMapIrr_bijective_iff_rigidity}: unconditional,
+standard three axioms. Except for the re-probe just stated, these results were obtained at the snapshot (not re-run for this edition) with
+\texttt{lake env lean -DmaxSynthPendingDepth=3} on a scratch file (output in Section~\ref{l13:sec:checklist}).
+\end{status}
+
+\begin{physics}
+The theorem says: \emph{a sector is determined by its primary multiplet}. Two sectors whose primaries carry isomorphic
+representations of the zero-mode algebra are the same sector. Physically this is the statement that all descendant
+states, their norms and their correlation functions are fixed by the chiral algebra once the primaries and the
+action of zero modes on them are fixed --- the conformal bootstrap principle that ``the spectrum of primaries plus the
+chiral algebra determines the representation''. What the theorem does \emph{not} say is which primary multiplets are
+allowed; that is the classification problem (for minimal models: the Kac table), which is the content of the existence
+half.
+\end{physics}
+
+\subsection{What lies outside the headline: the scope of the codomain}\label{l13:sec:scope}
+
+We record where the two halves of Zhu's theorem that the headline does not contain stand, and how they combine with
+the headline. None of these results is in this chapter's files; we quote their statements so that the reader can see
+exactly what they assume. Since the snapshot, both halves have become theorems (the first for every $V$, the second for
+$C_2$-cofinite $V$), and the library now states their combination as one bijection.
+
+\begin{definition}[Simple $A(V)$-module; realizability]\label{l13:def:simpleamod}
+An $A(V)$-module $U$ is \emph{simple} if $U\neq0$ and its only $A(V)$-submodules are $0$ and $U$. The predicate
+\lean{SimpleAModsRealized W} says: every simple $A(V)$-module is the bottom of an irreducible graded module with
+finite-dimensional weight spaces (an \lean{IrrRealization}).
+\end{definition}
+\noindent Files \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchLeaf3.lean},
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchZhu534.lean} and (Chapter~\ref{ch:L15})
+\leanpath{VOA/\allowbreak Modularity/\allowbreak GNProp8Closure.lean}.
+\begin{leancode}
+def IsSimpleAMod {W : VertexOperatorAlgebra 𝒱} (U : AMod W) : Prop :=
+  Nontrivial U.carrier ∧ ∀ S : AModSubmodule U, S.carrier = ⊥ ∨ S.carrier = ⊤
+def SimpleAModsRealized (W : VertexOperatorAlgebra 𝒱) : Prop :=
+  ∀ U : AMod W, IsSimpleAMod U → Nonempty (IrrRealization W U)
+theorem isBottomOfIrr_iff_isSimpleAMod (hrec : AllBottomRecovers W)
+    (hreal : SimpleAModsRealized W) (U : AMod W) :
+    IsBottomOfIrr U ↔ IsSimpleAMod U :=
+theorem simpleAModsRealized_of_C2Cofinite {W : VertexOperatorAlgebra 𝒱}
+    (hC2 : C2Cofinite W)
+    (Pr : BottomProjection (parabolicRepOfAMod W (regularAMod W))) :
+    SimpleAModsRealized W :=
+\end{leancode}
+
+\begin{dictionary}
+\lean{AModSubmodule U} is a subspace stable under every $\rho(a)$. \lean{IrrRealization W U} packages an irreducible
+\lean{GradedLWWeakModule} (Definition~\ref{l13:def:gradedlw}) with finite-dimensional weight spaces and an
+$A(V)$-isomorphism of its bottom with $U$; by \lean{isBottomOfIrr_of_irrRealization} it puts $U$ into the codomain
+\lean{IrrAMod W}. \lean{isBottomOfIrr_iff_isSimpleAMod} identifies the codomain with the simple $A(V)$-modules, under two
+hypotheses: \lean{AllBottomRecovers W} (for the direction ``bottoms are simple'', Zhu's part~(1)) and
+\lean{SimpleAModsRealized W} (Zhu's part~(2)). The second is proved in Chapter~\ref{ch:L15} from $C_2$-cofiniteness and
+\lean{Pr}. The first is now a theorem for every $V$ (\lean{allBottomRecovers}, Theorem~\ref{l13:thm:simplebottom-all}
+below); at the snapshot it was an open hypothesis, and Chapter~\ref{ch:L12}'s Theorem~\ref{l12:thm:simplebottom} proved the
+irreducible case only under semisimplicity of $A(V)$ and \lean{Pr}. A finiteness hypothesis is unavoidable for
+\lean{SimpleAModsRealized} as typed: the library proves (\lean{simpleAModsRealized_finiteDimensional}) that it forces every
+simple $A(V)$-module to be finite-dimensional, which fails e.g.\ for $A(V^k(\mathfrak{sl}_2))\cong U(\mathfrak{sl}_2)$.
+\end{dictionary}
+
+\begin{status}
+\lean{isBottomOfIrr_iff_isSimpleAMod}: conditional on \lean{AllBottomRecovers} and \lean{SimpleAModsRealized};
+\texttt{\#print axioms} = standard three (re-run at an earlier commit, not re-run for this edition). \lean{simpleAModsRealized_of_C2Cofinite}: conditional on
+\lean{C2Cofinite W} and \lean{Pr} (both explicit; there is no \lean{_voaPBW} wrapper); \texttt{\#print axioms} = standard three.
+Since \lean{AllBottomRecovers W} is now a theorem for every $V$ (below), for a $C_2$-cofinite $V$ both hypotheses of
+\lean{isBottomOfIrr_iff_isSimpleAMod} hold, and the codomain of \lean{forwardMapIrr} is exactly the simple $A(V)$-modules.
+(The earlier text of this box called ``every element of the codomain is simple'' unproved; that is no longer so.)
+\end{status}
+
+\begin{physics}
+Existence (``every allowed primary multiplet generates a sector'') is the half that physicists use to \emph{classify}
+sectors: solve the zero-mode algebra's representation theory, then build the sector. In rational theories the zero-mode
+algebra is finite-dimensional and semisimple and the list of sectors is finite; in non-rational theories (e.g.\ the
+affine current algebra at generic level, whose zero modes generate $U(\mathfrak g)$) there are infinite-dimensional
+primary multiplets that do not give ordinary sectors, which is why a finiteness hypothesis appears.
+\end{physics}
+
+\begin{theorem}[Bottoms of irreducible modules are simple; Zhu 1996, Theorem~2.2.1(1)]\label{l13:thm:simplebottom-all}
+For every vertex operator algebra $V$ of the library and every irreducible bundled lowest-weight module $P$, the bottom
+$P_h$ is a simple $A(V)$-module. More precisely, every lowest-weight module $P$ has the \emph{bottom-recovery property}: for
+every $A(V)$-submodule $S\subseteq P_h$, the $V$-submodule of $P$ generated by $S$ meets $P_h$ in exactly $S$.
+\end{theorem}
+\noindent The predicate is defined in \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchLeaf3.lean} and
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchAModScope.lean}:
+\begin{leancode}
+def BottomRecovers : Prop :=
+  ∀ S : AModSubmodule (P.toAMod),
+    vSubmoduleBottomCarrier S.genVSubmodule ≤ S.carrier
+
+def AllBottomRecovers (W : VertexOperatorAlgebra 𝒱) : Prop :=
+  ∀ P : LWModule W, BottomRecovers P
+\end{leancode}
+\noindent and the theorems are in \leanpath{VOA/\allowbreak Huang/\allowbreak LWBottomRecovery.lean} (Chapter~\ref{ch:L21}),
+namespace \lean{VOA.Huang.LWBottomRecovery}, with section variables \lean{{W : VertexOperatorAlgebra 𝒱}} and
+\lean{(P : LWModule W)}:
+\begin{leancode}
+theorem allBottomRecovers (W : VertexOperatorAlgebra 𝒱) : AllBottomRecovers W :=
+  fun P => bottomRecovers P
+
+theorem isSimpleAMod_toAMod_of_irreducible (hP : P.IsIrreducibleLW) : IsSimpleAMod P.toAMod :=
+  isSimpleAMod_of_bottomRecovers P hP (bottomRecovers P)
+\end{leancode}
+
+\begin{dictionary}
+\lean{S.genVSubmodule} is the weak $V$-submodule of $P$ generated by the subspace $S$ of the bottom (all vectors
+$u^1_{(n_1)}\cdots u^k_{(n_k)}s$, $s\in S$); \lean{vSubmoduleBottomCarrier} is its intersection with the bottom $P_h$. So
+\lean{BottomRecovers P} says: \emph{a mode word that carries a vector of $S$ back to the bottom lands in $S$}; equivalently,
+the only way to return to the ground states is through the zero-mode algebra $A(V)$, which preserves $S$. The inclusion
+$\supseteq$ is trivial, so this is an equality. \lean{allBottomRecovers} proves it for every lowest-weight module of every
+$V$, with no hypothesis: no $C_2$, no semisimplicity, no datum \lean{Pr}. \lean{isSimpleAMod_toAMod_of_irreducible} deduces
+simplicity of the bottom of an irreducible $P$: if $0\neq S\subsetneq P_h$, the submodule generated by $S$ is nonzero, hence all
+of $P$ by irreducibility, and its bottom would be $S\neq P_h$, a contradiction. \textbf{Same as Zhu's part~(1)}, for ordinary
+lowest-weight modules. It removes the extra hypotheses of Chapter~\ref{ch:L12}'s Theorem~\ref{l12:thm:simplebottom}. The
+project had recorded \lean{AllBottomRecovers} as unproved; that gap is now closed.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+View $P$ as an admissible module with levels $P(k)=P_{h+k}$. A vector of the generated submodule lying in $P(0)$ is a sum of
+mode words $u^1_{(n_1)}\cdots u^k_{(n_k)}s$ of total degree $0$. By the commutator and associativity formulas, any such word
+can be rewritten as a combination of words in which all degree-lowering modes stand to the right of all degree-raising
+ones; on the bottom the lowering modes act by $0$, and what remains are products of zero modes $o(u)$, i.e.\ the action of
+$A(V)$ (this is the standard argument of Dong--Li--Mason that $\Omega(M)$-generated submodules are controlled by
+$A(V)$, used by Zhu for part~(1)). Since $S$ is an $A(V)$-submodule, the result lies in $S$. The Lean proof applies the
+general bottom recovery of \leanpath{VOA/\allowbreak Huang/\allowbreak BottomRecovery.lean}.
+\end{proof}
+
+\begin{physics}
+The ground states of a sector cannot be ``re-entered'' by a detour through excited states except through the zero modes:
+whatever a product of field modes does, if it starts and ends on ground states it acts as an element of the zero-mode
+algebra. Hence the ground-state multiplet of an irreducible sector is an irreducible multiplet: ``one primary per sector,
+up to zero-mode symmetry''.
+\end{physics}
+
+\begin{status}
+\lean{VOA.Huang.LWBottomRecovery.allBottomRecovers}, \lean{VOA.Huang.LWBottomRecovery.isSimpleAMod_toAMod_of_irreducible}:
+\texttt{[propext, Classical.choice, Quot.sound]}, run at an earlier commit (not re-run for this edition) with \texttt{lake env lean -DmaxSynthPendingDepth=3}.
+\textbf{Unconditional.}
+\end{status}
+
+\subsection{Zhu's correspondence as one bijection, for \texorpdfstring{$C_2$}{C2}-cofinite \texorpdfstring{$V$}{V}}\label{l13:sec:zhucorr}
+
+With both halves available, the library states Zhu's correspondence in the form one expects: a bijection between $\Phi(V)$
+and isomorphism classes of simple $A(V)$-modules, where the codomain is defined intrinsically (``simple''), not as the image of
+the map.
+
+\begin{definition}[Simple $A(V)$-modules up to isomorphism; the bottom as a simple module]\label{l13:def:simpleamodclass}
+Let $\mathrm{Simple}A(V)$ be the collection of simple $A(V)$-modules (in the sense of Definition~\ref{l13:def:simpleamod}),
+and $\mathrm{Simple}A(V)/{\cong}$ its set of isomorphism classes. For an irreducible lowest-weight module $P$, its bottom
+$P_h$ is an element of $\mathrm{Simple}A(V)$ by Theorem~\ref{l13:thm:simplebottom-all}. The forgetful map
+$\mathrm{forget}:\lthirteenIrr\mathrm{LW}(V)/{\cong}\to\Phi(V)$ sends the class of a bundled lowest-weight module to the class of
+the underlying irreducible ordinary module; it is a bijection.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak ZhuModularityCanonical.lean}.
+\begin{leancode}
+def SimpleAMod (W : VertexOperatorAlgebra 𝒱) : Type (u + 1) :=
+  {U : AMod W // IsSimpleAMod U}
+
+def SimpleAMod.setoid (W : VertexOperatorAlgebra 𝒱) : Setoid (SimpleAMod W) where
+  r U V := Nonempty (AModEquiv W U.1 V.1)
+
+def SimpleAModIsoClass (W : VertexOperatorAlgebra 𝒱) : Type (u + 1) :=
+  Quotient (SimpleAMod.setoid W)
+
+noncomputable def IrrLWModule.toSimpleAMod {W : VertexOperatorAlgebra 𝒱} (P : IrrLWModule W) :
+    SimpleAMod W :=
+  ⟨P.1.toAMod,
+    (IrrLWModule.toIrrAMod P).2.isSimpleAMod (VOA.Huang.LWBottomRecovery.allBottomRecovers W)⟩
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak LowestWeightExistence.lean} (Chapter~\ref{ch:L15}).
+\begin{leancode}
+def forgetClass (W : VertexOperatorAlgebra 𝒱) : IrrLWModuleIsoClass W → Φ W :=
+  Quotient.lift (fun P => (Quotient.mk (IrrModule.setoid W) (IrrLWModule.forget P) : Φ W))
+    (fun _ _ h => Quotient.sound h)
+
+noncomputable def irrLWModuleIsoClass_equiv_Φ (W : VertexOperatorAlgebra 𝒱) :
+    IrrLWModuleIsoClass W ≃ Φ W where
+  toFun := forgetClass W
+  invFun := lowestWeightClass W
+\end{leancode}
+
+\begin{dictionary}
+\lean{{U : AMod W // IsSimpleAMod U}} is the subtype of bundled $A(V)$-modules that are simple (nonzero, with only the
+trivial $A(V)$-submodules): an \emph{intrinsic} predicate on $U$, unlike \lean{IsBottomOfIrr}, which asks for an irreducible
+$V$-module realising $U$. The setoid is $A(V)$-isomorphism (\lean{AModEquiv}, Chapter~\ref{ch:L12}); the displayed
+\lean{where} clause shows the relation, and its three proof fields (reflexivity, symmetry, transitivity, borrowed from
+\lean{AMod.setoid}) are omitted. \lean{IrrLWModule.toSimpleAMod P} is the bottom \lean{P.1.toAMod} together with the proof
+that it is simple, obtained from \lean{IsBottomOfIrr.isSimpleAMod} and the theorem \lean{allBottomRecovers}; no hypothesis on
+$V$. \lean{forgetClass} forgets the lowest weight $h$ (an irreducible bundled lowest-weight module \emph{is} an irreducible
+ordinary module, \lean{IrrLWModule.forget}); \lean{irrLWModuleIsoClass_equiv_Φ} is the equivalence
+$\lthirteenIrr\mathrm{LW}(V)/{\cong}\;\simeq\;\Phi(V)$ whose forward map is \lean{forgetClass} and whose inverse chooses the
+conformal weight (existence of a lowest weight for irreducible modules; we show its first two fields, the proofs of the two
+inverse laws are omitted). This identifies the domain \lean{IrrLWModuleIsoClass} of the headline with Chapter~\ref{ch:L12}'s
+$\Phi(V)$.
+\end{dictionary}
+
+\begin{physics}
+$\mathrm{Simple}A(V)/{\cong}$ is the list of \emph{allowed} irreducible primary multiplets, computed from the zero-mode algebra
+alone, before asking whether each of them generates a sector.
+\end{physics}
+
+\begin{status}
+Definitions. \lean{VOA.IrrLWModule.toSimpleAMod}: \texttt{[propext, Classical.choice, Quot.sound]} (run at an earlier commit, not re-run for this edition).
+\end{status}
+
+\begin{theorem}[Zhu's correspondence as one bijection; Zhu 1996, Theorem~2.2.2 / Gannon, Theorem~5.3.4, for $C_2$-cofinite $V$]\label{l13:thm:zhucorr}
+Let $V$ be $C_2$-cofinite. There is a bijection
+\begin{equation*}
+  e:\Phi(V)\xrightarrow{\ \sim\ }\mathrm{Simple}A(V)/{\cong}
+\end{equation*}
+such that for every irreducible lowest-weight module $P$ with bottom $P_h$, $e([P])=[P_h]$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak ZhuModularityCanonical.lean}.
+\begin{leancode}
+theorem zhuCorrespondence_of_C2Cofinite (W : VertexOperatorAlgebra 𝒱) (hC2 : C2Cofinite W) :
+    ∃ e : Φ W ≃ SimpleAModIsoClass W, ∀ P : IrrLWModule W,
+      e (forgetClass W (Quotient.mk (IrrLWModule.setoid W) P)) =
+        Quotient.mk (SimpleAMod.setoid W) (IrrLWModule.toSimpleAMod P) := by
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Decoding.} \lean{Φ W ≃ SimpleAModIsoClass W} is a Lean \emph{equivalence}: a function with a two-sided inverse,
+i.e.\ a bijection. The second conjunct pins down \emph{which} bijection: for every irreducible lowest-weight module \lean{P}, the
+class of \lean{P} in $\Phi(V)$ (obtained by forming its class \lean{Quotient.mk (IrrLWModule.setoid W) P} and forgetting the
+lowest weight with \lean{forgetClass}) is sent to the class of its bottom. Since every element of $\Phi(V)$ is of this form
+(\lean{irrLWModuleIsoClass_equiv_Φ}), $e$ is completely determined: it is $[M]\mapsto[M_h]$.
+
+\textbf{Hypotheses.} Only \lean{hC2 : C2Cofinite W}. The datum \lean{Pr} is supplied inside the proof by
+\lean{voaPBWBottomProjection} (the theorem \lean{VOA.pbw}).
+
+\textbf{Same, weaker, or stronger than Zhu?} Compared with Theorem~\ref{l13:thm:zhu-lit}(3) restricted to ordinary modules:
+\begin{itemize}
+\item the codomain is the set of \emph{all} simple $A(V)$-modules up to isomorphism, defined intrinsically, so this is no longer the
+  image-defined statement of the headline: surjectivity is genuine content (existence of modules);
+\item injectivity is the headline's uniqueness, valid without $C_2$;
+\item well-definedness into simple modules is Theorem~\ref{l13:thm:simplebottom-all}, valid without $C_2$;
+\item $C_2$-cofiniteness is used \emph{only} for surjectivity, through \lean{simpleAModsRealized_of_C2Cofinite}. Zhu's existence
+  theorem needs no such hypothesis, but it yields an \emph{admissible} module $L(U)$; to land in $\Phi(V)$, whose elements are
+  \emph{ordinary} modules, one needs the weight spaces of $L(U)$ to be finite-dimensional, which $C_2$ guarantees. For
+  $C_2$-cofinite $V$ every simple $A(V)$-module is finite-dimensional (since $A(V)$ is), as Zhu's ordinary-module version
+  requires.
+\end{itemize}
+So, for $C_2$-cofinite $V$, this is exactly Zhu's correspondence between irreducible ordinary modules and simple
+$A(V)$-modules. For $V$ that are not $C_2$-cofinite the library has only the uniqueness half (the headline).
+
+\textbf{Could it be vacuous?} No: both sides are nonempty whenever $V$ has an irreducible module (e.g.\ the adjoint module of a
+simple $V$), and the second conjunct ties $e$ to the actual modules, so it is not an abstract cardinality statement.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+By Theorem~\ref{l13:thm:simplebottom-all}, \lean{AllBottomRecovers W} holds; by \lean{simpleAModsRealized_of_C2Cofinite} (with
+\lean{Pr} from \lean{VOA.pbw}), \lean{SimpleAModsRealized W} holds. So \lean{isBottomOfIrr_iff_isSimpleAMod} identifies the
+image-defined codomain \lean{IrrAModIsoClass W} of the headline with \lean{SimpleAModIsoClass W}. Compose: $\Phi(V)\simeq$
+\lean{IrrLWModuleIsoClass W} (inverse of \lean{irrLWModuleIsoClass_equiv_Φ}), then the headline's bijection
+\lean{forwardMapIrr} (\lean{zhuBijective_of_voaPBW}), then this identification. Each step sends $[P]$ to $[P_h]$.
+\end{proof}
+
+\begin{physics}
+For a $C_2$-cofinite chiral algebra, \emph{sectors are in one-to-one correspondence with irreducible representations of the
+zero-mode algebra}: to classify the sectors, classify the simple modules of the finite-dimensional algebra $A(V)$. This is how
+the sectors of minimal models, WZW models and lattice theories are classified in practice.
+\end{physics}
+
+\begin{status}
+\lean{VOA.zhuCorrespondence_of_C2Cofinite}: \texttt{[propext, Classical.choice, Quot.sound]}, run at an earlier commit (not re-run for this edition) with
+\texttt{lake env lean -DmaxSynthPendingDepth=3} on a scratch file containing the text of
+\leanpath{ZhuModularityCanonical.lean} (which had no olean at that commit; its imports had). \textbf{\texttt{\#print
+axioms}-clean, conditional on} \lean{C2Cofinite W} only; uses the theorem \lean{VOA.pbw}. This is the form to cite as ``Zhu's
+correspondence (bijection)''.
+\end{status}
+
+%======================================================================
+\section{The Frenkel--Zhu Lie algebra, induction, and the datum \texttt{Pr}}\label{l13:sec:vhat}
+%======================================================================
+
+This section explains the single input of the headline. We need a Lie algebra $\lthirteenVh$ attached to $V$, a
+subalgebra $P_0$ of it, a way to make any $A(V)$-module a $P_0$-module, and induction from $P_0$ to $\lthirteenVh$.
+
+\subsection{The Lie algebra \texorpdfstring{$\widehat V$}{V-hat}}
+
+\begin{definition}[Frenkel--Zhu, Borcherds; Lie algebra of modes]\label{l13:def:vhat}
+Let $V\otimes\C[t,t^{-1}]$ have basis-free elements $a(m) = a\otimes t^m$ ($a\in V$, $m\in\Z$), and let $D$ be the subspace
+spanned by $(L_{-1}a)(m) + m\,a(m-1)$. Put $\lthirteenVh = V\otimes\C[t,t^{-1}]/D$ with bracket
+\begin{equation}\label{l13:eq:bracket}
+ [a(m),b(k)] = \sum_{i\ge0}\binom mi\,(a_{(i)}b)(m+k-i).
+\end{equation}
+The sum is finite because $a_{(i)}b = 0$ for $i\gg0$. Grade $\lthirteenVh$ by $\deg a(m) = \wt a - m - 1$ for homogeneous
+$a$.
+\end{definition}
+\noindent Files \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchVhat.lean} and
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchVhatJac3.lean}.
+\begin{leancode}
+abbrev VLoop (𝒱 : Type u) [AddCommGroup 𝒱] [Module ℂ 𝒱] : Type u := ℤ →₀ 𝒱
+theorem vloopBracket_single (W : VertexOperatorAlgebra 𝒱) (m k : ℤ) (a b : 𝒱) :
+    vloopBracket W (single m a) (single k b)
+      = ∑ᶠ i : ℕ, (gBinom m i) • single (m + k - i) (W.smul a i b) := by
+noncomputable def loopDerivSubmodule (W : VertexOperatorAlgebra 𝒱) : Submodule ℂ (VLoop 𝒱) :=
+  Submodule.span ℂ {x | ∃ (a : 𝒱) (m : ℤ),
+    x = single m (W.L (-1) a) + (m : ℂ) • single (m - 1) a}
+abbrev VHatCarrier (W : VertexOperatorAlgebra 𝒱) : Type u := VLoop 𝒱 ⧸ loopDerivSubmodule W
+noncomputable def gen (W : VertexOperatorAlgebra 𝒱) (a : 𝒱) (m : ℤ) : VHatCarrier W :=
+  mk W (single m a)
+noncomputable def deg (W : VertexOperatorAlgebra 𝒱) (d : ℤ) : Submodule ℂ (VHatCarrier W) :=
+  Submodule.span ℂ {x | ∃ (w m : ℤ) (a : 𝒱), a ∈ W.grading w ∧ w - m - 1 = d ∧ x = gen W a m}
+noncomputable def lieRing (W : VertexOperatorAlgebra 𝒱) : LieRing (VHatCarrier W) :=
+  lieRingOfData W (bracketDescends W)
+    (vhatAntisymm W (bracketDescends W)) (vhatLeibniz_holds W)
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Decoding.} \lean{ℤ →₀ 𝒱} is Mathlib's type of finitely supported functions $\Z\to V$, i.e.\
+$V\otimes\C[t,t^{-1}]$; \lean{single m a} is $a\otimes t^m = a(m)$. \lean{vloopBracket W} is the bilinear extension of
+\eqref{l13:eq:bracket}; \lean{vloopBracket_single} states its value on generators, with \lean{gBinom m i}
+$=\binom mi$ for $m\in\Z$, $i\in\N$ and \lean{W.smul a i b} $= a_{(i)}b$; \lean{∑ᶠ} is a finitely supported sum, and its
+support is finite by the truncation axiom (the library proves this, \lean{brLevel_support_finite'}). \lean{W.L (-1)} is
+$L_{-1}$. \lean{loopDerivSubmodule W} is $D$, \lean{VHatCarrier W} is $\lthirteenVh$, \lean{gen W a m} is the class of
+$a(m)$, and \lean{deg W d} is the span of the homogeneous generators of degree $d$.
+
+\textbf{The Lie structure is a theorem.} \lean{lieRing W} is assembled from three proved facts: the bracket descends to the
+quotient by $D$ (\lean{bracketDescends}: $D$ is an ideal, because $L_{-1}$ is a derivation of every product and
+$(L_{-1}a)_{(i)} = -i\,a_{(i-1)}$), antisymmetry (\lean{vhatAntisymm}, from skew-symmetry
+$Y(a,z)b = e^{zL_{-1}}Y(b,-z)a$, valid only modulo $D$), and the Jacobi identity (\lean{vhatLeibniz_holds}, from the
+Borcherds identity). There is no central extension: the conformal data already live in $V$. This is the
+Lie algebra of Frenkel--Zhu, Borcherds and Dong--Li--Mason. It is attached locally as an instance (\lean{instLieRingVHat})
+in the files that need it.
+
+\textbf{Same as the literature?} Yes. In the literature the quotient is by the image of
+$L_{-1}\otimes1+1\otimes\frac{d}{dt}$; on $a\otimes t^m$ this operator gives $(L_{-1}a)\otimes t^m + m\,a\otimes t^{m-1}$,
+exactly the generators of $D$.
+\end{dictionary}
+
+\textbf{Proof on paper (that $\lthirteenVh$ is a Lie algebra).} The commutator formula of a vertex algebra says that on any
+module $[a_{(m)},b_{(k)}] = \sum_i\binom mi(a_{(i)}b)_{(m+k-i)}$, and the translation axiom says
+$(L_{-1}a)_{(m)} = -m\,a_{(m-1)}$. So \eqref{l13:eq:bracket} is the bracket of mode operators, and $D$ lies in the kernel of
+$a(m)\mapsto a_{(m)}$ on every module. To prove the Lie axioms \emph{abstractly} (without a faithful module) one checks
+them on generators: (i) $D$ is an ideal because $L_{-1}(a_{(i)}b) = (L_{-1}a)_{(i)}b + a_{(i)}L_{-1}b$ and
+$(L_{-1}a)_{(i)}b = -i\,a_{(i-1)}b$, which turns $[D,\cdot]$ into combinations of generators of $D$; (ii) antisymmetry
+follows from skew-symmetry $b_{(k)}a = \sum_j(-1)^{k+j+1}\frac{1}{j!}L_{-1}^j(a_{(k+j)}b)$, the $L_{-1}^j$ terms being
+absorbed by $D$; (iii) the Jacobi identity on three generators is the Borcherds identity with $\ell = 0$, after a
+Vandermonde-type rearrangement of binomial coefficients. \qed
+
+\begin{status}
+\lean{VHat.lieRing}, \lean{VHat.bracketDescends}, \lean{VHat.vhatLeibniz_holds}: proved, unconditional;
+\texttt{\#print axioms} = \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\begin{physics}
+$\lthirteenVh$ is the Lie algebra of \emph{all Laurent modes of all chiral fields}, with the commutators dictated by the
+singular part of the OPE --- the ``mode algebra'' of the chiral algebra. For the free boson it contains the Heisenberg
+algebra $[J_m,J_k] = m\,\delta_{m+k,0}$ (from $J(z)J(w)\sim1/(z-w)^2$), for an affine current algebra it contains the
+affine Kac--Moody algebra, and for the stress tensor the Virasoro algebra. Every sector of the chiral theory is a
+representation of $\lthirteenVh$; the converse is false, because the OPE also contains \emph{regular} terms (normal-ordered
+products) that a mere Lie-algebra representation need not respect. That defect is repaired below by a quotient.
+\end{physics}
+
+\subsection{The parabolic subalgebra and the \texorpdfstring{$A(V)$}{A(V)}-modules}
+
+\begin{definition}[$P_n$; parabolic representation]\label{l13:def:parabolicrep}
+For $n\in\N$ let $P_n\subseteq\lthirteenVh$ be the span of the homogeneous generators of degree $0$ or $\le-n-1$; its
+\emph{deep part} is the span of those of degree $\le-n-1$. A \emph{parabolic representation} of level $n$ on a vector
+space $U$ is a Lie-algebra homomorphism $P_n\to\End U$ which kills the deep part and sends $\lthirteenvac(-1)$ to the
+identity.
+\end{definition}
+\noindent Files \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchDLM3Deg.lean} and
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchDLM3Induced.lean}.
+\begin{leancode}
+noncomputable def degSpan (W : VertexOperatorAlgebra 𝒱) (S : Set ℤ) :
+    Submodule ℂ (VHatCarrier W) :=
+  Submodule.span ℂ {x | ∃ (w m : ℤ) (a : 𝒱), a ∈ W.grading w ∧ w - m - 1 ∈ S ∧ x = gen W a m}
+def deepSet (n : ℕ) : Set ℤ := {d : ℤ | d ≤ -(n : ℤ) - 1}
+def parabolicSet (n : ℕ) : Set ℤ := {d : ℤ | d = 0 ∨ d ≤ -(n : ℤ) - 1}
+noncomputable def deepPart (W : VertexOperatorAlgebra 𝒱) (n : ℕ) : Submodule ℂ (VHatCarrier W) :=
+  degSpan W (deepSet n)
+noncomputable def parabolic (W : VertexOperatorAlgebra 𝒱) (n : ℕ) : Submodule ℂ (VHatCarrier W) :=
+  degSpan W (parabolicSet n)
+noncomputable def Pn (W : VertexOperatorAlgebra 𝒱) (n : ℕ) : LieSubalgebra ℂ (VHatCarrier W) :=
+  { parabolic W n with
+    lie_mem' := fun hx hy => degSpan_lie_mem W (parabolicSet_add n) hx hy }
+structure ParabolicRep (W : VertexOperatorAlgebra 𝒱) (n : ℕ) (U : Type u)
+    [AddCommGroup U] [Module ℂ U] where
+  /-- The `P_n`-action on `U`. -/
+  act : Pn W n →ₗ⁅ℂ⁆ End ℂ U
+  /-- The deep part `⨁_{p>n} V̂(−p)` acts trivially (DLM3 (4.1)). -/
+  deep_zero : ∀ g : Pn W n, (g : VHatCarrier W) ∈ deepPart W n → act g = 0
+  /-- The vacuum loop mode `𝟙(−1)` acts as the identity (the unit of `A_n(𝒱)`). -/
+  vacuum_one : act ⟨gen W W.vacuum (-1), vacuumGen_mem_parabolic W n⟩ = 1
+\end{leancode}
+
+\begin{dictionary}
+\lean{LieSubalgebra ℂ (VHatCarrier W)} is a subspace closed under the bracket; closure is \lean{degSpan_lie_mem} with the
+observation that the degree set $\{0\}\cup(-\infty,-n-1]$ is closed under addition. \lean{Pn W n →ₗ⁅ℂ⁆ End ℂ U} is a
+Lie-algebra homomorphism into the commutator Lie algebra of $\End U$. The two fields are the two normalizations of
+Dong--Li--Mason's (4.1). Note the sign convention: \lean{deg} is $\wt a - m - 1$, so ``degree $\le-n-1$'' means the mode
+$a_{(m)}$ \emph{lowers} weight by at least $n+1$; on level $n$ of a module these modes act by zero.
+\end{dictionary}
+
+\begin{physics}
+$P_0$ is spanned by the zero modes (degree $0$) and all modes that lower the energy. On the ground states of a sector the
+lowering modes vanish and the zero modes act through $A(V)$: this is exactly a parabolic representation of level $0$. The
+choice of $P_0$ is the chiral-algebra analogue of choosing a Borel-plus-Cartan subalgebra when constructing a Verma module:
+``annihilation operators kill the vacuum''.
+\end{physics}
+
+\begin{definition}[The regular $A(V)$-module; the parabolic representation of an $A(V)$-module]\label{l13:def:regular}
+The \emph{regular module} is $A(V)$ acting on itself by left multiplication. Every $A(V)$-module $U$ becomes a
+level-$0$ parabolic representation by $a(m)\mapsto\rho([\pi_{m+1}a])$, where $\pi_w$ is the projection onto $V_w$: a
+degree-$0$ generator $a(\wt a-1)$ acts as $[a]$, every other homogeneous generator by $0$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchDLM3Zero.lean}.
+\begin{leancode}
+noncomputable def regularAMod (W : VertexOperatorAlgebra 𝒱) : AMod W where
+  carrier := A W
+  ρ := Amul (zhuRingData_holds W)
+  ...
+noncomputable def zhuLoop (W : VertexOperatorAlgebra 𝒱) : VLoop 𝒱 →ₗ[ℂ] A W :=
+  Finsupp.lsum ℂ (fun m : ℤ => (_root_.VOA.mk W).comp (gradeComp W (m + 1)))
+noncomputable def zhuDeg0 (W : VertexOperatorAlgebra 𝒱) : VHatCarrier W →ₗ[ℂ] A W :=
+  Submodule.liftQ (loopDerivSubmodule W) (zhuLoop W) (by
+  ...
+noncomputable def parabolicRepOfAMod (W : VertexOperatorAlgebra 𝒱) (U : AMod W) :
+    ParabolicRep W 0 U.carrier where
+  act :=
+    { toFun := fun g => U.ρ (zhuDeg0 W (g : VHatCarrier W))
+  ...
+\end{leancode}
+
+\begin{dictionary}
+\lean{Amul (zhuRingData_holds W)} is left multiplication in the ring $A(V)$ (Chapter~\ref{ch:L12},
+Theorem~\ref{l12:thm:zhuring}); \lean{regularAMod W} is the bundled $A(V)$-module $A(V)$. It is infinite-dimensional in
+general (for the Heisenberg VOA $A(V)\cong\C[x]$); this matters because an \lean{OrdVModule} cannot have it as bottom,
+which is why the library works with weak modules in the construction. \lean{zhuLoop W} is $a(m)\mapsto[\pi_{m+1}a]$ on $V\otimes\C[t,t^{-1}]$, where \lean{gradeComp W w} is the projection $\pi_w$ onto $V_w$ along the grading, and \lean{zhuDeg0 W} is the induced linear map
+$\lthirteenVh\to A(V)$, $a(m)\mapsto[\pi_{m+1}a]$; it is well defined on the quotient by $D$ because
+$(L_{-1}+L_0)w\in O(V)$ (\lean{zhuLgen_mem_O}). \lean{parabolicRepOfAMod W U} is the parabolic representation
+$g\mapsto\rho(\text{zhuDeg0}(g))$. Its three obligations are discharged by proofs: the Lie-homomorphism property
+(\lean{zhuDeg0_bracket_parabolic}, which on the degree-$0$ part is Zhu's commutator formula
+$u*v-v*u\equiv\Res_zY(u,z)v(1+z)^{\wt u-1}\pmod{O(V)}$, \lean{zhu_comm_mod_O}), the vanishing on the deep part, and
+$\rho([\lthirteenvac]) = 1$. This is Dong--Li--Mason's Proposition~3.1 at $n=0$: $a(\wt a-1)\mapsto[a]$ is a surjective
+Lie homomorphism from the degree-$0$ part of $\lthirteenVh$ to $A(V)$ with its commutator bracket.
+\end{dictionary}
+
+\begin{status}
+\lean{regularAMod}, \lean{zhuDeg0}, \lean{parabolicRepOfAMod}: definitions whose obligations are proved, unconditional;
+\texttt{\#print axioms} = standard three.
+\end{status}
+
+\begin{physics}
+The zero mode $o(a)$ of a field of weight $\wt a$ is its mode $a(\wt a-1)$; ``$a(\wt a-1)\mapsto[a]$'' is the
+statement that on ground states the zero modes multiply according to Zhu's product. The regular module is the
+``universal multiplet'': any primary multiplet is a quotient of copies of it.
+\end{physics}
+
+\subsection{The induced module and the bottom map}
+
+\begin{definition}[Induced module, bottom map, levels]\label{l13:def:indmod}
+For a parabolic representation $P$ of level $n$ on $U$, let $\lthirteenUE(\lthirteenVh)$ be the universal enveloping algebra
+and
+\begin{equation*}
+ M_n(U) = \lthirteenUE(\lthirteenVh)\otimes_{\lthirteenUE(P_n)}U
+ = \bigl(\lthirteenUE(\lthirteenVh)\otimes_\C U\bigr)\big/\operatorname{span}\{y\,g\otimes u - y\otimes g\cdot u :
+ y\in\lthirteenUE(\lthirteenVh),\ g\in P_n,\ u\in U\}.
+\end{equation*}
+The \emph{bottom map} is $U\to M_n(U)$, $u\mapsto[1\otimes u]$. The \emph{level} $k$ part $M_n(U)(k)$ is spanned by
+$[y\otimes u]$ with $y$ of degree $k-n$ (degree extended multiplicatively from $\lthirteenVh$ to $\lthirteenUE(\lthirteenVh)$).
+\end{definition}
+\noindent Files \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchMUVhat.lean},
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchDLM3Induced.lean},
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchDLM3Admissible.lean} and
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchDLM3Level.lean}.
+\begin{leancode}
+abbrev UEnv (W : VertexOperatorAlgebra 𝒱) : Type u :=
+  UniversalEnvelopingAlgebra ℂ (VHatCarrier W)
+abbrev IndCover (W : VertexOperatorAlgebra 𝒱) (U : Type u) [AddCommGroup U] [Module ℂ U] :
+    Type u := UEnv W ⊗[ℂ] U
+def balancingSet (P : ParabolicRep W n U) : Set (IndCover W U) :=
+  {t | ∃ (y : UEnv W) (g : Pn W n) (u : U),
+    t = (y * uι W (g : VHatCarrier W)) ⊗ₜ[ℂ] u - y ⊗ₜ[ℂ] (P.act g u)}
+noncomputable def balancing (P : ParabolicRep W n U) : Submodule ℂ (IndCover W U) :=
+  Submodule.span ℂ (balancingSet P)
+abbrev IndMod (P : ParabolicRep W n U) : Type u := IndCover W U ⧸ balancing P
+noncomputable def indBottom (P : ParabolicRep W n U) : U →ₗ[ℂ] IndMod P :=
+  (indMk P).comp (TensorProduct.mk ℂ (UEnv W) U 1)
+noncomputable def levCover (P : ParabolicRep W n U) (k : ℤ) : Submodule ℂ (IndMod P) :=
+  Submodule.span ℂ {z | ∃ y ∈ uenvDeg W (k - (n : ℤ)), ∃ u : U, z = indMk P (y ⊗ₜ[ℂ] u)}
+\end{leancode}
+
+\begin{dictionary}
+\lean{UniversalEnvelopingAlgebra ℂ (VHatCarrier W)} is Mathlib's $\lthirteenUE(\lthirteenVh)$, and \lean{uι W} its
+canonical Lie map $\lthirteenVh\to\lthirteenUE(\lthirteenVh)$. \lean{⊗[ℂ]} and \lean{⊗ₜ[ℂ]} are Mathlib's tensor product of
+vector spaces and its pure tensors. The balancing relations use only generators $g\in P_n$, not all of
+$\lthirteenUE(P_n)$; since $\lthirteenUE(P_n)$ is generated by $P_n$, the span is the same, so \lean{IndMod P} is
+$\lthirteenUE(\lthirteenVh)\otimes_{\lthirteenUE(P_n)}U$. \lean{indMk P} is the quotient map, \lean{indBottom P} is
+$u\mapsto[1\otimes u]$, and \lean{uenvDeg W d} is the span of products of homogeneous generators of total degree $d$.
+The $\lthirteenVh$-action on \lean{IndMod P} is left multiplication (\lean{indRho}); it is a representation of the Lie algebra
+for free.
+
+\textbf{Two facts proved without any PBW input.} The levels span (\lean{levCover_spanning}); $M_0(U)(d) = 0$ for $d<0$
+and $M_0(U)(0)$ is the image of the bottom map (\lean{levCover_eq_bot_of_neg}, \lean{levCover_zero_eq_range}); and the
+levels are linearly independent:
+\end{dictionary}
+
+\begin{leancode}
+theorem levCover_iSupIndep (P : ParabolicRep W n U) : iSupIndep (levCover P) := by
+\end{leancode}
+\noindent (file \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchDLM3PBWIndependence.lean}).
+\textbf{Proof on paper.} Let $\epsilon = \omega(1)\in\lthirteenVh$ (the class of $\omega\otimes t$, i.e.\ the mode $L_0$; the
+library's \lean{degreeElement}). By \eqref{l13:eq:bracket}, $[\epsilon,a(m)] = (\wt a-m-1)\,a(m)$ for homogeneous $a$: the
+adjoint action of $\epsilon$ is multiplication by the degree. Extend $\operatorname{ad}\epsilon$ to a derivation $\partial$ of
+$\lthirteenUE(\lthirteenVh)$; then $\partial y = d\,y$ for $y$ of degree $d$. Define $E$ on $\lthirteenUE(\lthirteenVh)\otimes U$ by
+$E(y\otimes u) = \partial y\otimes u$. It preserves the balancing relations: $\partial(yg)\otimes u - \partial y\otimes gu =
+(\partial y\,g\otimes u - \partial y\otimes gu) + y[\epsilon,g]\otimes u$, and $[\epsilon,g]$ is a multiple of $g$ that is $0$ if
+$\deg g = 0$ and deep if $g$ is deep, so it acts on $U$ by zero and $y[\epsilon,g]\otimes u$ is itself a balancing relation. Hence
+$E$ descends to $M_n(U)$, and level $k$ lies in the eigenspace of eigenvalue $k-n$. Eigenspaces for distinct eigenvalues are
+independent. \qed
+
+\begin{physics}
+$M_0(U)$ is the space of all formal descendants $a^1_{(m_1)}\cdots a^k_{(m_k)}|u\rangle$ of a primary multiplet, modulo
+only the commutation relations of the mode algebra and ``lowering modes annihilate primaries''. The level is the energy
+above the primaries. Independence of levels is the statement that energy is a good quantum number: it is measured by an
+operator.
+\end{physics}
+
+\subsection{The datum \texttt{BottomProjection} and its equivalents}
+
+\begin{definition}[Bottom projection; DLM's PBW step]\label{l13:def:bottomprojection}
+A \emph{bottom projection} for a level-$n$ parabolic representation $P$ on $U$ is a linear map $\pi:M_n(U)\to U$ with
+$\pi([1\otimes u]) = u$ for all $u$, and $\pi = 0$ on every level $M_n(U)(k)$, $k\neq n$. The \emph{PBW freeness} of $P$ is
+the conjunction of: the bottom map is injective, and the levels are independent.
+\end{definition}
+\noindent Files \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchDLM3Survival.lean} and
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchDLM3PBWSplit.lean}.
+\begin{leancode}
+structure BottomProjection (P : ParabolicRep W n U) where
+  /-- The projection onto the bottom `U` of `M_n(U)`. -/
+  proj : IndMod P →ₗ[ℂ] U
+  /-- It retracts the bottom map `u ↦ [1 ⊗ u]`. -/
+  proj_bottom : ∀ u : U, proj (indBottom P u) = u
+  /-- It annihilates every level other than `n` (DLM3: "`U*` annihilates `⨁_{i≠n} M(U)(i)`"). -/
+  proj_levCover : ∀ ⦃k : ℤ⦄, k ≠ (n : ℤ) → ∀ ⦃z : IndMod P⦄, z ∈ levCover P k → proj z = 0
+structure PBWFreeness (P : ParabolicRep W n U) : Prop where
+  /-- **PBW, part 1** — the bottom `U` embeds: `u ↦ [1 ⊗ u]` is injective. -/
+  bottom_injective : Function.Injective (indBottom P)
+  /-- **Historical PBW part 2, now a theorem** — the levels `M_n(U)(k) = U(V̂)_{k−n}U` are
+  independent. `levCover_iSupIndep` supplies this field unconditionally; together with
+  `levCover_spanning` it gives the internal `ℤ`-grading of `M_n(U)`. -/
+  levels_iSupIndep : iSupIndep (levCover P)
+\end{leancode}
+\noindent The relations between them (files \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchDLM3PBWIndependence.lean}
+and \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchDLM3BottomProjectionBoundary.lean}):
+\begin{leancode}
+theorem pbwFreeness_iff_bottom_injective (P : ParabolicRep W n U) :
+    PBWFreeness P ↔ Function.Injective (indBottom P) :=
+noncomputable def bottomProjectionOfInjective (Q : ParabolicRep W 0 U)
+    (hinj : Function.Injective (indBottom Q)) : BottomProjection Q :=
+theorem nonempty_bottomProjection_iff_bottom_injective (Q : ParabolicRep W 0 U) :
+    Nonempty (BottomProjection Q) ↔ Function.Injective (indBottom Q) := by
+\end{leancode}
+
+\begin{dictionary}
+\textbf{\lean{BottomProjection}} is a structure carrying \emph{data} (the map \lean{proj}) and two equations. \lean{⦃k⦄} are
+strict-implicit binders (inferred); \lean{levCover P k} is $M_n(U)(k)$. Its use in the proof is Dong--Li--Mason's: to
+extend a linear functional $u'$ on $U$ to $M_n(U)$ by zero off level $n$, which defines the radical $J$ below.
+
+\textbf{What it really asserts.} By \lean{nonempty_bottomProjection_iff_bottom_injective}, at level $0$ a bottom projection
+exists \emph{iff} the bottom map $u\mapsto[1\otimes u]$ is injective. (Given injectivity, the projection is constructed
+from the independence of levels, which is a theorem.) Likewise \lean{PBWFreeness P} is equivalent to injectivity.
+So the datum \lean{Pr} in the headline is precisely:
+\begin{quote}
+\emph{in $\lthirteenUE(\lthirteenVh)\otimes_{\lthirteenUE(P_0)}A(V)$, the canonical copy $1\otimes A(V)$ of the regular
+$A(V)$-module is not collapsed.}
+\end{quote}
+Note \lean{Pr} is required \emph{only for the regular module}, not for every $U$; the proof transports what it needs to
+arbitrary $U$ through the Dong--Jiang construction (Section~\ref{l13:sec:MU}).
+
+\textbf{Is it a genuine open input?} No longer. \lean{voaPBWBottomProjection} produces
+\lean{BottomProjection (parabolicRepOfAMod W (regularAMod W))} for every $V$ from the theorem \lean{VOA.pbw} (formerly a project
+axiom, now a theorem). At the snapshot it was open in Lean (supplied only by the then-axiom). The library also proves a
+bottom projection for a \emph{different} $A(V)$-module, the weight-zero space of the adjoint module
+(\lean{adjointBottomProjection}, below), which shows the structure is satisfiable but does not discharge \lean{Pr}.
+Mathematically it is \emph{true for every} $V$: it is a special case of the Poincar\'e--Birkhoff--Witt theorem (next
+theorem), and the library supplies it from \lean{VOA.pbw}.
+
+\textbf{How could it be wrong?} Two traps were checked. (a) A bottom projection could be vacuous if the levels were not
+independent (then ``$\pi = 0$ on other levels'' might force $\pi = 0$); independence is a theorem. (b) Requiring it for
+\emph{all} $U$ would be harmless too (PBW is true for all $U$), but the headline asks for less.
+\end{dictionary}
+
+\begin{status}
+\lean{BottomProjection}, \lean{PBWFreeness}: definitions. \lean{levCover_iSupIndep}, \lean{pbwFreeness_iff_bottom_injective},
+\lean{bottomProjectionOfInjective}, \lean{nonempty_bottomProjection_iff_bottom_injective}: proved, unconditional,
+standard three axioms.
+\end{status}
+
+\begin{physics}
+The datum says that in the space of formal descendants of the universal primary multiplet, the primaries themselves are
+not accidentally identified with zero by the commutation relations. Physicists take this for granted (``the Verma module
+has a basis of ordered monomials''); mathematically it is the PBW theorem.
+\end{physics}
+
+\subsection{How \texorpdfstring{\lean{VOA.pbw}}{VOA.pbw} supplies the datum}
+
+\begin{theorem}[Bottom injectivity from PBW]\label{l13:thm:voapbw}
+For every Lie algebra $\mathfrak g$ over $\C$, every Lie subalgebra $\mathfrak p$ and every $\mathfrak p$-module $U$, the map
+$U\to\lthirteenUE(\mathfrak g)\otimes_{\lthirteenUE(\mathfrak p)}U$, $u\mapsto1\otimes u$, is injective. Consequently every
+parabolic representation of $\lthirteenVh$ has injective bottom map, is PBW-free, and (at level $0$) has a bottom projection.
+\end{theorem}
+\noindent Files \leanpath{VOA/\allowbreak Foundations/\allowbreak AffineLie.lean} (the theorem \lean{VOA.pbw}; Chapter~\ref{ch:L02},
+Section~\ref{l02:sec:axiom}) and \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchDLM3PBWAxiom.lean}.
+\begin{leancode}
+structure PBWPrinciple : Prop where
+  /-- PBW nonvanishing for every affine vacuum module. -/
+  affineVacuum : ∀ {𝔤 : Type u} [LieRing 𝔤] [LieAlgebra ℂ 𝔤]
+      (κ : LinearMap.BilinForm ℂ 𝔤) (hκ : κ.IsInvariant) (k : ℂ),
+    PBW κ hκ k
+  /-- The canonical bottom embeds in every module induced from a Lie subalgebra. -/
+  inducedBottom : ∀ {g U : Type u} [LieRing g] [LieAlgebra ℂ g]
+      [AddCommGroup U] [Module ℂ U] (p : LieSubalgebra ℂ g)
+      (rho : p →ₗ⁅ℂ⁆ Module.End ℂ U),
+    Function.Injective (PBWInduction.bottom p rho)
+theorem pbw : PBWPrinciple :=
+  ⟨fun κ hκ k => AffineLie.vacuumVector_ne_zero_of_induction κ hκ k,
+    fun p rho => PBWTheorem.bottom_injective p rho⟩
+theorem voaPBWBottomInjective (P : ParabolicRep W n U) :
+    Function.Injective (indBottom P) :=
+  VOA.PBWPrinciple.inducedBottom
+    (VOA.pbw : VOA.PBWPrinciple.{u}) (Pn W n) P.act
+theorem voaPBWFreeness (P : ParabolicRep W n U) : PBWFreeness P :=
+  pbwFreeness_of_bottom_injective P (voaPBWBottomInjective P)
+noncomputable def voaPBWBottomProjection (Q : ParabolicRep W 0 U) : BottomProjection Q :=
+  bottomProjectionOfInjective Q (voaPBWBottomInjective Q)
+\end{leancode}
+
+\begin{dictionary}
+\textbf{The PBW principle.} \lean{PBWPrinciple} has two fields (Chapter~\ref{ch:L02} identifies both with classical PBW
+consequences and presents their Lean proof). Only \lean{inducedBottom} is used here: for any Lie algebra \lean{g}, Lie subalgebra \lean{p} and Lie
+representation \lean{rho : p →ₗ⁅ℂ⁆ Module.End ℂ U}, the bottom map into
+\lean{PBWInduction.Induced p rho} $=\lthirteenUE(\mathfrak g)\otimes_\C U/\operatorname{span}\{y\,x\otimes u - y\otimes\rho(x)u\}$
+is injective. The library proves that, for \lean{g = VHatCarrier W}, \lean{p = Pn W n}, \lean{rho = P.act}, this
+generic quotient and bottom map are \emph{definitionally} the ones of Definition~\ref{l13:def:indmod}
+(\lean{pbwInduction_balancing_eq}, \lean{pbwInduction_bottom_eq}, both \lean{rfl}). So \lean{voaPBWBottomInjective} is a
+literal specialization; no translation is hidden.
+
+\textbf{Universe.} \lean{VOA.PBWPrinciple.{u}} instantiates the theorem at the universe of $V$; the statement quantifies over Lie
+algebras in every universe, which is harmless.
+\end{dictionary}
+
+\textbf{Proof on paper (of the mathematics behind \lean{VOA.pbw}).} By PBW, if $\{x_i\}_{i\in I}$ is an ordered basis of
+$\mathfrak g$ extending a basis of $\mathfrak p$ (with the elements of the complement placed first), the ordered monomials form a
+basis of $\lthirteenUE(\mathfrak g)$, and $\lthirteenUE(\mathfrak g)$ is a free right $\lthirteenUE(\mathfrak p)$-module on the
+ordered monomials in the complement. Hence $\lthirteenUE(\mathfrak g)\otimes_{\lthirteenUE(\mathfrak p)}U\cong
+\bigoplus_{\text{monomials }m}m\otimes U$, and the summand of the empty monomial is $1\otimes U\cong U$. For
+$\mathfrak g = \lthirteenVh$, which is infinite-dimensional, one needs PBW for arbitrary Lie algebras over a field, which is
+classical (the symmetrization map is an isomorphism of coalgebras in characteristic $0$; or Bergman's diamond lemma). Mathlib
+does not contain PBW; the library proves the needed relative form itself (\lean{PBWTheorem.bottom_injective},
+Chapter~\ref{ch:L02}, Theorem~\ref{l02:thm:bottominj}), by Humphreys' relative construction rather than via the full PBW
+basis. \qed
+
+\begin{status}
+\lean{voaPBWBottomInjective}, \lean{voaPBWFreeness}, \lean{voaPBWBottomProjection}: \texttt{\#print axioms} =
+\lean{[propext, Classical.choice, Quot.sound]} (re-probed at a later commit, after \lean{VOA.pbw} became a theorem, not re-run for this edition; at the snapshot the list also contained
+\lean{pbw}). Unconditional; they use the theorem \lean{VOA.pbw} (field \lean{inducedBottom}). Every other declaration of
+this chapter is free of \lean{pbw}.
+\end{status}
+
+\begin{physics}
+PBW is the algebraic statement that a Fock-space-like basis exists: ordering creation operators to the left and
+annihilation operators to the right, every state of the induced module is uniquely a combination of ordered products of
+creation operators acting on the primaries. It is used tacitly whenever a physicist counts descendants (e.g.\ the character
+$q^h/\prod(1-q^n)$ of a Virasoro Verma module).
+\end{physics}
+
+\begin{theorem}[A satisfiability check: the adjoint bottom]\label{l13:thm:adjoint}
+For the $A(V)$-module $V_0$ (the weight-zero space of the adjoint module, $=\C\lthirteenvac$), the bottom map is injective,
+without PBW, and hence a bottom projection exists.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchDLM3AdjointBottom.lean}.
+\begin{leancode}
+noncomputable abbrev adjointBottomAMod (W : VertexOperatorAlgebra 𝒱) : AMod W :=
+  lowestAMod (adjointModule_isLowestWeight W)
+noncomputable def adjointBottomProjection (W : VertexOperatorAlgebra 𝒱) :
+    BottomProjection (parabolicRepOfAMod W (adjointBottomAMod W)) :=
+  bottomProjectionOfInjective _ (adjoint_indBottom_injective W)
+\end{leancode}
+
+\begin{dictionary}
+The proof uses the general principle \lean{indBottom_injective_of_equivariant_embedding}: if $U$ embeds $P_0$-equivariantly
+into \emph{some} $\lthirteenVh$-representation $M$, then the universal property of induction gives a left inverse of the
+bottom map. For $U = V_0\subseteq V$ one takes $M = V$ with the action $a(m)\mapsto a_{(m)}$. This instance is \emph{not}
+the regular module, as the file states; it is evidence that \lean{BottomProjection} is satisfiable, nothing more.
+\end{dictionary}
+
+\textbf{Proof on paper.} Given an equivariant injective $\varphi:U\to M$, the universal property of $M_0(U)$ gives a
+$\lthirteenVh$-map $\Phi:M_0(U)\to M$ with $\Phi([1\otimes u]) = \varphi(u)$; if $[1\otimes u] = 0$ then $\varphi(u) = 0$
+and $u = 0$. \qed
+
+\begin{status}
+\lean{adjointBottomProjection}: proved, unconditional, standard three axioms, no \lean{pbw}.
+\end{status}
+
+\begin{physics}
+The vacuum is a primary of every chiral algebra, and the vacuum sector exists; therefore the formal descendants of the vacuum
+cannot collapse the vacuum itself. The same argument would prove \lean{Pr} if one already had a sector whose primaries
+contain a faithful copy of the regular module --- but constructing such a sector is exactly what Zhu's theorem is for, so
+the argument would be circular.
+\end{physics}
+
+\begin{warning}
+\textbf{Stale docstrings about the trust boundary (documentation only).} Several module docstrings on the critical path still say that the
+project axiom does \emph{not} cover the PBW step and ``must not be cited here'', or that the independence of levels is an
+unproved PBW input: \leanpath{ZhuVermaAnArchDLM3Survival.lean} (``the project's sanctioned \lean{pbw} axiom is about affine
+Lie algebras, not $\lthirteenUE(\lthirteenVh)$ over $\lthirteenUE(P_0)$; it must not be cited here''), and
+\leanpath{ZhuVermaAnArchDLM3Zero.lean} (``independence of the levels is DLM3's PBW invocation \ldots which the sanctioned
+\lean{pbw} axiom does \textbf{not} cover''). Both are superseded: \lean{PBWPrinciple.inducedBottom} covers exactly this step
+(\lean{voaPBWBottomInjective}), and level independence is the theorem \lean{levCover_iSupIndep}. The mathematics of the
+files is unaffected. (Both docstrings, and the word ``axiom'' in them, are further outdated since \lean{VOA.pbw} became a
+theorem.)
+\end{warning}
+
+%======================================================================
+\section{The tower: circle products, \texorpdfstring{$O_n$}{O\_n}, \texorpdfstring{$A_n$}{A\_n} and the Dong--Jiang spaces \texorpdfstring{$A_{n,m}$}{A\_\{n,m\}}}\label{l13:sec:tower}
+%======================================================================
+
+All products in this section are residues of the form
+\begin{equation}\label{l13:eq:res}
+ \Res_z Y(a,z)b\,\frac{(1+z)^{\wt a+s}}{z^{p}} = \sum_{i\ge0}\binom{\wt a+s}{i}\,a_{(i-p)}b\qquad(a\text{ homogeneous}),
+\end{equation}
+for integers $s$ and $p$, extended bilinearly to inhomogeneous $a$ through the grading $V = \bigoplus_kV_k$. The sum is finite
+when $\wt a+s\ge0$ (only $i\le\wt a+s$ contribute). The library has one generic implementation, \lean{resHom W s p a b}, and
+expresses every product of the tower through it.
+
+\subsection{The generic residue and the circle products}
+
+\begin{definition}[Generic residue; $n$-th circle product; $O_n$ and $A_n$ of the library]\label{l13:def:circ}
+\lean{resHom W s p a b} is \eqref{l13:eq:res}. The $n$-th circle product is $a\circ_nb = \Res_zY(a,z)b\,(1+z)^{\wt a+n}/z^{2n+2}$,
+i.e.\ \eqref{l13:eq:res} with $s = n$, $p = 2n+2$. The library's $O_n^{\mathrm{lib}}(V)$ is the span of all $a\circ_nb$ and
+$A_n^{\mathrm{lib}}(V) = V/O_n^{\mathrm{lib}}(V)$ (Definition~\ref{l12:def:an} of Chapter~\ref{ch:L12}).
+\end{definition}
+\noindent Files \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnBimodule.lean} and
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAn.lean}.
+\begin{leancode}
+noncomputable def resFamily (W : VertexOperatorAlgebra 𝒱) (s p : ℤ) (b : 𝒱) (k : ℤ) :
+    (W.grading k) →ₗ[ℂ] 𝒱 where
+  toFun ak := ∑ i ∈ Finset.range ((k + s).toNat + 1),
+    cbz (k + s) i • W.smul (ak : 𝒱) ((i : ℤ) - p) b
+noncomputable def resHom (W : VertexOperatorAlgebra 𝒱) (s p : ℤ) (a b : 𝒱) : 𝒱 :=
+  letI := DirectSum.IsInternal.chooseDecomposition W.grading W.isInternal
+  (DFinsupp.lsum ℂ (resFamily W s p b)) (DirectSum.decompose W.grading a)
+noncomputable def circFamily (W : VertexOperatorAlgebra 𝒱) (n : ℕ) (b : 𝒱) (k : ℤ) :
+    (W.grading k) →ₗ[ℂ] 𝒱 where
+  toFun ak := ∑ i ∈ Finset.range ((k + n).toNat + 1),
+    cbz (k + (n : ℤ)) i • W.smul (ak : 𝒱) ((i : ℤ) - 2 * (n : ℤ) - 2) b
+noncomputable def circ (W : VertexOperatorAlgebra 𝒱) (n : ℕ) (a b : 𝒱) : 𝒱 :=
+  letI := DirectSum.IsInternal.chooseDecomposition W.grading W.isInternal
+  (DFinsupp.lsum ℂ (circFamily W n b)) (DirectSum.decompose W.grading a)
+def On (W : VertexOperatorAlgebra 𝒱) (n : ℕ) : Submodule ℂ 𝒱 :=
+  Submodule.span ℂ {x | ∃ a b : 𝒱, x = circ W n a b}
+abbrev An (W : VertexOperatorAlgebra 𝒱) (n : ℕ) : Type u := 𝒱 ⧸ On W n
+\end{leancode}
+
+\begin{dictionary}
+\lean{cbz m i} is $\binom mi$ for $m,i\in\Z$ (zero for $i<0$), \lean{W.smul a j b} is $a_{(j)}b$. \lean{resFamily W s p b k}
+is the formula on the weight-$k$ slice $V_k$ (the sum runs over $i = 0,\dots,\max(k+s,0)$, beyond which the binomial
+vanishes when $k+s\ge0$; when $k+s<0$ the range is just $i=0$, \lean{(k + s).toNat = 0}). \lean{DirectSum.decompose W.grading a}
+splits $a$ into homogeneous components and \lean{DFinsupp.lsum} sums the slice maps over them: this is ``extend bilinearly over
+the grading''. The truncation of the sum at $\max(k+s,0)$ when $k+s<0$ is a convention that never matters below, because
+every use has $s\ge0$ and $k\ge0$ (library VOAs have $V_k = 0$ for $k<0$). \lean{circ} is \lean{resHom W n (2n+2)} written
+out separately (\lean{circ_eq_resHom}).
+\end{dictionary}
+
+\begin{physics}
+A residue $\Res_zY(a,z)b\,(1+z)^{\wt a+s}/z^p$ is a weighted combination of OPE coefficients $a_{(j)}b$, i.e.\ of the fields
+appearing in the operator product $a(z)b(0)$. Such combinations arise when one computes how a mode of $a$ acts on a state
+produced by $b$ \emph{at a fixed energy}: on the cylinder $z = e^{w}-1$, the factor $(1+z)^{\wt a}$ is the conformal
+transformation from the plane, and $z^{-p}$ selects how many levels the mode moves. The circle products are the combinations that
+are guaranteed to act by zero on the lowest $n+1$ levels of every sector.
+\end{physics}
+
+\begin{theorem}[$O_0 = O$]\label{l13:thm:On0}
+$O_0^{\mathrm{lib}}(V) = O(V)$; hence $A_0^{\mathrm{lib}}(V) = A(V)$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnDescent15.lean}.
+\begin{leancode}
+theorem On_zero_eq_O (W : VertexOperatorAlgebra 𝒱) : On W 0 = O W := by
+\end{leancode}
+\textbf{Proof on paper.} Both are spans; $a\circ_0b$ is exactly Zhu's generator $\Res_zY(a,z)b(1+z)^{\wt a}/z^2$ of $O(V)$
+(Chapter~\ref{ch:L12}), so the generating sets agree. \qed
+
+\begin{status}
+Proved, unconditional; standard three axioms.
+\end{status}
+
+\begin{physics}
+$O(V)$ is the space of fields whose zero modes vanish on every primary; at level $n$, $O_n(V)$ is the space of fields
+whose zero modes vanish on the first $n$ excited levels of every sector.
+\end{physics}
+
+\subsection{The corrected \texorpdfstring{$O_n(V)$}{O\_n(V)} and the product \texorpdfstring{$*_n$}{*\_n}}
+
+\begin{definition}[Dong--Li--Mason's $O_n(V)$ and $*_n$]\label{l13:def:onfull}
+$O_n(V) = \operatorname{span}\{a\circ_nb\} + \operatorname{span}\{(L_{-1}+L_0)a\}$ and $A_n(V) = V/O_n(V)$. For homogeneous $a$,
+\begin{equation*}
+ a*_nb = \sum_{j=0}^n(-1)^j\binom{n+j}{n}\Res_zY(a,z)b\,\frac{(1+z)^{\wt a+n}}{z^{n+j+1}}.
+\end{equation*}
+\end{definition}
+\noindent Files \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArch.lean},
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchAlgebra.lean},
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnBimodule.lean} and
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchAnIdeal.lean}.
+\begin{leancode}
+def OnL (W : VertexOperatorAlgebra 𝒱) : Submodule ℂ 𝒱 :=
+  Submodule.span ℂ {x | ∃ a : 𝒱, x = W.L (-1) a + W.L 0 a}
+def OnFull (W : VertexOperatorAlgebra 𝒱) (n : ℕ) : Submodule ℂ 𝒱 :=
+  On W n ⊔ OnL W
+abbrev AnFull (W : VertexOperatorAlgebra 𝒱) (n : ℕ) : Type u := 𝒱 ⧸ OnFull W n
+noncomputable def leftProd (W : VertexOperatorAlgebra 𝒱) (n : ℕ) (a b : 𝒱) : 𝒱 :=
+  ∑ j ∈ Finset.range (n + 1),
+    ((-1 : ℂ) ^ j * cbz ((j : ℤ) + n) (n : ℤ)) •
+      resHom W (n : ℤ) ((n : ℤ) + (j : ℤ) + 1) a b
+structure AnIdeal (W : VertexOperatorAlgebra 𝒱) (n : ℕ) : Prop where
+  /-- **Left ideal** `Oₙ *ₙ 𝒱 ⊆ Oₙ`: `g` in the first (acting) slot, over the corrected `Oₙ`. -/
+  left : ∀ g ∈ OnFull W n, ∀ b : 𝒱, leftProd W n g b ∈ OnFull W n
+  /-- **Right ideal** `𝒱 *ₙ Oₙ ⊆ Oₙ`: `g` in the second slot ranges over the corrected `Oₙ`. -/
+  right : ∀ a : 𝒱, ∀ g ∈ OnFull W n, leftProd W n a g ∈ OnFull W n
+theorem anIdeal_holds (W : VertexOperatorAlgebra 𝒱) (n : ℕ) : AnIdeal W n :=
+\end{leancode}
+
+\begin{dictionary}
+\lean{⊔} is the sum of subspaces. \lean{OnFull W n} is exactly Dong--Li--Mason's (2.1); \lean{leftProd W n a b} is their
+$a*_nb$ with the external coefficients $(-1)^j\binom{j+n}{n}$ (\lean{cbz ((j : ℤ) + n) (n : ℤ)}) and pole order $n+j+1$; at
+$n = 0$ it is Zhu's product (\lean{leftProd_zero : leftProd W 0 a b = zhuMul W a b}). \lean{AnIdeal W n} says $O_n(V)$ is a
+two-sided ideal for $*_n$, and \lean{anIdeal_holds} proves it for every $n$ (Dong--Li--Mason, Lemma~2.2). Associativity of
+$*_n$ modulo $O_n(V)$ for $n\ge1$ is \emph{not} proved (the library reduces it to a named target \lean{AssocHom W n} and proves
+only $n = 0$); it is not needed for the headline.
+\end{dictionary}
+
+\begin{warning}
+\textbf{Status of the $O_n$ defect recorded in Chapter~\ref{ch:L12} (entry 49 of the project's defect list).} The circle-only
+\lean{On W n} omits Dong--Li--Mason's generators $(L_{-1}+L_0)a$ for $n\ge1$. This chapter adds two facts. (i) The library also
+defines the correct ideal, \lean{OnFull} $=$ \lean{On} $\sqcup$ \lean{OnL}, and it is \lean{OnFull} (through the Dong--Jiang
+ideals below) that the construction of $M(U)$ uses; \lean{On} enters the headline's proof only at $n = 0$, where
+\lean{OnFull_zero_eq_On_zero} and \lean{On_zero_eq_O} show all versions agree with $O(V)$. So the defect does not affect
+\lean{zhuBijective}. (ii) The docstring of \lean{OnFull} asserts that for $n\ge1$ it is ``strictly larger than the circle-only
+\lean{On W n}''; no such strictness is proved in the library, and we do not know whether it holds for all $V$ (documentation only, unverified
+claim).
+\end{warning}
+
+\begin{status}
+\lean{anIdeal_holds}: proved, unconditional, standard three axioms. Associativity of $A_n(V)$, $n\ge1$: open (named
+target), off the critical path.
+\end{status}
+
+\begin{physics}
+$A_n(V)$ is the algebra of ``generalized zero modes'' $o_{n,n}(a)$ acting on level $n$ of every sector; $*_n$ is their
+composition law. That $O_n(V)$ is an ideal is the consistency of this composition with the null relations.
+\end{physics}
+
+\subsection{The Dong--Jiang bimodules \texorpdfstring{$A_{n,m}(V)$}{A\_\{n,m\}(V)}}
+
+The induced module needs the maps from level $m$ to level $n$, not only the algebras acting on one level. Dong and Jiang
+define, for homogeneous $u$,
+\begin{align}
+ u*^n_{m,p}v &= \sum_{i=0}^{p}(-1)^i\binom{m+n-p+i}{i}\Res_zY(u,z)v\,\frac{(1+z)^{\wt u+m}}{z^{m+n-p+i+1}},\label{l13:eq:djprod}\\
+ u\circ^n_mv &= \Res_zY(u,z)v\,\frac{(1+z)^{\wt u+m}}{z^{n+m+2}},\qquad
+ \text{grading generator } L_{-1}u+(L_0+m-n)u.\notag
+\end{align}
+The special case $u*^n_mv := u*^n_{m,m}v$ is the right $A_m(V)$-action and $u\,\bar*^n_m\,v := u*^n_{m,n}v$ the left $A_n(V)$-action;
+at $m = n$ both are $*_n$.
+
+\begin{definition}[Dong--Jiang ideals and spaces]\label{l13:def:onm}
+$O'_{n,m}(V)$ is the span of all $u\circ^n_mv$ and all $L_{-1}u+(L_0+m-n)u$. $O''_{n,m}(V)$ is the span of the
+\emph{associator defects}
+\begin{equation*}
+ u*^n_{m,p_3}\Bigl((a*^{p_3}_{p_1,p_2}b)*^{p_3}_{m,p_1}c - a*^{p_3}_{m,p_2}(b*^{p_2}_{m,p_1}c)\Bigr),\qquad a,b,c,u\in V,\ p_i\in\N.
+\end{equation*}
+$O'''_{n,m}(V)$ is the span of $(a*^n_{p,p}g)*^n_{m,p}v$ with $g\in O'_{p,p}(V)$, $p\in\N$. The full ideal is
+$O_{n,m}(V) = O'_{n,m}+O''_{n,m}+O'''_{n,m}$ and $A_{n,m}(V) = V/O_{n,m}(V)$.
+\end{definition}
+\noindent Files \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchAnmFull.lean} and
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchAnm.lean}.
+\begin{leancode}
+noncomputable def anmGen (W : VertexOperatorAlgebra 𝒱) (n m p : ℕ) (u v : 𝒱) : 𝒱 :=
+  ∑ i ∈ Finset.range (p + 1),
+    ((-1 : ℂ) ^ i * cbz ((m : ℤ) + (n : ℤ) - (p : ℤ) + i) (i : ℤ))
+      • resHom W (m : ℤ) ((m : ℤ) + (n : ℤ) - (p : ℤ) + (i : ℤ) + 1) u v
+noncomputable def anmRight (W : VertexOperatorAlgebra 𝒱) (n m : ℕ) (u v : 𝒱) : 𝒱 :=
+  ∑ i ∈ Finset.range (m + 1),
+    ((-1 : ℂ) ^ i * cbz ((n : ℤ) + i) (i : ℤ)) • resHom W (m : ℤ) ((n : ℤ) + (i : ℤ) + 1) u v
+noncomputable def anmCirc (W : VertexOperatorAlgebra 𝒱) (n m : ℕ) (u v : 𝒱) : 𝒱 :=
+  resHom W (m : ℤ) ((n : ℤ) + (m : ℤ) + 2) u v
+noncomputable def anmLgen (W : VertexOperatorAlgebra 𝒱) (n m : ℕ) (u : 𝒱) : 𝒱 :=
+  W.L (-1) u + W.L 0 u + ((m : ℂ) - (n : ℂ)) • u
+def OnmL (W : VertexOperatorAlgebra 𝒱) (n m : ℕ) : Submodule ℂ 𝒱 :=
+  Submodule.span ℂ {x | ∃ u : 𝒱, x = anmLgen W n m u}
+def Onm (W : VertexOperatorAlgebra 𝒱) (n m : ℕ) : Submodule ℂ 𝒱 :=
+  Submodule.span ℂ {x | ∃ u v : 𝒱, x = anmCirc W n m u v} ⊔ OnmL W n m
+noncomputable def assocDefect (W : VertexOperatorAlgebra 𝒱) (n m p₁ p₂ p₃ : ℕ) (a b c u : 𝒱) : 𝒱 :=
+  anmGen W n m p₃ u
+    (anmGen W p₃ m p₁ (anmGen W p₃ p₁ p₂ a b) c
+      - anmGen W p₃ m p₂ a (anmGen W p₂ m p₁ b c))
+def OnmAssoc (W : VertexOperatorAlgebra 𝒱) (n m : ℕ) : Submodule ℂ 𝒱 :=
+  Submodule.span ℂ
+    {x | ∃ (p₁ p₂ p₃ : ℕ) (a b c u : 𝒱), x = assocDefect W n m p₁ p₂ p₃ a b c u}
+noncomputable def levelMix (W : VertexOperatorAlgebra 𝒱) (n m p : ℕ) (a g v : 𝒱) : 𝒱 :=
+  anmGen W n m p (anmGen W n p p a g) v
+def OnmLevel (W : VertexOperatorAlgebra 𝒱) (n m : ℕ) : Submodule ℂ 𝒱 :=
+  Submodule.span ℂ
+    {x | ∃ (p : ℕ) (a v : 𝒱) (g : 𝒱), g ∈ Onm W p p ∧ x = levelMix W n m p a g v}
+def OnmFull (W : VertexOperatorAlgebra 𝒱) (n m : ℕ) : Submodule ℂ 𝒱 :=
+  Onm W n m ⊔ OnmAssoc W n m ⊔ OnmLevel W n m
+abbrev AnmFull (W : VertexOperatorAlgebra 𝒱) (n m : ℕ) : Type u := 𝒱 ⧸ OnmFull W n m
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Line-by-line.} \lean{anmGen W n m p u v} is \eqref{l13:eq:djprod}: the range \lean{Finset.range (p + 1)} is
+$i = 0,\dots,p$; the coefficient is $(-1)^i\binom{m+n-p+i}{i}$; the residue has shift $s = m$ and pole $m+n-p+i+1$.
+\lean{anmRight W n m} is the special case $p = m$ (the library proves \lean{anmGen_eq_anmRight}). \lean{anmCirc} and \lean{anmLgen}
+are $u\circ^n_mv$ and the shifted grading generator; note the shift $+(m-n)$, which at $m = n$ gives back $(L_{-1}+L_0)u$.
+\lean{Onm} is $O'_{n,m}$, \lean{OnmAssoc} is $O''_{n,m}$, \lean{OnmLevel} is $O'''_{n,m}$ (with $g$ ranging over
+$O'_{p,p} = $ \lean{Onm W p p}), and \lean{OnmFull} is their sum. Note that the indices $p_i$ range over all of $\N$, as in
+Dong--Jiang: $O''_{n,m}$ and $O'''_{n,m}$ involve \emph{all} levels of the tower at once.
+
+\textbf{Fidelity to Dong--Jiang.} We compared each Lean definition with the formulas of Dong--Jiang (\emph{Math.\ Z.} 259, §2)
+as transcribed, with line references to the arXiv text, in the docstring of \leanpath{ZhuVermaAnArchAnmFull.lean}; they agree
+term by term. (We did not re-derive Dong--Jiang's formulas themselves.) The library
+also proves the expected diagonal identity \lean{Onm_diag_eq_OnFull : Onm W n n = OnFull W n} ($O'_{n,n} = O_n$) and the
+$(0,0)$ anchor \lean{Onm_zero_zero_eq_O : Onm W 0 0 = O W}.
+
+\textbf{Why the full ideal.} Dong and Jiang note that they cannot prove $O_{n,m} = O'_{n,m}$ (their Remark~2.10); $V/O'_{n,m}$
+is not known to be a bimodule. The library follows them and works with \lean{OnmFull}; this is the conservative choice (a
+bigger ideal, a smaller quotient, more relations available).
+\end{dictionary}
+
+\begin{physics}
+The products $*^n_{m,p}$ are the composition laws of transition operators between energy levels; the ideals $O_{n,m}(V)$ are the
+relations they satisfy in every sector. Writing them down explicitly is the algebraic counterpart of computing all three-point
+functions $\langle\text{level }n|u(z)|\text{level }m\rangle$ allowed by the chiral algebra.
+\end{physics}
+
+\begin{definition}[The diagonal collapse, Dong--Jiang Proposition~4.6]\label{l13:def:djann}
+\lean{DJAnnEqAn W m} is the statement $O_{m,m}(V)\subseteq O_m(V)$, equivalently (since $O_m\subseteq O_{m,m}$ is proved)
+$A_{m,m}(V) = A_m(V)$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchDJCarrier.lean}.
+\begin{leancode}
+def DJAnnEqAn (W : VertexOperatorAlgebra 𝒱) (m : ℕ) : Prop :=
+  OnmFull W m m ≤ OnFull W m
+\end{leancode}
+
+\begin{dictionary}
+The reverse inclusion \lean{onFull_le_OnmFull_diag} is a theorem, so \lean{DJAnnEqAn W m} says exactly that the associator and
+level-mixing summands at $(m,m)$ add nothing to $O_m(V)$. Only $m = 0$ is used: \lean{DJAnnEqAn W 0} is $O_{0,0}(V)\subseteq O(V)$
+(using \lean{OnFull_zero_eq_On_zero} and \lean{On_zero_eq_O}). It is derived from \lean{Pr} in Theorem~\ref{l13:thm:gate}.
+\end{dictionary}
+
+\begin{status}
+All definitions above; no hypotheses. \texttt{\#print axioms VOA.OnmFull} = standard three.
+\end{status}
+
+\begin{physics}
+$A_{n,m}(V)$ is the space of ``transition operators'': for a field $u$, the mode that maps level $m$ of a sector to level $n$
+is $o_{n,m}(u) = u_{(\wt u-1+m-n)}$, and $O_{n,m}(V)$ is the space of fields all of whose level-$m$-to-level-$n$ modes vanish in
+every sector. The three summands are, respectively: the analogue of Zhu's relation; the requirement that composing transition
+operators through intermediate levels is associative; and the requirement that the relations of intermediate levels are
+respected. $A_{n,0}(V)\otimes_{A(V)}U$ is then ``the span of all level-$n$ states $o_{n,0}(u)|w\rangle$ obtainable from the
+primary multiplet $U$''.
+\end{physics}
+
+%======================================================================
+\section{The induced module \texorpdfstring{$M(U)$}{M(U)} and the gate \texorpdfstring{$A_{0,0}(V) = A(V)$}{A\_\{0,0\}(V)=A(V)}}\label{l13:sec:MU}
+%======================================================================
+
+\subsection{The carrier}
+
+\begin{definition}[Level-$m$ modules; the Dong--Jiang carrier]\label{l13:def:djcarrier}
+An $A_m(V)$-module (\lean{AmMod W m}) is a vector space $U$ with a linear $\rho:A_m(V)\to\End U$ such that
+$\rho[\lthirteenvac] = 1$ and $\rho[u*_mv] = \rho[u]\rho[v]$. For such $U$ and $n\in\N$ put
+\begin{align*}
+ M(U)(n) = A_{n,m}(V)\otimes_{A_m(V)}U &:= \bigl(A_{n,m}(V)\otimes_\C U\bigr)\big/
+ \operatorname{span}\{[x*^n_ma]\otimes w - [x]\otimes\rho[a]w\},\\
+ M(U) &= \bigoplus_{n\ge0}M(U)(n).
+\end{align*}
+Every $A(V)$-module is an $A_0(V)$-module via $A_0(V) = A(V)$ (\lean{AMod.toAmModZero}).
+\end{definition}
+\noindent Files \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchDJCarrier.lean},
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchDJCarrierGraded.lean} and
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchLU.lean}.
+\begin{leancode}
+structure AmMod (W : VertexOperatorAlgebra 𝒱) (m : ℕ) where
+  /-- The underlying carrier. -/
+  carrier : Type u
+  [addCommGroup : AddCommGroup carrier]
+  [module : Module ℂ carrier]
+  /-- The `ℂ`-linear action of `A_m(𝒱)`. -/
+  ρ : AnFull W m →ₗ[ℂ] Module.End ℂ carrier
+  /-- The unit `[𝟙]` acts as the identity. -/
+  ρ_one : ρ (mkAnFull W m W.vacuum) = 1
+  /-- Multiplicativity on every representable Frenkel–Zhu product `*_m`. -/
+  ρ_mul : ∀ u v : 𝒱,
+    ρ (mkAnFull W m (leftProd W m u v)) = ρ (mkAnFull W m u) * ρ (mkAnFull W m v)
+noncomputable def AMod.toAmModZero (U : AMod W) : AmMod W 0 where
+  carrier := U.carrier
+  ρ := (U.ρ).comp (anFullZeroEquiv W).toLinearMap
+  ρ_one := U.ρ_one
+  ρ_mul u v := by
+    show U.ρ (VOA.mk W (leftProd W 0 u v))
+      = U.ρ (VOA.mk W u) * U.ρ (VOA.mk W v)
+    rw [leftProd_zero]
+    exact U.ρ_mul u v
+abbrev DJCover (W : VertexOperatorAlgebra 𝒱) (U : AmMod W m) (n : ℕ) : Type u :=
+  AnmFull W n m ⊗[ℂ] U.carrier
+def djBalancingSet (W : VertexOperatorAlgebra 𝒱) (U : AmMod W m) (n : ℕ) :
+    Set (DJCover W U n) :=
+  {z | ∃ (x a : 𝒱) (w : U.carrier),
+    z = mkAnmFull W n m (anmRight W n m x a) ⊗ₜ[ℂ] w
+        - mkAnmFull W n m x ⊗ₜ[ℂ] U.ρ (mkAnFull W m a) w}
+noncomputable def djBalancing (W : VertexOperatorAlgebra 𝒱) (U : AmMod W m) (n : ℕ) :
+    Submodule ℂ (DJCover W U n) :=
+  Submodule.span ℂ (djBalancingSet W U n)
+abbrev DJPiece (W : VertexOperatorAlgebra 𝒱) (U : AmMod W m) (n : ℕ) : Type u :=
+  DJCover W U n ⧸ djBalancing W U n
+abbrev DJCarrier (W : VertexOperatorAlgebra 𝒱) (U : AmMod W m) : Type u :=
+  ⨁ n : ℕ, DJPiece W U n
+noncomputable def DJCarrier.deg (W : VertexOperatorAlgebra 𝒱) (U : AmMod W m) (n : ℕ) :
+    Submodule ℂ (DJCarrier W U) := LinearMap.range (DJCarrier.incl W U n)
+\end{leancode}
+
+\begin{dictionary}
+\textbf{The balanced tensor product.} \lean{AmMod} mirrors \lean{AMod}, with \lean{AnFull W m} $= A_m(V)$ and
+\lean{leftProd W m} $=*_m$. Since associativity of $A_m(V)$ is not available for $m\ge1$, the library cannot form Mathlib's
+\lean{TensorProduct (AnFull W m)}; instead \lean{DJPiece W U n} is the $\C$-tensor product divided by the span of the
+\emph{representative-level} balancing relations $[x*^n_ma]\otimes w - [x]\otimes\rho[a]w$. This is the universal space in which
+Dong--Jiang's balancing holds; when $A_m(V)$ is a ring acting on the right of $A_{n,m}(V)$ it coincides with
+$A_{n,m}(V)\otimes_{A_m(V)}U$ (the relations generate the same subspace). On the critical path only $m = 0$ occurs, where
+$A_0(V) = A(V)$ \emph{is} a ring and the right action of $A(V)$ on $A_{n,0}(V)$ descends unconditionally
+(\lean{djRightSlot_zero}); so there the construction is literally $A_{n,0}(V)\otimes_{A(V)}U$.
+
+\textbf{The direct sum.} \lean{⨁ n : ℕ, DJPiece W U n} is Mathlib's external direct sum (finitely supported families);
+\lean{DJCarrier.deg W U n} is the image of the $n$-th summand. It is an internal direct-sum decomposition
+(\lean{DJCarrier.isInternal_deg}).
+
+\textbf{\lean{toAmModZero}.} Transports the $A(V)$-action along \lean{anFullZeroEquiv : AnFull W 0 ≃ A W}; its
+multiplicativity is \lean{leftProd_zero} ($*_0 = *$) and Zhu's $\rho_{\mathrm{mul}}$. Nothing is lost.
+\end{dictionary}
+
+\begin{physics}
+$M(U)(n)$ is the space of level-$n$ descendants of the primary multiplet $U$, written as ``(transition operator from level $0$
+to level $n$) applied to (a primary)''. The balancing relation says that applying a zero mode to the primary first, or
+absorbing it into the transition operator, gives the same state.
+\end{physics}
+
+\subsection{The action of \texorpdfstring{$V$}{V}}
+
+\begin{definition}[Dong--Jiang's modes]\label{l13:def:djmode}
+For homogeneous $u$ and $p\in\Z$, the mode $u_{(p)}$ maps $M(U)(n)$ to $M(U)(N)$, $N = \wt u - p - 1 + n$, by
+\begin{equation*}
+ u_{(p)}\bigl([v]\otimes w\bigr) = [u*^N_{m,n}v]\otimes w\quad(N\ge0),\qquad u_{(p)} = 0\text{ on }M(U)(n)\text{ if }N<0,
+\end{equation*}
+and is extended linearly over the grading of $u$. For $m = 0$ this is \lean{djModeZero W U p u}.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchDJAction.lean} (and
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchMUFullMode.lean} for the target level).
+\begin{leancode}
+def DJLeftSlot (W : VertexOperatorAlgebra 𝒱) (N m n : ℕ) : Prop :=
+  ∀ u : 𝒱, ∀ g ∈ OnmFull W n m, anmGen W N m n u g ∈ OnmFull W N m
+def DJActionDescent (W : VertexOperatorAlgebra 𝒱) (m : ℕ) : Prop :=
+  ∀ N n : ℕ, DJLeftSlot W N m n
+theorem djActionDescent_zero (W : VertexOperatorAlgebra 𝒱) : DJActionDescent W 0 :=
+  fun N n => djLeftSlot_zero W N n
+noncomputable def djCoverAct (W : VertexOperatorAlgebra 𝒱) (U : AmMod W m) (N n : ℕ)
+    (h : DJLeftSlot W N m n) (u : 𝒱) : DJCover W U n →ₗ[ℂ] DJCover W U N :=
+  TensorProduct.map (AnmFull.leftGen W N m n h u) LinearMap.id
+noncomputable def djPieceAct (W : VertexOperatorAlgebra 𝒱) (U : AmMod W m) (N n : ℕ)
+    (h : DJLeftSlot W N m n) (u : 𝒱) : DJPiece W U n →ₗ[ℂ] DJPiece W U N :=
+  (djBalancing W U n).liftQ ((mkDJPiece W U N).comp (djCoverAct W U N n h u))
+    (djBalancing_le_ker_coverAct U N n h u)
+def muTargetLevel (k p : ℤ) (n : ℕ) : ℤ := k - p - 1 + (n : ℤ)
+noncomputable def djLevelIncl (W : VertexOperatorAlgebra 𝒱) (U : AmMod W m)
+    (hD : DJActionDescent W m) (k p : ℤ) (n : ℕ) (u : 𝒱) :
+    DJPiece W U n →ₗ[ℂ] DJCarrier W U :=
+  if 0 ≤ muTargetLevel k p n then
+    (DJCarrier.incl W U (muTargetLevel k p n).toNat).comp
+      (djPieceAct W U (muTargetLevel k p n).toNat n (hD _ n) u)
+  else 0
+noncomputable def djMode (W : VertexOperatorAlgebra 𝒱) (U : AmMod W m)
+    (hD : DJActionDescent W m) (p : ℤ) (a : 𝒱) : Module.End ℂ (DJCarrier W U) :=
+  letI := DirectSum.IsInternal.chooseDecomposition W.grading W.isInternal
+  (DFinsupp.lsum ℂ (djModeFamily W U hD p)) (DirectSum.decompose W.grading a)
+noncomputable def djModeZero (W : VertexOperatorAlgebra 𝒱) (U : AmMod W 0) (p : ℤ) (a : 𝒱) :
+    Module.End ℂ (DJCarrier W U) :=
+  djMode W U (djActionDescent_zero W) p a
+\end{leancode}
+
+\begin{dictionary}
+\lean{DJLeftSlot W N m n} is Dong--Jiang's Lemma~2.8 (left inclusion): $V*^N_{m,n}O_{n,m}(V)\subseteq O_{N,m}(V)$, which makes
+$[v]\mapsto[u*^N_{m,n}v]$ well defined $A_{n,m}(V)\to A_{N,m}(V)$ (\lean{AnmFull.leftGen}). At base level $m = 0$ it is
+\emph{proved} for all $N,n$ (\lean{djActionDescent_zero}); in general it is reduced to a named residual. \lean{djCoverAct}
+applies this map on the first tensor factor; \lean{djPieceAct} descends it to the balanced piece (the balancing relations are
+respected, \lean{djBalancing_le_ker_coverAct}). \lean{muTargetLevel k p n} is $k-p-1+n$; \lean{djLevelIncl} is the case split of
+Definition~\ref{l13:def:djmode} for $u\in V_k$; \lean{djModeFamily}/\lean{djMode} assemble the components over levels (by the
+universal property of \lean{⨁}) and over the grading of $u$. \lean{djModeZero} is the hypothesis-free $m = 0$ instance. So
+\lean{djModeZero W U p u} is the operator $u_{(p)}$ on $M(U)$; in particular \lean{djModeZero W U 1 W.conformalVector} is
+$L_0 = \omega_{(1)}$.
+\end{dictionary}
+
+\begin{physics}
+The mode $u_{(p)}$ of a field of weight $\wt u$ changes the energy by $\wt u-p-1$; acting on a level-$n$ descendant it produces a
+level-$(\wt u-p-1+n)$ descendant, computed by composing transition operators. If the target level would be negative the state is
+annihilated --- the statement that there are no states below the primaries.
+\end{physics}
+
+\begin{theorem}[$M(U)$ is a weak module; Dong--Jiang, Theorem~4.10]\label{l13:thm:djweak}
+For every $A(V)$-module $U$ (more precisely, every $A_0(V)$-module), the modes of Definition~\ref{l13:def:djmode} make $M(U)$
+a weak $V$-module. The decomposition $M(U) = \bigoplus_nM(U)(n)$ is a grading: $u_{(p)}M(U)(n)\subseteq M(U)(\wt u-p-1+n)$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchDJCarrierWeak.lean}.
+\begin{leancode}
+noncomputable def djCarrierWeak (W : VertexOperatorAlgebra 𝒱) (U : AmMod W 0) :
+    WeakModule W (DJCarrier W U) :=
+  weakModuleOfRep (djRhoZero W U) (djActModeTruncated W U) (djVacuumCreation W U)
+    (isModuleJacobi_djRhoZero W U)
+\end{leancode}
+
+\begin{dictionary}
+\lean{WeakModule W M} is the library's weak module (Chapter~\ref{ch:01}): a vertex operator $Y_M$ satisfying truncation,
+vacuum creation $\lthirteenvac_{(m)} = \delta_{m,-1}$, and the Jacobi (Borcherds) identity. \lean{weakModuleOfRep ρ htr hvac hjac}
+builds one from a representation $\rho$ of $\lthirteenVh$ (\lean{VHatRep W M} $=$ \lean{VHatCarrier W →ₗ⁅ℂ⁆ Module.End ℂ M},
+with $u_{(p)} = \rho(u(p))$) satisfying truncation (\lean{ActModeTruncated}), vacuum creation and the module Jacobi identity
+(\lean{IsModuleJacobi}). Here $\rho = $ \lean{djRhoZero W U}, whose modes are \lean{djModeZero}. All three obligations are
+\emph{theorems} for every $U$; there is no hypothesis. The library records the action as \lean{djCarrierWeak_act}:
+the weak-module mode $u_{(p)}$ is \lean{djModeZero W U p u}.
+\end{dictionary}
+
+\textbf{Proof on paper.} (i) $\rho$ is a Lie-algebra representation of $\lthirteenVh$: the translation relation
+$(L_{-1}u)_{(p)} = -p\,u_{(p-1)}$ holds because the grading generator $L_{-1}u+(L_0+m-n)u$ lies in $O_{N,m}$, and the
+commutator formula $[u_{(p)},v_{(q)}] = \sum_i\binom pi(u_{(i)}v)_{(p+q-i)}$ is Dong--Jiang's Lemma~4.7, a binomial identity
+between the products $*^N_{m,n}$ modulo $O_{N,m}$. (ii) Truncation: $u_{(p)}$ lowers the level for $p$ large and is zero once
+the target level is negative. (iii) Vacuum: $\lthirteenvac*^N_{m,n}v = v$ at $N = n$ and the other modes vanish. (iv) The Jacobi
+identity of a module follows from the commutator formula plus the \emph{iterate} formula
+$(u_{(\ell)}v)_{(N)} = \sum_i(-1)^i\binom\ell i\bigl(u_{(\ell-i)}v_{(N+i)} - (-1)^\ell v_{(\ell+N-i)}u_{(i)}\bigr)$; for $\ell\ge0$ it
+is a consequence of the commutator formula, and for $\ell<0$ it is Dong--Jiang's Lemma~4.9, which holds on $M(U)$ because the
+associator defects (the summand $O''$) have been divided out. \qed
+
+\begin{status}
+\lean{djCarrierWeak}: definition with all obligations proved, unconditional; \texttt{\#print axioms} = standard three.
+\end{status}
+
+\begin{physics}
+The descendants of a primary multiplet, with the fields acting by the rules forced by the OPE, form a consistent
+representation of the full chiral algebra (including normal-ordered products) --- \emph{provided} the associativity of the
+OPE has been imposed, which is what quotienting by $O''$ does. This is the chiral-algebra version of ``Verma modules are
+modules''.
+\end{physics}
+
+\subsection{Graded lowest-weight weak modules}
+
+\begin{definition}[Graded lowest-weight weak module]\label{l13:def:gradedlw}
+A \emph{graded lowest-weight weak module} of lowest weight $h\in\C$ is a weak module $M$ with a decomposition
+$M = \bigoplus_{\alpha\in\C}M_\alpha$ such that $L_0 = \alpha$ on $M_\alpha$, the real parts of the occurring $\alpha$ are bounded
+below, every occurring $\alpha$ lies in $h+\N$, and $M_h\neq0$. It is \emph{irreducible} if $M\neq0$ and its only
+mode-stable subspaces are $0$ and $M$.
+\end{definition}
+\noindent Files \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchDJCarrierWeak.lean},
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchLUGraded.lean} and
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchZhu534.lean}.
+\begin{leancode}
+structure GradedLWWeakModule (W : VertexOperatorAlgebra 𝒱) (M : Type v) [AddCommGroup M]
+    [Module ℂ M] (h : ℂ) extends WeakModule W M where
+  /-- The complex weight grading `M = ⊕_α M_α`. -/
+  weight : ℂ → Submodule ℂ M
+  /-- The grading is a genuine internal direct sum. -/
+  isInternal : DirectSum.IsInternal weight
+  /-- **5.3.1c.** `M_α` is the `L₀`-eigenspace of eigenvalue `α`. -/
+  L0_weight : ∀ (α : ℂ) (x : M), x ∈ weight α → mode (YM W.conformalVector) 1 x = α • x
+  /-- Bounded below in the real part of the weight. -/
+  boundedBelow : ∃ B : ℝ, ∀ α : ℂ, weight α ≠ ⊥ → B ≤ α.re
+  /-- `h` is a lowest weight: every nonzero weight space sits at `h + ℕ`. -/
+  isLow : ∀ α : ℂ, weight α ≠ ⊥ → ∃ n : ℕ, α = h + n
+  /-- The lowest weight is *realized*: the bottom layer is nonzero. -/
+  realized : weight h ≠ ⊥
+def IsIrreducible (N : GradedLWWeakModule W M h) : Prop :=
+  Nontrivial M ∧ ∀ Q : WeakModule.Submodule' N.toWeakModule, Q.carrier = ⊥ ∨ Q.carrier = ⊤
+def FiniteWeights (N : GradedLWWeakModule W M hw) : Prop :=
+  ∀ α : ℂ, FiniteDimensional ℂ (N.weight α)
+def toOrdVModule (N : GradedLWWeakModule W M hw) (hfin : N.FiniteWeights) : OrdVModule W M where
+  toWeakModule := N.toWeakModule
+  weight := N.weight
+  isInternal := N.isInternal
+  L0_weight := N.L0_weight
+  finrank := hfin
+  boundedBelow := N.boundedBelow
+def toLWModule (N : GradedLWWeakModule W M hw) (hfin : N.FiniteWeights) : LWModule W where
+  carrier := M
+  isMod := N.toOrdVModule hfin
+  h := hw
+  isLow := N.isLow
+  realized := N.realized
+\end{leancode}
+
+\begin{dictionary}
+\lean{mode (YM W.conformalVector) 1 x} is $\omega_{(1)}x = L_0x$ (recall \lean{mode f n} is the coefficient $f_{-n-1}$, so
+\lean{mode (YM u) n} is $u_{(n)}$). \lean{GradedLWWeakModule} is \emph{exactly} \lean{OrdVModule} plus lowest weight
+\lean{h} with all weights in $h+\N$ and $M_h\neq0$, \emph{minus} the requirement that weight spaces be finite-dimensional. The
+reason for the omission is substantive: the gate below needs $M(U)$ for the regular module $U = A(V)$, whose bottom is
+infinite-dimensional in general. \lean{FiniteWeights} restores finiteness, and \lean{toOrdVModule}/\lean{toLWModule} convert
+back; these conversions change nothing else (every field is copied), so a \lean{GradedLWWeakModule} with \lean{FiniteWeights} is
+literally an \lean{LWModule}. \lean{IsIrreducible} is the same notion as \lean{OrdVModule.IsIrreducible}, and
+\lean{toLWModule_isIrreducibleLW} transports it (its proof is the identity).
+\end{dictionary}
+
+\begin{physics}
+A graded lowest-weight weak module is a sector whose energy levels may be infinitely degenerate --- harmless for building
+sectors, but not a ``physical'' sector with a well-defined character. The finiteness of $L_0$-eigenspaces is what makes the
+partition function $\tr q^{L_0-c/24}$ meaningful.
+\end{physics}
+
+\subsection{The gate: \texorpdfstring{$O_{0,0}(V) = O(V)$}{O\_\{0,0\}(V)=O(V)} from \texttt{Pr}}
+
+\begin{theorem}[Survival of the bottom; the gate]\label{l13:thm:gate}
+Let \lean{Pr} be a bottom projection for the parabolic representation of the regular $A(V)$-module. Then:
+\begin{enumerate}
+\item (Dong--Li--Mason, Theorem~4.1 at $n=0$.) For every $A(V)$-module $U$ with a bottom projection, $U$ embeds into the
+  weak module $\lthirteenMbar_0(U) = M_0(U)/(\text{defects})$ as its bottom.
+\item (Dong--Jiang, Proposition~4.6 at $(0,0)$.) $O_{0,0}(V) = O(V)$; hence $A_{0,0}(V) = A(V)$, and for every $A(V)$-module $U$
+  the bottom level of $M(U)$ is $M(U)(0)\cong U$.
+\end{enumerate}
+\end{theorem}
+\noindent Files \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchDLM3Survive.lean} and
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchDLM3Induced.lean}.
+\begin{leancode}
+abbrev IndBar (P : ParabolicRep W n U) : Type u :=
+  IndMod P ⧸ VHatRep.defectSubmodule (indRho P)
+theorem indBarBottom_injective_of_bottomProjection (W : VertexOperatorAlgebra 𝒱) (U : AMod W)
+    (Pr : BottomProjection (parabolicRepOfAMod W U)) :
+    Function.Injective (indBarBottom (parabolicRepOfAMod W U)) :=
+theorem gate_of_pbwDatum (Pr : BottomProjection (parabolicRepOfAMod W (regularAMod W))) :
+    OnmFull W 0 0 = O W :=
+theorem djAnnEqAn_zero_of_pbwDatum
+    (Pr : BottomProjection (parabolicRepOfAMod W (regularAMod W))) : DJAnnEqAn W 0 :=
+noncomputable def djCarrierDegZeroEquivOfPbwDatum
+    (Pr : BottomProjection (parabolicRepOfAMod W (regularAMod W))) (V : AmMod W 0) :
+    DJCarrier.deg W V 0 ≃ₗ[ℂ] V.carrier :=
+\end{leancode}
+
+\begin{dictionary}
+\textbf{\lean{IndBar}.} \lean{VHatRep.defectSubmodule (indRho P)} is the smallest $\lthirteenVh$-stable subspace of $M_0(U)$
+containing every \emph{iterate defect}
+$(u_{(\ell)}v)_{(N)}x - \sum_i(-1)^i\binom\ell i\bigl(u_{(\ell-i)}v_{(N+i)}x - (-1)^\ell v_{(\ell+N-i)}u_{(i)}x\bigr)$, i.e.\ the
+failure of the module associativity law. The quotient is a weak $V$-module (\lean{indBarWeakModule}, unconditional).
+\lean{indBarBottom} is $u\mapsto$ class of $[1\otimes u]$. The library's quotient imposes the defects for \emph{all} vectors, which
+is a priori more than Dong--Li--Mason's (they impose them on the generating space); this only makes the survival statement
+(1) \emph{stronger}.
+
+\textbf{Item (1)} is \lean{indBarBottom_injective_of_bottomProjection}: its hypothesis is a bottom projection \emph{for that
+$U$}; we use it for $U$ the regular module, which is what \lean{Pr} is.
+
+\textbf{Item (2).} \lean{gate_of_pbwDatum} is literally $O_{0,0}(V) = O(V)$, \lean{djAnnEqAn_zero_of_pbwDatum} is
+Definition~\ref{l13:def:djann} at $m = 0$, and \lean{djCarrierDegZeroEquivOfPbwDatum Pr V} is a linear isomorphism
+$M(V)(0)\cong V$ for every $A_0(V)$-module $V$ (here the bound variable \lean{V} is the module, not the VOA). It is $A(V)$-equivariant
+(\lean{djCarrierWeak_bottom_equiv_rho}). All three take \lean{Pr} as the only hypothesis.
+\end{dictionary}
+
+\textbf{Proof on paper.} \emph{Step~1 (survival).} Let $U$ have a bottom projection $\pi:M_0(U)\to U$. Following Dong--Li--Mason,
+define the radical $J = \{x\in M_0(U): \pi(y\cdot x) = 0\text{ for all }y\in\lthirteenUE(\lthirteenVh)\}$. It is
+$\lthirteenVh$-stable by construction, and $J\cap(1\otimes U) = 0$: if $[1\otimes u]\in J$ then $u = \pi([1\otimes u]) = 0$. The heart
+of the matter is that every iterate defect lies in $J$ (\lean{defectPairsToZero_of_bottomProjection}); then the defect submodule is
+contained in $J$, so it meets the bottom trivially, which is (1). To show that a defect $\delta$ lies in $J$ one must show
+$\pi(y\delta) = 0$ for all $y$. Since $\pi$ kills all levels except $0$, only the level-$0$ component matters. Dong--Li--Mason's
+Proposition~4.3 shows that for $x = [1\otimes u]$ the level-zero part of the defect is computed by Zhu's relation in $A(V)$ and
+vanishes; their Propositions~4.6--4.7 propagate this from the bottom to all of $M_0(U)$, using the commutator formula to move
+modes past the defect (the library proves the needed ``mode-shift'' identity for every truncated representation,
+\lean{defectModeShift_of_truncated}). \emph{Step~2 (annihilation, Dong--Jiang Lemma~4.1 and Proposition~4.5).} In any weak module with
+a non-negative level structure, the zero mode $o(x)$ of $x\in O_{0,0}(V)$ kills the bottom level: for $x\in O'_{0,0}$ this is Zhu's
+argument; for the associator and level-mixing summands it is Dong--Jiang's composition law
+$o_{n,m}(a*^n_{m,p}b) = o_{n,p}(a)\,o_{p,m}(b)$ on level $m$ (proved in the library as \lean{djCompositionLev_holds}).
+\emph{Step~3 (the regular module).} Apply Step~1 to the regular module $U = A(V)$: $A(V)$ embeds as the bottom of the weak module
+$\lthirteenMbar_0(A(V))$, with $o(x)$ acting on the bottom as left multiplication by $[x]$. For $x\in O_{0,0}(V)$, Step~2 gives
+$0 = o(x)[\lthirteenvac] = [x*\lthirteenvac] = [x]$, i.e.\ $x\in O(V)$. The reverse inclusion is $O(V) = O'_{0,0}(V)\subseteq O_{0,0}(V)$.
+\emph{Step~4.} With $A_{0,0}(V) = A(V)$, the balanced tensor $A_{0,0}(V)\otimes_{A(V)}U = A(V)\otimes_{A(V)}U\cong U$. \qed
+
+\begin{status}
+\lean{indBarBottom_injective_of_bottomProjection}, \lean{gate_of_pbwDatum}, \lean{djAnnEqAn_zero_of_pbwDatum},
+\lean{djCarrierDegZeroEquivOfPbwDatum}: proved, \emph{conditional on} the explicit \lean{Pr}; \texttt{\#print axioms} = standard
+three (the explicit hypothesis is not reported by \texttt{\#print axioms}). Instantiated with \lean{voaPBWBottomProjection} (built from the
+theorem \lean{VOA.pbw}) they hold for every $V$; the \lean{Pr} hypothesis is therefore always dischargeable.
+\end{status}
+
+\begin{physics}
+The gate is the statement ``the primaries of the universal Verma-type module are exactly the primary multiplet we started
+with''. Its proof is a beautiful piece of reasoning a physicist would recognize: to show that a relation among fields kills all
+primaries, exhibit one sector in which the primaries form the \emph{regular representation} of the zero-mode algebra --- the
+most faithful possible --- and test the relation there. The PBW datum guarantees that this universal sector does not collapse.
+\end{physics}
+
+\begin{definition}[$M(U)$ as a graded lowest-weight weak module]\label{l13:def:djgradedlw}
+Let $U$ be a nonzero $A(V)$-module and $h\in\C$ such that $L_0$ acts on $M(U)(n)$ by $h+n$ for all $n$. Then $M(U)$, with
+$M(U)_{h+n} = M(U)(n)$ and $M(U)_\alpha = 0$ for $\alpha\notin h+\N$, is a graded lowest-weight weak module of lowest weight $h$
+(the bottom is nonzero by the gate).
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchDJCarrierWeak.lean}.
+\begin{leancode}
+noncomputable def djCWeight (W : VertexOperatorAlgebra 𝒱) (U : AmMod W 0) (h : ℂ) (α : ℂ) :
+    Submodule ℂ (DJCarrier W U) :=
+  ⨆ (n : ℕ) (_ : h + n = α), DJCarrier.deg W U n
+noncomputable def djGradedLW_of_pbwDatum
+    (Pr : BottomProjection (parabolicRepOfAMod W (regularAMod W))) (U : AmMod W 0)
+    (hU : Nontrivial U.carrier) (h : ℂ)
+    (hL0 : ∀ (n : ℕ) (x : DJCarrier W U), x ∈ DJCarrier.deg W U n →
+      djModeZero W U 1 W.conformalVector x = (h + n) • x) :
+    GradedLWWeakModule W (DJCarrier W U) h :=
+  djGradedLW W U h hL0 (djCarrier_deg_zero_ne_bot Pr U hU)
+\end{leancode}
+
+\begin{dictionary}
+\lean{⨆ (n : ℕ) (_ : h + n = α), DJCarrier.deg W U n} is the sum of the levels $n$ with $h+n = \alpha$: the level-$n$ piece is
+placed at weight $h+n$. The hypotheses are \lean{Pr} (to know the bottom is $U$, hence nonzero), \lean{hU : Nontrivial U.carrier}
+($U\neq0$), and \lean{hL0}: $L_0 = h+n$ on level $n$. The last is a genuine condition on $U$: it holds iff $[\omega]$ acts on $U$
+by the scalar $h$ (for a nonzero module); for the bottom $\Omega(P)$ of a lowest-weight module $P$ it is a theorem
+(\lean{pHL0}, Section~\ref{l13:sec:LU}).
+\end{dictionary}
+
+\begin{status}
+Definition; obligations proved given \lean{Pr}, \lean{hU}, \lean{hL0}; standard three axioms.
+\end{status}
+
+\begin{physics}
+For $M(U)$ to be graded by energy, all primaries must have the same conformal weight $h$, i.e.\ $L_0$ must be a scalar on the
+multiplet. Then level $n$ has energy $h+n$.
+\end{physics}
+
+%======================================================================
+\section{The irreducible quotient \texorpdfstring{$L(U)$}{L(U)} and the uniqueness argument}\label{l13:sec:LU}
+%======================================================================
+
+\subsection{The maximal bottom-trivial submodule}
+
+\begin{definition}[$J$ and $L = M/J$]\label{l13:def:maxJ}
+Let $M$ be a graded lowest-weight weak module of lowest weight $h$. A submodule $Q$ (mode-stable subspace) is \emph{graded} if
+$Q = \bigoplus_\alpha(Q\cap M_\alpha)$, and \emph{bottom-trivial} if $Q\cap M_h = 0$. Let $J(M)$ be the sum of all graded
+bottom-trivial submodules and $L(M) = M/J(M)$. For $M = M(U)$ write $J(U)$ and $L(U)$.
+\end{definition}
+\noindent Files \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchLUGraded.lean} and
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchLU.lean}.
+\begin{leancode}
+structure BotTrivialGraded (N : GradedLWWeakModule W M h) where
+  /-- The underlying weak submodule. -/
+  Q : WeakModule.Submodule' N.toWeakModule
+  /-- It is graded. -/
+  Q_graded : IsGradedSub N Q
+  /-- It meets the bottom `M_h` trivially. -/
+  Q_disjoint : Q.carrier ⊓ N.weight h = ⊥
+noncomputable def maxJ (N : GradedLWWeakModule W M h) :
+    WeakModule.Submodule' N.toWeakModule where
+  carrier := ⨆ T : BotTrivialGraded N, T.Q.carrier
+theorem maxJ_bottom_disjoint (N : GradedLWWeakModule W M h) :
+    (maxJ N).carrier ⊓ N.weight h = ⊥ := by
+noncomputable def LU : GradedLWWeakModule W (M ⧸ (maxJ N).carrier) h :=
+  quotient N (maxJ N) (maxJ_isGraded N) (maxJ_bottom_disjoint N)
+
+variable (Pr : BottomProjection (parabolicRepOfAMod W (regularAMod W))) (U : AmMod W 0)
+  (hU : Nontrivial U.carrier) (h : ℂ)
+  (hL0 : ∀ (n : ℕ) (x : DJCarrier W U), x ∈ DJCarrier.deg W U n →
+    djModeZero W U 1 W.conformalVector x = (h + n) • x)
+noncomputable def djJ : WeakModule.Submodule' (djCarrierWeak W U) :=
+  maxJ (djGradedLW_of_pbwDatum Pr U hU h hL0)
+noncomputable def djLU :
+    GradedLWWeakModule W (DJCarrier W U ⧸ (djJ Pr U hU h hL0).carrier) h :=
+  LU (djGradedLW_of_pbwDatum Pr U hU h hL0)
+\end{leancode}
+
+\begin{dictionary}
+\lean{IsGradedSub N Q} is the gradedness of $Q$; \lean{⨆} of submodules is their sum. \lean{maxJ N} is $J(M)$ (the library checks
+mode-stability of the sum). \lean{maxJ_bottom_disjoint} is the key point: \emph{$J(M)$ itself is bottom-trivial}. \lean{LU N} is
+the quotient $M/J(M)$ with the induced grading, again a graded lowest-weight weak module of lowest weight $h$ (its bottom is
+nonzero because $J$ meets $M_h$ trivially). \lean{djJ}, \lean{djLU} are the instances for $M = M(U)$ of
+Definition~\ref{l13:def:djgradedlw}; the \lean{variable} line shows the hypotheses they carry: \lean{Pr}, \lean{hU}
+($U\neq0$), a weight \lean{h}, and \lean{hL0} ($L_0 = h+n$ on level $n$).
+
+\textbf{Possible trap.} In the literature $J(U)$ is usually defined as the \emph{largest submodule meeting $U$ trivially}, without
+the word ``graded''. For an ordinary module the two agree, because every submodule is graded ($L_0$-eigenspace decomposition). For
+a graded weak module the library proves the same thing, with no finiteness: every mode-stable subspace is graded
+(\lean{submodule_isGraded}, by $L_0$-semisimplicity, using Lagrange interpolation polynomials in $L_0$). So nothing is lost.
+\end{dictionary}
+
+\textbf{Proof on paper (that $J$ is bottom-trivial).} Let $x\in J\cap M_h$. Then $x = q_1+\dots+q_r$ with $q_i\in Q_i$, $Q_i$
+graded and bottom-trivial. Take the weight-$h$ component of both sides: since $x\in M_h$, the left side is $x$; since $Q_i$ is
+graded, the weight-$h$ component of $q_i$ lies in $Q_i\cap M_h = 0$. So $x = 0$. \qed
+
+\begin{status}
+\lean{maxJ}, \lean{LU}: definitions; \lean{maxJ_bottom_disjoint}: proved, unconditional (no finiteness). \lean{djJ},
+\lean{djLU}: conditional on the displayed \lean{Pr}, \lean{hU}, \lean{hL0}; standard three axioms.
+\end{status}
+
+\begin{physics}
+$J(U)$ is the space of \emph{null descendants}: states that can never be brought back to the primaries by any field
+(``orthogonal to everything'', in the presence of an inner product). Dividing them out produces the irreducible physical
+sector $L(U)$; e.g.\ for the Virasoro algebra at $c = 1/2$, $h = 1/16$, the null vector at level $2$ generates part of $J$.
+\end{physics}
+
+\begin{theorem}[$L(U)$ is irreducible; its bottom is $U$; Dong--Jiang, Theorem~4.13]\label{l13:thm:LUirr}
+If $U$ is a simple $A(V)$-module satisfying the hypotheses of Definition~\ref{l13:def:djgradedlw}, then $L(U)$ is irreducible, and
+its bottom is isomorphic to $U$ as an $A(V)$-module.
+\end{theorem}
+\noindent Files \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchLUGraded.lean},
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchLU.lean} and
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchZhu534.lean}.
+\begin{leancode}
+def GeneratedByBottom : Prop :=
+  ∀ Q : WeakModule.Submodule' N.toWeakModule, N.weight h ≤ Q.carrier → Q.carrier = ⊤
+def BottomIrreducible : Prop :=
+  ∀ S : Submodule ℂ M, S ≤ N.weight h → S ≠ ⊥ →
+    (∀ (a : 𝒱) (p : ℤ) (x : M), x ∈ S → N.toWeakModule.act a p x ∈ N.weight h →
+      N.toWeakModule.act a p x ∈ S) →
+    S = N.weight h
+theorem LU_isIrreducible (hgen : GeneratedByBottom N) (hirr : BottomIrreducible N) :
+    IsIrreducible (LU N) := by
+theorem djLU_isIrreducible (hsimple : IsSimpleAmMod U) :
+    IsIrreducible (djLU Pr U hU h hL0) :=
+  LU_isIrreducible (djGeneratedByBottom Pr U hU h hL0) (djBottomIrreducible Pr U hU h hL0 hsimple)
+noncomputable def djLU_bottom_U : (djLU Pr U hU h hL0).weight h ≃ₗ[ℂ] U.carrier :=
+  ((djLU_bottom_equiv Pr U hU h hL0).symm).trans
+    ((LinearEquiv.ofEq _ _ (djCWeight_zero U h)).trans (djCarrierWeak_bottom_equiv Pr U))
+theorem djLU_isBottomOfIrr (hsimple : IsSimpleAMod U) : IsBottomOfIrr U :=
+  isBottomOfIrr_of_irrRealization (djIrrRealization Pr U hU hval hL0 hfin hsimple)
+\end{leancode}
+
+\begin{dictionary}
+\lean{GeneratedByBottom N}: a submodule containing $M_h$ is everything. \lean{BottomIrreducible N}: a nonzero subspace $S\subseteq
+M_h$ stable under every mode that keeps it in $M_h$ is all of $M_h$. \lean{LU_isIrreducible} derives irreducibility of $M/J$ from
+these two; for $M(U)$ both are discharged (\lean{djGeneratedByBottom}: Dong--Jiang's ``$M(U)$ is generated by $U$'';
+\lean{djBottomIrreducible}: from simplicity of $U$, \lean{IsSimpleAmMod U}). \lean{djLU_bottom_U} is the linear isomorphism
+$L(U)_h\cong U$ (it is $A(V)$-equivariant, \lean{djLU_bottomAModEquiv}). \lean{djLU_isBottomOfIrr} (with the section variables
+\lean{Pr}, \lean{hU}, \lean{hval}, \lean{hL0} and \lean{hfin : FiniteWeights}) says: under these hypotheses, $U$ lies in the codomain
+\lean{IrrAMod W} of the headline. It is the existence half of Zhu's theorem for one $U$, \emph{conditional on finiteness of the
+weight spaces of $L(U)$}; it is not used by the headline.
+
+\textbf{Warning on a literature shortcut.} The library's docstring notes that Dong--Li--Mason's own Lemma~4.8 deduces irreducibility
+from complete reducibility, valid only for rational $V$; the argument here uses neither rationality nor finiteness.
+\end{dictionary}
+
+\textbf{Proof on paper.} A nonzero submodule $\bar Q$ of $L(U)$ pulls back to a submodule $Q\supsetneq J$ of $M(U)$. It is graded
+(every submodule is), so if $Q\cap M(U)_h = 0$ then $Q\subseteq J$ by maximality, a contradiction; hence $Q\cap M(U)_h\neq0$. This
+intersection is stable under the zero modes, i.e.\ an $A(V)$-submodule of $M(U)_h\cong U$; by simplicity it is all of $M(U)_h$, and
+since $M(U)$ is generated by its bottom, $Q = M(U)$, so $\bar Q = L(U)$. \qed
+
+\begin{status}
+\lean{LU_isIrreducible}: proved given its two named inputs. \lean{djLU_isIrreducible}, \lean{djLU_bottom_U}: proved, conditional on
+\lean{Pr}, \lean{hU}, \lean{hL0} (and \lean{hsimple}); \lean{djLU_isBottomOfIrr}: additionally on \lean{hfin}. Standard three
+axioms.
+\end{status}
+
+\begin{physics}
+Removing the null descendants of an irreducible primary multiplet leaves an irreducible sector whose primaries are exactly that
+multiplet: no new primaries are created and none are lost. This is how one constructs, e.g., the minimal-model sectors from
+Verma modules.
+\end{physics}
+
+\subsection{An irreducible module is \texorpdfstring{$L$}{L} of its bottom}
+
+\begin{definition}[The bottom of $P$ and the universal map]\label{l13:def:phibar}
+For a bundled lowest-weight module $P$ let $\Omega(P) = P_h$ with its $A(V)$-action (an $A_0(V)$-module). The \emph{universal
+map} $\bar\varphi:M(\Omega(P))\to P$ is the unique linear map that is the inclusion on the bottom and intertwines all modes:
+$\bar\varphi([v]\otimes w) = o_{n,0}(v)w$ on level $n$, where $o_{n,0}(v)$ is the mode of $v$ that raises the level by $n$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchLUUniversalIrr.lean}.
+\begin{leancode}
+noncomputable def pBotAmMod (P : LWModule W) : AmMod W 0 :=
+  (lowestAMod P.isLow).toAmModZero
+noncomputable def pPhiBar (P : LWModule W) :
+    DJCarrier W (pBotAmMod P) →ₗ[ℂ] P.carrier :=
+  oLevUnivMap P.isMod.toWeakModule (pAdmLev P) (pBotAmMod P) (pBotIncl P)
+    (pBotIncl_lev P) (pBotIncl_act P)
+theorem pPhiBar_intertwine (P : LWModule W) (p : ℤ) (a : 𝒱) (x : DJCarrier W (pBotAmMod P)) :
+    pPhiBar P (djModeZero W (pBotAmMod P) p a x)
+      = P.isMod.toWeakModule.act a p (pPhiBar P x) :=
+theorem pPhiBar_surjective (P : LWModule W) (hP : P.IsIrreducibleLW) :
+    Function.Surjective (pPhiBar P) := by
+theorem pPhiBarKer_eq_djJ (P : LWModule W)
+    (Pr : BottomProjection (parabolicRepOfAMod W (regularAMod W)))
+    (hU : Nontrivial (pBotAmMod P).carrier)
+    (hL0 : ∀ (n : ℕ) (x : DJCarrier W (pBotAmMod P)), x ∈ DJCarrier.deg W (pBotAmMod P) n →
+      djModeZero W (pBotAmMod P) 1 W.conformalVector x = (P.h + n) • x)
+    (hP : P.IsIrreducibleLW) :
+    (pPhiBarKer P).carrier = (djJ Pr (pBotAmMod P) hU P.h hL0).carrier :=
+\end{leancode}
+
+\begin{dictionary}
+\lean{lowestAMod P.isLow} is $P_h$ as an \lean{AMod} (Chapter~\ref{ch:L12}); \lean{pBotAmMod P} is it as an $A_0(V)$-module.
+\lean{pPhiBar P} is $\bar\varphi$, built by \lean{oLevUnivMap} from the bottom inclusion \lean{pBotIncl P}, the fact that it lands in
+level $0$, and its $A(V)$-equivariance; it is defined for \emph{every} $P$, without hypotheses. \lean{pPhiBar_intertwine}: it is
+a module map. \lean{pPhiBar_surjective}: onto, if $P$ is irreducible (its image is a nonzero submodule). \lean{pPhiBarKer P} is its
+kernel as a submodule, and \lean{pPhiBarKer_eq_djJ} identifies it with $J(\Omega(P))$, under \lean{Pr}, \lean{hU}
+($\Omega(P)\neq0$), \lean{hL0} and irreducibility of $P$.
+\end{dictionary}
+
+\textbf{Proof on paper.} \emph{Existence of $\bar\varphi$.} On level $n$ define $\bar\varphi([v]\otimes w) = o_{n,0}(v)w$. This
+respects $O_{n,0}(V)$ because, by Dong--Jiang's annihilation (Step~2 of Theorem~\ref{l13:thm:gate}, applied in the module $P$ with
+its levels $P_{h+k}$), $o_{n,0}(x)$ kills $P_h$ for $x\in O_{n,0}$; it respects the balancing because
+$o_{n,0}(x*^n_0a)w = o_{n,0}(x)o(a)w$ (composition law). It intertwines the modes by the same composition law. \emph{Kernel.} The
+kernel $K$ is a submodule; on the bottom $\bar\varphi$ is the inclusion $M(\Omega(P))(0)\cong\Omega(P)\hookrightarrow P$ (this uses
+the gate, hence \lean{Pr}), so $K$ is bottom-trivial and $K\subseteq J$. Conversely $\bar\varphi(J)$ is a submodule of the irreducible
+$P$ meeting $P_h$ trivially (because $J$ is graded and bottom-trivial and $\bar\varphi$ preserves weights), so it is $0$, i.e.\
+$J\subseteq K$. (The library phrases this as: $K$ is bottom-trivial and maximal, and $J$ is the unique such submodule,
+\lean{djJ_unique}.) \qed
+
+\begin{status}
+\lean{pBotAmMod}, \lean{pPhiBar}: definitions, no hypotheses. \lean{pPhiBar_intertwine}: unconditional.
+\lean{pPhiBar_surjective}: conditional on irreducibility of $P$. \lean{pPhiBarKer_eq_djJ}: conditional on \lean{Pr}, \lean{hU},
+\lean{hL0}, irreducibility. All: standard three axioms.
+\end{status}
+
+\begin{physics}
+Every sector is a quotient of the universal ``Verma-type'' module of its primaries: map each formal descendant to the actual
+descendant state. In an irreducible sector, the kernel of this map is exactly the space of null descendants.
+\end{physics}
+
+\begin{theorem}[$L_0$ on $M(\Omega(P))$; finiteness]\label{l13:thm:hl0}
+For every bundled lowest-weight module $P$ and every $n$, $L_0$ acts on $M(\Omega(P))(n)$ as $h+n$. If moreover $P$ is
+irreducible, then $L(\Omega(P))$ has finite-dimensional weight spaces.
+\end{theorem}
+\noindent Files \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchHL0.lean} and
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchLUFiniteWeights.lean}.
+\begin{leancode}
+theorem pHL0 (P : LWModule W) :
+    ∀ (n : ℕ) (x : DJCarrier W (pBotAmMod P)), x ∈ DJCarrier.deg W (pBotAmMod P) n →
+      djModeZero W (pBotAmMod P) 1 W.conformalVector x = (P.h + n) • x := by
+theorem pFiniteWeights (P : LWModule W)
+    (Pr : BottomProjection (parabolicRepOfAMod W (regularAMod W)))
+    (hU : Nontrivial (pBotAmMod P).carrier)
+    (hL0 : ∀ (n : ℕ) (x : DJCarrier W (pBotAmMod P)), x ∈ DJCarrier.deg W (pBotAmMod P) n →
+      djModeZero W (pBotAmMod P) 1 W.conformalVector x = (P.h + n) • x)
+    (hP : P.IsIrreducibleLW) :
+    (djLU Pr (pBotAmMod P) hU P.h hL0).FiniteWeights := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{pHL0} gives the datum \lean{hL0} of Definition~\ref{l13:def:djgradedlw} for $U = \Omega(P)$, $h = P_h$'s weight. It takes
+\lean{Pr} as an argument but does not use it (see the warning). \lean{pFiniteWeights} gives \lean{FiniteWeights} for
+$L(\Omega(P))$, so that $L(\Omega(P))$ can be converted into an \lean{LWModule} by \lean{toLWModule}.
+\end{dictionary}
+
+\textbf{Proof on paper.} \emph{$L_0$.} By Dong--Jiang's commutator Lemma~2.3 applied to $\omega\in V_2$,
+$\omega\,\bar*^n_0\,v - v*^n_0\omega - \Res_z(1+z)Y(\omega,z)v\in O'_{n,0}(V)$, and $\Res_z(1+z)Y(\omega,z)v = L_{-1}v+L_0v$; subtracting
+the grading generator $L_{-1}v+(L_0-n)v\in O'_{n,0}$ gives $[\omega\,\bar*^n_0\,v] = [v*^n_0\omega]+n[v]$ in $A_{n,0}(V)$. On
+$[v]\otimes w$, the left side is $L_0([v]\otimes w)$; by balancing $[v*^n_0\omega]\otimes w = [v]\otimes[\omega]w = h\,[v]\otimes w$.
+So $L_0 = h+n$. \emph{Finiteness.} The first-isomorphism theorem gives a linear isomorphism $L(\Omega(P))\cong P$ (next theorem)
+compatible with $L_0$, hence weight space by weight space; $P$'s weight spaces are finite-dimensional. \qed
+
+\begin{warning}
+\textbf{Redundant hypothesis (moderate) --- fixed.} The current \lean{pHL0}, quoted above, has no \lean{Pr}. When this chapter
+was first written, \lean{pHL0} took \lean{Pr : BottomProjection (parabolicRepOfAMod W (regularAMod W))} but
+its proof does not use it; the library's docstring says so (``retains an explicit, unused \ldots{} parameter''), and
+\lean{genHL0} in \leanpath{VOA/\allowbreak Modularity/\allowbreak HL0Scoped.lean} (Chapter~\ref{ch:L15}) states the core without it.
+A check in Lean against the library (not part of this release), theorem \lean{pHL0_without_Pr}, proves the conclusion of \lean{pHL0} with no \lean{Pr}
+(from \lean{genHL0} and \lean{LWModule.toAMod_omegaScalar}); axioms: standard three. Harmless for the headline, which has \lean{Pr}
+anyway.
+\end{warning}
+
+\begin{status}
+\lean{pHL0}: proved, no hypotheses beyond \lean{P}. \lean{pFiniteWeights}: proved, conditional on \lean{Pr}, \lean{hU}, \lean{hL0},
+irreducibility. Standard three axioms.
+\end{status}
+
+\begin{physics}
+All level-$n$ descendants of a primary of weight $h$ have weight $h+n$: the zero mode of the stress tensor counts the level.
+Finiteness: in a physical sector each energy level is finitely degenerate.
+\end{physics}
+
+\begin{theorem}[$P\cong L(\Omega(P))$; Dong--Jiang, Theorem~4.13]\label{l13:thm:realizes}
+Every irreducible bundled lowest-weight module $P$ is isomorphic to $L(\Omega(P))$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchLURealizesIrr.lean}.
+\begin{leancode}
+theorem pRealizesLWIso (P : LWModule W)
+    (Pr : BottomProjection (parabolicRepOfAMod W (regularAMod W)))
+    (hU : Nontrivial (pBotAmMod P).carrier)
+    (hL0 : ∀ (n : ℕ) (x : DJCarrier W (pBotAmMod P)), x ∈ DJCarrier.deg W (pBotAmMod P) n →
+      djModeZero W (pBotAmMod P) 1 W.conformalVector x = (P.h + n) • x)
+    (hP : P.IsIrreducibleLW)
+    (hfin : (djLU Pr (pBotAmMod P) hU P.h hL0).FiniteWeights) :
+    LWModule.Iso W ((djLU Pr (pBotAmMod P) hU P.h hL0).toLWModule hfin) P :=
+\end{leancode}
+
+\begin{dictionary}
+The conclusion is \lean{LWModule.Iso} between $L(\Omega(P))$ (converted by \lean{toLWModule hfin}) and $P$. The hypotheses:
+\lean{Pr}; \lean{hU : Nontrivial (pBotAmMod P).carrier} (true for every $P$, since \lean{P.realized}; the library proves it as
+\lean{pBotNontrivial}); \lean{hL0} (supplied by \lean{pHL0}); \lean{hP} irreducibility; \lean{hfin} (supplied by
+\lean{pFiniteWeights}). So the only non-trivial inputs are \lean{Pr} and irreducibility.
+\end{dictionary}
+
+\textbf{Proof on paper.} $\bar\varphi:M(\Omega(P))\to P$ is surjective with kernel $J(\Omega(P))$; the first isomorphism theorem gives
+$L(\Omega(P)) = M/J\cong P$, and the isomorphism intertwines the modes because $\bar\varphi$ does. \qed
+
+\begin{status}
+Proved, conditional on \lean{Pr} (other hypotheses dischargeable as stated); standard three axioms.
+\end{status}
+
+\begin{physics}
+Every irreducible sector is \emph{the} irreducible quotient of the universal module of its primaries. There is no room for two
+different sectors with the same primaries.
+\end{physics}
+
+\subsection{Functoriality and the assembly}
+
+\begin{theorem}[$L(\cdot)$ is invariant under isomorphism of bottoms]\label{l13:thm:functorial}
+If $U_1\cong U_2$ as $A(V)$-modules (both nonzero, with $L_0$ acting on level $n$ by $h_i+n$, $h_1 = h_2$), then
+$L(U_1)\cong L(U_2)$.
+\end{theorem}
+\noindent Files \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchLUFunctorial.lean} and
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchLUBijection.lean}.
+\begin{leancode}
+noncomputable def djFunctorEquiv (U₁ U₂ : AmMod W 0) (e : AmModHom U₁ U₂) :
+    DJCarrier W U₁ ≃ₗ[ℂ] DJCarrier W U₂ :=
+  DirectSum.congrLinearEquiv (fun n => djFunctorPiece U₁ U₂ e n)
+theorem djLUFunctorLWIso' (Pr : BottomProjection (parabolicRepOfAMod W (regularAMod W)))
+    {U₁ U₂ : AmMod W 0} (e : AmModHom U₁ U₂) (hU₁ : Nontrivial U₁.carrier)
+    (hU₂ : Nontrivial U₂.carrier) (h₁ h₂ : ℂ) (heq : h₁ = h₂)
+    (hL0₁ : ∀ (n : ℕ) (x : DJCarrier W U₁), x ∈ DJCarrier.deg W U₁ n →
+      djModeZero W U₁ 1 W.conformalVector x = (h₁ + n) • x)
+    (hL0₂ : ∀ (n : ℕ) (x : DJCarrier W U₂), x ∈ DJCarrier.deg W U₂ n →
+      djModeZero W U₂ 1 W.conformalVector x = (h₂ + n) • x)
+    (hfin₁ : (djLU Pr U₁ hU₁ h₁ hL0₁).FiniteWeights)
+    (hfin₂ : (djLU Pr U₂ hU₂ h₂ hL0₂).FiniteWeights) :
+    LWModule.Iso W ((djLU Pr U₁ hU₁ h₁ hL0₁).toLWModule hfin₁)
+      ((djLU Pr U₂ hU₂ h₂ hL0₂).toLWModule hfin₂) := by
+theorem pH_eq {P Q : LWModule W} (ψ : AModEquiv W P.toAMod Q.toAMod) : P.h = Q.h := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{AmModHom U₁ U₂} is (despite its name) an $A_0(V)$-module \emph{isomorphism} datum (a linear equivalence intertwining $\rho$);
+\lean{amModHomOfBottomEquiv} produces one from an \lean{AModEquiv} of bottoms. \lean{djFunctorEquiv} is $M(U_1)\cong M(U_2)$,
+$\bigoplus_n(\mathrm{id}\otimes e)$; the library proves it intertwines the modes (\lean{djFunctorEquiv_natural}) and maps $J(U_1)$
+onto $J(U_2)$ (\lean{djFunctorEquiv_maps_djJ}), so it descends to $L(U_1)\cong L(U_2)$. \lean{pH_eq}: isomorphic bottoms force equal
+lowest weights, because $[\omega]$ acts on the bottom by the lowest weight and the bottom is nonzero.
+\end{dictionary}
+
+\textbf{Proof on paper.} $\mathrm{id}\otimes e$ respects the balancing relations because $e$ intertwines the $A(V)$-actions, and commutes
+with the modes because they act on the first factor. An isomorphism of modules carries the maximal bottom-trivial graded submodule to
+the maximal one. \qed
+
+\begin{status}
+Proved, conditional on \lean{Pr} and the displayed data; standard three axioms.
+\end{status}
+
+\begin{physics}
+Relabelling the primaries by an isomorphism of zero-mode representations relabels the whole sector: the sector is a functor of its
+primary multiplet.
+\end{physics}
+
+\begin{theorem}[Assembly]\label{l13:thm:assembly}
+A family $K$ of lowest-weight modules with $K(P)\cong P$ for irreducible $P$, and $K(P)\cong K(Q)$ whenever $P,Q$ are irreducible with
+isomorphic bottoms, implies bottom rigidity and hence bijectivity of \lean{forwardMapIrr}. Taking $K(P) = L(\Omega(P))$ proves the
+headline.
+\end{theorem}
+\noindent Files \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchLURealizesIrr.lean} and
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchLUBijection.lean}.
+\begin{leancode}
+structure DJRealizationFamily (W : VertexOperatorAlgebra 𝒱) where
+  /-- The realizing lowest-weight module (e.g. `L(Ω(P)) = (djLU …).toLWModule hfin`). -/
+  K : LWModule W → LWModule W
+  /-- Every irreducible `P` is isomorphic to `K P` (`realizesIrr`, `pRealizesLWIso`). -/
+  realizes : ∀ P : LWModule W, P.IsIrreducibleLW → LWModule.Iso W (K P) P
+  /-- `K` depends on `P` only through its bottom iso-class (functoriality of `L(·)`). -/
+  isoInvariant : ∀ P Q : LWModule W, P.IsIrreducibleLW → Q.IsIrreducibleLW →
+    Nonempty (AModEquiv W P.toAMod Q.toAMod) → LWModule.Iso W (K P) (K Q)
+theorem DJRealizationFamily.rigidity (D : DJRealizationFamily W) : IrredBottomRigidity W := by
+theorem DJRealizationFamily.bijective (D : DJRealizationFamily W) :
+    Function.Bijective (forwardMapIrr W) :=
+  forwardMapIrr_bijective_of_rigidity D.rigidity
+noncomputable def djK (Pr : BottomProjection (parabolicRepOfAMod W (regularAMod W)))
+    (hHL0 : ∀ (P : LWModule W) (n : ℕ) (x : DJCarrier W (pBotAmMod P)),
+      x ∈ DJCarrier.deg W (pBotAmMod P) n →
+      djModeZero W (pBotAmMod P) 1 W.conformalVector x = (P.h + n) • x)
+    (P : LWModule W) : LWModule W := by
+  classical
+  exact if hP : P.IsIrreducibleLW then
+    (djLU Pr (pBotAmMod P) (pBotNontrivial P) P.h (hHL0 P)).toLWModule
+      (pFiniteWeights P Pr (pBotNontrivial P) (hHL0 P) hP)
+  else P
+theorem zhuBijective_of_hHL0
+    (Pr : BottomProjection (parabolicRepOfAMod W (regularAMod W)))
+    (hHL0 : ∀ (P : LWModule W) (n : ℕ) (x : DJCarrier W (pBotAmMod P)),
+      x ∈ DJCarrier.deg W (pBotAmMod P) n →
+      djModeZero W (pBotAmMod P) 1 W.conformalVector x = (P.h + n) • x) :
+    Function.Bijective (forwardMapIrr W) :=
+  (djRealizationFamily Pr hHL0).bijective
+\end{leancode}
+
+\begin{dictionary}
+\lean{DJRealizationFamily W} is a bundle (data) of a function \lean{K : LWModule W → LWModule W} and two properties; it is
+\emph{not} a hypothesis of the headline: \lean{djRealizationFamily Pr hHL0} constructs it, with
+\lean{K = djK Pr hHL0}. \lean{djK} sends an irreducible $P$ to $L(\Omega(P))$ and any other $P$ to itself (a ``junk value'', never
+inspected because both properties only concern irreducible $P$; \lean{dite}/\lean{if hP : ... then ... else} is Lean's
+case split on a proposition, available by classical logic). \lean{zhuBijective_of_hHL0} is the assembly, with the $L_0$ datum
+\lean{hHL0} as a hypothesis, and \lean{zhuBijective} discharges \lean{hHL0} by \lean{pHL0}.
+\end{dictionary}
+
+\textbf{Proof on paper (of the headline, complete).} Let $P,Q$ be irreducible with $\psi:P_h\cong Q_{h'}$ as $A(V)$-modules. Then
+$h = h'$ (\lean{pH_eq}). By Theorem~\ref{l13:thm:realizes}, $P\cong L(\Omega(P))$ and $Q\cong L(\Omega(Q))$; by
+Theorem~\ref{l13:thm:functorial} applied to $\psi$, $L(\Omega(P))\cong L(\Omega(Q))$. Hence $P\cong Q$: bottom rigidity. By
+\lean{forwardMapIrr_bijective_iff_rigidity}, \lean{forwardMapIrr} is bijective. The ingredients used: the Lie algebra
+$\lthirteenVh$ and the Dong--Li--Mason survival theorem (for the regular module, via \lean{Pr}) to get the gate
+$A_{0,0}(V) = A(V)$; the Dong--Jiang module $M(U)$; the maximal submodule $J$; the universal map $\bar\varphi$. \qed
+
+\begin{status}
+\lean{DJRealizationFamily.rigidity}, \lean{DJRealizationFamily.bijective}: unconditional (given the bundle).
+\lean{zhuBijective_of_hHL0}: conditional on \lean{Pr} and \lean{hHL0}. Standard three axioms.
+\end{status}
+
+\begin{physics}
+The chain $P\cong L(\Omega(P))\cong L(\Omega(Q))\cong Q$ is the mathematical form of the bootstrap statement ``a sector is fixed by its
+primaries''. The proof never needs a classification of sectors, rationality, or modular invariance: only the associativity of the
+OPE (encoded in the tower) and the PBW structure of the mode algebra.
+\end{physics}
+
+%======================================================================
+\section{The 298 files by role}\label{l13:sec:files}
+%======================================================================
+
+\subsection{How the critical path was determined}
+
+We did not rely on file names or docstrings. A scratch Lean file importing
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchLUBijectionPBW.lean} walked, from \lean{zhuBijective_of_voaPBW}, the
+constants occurring in the types \emph{and proof terms} of all declarations reachable from it, and recorded the module of each.
+Of the $298$ files \leanpath{ZhuVerma*.lean}, exactly $101$ (about $38\,000$ lines) contain a constant used by the headline; the
+other $197$ (about $52\,000$ lines) are imported by the umbrella but contribute nothing to it. (Being in the import closure is
+weaker: $236$ of the files are imported, transitively, by the headline's file.)
+
+\subsection{The critical path, grouped by the sections of this chapter}
+
+\begin{itemize}
+\item \emph{Statement} (Section~\ref{l13:sec:statement}): \leanpath{FaithfulBijection}, \leanpath{Rigidity},
+  \leanpath{Zhu534} (surjectivity, the iff with rigidity, \lean{toLWModule}), \leanpath{AModScope} (\lean{OmegaScalar}),
+  \leanpath{LUBijection}, \leanpath{LUBijectionPBW}.
+\item \emph{The Lie algebra $\lthirteenVh$ and induction} (Section~\ref{l13:sec:vhat}): \leanpath{Vhat}, \leanpath{VhatDescent},
+  \leanpath{VhatSkew}, \leanpath{VhatJacobi}, \leanpath{VhatJac2}, \leanpath{VhatJac3}, \leanpath{MUVhat}, \leanpath{VHatModeData},
+  \leanpath{VHatRepMU}, \leanpath{MUjacobi}, \leanpath{MUjacobiClose}, \leanpath{MUModuleDataBuild}, \leanpath{MUmod},
+  \leanpath{DLM3Deg}, \leanpath{DLM3Induced}, \leanpath{DLM3Admissible}, \leanpath{DLM3Level}, \leanpath{DLM3Zero},
+  \leanpath{DLM3Survival}, \leanpath{DLM3PBWSplit}, \leanpath{DLM3PBWIndependence}, \leanpath{DLM3PBWAxiom}.
+\item \emph{The tower} (Section~\ref{l13:sec:tower}): \leanpath{An} (=\leanpath{ZhuVermaAn}), \leanpath{AnBimodule},
+  \leanpath{AnDescent}, \leanpath{AnDescent4}, \leanpath{AnDescent15}, \leanpath{Arch}, \leanpath{Algebra}, \leanpath{AnAssoc},
+  \leanpath{Anm}, \leanpath{AnmFull}, \leanpath{Filtration}, \leanpath{AltVandermonde}, \leanpath{ResSkew}, \leanpath{SkewModOnm},
+  \leanpath{SkewGradingGen}, \leanpath{Units}, \leanpath{Rgen}, \leanpath{CollapseAssoc}, \leanpath{LeftGradingResidualFull},
+  \leanpath{MUcirc}, \leanpath{MUcross}, \leanpath{MUFullMode}, \leanpath{MUFullRho}, \leanpath{MUFullBracketClose},
+  \leanpath{DJ22}--\leanpath{DJ28*} (Dong--Jiang Lemmas~2.2--2.8: the closure of the ideals under the products).
+\item \emph{$M(U)$ and the gate} (Section~\ref{l13:sec:MU}): \leanpath{DJCarrier}, \leanpath{DJCarrierGraded}, \leanpath{DJAction},
+  \leanpath{DJ48}, \leanpath{DJ48BdryHolds} (Lemma~4.7, commutator), \leanpath{DJ49Star}, \leanpath{DJ51},
+  \leanpath{DJCarrierIterate} (Lemma~4.9, iterate), \leanpath{DJCarrierWeak}, \leanpath{DJGeneration}, \leanpath{IterateNonneg},
+  \leanpath{GradedCloseDeep}, \leanpath{GradedModeVanish}, \leanpath{BottomSurvival}, \leanpath{BottomAn},
+  \leanpath{BottomDefectClose}, \leanpath{FreenessDescent}, \leanpath{DefectDerivation}, \leanpath{DLM3Pairing},
+  \leanpath{DLM3Prop43}, \leanpath{DLM3Propagate}, \leanpath{DLM3Survive}, \leanpath{Gate}, \leanpath{GateB1},
+  \leanpath{GateB1Ann}, \leanpath{GateAnnN0}, \leanpath{ZeroModeLaw}, \leanpath{UnivMap}, \leanpath{VModQuot}.
+\item \emph{$L(U)$ and uniqueness} (Section~\ref{l13:sec:LU}): \leanpath{LUGraded}, \leanpath{LU}, \leanpath{LUUniversal},
+  \leanpath{LUUniversalIrr}, \leanpath{LURealizesIrr}, \leanpath{HL0}, \leanpath{LUFiniteWeights}, \leanpath{LUFunctorial},
+  \leanpath{LUIsoInvariant}.
+\end{itemize}
+(Prefix \leanpath{ZhuVermaAnArch} omitted.)
+
+\subsection{Off the critical path}
+
+The $197$ remaining files are earlier or alternative routes, kept in the library. By role:
+\begin{itemize}
+\item \emph{Earlier constructions of the $\lthirteenVh$-action and of $M(U)$} (roughly $70$ files): the $\otimes_\C$ ``MU track''
+  (\leanpath{MU*} except the few on the path, \leanpath{Sd*}, \leanpath{Hole*}, \leanpath{CarrierBridge*},
+  \leanpath{ConstructionAUniform}, \leanpath{GenuineRho}, \leanpath{AGenuineRho}, \leanpath{Rho*}, \leanpath{LevelShiftRho},
+  \leanpath{ActionNaturalLevelShift}, \leanpath{LayerAction}), the universal property over that carrier (\leanpath{UnivLift},
+  \leanpath{Universal*}, \leanpath{Frobenius*}, \leanpath{FunctorEquivGraded}, \leanpath{Functorial}, \leanpath{StructuralClose},
+  \leanpath{ScopeClose}, \leanpath{LightPrimitives}, \leanpath{Leaf2}), and the $J$/$L(U)$ layer over \lean{OrdVModule}
+  (\leanpath{Lumax*}, \leanpath{L0Semisimple}, \leanpath{KerJ}, \leanpath{VModQuotGraded}, \leanpath{MuEquivClose}), which cannot
+  accommodate the infinite-dimensional regular module. All superseded by the balanced, finrank-free \leanpath{DJCarrier} route.
+\item \emph{Alternative or partial proofs of the closure identities} (roughly $60$ files): Li's regular-representation route
+  (\leanpath{Li*}); the cross and circle towers (\leanpath{Cross*}, \leanpath{CFirstDiff*}, \leanpath{Hinge*}, \leanpath{Vec*},
+  \leanpath{ARD*}, \leanpath{Aout*}, \leanpath{HPoleN}, \leanpath{Term1UCore}, \leanpath{VcoreTwins}, \leanpath{HardMemCFirst2},
+  \leanpath{CircDiffARD}, \leanpath{DWeightPoleShift}, \leanpath{SkewDirect}, \leanpath{SkewHardMem}); the collapse
+  $O''+O'''\subseteq O'$ (\leanpath{Collapse*}, \leanpath{OnmCollapseZero}); off-diagonal and bimodule-composition descents
+  (\leanpath{OffDiagDescent}, \leanpath{UpCrossClosure}, \leanpath{UpRightModule}, \leanpath{BimodComp}, \leanpath{BimodDescent*},
+  \leanpath{AnmIdeal}, \leanpath{AnmRightDiff}); alternative proofs of Dong--Jiang lemmas (\leanpath{DJ25}, \leanpath{DJ28Base},
+  \leanpath{DJ28Induction}, \leanpath{DJ28IntoFull}, \leanpath{DJ28Term*}, \leanpath{DJ47}, \leanpath{DJ49Iterate},
+  \leanpath{DJ49Master}, \leanpath{DefectModeShift}, \leanpath{GateB3}); and the $A_n$ ideal and filtration closures
+  (\leanpath{AnIdeal}, \leanpath{ABS}, \leanpath{L1*}, \leanpath{Rgen*} except \leanpath{Rgen}, \leanpath{RightUnit},
+  \leanpath{FiltrationFinal}, \leanpath{GradedClose}, \leanpath{GradedSpan}, \leanpath{BottomDefectZero},
+  \leanpath{BottomLevelDefect}, \leanpath{BottomOrbitClose}, \leanpath{FreenessCircle}). Some of them (\leanpath{AnIdeal}: \lean{anIdeal_holds}) prove true theorems quoted in this chapter
+  that the headline simply does not need.
+\item \emph{The descent lemmas of the original $A_n$ bimodule plan} (\leanpath{AnDescent2}--\leanpath{AnDescent26} except the
+  three on the path; $23$ files): residue identities for the closure of $O_n$ under the products.
+\item \emph{Associativity of $A_n(V)$, $n\ge1$} (\leanpath{Assoc}, \leanpath{AssocCore}): reductions of the open target
+  \lean{AssocHom W n}; only $n = 0$ is closed.
+\item \emph{Scorecard and interface files built on uninhabited bundles} (\leanpath{InducedAssign}, \leanpath{GenBottom},
+  \leanpath{GenFromBottomFinal}, \leanpath{GenFromBottomG}, \leanpath{GameTwo}, \leanpath{CritPath}, \leanpath{Bijection},
+  \leanpath{Phase4*}, \leanpath{ScorecardAssemble}, \leanpath{FinalWiring}, \leanpath{Downstream}, \leanpath{Stage7Audit},
+  \leanpath{TriageAudit}): bijection theorems taking an \lean{InducedAssignment} (or a structure containing one) as hypothesis. Since
+  \lean{InducedAssignment W} is uninhabited (\lean{not_nonempty_inducedAssignment}, Chapter~\ref{ch:L12}), all of them are vacuous;
+  see the warning below.
+\item \raggedright\emph{Satisfiability and boundary files} (\leanpath{DLM3AdjointBottom}, \leanpath{DLM3BottomProjectionBoundary}): the adjoint
+  instance of \lean{BottomProjection} and the equivalence \lean{nonempty_bottomProjection_iff_bottom_injective}
+  (Section~\ref{l13:sec:vhat}); quoted in this chapter, not used by the headline.
+\end{itemize}
+
+\begin{warning}
+\textbf{The file named ``critical path'' is not on the critical path, and its headline is vacuous (serious; documentation only).} The module docstring of
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchCritPath.lean} begins ``This file \textbf{audits} the dependency graph of
+the final Zhu bijection and banks the single cleanest headline conditional theorem'', and calls its hypothesis bundle ``exactly the data
+the unconditional $\Phi(V)\leftrightarrow\mathrm{Irr}A(V)$ bijection consumes''. Its statements are
+\begin{leancode}
+structure CritPathData (W : VertexOperatorAlgebra 𝒱) where
+  /-- The lifting datum `U ↦ M̄(U)` (the generalized-Verma realization; bottom survival +
+  functoriality).  Built from `MUVHatData` (`ρ`/`VHatModeData`, `MUGradedAction`, grading,
+  bottom residual / freeness); no `A_n`-assoc for `n ≥ 1`. -/
+  A : InducedAssignment W
+  /-- **Ambient irreducibility scope.** Every bundled lowest-weight module is irreducible — the
+  standing restriction of Theorem 5.3.4. -/
+  hall : InducedAssignment.AllLWIrreducible W
+  /-- **The realizations are irreducible** (`M̄(U) = L(U)`). -/
+  hirr : A.RealizeIrreducible
+  /-- **Generation-from-bottom** — the universal property of `M(U)` (Frobenius reciprocity for
+  irreducibles), the injective-half crux. -/
+  hgen : InducedAssignment.GeneratedFromBottom W
+theorem zhuBijection_critpath {W : VertexOperatorAlgebra 𝒱}
+    (A : InducedAssignment W)
+    (hall : InducedAssignment.AllLWIrreducible W)
+    (hirr : A.RealizeIrreducible)
+    (hgen : InducedAssignment.GeneratedFromBottom W) :
+    Function.Bijective (forwardMap W) :=
+\end{leancode}
+(file \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchCritPath.lean}). Three problems. (i) The first field is an
+\lean{InducedAssignment W}, which is uninhabited for every $V$; so \lean{CritPathData W} is empty and \lean{zhuBijection_critpath} can
+never be applied. Checked in Lean against the library (the check is not part of this release):
+\lean{critPathData_empty : ¬ Nonempty (CritPathData W)}. (ii) Its
+conclusion concerns the \emph{unrestricted} \lean{forwardMap} on all lowest-weight modules, which is not injective in general (a
+generalized Verma module and its irreducible quotient have the same bottom), so it is only ``true'' because the hypothesis is
+contradictory; its \lean{hall : AllLWIrreducible W} field is false for most $V$, as the docstring of
+\leanpath{ZhuVermaAnArchFaithfulBijection.lean} itself states. (iii) None of the file's constants is used by \lean{zhuBijective}; the
+actual critical path is the one described above. The same vacuity affects \lean{FaithfulScorecard.bijectiveIrr},
+\lean{zhuBijectionIrr_scorecard} and \lean{InducedAssignment.forwardMapIrr_bijective} in
+\leanpath{ZhuVermaAnArchFaithfulBijection.lean}, whose docstring presents them as conditional on ``genuine deep inputs''; the library
+records this only in \leanpath{ZhuVermaAnArchZhu534.lean} (\lean{not_nonempty_faithfulScorecard}).
+\end{warning}
+
+%======================================================================
+\section{Recorded traps and dead ends}\label{l13:sec:traps}
+%======================================================================
+
+Severities are graded on a four-step scale: serious (a statement that is wrong or vacuous), moderate (weaker or stronger than advertised, or a redundant
+hypothesis), open gap (a conditional result whose hypothesis is not discharged, or a missing piece), and documentation
+only (docstrings and notes):
+\begin{enumerate}
+\item \lean{zhuBijective}'s codomain is the image of the forward map, so surjectivity is tautological; the theorem is Zhu's
+  uniqueness, not the full correspondence (moderate; Section~\ref{l13:sec:statement}; checked in Lean).
+\item \lean{Pr : BottomProjection (parabolicRepOfAMod W (regularAMod W))} is discharged for every $V$ by
+  \lean{voaPBWBottomProjection} (from the theorem \lean{VOA.pbw}); this gap, open at the snapshot, is closed
+  (Section~\ref{l13:sec:vhat}).
+\item ``Bottoms of irreducibles are simple'' (\lean{AllBottomRecovers}) was unproved for general $V$ at the snapshot; it is now the
+  theorem \lean{allBottomRecovers} (closed; Theorem~\ref{l13:thm:simplebottom-all}). Combined with existence under $C_2$ it gives
+  the genuine bijection \lean{zhuCorrespondence_of_C2Cofinite} (Theorem~\ref{l13:thm:zhucorr}). Without $C_2$, existence of an
+  ordinary module over each simple $A(V)$-module remains open in the library (open gap).
+\item Release wording (release audit, finding F6): \lean{zhuBijective} and \lean{zhuBijective_of_voaPBW} must be announced as the
+  \emph{uniqueness half} of Zhu's correspondence; the bijection to announce is \lean{zhuCorrespondence_of_C2Cofinite}. The
+  docstring ``Zhu Theorem 5.3.4 (faithful form)'' of \leanpath{ZhuVermaAnArchLUBijectionPBW.lean} overstates (documentation only).
+\item \leanpath{ZhuVermaAnArchCritPath.lean}: misnamed, off the critical path, headline vacuous (serious; documentation only; checked in Lean). Same vacuity for the
+  \lean{InducedAssignment}-based theorems of \leanpath{ZhuVermaAnArchFaithfulBijection.lean} and the other scorecard files (serious, already
+  proved by the library; docstrings stale, documentation only).
+\item \lean{pHL0} had an unused hypothesis \lean{Pr} (moderate; checked in Lean); removed in the library since.
+\item Stale trust-boundary docstrings in \leanpath{ZhuVermaAnArchDLM3Survival.lean} and \leanpath{ZhuVermaAnArchDLM3Zero.lean} (``\lean{pbw}
+  does not cover this'', ``level independence is the PBW step'') (documentation only; Section~\ref{l13:sec:vhat}).
+\item \lean{OnFull}'s docstring claims strict containment \lean{On W n} $\subsetneq$ \lean{OnFull W n} for $n\ge1$ without proof (documentation only).
+  The known defect of \lean{On} (Chapter~\ref{ch:L12}) does not reach the headline (Section~\ref{l13:sec:tower}).
+\item \lean{AmModHom} is an isomorphism datum (a linear \emph{equivalence}), not a homomorphism (naming only; harmless).
+\item Associativity of $A_n(V)$ for $n\ge1$ is open (named target \lean{AssocHom}); no headline depends on it.
+\end{enumerate}
+Dead ends recorded by the library itself and confirmed here: the \lean{InducedAssignment} interface (uninhabited because it demands a
+realization of the zero $A(V)$-module); the \lean{OrdVModule}-based construction of $M(U)$ (impossible for the regular module, whose
+bottom is infinite-dimensional); the circle-only quotient $V/O'_{n,m}$ as a bimodule (Dong--Jiang's Remark~2.10 problem); the false
+global hypothesis \lean{AllLWIrreducible}.
+
+%======================================================================
+\section{Referee's checklist}\label{l13:sec:checklist}
+%======================================================================
+
+\begingroup\small
+\begin{longtable}{p{4.3cm}p{4.4cm}p{3.3cm}p{1.6cm}}
+\toprule
+Lean declaration & intended meaning & hypotheses; status & check \\
+\midrule
+\endhead
+\lean{zhuBijective} & irreducibles determined by their bottoms ($\mathrm{fwd}$ bijective onto image) & \lean{Pr}; conditional & Thm.~\ref{l13:thm:headline}\\
+\lean{zhuBijective_}\allowbreak\lean{of_}\allowbreak\lean{voaPBW} & same & none; unconditional (via theorem \lean{VOA.pbw}) & Thm.~\ref{l13:thm:headline}\\
+\lean{forwardMapIrr}, \lean{IrrLWModuleIsoClass}, \lean{IrrAModIsoClass}, \lean{IsBottomOfIrr} & $[P]\mapsto[P_h]$; $\Phi(V)$; image-defined $\lthirteenIrr A(V)$ & definitions & Def.~\ref{l13:def:irrclasses}\\
+\lean{forwardMapIrr_}\allowbreak\lean{surjective_}\allowbreak\lean{uncond} & surjectivity & none; \textbf{tautological} & Thm.~\ref{l13:thm:headline}\\
+\lean{forwardMapIrr_}\allowbreak\lean{bijective_}\allowbreak\lean{iff_}\allowbreak\lean{rigidity} & bijective $\iff$ uniqueness & none; unconditional & Thm.~\ref{l13:thm:headline}\\
+\lean{isBottomOfIrr_}\allowbreak\lean{iff_}\allowbreak\lean{isSimpleAMod}, \lean{simpleAModsRealized_}\allowbreak\lean{of_}\allowbreak\lean{C2Cofinite} & codomain $=$ simple modules; existence of an ordinary module over each simple $A(V)$-module & \lean{AllBottomRecovers} (a theorem); $C_2$, \lean{Pr} (explicit) & §\ref{l13:sec:scope}\\
+\lean{allBottomRecovers}, \lean{isSimpleAMod_}\allowbreak\lean{toAMod_of_irreducible} & bottoms of irreducibles are simple (Zhu part (1)) & none; unconditional & Thm.~\ref{l13:thm:simplebottom-all}\\
+\lean{SimpleAMod}, \lean{SimpleAModIsoClass}, \lean{IrrLWModule.}\allowbreak\lean{toSimpleAMod}, \lean{forgetClass} & intrinsic simple $A(V)$-modules up to iso; bottom as a simple module; $\lthirteenIrr\mathrm{LW}/{\cong}\to\Phi$ & definitions & Def.~\ref{l13:def:simpleamodclass}\\
+\lean{zhuCorrespondence_}\allowbreak\lean{of_C2Cofinite} & \textbf{Zhu's correspondence as one bijection} $\Phi(V)\simeq\mathrm{Simple}A(V)/{\cong}$, $[P]\mapsto[P_h]$ & $C_2$; conditional; via theorem \lean{VOA.pbw} & Thm.~\ref{l13:thm:zhucorr}\\
+\lean{VHat.lieRing} & $\lthirteenVh$ is a Lie algebra & none; unconditional & Def.~\ref{l13:def:vhat}\\
+\lean{Pn}, \lean{ParabolicRep}, \lean{parabolicRepOfAMod}, \lean{regularAMod} & $P_0$; level-$0$ datum of an $A(V)$-module & definitions, obligations proved & Defs.~\ref{l13:def:parabolicrep}, \ref{l13:def:regular}\\
+\lean{IndMod}, \lean{indBottom}, \lean{levCover} & $\lthirteenUE(\lthirteenVh)\otimes_{\lthirteenUE(P_n)}U$, bottom, levels & definitions & Def.~\ref{l13:def:indmod}\\
+\lean{levCover_}\allowbreak\lean{iSupIndep} & levels independent & none; unconditional & Def.~\ref{l13:def:indmod}\\
+\lean{BottomProjection}, \lean{PBWFreeness} & DLM's PBW step & definitions; $\iff$ bottom injective & Def.~\ref{l13:def:bottomprojection}\\
+\lean{voaPBWBottomProjection} & PBW gives \lean{Pr} & none; unconditional (via theorem \lean{VOA.pbw}) & Thm.~\ref{l13:thm:voapbw}\\
+\lean{adjointBottomProjection} & satisfiability (other module) & none; unconditional & Thm.~\ref{l13:thm:adjoint}\\
+\lean{circ}, \lean{On}, \lean{An}, \lean{On_zero_eq_O} & library $O_n$, $A_n$; $O_0 = O$ & definitions; unconditional & Def.~\ref{l13:def:circ}, Thm.~\ref{l13:thm:On0}\\
+\lean{OnFull}, \lean{leftProd}, \lean{anIdeal_holds} & DLM's $O_n$, $*_n$, two-sided ideal & unconditional & Def.~\ref{l13:def:onfull}\\
+\lean{anmGen}, \lean{Onm}, \lean{OnmFull}, \lean{AnmFull}, \lean{DJAnnEqAn} & Dong--Jiang $*^n_{m,p}$, $O_{n,m}$, $A_{n,m}$ & definitions & Defs.~\ref{l13:def:onm}, \ref{l13:def:djann}\\
+\lean{DJPiece}, \lean{DJCarrier}, \lean{djModeZero} & $M(U)$ and its modes & definitions; $m=0$ unconditional & Defs.~\ref{l13:def:djcarrier}, \ref{l13:def:djmode}\\
+\lean{djCarrierWeak} & $M(U)$ is a weak module & none; unconditional & Thm.~\ref{l13:thm:djweak}\\
+\lean{GradedLWWeakModule}, \lean{toLWModule} & finrank-free lowest-weight module & definitions & Def.~\ref{l13:def:gradedlw}\\
+\lean{gate_of_}\allowbreak\lean{pbwDatum}, \lean{djCarrierDegZeroEquivOfPbwDatum} & $O_{0,0} = O$; $M(U)(0)\cong U$ & \lean{Pr} & Thm.~\ref{l13:thm:gate}\\
+\lean{maxJ}, \lean{maxJ_}\allowbreak\lean{bottom_}\allowbreak\lean{disjoint}, \lean{djLU} & $J$, $L = M/J$ & unconditional / \lean{Pr}, \lean{hU}, \lean{hL0} & Def.~\ref{l13:def:maxJ}\\
+\lean{djLU_}\allowbreak\lean{isIrreducible}, \lean{djLU_}\allowbreak\lean{isBottomOfIrr} & $L(U)$ irreducible with bottom $U$ & \lean{Pr}, \lean{hsimple} (+\lean{hfin}) & Thm.~\ref{l13:thm:LUirr}\\
+\lean{pPhiBar}, \lean{pPhiBarKer_}\allowbreak\lean{eq_}\allowbreak\lean{djJ} & universal map, kernel $=J$ & \lean{Pr}, irreducible & Def.~\ref{l13:def:phibar}\\
+\lean{pHL0}, \lean{pFiniteWeights} & $L_0 = h+n$; finite weights & \lean{Pr} (for \lean{pFiniteWeights}; \lean{pHL0} now has none) & Thm.~\ref{l13:thm:hl0}\\
+\lean{pRealizesLWIso} & $P\cong L(\Omega(P))$ & \lean{Pr}, irreducible & Thm.~\ref{l13:thm:realizes}\\
+\lean{djLUFunctorLWIso'}, \lean{pH_eq} & $U_1\cong U_2\Rightarrow L(U_1)\cong L(U_2)$ & \lean{Pr} & Thm.~\ref{l13:thm:functorial}\\
+\lean{DJRealizationFamily.}\allowbreak\lean{bijective}, \lean{zhuBijective_}\allowbreak\lean{of_}\allowbreak\lean{hHL0} & assembly & bundle / \lean{Pr}, \lean{hHL0} & Thm.~\ref{l13:thm:assembly}\\
+\lean{zhuBijection_}\allowbreak\lean{critpath} & (claims) the bijection & \textbf{vacuous} (checked in Lean) & §\ref{l13:sec:files}\\
+\bottomrule
+\end{longtable}
+\endgroup
+
+\paragraph{Machine record.} All \texttt{\#print axioms} results of this chapter were obtained at the snapshot, not re-run for this edition
+(when \lean{VOA.pbw} was an axiom; see the re-probe below) on a scratch file
+importing \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchLUBijectionPBW.lean},
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchCritPath.lean},
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchDLM3AdjointBottom.lean} and
+\leanpath{VOA/\allowbreak Modularity/\allowbreak GNProp8Closure.lean}, compiled with \texttt{lake env lean -DmaxSynthPendingDepth=3}
+against the existing build (never a bare \texttt{lake env lean}); no full \texttt{lake build} was run for this chapter. Excerpt:
+\begin{plaincode}
+'VOA.zhuBijective' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.zhuBijective_of_voaPBW' depends on axioms: [propext, Classical.choice, Quot.sound, pbw]
+'VOA.VHat.DLM3.voaPBWBottomProjection' depends on axioms: [propext, Classical.choice, Quot.sound, pbw]
+'VOA.VHat.DLM3.voaPBWBottomInjective' depends on axioms: [propext, Classical.choice, Quot.sound, pbw]
+'VOA.VHat.DLM3.levCover_iSupIndep' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.VHat.DLM3.adjointBottomProjection' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.VHat.lieRing' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.gate_of_pbwDatum' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.djCarrierWeak' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.djLU_isIrreducible' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.pRealizesLWIso' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.djLUFunctorLWIso'' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.pHL0' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.forwardMapIrr_surjective_uncond' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.forwardMapIrr_bijective_iff_rigidity' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.zhuBijection_critpath' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.simpleAModsRealized_of_C2Cofinite' depends on axioms: [propext, Classical.choice, Quot.sound]
+\end{plaincode}
+{\raggedright The same run covered \lean{zhuBijective_of_hHL0}, \lean{voaPBWFreeness} (\lean{pbw}), \lean{BottomProjection}, \lean{PBWFreeness},
+\lean{pbwFreeness_iff_bottom_injective}, \lean{bottomProjectionOfInjective}, \lean{parabolicRepOfAMod}, \lean{regularAMod},
+\lean{bracketDescends}, \lean{vhatLeibniz_holds}, \lean{indBarWeakModule}, \lean{indBarBottom_injective_of_bottomProjection},
+\lean{defectPairsToZero_of_bottomProjection}, \lean{djPieceMEquiv}, \lean{djLU}, \lean{maxJ_bottom_disjoint}, \lean{pFiniteWeights},
+\lean{pPhiBar_surjective}, \lean{pPhiBarKer_eq_djJ}, \lean{DJRealizationFamily.bijective}, \lean{forwardMapIrr},
+\lean{not_nonempty_inducedAssignment}, \lean{djLU_isBottomOfIrr}, \lean{On_zero_eq_O}, \lean{circ}, \lean{OnmFull}: all report exactly
+the standard three axioms, except those marked \lean{pbw} (at the snapshot; none now). Recall that \texttt{\#print axioms} does not report explicit hypotheses such
+as \lean{Pr}: ``standard three'' for a conditional theorem means \emph{axiom-clean, conditional on its displayed hypotheses}.\par}
+The
+Lean check of this chapter against the library (not part of this release) was compiled the same way:
+\begin{plaincode}
+'L13Cert.zhu_rigidity' depends on axioms: [propext, Classical.choice, Quot.sound]
+'L13Cert.zhu_rigidity_voaPBW' depends on axioms: [propext, Classical.choice, Quot.sound, VOA.pbw]
+'L13Cert.bijective_of_rigidity_statement' depends on axioms: [propext, Classical.choice, Quot.sound]
+'L13Cert.forwardMapIrr_surjective_free' depends on axioms: [propext, Classical.choice, Quot.sound]
+'L13Cert.critPathData_empty' depends on axioms: [propext, Classical.choice, Quot.sound]
+'L13Cert.pHL0_without_Pr' depends on axioms: [propext, Classical.choice, Quot.sound]
+\end{plaincode}
+\emph{Re-probed at a later commit}, after \lean{VOA.pbw} became a theorem (not re-run for this edition):
+\lean{zhuBijective_of_voaPBW}, \lean{voaPBWBottomInjective}, \lean{voaPBWFreeness}, \lean{voaPBWBottomProjection} and the
+theorem \lean{L13Cert.zhu_rigidity_voaPBW} of that check all report \lean{[propext, Classical.choice, Quot.sound]}.
+
+\paragraph{Release audit 2026-10-27: RELEASE\_AUDIT\_ZHU.md.} The independent release audit
+(\texttt{Notes/\allowbreak Textbook/\allowbreak referee/\allowbreak RELEASE\_AUDIT\_ZHU.md}, findings F6 and F7) confirmed that
+\lean{zhuBijective_of_voaPBW} has the standard three axioms and that its content is injectivity only, and that
+\lean{simpleAModsRealized_of_C2Cofinite} takes \lean{Pr} and $C_2$ explicitly. For this revision, at an earlier commit (not re-run for this edition), a
+scratch file was run from the repository root with \texttt{lake env lean -DmaxSynthPendingDepth=3} against the oleans built
+2026-10-25 (the new file \leanpath{ZhuModularityCanonical.lean} had no olean; its text was included verbatim in the scratch file
+and elaborated there):
+\begin{plaincode}
+'VOA.zhuCorrespondence_of_C2Cofinite' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.IrrLWModule.toSimpleAMod' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Huang.LWBottomRecovery.allBottomRecovers' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Huang.LWBottomRecovery.isSimpleAMod_toAMod_of_irreducible' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.isBottomOfIrr_iff_isSimpleAMod' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.simpleAModsRealized_of_C2Cofinite' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.zhuBijective_of_voaPBW' depends on axioms: [propext, Classical.choice, Quot.sound]
+\end{plaincode}
+No \texttt{lake build} was run for this revision; per the release plan the umbrellas were green when these theorems were
+merged, and nothing here counts as released until an aggregate build containing them is green at the release commit.
+
+\paragraph{Second release revision 2026-10-28.} No statement of this chapter changed; only the introduction records the new
+consumer of its machinery. The \texttt{\#print axioms} checks of \lean{VOA.Huang.ZhuSemisimple.}\allowbreak\lean{isSemisimpleRing_}\allowbreak\lean{A_of_}\allowbreak\lean{admissiblyRational}
+and of the new modularity theorems were run at an earlier commit (standard three axioms; not re-run for this edition) and are recorded in
+Chapter~\ref{ch:L15}. No \texttt{lake build} was run.
+
+%======================================================================
+\section{Notes and references}\label{l13:sec:notes}
+%======================================================================
+
+\textbf{Zhu's algebra and the correspondence.} Y.~Zhu, ``Modular invariance of characters of vertex operator algebras'',
+\emph{J. Amer.\ Math.\ Soc.} 9 (1996), 237--302: $A(V)$ (§2.1), the correspondence between irreducible $\N$-gradable modules and
+irreducible $A(V)$-modules (Theorems~2.2.1, 2.2.2), proved by a ``generalized Verma module'' constructed via the Lie algebra of modes.
+I.~B.~Frenkel and Y.~Zhu, ``Vertex operator algebras associated to representations of affine and Virasoro algebras'',
+\emph{Duke Math.\ J.} 66 (1992), 123--168: the bimodules $A(M)$ and the Lie algebra $V\otimes\C[t,t^{-1}]/\operatorname{Im}D$ (also in
+R.~E.~Borcherds, ``Vertex algebras, Kac--Moody algebras, and the Monster'', \emph{PNAS} 83 (1986), 3068--3071). T.~Gannon,
+\emph{Moonshine beyond the Monster}, Cambridge University Press (2006), §5.3.2, Theorem~5.3.4 (the form cited in the library's
+docstrings).
+
+\textbf{Higher Zhu algebras and induced modules.} C.~Dong, H.~Li and G.~Mason, ``Vertex operator algebras and associative algebras'',
+\emph{J. Algebra} 206 (1998), 67--96, arXiv:q-alg/9612010: $O_n(V)$ (2.1), $*_n$, Lemma~2.2, Proposition~3.1 (the Lie map
+$\lthirteenVh(0)\to A_n(V)$), the induced module $M_n(U)$ (4.1), its PBW step, the radical and Theorem~4.1. C.~Dong, H.~Li and
+G.~Mason, ``Twisted representations of vertex operator algebras'', \emph{Math.\ Ann.} 310 (1998), 571--600, arXiv:q-alg/9509005
+(§6: the $n=0$ induced module; Proposition~6.1 used for the defect mode shift). C.~Dong and C.~Jiang, ``Bimodules associated to vertex
+operator algebras'', \emph{Math.\ Z.} 259 (2008), 799--826, arXiv:math/0601626: $A_{n,m}(V)$, the full ideal $O'+O''+O'''$
+(§2, Remark~2.10), the module $M(U)$ (§4), Lemmas~4.1, 4.7, 4.9, Proposition~4.6, Theorems~4.10 and~4.13.
+
+\textbf{Related.} H.~Li, ``Local systems of vertex operators, vertex superalgebras and modules'', \emph{J. Pure Appl.\ Algebra} 109 (1996),
+143--195, arXiv:hep-th/9406185, and ``Representation theory and tensor product theory for vertex operator algebras'', PhD thesis,
+Rutgers (1994), arXiv:hep-th/9406211 (the Lie algebra of modes and induced modules, §2). J.~Lepowsky and H.~Li, \emph{Introduction to
+Vertex Operator Algebras and Their Representations}, Birkh\"auser (2004), Ch.~4--5. M.~R.~Gaberdiel and A.~Neitzke, ``Rationality,
+quasirationality and finite W-algebras'', \emph{Comm.\ Math.\ Phys.} 238 (2003), 305--331 (Proposition~8, behind the $C_2$ existence
+result of Chapter~\ref{ch:L15}). Poincar\'e--Birkhoff--Witt for arbitrary Lie algebras over a field: N.~Jacobson, \emph{Lie Algebras},
+Interscience (1962), Ch.~V; G.~M.~Bergman, ``The diamond lemma for ring theory'', \emph{Adv.\ Math.} 29 (1978), 178--218.
+
+\textbf{Physics.} The bootstrap principle that a sector is determined by its primaries and the role of null vectors: A.~A.~Belavin,
+A.~M.~Polyakov and A.~B.~Zamolodchikov, ``Infinite conformal symmetry in two-dimensional quantum field theory'', \emph{Nucl.\ Phys.\
+B} 241 (1984), 333--380; P.~Di~Francesco, P.~Mathieu and D.~S\'en\'echal, \emph{Conformal Field Theory}, Springer (1997), Ch.~7--8;
+G.~Moore and N.~Seiberg, ``Classical and quantum conformal field theory'', \emph{Comm.\ Math.\ Phys.} 123 (1989), 177--254.
+
+\textbf{Project records.} The trust boundary: \leanpath{VOA/\allowbreak Foundations/\allowbreak AffineLie.lean} and
+\leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchDLM3PBWAxiom.lean}; the refutation of \lean{InducedAssignment} and the honest
+reading of surjectivity: \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchZhu534.lean}.
+
+\endgroup

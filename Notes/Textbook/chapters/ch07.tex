@@ -1,0 +1,2413 @@
+\chapter{The twisted Heisenberg module}\label{ch:07}
+
+\providecommand{\chsevenF}{\widetilde{F}}
+\providecommand{\chsevenst}{\mathbin{\star}}
+
+This chapter builds one object and proves that it has every property required of it. The
+object is
+\begin{equation*}
+  \lean{VOA.Moonshine.heisTwistedModule r : TwistedModule (sigma1 r) 2 (FockT r)},
+\end{equation*}
+the \emph{$\sigma$-twisted module of the rank-$r$ Heisenberg vertex operator algebra}. In words:
+the twisted Fock space $S[\theta]$, the polynomial algebra on the half-integral creation
+operators $h_a(-n-\tfrac12)$, carries a twisted vertex operator $Y^T(u,z)$ for \emph{every}
+state $u$ of the ordinary rank-$r$ Heisenberg VOA, and these operators satisfy the
+Dong--Li--Mason twisted Jacobi identity with respect to the involution $\sigma$ that negates the
+oscillators. For $r = 24$ this is the Heisenberg half of the twisted sector $V_\Leech^T =
+S[\theta]\otimes T$ of the Moonshine module; the lattice half is the subject of
+Chapter~\ref{ch:08}. The chapter documents the release of the library named in the front matter; every Lean quotation is checked by \texttt{scripts/textbook/sync.py} to occur verbatim
+(up to whitespace and comments) in the source files of that release. Checks that were run at an earlier state of the library and not re-run for this edition are marked as such.
+
+The construction is classical: it is in Lepowsky's 1985 paper on twisted vertex operators and
+in Chapter~9 of Frenkel--Lepowsky--Meurman (FLM). What is new here is the \emph{route}. FLM
+write down the twisted vertex operator in closed form, $Y^T(u,z) = Y_0(e^{\Delta_z}u, z)$, with
+a quadratic operator $\Delta_z$ whose coefficients come from the Taylor expansion of
+$-\log\bigl(((1+x)^{1/2}+(1+y)^{1/2})/2\bigr)$, and then verify the Jacobi identity by a long
+generating-function computation. The library instead
+\begin{enumerate}[label=(\arabic*)]
+  \item proves a general theorem: for any automorphism of finite order and any candidate
+  ``fractional-mode'' map, the twisted Jacobi identity follows from two simpler properties of
+  certain \emph{integral} fields obtained by multiplying the twisted fields by $z^{e/N}$ ---
+  their mutual locality, and a ``twisted product formula'';
+  \item \emph{defines} $Y^T$ by solving the twisted product formula recursively, starting from
+  the twisted Heisenberg fields $h_a(z)$;
+  \item proves locality by Dong's lemma (once for the generators, then for free), and the
+  twisted product formula by an induction that uses only commutator formulas.
+\end{enumerate}
+The famous vacuum energy $r/16$ of the twisted sector then \emph{emerges} from the definition:
+we shall see it appear as $-\tfrac14+\tfrac38 = \tfrac18$ per boson (times the $\tfrac12$ in the
+conformal vector), and we shall match this with FLM's $\Delta_z$ and with the physicist's
+two-point function of a twisted boson.
+
+\begin{status}
+Every declaration presented in this chapter is \texttt{sorry}-free. During the writing of this
+chapter, \verb|#print axioms| was run (through \verb|lake env lean -DmaxSynthPendingDepth=3|,
+against the existing build of an earlier commit, when the chapter was first written (not re-run for this edition); no fresh \verb|lake build| was run for
+this chapter) on \lean{heisTwistedModule}, \lean{twistedJacobi_YT}, \lean{YT_omega_two},
+\lean{starPF}, \lean{star_comm}, \lean{prod_comm_formula}, \lean{twistedJacobi_of_local_pf},
+\lean{Ywt_perm}, \lean{twistedJacobi_generators_nonneg}, \lean{sigmaHeisAut},
+\lean{pf_of_inverse} and \lean{twistedSystem_local}; each reported exactly
+\texttt{[propext, Classical.choice, Quot.sound]}, Lean's three standard axioms. The PBW theorem \lean{VOA.pbw} (Chapter~\ref{ch:L02}; formerly a project axiom, now a theorem) does not occur. The project's build record for that earlier commit reports an
+aggregate \verb|lake build| of 10343 jobs, exit~0, containing these files (not re-run for this chapter). The main theorem
+\lean{heisTwistedModule} has no hypotheses at all: it is \textbf{unconditional}.
+\end{status}
+
+\section{What has to be built, and why it is not routine}\label{ch07:sec:intro}
+
+\subsection{The physical picture}\label{ch07:sec:physics}
+
+A chiral free boson in two dimensions is a field $h(z) = \sum_n h(n) z^{-n-1}$ with
+$[h(m),h(n)] = m\,\delta_{m+n,0}$. Its state space is the Fock space $\C[h(-1),h(-2),\dots]$,
+and the state--field correspondence assigns to every polynomial in the creation operators a
+field built from normal-ordered products of $h(z)$ and its derivatives. This is the Heisenberg
+VOA. The symmetry $h \mapsto -h$ is an automorphism $\sigma$ of order two.
+
+An \emph{orbifold} by $\sigma$ requires a \emph{twisted sector}: a space on which the boson is
+\emph{antiperiodic}, $h(e^{2\pi i}z) = -h(z)$. Antiperiodicity forces the modes into $\tfrac12+\Z$,
+\begin{equation*}
+  h(z) = \sum_{t\in \frac12+\Z} h(t)\,z^{-t-1}, \qquad [h(s),h(t)] = s\,\delta_{s+t,0},
+\end{equation*}
+and the twisted sector is the Fock space $S[\theta] = \C[h(-\tfrac12),h(-\tfrac32),\dots]$. Two
+facts are familiar to physicists: (i) the ground state of the twisted sector has conformal
+energy $\tfrac1{16}$ per boson (``the twist field has dimension $1/16$''); (ii) every field of
+the untwisted theory acts on the twisted sector, but \emph{not} by naively substituting the
+twisted $h$ into the untwisted normal-ordered formulas --- the naive substitution gives the wrong
+$L_0$ (it misses the $\tfrac1{16}$) and fails the operator product expansion. The correct
+operators carry correction terms. FLM package the corrections in an operator $\Delta_z$; we
+shall obtain them from a recursion.
+
+\subsection{The mathematical target}\label{ch07:sec:target}
+
+A $g$-twisted module for a VOA $V$ and an automorphism $g$ of order $N$ consists of a space $M$
+and, for every $u\in V$, a ``twisted field''
+$Y_M(u,z) = \sum_{q\in \frac1N\Z} u_{(q)}\, z^{-q-1}$, subject to: the vacuum acts as the
+identity; lower truncation; the \emph{support condition} (if $g u = e^{-2\pi i j/N} u$ then only
+$q\in -\tfrac jN+\Z$ occur); the \emph{twisted Jacobi identity}; and a grading by $L_0$ with
+finite-dimensional eigenspaces and bounded-below eigenvalues. The precise Lean structure is
+recalled in \S\ref{ch07:sec:twmod}; its general theory, including the repair of its Jacobi field
+described in the warning in \S\ref{ch07:sec:twmod}, is in Chapter~\ref{ch:06}.
+
+What makes this hard is that the Jacobi identity must be proved for \emph{all pairs of states}
+$u, v$, and the states of the Heisenberg VOA are arbitrary polynomials. There is no ``generators
+suffice'' theorem for twisted modules available in the library (that would be a twisted version
+of Li's local-system theorem); the route of this chapter is, in effect, to prove just enough of
+such a theorem for this example.
+
+\subsection{The plan}\label{ch07:sec:plan}
+
+\begin{enumerate}[label=\textbf{Step \arabic*.},leftmargin=*]
+  \item \textbf{The automorphism} (\S\ref{ch07:sec:sigma}). $\sigma$ is an automorphism of the
+  level-one Heisenberg VOA; its eigenspaces for $N=2$ are $\mathcal V^j = \{v : \sigma v =
+  (-1)^j v\}$; a monomial of degree $d$ lies in $\mathcal V^d$.
+  \item \textbf{The reduction} (\S\ref{ch07:sec:reduction}). For an arbitrary VOA, automorphism
+  and fractional-mode map, the twisted Jacobi identity follows from (a) locality of the rescaled
+  fields $\chsevenF_e(u) = z^{e/N}Y_M(u,z)$ and (b) the twisted product formula. The key
+  algebraic fact is the complex Chu--Vandermonde identity.
+  \item \textbf{The generators} (\S\ref{ch07:sec:generators}). The rescaled generator field
+  $F_a(z) = z^{1/2}h_a(z)$ is an integral field; its commutator is
+  $\delta_{ab}\bigl(z_2\partial_{z_2}\delta + \tfrac12\delta\bigr)$; so the generators are mutually
+  local. As a cross-check, Steps 2 and 3 already give the Jacobi identity for two generators at
+  $\ell\ge 0$.
+  \item \textbf{Locality for free} (\S\ref{ch07:sec:locality}). Everything built from the $F_a$
+  by products, powers of $z$, sums and scalars is mutually local.
+  \item \textbf{The definition of $Y^T$} (\S\ref{ch07:sec:vertex}), by inverting the product
+  formula along words; vacuum, generator, truncation, support and locality properties.
+  \item \textbf{The vacuum energy} (\S\ref{ch07:sec:L0}): $Y^T(\omega)_{(1)} = L_0^T$, with
+  the $r/16$.
+  \item \textbf{Commutator formulas} (\S\ref{ch07:sec:comm}, \S\ref{ch07:sec:star}) for ordinary
+  and for twisted products of local fields.
+  \item \textbf{Words} (\S\ref{ch07:sec:words}): the definition does not depend on the order of
+  the letters; creation operators act as they should.
+  \item \textbf{The twisted product formula for all pairs} (\S\ref{ch07:sec:pf}), hence the
+  twisted Jacobi identity for all pairs.
+  \item \textbf{The grading and the instance} (\S\ref{ch07:sec:instance}).
+\end{enumerate}
+
+\section{The language: distributions, fields, modes, products}\label{ch07:sec:language}
+
+This section collects the definitions that occur in the statements of this chapter. The basic
+notions (formal distributions, modes, fields, locality) are quoted verbatim and decoded in
+Chapters~\ref{ch:L01} and~\ref{ch:L03}; here they are recalled with pointers. The field products
+and the formal-calculus identities on which this chapter's own fidelity checks depend are printed
+with their Lean sources, so that a referee can check every statement below without leaving the
+chapter.
+
+\subsection{Formal distributions and modes}\label{ch07:sec:modes}
+
+\begin{definition}[Formal distribution]\label{ch07:def:formaldist}
+For a vector space $\mathcal W$, a formal distribution is a doubly infinite sequence
+$(a_n)_{n\in\Z}$ of elements of $\mathcal W$, thought of as $a(z) = \sum_n a_n z^n$; similarly a
+two-variable distribution is $(f_{m,n})_{m,n\in\Z}$, thought of as $\sum f_{m,n}z_1^m z_2^n$.
+\end{definition}
+
+In Lean these are \lean{FormalDist 𝒲} $=$ \lean{ℤ → 𝒲} and \lean{FormalDist₂ 𝒲} $=$
+\lean{ℤ → ℤ → 𝒲} (Definitions~\ref{l01:def:formaldist} and~\ref{l01:def:formaldist2},
+\leanpath{VOA/Foundations/FormalSeries.lean}).
+\textbf{The single most important convention of the library:} the value \verb|a n| is the
+coefficient of $z^{n}$ (not of $z^{-n-1}$). Vertex-algebra modes are read off by
+\lean{mode f m = f (-m - 1)} (Definition~\ref{l01:def:mode},
+\leanpath{VOA/Foundations/FormalCalculus.lean}), the coefficient of $z^{-m-1}$, i.e.\ $f_{(m)}$ in
+$f(z) = \sum_m f_{(m)} z^{-m-1}$; and \verb|V.smul u n v| $:=$ \verb|mode (V.Y u) n v| is
+$u_{(n)}v$ (Definition~\ref{l03:def:smulT}). Throughout, $u_{(n)}v$ means \verb|W.smul u n v|.
+
+\begin{physics}
+A formal distribution is the bookkeeping device behind every mode expansion in CFT: a field such as $\partial X(z)=\sum_n\alpha_nz^{-n-1}$ is nothing but its sequence of Laurent coefficients, the operators $\alpha_n$. The convention that index $n$ is the coefficient of $z^n$ is a matter of book-keeping; the physical content is the Laurent expansion on the punctured plane. In the twisted sector the same device is used with exponents in $\tfrac12+\Z$ once the branch factor $z^{1/2}$ is stripped off, as in the rescaled fields below.
+\end{physics}
+
+\begin{definition}[Field; the identity field]\label{ch07:def:field}
+An $\End(M)$-valued distribution $a(z)$ is a \emph{field} if for every $x\in M$ we have
+$a_n x = 0$ for all sufficiently negative $n$ (equivalently, $a_{(m)}x = 0$ for $m\gg0$). The
+set of fields is \lean{Fld M}. The identity field is $1(z) = \mathrm{id}\cdot z^0$.
+\end{definition}
+
+In Lean, \lean{IsField a} is
+\lean{∀ x : V, ∃ B : ℤ, ∀ n : ℤ, n < B → a n x = 0} (Definition~\ref{l01:def:field}, \leanpath{VOA/Core/Dong.lean});
+\lean{Fld M} is the subtype \verb|{a : FormalDist (End ℂ M) // IsField a}| of fields
+(Definition~\ref{l03:def:fld}, \leanpath{VOA/Core/LocalSystem.lean}), \verb|a.1| is the underlying
+distribution, and \verb|Fld.one| is \verb|⟨idField, _⟩| with \lean{idField} the identity field
+$\mathrm{id}\cdot z^0$ (\leanpath{VOA/Core/FieldOps.lean}). Because coefficients are indexed by
+powers $z^n$, ``lower truncated'' means $a_n x = 0$ for $n < B$; in mode language
+$a_{(m)} x = 0$ for $m > -B-1$, the usual notion.
+
+\begin{physics}
+A field is the formal version of an operator-valued function whose matrix elements between any fixed state and any finite-energy state are Laurent series with only finitely many negative powers. This is the condition that $\partial X(z)\,|\psi\rangle$ has at worst a finite-order singularity as $z\to0$, i.e.\ that the energy of states in the Fock space is bounded below and each state is annihilated by sufficiently high annihilation modes. The identity field is the trivial operator $1$, the image of the vacuum under the state--operator map.
+\end{physics}
+
+\subsection{Commutators, locality, and the delta function}\label{ch07:sec:local}
+
+\begin{definition}[Commutator distribution; multiplication by $(z_1-z_2)^N$; locality]
+\label{ch07:def:local}
+For distributions $a, b$ put $[a(z_1),b(z_2)]_{m,n} = a_m b_n - b_n a_m$. Multiplication by
+$(z_1-z_2)$ sends $f$ to $f_{m-1,n} - f_{m,n-1}$. Two distributions are \emph{mutually local}
+if $(z_1-z_2)^N[a(z_1),b(z_2)] = 0$ for some $N\in\N$.
+\end{definition}
+
+In Lean (Definitions~\ref{l01:def:formaldist2} and~\ref{l01:def:bracket},
+\leanpath{VOA/Foundations/Locality.lean}): \lean{bracketDist a b} is the distribution
+$(m,n)\mapsto a_mb_n-b_na_m$ (composition of endomorphisms); \lean{mulBySub} is multiplication by
+$(z_1-z_2)$, with \verb|mulBySub f m n = f (m - 1) n - f m (n - 1)| (\lean{mulBySub_apply});
+\lean{mulBySubPow N} is its $N$-th iterate; and \lean{Local a b} is
+\lean{∃ N : ℕ, mulBySubPow N (bracketDist a b) = 0}. This is exactly the textbook definition of
+mutual locality.
+
+\begin{physics}
+Mutual locality is the formal-calculus form of the 2d CFT axiom that fields at separated points commute (bosons) up to singular terms supported at coincident points: $[\phi(z_1),\psi(z_2)]$ is a finite sum of derivatives of $\delta(z_1-z_2)$, equivalently the OPE $\phi(z_1)\psi(z_2)$ has a pole of finite order, and the operator ordering $|z_1|>|z_2|$ versus $|z_2|>|z_1|$ is the analytic continuation of a single correlation function. The order $N$ of the locality is the maximal pole order of the OPE. This is what allows us to treat the radial-ordered product as a single meromorphic object.
+\end{physics}
+
+The building blocks of local commutators are derivatives of the formal delta function
+$\delta(z_1,z_2) = \sum_{m\in\Z} z_1^m z_2^{-m-1}$:
+
+\noindent File \leanpath{VOA/Foundations/Locality.lean}.
+\begin{leancode}
+def deltaDeriv (j : ℕ) : FormalDist 𝒲 →ₗ[ℂ] FormalDist₂ 𝒲 where
+  toFun c := fun m n => (∏ i ∈ Finset.range j, (-m - 1 - (i : ℤ))) • c (m + n + 1 + j)
+  -- (the proofs of map_add' and map_smul' are elided)
+def cCoeff (j : ℕ) (f : FormalDist₂ 𝒲) : FormalDist 𝒲 := fun n => mulBySubPow j f (-1) n
+\end{leancode}
+
+\begin{dictionary}
+\verb|deltaDeriv j c| is $c(z_2)\,\partial_{z_2}^j\delta(z_1,z_2)$. Check: $\partial_{z_2}^j
+\delta = \sum_m (-m-1)(-m-2)\cdots(-m-j) z_1^m z_2^{-m-1-j}$; multiplying by
+$c(z_2)=\sum_p c_p z_2^p$, the coefficient of $z_1^m z_2^n$ is
+$\prod_{i<j}(-m-1-i)\cdot c_{m+n+1+j}$, which is the Lean formula. \verb|cCoeff j f| is the
+coefficient of $z_1^{-1}$ in $(z_1-z_2)^j f$, i.e.\ $\Res_{z_1}(z_1-z_2)^j f(z_1,z_2)$, a
+distribution in $z_2$.
+\end{dictionary}
+
+\subsection{The integer products of fields}\label{ch07:sec:prod}
+
+Two pieces of formal-calculus notation are needed. The \emph{residue} $\Res_{z_1}$ of a
+distribution in $z_1$ (possibly depending on other variables) is its coefficient of $z_1^{-1}$:
+$\Res_{z_1}\sum_m f_m z_1^m = f_{-1}$. The \emph{expansion maps} $\iota_{z_1,z}$ and
+$\iota_{z,z_1}$ turn the rational function $(z_1-z)^n$, $n\in\Z$, into a formal series:
+$\iota_{z_1,z}$ expands it in the domain $|z_1|>|z|$, i.e.\ in nonnegative powers of $z/z_1$,
+and $\iota_{z,z_1}$ in the domain $|z|>|z_1|$, i.e.\ in nonnegative powers of $z_1/z$:
+\begin{equation*}
+  \iota_{z_1,z}(z_1-z)^n = \sum_{i\ge0}\binom ni(-1)^iz_1^{n-i}z^i,\qquad
+  \iota_{z,z_1}(z_1-z)^n = \sum_{i\ge0}\binom ni(-1)^{n-i}z_1^{i}z^{n-i}.
+\end{equation*}
+For $n\ge0$ both are the same polynomial. For $n<0$ they differ; for example
+$\iota_{z_1,z}(z_1-z)^{-1} = \sum_{i\ge0}z_1^{-1-i}z^i$ while
+$\iota_{z,z_1}(z_1-z)^{-1} = -\sum_{i\ge0}z_1^iz^{-1-i}$, and their difference is the delta
+function $\delta(z_1,z)$ of \S\ref{ch07:sec:local}. For fields $a, b$ and $n\in\Z$, the $n$-th
+product $a_{(n)}b$ is the field
+\begin{equation}\label{ch07:eq:prod}
+  (a_{(n)}b)(z) = \Res_{z_1}\Bigl( a(z_1)b(z)\,\iota_{z_1,z}(z_1-z)^n - b(z)a(z_1)\,
+  \iota_{z,z_1}(z_1-z)^n\Bigr),
+\end{equation}
+with $\iota$ as just defined. In the library the two cases are
+implemented separately: for $n\ge 0$, $a_{(n)}b = \Res_{z_1}(z_1-z)^n[a(z_1),b(z)]$; for
+$n = -k-1<0$, $a_{(n)}b = \frac1{k!}{:}(\partial^k a)(z)\,b(z){:}$, with the normal-ordered
+product ${:}a(z)b(z){:}$ putting the annihilation half of $a$ to the right.
+
+\noindent Files \leanpath{VOA/Foundations/Locality.lean}, \leanpath{VOA/Core/Dong.lean}, \leanpath{VOA/Core/LocalSystemBare.lean}.
+\begin{leancode}
+def normalOrdered (a b : FormalDist (Module.End ℂ V)) : FormalDist₂ (Module.End ℂ V) :=
+  fun m n => if 0 ≤ m then a m * b n else b n * a m
+
+noncomputable def nprod {a b : FormalDist (End ℂ V)}
+    (ha : IsField a) (hb : IsField b) : FormalDist (End ℂ V) :=
+  fun s => nprodCoeff ha hb s
+-- nprod_apply : nprod ha hb s x = ∑ᶠ m : ℤ, normalOrdered a b m (s - m) x
+
+noncomputable def negProd {a b : FormalDist (End ℂ V)} (ha : IsField a) (hb : IsField b)
+    (m : ℕ) : FormalDist (End ℂ V) :=
+  (m.factorial : ℂ)⁻¹ • nprod (ha.deriv_iterate m) hb
+
+noncomputable def prod (n : ℤ) (a b : Fld M) : Fld M :=
+  if _hn : 0 ≤ n then
+    ⟨cCoeff n.toNat (bracketDist a.1 b.1), isField_cCoeff_bracket a.2 b.2 n.toNat⟩
+  else
+    ⟨negProd a.2 b.2 (-n - 1).toNat, isField_negProd a.2 b.2 (-n - 1).toNat⟩
+\end{leancode}
+
+\begin{dictionary}
+\verb|Fld.prod n a b| is $a_{(n)}b$. The \verb|normalOrdered| distribution has coefficients
+$a_m b_n$ if $m\ge 0$ (the $z_1^{m}$, $m\ge0$, part of $a$ is the \emph{creation} part, since
+$a_m = a_{(-m-1)}$ with $-m-1<0$; creation goes to the left) and $b_n a_m$ otherwise. The
+\verb|∑ᶠ| is Mathlib's \emph{finitary sum}: it is the sum of the family when only finitely many
+terms are nonzero, and $0$ otherwise; here finiteness holds because both factors are fields.
+\end{dictionary}
+
+The formula a reader can compute with is the \emph{iterate formula}, a theorem of formal calculus
+valid for any two fields, which unpacks \eqref{ch07:eq:prod} in modes:
+
+\noindent File \leanpath{VOA/Core/FieldProductIterate.lean}.
+\begin{leancode}
+theorem mode_prod_iterate (a b : Fld M) (ell N : ℤ) (x : M) :
+    mode (prod ell a b).1 N x =
+      ∑ᶠ i : ℕ, ((-1 : ℂ) ^ i * gBinom ell i) •
+        (mode a.1 (ell - i) (mode b.1 (N + i) x)
+          - ((-1 : ℂ) ^ ell) • mode b.1 (ell + N - i) (mode a.1 i x))
+\end{leancode}
+
+that is,
+\begin{equation}\label{ch07:eq:iterate}
+  (a_{(\ell)}b)_{(N)} = \sum_{i\ge0}(-1)^i\binom{\ell}{i}\Bigl(a_{(\ell-i)}b_{(N+i)} -
+  (-1)^\ell\, b_{(\ell+N-i)}a_{(i)}\Bigr).
+\end{equation}
+
+\begin{physics}
+The iterate formula is the mode-by-mode statement of the OPE: the modes of a composite operator $(a_{(\ell)}b)(z)$ (a coefficient in the OPE $a(z_1)b(z)$) are expressed through contour integrals around $z$ and around $0$, and the sum over $i$ with binomial weights is the Taylor expansion of $(z_1-z)^\ell$ when one deforms the contour. It is a formal-calculus identity, not a physical postulate; heuristically it is the contour-deformation argument used to derive commutators from OPEs in any CFT textbook.
+\end{physics}
+Here and below $\binom{x}{i} = x(x-1)\cdots(x-i+1)/i!$ for any complex $x$ and $i\in\N$; the
+library has two names for it, \lean{gBinom} (integer upper index) and \lean{cbinom} (complex upper
+index), and a third, \lean{cbz}, which extends \lean{gBinom} by $0$ to negative lower indices:
+
+\noindent Files \leanpath{VOA/Foundations/FormalCalculus.lean}, \leanpath{VOA/Modularity/Twisted.lean}, \leanpath{VOA/Foundations/Substitution.lean}, \leanpath{VOA/Foundations/Expansion.lean}.
+\begin{leancode}
+noncomputable def gBinom (n : ℤ) (k : ℕ) : ℂ :=
+  (∏ i ∈ Finset.range k, ((n : ℂ) - (i : ℂ))) / (k.factorial : ℂ)
+noncomputable def cbinom (x : ℂ) (i : ℕ) : ℂ :=
+  (∏ k ∈ Finset.range i, (x - k)) / (i.factorial : ℂ)
+noncomputable def cbz (n k : ℤ) : ℂ := if 0 ≤ k then gBinom n k.toNat else 0
+def negOnePow (n : ℤ) : ℂ := if Even n then 1 else -1
+\end{leancode}
+
+The bridge between locality and vertex-algebra identities is Li's theorem that two mutually local
+fields satisfy the Borcherds (Jacobi) identity with respect to these products. It is proved in
+the library's local-system layer (Theorem~\ref{l03:thm:fieldjacobi}) and is used here as an established input:
+
+\noindent File \leanpath{VOA/Core/LocalSystemJacobi.lean}.
+\begin{leancode}
+theorem field_jacobi_of_local {a b : Fld M} (h : Local a.1 b.1)
+    (x : M) (ell m n : ℤ) :
+    (∑ᶠ i : ℤ, (negOnePow i * cbz ell i) •
+      (mode a.1 (ell + m - i) (mode b.1 (n + i) x) -
+        negOnePow ell • mode b.1 (ell + n - i) (mode a.1 (m + i) x))) =
+      ∑ᶠ i : ℤ, cbz m i • mode (prod (ell + i) a b).1 (m + n - i) x
+\end{leancode}
+
+\begin{equation}\label{ch07:eq:fieldjacobi}
+  \sum_{i\ge0}(-1)^i\tbinom{\ell}{i}\bigl(a_{(\ell+m-i)}b_{(n+i)} - (-1)^\ell
+  b_{(\ell+n-i)}a_{(m+i)}\bigr) = \sum_{i\ge 0}\tbinom{m}{i}\,(a_{(\ell+i)}b)_{(m+n-i)}.
+\end{equation}
+
+\begin{physics}
+This is the associativity-plus-commutativity of operator products in a local CFT: contour integrals of $a(z_1)b(z_2)$ can be moved either around $z_2$ (OPE channel, right side) or around $0$ (commutator channel, left side), and mutual locality guarantees that the two descriptions agree. In the physics literature it is the generating function $\sum$ of mode commutators, i.e.\ the Borcherds/Jacobi identity encoding crossing symmetry of the four-point function on the sphere with one insertion at the origin and one at infinity.
+\end{physics}
+
+\subsection{Twisted modules}\label{ch07:sec:twmod}
+
+The support condition (iii) below says that an eigenvector $u$ with eigenvalue
+$e^{-2\pi ij/N}$ has modes only in $-\frac jN+\Z$: this is the algebraic form of the statement that
+continuing $z$ once around the origin multiplies $Y_M(u,z)$ by a root of unity fixed by the
+eigenvalue of $u$ (here $z^{-q-1}$ with $q\in-\frac jN+\Z$ acquires $e^{2\pi ij/N}$), exactly as the antiperiodic
+boson has modes in $\frac12+\Z$. The Jacobi identity (iv) is then imposed only for the fractional
+indices $k$ on this support coset, as in Dong--Li--Mason; the warning after the definition
+explains why that restriction is not optional.
+
+\begin{definition}[Twisted eigenspaces; twisted module]\label{ch07:def:twmod}
+Let $W$ be a VOA on $\mathcal V$ and $g\in\Aut(W)$. For $N\ge1$ and $j\in\N$ put
+$\mathcal V^j = \{v : g v = e^{-2\pi i j/N}v\}$. A $g$-twisted module of order $N$ on $M$ is a
+linear map $u\mapsto (u_{(k/N)})_{k\in\Z}$, $\mathcal V\to (\Z\to\End M)$, with: (i)
+$\mathbf 1_{(k/N)} = \delta_{k,-N}\,\mathrm{id}$; (ii) lower truncation; (iii) for $u\in\mathcal
+V^j$, $u_{(k/N)} = 0$ unless $k\equiv -j \pmod N$; (iv) for $u\in\mathcal V^j$, $v\in\mathcal
+V$, $x\in M$, $\ell, m\in \Z$ and $k\equiv -j \pmod N$,
+\begin{multline}\label{ch07:eq:twjacobi}
+  \sum_{i\in\Z}(-1)^i\tbinom{\ell}{i}\Bigl(u_{(\ell+\frac kN-i)}\,v_{(\frac mN+i)}x - (-1)^\ell
+  v_{(\ell+\frac mN-i)}\,u_{(\frac kN+i)}x\Bigr)\\
+  = \sum_{i\ge 0}\tbinom{k/N}{i}\,(u_{(\ell+i)}v)_{(\frac{k+m}{N}-i)}x;
+\end{multline}
+(v) a direct-sum decomposition $M = \bigoplus_{\alpha\in\C}M_\alpha$ with $\omega_{(1)} = L_0$
+acting on $M_\alpha$ by $\alpha$, each $M_\alpha$ finite-dimensional, and $\mathrm{Re}\,\alpha$
+bounded below on the nonzero $M_\alpha$.
+\end{definition}
+
+\noindent File \leanpath{VOA/Modularity/Twisted.lean}.
+\begin{leancode}
+noncomputable def Aut.twistedEigenspace (g : Aut W) (N : ℕ) (j : ℕ) : Submodule ℂ 𝒱 :=
+  Module.End.eigenspace (g.toLinearEquiv : Module.End ℂ 𝒱)
+    (Complex.exp (-(2 * (Real.pi : ℂ) * Complex.I * j) / N))
+
+structure TwistedModule (g : Aut W) (N : ℕ) (M : Type u) [AddCommGroup M] [Module ℂ M] where
+  YM : 𝒱 →ₗ[ℂ] (ℤ → Module.End ℂ M)
+  vacuum_YM : ∀ k : ℤ, YM W.vacuum k = if k = -(N : ℤ) then 1 else 0
+  truncation : ∀ (u : 𝒱) (x : M), ∃ K : ℤ, ∀ k : ℤ, K ≤ k → YM u k x = 0
+  support : ∀ (j : ℕ) (u : 𝒱), u ∈ g.twistedEigenspace N j →
+    ∀ k : ℤ, (k + j) % (N : ℤ) ≠ 0 → YM u k = 0
+  jacobi : ∀ (j : ℕ) (u : 𝒱), u ∈ g.twistedEigenspace N j → ∀ (v : 𝒱) (x : M) (ℓ k m : ℤ),
+    (k + j) % (N : ℤ) = 0 →
+    (∑ᶠ i : ℤ, (negOnePow i * cbz ℓ i) •
+        (YM u (ℓ * N + k - i * N) (YM v (m + i * N) x)
+          - negOnePow ℓ • YM v (ℓ * N + m - i * N) (YM u (k + i * N) x)))
+      = ∑ᶠ i : ℕ, cbinom ((k : ℂ) / N) i • YM (W.smul u (ℓ + i) v) (k + m - i * N) x
+  weight : ℂ → Submodule ℂ M
+  isInternal : DirectSum.IsInternal weight
+  L0_weight : ∀ (α : ℂ) (x : M), x ∈ weight α → YM W.conformalVector N x = α • x
+  finrank : ∀ α, FiniteDimensional ℂ (weight α)
+  boundedBelow : ∃ B : ℝ, ∀ α : ℂ, weight α ≠ ⊥ → B ≤ α.re
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Fractional modes as integers.} \verb|YM u k| is $u_{(k/N)}$. Thus
+\verb|YM u (ℓ * N + k - i * N)| is $u_{((\ell N+k-iN)/N)} = u_{(\ell + k/N - i)}$, and the
+vacuum condition \verb|k = -N| says $\mathbf 1_{(-1)} = \mathrm{id}$, the only nonzero mode,
+i.e.\ $Y_M(\mathbf 1,z) = \mathrm{id}$. The $L_0$ condition uses \verb|YM ω N| $=\omega_{(1)}$.
+\textbf{The Jacobi field} is \eqref{ch07:eq:twjacobi} verbatim: \verb|negOnePow i * cbz ℓ i| is
+$(-1)^i\binom{\ell}{i}$ (zero for $i<0$), and \verb|cbinom ((k : ℂ) / N) i| is the
+\emph{fractional} binomial $\binom{k/N}{i}$. \textbf{Hypothesis} \verb|(k + j) % N = 0|: the
+fractional index of $u$ is restricted to the support coset of $u$; this is how Dong--Li--Mason
+state it, and without it the structure is unsatisfiable (see the warning below).
+\verb|% | is integer remainder; \verb|(k+j) % N = 0| means $N\mid k+j$. \verb|DirectSum.IsInternal weight|
+says the subspaces $M_\alpha$ are independent and span $M$, i.e.\ $M = \bigoplus_\alpha M_\alpha$
+internally. \verb|⊥| is the zero subspace.
+\textbf{Eigenspaces.} \verb|Module.End.eigenspace f μ| is $\ker(f-\mu)$.
+\end{dictionary}
+
+\begin{physics}
+A twisted module is the algebraic Hilbert space of a CFT sector in which the fields of the VOA are not single-valued around the origin but come back multiplied by the symmetry $g$: there is a twist field at $z=0$ and $Y_M(u,z)$ for $u\in\mathcal V^j$ acquires the phase $e^{2\pi ij/N}$ under $z\mapsto e^{2\pi i}z$, which forces fractional modes in $-\tfrac jN+\Z$. For the $\Z_2$ orbifold of the free boson ($X\to-X$, $N=2$), $\partial X$ has $j=1$ and half-integer modes; the vacuum of $M$ is the twist-field state $\sigma(0)|0\rangle$. The $L_0$-grading with finite-dimensional weight spaces bounded below is the usual requirement of a unitary-like spectrum, and the twisted Jacobi identity is the OPE/crossing consistency in the presence of the twist field. This is what one adds to the untwisted Hilbert space to obtain the orbifold partition function.
+\end{physics}
+
+\begin{warning}
+\textbf{The all-indices Jacobi identity is unsatisfiable.} Until 2026-10-06 the field
+\verb|jacobi| lacked the hypothesis \verb|(k + j) % N = 0|. Then for $N\ge2$ the choice
+$u=v=\mathbf 1$, $\ell=-1$, $k=1$, $m=-N-1$ makes every left-hand term contain a vacuum mode
+$\mathbf 1_{(q)}$ with $q\notin\Z$, hence $0$, while the right side is
+$\binom{1/N}{0}(\mathbf 1_{(-1)}\mathbf 1)_{(-1)}x = x$. So $x=0$ for all $x$: \emph{no nonzero
+twisted module existed}, and the target of this chapter would have been provably empty. The
+certificate is the Lean theorem \lean{VOA.jacobiAllIndices_eq_zero}
+(\leanpath{VOA/Moonshine/HeisenbergTwistedModuleDefect.lean}); the field was repaired by adding
+the support-coset hypothesis, which is the Dong--Li--Mason formulation. The same defect in
+\lean{SuperTwistedModule.jacobi} has \emph{not} been repaired (it is not used in this chapter).
+A referee should note that the repair \emph{weakens} the axiom only by removing instances that
+are not part of the mathematical definition: when $k\not\equiv -j$ and $v$ is a $g$-eigenvector,
+DLM's generating-function identity does not produce a mode identity at that $k$ at all.
+\end{warning}
+
+The predicate ``$Y_M$ satisfies \eqref{ch07:eq:twjacobi}'' is also available on its own:
+
+\begin{leancode}
+def TwistedJacobi (g : Aut W) (N : ℕ) {M : Type*} [AddCommGroup M] [Module ℂ M]
+    (YM : 𝒱 →ₗ[ℂ] (ℤ → End ℂ M)) : Prop :=
+  ∀ (j : ℕ) (u : 𝒱), u ∈ g.twistedEigenspace N j → ∀ (v : 𝒱) (x : M) (ℓ k m : ℤ),
+    (k + j) % (N : ℤ) = 0 →
+    (∑ᶠ i : ℤ, (negOnePow i * cbz ℓ i) •
+        (YM u (ℓ * N + k - i * N) (YM v (m + i * N) x)
+          - negOnePow ℓ • YM v (ℓ * N + m - i * N) (YM u (k + i * N) x)))
+      = ∑ᶠ i : ℕ, cbinom ((k : ℂ) / N) i • YM (W.smul u (ℓ + i) v) (k + m - i * N) x
+\end{leancode}
+
+\begin{dictionary}
+Character for character the \verb|jacobi| field of \lean{TwistedModule}; the library proves
+\lean{twistedJacobi_of_twistedModule} (every twisted module satisfies it), and conversely the
+instance at the end of this chapter fills the \verb|jacobi| field with a proof of
+\lean{TwistedJacobi}.
+\end{dictionary}
+
+\begin{physics}
+Physically, the twisted Jacobi identity is the statement that an operator $Y(u,z_1)$ moved around another $Y(v,z_2)$ and around the twist field at the origin picks up the correct monodromy: OPE with $v$ (right side) agrees with commuting through $v$ (left side) when $u$ is allowed to be multivalued with phase $e^{2\pi i j/N}$ around $z=0$. The fractional binomial $\binom{k/N}{i}$ is the expansion of the branch factor $(z_2+z_0)^{k/N}$, i.e.\ the twist-field cut seen from a point displaced from $z_2$. This is a heuristic summary; the identity itself is the definition.
+\end{physics}
+
+\subsection{The two Fock spaces}\label{ch07:sec:fock}
+
+The rank-$r$ Heisenberg VOA lives on $\lean{FockN r} = \C[x_{(n,a)} : n\in\N, a<r]$, the
+variable $x_{(n,a)}$ standing for the state $h_a(-n-1)\mathbf 1$; the VOA at level $k\ne0$ is
+\lean{heisenbergNVOA r k hk} (Chapter~\ref{ch:03}), with
+$[h_a(m),h_b(n)] = k\,m\,\delta_{ab}\delta_{m+n,0}$, $h_a(-n-1)$ acting by multiplication by
+$x_{(n,a)}$, $h_a(n+1)$ by $(n+1)k\,\partial/\partial x_{(n,a)}$, $h_a(0)=0$, and conformal vector
+$\omega = \sum_a \frac1{2k}h_a(-1)^2\mathbf 1$. We use only $k=1$.
+
+The twisted Fock space is \lean{FockT r}, the same polynomial ring but with $x_{(n,a)}$ now
+standing for the half-integral creation operator $h_a(-n-\frac12)$. The twisted modes are indexed
+by odd integers $k$, $k\leftrightarrow k/2$:
+
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+abbrev FockT (r : ℕ) : Type := MvPolynomial (ℕ × Fin r) ℂ
+def varT {r : ℕ} (i : Fin r) (k : ℤ) : ℕ × Fin r := (((|k| - 1) / 2).toNat, i)
+noncomputable def modeT (r : ℕ) (i : Fin r) (k : ℤ) : Module.End ℂ (FockT r) :=
+  if k % 2 = 0 then 0
+  else if k < 0 then mulXT (varT i k)
+  else ((k : ℂ) / 2) • pderivT (varT i k)
+
+theorem modeT_comm (r : ℕ) (i j : Fin r) {k l : ℤ} (hk : Odd k) (hl : Odd l) :
+    modeT r i k * modeT r j l - modeT r j l * modeT r i k
+      = (if i = j ∧ k + l = 0 then (k : ℂ) / 2 else 0) • LinearMap.id
+\end{leancode}
+
+\begin{dictionary}
+\verb|modeT r a k| is $h_a(k/2)$: for odd $k<0$, multiplication by the variable
+$x_{((-k-1)/2,a)}$, i.e.\ $h_a(-n-\frac12)$ with $n=(-k-1)/2$; for odd $k>0$, $\frac k2\,\partial/
+\partial x_{((k-1)/2,a)}$; for even $k$, \emph{zero} --- a deliberate junk value expressing that a
+twisted boson has no integral modes. \lean{modeT_comm} is
+$[h_a(\tfrac k2),h_b(\tfrac l2)] = \tfrac k2\delta_{ab}\delta_{k+l,0}$, the level-one twisted
+Heisenberg relation. Its normalisation matches level $k=1$ of the untwisted algebra; this is why
+the target VOA below is the level-one one.
+\end{dictionary}
+
+\begin{physics}
+The operators $h_a(k/2)$, $k$ odd, are the modes $\alpha_{k/2}$ of the antiperiodic free boson, $\partial X(z)=\sum_{t\in\frac12+\Z}\alpha_tz^{-t-1}$; the branch $z^{1/2}$ is the monodromy $\partial X\to-\partial X$ around the twist field. The relation $[\alpha_s,\alpha_t]=s\,\delta_{s+t,0}$ is canonical quantisation: each pair $(\alpha_{-t},\alpha_t)$, $t\in\tfrac12+\N$, is one harmonic oscillator of frequency $t$. There is no zero mode (momentum), as on a circle with antiperiodic boundary conditions the boson has no translation invariance: the twist field is a fixed point of the $\Z_2$ reflection $X\to-X$.
+\end{physics}
+
+The grading of $S[\theta]$: the monomial $\prod x_{(n,a)}^{m_{(n,a)}}$ has \emph{doubled degree}
+$d = \sum (2n+1)m_{(n,a)}$ (each variable $x_{(n,a)}$ is given degree $2n+1$, twice its conformal weight $n+\frac12$); \lean{gradingT r d} is the span of the monomials of doubled degree $d$
+and $\lean{levelT r d} = d/2 + r/16$. The operator
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+noncomputable def L0T (r : ℕ) : Module.End ℂ (FockT r) :=
+  (1 / 2 : ℂ) • (eulerT r).toLinearMap + ((r : ℂ) / 16) • LinearMap.id
+\end{leancode}
+is $L_0^T = \frac12 E + \frac r{16}$, where the Euler derivation $E$ multiplies $x_{(n,a)}$ by
+$2n+1$; the library proves $L_0^T = \sum_a\sum_{n\ge0}h_a(-n-\frac12)h_a(n+\frac12) +
+\frac r{16}$ (\lean{L0T_eq_modeSum}). These are constructed in Chapter~\ref{ch:06}.
+
+\begin{warning}
+The constant $r/16$ is \emph{written into} the definition of \lean{L0T}. Were it simply
+asserted that the twisted module's $L_0$ is \lean{L0T}, nothing would have been proved about the
+vacuum energy. The content of Theorem~\ref{ch07:thm:L0} is that the operator
+$Y^T(\omega)_{(1)}$, computed from the twisted vertex operator defined without any reference to
+$r/16$, \emph{equals} \lean{L0T}.
+\end{warning}
+
+\section{The involution \texorpdfstring{$\sigma$}{sigma} and its eigenspaces}\label{ch07:sec:sigma}
+
+\subsection{Definition and automorphism property}
+
+Let $\sigma$ be the algebra automorphism of $\lean{FockN r}$ sending every variable $x_{(n,a)}$
+to $-x_{(n,a)}$; on a monomial of degree $d$ it acts by $(-1)^d$. In the library it is
+\lean{LatGen.sigmaN r}, the linear equivalence underlying
+\verb|MvPolynomial.aeval (fun v => -(X v))|.
+
+\begin{theorem}\label{ch07:thm:sigmaaut}
+For every $r\in\N$ and level $k\ne0$, $\sigma$ is an automorphism of the Heisenberg VOA
+$\lean{heisenbergNVOA r k hk}$: it is a linear bijection with $\sigma(u_{(n)}v) =
+(\sigma u)_{(n)}(\sigma v)$ for all $u,v,n$, $\sigma\mathbf 1 = \mathbf 1$ and $\sigma\omega
+=\omega$. Moreover $\sigma^2 = 1$.
+\end{theorem}
+
+\noindent Files \leanpath{VOA/Core/Automorphism.lean}, \leanpath{VOA/Moonshine/HeisenbergTwistedModuleSigma.lean}.
+\begin{leancode}
+structure Aut (W : VertexOperatorAlgebra 𝒱) where
+  toLinearEquiv : 𝒱 ≃ₗ[ℂ] 𝒱
+  map_smul' : ∀ (u : 𝒱) (n : ℤ) (v : 𝒱),
+    toLinearEquiv (W.smul u n v) = W.smul (toLinearEquiv u) n (toLinearEquiv v)
+  map_vacuum : toLinearEquiv W.vacuum = W.vacuum
+  map_omega : toLinearEquiv W.conformalVector = W.conformalVector
+
+noncomputable def sigmaHeisAut (k : ℂ) (hk : k ≠ 0) : Aut (heisenbergNVOA r k hk) where
+  toLinearEquiv := sigmaN r
+  -- (the three proof fields map_smul', map_vacuum, map_omega are elided)
+theorem sigmaHeisAut_sq (k : ℂ) (hk : k ≠ 0) : sigmaHeisAut r k hk * sigmaHeisAut r k hk = 1
+
+noncomputable abbrev heisVOA1 : VertexOperatorAlgebra (FockN r) :=
+  heisenbergNVOA r 1 one_ne_zero
+noncomputable abbrev sigma1 : Aut (heisVOA1 r) := sigmaHeisAut r 1 one_ne_zero
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Decoding.} \lean{Aut W} is a structure: a linear equivalence (\verb|≃ₗ[ℂ]|, a
+$\C$-linear bijection with linear inverse) together with proofs of the three compatibilities.
+Since \lean{sigmaHeisAut} is a \emph{definition} of an element of \lean{Aut}, the theorem is the
+statement that the three proof fields could be filled; the proofs are elided above (they are
+not part of the statement). \lean{heisVOA1 r} and \lean{sigma1 r} are abbreviations for level
+$1$. \textbf{Fidelity.} This is exactly Theorem~\ref{ch07:thm:sigmaaut}. The definition of
+\lean{Aut} requires $\omega$ to be fixed, which is the standard notion of VOA automorphism.
+\textbf{Could it be vacuous?} No: $\sigma\ne1$ as soon as $r\ge1$ since $\sigma(x_{(0,0)}) =
+-x_{(0,0)}$; and it is a genuine VOA automorphism, not a mere linear map, because
+\verb|map_smul'| is quantified over all $u,n,v$.
+\end{dictionary}
+
+\begin{physics}
+The involution $\sigma$ is the $\Z_2$ symmetry $X\to-X$ of the free boson, equivalently $\partial X\to-\partial X$ (charge conjugation on the current), which fixes the vacuum and the stress tensor $T=\tfrac12{:}\partial X\partial X{:}$ and acts on a state with $d$ oscillators by $(-1)^d$. That it is an automorphism says that the symmetry preserves the OPE algebra of all fields, not merely the Heisenberg relations; this is the property needed to orbifold. The theorem is the algebraic expression of the obvious invariance of the free-boson action under $X\to-X$.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+$\sigma$ anticommutes with every oscillator: $\sigma h_a(n)\sigma^{-1} = -h_a(n)$, since
+$h_a(n)$ is either multiplication by a variable or a derivative along one, and both change sign
+under $x\mapsto -x$. The vertex operator of a monomial state $h_{a_1}(-n_1-1)\cdots
+h_{a_d}(-n_d-1)\mathbf 1$ is the iterated normal-ordered product
+${:}\partial^{(n_1)}h_{a_1}(z)\cdots\partial^{(n_d)}h_{a_d}(z){:}$ (with
+$\partial^{(n)} = \partial^n/n!$). Conjugation by $\sigma$ multiplies each factor by $-1$ and
+preserves normal ordering, so $\sigma Y(u,z)\sigma^{-1} = (-1)^dY(u,z) = Y(\sigma u,z)$. By
+linearity $\sigma Y(u,z)\sigma^{-1} = Y(\sigma u, z)$ for all $u$, which is the product
+compatibility. $\sigma\mathbf1=\mathbf1$ (degree $0$) and $\sigma\omega = \omega$ (degree $2$).
+$\sigma^2=1$ since $(-1)^{2d}=1$.
+\end{proof}
+
+\begin{status}
+Unconditional; \verb|#print axioms sigmaHeisAut| $=$ \texttt{[propext, Classical.choice,
+Quot.sound]}. File: \leanpath{VOA/Moonshine/HeisenbergTwistedModuleSigma.lean}.
+\end{status}
+
+\subsection{The eigenspaces}
+
+For $N=2$ the eigenvalue $e^{-2\pi ij/2}$ is $(-1)^j$. Hence:
+
+\begin{proposition}\label{ch07:prop:eigen}
+For $j\in\N$: $v\in\mathcal V^j$ iff $\sigma v = (-1)^jv$. A monomial of degree $d$ lies in
+$\mathcal V^d$; in particular $h_a(-1)\mathbf 1 = x_{(0,a)}\in\mathcal V^1$ and
+$\mathbf 1\in\mathcal V^0$. Every $v$ splits as $v = v_0+v_1$ with $v_j\in\mathcal V^j$.
+\end{proposition}
+
+\begin{leancode}
+theorem mem_twistedEigenspace_two_iff (k : ℂ) (hk : k ≠ 0) (j : ℕ) (v : FockN r) :
+    v ∈ (sigmaHeisAut r k hk).twistedEigenspace 2 j ↔ sigmaN r v = ((-1 : ℂ) ^ j) • v
+
+theorem monomial_mem_twistedEigenspace (k : ℂ) (hk : k ≠ 0) (m : (ℕ × Fin r) →₀ ℕ) (c : ℂ) :
+    (monomial m c : FockN r) ∈ (sigmaHeisAut r k hk).twistedEigenspace 2 m.degree
+
+theorem X_mem_twistedEigenspace_one (k : ℂ) (hk : k ≠ 0) (v : ℕ × Fin r) :
+    (X v : FockN r) ∈ (sigmaHeisAut r k hk).twistedEigenspace 2 1
+
+theorem exists_twistedEigen_decomp (k : ℂ) (hk : k ≠ 0) (v : FockN r) :
+    ∃ v₀ ∈ (sigmaHeisAut r k hk).twistedEigenspace 2 0,
+      ∃ v₁ ∈ (sigmaHeisAut r k hk).twistedEigenspace 2 1, v = v₀ + v₁
+\end{leancode}
+
+\begin{dictionary}
+\verb|(ℕ × Fin r) →₀ ℕ| is a finitely supported exponent vector $m$; \verb|monomial m c| is
+$c\prod x_v^{m_v}$; \verb|m.degree| is $\sum_v m_v$, the polynomial degree (\emph{not} the
+conformal weight). \verb|X v| is the variable $x_v$; $X(0,a)$ is $h_a(-1)\mathbf 1$. Note that
+$\mathcal V^j$ depends only on $j\bmod 2$; the Lean statements quantify over all $j\in\N$, which
+is harmless and is what the definition of \lean{TwistedModule} requires.
+\end{dictionary}
+
+\begin{physics}
+The eigenspaces $\mathcal V^0$, $\mathcal V^1$ are the $\Z_2$-even and $\Z_2$-odd sectors of the untwisted operator algebra: operators with an even number of $\partial X$ (such as $T$ and ${:}(\partial X)^2{:}$) are even, those with an odd number (such as $\partial X$ itself) are odd. In the twisted sector the even operators are single-valued and the odd ones change sign around the origin, so this decomposition decides which fields have integer modes and which have half-integer modes.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+$\exp(-2\pi i j/2) = \exp(-\pi i)^j = (-1)^j$; the rest is the sign $(-1)^d$ on monomials and
+$v_0 = \frac12(v+\sigma v)$, $v_1 = \frac12(v-\sigma v)$.
+\end{proof}
+
+\begin{status}
+Unconditional, axiom-clean as above.
+\end{status}
+
+\section{The reduction: twisted Jacobi from untwisted locality}\label{ch07:sec:reduction}
+
+This section is general: $W$ is any VOA on $\mathcal V$, $M$ any vector space, $N\ge1$, and
+$Y_M : \mathcal V\to(\Z\to\End M)$, $u\mapsto(u_{(k/N)})_k$, any linear map. Nothing about
+Heisenberg algebras is used.
+
+\subsection{The idea}\label{ch07:sec:redidea}
+
+The twisted Jacobi identity \eqref{ch07:eq:twjacobi} looks like the ordinary one
+\eqref{ch07:eq:fieldjacobi} except for two things: the modes are fractional, and the right-hand
+binomial has a fractional upper index $k/N$. Both differences disappear after one simple change
+of variables.
+
+Fix a residue $e\in\Z$. For a fractional family $A = (u_{(k/N)})_{k}$, define the
+\emph{rescaled field on the class $e$}
+\begin{equation}\label{ch07:eq:resc}
+  \chsevenF_e(u)(z) = \sum_{p\in\Z} u_{(p+\frac eN)}\,z^{-p-1}
+  = z^{e/N}\sum_{q\in \frac eN+\Z}u_{(q)}z^{-q-1}.
+\end{equation}
+It has integral exponents: it is $z^{e/N}$ times the part of $Y_M(u,z)$ supported on the coset
+$\frac eN+\Z$. Its $p$-th mode is $u_{(p+e/N)}$. Two such fields can be multiplied with the
+ordinary products \eqref{ch07:eq:prod}, can be local, and then satisfy \eqref{ch07:eq:fieldjacobi}.
+Substituting $a = \chsevenF_e(u)$, $b=\chsevenF_{e'}(v)$, $k = Nm+e$ and $m' = Nn+e'$ into
+\eqref{ch07:eq:fieldjacobi}, the left side becomes literally the left side of
+\eqref{ch07:eq:twjacobi}. The right side becomes $\sum_i\binom mi
+(\chsevenF_e(u)_{(\ell+i)}\chsevenF_{e'}(v))_{(m+n-i)}$, an expression in the products of the
+rescaled fields. To compare it with the right side of \eqref{ch07:eq:twjacobi} we need to know
+those products. The right answer is dictated by associativity. Formally,
+\begin{equation*}
+  \chsevenF_e(u)(z_0+z_2)\,\chsevenF_{e'}(v)(z_2) = (z_2+z_0)^{e/N}z_2^{e'/N}\,Y_M(u,z_0+z_2)
+  Y_M(v,z_2),
+\end{equation*}
+and twisted associativity says $Y_M(u,z_0+z_2)Y_M(v,z_2)\sim Y_M(Y(u,z_0)v,z_2)$. Writing
+$(z_2+z_0)^{e/N} = z_2^{e/N}(1+z_0/z_2)^{e/N}$ we get, as the generating function of the
+products,
+\begin{equation}\label{ch07:eq:pfgen}
+  \sum_{\ell\in\Z}\bigl(\chsevenF_e(u)_{(\ell)}\chsevenF_{e'}(v)\bigr)(z_2)\,z_0^{-\ell-1}
+  = \Bigl(1+\frac{z_0}{z_2}\Bigr)^{e/N}\chsevenF_{e+e'}\bigl(Y(u,z_0)v\bigr)(z_2).
+\end{equation}
+Taking the coefficient of $z_0^{-\ell-1}$ gives the
+
+\begin{definition}[Twisted product formula]\label{ch07:def:pf}
+For $u,v\in\mathcal V$ and classes $e,e'$:
+\begin{equation}\label{ch07:eq:pf}
+  \chsevenF_e(u)_{(\ell)}\chsevenF_{e'}(v) = \sum_{t\ge0}\binom{e/N}{t}\,z^{-t}\,
+  \chsevenF_{e+e'}(u_{(\ell+t)}v)\qquad(\ell\in\Z),
+\end{equation}
+in modes: $\bigl(\chsevenF_e(u)_{(\ell)}\chsevenF_{e'}(v)\bigr)_{(s)} = \sum_t\binom{e/N}{t}
+(u_{(\ell+t)}v)_{((N(s-t)+e+e')/N)}$.
+\end{definition}
+
+\begin{physics}
+The twisted product formula is the OPE of twisted fields in the presence of the twist field: it says that as $z_1\to z_2$ the product $Y_M(u,z_1)Y_M(v,z_2)$ reproduces the OPE $Y(u,z_{12})v$ of the untwisted theory, but with the extra factor $(1+z_{12}/z_2)^{e/N}$ which is the Taylor expansion of the branch cut $z_1^{e/N}=(z_2+z_{12})^{e/N}$ of the twisted field. Heuristically this is the statement that the local OPE does not know about the twist, while the monodromy appears as a correction in powers of $z_{12}/z_2$ governed by the distance to the origin; it is the algebraic form of associativity of twisted correlators $\langle\sigma|\cdots|\sigma\rangle$.
+\end{physics}
+
+\noindent Granting \eqref{ch07:eq:pf}, the right side of \eqref{ch07:eq:fieldjacobi} becomes
+\begin{equation*}
+  \sum_{i,t\ge0}\binom mi\binom{e/N}{t}(u_{(\ell+i+t)}v)_{(\dots)} = \sum_{\varsigma\ge0}
+  \Bigl[\sum_{i+t=\varsigma}\binom mi\binom{e/N}t\Bigr](u_{(\ell+\varsigma)}v)_{(\dots)}
+  = \sum_{\varsigma}\binom{m+e/N}{\varsigma}(u_{(\ell+\varsigma)}v)_{(\dots)},
+\end{equation*}
+and $m+e/N = k/N$: the fractional binomial appears. The middle step is
+
+\begin{lemma}[Complex Chu--Vandermonde]\label{ch07:lem:vandermonde}
+For $x,y\in\C$ and $s\in\N$, $\binom{x+y}{s} = \sum_{i+t=s}\binom xi\binom yt$.
+\end{lemma}
+
+\begin{leancode}
+theorem cbinom_add (x y : ℂ) (s : ℕ) :
+    cbinom (x + y) s = ∑ ij ∈ Finset.antidiagonal s, cbinom x ij.1 * cbinom y ij.2
+\end{leancode}
+
+\begin{dictionary}
+\verb|Finset.antidiagonal s| is the finite set $\{(i,t)\in\N^2: i+t=s\}$. Same statement as the
+lemma. The library also proves \lean{cbinom_eq_ringChoose}: \lean{cbinom} agrees with Mathlib's
+binomial-ring \verb|Ring.choose|, which is what makes the Mathlib theorem
+\verb|Ring.add_choose_eq| available.
+\end{dictionary}
+
+\begin{physics}
+This is the binomial theorem in disguise, $(1+x)^{a+b}=(1+x)^a(1+x)^b$: it expresses that the branch factors $(1+z_{12}/z_2)^{e/N}$ and the integer-power expansion $(1+z_{12}/z_2)^m$ multiply to give the total fractional power $(k/N)$. A purely algebraic input to the twisted OPE; there is no further physics in it.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Both sides are polynomials in $(x,y)$ of degree $s$ that agree on $\N^2$ (count $s$-subsets of a
+disjoint union of an $x$-set and a $y$-set); polynomials agreeing on $\N^2$ are equal.
+\end{proof}
+
+\begin{status}
+Unconditional, axiom-clean. \leanpath{VOA/Moonshine/HeisenbergTwistedModuleReduction.lean}.
+\end{status}
+
+\subsection{Rescaled fields}
+
+\begin{definition}[Rescaled field]\label{ch07:def:resc}
+For $A:\Z\to\End M$ (think $A(k) = u_{(k/N)}$), $N\in\N$ and $e\in\Z$, $\mathrm{resc}(A,N,e)$
+is the distribution with $p$-th mode $A(Np+e)$.
+\end{definition}
+
+\begin{leancode}
+def resc (A : ℤ → End ℂ M) (N : ℕ) (e : ℤ) : FormalDist (End ℂ M) :=
+  fun n => A (N * (-n - 1) + e)
+
+@[simp] theorem mode_resc (A : ℤ → End ℂ M) (N : ℕ) (e p : ℤ) :
+    mode (resc A N e) p = A (N * p + e)
+
+theorem resc_isField {A : ℤ → End ℂ M} {N : ℕ} (hN : 0 < N)
+    (htr : ∀ x : M, ∃ K : ℤ, ∀ k : ℤ, K ≤ k → A k x = 0) (e : ℤ) : IsField (resc A N e)
+
+def rescFld {A : ℤ → End ℂ M} {N : ℕ} (hN : 0 < N)
+    (htr : ∀ x : M, ∃ K : ℤ, ∀ k : ℤ, K ≤ k → A k x = 0) (e : ℤ) : Fld M :=
+  ⟨resc A N e, resc_isField hN htr e⟩
+\end{leancode}
+
+\begin{dictionary}
+The coefficient of $z^n$ is $A(N(-n-1)+e)$, so the coefficient of $z^{-p-1}$ (the $p$-th mode) is
+$A(Np+e) = u_{((Np+e)/N)} = u_{(p+e/N)}$, which is \eqref{ch07:eq:resc}. \lean{mode_resc} is
+this computation. The hypothesis \verb|htr| is lower truncation of $A$ (fractional modes vanish
+for large index), and it makes $\mathrm{resc}$ a field; \lean{rescFld} packages it.
+\end{dictionary}
+
+\begin{physics}
+Rescaling by $z^{e/N}$ removes the branch cut: $z^{e/N}Y_M(u,z)$ has integer exponents and is single-valued, as a physicist would do by multiplying a twisted field by the compensating phase from the twist-field OPE. For the boson $F_a(z)=z^{1/2}\partial X_a(z)$ is the single-valued field obtained by stripping off the $\sqrt z$ branch cut of the antiperiodic current; it is a heuristic change of variables that turns twisted fields into ordinary (integer-moded) fields to which the untwisted OPE calculus applies.
+\end{physics}
+
+\subsection{The reduction theorems}
+
+\begin{theorem}[Twisted Jacobi from locality and the product formula]\label{ch07:thm:reduction1}
+Let $Y_M$ be lower truncated, $u,v\in\mathcal V$, $e,e'\in\Z$. Suppose $\chsevenF_e(u)$ and
+$\chsevenF_{e'}(v)$ are mutually local and satisfy the twisted product formula \eqref{ch07:eq:pf}
+at every $\ell'\ge\ell$ (resp.\ every $\ell'$). Then for all $x$ and all $m,n\in\Z$ the twisted
+Jacobi identity \eqref{ch07:eq:twjacobi} holds for $(u,v)$ at $\ell$ (resp.\ every $\ell$), with
+$k=Nm+e$ and the mode index of $v$ equal to $Nn+e'$.
+\end{theorem}
+
+\begin{leancode}
+theorem twisted_jacobi_of_local_pf_ge (W : VertexOperatorAlgebra 𝒱)
+    (YM : 𝒱 →ₗ[ℂ] (ℤ → End ℂ M))
+    {N : ℕ} (hN : 0 < N) (htr : ∀ (u : 𝒱) (x : M), ∃ K : ℤ, ∀ k : ℤ, K ≤ k → YM u k x = 0)
+    (u v : 𝒱) (e e' : ℤ)
+    (hloc : Local (resc (YM u) N e) (resc (YM v) N e')) (ℓ : ℤ)
+    (hpf : ∀ (ℓ' s : ℤ) (x : M), ℓ ≤ ℓ' →
+      mode (Fld.prod ℓ' (rescFld hN (htr u) e) (rescFld hN (htr v) e')).1 s x
+        = ∑ᶠ t : ℕ, cbinom ((e : ℂ) / N) t •
+            YM (W.smul u (ℓ' + t) v) (N * (s - t) + e + e') x)
+    (x : M) (m n : ℤ) :
+    (∑ᶠ i : ℤ, (negOnePow i * cbz ℓ i) •
+        (YM u (ℓ * N + (N * m + e) - i * N) (YM v ((N * n + e') + i * N) x)
+          - negOnePow ℓ • YM v (ℓ * N + (N * n + e') - i * N) (YM u ((N * m + e) + i * N) x)))
+      = ∑ᶠ i : ℕ, cbinom (((N * m + e : ℤ) : ℂ) / N) i •
+          YM (W.smul u (ℓ + i) v) ((N * m + e) + (N * n + e') - i * N) x
+
+theorem twisted_jacobi_of_local_pf (W : VertexOperatorAlgebra 𝒱) (YM : 𝒱 →ₗ[ℂ] (ℤ → End ℂ M))
+    {N : ℕ} (hN : 0 < N) (htr : ∀ (u : 𝒱) (x : M), ∃ K : ℤ, ∀ k : ℤ, K ≤ k → YM u k x = 0)
+    (u v : 𝒱) (e e' : ℤ)
+    (hloc : Local (resc (YM u) N e) (resc (YM v) N e'))
+    (hpf : ∀ (ℓ s : ℤ) (x : M),
+      mode (Fld.prod ℓ (rescFld hN (htr u) e) (rescFld hN (htr v) e')).1 s x
+        = ∑ᶠ t : ℕ, cbinom ((e : ℂ) / N) t •
+            YM (W.smul u (ℓ + t) v) (N * (s - t) + e + e') x)
+    (x : M) (ℓ m n : ℤ) :
+    (∑ᶠ i : ℤ, (negOnePow i * cbz ℓ i) •
+        (YM u (ℓ * N + (N * m + e) - i * N) (YM v ((N * n + e') + i * N) x)
+          - negOnePow ℓ • YM v (ℓ * N + (N * n + e') - i * N) (YM u ((N * m + e) + i * N) x)))
+      = ∑ᶠ i : ℕ, cbinom (((N * m + e : ℤ) : ℂ) / N) i •
+          YM (W.smul u (ℓ + i) v) ((N * m + e) + (N * n + e') - i * N) x
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Hypotheses.} \verb|hN|: $N\ge1$. \verb|htr|: lower truncation of all fractional modes
+(this is a field of \lean{TwistedModule}). \verb|hloc|: locality of the two rescaled fields
+(Definition~\ref{ch07:def:local}). \verb|hpf|: the mode form of \eqref{ch07:eq:pf}:
+\verb|YM (W.smul u (ℓ'+t) v) (N*(s-t)+e+e')| is $(u_{(\ell'+t)}v)_{((N(s-t)+e+e')/N)}$, the
+$(s-t)$-th mode of $\chsevenF_{e+e'}(u_{(\ell'+t)}v)$; the shift $s\mapsto s-t$ is the
+multiplication by $z^{-t}$. In the \verb|_ge| version the formula is only required at
+$\ell'\ge\ell$; this matters for the cross-check of \S\ref{ch07:sec:gencheck}, where only
+$\ell\ge0$ is available. \textbf{Conclusion.} With $k := Nm+e$ and $m' := Nn+e'$ this is
+\eqref{ch07:eq:twjacobi} for $(u,v,x,\ell,k,m')$ letter for letter
+(\verb|YM u (ℓ*N + k - i*N)| etc.). Note that no eigenspace hypothesis on $u$ appears: the
+theorem is about whichever class $e$ one chooses. \textbf{Why not vacuous.} Both hypotheses are
+consequences of the twisted Jacobi identity itself (the product formula is its $m$-independent
+part); they are therefore the honest targets, not stronger assumptions in disguise. The reader can
+also see that they are satisfiable: \S\ref{ch07:sec:pf} proves them for the Heisenberg example.
+\end{dictionary}
+
+\begin{physics}
+The theorem is the algebraic proof that crossing symmetry of the twisted correlators follows from two ingredients: locality of the stripped fields (fields at distinct points commute) and the form of the OPE in the presence of the twist field. It parallels the standard physics argument that once one knows the singularity structure of the two-point function of the twisted fields and the OPE, the commutation relations of all modes follow; Dong--Li--Mason's twisted Jacobi identity is the output. It mirrors how one derives commutators from OPEs by contour deformation, with the twist field giving the extra $(1+z_0/z)^{e/N}$ factor.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+This is the computation of \S\ref{ch07:sec:redidea} made precise. Apply
+\eqref{ch07:eq:fieldjacobi} to $a = \chsevenF_e(u)$, $b = \chsevenF_{e'}(v)$ (local by
+hypothesis) at $(\ell,m,n)$. Its left side is the left side of the claim after the index
+rewriting $\ell N+(Nm+e)-iN = N(\ell+m-i)+e$, etc. Its right side is
+$\sum_{i\ge0}\binom mi(a_{(\ell+i)}b)_{(m+n-i)}$; insert \eqref{ch07:eq:pf} with $\ell' = \ell+i
+\ge\ell$, regroup the double sum along $i+t = \varsigma$ (it is finite, because $u_{(p)}v = 0$
+for $p\gg0$), and apply Lemma~\ref{ch07:lem:vandermonde} with $x = m$, $y=e/N$, noting
+$m+e/N = (Nm+e)/N$.
+\end{proof}
+
+\begin{status}
+Unconditional (the hypotheses are explicit and are discharged for the Heisenberg example later
+in the chapter). Axiom-clean.
+\end{status}
+
+To get \lean{TwistedJacobi} one needs every $u\in\mathcal V^j$ on its support coset and every $v$
+on every class. Choosing offsets once and for all:
+
+\begin{theorem}[The assembled reduction]\label{ch07:thm:reduction}
+Let $g\in\Aut(W)$ and choose $\mathrm{off}(j)\equiv -j\pmod N$ for every $j$. If for every $j$,
+every $u\in\mathcal V^j$, every $v$ and every $e'\in\{0,\dots,N-1\}$ the fields
+$\chsevenF_{\mathrm{off}(j)}(u)$ and $\chsevenF_{e'}(v)$ are mutually local and satisfy
+\eqref{ch07:eq:pf}, then $Y_M$ satisfies the twisted Jacobi identity.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Moonshine/HeisenbergTwistedModuleReduction.lean}.
+\begin{leancode}
+theorem twistedJacobi_of_local_pf {W : VertexOperatorAlgebra 𝒱} (g : Aut W)
+    (YM : 𝒱 →ₗ[ℂ] (ℤ → End ℂ M)) {N : ℕ} (hN : 0 < N)
+    (htr : ∀ (u : 𝒱) (x : M), ∃ K : ℤ, ∀ k : ℤ, K ≤ k → YM u k x = 0)
+    (off : ℕ → ℤ) (hoff : ∀ j : ℕ, (off j + j) % (N : ℤ) = 0)
+    (hloc : ∀ (j : ℕ) (u : 𝒱), u ∈ g.twistedEigenspace N j → ∀ (v : 𝒱) (e' : ℤ),
+      0 ≤ e' → e' < N → Local (resc (YM u) N (off j)) (resc (YM v) N e'))
+    (hpf : ∀ (j : ℕ) (u : 𝒱), u ∈ g.twistedEigenspace N j → ∀ (v : 𝒱) (e' : ℤ),
+      0 ≤ e' → e' < N → ∀ (ℓ s : ℤ) (x : M),
+      mode (Fld.prod ℓ (rescFld hN (htr u) (off j)) (rescFld hN (htr v) e')).1 s x
+        = ∑ᶠ t : ℕ, cbinom ((off j : ℂ) / N) t •
+            YM (W.smul u (ℓ + t) v) (N * (s - t) + off j + e') x) :
+    TwistedJacobi g N YM
+\end{leancode}
+
+\begin{dictionary}
+\verb|hoff| says $N\mid \mathrm{off}(j)+j$. The conclusion is the predicate of
+\S\ref{ch07:sec:twmod}. \textbf{Why $e'\in[0,N)$ suffices:} any index $m'$ of $v$ is
+$N\lfloor m'/N\rfloor + (m'\bmod N)$; and any admissible $k$ for $u\in\mathcal V^j$ is
+$N q+\mathrm{off}(j)$. So every instance of \eqref{ch07:eq:twjacobi} is an instance of
+Theorem~\ref{ch07:thm:reduction1}. Note that the theorem does not need $v$ to be an eigenvector.
+\end{dictionary}
+
+\begin{physics}
+This is the same statement for all pairs of states, bookkept by the $\Z_N$-grading: operators in the $\mathcal V^j$ sector are multivalued with phase $e^{2\pi ij/N}$, and only the class $e'$ of the second operator modulo $N$ matters. Physically it says that to verify consistency of the whole twisted sector it is enough to check, for each pair, the ordinary local OPE with the rescaled fields; no information beyond the OPE and locality is required.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Given $u\in\mathcal V^j$, $v$, $x$, $\ell$, $k$ with $N\mid k+j$ and $m'$: write
+$k = Nq+\mathrm{off}(j)$ (possible since $N\mid k-\mathrm{off}(j)$), $m' = Nn+e'$ with
+$0\le e'<N$, and apply Theorem~\ref{ch07:thm:reduction1}.
+\end{proof}
+
+\begin{status}
+Unconditional as a reduction; axiom-clean.
+\end{status}
+
+\subsection{Binomial inversion}
+
+The twisted vertex operator will be \emph{defined} by the inverse of \eqref{ch07:eq:pf}. Since
+$(1+z_0/z)^{e/N}$ has inverse $(1+z_0/z)^{-e/N}$, \eqref{ch07:eq:pfgen} is equivalent to
+\begin{equation}\label{ch07:eq:pfinv}
+  \chsevenF_{e+e'}(u_{(\ell)}v) = \sum_{i\ge0}\binom{-e/N}{i}z^{-i}\,
+  \chsevenF_e(u)_{(\ell+i)}\chsevenF_{e'}(v).
+\end{equation}
+
+\begin{proposition}\label{ch07:prop:inverse}
+Let $c\in\C$ and let $P,Q:\Z\times\Z\to M$ vanish for $\ell\ge L$. If $Q(\ell,s) = \sum_{i\ge0}
+\binom{-c}{i}P(\ell+i,s-i)$ for all $\ell,s$, then $P(\ell,s) = \sum_{t\ge0}\binom ct
+Q(\ell+t,s-t)$ for all $\ell, s$.
+\end{proposition}
+
+\noindent File \leanpath{VOA/Moonshine/HeisenbergTwistedModuleReduction.lean}.
+\begin{leancode}
+theorem pf_of_inverse (c : ℂ) (P Q : ℤ → ℤ → M) (L : ℤ)
+    (hP : ∀ ℓ s, L ≤ ℓ → P ℓ s = 0) (hQ : ∀ ℓ s, L ≤ ℓ → Q ℓ s = 0)
+    (hinv : ∀ ℓ s, Q ℓ s = ∑ᶠ i : ℕ, cbinom (-c) i • P (ℓ + i) (s - i)) (ℓ s : ℤ) :
+    P ℓ s = ∑ᶠ t : ℕ, cbinom c t • Q (ℓ + t) (s - t)
+\end{leancode}
+
+\begin{dictionary}
+Exactly the proposition; the vanishing hypotheses make all sums finite. In use, $P(\ell,s)$ is
+the $s$-th mode (on a fixed vector) of $\chsevenF_e(u)_{(\ell)}\chsevenF_{e'}(v)$ and
+$Q(\ell,s)$ that of $\chsevenF_{e+e'}(u_{(\ell)}v)$; the second index $s-i$ is the shift by
+$z^{-i}$.
+\end{dictionary}
+
+\begin{physics}
+This is the inversion of the OPE correction factor, $(1+z_0/z)^{-c}(1+z_0/z)^{c}=1$. In the twisted-boson language it lets one pass from the OPE of two twisted fields (which is what one measures in a correlator) to the OPE of untwisted fields with a branch-cut factor removed, and conversely: the twisted vertex operator can be read off recursively from the twisted OPE, as in the physicist's procedure of defining composite twisted operators by point splitting and subtracting singular terms.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Substitute: $\sum_t\binom ct Q(\ell+t,s-t) = \sum_{\kappa\ge0}\bigl[\sum_{t+i=\kappa}\binom ct
+\binom{-c}{i}\bigr]P(\ell+\kappa,s-\kappa)$, and by Lemma~\ref{ch07:lem:vandermonde} the bracket
+is $\binom{0}{\kappa} = \delta_{\kappa,0}$.
+\end{proof}
+
+\begin{status}
+Unconditional, axiom-clean.
+\end{status}
+
+\section{The generator fields}\label{ch07:sec:generators}
+
+From now on $W = \lean{heisVOA1 r}$, $g = \sigma$, $N=2$, $M = S[\theta] = \lean{FockT r}$.
+
+\subsection{Support and truncation of the twisted Heisenberg field}
+
+The twisted vertex operator of $h_a(-1)\mathbf 1$ must be the twisted boson $h_a(z) =
+\sum_{t\in\frac12+\Z}h_a(t)z^{-t-1}$; as a fractional-mode family it is $k\mapsto h_a(k/2) =
+\lean{modeT r a k}$.
+
+\begin{proposition}\label{ch07:prop:gensupport}
+(i) $\lean{modeT r a k} = 0$ unless $k\equiv -1\pmod 2$; (ii) for every $x\in S[\theta]$,
+$h_a(k/2)x = 0$ for $k\gg0$.
+\end{proposition}
+
+\begin{leancode}
+theorem modeT_support (a : Fin r) (k : ℤ) (hk : (k + (1 : ℕ)) % ((2 : ℕ) : ℤ) ≠ 0) :
+    modeT r a k = 0
+theorem modeT_truncation (a : Fin r) (x : FockT r) :
+    ∃ K : ℤ, ∀ k : ℤ, K ≤ k → modeT r a k x = 0
+\end{leancode}
+
+\begin{dictionary}
+(i) is the support condition for $u = h_a(-1)\mathbf 1\in\mathcal V^1$ ($j=1$), in the exact
+syntactic form of the \verb|support| field (with casts \verb|(1 : ℕ)|, \verb|(2 : ℕ)|).
+(ii) is the \verb|truncation| field. Both hold trivially (even modes are $0$ by definition; a
+polynomial involves finitely many variables, and $h_a(k/2)$ for large odd $k$ differentiates
+along a variable that does not occur).
+\end{dictionary}
+
+\begin{physics}
+The twisted boson current $\partial X(z)=\sum_{t\in\frac12+\Z}\alpha_tz^{-t-1}$ has only half-integer modes (antiperiodic boundary conditions), and acting on any finite-energy state only finitely many annihilation modes are nonzero. These are the minimal consistency conditions: no integer modes means no zero mode and hence no momentum, since the twist field sits at a fixed point of $X\to-X$.
+\end{physics}
+
+\begin{status}
+Unconditional, axiom-clean. \leanpath{VOA/Moonshine/HeisenbergTwistedModuleGenerators.lean}.
+\end{status}
+
+\subsection{The rescaled generator \texorpdfstring{$z^{1/2}h_a(z)$}{z^(1/2)h(z)}}
+
+\begin{definition}\label{ch07:def:Fgen}
+$F_a(z) := \chsevenF_1(h_a(-1)\mathbf 1) = z^{1/2}h_a(z) = \sum_{p\in\Z}h_a(p+\tfrac12)z^{-p-1}$.
+\end{definition}
+
+\begin{leancode}
+noncomputable def Fgen (a : Fin r) : FormalDist (End ℂ (FockT r)) := resc (modeT r a) 2 1
+@[simp] theorem mode_Fgen (a : Fin r) (p : ℤ) : mode (Fgen r a) p = modeT r a (2 * p + 1)
+noncomputable def FgenFld (a : Fin r) : Fld (FockT r) :=
+  rescFld (A := modeT r a) (by norm_num : 0 < 2) (modeT_truncation r a) 1
+\end{leancode}
+
+\begin{dictionary}
+\verb|modeT r a (2p+1)| is $h_a(p+\frac12)$: the $p$-th mode of $F_a$, offset $e=1$. The
+offset $1\equiv -1\pmod2$ is the support coset of $\mathcal V^1$.
+\end{dictionary}
+
+\begin{physics}
+$F_a(z)=z^{1/2}\partial X_a(z)$ is the single-valued form of the antiperiodic current: multiplying by $\sqrt z$ compensates the branch cut at the twist field. Its modes are $h_a(p+\tfrac12)$ with $p\in\Z$, an integer-indexed family, so its OPE (below) is an ordinary single-valued one; a standard device in CFT (e.g.\ in the bosonic orbifold of Dixon--Friedan--Martinec--Shenker).
+\end{physics}
+
+\begin{theorem}[The generator commutator]\label{ch07:thm:Fgencomm}
+\begin{equation*}
+  [F_a(z_1),F_b(z_2)] = \delta_{ab}\Bigl(z_2\,\partial_{z_2}\delta(z_1,z_2) +
+  \tfrac12\,\delta(z_1,z_2)\Bigr).
+\end{equation*}
+Consequently $F_a$, $F_b$ are mutually local (of order $2$), and
+$F_{a(0)}F_b = \tfrac12\delta_{ab}\,1$, $F_{a(1)}F_b = \delta_{ab}\,z$, $F_{a(\ell)}F_b = 0$ for
+$\ell\ge2$.
+\end{theorem}
+
+\begin{leancode}
+noncomputable def opeOne (a b : Fin r) : FormalDist (End ℂ (FockT r)) :=
+  fun t => if t = 1 then (if a = b then (1 : ℂ) else 0) • LinearMap.id else 0
+noncomputable def opeZero (a b : Fin r) : FormalDist (End ℂ (FockT r)) :=
+  fun t => if t = 0 then (if a = b then (1 / 2 : ℂ) else 0) • LinearMap.id else 0
+
+theorem bracketDist_Fgen (a b : Fin r) :
+    bracketDist (Fgen r a) (Fgen r b)
+      = deltaDeriv 1 (opeOne r a b) + deltaDeriv 0 (opeZero r a b)
+theorem Fgen_local (a b : Fin r) : Local (Fgen r a) (Fgen r b)
+theorem prod_Fgen_zero (a b : Fin r) :
+    (Fld.prod 0 (FgenFld r a) (FgenFld r b)).1 = opeZero r a b
+theorem prod_Fgen_one (a b : Fin r) :
+    (Fld.prod 1 (FgenFld r a) (FgenFld r b)).1 = opeOne r a b
+theorem prod_Fgen_of_two_le (a b : Fin r) {ℓ : ℤ} (hℓ : 2 ≤ ℓ) :
+    (Fld.prod ℓ (FgenFld r a) (FgenFld r b)).1 = 0
+\end{leancode}
+
+\begin{dictionary}
+\verb|opeOne a b| has its only nonzero coefficient at $z^1$: it is $\delta_{ab}z\cdot
+\mathrm{id}$. \verb|opeZero a b| is $\frac12\delta_{ab}\mathrm{id}$ at $z^0$. By the decoding of
+\lean{deltaDeriv} (\S\ref{ch07:sec:local}), the right side of \lean{bracketDist_Fgen} is
+$\delta_{ab}z_2\partial_{z_2}\delta + \frac12\delta_{ab}\delta$: same as the theorem.
+\end{dictionary}
+
+\begin{physics}
+This is canonical quantisation of the twisted boson: $[\alpha_s,\alpha_t]=s\delta_{s+t,0}$ with $s,t\in\tfrac12+\Z$, rewritten for $z^{1/2}\partial X$. The double pole $\delta_{ab}\,z\,/(z_1-z_2)^2$ is the usual short-distance singularity $\partial X(z_1)\partial X(z_2)\sim1/(z_1-z_2)^2$ (the same in every sector), and the extra simple pole with residue $\tfrac12$ is the effect of the branch factor $\sqrt{z_1z_2}$ in the two-point function $\frac{(z_1/z_2)^{1/2}+(z_2/z_1)^{1/2}}{2(z_1-z_2)^2}$ of the twisted boson; it is the seed of the shift of $L_0$ by $1/16$ per boson.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Using $[h_a(s),h_b(t)] = s\delta_{ab}\delta_{s+t,0}$,
+\begin{equation*}
+  [F_a(z_1),F_b(z_2)] = \delta_{ab}\sum_{p\in\Z}(p+\tfrac12)z_1^{-p-1}z_2^{p}.
+\end{equation*}
+On the other hand $z_2\partial_{z_2}\delta(z_1,z_2) = \sum_m(-m-1)z_1^mz_2^{-m-1} =
+\sum_p p\,z_1^{-p-1}z_2^{p}$ and $\frac12\delta = \frac12\sum_pz_1^{-p-1}z_2^p$. Since
+$(z_1-z_2)\delta = 0$ and $(z_1-z_2)^2\partial\delta = 0$, the commutator is killed by
+$(z_1-z_2)^2$. The products for $\ell\ge0$ are $\Res_{z_1}(z_1-z_2)^\ell[F_a(z_1),F_b(z_2)]$:
+$\Res_{z_1}\delta = 1$, $\Res_{z_1}(z_1-z_2)\partial_{z_2}\delta = 1$, and all others vanish.
+\end{proof}
+
+\begin{remark}[Where the $\frac12$ comes from]
+For an \emph{untwisted} boson, $[h(z_1),h(z_2)] = \sum_p p\,z_1^{-p-1}z_2^{p-1} =
+\partial_{z_2}\delta(z_1,z_2)$, so $z_2^{1}\cdot$ that commutator is $z_2\partial_{z_2}\delta$
+and there is no $\delta$ term. For the twisted boson the mode labels are $p+\frac12$, and the
+coefficient $p+\frac12$ splits into $p$ (the untwisted pattern) plus a constant $\frac12$. That
+constant, a pure artefact of antiperiodicity, is the central term $F_{a(0)}F_b = \frac12$; it is
+the seed of every correction term below, including the vacuum energy.
+\end{remark}
+
+\begin{status}
+Unconditional, axiom-clean.
+\end{status}
+
+\subsection{A cross-check: two generators at \texorpdfstring{$\ell\ge0$}{l>=0}}
+\label{ch07:sec:gencheck}
+
+Before the general construction, the reduction can be tested on the simplest nontrivial case,
+and doing so pins down every convention (offset, binomial, vacuum index). In $W$,
+$h_a(-1)\mathbf 1_{(n)}h_b(-1)\mathbf 1 = \delta_{n,1}\delta_{ab}\mathbf 1$ for $n\ge0$ (this is
+\lean{smul_X_X_nonneg}).
+
+\begin{theorem}\label{ch07:thm:gencheck}
+Let $Y_M$ be \emph{any} linear, lower-truncated fractional-mode map on $\mathcal V$ with
+$Y_M(\mathbf 1)_{(k/2)} = \delta_{k,-2}$ and $Y_M(h_a(-1)\mathbf 1) = (h_a(k/2))_k$ for all $a$.
+Then the twisted Jacobi identity holds for $u = h_a(-1)\mathbf 1$, $v = h_b(-1)\mathbf 1$, every
+$\ell\ge0$, every odd $k$ and every $m$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Moonshine/HeisenbergTwistedModuleGenerators.lean}.
+\begin{leancode}
+variable (YM : FockN r →ₗ[ℂ] (ℤ → End ℂ (FockT r)))
+  (htr : ∀ (u : FockN r) (x : FockT r), ∃ K : ℤ, ∀ k : ℤ, K ≤ k → YM u k x = 0)
+  (hvac : ∀ k : ℤ, YM (vacuumN r) k = if k = -2 then 1 else 0)
+  (hgen : ∀ a : Fin r, YM (X (0, a)) = modeT r a)
+
+theorem twistedJacobi_generators_nonneg (a b : Fin r) (x : FockT r) (ℓ k m : ℤ) (hℓ : 0 ≤ ℓ)
+    (hk : (k + (1 : ℕ)) % ((2 : ℕ) : ℤ) = 0) :
+    (∑ᶠ i : ℤ, (negOnePow i * cbz ℓ i) •
+        (YM (X (0, a)) (ℓ * (2 : ℕ) + k - i * (2 : ℕ)) (YM (X (0, b)) (m + i * (2 : ℕ)) x)
+          - negOnePow ℓ • YM (X (0, b)) (ℓ * (2 : ℕ) + m - i * (2 : ℕ))
+              (YM (X (0, a)) (k + i * (2 : ℕ)) x)))
+      = ∑ᶠ i : ℕ, cbinom ((k : ℂ) / (2 : ℕ)) i •
+          YM ((heisVOA1 r).smul (X (0, a)) (ℓ + i) (X (0, b))) (k + m - i * (2 : ℕ)) x
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Hypotheses} (section variables, included in the theorem): \verb|YM| arbitrary linear;
+\verb|htr| truncation; \verb|hvac| the vacuum axiom for $N=2$ (\verb|k = -2| is $\mathbf
+1_{(-1)}$); \verb|hgen| the generators go to the twisted bosons. \verb|vacuumN r| is
+$\mathbf1 = 1\in\lean{FockN r}$. \textbf{Conclusion}: \eqref{ch07:eq:twjacobi} with $N=2$,
+$u = X(0,a)$, $v = X(0,b)$, restricted to $\ell\ge0$. \textbf{Weaker than the full identity}
+(only $\ell\ge0$, only generators), but stronger in another way: it holds for every $Y_M$ with
+these properties, so it is a test of conventions rather than of a construction.
+\end{dictionary}
+
+\begin{physics}
+This is a consistency check of conventions: two $\partial X$ insertions in the presence of the twist field, with the OPE singularity and the monodromy of the branch cut both accounted for, give the Jacobi identity at nonnegative pole order. Physically the test is that the commutator of two twisted currents is the canonical one, $[\alpha_s,\alpha_t]=s\delta_{s+t,0}$, with the fractional binomial supplying the $\sqrt z$ branch cut.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Take $e=1$ for $u$ and $e' = m\bmod 2$ for $v$. If $e'=0$ the rescaled field of $v$ on the even
+class is $0$ (twisted bosons have no integral modes), and both sides vanish. If $e'=1$ both
+rescaled fields are $F_a, F_b$, local by Theorem~\ref{ch07:thm:Fgencomm}. The product formula at
+$\ell\ge0$ reads: the left side is $F_{a(\ell)}F_b$, i.e.\ $\frac12\delta_{ab}$, $\delta_{ab}z$,
+$0$ for $\ell = 0,1,\ge2$; the right side is $\sum_t\binom{1/2}{t}z^{-t}\chsevenF_2(u_{(\ell+t)}v)$,
+and only $\ell+t=1$ contributes, with $\chsevenF_2(\mathbf 1) = z$ (the vacuum on the even class
+$2$ is $z^{2/2}\cdot\mathrm{id}$). For $\ell=1$: $t=0$, giving $z$. For $\ell=0$: $t=1$, giving
+$\binom{1/2}{1}z^{-1}z = \frac12$. For $\ell\ge2$: nothing. So the product formula holds at
+$\ell\ge0$, and Theorem~\ref{ch07:thm:reduction1} (the \verb|_ge| form) applies. Note how the
+twisted central term $\frac12$ is matched by the fractional binomial $\binom{1/2}{1}$: this is
+the twisted Heisenberg relation $[h_a(k/2),h_b(m/2)] = \frac k2\delta_{ab}\delta_{k+m,0}$ in
+disguise.
+\end{proof}
+
+\begin{status}
+Unconditional, axiom-clean. It is later specialised to the constructed $Y^T$
+(\lean{twistedJacobi_generators_nonneg_YT}), and superseded by Theorem~\ref{ch07:thm:jacobiYT}.
+\end{status}
+
+\section{Locality of everything generated}\label{ch07:sec:locality}
+
+\subsection{Multiplication by powers of \texorpdfstring{$z$}{z}}
+
+The rescaled field of $u$ on the class $e+N$ is $z$ times the one on the class $e$. So the
+system of fields we work with must be closed under $z^k\cdot$.
+
+\begin{definition}\label{ch07:def:zmul}
+$(z^k a)(z)$ has coefficient $a_{n-k}$ at $z^n$; its $p$-th mode is $a_{(p+k)}$.
+\end{definition}
+
+\noindent File \leanpath{VOA/Moonshine/HeisenbergTwistedModuleLocality.lean}.
+\begin{leancode}
+def zmul (k : ℤ) (a : FormalDist (End ℂ M)) : FormalDist (End ℂ M) := fun n => a (n - k)
+@[simp] theorem mode_zmul (k : ℤ) (a : FormalDist (End ℂ M)) (p : ℤ) :
+    mode (zmul k a) p = mode a (p + k)
+theorem resc_add_N (A : ℤ → End ℂ M) (N : ℕ) (e : ℤ) :
+    resc A N (e + N) = zmul 1 (resc A N e)
+def fzmul (k : ℤ) (a : Fld M) : Fld M := ⟨zmul k a.1, isField_zmul a.2 k⟩
+theorem Local.zmul_left {a b : FormalDist (End ℂ M)} (h : Local a b) (k : ℤ) :
+    Local (zmul k a) b
+\end{leancode}
+
+\begin{dictionary}
+Direct transcriptions. \lean{Local.zmul_left} (and its mirror \lean{Local.zmul_right}) hold
+because multiplication by $z_1^k$ commutes with multiplication by $(z_1-z_2)^N$.
+\end{dictionary}
+
+\begin{physics}
+Multiplying by $z^k$ is the operation of multiplying a field by a power of the radial coordinate; in CFT this changes the conformal weight by $-k$ in the sense of the $L_0$-grading and shifts the labels of the modes. It is the formal counterpart of passing between $\sqrt z\,\partial X$ and $\partial X$, and so between the single-valued and the multivalued description of the twisted current.
+\end{physics}
+
+\subsection{The generated system}
+
+\begin{definition}[Generated twisted system]\label{ch07:def:TGen}
+For a set $S$ of fields, $\langle S\rangle$ is the smallest set of fields containing $S$, the
+identity field and $0$, and closed under all products $a_{(n)}b$ ($n\in\Z$), all $z^k\cdot$
+($k\in\Z$), sums and scalar multiples. In Lean it is defined with a size index $i$ (the number
+of operations used), to support induction.
+\end{definition}
+
+\noindent File \leanpath{VOA/Moonshine/HeisenbergTwistedModuleLocality.lean}.
+\begin{leancode}
+inductive TGen (S : Set (Fld M)) : ℕ → Fld M → Prop
+  | base {a : Fld M} : a ∈ S → TGen S 0 a
+  | one : TGen S 0 Fld.one
+  | zero : TGen S 0 0
+  | prod {i j : ℕ} {a b : Fld M} (n : ℤ) : TGen S i a → TGen S j b →
+      TGen S (i + j + 1) (Fld.prod n a b)
+  | zmul {i : ℕ} {a : Fld M} (k : ℤ) : TGen S i a → TGen S (i + 1) (fzmul k a)
+  | add {i j : ℕ} {a b : Fld M} : TGen S i a → TGen S j b → TGen S (i + j + 1) (a + b)
+  | smul {i : ℕ} {a : Fld M} (c : ℂ) : TGen S i a → TGen S (i + 1) (c • a)
+
+def TGenerated (S : Set (Fld M)) : Set (Fld M) := {a | ∃ i, TGen S i a}
+\end{leancode}
+
+\begin{dictionary}
+An inductive predicate: \verb|TGen S i a| holds exactly when $a$ can be built by the listed
+rules using $i$ steps; \lean{TGenerated S} forgets $i$. This is precisely $\langle S\rangle$.
+\end{dictionary}
+
+\begin{physics}
+The generated system is the algebra of local operators one gets by taking all products (OPE coefficients), derivatives, multiplications by powers of $z$ and linear combinations of the basic twisted currents: in CFT language, the operators of the twisted sector built from $\partial X$ by normal ordering and point splitting. Closure under OPE is what makes it a local operator algebra, and the construction shows that the physical operators in the twisted sector, built by normal ordering and point splitting from the fundamental boson, form a single local system.
+\end{physics}
+
+\begin{theorem}[Locality is inherited]\label{ch07:thm:tgenlocal}
+If the fields of $S$ are pairwise mutually local, then so are all fields of $\langle S\rangle$.
+In particular, for $S = \{F_a : a<r\}$, every two fields in $\langle S\rangle$ are mutually local.
+\end{theorem}
+
+\begin{leancode}
+theorem tgen_local (S : Set (Fld M)) (hS : ∀ a ∈ S, ∀ b ∈ S, Local a.1 b.1) :
+    ∀ (N i j : ℕ) (a b : Fld M), i + j ≤ N → TGen S i a → TGen S j b → Local a.1 b.1
+theorem tgenerated_local {S : Set (Fld M)} (hS : ∀ a ∈ S, ∀ b ∈ S, Local a.1 b.1)
+    {a b : Fld M} (ha : a ∈ TGenerated S) (hb : b ∈ TGenerated S) : Local a.1 b.1
+
+def genSet : Set (Fld (FockT r)) := Set.range (FgenFld r)
+theorem twistedSystem_local {a b : Fld (FockT r)} (ha : a ∈ TGenerated (genSet r))
+    (hb : b ∈ TGenerated (genSet r)) : Local a.1 b.1
+\end{leancode}
+
+\begin{dictionary}
+\verb|Set.range (FgenFld r)| is $\{F_a\}$. \lean{tgen_local} carries an auxiliary size bound
+$N$ for the strong induction; \lean{tgenerated_local} is the clean statement. Same as the theorem.
+\end{dictionary}
+
+\begin{physics}
+This is the free-field statement that every operator built from the twisted current by point splitting and normal ordering remains mutually local with every other, i.e.\ has a pole of finite order in its OPEs. Physically: the operators of a free CFT sector form a consistent set of local fields as soon as the basic current is local, and the twist field at the origin does not spoil this. Dong's lemma is the algebraic form of the fact that the OPE of two local fields is again a local field.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Strong induction on the total number of operations used to build $a$ and $b$. If one of them is
+an atom ($S$, $1$, $0$) and so is the other, use the hypothesis or the fact that $1$ and $0$ are
+local with everything. Otherwise decompose the non-atomic one: sums and scalars preserve locality;
+$z^k\cdot$ preserves it (above); and for a product $a_{(n)}b$ against $c$ use \emph{Dong's lemma}:
+if $a,b,c$ are pairwise local then $a_{(n)}b$ and $c$ are local, for every $n\in\Z$. The three
+pairwise localities needed are smaller instances.
+\end{proof}
+
+\begin{status}
+Unconditional, axiom-clean. \leanpath{VOA/Moonshine/HeisenbergTwistedModuleLocality.lean}.
+\end{status}
+
+The point is strategic: whatever $Y^T$ is, as long as every rescaled field it produces lies in
+$\langle F_a\rangle$, locality --- one of the two inputs of Theorem~\ref{ch07:thm:reduction} ---
+is automatic.
+
+\section{The twisted vertex operator}\label{ch07:sec:vertex}
+
+\subsection{The definition by inverting the product formula}\label{ch07:sec:Ywtdef}
+
+Suppose a twisted module structure $Y^T$ exists with $Y^T(h_a(-1)\mathbf 1,z) = h_a(z)$. Apply
+the inverse product formula \eqref{ch07:eq:pfinv} with $u = h_a(-1)\mathbf 1$ (class $e=1$,
+$\chsevenF_1(u) = F_a$), $\ell = -n-1$ and any state $w$ on a class $e'$. Since
+$u_{(-n-1)}w = h_a(-n-1)w$ is multiplication by the variable $x_{(n,a)}$,
+\begin{equation}\label{ch07:eq:creation}
+  \chsevenF_{e'+1}\bigl(x_{(n,a)}\,w\bigr) = \sum_{i\ge0}\binom{-1/2}{i}\,z^{-i}\,
+  F_{a(-n-1+i)}\,\chsevenF_{e'}(w).
+\end{equation}
+This is a \emph{recursion}: it expresses the rescaled twisted field of a monomial of degree $d+1$
+through that of a monomial of degree $d$, starting from $\chsevenF_0(\mathbf 1) = 1$. So $Y^T$ is
+\emph{forced}, and we may take \eqref{ch07:eq:creation} as its definition. The terms with
+$-n-1+i<0$ are normal-ordered products (the ``naive'' part, what one gets by substituting twisted
+bosons into the untwisted formula); the terms with $-n-1+i\ge0$ are contractions with the
+generators --- these are the correction terms that FLM collect into $\Delta_z$.
+
+A monomial is read through a \emph{word}: a list $l = [(n_1,a_1),\dots,(n_d,a_d)]$ of variables,
+the state being $x_{(n_1,a_1)}\cdots x_{(n_d,a_d)}$, with weight
+$\mathrm{wt}(l) = \sum (n_t+1)$.
+
+\begin{definition}[Twisted word fields]\label{ch07:def:Ywt}
+$\widetilde Y([\,]) = 1$ and
+\begin{equation*}
+  \widetilde Y\bigl((n,a)::w\bigr) = \sum_{i=0}^{n+2+2\,\mathrm{wt}(w)}\binom{-1/2}{i}\,z^{-i}\,
+  F_{a(-n-1+i)}\widetilde Y(w).
+\end{equation*}
+\end{definition}
+
+\noindent Files \leanpath{VOA/Moonshine/HeisenbergTwistedModuleVertex.lean}, \leanpath{VOA/Examples/HeisenbergNVertex.lean}.
+\begin{leancode}
+noncomputable def Ywt : List (ℕ × Fin r) → Fld (FockT r)
+  | [] => Fld.one
+  | (c :: w) => ∑ i ∈ Finset.range (c.1 + 3 + 2 * wordWeightNN w),
+      cbinom (-1 / 2) i • fzmul (-(i : ℤ)) (Fld.prod (-(c.1 : ℤ) - 1 + i) (FgenFld r c.2) (Ywt w))
+
+def wordWeightNN (l : List (ℕ × Fin r)) : ℕ := (l.map (fun ia => ia.1 + 1)).sum
+\end{leancode}
+
+\begin{dictionary}
+\verb|c :: w| is the list with first letter $c = (c.1,c.2) = (n,a)$; \verb|Finset.range K| is
+$\{0,\dots,K-1\}$. \verb|fzmul (-i)| is $z^{-i}\cdot$ (\S\ref{ch07:sec:locality});
+\verb|Fld.prod (-n-1+i) (FgenFld r a) (Ywt w)| is $F_{a(-n-1+i)}\widetilde Y(w)$. The
+\textbf{explicit cut-off} $n+3+2\,\mathrm{wt}(w)$ replaces the infinite sum of
+\eqref{ch07:eq:creation}; it is harmless because $F_{b(k)}\widetilde Y(w) = 0$ for
+$k\ge 1+\mathrm{wt}(w)$ (Proposition~\ref{ch07:prop:cutoff}), so the omitted terms vanish. The
+definition is literally recursive on lists, so it is well-founded with no further argument.
+\end{dictionary}
+
+\begin{physics}
+This recursion is the point-splitting definition of composite twisted operators. To define the field of $\partial X\partial X\cdots$ at a point in the twisted sector one brings an additional current $F_a$ to the existing composite and subtracts the singular terms of the OPE, order by order; the terms with $-n-1+i<0$ are the naive normal-ordered product, while those with $-n-1+i\ge0$ are contractions with the existing composite, weighted by the Taylor coefficients $\binom{-1/2}{i}$ of the branch factor $(1+z_0/z)^{-1/2}$. These contractions are the physical origin of the $\Delta_z$ correction of FLM and, ultimately, of the $1/16$ vacuum energy; naive normal ordering of twisted modes alone gives the wrong stress tensor.
+\end{physics}
+
+\begin{definition}[The twisted vertex operator]\label{ch07:def:YT}
+For a monomial $x^m$ of degree $d$ with canonical word $l_m$,
+$Y^T(x^m)_{(k/2)} = \widetilde Y(l_m)_{((k-d)/2)}$ if $k\equiv d\pmod2$, and $0$ otherwise.
+$Y^T$ is extended linearly to $\lean{FockN r}$.
+\end{definition}
+
+\noindent Files \leanpath{VOA/Examples/HeisenbergNVertex.lean}, \leanpath{VOA/Moonshine/HeisenbergTwistedModuleVertex.lean}.
+\begin{leancode}
+noncomputable def monoWordN (a : (ℕ × Fin r) →₀ ℕ) : List (ℕ × Fin r) :=
+  a.support.toList.flatMap (fun ia => List.replicate (a ia) ia)
+
+noncomputable def YTmon (m : (ℕ × Fin r) →₀ ℕ) : ℤ → End ℂ (FockT r) := fun k =>
+  if (k - (monoWordN m).length) % 2 = 0 then
+    mode (Ywt r (monoWordN m)).1 ((k - (monoWordN m).length) / 2)
+  else 0
+
+noncomputable def YT : FockN r →ₗ[ℂ] (ℤ → End ℂ (FockT r)) :=
+  Finsupp.linearCombination ℂ (YTmon r)
+\end{leancode}
+
+\begin{dictionary}
+\lean{monoWordN m} lists every variable $v$ with multiplicity $m_v$, in the order of
+\verb|Finset.toList| --- an order Lean does not specify. Its length is $d = \deg m$
+(\lean{length_monoWordN}). \lean{Finsupp.linearCombination} extends a function on the monomial
+basis linearly (a polynomial \emph{is} a finitely supported coefficient function on monomials).
+\textbf{Decoding the index}: $\widetilde Y(l)$ is the rescaled field of the monomial on the class
+$e = d$; mode $p$ of it is $Y^T(x^m)_{(p+d/2)}$, i.e.\ fractional index $k = 2p+d$, $p = (k-d)/2$.
+\textbf{Two potential pitfalls}, both resolved later: (a) dependence on the unspecified letter
+order --- resolved by Theorem~\ref{ch07:thm:perm}; (b) the definition chooses the class $e=d$,
+consistent with the support condition since $x^m\in\mathcal V^d$ needs $k\equiv -d\equiv d$.
+\end{dictionary}
+
+\begin{physics}
+$Y^T(u,z)$ is the state--operator map in the presence of the twist field: it assigns to each local operator $u$ of the untwisted theory (a polynomial in $\partial X$ and its derivatives) the operator that acts on the twisted Fock space as that same local operator inserted in the antiperiodic sector, $\langle\sigma|\,u(z)\cdots|\sigma\rangle$. The modes are fractional because $u(z)$ of parity $d$ picks up $(-1)^d$ around the twist field, so a monomial of degree $d$ has modes in $\tfrac d2+\Z$. This is the definition that in the physics literature is obtained by writing the operator with point-splitting in the twisted sector.
+\end{physics}
+
+\subsection{First properties}
+
+\begin{theorem}\label{ch07:thm:YTbasic}
+(i) $Y^T(\mathbf 1)_{(k/2)} = \delta_{k,-2}\,\mathrm{id}$; (ii) $Y^T(h_a(-1)\mathbf 1)_{(k/2)} =
+h_a(k/2)$; (iii) lower truncation; (iv) the support condition: for $u\in\mathcal V^j$,
+$Y^T(u)_{(k/2)} = 0$ unless $k\equiv -j\pmod2$.
+\end{theorem}
+
+\begin{leancode}
+theorem YT_vacuum (k : ℤ) : YT r (vacuumN r) k = if k = -2 then 1 else 0
+theorem YT_X (a : Fin r) : YT r (X (0, a)) = modeT r a
+theorem YT_truncation (u : FockN r) (x : FockT r) :
+    ∃ K : ℤ, ∀ k : ℤ, K ≤ k → YT r u k x = 0
+theorem YT_support (j : ℕ) (u : FockN r) (hu : u ∈ (sigma1 r).twistedEigenspace 2 j)
+    (k : ℤ) (hk : (k + j) % ((2 : ℕ) : ℤ) ≠ 0) : YT r u k = 0
+\end{leancode}
+
+\begin{dictionary}
+These are, verbatim up to the definitional unfolding \verb|W.vacuum = vacuumN r| and the casts,
+the fields \verb|vacuum_YM|, \verb|truncation|, \verb|support| of \lean{TwistedModule} for
+$N=2$; (ii) is the requirement that the generators act by the twisted bosons. \verb|1| in (i) is
+the identity endomorphism. No hypotheses beyond $u\in\mathcal V^j$ in (iv).
+\end{dictionary}
+
+\begin{physics}
+These are the elementary consistency requirements of the state--operator correspondence: the identity operator acts trivially, the current $\partial X$ acts as the antiperiodic boson, local operators have finite singularity at the twist field (truncation), and the parity of a local operator under $X\to-X$ determines whether it has integer or half-integer modes (support). In particular $Y^T(\partial X,z)=\partial X(z)$ is the twisted boson with half-integer modes.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+(i) The vacuum is the empty word, $\widetilde Y([\,]) = 1(z)$ on the class $0$, whose only mode
+is $1_{(-1)} = \mathrm{id}$, i.e.\ $k = 2\cdot(-1)+0 = -2$. (ii) For the one-letter word
+$[(0,a)]$ the defining sum is $\sum_{i<3}\binom{-1/2}{i}z^{-i}F_{a(-1+i)}1$; since
+$F_{(-1)}1 = F$ and $F_{(j)}1 = 0$ for $j\ge0$, it is $F_a$ on the class $1$, whose modes are
+$h_a(p+\frac12)$. (iii) $\widetilde Y(l)$ is a field. (iv) An eigenvector $u\in\mathcal V^j$ only
+contains monomials of degree $d\equiv j$, each of whose fractional modes live on $k\equiv d$.
+\end{proof}
+
+\begin{status}
+Unconditional, axiom-clean. \leanpath{VOA/Moonshine/HeisenbergTwistedModuleVertex.lean}.
+\end{status}
+
+\subsection{Locality of all rescaled fields}
+
+\begin{theorem}\label{ch07:thm:YTlocal}
+For every state $u$ and class $e$, $\chsevenF_e(u)\in\langle F_a\rangle$. Hence for all
+$u, v, e, e'$ the fields $\chsevenF_e(u)$ and $\chsevenF_{e'}(v)$ are mutually local.
+\end{theorem}
+
+\begin{leancode}
+theorem resc_YT_mem (u : FockN r) (e : ℤ) :
+    ∃ F ∈ TGenerated (genSet r), resc (YT r u) 2 e = F.1
+theorem YT_local (u v : FockN r) (e e' : ℤ) :
+    Local (resc (YT r u) 2 e) (resc (YT r v) 2 e')
+\end{leancode}
+
+\begin{dictionary}
+\verb|resc (YT r u) 2 e| is $\chsevenF_e(u)$ (Definition~\ref{ch07:def:resc}). This discharges
+the locality hypothesis of Theorem~\ref{ch07:thm:reduction} for \emph{all} pairs and classes, more
+than is needed.
+\end{dictionary}
+
+\begin{physics}
+All twisted local operators are mutually local: the OPE of two arbitrary composite operators built from the twisted boson has only finite poles. This is the algebraic form of the physical expectation that free-field composite operators in the twisted sector form a local operator algebra with the twist field a spectator whose only effect is the monodromy.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+By construction $\widetilde Y(l)\in\langle F_a\rangle$ (each step uses products with $F_a$, powers
+of $z$, scalars and sums). For a monomial on the class $e$, $\chsevenF_e$ is $z^{(e-d)/2}
+\widetilde Y(l_m)$ or $0$; sums and scalars stay in $\langle F_a\rangle$. Then apply
+Theorem~\ref{ch07:thm:tgenlocal}.
+\end{proof}
+
+\begin{status}
+Unconditional, axiom-clean.
+\end{status}
+
+\subsection{What remained: the product formula}
+
+With locality in hand, Theorem~\ref{ch07:thm:reduction} (with $\mathrm{off}(j) = j$, which is
+$\equiv -j \bmod 2$) reduces the Jacobi identity to the product formula alone:
+
+\begin{leancode}
+theorem twistedJacobi_YT_of_productFormula
+    (hpf : ∀ (j : ℕ) (u : FockN r), u ∈ (sigma1 r).twistedEigenspace 2 j → ∀ (v : FockN r)
+      (e' : ℤ), 0 ≤ e' → e' < 2 → ∀ (ℓ s : ℤ) (x : FockT r),
+      mode (Fld.prod ℓ (rescFld (by norm_num : 0 < 2) (YT_truncation r u) (j : ℤ))
+          (rescFld (by norm_num : 0 < 2) (YT_truncation r v) e')).1 s x
+        = ∑ᶠ t : ℕ, cbinom ((((j : ℤ) : ℤ) : ℂ) / (2 : ℕ)) t •
+            YT r ((heisVOA1 r).smul u (ℓ + t) v) ((2 : ℕ) * (s - t) + (j : ℤ) + e') x) :
+    TwistedJacobi (sigma1 r) 2 (YT r)
+\end{leancode}
+
+\begin{dictionary}
+The single hypothesis \verb|hpf| is \eqref{ch07:eq:pf} for $u\in\mathcal V^j$ on the class $j$,
+every $v$ on the classes $0,1$. It is a genuine hypothesis in this theorem; it is discharged in
+\S\ref{ch07:sec:pf} (Theorem~\ref{ch07:thm:productFormula}).
+\end{dictionary}
+
+\begin{physics}
+This reduces the full twisted Jacobi identity, equivalent to crossing symmetry of the $\sigma$-twisted correlators, to the statement that the twisted OPE has the expected form with the branch factor $(1+z_0/z)^{e/2}$. Heuristically, once locality is known, the only datum that can be wrong is how the monodromy of the twist field enters the OPE, and that datum is the product formula.
+\end{physics}
+
+\begin{warning}
+The module docstring of \leanpath{HeisenbergTwistedModuleVertex.lean} still calls $Y^T$ a
+``candidate'' and says that \verb|hpf|, word-order independence and the composite Jacobi
+identity are ``not proved in this file''. That is accurate about the file, but historical: all
+three are proved downstream (Theorems~\ref{ch07:thm:perm}, \ref{ch07:thm:productFormula},
+\ref{ch07:thm:jacobiYT}). During the session that built these files an
+intermediate draft of \leanpath{HeisenbergTwistedModuleFieldComm.lean} contained \texttt{sorry}
+and was unwired; in that earlier version of the library the file was already \texttt{sorry}-free (as it is at a pre-release build commit) and (transitively, through \leanpath{HeisenbergTwistedModuleInstance.lean}) imported by the umbrella \leanpath{VOA/Moonshine.lean}.
+\end{warning}
+
+\section{The vacuum energy \texorpdfstring{$r/16$}{r/16}}\label{ch07:sec:L0}
+
+\subsection{The theorem}
+
+\begin{theorem}[$L_0$ of the twisted module]\label{ch07:thm:L0}
+$Y^T(\omega)_{(1)} = L_0^T = \sum_a\sum_{n\ge0}h_a(-n-\tfrac12)h_a(n+\tfrac12) + \tfrac r{16}$.
+Consequently $Y^T(\omega)_{(1)}$ acts on $\lean{weightT r q}$ by $q$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Moonshine/HeisenbergTwistedModuleL0.lean}.
+\begin{leancode}
+theorem YT_omega_two : YT r (heisVOA1 r).conformalVector 2 = L0T r
+
+theorem YT_omega_two_weightT {q : ℚ} {x : FockT r} (hx : x ∈ weightT r q) :
+    YT r (heisVOA1 r).conformalVector 2 x = (q : ℂ) • x
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Decoding.} \verb|YT r ω 2| is $\omega_{(2/2)} = \omega_{(1)}$, the twisted $L_0$
+(with $N=2$, the fractional index $k=N$ is mode $1$). \lean{L0T r} is
+$\frac12E+\frac r{16}$ (\S\ref{ch07:sec:fock}). \lean{weightT r q} is the span of the monomials
+with $d/2+r/16 = q$. \textbf{Fidelity.} Exactly the theorem. \textbf{Not circular:} the
+definition of $Y^T$ (Definition~\ref{ch07:def:Ywt}) mentions neither $r/16$ nor \lean{L0T}; the
+constant comes out of the binomial coefficients $\binom{-1/2}{i}$, as we now show.
+\end{dictionary}
+
+\begin{physics}
+The theorem is the statement that the Virasoro $L_0$ of the twisted sector, built from the stress tensor $T=\tfrac12{:}\partial X\partial X{:}$ inserted in the antiperiodic sector, equals the oscillator number $\sum_n(n+\tfrac12)\,N_n$ plus the zero-point energy $r/16$: each boson contributes $1/16$, so the twist field $\sigma$ has conformal weight $r/16$ (the familiar $h_\sigma=\tfrac1{16}$ of the $\Z_2$ twist field of a single $c=1$ boson). Heuristically the constant is a Casimir energy: with zeta-function regularisation $\tfrac12\sum_{n\ge0}(n+\tfrac12)=\tfrac1{48}$ while $\tfrac12\sum_{n\ge1}n=-\tfrac1{24}$, and the difference is $\tfrac1{16}$ (a heuristic cross-check, not the proof). In the library the number is not put in by hand but arises from the point-splitting contractions.
+\end{physics}
+
+\subsection{The computation}
+
+Since $\omega = \frac12\sum_a h_a(-1)^2\mathbf 1 = \frac12\sum_a x_{(0,a)}^2$, and $x_{(0,a)}^2$ is
+the word $[(0,a),(0,a)]$ of degree $d=2$, we need mode $0$ of
+$\widetilde Y([(0,a),(0,a)])$ (class $2$; mode $p$ corresponds to $k = 2p+2$; $k=2$ is $p=0$).
+By definition, with the cut-off $0+3+2\cdot1 = 5$,
+\begin{equation*}
+  \widetilde Y([(0,a),(0,a)]) = \sum_{i=0}^{4}\binom{-1/2}{i}z^{-i}F_{a(-1+i)}F_a .
+\end{equation*}
+By Theorem~\ref{ch07:thm:Fgencomm}, the terms are:
+\begin{itemize}
+  \item $i=0$: ${:}F_aF_a{:}$, whose mode $0$ is $2\sum_{n\ge0}h_a(-n-\frac12)h_a(n+\frac12)$
+  (each pair $(n,a)$ occurs twice in the normal-ordered square, once from each factor);
+  \item $i=1$: $\binom{-1/2}{1}z^{-1}F_{a(0)}F_a = (-\tfrac12)(\tfrac12)z^{-1} = -\tfrac14
+  z^{-1}$;
+  \item $i=2$: $\binom{-1/2}{2}z^{-2}F_{a(1)}F_a = \tfrac38 z^{-2}\cdot z = \tfrac38z^{-1}$,
+  since $\binom{-1/2}{2} = \frac{(-\frac12)(-\frac32)}{2} = \frac38$;
+  \item $i=3,4$: $F_{a(\ell)}F_a=0$ for $\ell\ge2$.
+\end{itemize}
+Mode $0$ of $c\,z^{-1}$ is $c$ (the coefficient of $z^{-1}$). Hence
+\begin{equation}\label{ch07:eq:oneeighth}
+  \widetilde Y([(0,a),(0,a)])_{(0)} = 2\sum_{n\ge0}h_a(-n-\tfrac12)h_a(n+\tfrac12) +
+  \Bigl(-\tfrac14+\tfrac38\Bigr) = 2\sum_{n\ge0}h_a(-n-\tfrac12)h_a(n+\tfrac12)+\tfrac18.
+\end{equation}
+Multiplying by $\frac12$ and summing over $a$ gives
+$\sum_{a,n}h_a(-n-\frac12)h_a(n+\frac12) + \frac r{16}$, which is $L_0^T$ by
+\lean{L0T_eq_modeSum}.
+
+\begin{leancode}
+theorem mode_Ywt_pair_zero (a : Fin r) :
+    mode (Ywt r [((0 : ℕ), a), ((0 : ℕ), a)]).1 0
+      = mode (nprod (FgenFld r a).2 (FgenFld r a).2) 0 + (1 / 8 : ℂ) • (1 : End ℂ (FockT r))
+\end{leancode}
+
+\begin{dictionary}
+This is \eqref{ch07:eq:oneeighth}: \verb|nprod| is ${:}F_aF_a{:}$, and \verb|(1/8) • 1| is the
+constant. The two correction terms are \emph{both} needed: the $-\frac14$ comes from the twisted
+central term $F_{(0)}F = \frac12$ and is negative; the $+\frac38$ comes from the ordinary double
+pole $F_{(1)}F = z$ and the second binomial coefficient.
+\end{dictionary}
+
+\begin{physics}
+This is the normal-ordering computation of the stress tensor in the twisted sector by point splitting. The two corrections $-\tfrac14$ (from the simple pole $\tfrac12$ of the twisted current OPE) and $+\tfrac38$ (from the double pole and the second Taylor coefficient of $(1+z_0/z)^{-1/2}$) add up to $\tfrac18$, which equals twice the vacuum energy per boson; it is the regular term $\tfrac1{8z_2^2}$ of $\langle\partial X(z_1)\partial X(z_2)\rangle_\sigma$ after subtracting $1/(z_1-z_2)^2$, i.e.\ $\langle\sigma|T(z)|\sigma\rangle=\tfrac1{16}z^{-2}$.
+\end{physics}
+
+\begin{status}
+\lean{YT_omega_two}: unconditional; \verb|#print axioms| gives \texttt{[propext,
+Classical.choice, Quot.sound]}. \leanpath{VOA/Moonshine/HeisenbergTwistedModuleL0.lean}.
+\end{status}
+
+\subsection{Comparison with FLM's \texorpdfstring{$\Delta_z$}{Delta_z}}
+
+FLM (and Lepowsky 1985) define the twisted vertex operator of the Heisenberg part as
+\begin{equation*}
+  Y^T(u,z) = Y_0\bigl(e^{\Delta_z}u,\,z\bigr),\qquad
+  \Delta_z = \sum_{m,n\ge0}c_{mn}\sum_a h_a(m)h_a(n)\,z^{-m-n},
+\end{equation*}
+where $Y_0$ is the naive operator (substitute the twisted boson into the normal-ordered
+monomial formula, with the appropriate power of $z$), $h_a(m)$, $m\ge0$, are the \emph{untwisted}
+annihilation operators acting on the state $u$, and the numbers $c_{mn}$ are defined by
+\begin{equation*}
+  \sum_{m,n\ge0}c_{mn}x^my^n = -\log\Bigl(\frac{(1+x)^{1/2}+(1+y)^{1/2}}{2}\Bigr).
+\end{equation*}
+Expanding $(1+x)^{1/2} = 1+\frac x2-\frac{x^2}8+\cdots$ gives $\frac{(1+x)^{1/2}+(1+y)^{1/2}}2 =
+1+u$ with $u = \frac{x+y}4-\frac{x^2+y^2}{16}+\cdots$, and $-\log(1+u) = -u+\frac{u^2}2-\cdots$;
+the coefficient of $xy$ comes only from $\frac{u^2}{2} \ni \frac{2xy}{32}$, so
+$c_{11} = \frac1{16}$. On $\omega_a = \frac12h_a(-1)^2\mathbf 1$ we have $h_a(0)\omega_a=0$ and
+$h_a(1)^2\omega_a = \mathbf 1$, so $\Delta_z\omega = \frac r{16}z^{-2}\mathbf 1$ (higher powers of
+$\Delta_z$ kill $\omega$), and
+$Y^T(\omega,z) = Y_0(\omega,z)+\frac r{16}z^{-2}$: the $z^{-2}$ coefficient, $L_0$, is shifted by
+$r/16$. Our $\frac18 = -\frac14+\frac38$ per boson, times the $\frac12$ in $\omega$, is this
+$c_{11}$. The library does not formalise $\Delta_z$; the comparison is on paper.
+
+\begin{remark}[The physicist's check]
+In conformal field theory the stress tensor of a free boson is $T(z) = \frac12{:}h(z)h(z){:}$,
+defined by point splitting: $T(z_2) = \frac12\lim_{z_1\to z_2}\bigl(h(z_1)h(z_2) -
+\langle h(z_1)h(z_2)\rangle_{\mathrm{sing}}\bigr)$, where one subtracts the singular part
+$1/(z_1-z_2)^2$ of the two-point function, which is the same in every sector. On the twisted
+ground state $\sigma$, $\langle h(z_1)h(z_2)\rangle$ means $\langle\sigma|h(z_1)h(z_2)|\sigma
+\rangle$; since $h(t)|\sigma\rangle = 0$ for $t>0$, only the commutators $[h(t),h(-t)] = t$
+contribute. The two-point function of an antiperiodic boson is therefore
+\begin{equation*}
+  \langle h(z_1)h(z_2)\rangle = \sum_{n\ge0}(n+\tfrac12)z_1^{-n-3/2}z_2^{n-1/2}
+  = \frac{(z_1/z_2)^{1/2}+(z_2/z_1)^{1/2}}{2(z_1-z_2)^2}.
+\end{equation*}
+Put $z_1 = z_2(1+x)$: $\frac12\bigl((1+x)^{1/2}+(1+x)^{-1/2}\bigr) = 1+\frac{x^2}8+O(x^3)$, so
+$\langle h(z_1)h(z_2)\rangle = \frac1{(z_1-z_2)^2}+\frac1{8z_2^2}+O(z_1-z_2)$. The regular term
+$\frac18z_2^{-2}$ survives the subtraction, so $\langle\sigma|T(z)|\sigma\rangle =
+\frac1{16}z^{-2}$; since $T(z) = \sum L_nz^{-n-2}$, this says $L_0|\sigma\rangle =
+\frac1{16}|\sigma\rangle$, the twisted ground-state energy $\frac1{16}$: the same $\frac18$ as in \eqref{ch07:eq:oneeighth}.
+\end{remark}
+
+\section{The commutator formula for products of local fields}\label{ch07:sec:comm}
+
+The remaining input, the product formula for all pairs, will be proved by induction on the
+second state using \emph{commutator} formulas only. The first is the field-level analogue of the
+VOA commutator formula $[u_{(p)},v_{(q)}] = \sum_{r\ge0}\binom pr(u_{(r)}v)_{(p+q-r)}$.
+
+\begin{theorem}[Commutator formula]\label{ch07:thm:comm}
+Let $A,B,C$ be fields on a vector space $M$ with $A,B$ mutually local, and let $L$ be such that
+$A_{(s)}B=0$ for $s\ge L$. Then for all $p,q\in\Z$,
+\begin{equation*}
+  A_{(p)}\bigl(B_{(q)}C\bigr) - B_{(q)}\bigl(A_{(p)}C\bigr) = \sum_{s=0}^{L-1}\binom ps\,
+  \bigl(A_{(s)}B\bigr)_{(p+q-s)}C .
+\end{equation*}
+\end{theorem}
+
+\noindent File \leanpath{VOA/Moonshine/HeisenbergTwistedModuleFieldComm.lean}.
+\begin{leancode}
+theorem prod_comm_formula (hAB : Local A.1 B.1) (L : ℕ)
+    (hL : ∀ r : ℕ, L ≤ r → Fld.prod r A B = 0) (p q : ℤ) :
+    Fld.prod p A (Fld.prod q B C) - Fld.prod q B (Fld.prod p A C)
+      = ∑ r ∈ Finset.range L, gBinom p r • Fld.prod (p + q - r) (Fld.prod r A B) C
+\end{leancode}
+
+\begin{dictionary}
+$A,B,C$ are section variables \verb|{A B C : Fld M}|. Subtraction and the sum are taken in the
+vector space of fields. \textbf{No locality of $C$} with $A$ or $B$ is assumed; this is
+correct and somewhat stronger than the usual statement inside a local system, and it is what
+makes the theorem usable for arbitrary $C$. The bound $L$ exists by locality; it only makes the
+sum finite (any larger $L$ gives the same sum).
+\end{dictionary}
+
+\begin{physics}
+This is the field-level form of the standard CFT statement that the commutator $[A(z_1),B(z_2)]$ is determined by the OPE singular terms: contour deformation turns the commutator of modes $[A_{(p)},B_{(q)}]$ into the modes of the OPE coefficients $A_{(s)}B$. Here it is used for composite operators of the twisted boson; heuristically it is the Ward-identity-style derivation of commutation relations from OPEs.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Compute the $N$-th mode of both nested products with the iterate formula
+\eqref{ch07:eq:iterate}. Each nested product expands into four families of triple products
+$A_\bullet B_\bullet C_\bullet$, $A_\bullet C_\bullet B_\bullet$, \dots{} of modes. Two families
+appear identically on both sides and cancel. The two that remain pair up into commutators
+$[A_{(\alpha)},B_{(\beta)}]$, applied to modes of $C$. Locality expresses each mode commutator by
+the ordinary commutator formula for local fields,
+$[A_{(\alpha)},B_{(\beta)}] = \sum_s\binom\alpha s(A_{(s)}B)_{(\alpha+\beta-s)}$. The resulting
+double binomial sums are regrouped by Vandermonde's identity into the iterate formula for
+$(A_{(s)}B)_{(p+q-s)}C$.
+\end{proof}
+
+\begin{status}
+Unconditional, axiom-clean. \leanpath{VOA/Moonshine/HeisenbergTwistedModuleFieldComm.lean}.
+\end{status}
+
+Two further identities control powers of $z$:
+
+\begin{proposition}\label{ch07:prop:zpow}
+For fields $A,B$ and $\ell,c\in\Z$: (i) $A_{(\ell)}(z^cB) = z^c(A_{(\ell)}B)$; (ii) if $A,B$ are
+local and $A_{(j+t)}B = 0$ for $t\ge T$, then $(z^cA)_{(j)}B = \sum_{t<T}\binom ct z^{c-t}
+A_{(j+t)}B$.
+\end{proposition}
+
+\begin{leancode}
+theorem prod_fzmul_right (ℓ c : ℤ) (A B : Fld M) :
+    Fld.prod ℓ A (fzmul c B) = fzmul c (Fld.prod ℓ A B)
+
+theorem prod_fzmul_left {D C : Fld M} (h : Local D.1 C.1) (c j : ℤ) (T : ℕ)
+    (hT : ∀ t : ℕ, T ≤ t → Fld.prod (j + t) D C = 0) :
+    Fld.prod j (fzmul c D) C
+      = ∑ t ∈ Finset.range T, gBinom c t • fzmul (c - t) (Fld.prod (j + t) D C)
+\end{leancode}
+
+\begin{dictionary}
+In (ii) the Lean names are $D,C$ for $A,B$. (i) needs no hypothesis: $z^c$ in the second slot
+is a function of the outer variable $z$. (ii) is the formal expansion
+$(z+z_0)^c = \sum_t\binom ct z^{c-t}z_0^t$ inside the product, which requires locality because
+the product is defined by residues of $(z_1-z)^n$ and one needs to trade $z_1^c$ for
+$(z+(z_1-z))^c$.
+\end{dictionary}
+
+\begin{physics}
+These identities express how the multivalued factor $z^c$ interacts with OPEs: $z^c$ sits at the position of the second operator and does not affect contractions, while a factor $z^c$ attached to the first operator is Taylor-expanded around the second, $(z_2+z_0)^c=\sum\binom ct z_2^{c-t}z_0^t$. Technical lemma in the computation of the OPE in the presence of the twist field.
+\end{physics}
+
+\begin{status}
+Unconditional, axiom-clean.
+\end{status}
+
+\section{Twisted products}\label{ch07:sec:star}
+
+\subsection{Definition}
+
+The inverse product formula \eqref{ch07:eq:pfinv} suggests a new product.
+
+\begin{definition}[Twisted product]\label{ch07:def:star}
+For a field $A$, $\alpha\in\C$, $p\in\Z$ and a field $X$,
+\begin{equation*}
+  A\star^{\alpha}_{p}X := \sum_{i\ge0}\binom{-\alpha}{i}z^{-i}\,A_{(p+i)}X,
+  \qquad\text{i.e.}\qquad \sum_p (A\star^\alpha_pX)\,z_0^{-p-1} = \Bigl(1+\frac{z_0}{z}\Bigr)^{-\alpha}
+  \sum_p (A_{(p)}X)z_0^{-p-1}.
+\end{equation*}
+\end{definition}
+
+\noindent File \leanpath{VOA/Moonshine/HeisenbergTwistedModuleTwistedComm.lean}.
+\begin{leancode}
+noncomputable def star (α : ℂ) (A : Fld M) (p : ℤ) (X : Fld M) : Fld M :=
+  ∑ᶠ i : ℕ, cbinom (-α) i • fzmul (-(i : ℤ)) (Fld.prod (p + i) A X)
+\end{leancode}
+
+\begin{dictionary}
+\verb|star α A p X| is $A\star^\alpha_pX$. The finitary sum \verb|∑ᶠ| is a genuine finite sum
+whenever $A$ and $X$ are local (then $A_{(p+i)}X = 0$ for $i\gg0$), which is always the case
+below; if $A,X$ were not local and infinitely many terms were nonzero, \verb|∑ᶠ| would return
+$0$ --- a junk value that never occurs in this chapter, since all twisted products are formed
+inside $\langle F_a\rangle$. With $\alpha=0$ it is the ordinary product (\lean{star_zero}).
+\end{dictionary}
+
+\begin{physics}
+The twisted product $A\star^\alpha_pX$ is the OPE coefficient of $A(z_0+z)X(z)$ with the extra branch factor $(1+z_0/z)^{-\alpha}$ removed: it is the product that a physicist would define for fields on the plane with a cut from the twist field, where the branch factor $(z+z_0)^{\alpha}$ of the first field must be accounted for when its position is shifted by $z_0$. With $\alpha=0$ it is the ordinary OPE coefficient; $\alpha=\tfrac12$ is the twist of the antiperiodic current.
+\end{physics}
+
+In this language the product formula, inverted, becomes the statement that $u\mapsto
+\chsevenF(u)$ is a \emph{homomorphism} from the products of $W$ to the twisted products:
+\begin{equation}\label{ch07:eq:starpf}
+  \chsevenF_e(u)\star^{e/2}_{\ell}\chsevenF_{e'}(v) = \chsevenF_{e+e'}(u_{(\ell)}v).
+\end{equation}
+
+\subsection{The twisted commutator formula}
+
+\begin{theorem}[Twisted commutator formula]\label{ch07:thm:starcomm}
+Let $S$ be a pairwise local set of fields and $A,B,C\in\langle S\rangle$; let $A_{(s)}B = 0$ for
+$s\ge L$. For $\alpha,\beta\in\C$ and $p,q\in\Z$,
+\begin{equation*}
+  A\star^\alpha_p\bigl(B\star^\beta_qC\bigr) - B\star^\beta_q\bigl(A\star^\alpha_pC\bigr)
+  = \sum_{s=0}^{L-1}\binom ps\bigl(A\star^\alpha_sB\bigr)\star^{\alpha+\beta}_{p+q-s}C .
+\end{equation*}
+\end{theorem}
+
+\noindent File \leanpath{VOA/Moonshine/HeisenbergTwistedModuleTwistedComm.lean}.
+\begin{leancode}
+theorem star_comm {S : Set (Fld M)} (hS : ∀ a ∈ S, ∀ b ∈ S, Local a.1 b.1) {A B C : Fld M}
+    (hA : A ∈ TGenerated S) (hB : B ∈ TGenerated S) (hC : C ∈ TGenerated S) (α β : ℂ)
+    (p q : ℤ) (L : ℕ) (hL : ∀ s : ℕ, L ≤ s → Fld.prod s A B = 0) :
+    star α A p (star β B q C) - star β B q (star α A p C)
+      = ∑ s ∈ Finset.range L, gBinom p s • star (α + β) (star α A s B) (p + q - s) C
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Hypotheses}: \verb|hS| pairwise locality of the generating set; \verb|hA hB hC|
+membership in the generated system (this guarantees every pair that occurs is local, so every
+\verb|∑ᶠ| is an honest finite sum); \verb|hL| a bound for the products $A_{(s)}B$. Note the
+twist $\alpha+\beta$ of the outer product on the right: the twists add, as the exponents
+$e/2$ do in \eqref{ch07:eq:starpf}. Same as the theorem.
+\end{dictionary}
+
+\begin{physics}
+This is the commutator-from-OPE formula in the presence of the twist field: the twist field modifies the product by the branch factor $(1+z_0/z)^{-\alpha}$, and the twists simply add when OPEs are composed, $\alpha+\beta$, reflecting that the monodromies around the origin multiply. Heuristically this is the twisted analogue of the Ward-type derivation of mode commutators from OPEs.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Expand both sides by the definition. On the left, using Proposition~\ref{ch07:prop:zpow}(i) to
+move powers of $z$ out of the second slot,
+\begin{equation*}
+  \text{LHS} = \sum_{i,k\ge0}\binom{-\alpha}i\binom{-\beta}kz^{-i-k}\Bigl(A_{(p+i)}B_{(q+k)}C -
+  B_{(q+k)}A_{(p+i)}C\Bigr),
+\end{equation*}
+and by Theorem~\ref{ch07:thm:comm} the bracket is $\sum_\varsigma\binom{p+i}\varsigma
+(A_{(\varsigma)}B)_{(p+q+i+k-\varsigma)}C$. On the right, $A\star^\alpha_sB = \sum_r
+\binom{-\alpha}rz^{-r}A_{(s+r)}B$, and Proposition~\ref{ch07:prop:zpow}(ii) expands
+$(z^{-r}D)_{(j)}C = \sum_t\binom{-r}tz^{-r-t}D_{(j+t)}C$. Collecting terms with $\varsigma = s+r$
+and total power $z^{-J}$ ($J = i+k$ on the left, $J = m+r+t$ on the right), the identity reduces
+to the binomial identity
+\begin{equation*}
+  \sum_{i+k=J}\binom{-\alpha}i\binom{-\beta}k\binom{p+i}\varsigma
+  = \sum_{s+r=\varsigma}\binom ps\binom{-\alpha}r\binom{-\alpha-\beta-r}{J-r},
+\end{equation*}
+proved by $\binom{p+i}{\varsigma} = \sum_{s+r=\varsigma}\binom ps\binom ir$ (Vandermonde),
+$\binom xi\binom ir = \binom xr\binom{x-r}{i-r}$, and Vandermonde again:
+$\sum_{i+k=J}\binom{-\alpha-r}{i-r}\binom{-\beta}{k} = \binom{-\alpha-\beta-r}{J-r}$.
+\end{proof}
+
+\begin{status}
+Unconditional, axiom-clean. \leanpath{VOA/Moonshine/HeisenbergTwistedModuleTwistedComm.lean}.
+\end{status}
+
+\subsection{Auxiliary identities}
+
+\begin{proposition}\label{ch07:prop:staraux}
+For fields $A, X$ (local where stated) and $\alpha\in\C$, $c,k,n\in\Z$:
+\begin{enumerate}[label=(\roman*)]
+  \item $A\star^\alpha_p(z^cX) = z^c(A\star^\alpha_pX)$;
+  \item ($A,X$ local) $(z^cA)\star^\alpha_pX = z^c\bigl(A\star^{\alpha-c}_pX\bigr)$: a power of $z$
+  in the first slot shifts the twist;
+  \item $A\star^\alpha_\ell 1 = 0$ for $\ell\ge0$, and $A\star^\alpha_{-1}1 = A$;
+  \item $(z^c1)\star^{c}_kX = \delta_{k,-1}\,z^cX$: the vacuum on the even class $2c$;
+  \item $(\partial A-\alpha z^{-1}A)\star^\alpha_n1 = -n\,A\star^\alpha_{n-1}1$;
+  \item ($G,Y$ local) $\partial(G\star^\alpha_qY) = G\star^\alpha_q\partial Y -
+  q\,G\star^\alpha_{q-1}Y + \alpha z^{-1}\,G\star^\alpha_qY$.
+\end{enumerate}
+\end{proposition}
+
+\begin{leancode}
+theorem star_fzmul_right (α : ℂ) (A : Fld M) (p c : ℤ) (X : Fld M) :
+    star α A p (fzmul c X) = fzmul c (star α A p X)
+theorem star_fzmul_left {A X : Fld M} (h : Local A.1 X.1) (α : ℂ) (c p : ℤ) :
+    star α (fzmul c A) p X = fzmul c (star (α - c) A p X)
+theorem star_one_right_nonneg (α : ℂ) (A : Fld M) {ℓ : ℤ} (hℓ : 0 ≤ ℓ) :
+    star α A ℓ Fld.one = 0
+theorem star_one_right_neg_one (α : ℂ) (A : Fld M) : star α A (-1) Fld.one = A
+theorem star_fzmul_one (c k : ℤ) (X : Fld M) :
+    star (c : ℂ) (fzmul c Fld.one) k X = if k = -1 then fzmul c X else 0
+theorem star_deriv_one (α : ℂ) (A : Fld M) (n : ℤ) :
+    star α (Fld.deriv A - α • fzmul (-1) A) n Fld.one
+      = (-n : ℂ) • star α A (n - 1) Fld.one
+theorem deriv_star {G Y : Fld M} (h : Local G.1 Y.1) (α : ℂ) (q : ℤ) :
+    Fld.deriv (star α G q Y)
+      = star α G q (Fld.deriv Y) - (q : ℂ) • star α G (q - 1) Y
+        + α • fzmul (-1) (star α G q Y)
+\end{leancode}
+
+\begin{dictionary}
+\lean{Fld.deriv} is $\partial_z$, mode-wise $(\partial a)_{(m)} = -m\,a_{(m-1)}$. In (iii)--(v)
+no locality hypothesis is needed, because the identity field is local with everything. These
+are all formal-calculus identities with the same content as stated.
+\end{dictionary}
+
+\begin{physics}
+Technical lemma in the twisted OPE calculus: (i)--(ii) say how multiplying by $z^c$ shifts the monodromy, (iii)--(iv) say that the vacuum (identity operator) has trivial OPE, up to the shift of class, and (v)--(vi) are the compatibility with translation $\partial_z$, the Ward identity for $L_{-1}$ in the presence of the twist field, where $\alpha z^{-1}$ is the derivative of the branch factor $z^\alpha$.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+(i) from Proposition~\ref{ch07:prop:zpow}(i). (ii) from Proposition~\ref{ch07:prop:zpow}(ii) and
+Vandermonde $\sum_{i+t=J}\binom{-\alpha}i\binom ct = \binom{-\alpha+c}{J}$. (iii) $A_{(j)}1 = 0$
+for $j\ge0$, $A_{(-1)}1 = A$. (iv) by (ii), $(z^c1)\star^c_kX = z^c(1\star^0_kX) =
+z^c(1_{(k)}X)$, and $1_{(k)}X = \delta_{k,-1}X$. (v) and (vi) are the derivative rules
+$(\partial A)_{(n)}X = -nA_{(n-1)}X$, $\partial(A_{(n)}X) = (\partial A)_{(n)}X+A_{(n)}\partial
+X$, plus $\partial z^{-i} = -iz^{-i-1}$ and $\binom{-\alpha}{i+1}(i+1) =
+\binom{-\alpha}i(-\alpha-i)$, which combine the $z^{-i-1}$ terms into $\alpha z^{-1}\cdot$.
+\end{proof}
+
+\begin{status}
+Unconditional, axiom-clean.
+\end{status}
+
+\section{Words: order independence and creation}\label{ch07:sec:words}
+
+\subsection{Twisted products of two generators}
+
+\begin{proposition}\label{ch07:prop:stargengen}
+$F_a\star^{1/2}_1F_b = \delta_{ab}\,z$, and $F_a\star^{1/2}_iF_b = 0$ for every other $i\in\N$.
+\end{proposition}
+
+\begin{leancode}
+theorem star_gen_gen (a b : Fin r) (i : ℕ) :
+    star (1 / 2) (FgenFld r a) i (FgenFld r b)
+      = if i = 1 then (if a = b then (1 : ℂ) else 0) • fzmul 1 (Fld.one : Fld (FockT r))
+        else 0
+\end{leancode}
+
+\begin{dictionary}
+\verb|fzmul 1 Fld.one| is $z\cdot1(z)$, which is $\chsevenF_2(\mathbf 1)$, the vacuum on the
+class $2$. So, by \eqref{ch07:eq:starpf}, this is the twisted image of the untwisted relations
+$h_a(-1)\mathbf 1_{(1)}h_b(-1)\mathbf 1 = \delta_{ab}\mathbf 1$, $\ (\cdot)_{(0)}(\cdot) = 0$,
+$(\cdot)_{(i)}(\cdot)=0$ for $i\ge2$. Only $i\ge0$ is stated ($i:\N$).
+\end{dictionary}
+
+\begin{physics}
+This is the OPE of the twisted current with itself after the branch factor $(1+z_0/z)^{-1/2}$ has been divided out: only the double pole $\delta_{ab}/(z_1-z_2)^2$ survives, and the extra simple pole $\tfrac12$ of $F_a$ is exactly cancelled. Heuristically this reflects that the short-distance singularity of $\partial X\partial X$ is the same in every sector, the sector dependence being carried entirely by the branch factor; it is the twisted image of the untwisted relations $h_a(-1)\mathbf 1_{(1)}h_b(-1)\mathbf 1=\delta_{ab}\mathbf 1$.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+$F_a\star^{1/2}_0F_b = F_{a(0)}F_b + \binom{-1/2}{1}z^{-1}F_{a(1)}F_b = \frac12\delta_{ab} -
+\frac12z^{-1}\delta_{ab}z = 0$: the twisted central term is cancelled exactly.
+$F_a\star^{1/2}_1F_b = F_{a(1)}F_b = \delta_{ab}z$ (the next term involves $F_{a(2)}F_b = 0$).
+Higher $i$: all products vanish.
+\end{proof}
+
+\begin{status}
+Unconditional, axiom-clean. \leanpath{VOA/Moonshine/HeisenbergTwistedModuleWords.lean}.
+\end{status}
+
+\subsection{The cut-off is harmless}
+
+\begin{proposition}\label{ch07:prop:cutoff}
+For every word $l$, every $b$ and every $k\ge1+\mathrm{wt}(l)$: $F_{b(k)}\widetilde Y(l) = 0$.
+Consequently $\widetilde Y((n,a)::w) = F_a\star^{1/2}_{-n-1}\widetilde Y(w)$.
+\end{proposition}
+
+\begin{leancode}
+theorem prod_Fgen_Ywt_eq_zero (b : Fin r) :
+    ∀ (l : List (ℕ × Fin r)) (k : ℤ), 1 + (wordWeightNN l : ℤ) ≤ k →
+      Fld.prod k (FgenFld r b) (Ywt r l) = 0
+
+theorem Ywt_cons_star (c : ℕ × Fin r) (w : List (ℕ × Fin r)) :
+    Ywt r (c :: w) = star (1 / 2) (FgenFld r c.2) (-(c.1 : ℤ) - 1) (Ywt r w)
+\end{leancode}
+
+\begin{dictionary}
+The first statement bounds the pole order of a generator against a word field by the
+conformal weight of the word plus one --- the field-theoretic shadow of $h_b(k)$ killing a state
+of weight $<k$. The second identifies the truncated recursion of Definition~\ref{ch07:def:Ywt}
+with the (untruncated) twisted product, because the terms beyond the cut-off involve
+$F_{a(k)}\widetilde Y(w)$ with $k\ge n+2+2\mathrm{wt}(w)\ge1+\mathrm{wt}(w)$.
+\end{dictionary}
+
+\begin{physics}
+A state of weight $\mathrm{wt}(l)$ is annihilated by oscillators of mode number above $\mathrm{wt}(l)$: a finite-energy state has no components of arbitrarily high annihilation modes. This is why the OPE of $\partial X$ with a composite operator has a pole of finite order, which is what truncates the point-splitting recursion; a technical lemma in the same computation.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Induction on $l$. For the empty word, $F_{b(k)}1 = 0$ for $k\ge0$. For $l = (n,a)::w$, each term
+of $\widetilde Y(l)$ is $z^{-i}F_{a(-n-1+i)}\widetilde Y(w)$; by
+Proposition~\ref{ch07:prop:zpow}(i) and Theorem~\ref{ch07:thm:comm},
+$F_{b(k)}F_{a(j)}\widetilde Y(w) = F_{a(j)}F_{b(k)}\widetilde Y(w) + \binom k0
+(F_{b(0)}F_a)_{(k+j)}\widetilde Y(w) + \binom k1(F_{b(1)}F_a)_{(k+j-1)}\widetilde Y(w)$. The first
+term is $0$ by induction ($k\ge1+\mathrm{wt}(w)$); the others are products of the scalar fields
+$\frac12$ and $z$ with $\widetilde Y(w)$ at nonnegative index, which vanish.
+\end{proof}
+
+\begin{status}
+Unconditional, axiom-clean.
+\end{status}
+
+\subsection{Order independence}
+
+\begin{theorem}[Word-order independence]\label{ch07:thm:perm}
+(i) For any $c, c'$ and any $\mathcal F\in\langle F_a\rangle$, the twisted creation operators
+commute: $F_{a}\star^{1/2}_{-n-1}\bigl(F_{a'}\star^{1/2}_{-n'-1}\mathcal F\bigr) =
+F_{a'}\star^{1/2}_{-n'-1}\bigl(F_{a}\star^{1/2}_{-n-1}\mathcal F\bigr)$, where $c=(n,a)$,
+$c'=(n',a')$. (ii) If $l'$ is a permutation of $l$, then $\widetilde Y(l) = \widetilde Y(l')$.
+\end{theorem}
+
+\begin{leancode}
+theorem star_gen_swap (c c' : ℕ × Fin r) {F : Fld (FockT r)} (hF : F ∈ TGenerated (genSet r)) :
+    star (1 / 2) (FgenFld r c.2) (-(c.1 : ℤ) - 1)
+        (star (1 / 2) (FgenFld r c'.2) (-(c'.1 : ℤ) - 1) F)
+      = star (1 / 2) (FgenFld r c'.2) (-(c'.1 : ℤ) - 1)
+          (star (1 / 2) (FgenFld r c.2) (-(c.1 : ℤ) - 1) F)
+
+theorem Ywt_perm {l l' : List (ℕ × Fin r)} (h : l.Perm l') : Ywt r l = Ywt r l'
+\end{leancode}
+
+\begin{dictionary}
+\verb|l.Perm l'| is ``$l'$ is a rearrangement of $l$''. Hence $\widetilde Y$ depends only on the
+multiset of letters, i.e.\ on the monomial; the unspecified order in \lean{monoWordN} is
+irrelevant, and Definition~\ref{ch07:def:YT} is a genuine function of the monomial.
+\textbf{Why this needed proof:} the recursion \eqref{ch07:eq:creation} visibly singles out the
+first letter; without (i), $Y^T$ could depend on an arbitrary choice made by \verb|Finset.toList|.
+\end{dictionary}
+
+\begin{physics}
+Bosonic composite operators do not care about the order of the factors: the normal-ordered product ${:}\partial X\,\partial X\cdots{:}$ is symmetric because the oscillators commute (bosons), and the Heisenberg relations $[\alpha_s,\alpha_t]=s\delta_{s+t,0}$ only contribute contractions between creation and annihilation modes. The theorem checks that the point-splitting definition of composite twisted operators respects this symmetry: it is consistent with Bose statistics.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+(i) Apply Theorem~\ref{ch07:thm:starcomm} with $\alpha=\beta=\frac12$, $p = -n-1$, $q=-n'-1$.
+By Proposition~\ref{ch07:prop:stargengen} only $s = 1$ contributes, giving
+$\binom p1\delta_{aa'}(z1)\star^1_{p+q-1}\mathcal F$, and by
+Proposition~\ref{ch07:prop:staraux}(iv) with $c=1$ this is $\delta_{p+q-1,-1}(\ldots)$; but
+$p+q-1 = -n-n'-3\le-3$. So the commutator vanishes. (ii) Every permutation is a composite of
+adjacent transpositions; use (i) and Proposition~\ref{ch07:prop:cutoff}.
+\end{proof}
+
+\begin{status}
+Unconditional, axiom-clean.
+\end{status}
+
+\subsection{The rescaled twisted vertex operators and creation}
+
+\begin{definition}\label{ch07:def:FT}
+$\chsevenF_e(u) := \mathrm{resc}(Y^T(u),2,e)$, the field with $p$-th mode $u_{(p+e/2)}$.
+\end{definition}
+
+\noindent File \leanpath{VOA/Moonshine/HeisenbergTwistedModuleWords.lean}.
+\begin{leancode}
+noncomputable def FT (e : ℤ) (u : FockN r) : Fld (FockT r) :=
+  rescFld (by norm_num : 0 < 2) (YT_truncation r u) e
+
+theorem FT_shift (e c : ℤ) (u : FockN r) : FT r (e + 2 * c) u = fzmul c (FT r e u)
+
+theorem FT_monomial (e : ℤ) (m : (ℕ × Fin r) →₀ ℕ) :
+    FT r e (monomial m 1) = if (e - m.degree) % 2 = 0
+      then fzmul ((e - m.degree) / 2) (Ywt r (monoWordN m)) else 0
+
+theorem FT_eq_zero_of_parity {j : ℕ} {u : FockN r} (hu : u ∈ (sigma1 r).twistedEigenspace 2 j)
+    {e : ℤ} (he : (e + j) % 2 ≠ 0) : FT r e u = 0
+\end{leancode}
+
+\begin{dictionary}
+\lean{FT} is $\chsevenF$ for the constructed $Y^T$; it is linear in $u$ (\lean{FT_add},
+\lean{FT_smul}). \lean{FT_shift}: moving the class by $2c$ multiplies by $z^c$.
+\lean{FT_monomial}: on a monomial of degree $d$, $\chsevenF_e = z^{(e-d)/2}\widetilde Y(l_m)$ if
+$e\equiv d$, else $0$. \lean{FT_eq_zero_of_parity}: off the support class the rescaled field
+vanishes.
+\end{dictionary}
+
+\begin{physics}
+$\widetilde F_e(u)$ is the single-valued form of the twisted operator associated to $u$: the operator $Y^T(u,z)$ multiplied by $z^{e/2}$ to cancel the branch cut. It is the object on which the untwisted OPE calculus is applied; physically it is the operator $u(z)$ in the presence of the twist field, with the monodromy factored out.
+\end{physics}
+
+\begin{theorem}[Creation]\label{ch07:thm:creation}
+For every state $w$, class $e$ and letter $(n,a)$:
+$\chsevenF_{e+1}\bigl(x_{(n,a)}w\bigr) = F_a\star^{1/2}_{-n-1}\chsevenF_e(w)$. Equivalently, since
+$h_a(-1)\mathbf 1_{(-n-1)}w = x_{(n,a)}w$ in $W$,
+$\chsevenF_{e+1}(b_{(-n-1)}w) = F_b\star^{1/2}_{-n-1}\chsevenF_e(w)$ for $b = h_b(-1)\mathbf 1$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Moonshine/HeisenbergTwistedModuleWords.lean}.
+\begin{leancode}
+theorem FT_mul_X (e : ℤ) (c : ℕ × Fin r) (w : FockN r) :
+    FT r (e + 1) (X c * w) = star (1 / 2) (FgenFld r c.2) (-(c.1 : ℤ) - 1) (FT r e w)
+
+theorem FT_gen_creation (e : ℤ) (b : Fin r) (n : ℕ) (w : FockN r) :
+    FT r (e + 1) ((heisVOA1 r).smul (X (0, b)) (-(n : ℤ) - 1) w)
+      = star (1 / 2) (FgenFld r b) (-(n : ℤ) - 1) (FT r e w)
+\end{leancode}
+
+\begin{dictionary}
+\verb|X c * w| is multiplication in the polynomial ring, i.e.\ $h_{c.2}(-c.1-1)w$. This is the
+product formula \eqref{ch07:eq:starpf} for $u$ a generator and $\ell<0$, for every $w$ (not only
+eigenvectors) and every class $e$.
+\end{dictionary}
+
+\begin{physics}
+Creating an extra oscillator at the origin by acting with $h_a(-n-1)$ on a state $w$ corresponds in the twisted sector to point-splitting the new $\partial X$ against the existing operator: the twisted operator of the product is the twisted OPE coefficient $F_a\star^{1/2}_{-n-1}$. This is the state--operator correspondence $|u\rangle=u(0)|\sigma\rangle$ in the twisted sector: acting with a mode of $\partial X$ on a state creates the state of the composite operator.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+By linearity reduce to $w$ a monomial $x^m$. If $e\not\equiv\deg m$ both sides vanish. Otherwise
+$x_{(n,a)}x^m$ has a canonical word that is a permutation of $(n,a)::l_m$, so by
+Theorem~\ref{ch07:thm:perm} and Proposition~\ref{ch07:prop:cutoff} its word field is
+$F_a\star^{1/2}_{-n-1}\widetilde Y(l_m)$; the powers of $z$ commute out of the second slot.
+\end{proof}
+
+\begin{status}
+Unconditional, axiom-clean.
+\end{status}
+
+\section{The twisted product formula for all pairs}\label{ch07:sec:pf}
+
+\subsection{Generators against everything}
+
+\begin{theorem}\label{ch07:thm:genPF}
+For every generator $b$, every class $e'$, every $\ell\in\Z$ and every state $w$:
+$F_b\star^{1/2}_\ell\chsevenF_{e'}(w) = \chsevenF_{e'+1}(b_{(\ell)}w)$, where $b = h_b(-1)\mathbf 1$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Moonshine/HeisenbergTwistedModuleProductFormula.lean}.
+\begin{leancode}
+theorem genPF (b : Fin r) (e' ℓ : ℤ) (w : FockN r) :
+    star (1 / 2) (FgenFld r b) ℓ (FT r e' w)
+      = FT r (e' + 1) ((heisVOA1 r).smul (X (0, b)) ℓ w)
+\end{leancode}
+
+\begin{dictionary}
+\eqref{ch07:eq:starpf} with $u = X(0,b)$, $e=1$ (so $e/2 = \frac12$), all $\ell$, all $w$, all
+$e'$. No hypotheses.
+\end{dictionary}
+
+\begin{physics}
+This is the product formula (twisted OPE) for the basic field $\partial X$ against any local operator: the OPE of the twisted current with an arbitrary composite operator is the OPE of the untwisted theory dressed by the branch factor. In free-field language it follows from Wick's theorem: the singular part of the OPE is a sum of contractions, which are computed by the canonical commutators $[\alpha_s,\alpha_t]$.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+For $\ell<0$ this is Theorem~\ref{ch07:thm:creation}. For $\ell\ge0$ induct on the monomial $w$.
+If $w = \mathbf 1$: the left side is $F_b\star^{1/2}_\ell(z^c1)$ or $0$, which vanishes by
+Proposition~\ref{ch07:prop:staraux}(i),(iii); the right side is $\chsevenF(b_{(\ell)}\mathbf 1) =
+0$. If $w = x_{(n,c)}w'$, write $\chsevenF_{e'}(w) = F_c\star^{1/2}_{-n-1}\chsevenF_{e'-1}(w')$
+and apply the twisted commutator formula (Theorem~\ref{ch07:thm:starcomm}) with $A = F_b$,
+$B = F_c$. By Proposition~\ref{ch07:prop:stargengen} and \ref{ch07:prop:staraux}(iv),
+\begin{equation*}
+  F_b\star^{1/2}_\ell\bigl(F_c\star^{1/2}_{-n-1}X\bigr) = F_c\star^{1/2}_{-n-1}\bigl(F_b
+  \star^{1/2}_\ell X\bigr) + \ell\,\delta_{bc}\,\delta_{\ell,n+1}\,zX.
+\end{equation*}
+By induction and creation the first term is $\chsevenF_{e'+1}(c_{(-n-1)}b_{(\ell)}w')$; the second
+is $\ell\delta_{bc}\delta_{\ell,n+1}\chsevenF_{e'+1}(w')$. In $W$,
+$b_{(\ell)}c_{(-n-1)}w' = c_{(-n-1)}b_{(\ell)}w' + \ell\delta_{bc}\delta_{\ell,n+1}w'$, the
+Heisenberg relation $[h_b(\ell),h_c(-n-1)] = \ell\delta_{bc}\delta_{\ell,n+1}$. The two sides agree.
+\end{proof}
+
+\begin{status}
+Unconditional, axiom-clean.
+\end{status}
+
+\subsection{Translation covariance and the vacuum}
+
+\begin{theorem}[Translation covariance]\label{ch07:thm:translation}
+For every class $e$ and state $u$:
+$\partial\chsevenF_e(u) - \frac e2z^{-1}\chsevenF_e(u) = \chsevenF_e(L_{-1}u)$. Consequently
+$\chsevenF_e(u)\star^{e/2}_\ell1 = \chsevenF_e(u_{(\ell)}\mathbf 1)$ for all $\ell$.
+\end{theorem}
+
+\begin{leancode}
+theorem FT_translation (e : ℤ) (u : FockN r) :
+    Fld.deriv (FT r e u) - ((e : ℂ) / 2) • fzmul (-1) (FT r e u)
+      = FT r e ((heisVOA1 r).toPreVertexAlgebra.T u)
+
+theorem starPF_one (e : ℤ) (u : FockN r) (ℓ : ℤ) :
+    star ((e : ℂ) / 2) (FT r e u) ℓ Fld.one = FT r e ((heisVOA1 r).smul u ℓ (vacuumN r))
+\end{leancode}
+
+\begin{dictionary}
+\verb|T| is the translation operator $L_{-1}$ of $W$ (\lean{T_eq_smul_omega}: $Tu =
+\omega_{(0)}u$). Since $\chsevenF_e(u) = z^{e/2}Y^T(u,z)$ (restricted to its class),
+$\partial\chsevenF_e = \frac e2z^{-1}\chsevenF_e + z^{e/2}\partial Y^T(u,z)$, so the first
+statement is the twisted $L_{-1}$-derivative property $\partial_zY^T(u,z) = Y^T(L_{-1}u,z)$. The
+second is \eqref{ch07:eq:starpf} with $v = \mathbf 1$ on the class $0$. Neither statement
+assumes $u$ is an eigenvector or that $e$ is on its class (off the class both sides are zero).
+\end{dictionary}
+
+\begin{physics}
+The translation property is the statement $\partial_zY^T(u,z)=Y^T(L_{-1}u,z)$: the derivative of a field is the field of the derivative state, with the extra term $\tfrac e2z^{-1}$ coming from differentiating the factor $z^{e/2}$ that was stripped off. Together with the vacuum property it expresses that $L_{-1}$ generates translations of the insertion point of every twisted field, as the Ward identity requires; translation covariance in the presence of the twist field is only a statement relative to the origin, whence the term $\tfrac e2z^{-1}$.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Translation: induct on monomials; for $u = x_{(n,c)}w$ use creation, the derivative rule
+(Proposition~\ref{ch07:prop:staraux}(vi)) with $\alpha = \frac12$, the induction hypothesis for
+$w$ on the class $e-1$, and $T(c_{(-n-1)}w) = c_{(-n-1)}Tw + (n+1)c_{(-n-2)}w$; the $z^{-1}$ terms
+combine as $\frac12+\frac{e-1}2 = \frac e2$. Vacuum: for $\ell\ge0$ both sides are $0$; for
+$\ell = -1$ both are $\chsevenF_e(u)$; for $\ell = -k-2$ use (v) of
+Proposition~\ref{ch07:prop:staraux} together with translation and $(Tu)_{(n)} = -nu_{(n-1)}$,
+by induction on $k$ (for all $u$ simultaneously), dividing by $k+1\ne0$.
+\end{proof}
+
+\begin{status}
+Unconditional, axiom-clean.
+\leanpath{VOA/Moonshine/HeisenbergTwistedModuleProductFormula.lean}.
+\end{status}
+
+\subsection{The product formula}
+
+\begin{theorem}[Twisted product formula, star form]\label{ch07:thm:starPF}
+Let $u\in\mathcal V^j$ and $e\equiv j\pmod2$. For every state $v$, every class $e'$ and every
+$\ell\in\Z$: $\chsevenF_e(u)\star^{e/2}_\ell\chsevenF_{e'}(v) = \chsevenF_{e+e'}(u_{(\ell)}v)$.
+\end{theorem}
+
+\begin{leancode}
+theorem starPF {j : ℕ} {u : FockN r} (hu : u ∈ (sigma1 r).twistedEigenspace 2 j) {e : ℤ}
+    (he : (e + j) % 2 = 0) (v : FockN r) (e' ℓ : ℤ) :
+    star ((e : ℂ) / 2) (FT r e u) ℓ (FT r e' v) = FT r (e + e') ((heisVOA1 r).smul u ℓ v)
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Hypotheses}: \verb|hu| $u$ is a $\sigma$-eigenvector of eigenvalue $(-1)^j$; \verb|he|
+$2\mid e+j$, i.e.\ the class of $u$ is its support class. Both are necessary in general: off its
+class $\chsevenF_e(u) = 0$, while $\chsevenF_{e+e'}(u_{(\ell)}v)$ need not vanish. $v$ is
+arbitrary. This is \eqref{ch07:eq:starpf}, i.e.\ the twisted vertex operator intertwines the
+products of $W$ with the twisted products. \textbf{Not vacuous}: the right side is nonzero in
+general (e.g.\ $u = v = h_a(-1)\mathbf 1$, $\ell = 1$ gives $z\cdot 1$).
+\end{dictionary}
+
+\begin{physics}
+This is the twisted OPE in full generality: the operator product of two twisted fields is given by the untwisted OPE $u_{(\ell)}v$ up to the branch factor $(1+z_{12}/z_2)^{e/2}$ of the cut from the twist field. In CFT terms it is associativity of the twisted correlator, equivalently that the twist field $\sigma(0)$ together with two operators at $z_1,z_2$ can be fused in the channel $z_1\to z_2$ without knowing the details of $\sigma$ beyond its monodromy; the proof uses only canonical commutation relations, not any correlator.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Induction on the monomial $v$, \emph{for all $u$ and $j$ simultaneously}. For $v = \mathbf 1$:
+Theorem~\ref{ch07:thm:translation} (classes $e'$ even; for odd $e'$ both sides are $0$ by
+parity). For $v = x_{(n,c)}v' = c_{(-n-1)}v'$: by creation,
+$\chsevenF_{e'}(v) = F_c\star^{1/2}_{-n-1}\chsevenF_{e'-1}(v')$. Apply
+Theorem~\ref{ch07:thm:starcomm} with the \emph{generator outside}: $A = F_c$,
+$B = \chsevenF_e(u)$, $C = \chsevenF_{e'-1}(v')$, twists $\frac12$ and $\frac e2$:
+\begin{multline*}
+  F_c\star^{1/2}_{-n-1}\bigl(\chsevenF_e(u)\star^{e/2}_\ell C\bigr) - \chsevenF_e(u)\star^{e/2}_\ell
+  \bigl(F_c\star^{1/2}_{-n-1}C\bigr)\\
+  = \sum_s\binom{-n-1}{s}\bigl(F_c\star^{1/2}_s\chsevenF_e(u)\bigr)\star^{(e+1)/2}_{-n-1+\ell-s}C.
+\end{multline*}
+The second term on the left is what we want. The first is, by induction (shorter $v'$) and
+creation, $\chsevenF_{e+e'}(c_{(-n-1)}u_{(\ell)}v')$. In the sum, Theorem~\ref{ch07:thm:genPF}
+gives $F_c\star^{1/2}_s\chsevenF_e(u) = \chsevenF_{e+1}(c_{(s)}u)$; now $c_{(s)}u\in\mathcal
+V^{j+1}$ and $e+1\equiv j+1$, so the induction hypothesis (for the eigenvector $c_{(s)}u$ and the
+shorter $v'$) turns each summand into $\chsevenF_{e+e'}((c_{(s)}u)_{(-n-1+\ell-s)}v')$. Finally the
+VOA commutator formula $c_{(-n-1)}u_{(\ell)}v' - u_{(\ell)}c_{(-n-1)}v' = \sum_s\binom{-n-1}s
+(c_{(s)}u)_{(-n-1+\ell-s)}v'$ matches the two sides. \emph{No associativity} of either side is
+used --- only commutator formulas, creation and translation.
+\end{proof}
+
+\begin{status}
+Unconditional; \verb|#print axioms starPF| $=$ \texttt{[propext, Classical.choice,
+Quot.sound]}.
+\end{status}
+
+\begin{theorem}[Twisted product formula, product form]\label{ch07:thm:productFormula}
+For $u\in\mathcal V^j$ and every $v$, class $e'$, $\ell, s$, $x$: the product formula
+\eqref{ch07:eq:pf} holds for $\chsevenF_j(u)$ and $\chsevenF_{e'}(v)$.
+\end{theorem}
+
+\begin{leancode}
+theorem productFormula_YT (j : ℕ) (u : FockN r) (hu : u ∈ (sigma1 r).twistedEigenspace 2 j)
+    (v : FockN r) (e' : ℤ) (ℓ s : ℤ) (x : FockT r) :
+    mode (Fld.prod ℓ (rescFld (by norm_num : 0 < 2) (YT_truncation r u) (j : ℤ))
+        (rescFld (by norm_num : 0 < 2) (YT_truncation r v) e')).1 s x
+      = ∑ᶠ t : ℕ, cbinom ((((j : ℤ) : ℤ) : ℂ) / (2 : ℕ)) t •
+          YT r ((heisVOA1 r).smul u (ℓ + t) v) ((2 : ℕ) * (s - t) + (j : ℤ) + e') x
+\end{leancode}
+
+\begin{dictionary}
+Character for character the hypothesis \verb|hpf| of \lean{twistedJacobi_YT_of_productFormula}
+(\S\ref{ch07:sec:vertex}), except that it holds for all $e'$, not only $e'\in\{0,1\}$.
+\end{dictionary}
+
+\begin{physics}
+The product form is the twisted OPE written mode by mode: it says that the commutation relations of the twisted modes follow from the untwisted OPE and the monodromy $e/2$ around the twist field. Physically it is the same statement as the star form, the input to the Jacobi identity.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Theorem~\ref{ch07:thm:starPF} with $e = j$ is the inverse formula \eqref{ch07:eq:pfinv} in modes;
+Proposition~\ref{ch07:prop:inverse} with $c = j/2$ inverts it (both families vanish for large
+$\ell$, by locality and by $u_{(\ell)}v = 0$ for $\ell\gg0$).
+\end{proof}
+
+\begin{status}
+Unconditional, axiom-clean.
+\end{status}
+
+\begin{theorem}[The twisted Jacobi identity]\label{ch07:thm:jacobiYT}
+$Y^T$ satisfies the Dong--Li--Mason twisted Jacobi identity \eqref{ch07:eq:twjacobi} for $\sigma$,
+$N=2$, for all pairs of states.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Moonshine/HeisenbergTwistedModuleProductFormula.lean}.
+\begin{leancode}
+theorem twistedJacobi_YT : TwistedJacobi (sigma1 r) 2 (YT r) :=
+  twistedJacobi_YT_of_productFormula r
+    (fun j u hu v e' _ _ ℓ s x => productFormula_YT r j u hu v e' ℓ s x)
+\end{leancode}
+
+\begin{dictionary}
+The one-line proof term is informative: it is literally ``the reduction of
+\S\ref{ch07:sec:vertex}, fed with Theorem~\ref{ch07:thm:productFormula}'', and locality was
+already built into that reduction (Theorem~\ref{ch07:thm:YTlocal}). \lean{TwistedJacobi} is
+defined in \S\ref{ch07:sec:twmod}.
+\end{dictionary}
+
+\begin{physics}
+The twisted Jacobi identity is the complete algebraic form of the consistency of the free boson in the $\Z_2$-twisted sector: locality, OPE and monodromy around the twist field all hold simultaneously, so the twisted sector is a genuine module of the orbifold chiral algebra. It encodes crossing symmetry of all correlators $\langle\sigma|\,u(z_1)\,v(z_2)\,|\sigma\rangle$ (sphere with the twist field at $0$ and the conjugate twist field at infinity).
+\end{physics}
+
+\begin{status}
+Unconditional; \verb|#print axioms twistedJacobi_YT| $=$ \texttt{[propext, Classical.choice,
+Quot.sound]}.
+\end{status}
+
+\section{The grading and the instance}\label{ch07:sec:instance}
+
+\subsection{The complex weight decomposition}
+
+\lean{TwistedModule} wants a grading indexed by $\C$; $S[\theta]$ comes with the grading
+\lean{gradingT r d} by doubled degree $d\in\N$, with $L_0$-eigenvalue $d/2+r/16$.
+
+\begin{definition}\label{ch07:def:weightC}
+$M_\alpha := \sum\{\lean{gradingT r d} : d\in\N,\ d/2+r/16 = \alpha\}\subseteq S[\theta]$, for
+$\alpha\in\C$.
+\end{definition}
+
+\begin{leancode}
+noncomputable def weightC (α : ℂ) : Submodule ℂ (FockT r) :=
+  ⨆ (d : ℕ) (_ : ((levelT r d : ℚ) : ℂ) = α), gradingT r d
+
+theorem weightC_isInternal : DirectSum.IsInternal (weightC r)
+theorem weightC_finiteDimensional (α : ℂ) : FiniteDimensional ℂ (weightC r α)
+theorem YT_omega_two_weightC {α : ℂ} {x : FockT r} (hx : x ∈ weightC r α) :
+    YT r (heisVOA1 r).conformalVector 2 x = α • x
+theorem weightC_boundedBelow :
+    ∃ B : ℝ, ∀ α : ℂ, weightC r α ≠ ⊥ → B ≤ α.re
+\end{leancode}
+
+\begin{dictionary}
+\verb|⨆| is the supremum (sum) of submodules over all $d$ satisfying the condition; since
+$d\mapsto d/2+r/16$ is injective, $M_\alpha$ is a single \lean{gradingT r d} or $0$
+(\lean{weightC_level}, \lean{weightC_eq_bot}). The four theorems are exactly the fields
+\verb|isInternal|, \verb|finrank|, \verb|L0_weight|, \verb|boundedBelow| of
+\lean{TwistedModule}; the bound is $B = r/16$. \textbf{Not vacuous}: the grading is the honest
+$L_0$-eigenspace decomposition (by \lean{YT_omega_two_weightC}, $L_0$ really acts by $\alpha$ on
+$M_\alpha$), and $M_{r/16} = \C\,\mathbf 1\ne0$.
+\end{dictionary}
+
+\begin{physics}
+The grading is by $L_0$, the conformal weight: oscillator states $h_{a_1}(-t_1)\cdots h_{a_m}(-t_m)|\sigma\rangle$, $t_i\in\tfrac12+\N$, have energy $\sum t_i+r/16$, with the twist-field ground state at $h_\sigma=r/16$. Finite-dimensionality of each level and the bound below are the standard properties of a unitary Fock space with positive-frequency oscillators (the partition function $\mathrm{Tr}\,q^{L_0-c/24}$ is then well defined).
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Monomials of each doubled degree $d$ are finitely many (each variable has weight $2n+1\ge1$), the
+polynomial ring is the direct sum of its homogeneous pieces, and $L_0^T$ acts on degree $d$ by
+$d/2+r/16$ (Theorem~\ref{ch07:thm:L0}). Real parts are $\ge r/16$.
+\end{proof}
+
+\begin{status}
+Unconditional, axiom-clean. \leanpath{VOA/Moonshine/HeisenbergTwistedModuleInstance.lean}.
+\end{status}
+
+\subsection{The main theorem}
+
+\begin{theorem}[The twisted Heisenberg module]\label{ch07:thm:main}
+For every $r\in\N$, the twisted Fock space $S[\theta]$, with the twisted vertex operator $Y^T$ of
+Definition~\ref{ch07:def:YT} and the grading $M_\alpha$, is a $\sigma$-twisted module of order $2$
+for the level-one rank-$r$ Heisenberg VOA, in the sense of Definition~\ref{ch07:def:twmod}. Its
+generators act by the twisted bosons, and its $L_0$ is $\sum h_a(-n-\frac12)h_a(n+\frac12) +
+\frac r{16}$.
+\end{theorem}
+
+\begin{leancode}
+noncomputable def heisTwistedModule : TwistedModule (sigma1 r) 2 (FockT r) where
+  YM := YT r
+  vacuum_YM k := by
+    change YT r (vacuumN r) k = _
+    rw [YT_vacuum]
+    push_cast
+    rfl
+  truncation := YT_truncation r
+  support := fun j u hu k hk => YT_support r j u hu k hk
+  jacobi := twistedJacobi_YT r
+  weight := weightC r
+  isInternal := weightC_isInternal r
+  L0_weight := fun α x hx => YT_omega_two_weightC r hx
+  finrank := weightC_finiteDimensional r
+  boundedBelow := weightC_boundedBelow r
+
+@[simp] theorem heisTwistedModule_YM : (heisTwistedModule r).YM = YT r := rfl
+\end{leancode}
+
+\begin{dictionary}
+\textbf{What the declaration asserts.} A \verb|def| whose type is the structure
+\lean{TwistedModule (sigma1 r) 2 (FockT r)}: Lean accepts it only if every field is supplied, so
+the existence of this term is the theorem. The field list is printed in full; each is a theorem
+of this chapter: \verb|YM| (Definition~\ref{ch07:def:YT}), \verb|vacuum_YM|, \verb|truncation|,
+\verb|support| (Theorem~\ref{ch07:thm:YTbasic}), \verb|jacobi|
+(Theorem~\ref{ch07:thm:jacobiYT}), and the grading fields (\S\ref{ch07:sec:instance}).
+\textbf{Hypotheses:} none, beyond $r\in\N$. \textbf{The additional content} of
+Theorem~\ref{ch07:thm:main} (generators act by twisted bosons; the form of $L_0$) is not part of
+the type \lean{TwistedModule}, but is recorded by \lean{heisTwistedModule_YM} together with
+\lean{YT_X} and \lean{YT_omega_two}. A referee should insist on this: \lean{TwistedModule} alone
+would also be satisfied by other structures (for instance, for $r=0$ the space is
+$\C$), so it is the pair ``instance $+$ \lean{YT_X} $+$ \lean{YT_omega_two}'' that identifies
+\emph{the} twisted Heisenberg module. \textbf{How it could have been vacuous:} before the
+2026-10-06 repair, the type \lean{TwistedModule (sigma1 r) 2 (FockT r)} was empty
+(\S\ref{ch07:sec:twmod}); with the repaired, DLM-faithful Jacobi field it is inhabited, and the
+inhabitant is nontrivial (\lean{FockT r} is a nonzero space --- the library records
+\verb|Nontrivial (FockT r)| --- with $Y^T(h_a(-1)\mathbf 1)\ne0$ for $r\ge1$).
+\end{dictionary}
+
+\begin{physics}
+This is the construction of the $\Z_2$-twisted sector of the rank-$r$ free-boson CFT: the Hilbert space of $r$ antiperiodic bosons, with twist field $\sigma$ of weight $r/16$ (for $r=24$ this is $24/16=\tfrac32$; this is the oscillator half of the twisted sector of the Leech lattice CFT by the lift of $-1$, which enters the Moonshine orbifold). The vertex operators $Y^T$ are the untwisted fields acting in the presence of the twist field, the half-integer modes realise the antiperiodic boundary condition, and the twisted Jacobi identity is crossing symmetry. This sector is what must be added to the $\Z_2$-invariant part of the Leech lattice CFT to obtain a modular-invariant theory, the Moonshine module.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Assemble: Theorems~\ref{ch07:thm:YTbasic}, \ref{ch07:thm:jacobiYT} and \S\ref{ch07:sec:instance}.
+\end{proof}
+
+\begin{status}
+\textbf{Unconditional.} \verb|#print axioms VOA.Moonshine.heisTwistedModule| (run while writing
+this chapter):
+\begin{plaincode}
+'VOA.Moonshine.heisTwistedModule' depends on axioms: [propext, Classical.choice, Quot.sound]
+\end{plaincode}
+No \lean{VOA.pbw}. This is only the Heisenberg part of the project's twisted-module milestone (the construction of the $\theta$-twisted
+module of the Leech lattice VOA): the lattice twisted module
+$S[\theta]\otimes T$ is constructed in Chapter~\ref{ch:08}.
+\end{status}
+
+\section{Dead ends, traps and corrections}\label{ch07:sec:deadends}
+
+\begin{warning}
+\textbf{1. The over-quantified Jacobi field} (\S\ref{ch07:sec:twmod}): unsatisfiable for $N\ge2$,
+certificate $u=v=\mathbf 1$, $\ell=-1$, $k=1$, $m=-N-1$ gives $0 = x$
+(\lean{jacobiAllIndices_eq_zero}). Repaired in \leanpath{VOA/Modularity/Twisted.lean}; the same
+defect remains in \lean{SuperTwistedModule.jacobi} (unrepaired, unused here).
+
+\textbf{2. Naive substitution is wrong.} Defining $Y^T(u)$ by the untwisted normal-ordered
+formula with $h$ replaced by the twisted $h$ (i.e.\ keeping only the $i$ with $-n-1+i<0$ in
+\eqref{ch07:eq:creation}) gives $Y^T(\omega)_{(1)} = \sum h(-n-\frac12)h(n+\frac12)$, missing the
+$r/16$; it also violates the product formula. The contraction terms are essential
+(\S\ref{ch07:sec:L0}).
+
+\textbf{3. Word order.} The canonical word of a monomial is produced by \verb|Finset.toList|,
+whose order is unspecified; until Theorem~\ref{ch07:thm:perm} was proved the definition of $Y^T$
+on quadratic states was not known to be choice-independent.
+
+\textbf{4. Stale docstrings.} \leanpath{HeisenbergTwistedModuleVertex.lean} and
+\leanpath{HeisenbergTwistedModuleGenerators.lean} describe the product formula and the
+$\ell<0$ Jacobi identity as ``not here''/``open''; they are proved in later files. A referee
+reading those docstrings should not conclude that the instance is conditional: its type has no
+hypotheses and its axioms are the standard three.
+\end{warning}
+
+\section{Referee's checklist}\label{ch07:sec:checklist}
+
+\begingroup\small
+\begin{longtable}{>{\raggedright\arraybackslash}p{3.6cm}>{\raggedright\arraybackslash}p{5.2cm}
+>{\raggedright\arraybackslash}p{3.0cm}>{\raggedright\arraybackslash}p{2.2cm}}
+\toprule
+Lean declaration & Intended meaning & Hypotheses & Status / check\\
+\midrule\endhead
+\lean{sigmaHeisAut}, \lean{sigma1} & $x\mapsto-x$ is an automorphism of the Heisenberg VOA &
+$k\ne0$ & uncond.; Thm~\ref{ch07:thm:sigmaaut}\\
+\lean{mem_twistedEigenspace_two_iff} & $\mathcal V^j = \{\sigma v=(-1)^jv\}$ & -- & uncond.;
+Prop.~\ref{ch07:prop:eigen}\\
+\lean{cbinom_add} & complex Vandermonde & -- & uncond.; Lem.~\ref{ch07:lem:vandermonde}\\
+\lean{twisted_jacobi_of_local_pf(_ge)} & locality $+$ product formula $\Rightarrow$ twisted
+Jacobi, one pair & \verb|hloc|, \verb|hpf| (explicit) & reduction; Thm~\ref{ch07:thm:reduction1}\\
+\lean{twistedJacobi_of_local_pf} & same, all pairs & offsets, \verb|hloc|, \verb|hpf| & reduction;
+Thm~\ref{ch07:thm:reduction}\\
+\lean{pf_of_inverse} & binomial inversion & vanishing for large $\ell$ & uncond.;
+Prop.~\ref{ch07:prop:inverse}\\
+\lean{bracketDist_Fgen}, \lean{Fgen_local} & $[F_a,F_b] = \delta(z_2\partial\delta+\frac12\delta)$
+& -- & uncond.; Thm~\ref{ch07:thm:Fgencomm}\\
+\lean{twistedJacobi_generators_nonneg} & generator Jacobi, $\ell\ge0$, for any $Y_M$ with given
+vacuum/generators & \verb|htr|, \verb|hvac|, \verb|hgen|, $\ell\ge0$ & uncond.\ (as stated);
+Thm~\ref{ch07:thm:gencheck}\\
+\lean{tgenerated_local}, \lean{twistedSystem_local} & generated system is pairwise local &
+pairwise local generators & uncond.; Thm~\ref{ch07:thm:tgenlocal}\\
+\lean{Ywt}, \lean{YT} & definition of $Y^T$ by the inverse product formula & -- & definition;
+Defs.~\ref{ch07:def:Ywt}, \ref{ch07:def:YT}\\
+\lean{YT_vacuum}, \lean{YT_X}, \lean{YT_truncation}, \lean{YT_support} & module axioms (i)--(iii),
+generators $\mapsto$ twisted bosons & $u\in\mathcal V^j$ & uncond.; Thm~\ref{ch07:thm:YTbasic}\\
+\lean{YT_local} & all rescaled fields mutually local & -- & uncond.; Thm~\ref{ch07:thm:YTlocal}\\
+\lean{YT_omega_two} & $Y^T(\omega)_{(1)} = L_0^T$, incl.\ $r/16$ & -- & uncond.;
+Thm~\ref{ch07:thm:L0}\\
+\lean{prod_comm_formula} & commutator formula for field products & $A,B$ local & uncond.;
+Thm~\ref{ch07:thm:comm}\\
+\lean{star_comm} & twisted commutator formula & in a local system & uncond.;
+Thm~\ref{ch07:thm:starcomm}\\
+\lean{Ywt_perm} & $\widetilde Y$ independent of letter order & -- & uncond.;
+Thm~\ref{ch07:thm:perm}\\
+\lean{FT_mul_X} & creation: product formula for $\ell<0$, generators & -- & uncond.;
+Thm~\ref{ch07:thm:creation}\\
+\lean{genPF} & product formula, generator $\times$ any state & -- & uncond.;
+Thm~\ref{ch07:thm:genPF}\\
+\lean{FT_translation}, \lean{starPF_one} & $L_{-1}$-derivative property; vacuum case & -- &
+uncond.; Thm~\ref{ch07:thm:translation}\\
+\lean{starPF} & $\chsevenF_e(u)\star^{e/2}_\ell\chsevenF_{e'}(v) = \chsevenF_{e+e'}(u_{(\ell)}v)$ &
+$u\in\mathcal V^j$, $e\equiv j$ & uncond.; Thm~\ref{ch07:thm:starPF}\\
+\lean{productFormula_YT} & product formula \eqref{ch07:eq:pf} & $u\in\mathcal V^j$ & uncond.;
+Thm~\ref{ch07:thm:productFormula}\\
+\lean{twistedJacobi_YT} & DLM twisted Jacobi for $Y^T$, all pairs & -- & uncond.;
+Thm~\ref{ch07:thm:jacobiYT}\\
+\lean{heisTwistedModule} & $S[\theta]$ is a $\sigma$-twisted module & none & \textbf{uncond.},
+axioms std.; Thm~\ref{ch07:thm:main}\\
+\bottomrule
+\end{longtable}
+\endgroup
+
+\section{Notes and references}\label{ch07:sec:notes}
+
+The twisted Heisenberg vertex operators, including the operator $\Delta_z$ and its coefficients
+$c_{mn}$, were introduced by J.~Lepowsky, \emph{Calculus of twisted vertex operators},
+Proceedings of the National Academy of Sciences USA 82 (1985) 8295--8299, and are developed
+systematically in I.~Frenkel, J.~Lepowsky and A.~Meurman, \emph{Vertex Operator Algebras and the
+Monster}, Pure and Applied Mathematics 134, Academic Press, Boston, 1988: Chapter~3 for the
+untwisted and twisted Heisenberg algebras and their Fock spaces, Chapter~9 for twisted vertex
+operators and the twisted Jacobi identity. The ground-state energy $1/16$ is also explained in
+J.~Lepowsky, \emph{Perspectives on vertex operators and the Monster}, Proc.\ Symp.\ Pure Math.\
+48 (1988).
+
+The mode form of the twisted Jacobi identity used here, with the fractional binomial
+$\binom{k/N}{i}$ and the support-coset restriction, is from C.~Dong, H.~Li and G.~Mason,
+\emph{Modular-invariance of trace functions in orbifold theory and generalized Moonshine},
+Communications in Mathematical Physics 214 (2000) 1--56, arXiv:q-alg/9703016; twisted modules
+for general automorphisms go back to C.~Dong, \emph{Twisted modules for vertex algebras
+associated with even lattices}, Journal of Algebra 165 (1994) 91--112, and C.~Dong and
+J.~Lepowsky, \emph{Generalized Vertex Algebras and Relative Vertex Operators}, Progress in
+Mathematics 112, Birkh\"auser, 1993.
+
+The local-system method --- fields, their integer products, Dong's lemma, and the theorem that a
+local system is a vertex algebra --- is H.-S.~Li, \emph{Local systems of vertex operators, vertex
+superalgebras and modules}, Journal of Pure and Applied Algebra 109 (1996) 143--195,
+arXiv:hep-th/9406185; the twisted version (twisted products $Y^\star$ with the factor
+$(1+z_0/z)^{-\alpha}$) is H.-S.~Li, \emph{Local systems of twisted vertex operators, vertex
+operator superalgebras and twisted modules}, in: Moonshine, the Monster, and Related Topics,
+Contemporary Mathematics 193 (1996) 203--236, arXiv:q-alg/9504022. The present chapter's
+reduction (rescale by $z^{e/N}$, apply untwisted Jacobi, absorb $(1+z_0/z)^{e/N}$ by
+Vandermonde) is a hands-on special case of Li's twisted local systems; the library proves exactly
+the pieces needed for this example rather than Li's general theorem. For the physical picture
+(antiperiodic bosons, twist fields of dimension $1/16$) see L.~Dixon, D.~Friedan, E.~Martinec and
+S.~Shenker, \emph{The conformal field theory of orbifolds}, Nuclear Physics B 282 (1987) 13--73.
+
+The history of the repair and the construction is recorded in the repository file
+\leanpath{Notes/MonsterRoadmap.md} (the row of the twisted-module milestone
+and ``Recorded dead ends'').

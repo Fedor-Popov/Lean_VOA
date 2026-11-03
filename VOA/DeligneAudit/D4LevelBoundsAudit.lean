@@ -1,0 +1,16 @@
+import VOA.DeligneAudit.D4LevelReductionAudit
+import VOA.DeligneAudit.D4LevelReductionSupport
+import VOA.DeligneAudit.D4LevelReductionAdjointBounds
+
+/-! Collision and axiom audit for the D4 level truncation bounds. -/
+
+#print axioms VOA.DeligneAudit.D4LevelReduction.levelFiltration_eq_next_of_odd
+#print axioms VOA.DeligneAudit.D4LevelReduction.universalLevel_subsingleton_of_empty
+#print axioms VOA.DeligneAudit.D4LevelReduction.levelTruncationBound_of_empty
+#print axioms VOA.DeligneAudit.D4LevelReduction.adjointEdge_eq_iSup_keyOrbit
+#print axioms VOA.DeligneAudit.D4LevelReduction.adjointEdge_next_eq_bot
+#print axioms VOA.DeligneAudit.D4LevelReduction.levelTarget_adjoint_edge
+#print axioms VOA.DeligneAudit.D4LevelReduction.adjointMultiplicitySpan_rank_le
+#print axioms VOA.DeligneAudit.D4LevelReduction.adjointKey_truncated_quotient_rank_le
+#print axioms VOA.DeligneAudit.D4LevelReduction.levelTruncationBound_adjoint_edge_iff
+#print axioms VOA.DeligneAudit.D4LevelReduction.levelTruncationBound_adjoint_edge_overfull

@@ -1,0 +1,2545 @@
+\chapter{Heisenberg and lattice vertex algebras in the library}\label{ch:L05}
+\begingroup\setlength{\emergencystretch}{3em}
+
+\providecommand{\lfivevac}{\mathbf{1}}
+\providecommand{\lfiveF}{\mathcal{F}}
+\providecommand{\lfiveR}{\mathbb{R}}
+\providecommand{\lfiveO}{O_2}
+\providecommand{\lfiveA}{A_2}
+\providecommand{\lfivesl}{\mathfrak{sl}_2}
+
+This chapter documents the release of the LeanVOA library named in the front matter. Every Lean quotation below is checked by \texttt{scripts/textbook/sync.py}
+to occur verbatim (up to whitespace and comments) in the source files of that release. Checks that were run at an earlier state of the library and not re-run for this edition are marked as such. The chapter covers the files assigned to it in
+\texttt{Notes/Textbook/assignment.txt}: the rank-one Heisenberg files
+\leanpath{VOA/\allowbreak Examples/\allowbreak Heisenberg*.lean}, the rank-$r$ files
+\leanpath{VOA/\allowbreak Examples/\allowbreak HeisenbergN*.lean}, the lattice files
+\leanpath{VOA/\allowbreak Examples/\allowbreak Lattice*.lean} and
+\leanpath{VOA/\allowbreak Examples/\allowbreak LatticeGen*.lean} (but not the super-lattice files
+\leanpath{LatticeSuper*}, which belong to Chapter~\ref{ch:L17}), the two Fock base-change files
+\leanpath{VOA/\allowbreak Examples/\allowbreak Fock*.lean}, and
+\leanpath{VOA/\allowbreak Examples/\allowbreak FreeBosonGeneralC.lean}. In total these are 76 files.
+We also present the \emph{trivial} vertex operator algebra, which the library defines as the lattice
+vertex operator algebra of the rank-zero lattice; its file
+\leanpath{VOA/\allowbreak Examples/\allowbreak ZhuInstantiation.lean} and the three
+\leanpath{Trivial*.lean} files are assigned to Chapter~\ref{ch:L15}, where the trivial algebra was the
+first non-vacuity witness of Zhu's modularity theorem, but its definition is a lattice construction and
+belongs here. Nontrivial instances are now proved as well: \lean{zhuModularity_V2m} (the rank-one lattice
+VOA $V_{\sqrt{2m}\Z}$, every $m\ge1$) and \lean{zhuModularity_V2mPlus} (its $\Z_2$-orbifold, $m\ge2$)
+(Chapters~\ref{ch:L15} and~\ref{ch:L22}).
+
+\paragraph{Relation to Chapter~\ref{ch:03}.} The Moonshine part of the book already contains a long
+chapter on Heisenberg and lattice vertex operator algebras (Chapter~\ref{ch:03}). That chapter is
+written for the Leech lattice: it develops the rank-$r$ Fock space \lean{HeisenbergN.FockN}, the FLM
+cocycle, the orthonormal frame, the vertex operators $Y(e^\alpha,z)$, their locality, the
+reconstruction theorem and the general instance \lean{LatGen.latticeVOAGen}, and then specialises to
+$\Leech$. We do \emph{not} repeat that material. Where a statement of this chapter uses one of those
+objects we recall it in a sentence and point to the exact definition or theorem of
+Chapter~\ref{ch:03}. What is new here is everything that Chapter~\ref{ch:03} did not need:
+\begin{itemize}
+\item the \emph{rank-one Heisenberg vertex operator algebra at an arbitrary nonzero level $k$},
+  \lean{heisenbergVOA}, which is a separate implementation on a separate type
+  (Section~\ref{l05:sec:heis1});
+\item the theorem that this algebra is \emph{not $C_2$-cofinite}, \lean{heisenberg_not_C2Cofinite},
+  the library's basic example of an irrational vertex operator algebra
+  (Section~\ref{l05:sec:c2});
+\item the Heisenberg instance of the ``PBW boundary'' of Zhu's bijection,
+  \lean{heisenbergAdjointBottomProjection} (Section~\ref{l05:sec:pbw});
+\item the \emph{free boson with background charge}, a family of vertex operator algebra structures on
+  the same Fock space with central charge $1-12\lambda^2$, realising every complex central charge
+  (Section~\ref{l05:sec:bg});
+\item a fidelity analysis of the general lattice theorem: which lattices are allowed, what the
+  central charge and the grading are, and the rank-zero case (Section~\ref{l05:sec:general});
+\item the older, independent construction of the $A_1$ lattice vertex operator algebra
+  \lean{latticeVOA_A1}, which predates the general one, together with two \emph{placeholder}
+  declarations in the same files that a referee must not mistake for theorems
+  (Section~\ref{l05:sec:A1});
+\item the \emph{charge-zero subalgebra} \lean{chargeZeroSubVOA} of a lattice vertex operator algebra and
+  the resulting Heisenberg-module structure on $V_L$ (Section~\ref{l05:sec:charge});
+\item background-charge deformations of the conformal vector of $V_L$, and the $\Q$-valued gradings
+  they require (Section~\ref{l05:sec:latbg});
+\item the open ``Li conjugation identity'' for spectral flow on the Fock space
+  (Section~\ref{l05:sec:li}).
+\end{itemize}
+
+\paragraph{Trust summary.} Every headline of this chapter was re-checked for this book with
+\texttt{\#print axioms} (Section~\ref{l05:sec:audit}); each reports exactly
+\texttt{[propext, Classical.choice, Quot.sound]}, Lean's three standard axioms. In particular
+\lean{VOA.pbw} (the PBW theorem of Chapter~\ref{ch:L02}; formerly a project axiom, now a theorem) is
+\textbf{not} used anywhere in this chapter, not even by the ``PBW'' instance of Section~\ref{l05:sec:pbw}, which was
+written to be \lean{pbw}-free while \lean{VOA.pbw} was still an axiom. The only hypotheses of the headline constructions are the natural ones: $k\neq0$ for
+the Heisenberg algebra, and evenness plus positive-definiteness for a lattice. Every ``vertex operator algebra'' in
+these headlines is an instance of the library's \lean{VertexOperatorAlgebra}, which is the Lepowsky--Li/FLM VOA
+\emph{of CFT type} ($V_0 = \C\lfivevac$, $V_n = 0$ for $n<0$, integer grading, finite-dimensional pieces), a restriction
+relative to FLM/LL (Definition~\ref{l03:def:VOA}); for $M(1)$ and $V_L$ ($L$ even, positive definite) CFT type holds, so
+nothing is lost. The release audit of 2026-10-27 judged \lean{heisenbergVOA} and \lean{LatGen.latticeVOAGen}
+\textbf{genuine}: every structure field is filled by a proved theorem, the carriers are the standard ones
+($M(1) = $ \lean{MvPolynomial ℕ ℂ}, and $M(1)^{\otimes r}\otimes\C[L]$ with the FLM cocycle), and the only hypotheses
+are $k\neq0$, respectively evenness and \lean{PosDef} over $\Z$ (for an integral form equivalent to positive
+definiteness over $\mathbb{R}$). One statement of the
+chapter is \emph{open}: the proposition \lean{LiConjugation} of Section~\ref{l05:sec:li} is defined but
+not proved.
+
+\paragraph{Prerequisites.} We use the definitions of Chapters~\ref{ch:L01}--\ref{ch:L04}: formal distributions and
+the mode convention \lean{mode f n = f (-n-1)} (Definition~\ref{l01:def:mode}), locality
+(Definition~\ref{l01:def:bracket}), fields (Definition~\ref{l01:def:field}), the normal-ordered product
+\lean{nprod} (Chapter~\ref{ch:L03}), the library's structures \lean{PreVertexAlgebra} (graded VA1--VA5 data without
+translation covariance, \emph{not} a vertex algebra in the standard sense; the library's translation-covariant notion
+is \lean{VertexAlgebra}) and \lean{VertexOperatorAlgebra} (VOAs, of CFT type by definition) (Definitions~\ref{l03:def:VA} and~\ref{l03:def:VOA}), Goddard's uniqueness theorem
+(Theorem~\ref{l03:thm:goddard}), Dong's lemma (Theorem~\ref{l03:thm:dong}), weak modules
+(Definition~\ref{l12:def:weakmodule}) and vertex operator subalgebras
+(Definition~\ref{l04:def:subalg}). We recall each one briefly where it is used.
+
+%======================================================================
+\section{The physical picture}\label{l05:sec:physics}
+%======================================================================
+
+\subsection{One free boson}
+
+The simplest two-dimensional conformal field theory is a single massless scalar field
+$X(z,\bar z)$ with action $\frac{1}{4\pi}\int\partial X\bar\partial X$ (in one common normalisation).
+Its equation of motion $\partial\bar\partial X=0$ says that $\partial X$ is holomorphic: the
+\emph{current} $J(z)=i\partial X(z)$ depends on $z$ only, and it is a chiral field of conformal
+weight one. All the holomorphic (``chiral'') information of the theory is encoded in the
+operator product expansion
+\begin{equation}\label{l05:eq:JJ}
+ J(z)J(w)\sim\frac{k}{(z-w)^2},
+\end{equation}
+where $k$ is a normalisation constant, the \emph{level}. Expanding $J(z)=\sum_n a_nz^{-n-1}$, the
+OPE \eqref{l05:eq:JJ} is equivalent to the commutation relations
+\begin{equation}\label{l05:eq:heis}
+ [a_m,a_n]=m\,k\,\delta_{m+n,0}\qquad(m,n\in\Z),
+\end{equation}
+which define the \emph{Heisenberg Lie algebra} (with its central element set to the scalar $k$).
+For $n>0$ the operators $a_{-n}$ create and $a_n$ annihilate a quantum of energy $n$; $a_0$ is the
+momentum and commutes with everything. The space of states of zero momentum built from the vacuum
+$\lfivevac$ (annihilated by all $a_n$, $n\ge0$) is the \emph{Fock space}
+\begin{equation*}
+ \lfiveF=\C[a_{-1},a_{-2},a_{-3},\ldots]\,\lfivevac ,
+\end{equation*}
+a polynomial ring in infinitely many variables. It carries a vertex operator algebra structure, the
+\emph{Heisenberg vertex operator algebra} $M(1)$ (or $\mathcal V(\hat{\mathfrak h},k)$ in Gannon's
+notation): the field of $a_{-1}\lfivevac$ is $J(z)$, the field of a monomial is a normal-ordered
+product of derivatives of $J$, and the stress tensor is the Sugawara field
+\begin{equation}\label{l05:eq:T}
+ T(z)=\frac{1}{2k}{:}J(z)J(z){:},\qquad c=1 .
+\end{equation}
+The central charge is $1$ for every $k\neq0$: $T$ is quadratic in $J$, so rescaling $J$ rescales
+$1/k$ and leaves $T$ unchanged. The level is therefore a normalisation, not a parameter of the
+theory; the library nevertheless keeps $k$ as an explicit argument, because some later constructions
+(the $A_1$ lattice of Section~\ref{l05:sec:A1}) use $k=2$.
+
+\subsection{The non-compact boson has a continuum of sectors}
+
+If $X$ takes values in $\lfiveR$ (the ``non-compact'' boson) then every real momentum $p$ is allowed.
+The Heisenberg algebra then has, besides the vacuum module $\lfiveF=\lfiveF_0$, one irreducible
+module $\lfiveF_p$ for every $p\in\C$, on which $a_0$ acts by $p$; its lowest state $e^{p}$ has
+conformal weight $p^2/(2k)$. There are uncountably many inequivalent sectors, so the free boson is the
+prototype of an \emph{irrational} conformal field theory. Algebraically this shows up as the failure
+of \emph{$C_2$-cofiniteness}: the Poisson algebra $\lfiveA(M(1))=M(1)/\lfiveO(M(1))$ is a polynomial
+ring $\C[x]$, the coordinate ring of the line of momenta, which is infinite-dimensional
+(Section~\ref{l05:sec:c2}). $C_2$-cofiniteness is the algebraic substitute for ``finitely many
+sectors''; Zhu's modularity theorem (Chapter~\ref{ch:L15}) needs it.
+
+\subsection{Compactification and lattices}
+
+If instead $X$ lives on a torus $\lfiveR^r/2\pi\Gamma$, momenta are quantised, and the chiral algebra of
+the theory is enlarged by the vertex operators ${:}e^{i\alpha\cdot X}{:}$ for $\alpha$ in a lattice $L$
+of allowed chiral momenta. The resulting \emph{lattice vertex operator algebra} $V_L$ has state space
+$\lfiveF^{\otimes r}\otimes\C[L]$, and the state $e^\alpha$ has conformal weight
+$\frac12\langle\alpha,\alpha\rangle$. For this to be a (bosonic, integer-graded) vertex operator
+algebra one needs $L$ \emph{even}; for the weights to be bounded below with finite multiplicities one
+needs $L$ \emph{positive-definite}. These are exactly the hypotheses of the library's general theorem
+(Section~\ref{l05:sec:general}). The central charge stays $r=\operatorname{rank}L$: compactification
+adds states and fields but does not change the stress tensor.
+
+The simplest compact example is $L=A_1=\Z\alpha$ with $\langle\alpha,\alpha\rangle=2$: one boson at
+the self-dual radius. Its weight-one space is spanned by $a_{-1}\lfivevac$, $e^{\alpha}$ and $e^{-\alpha}$, three
+currents that close into the affine Lie algebra $\widehat{\lfivesl}$ at level one (Frenkel--Kac). Thus
+$V_{A_1}$ is the chiral algebra of the $SU(2)$ level-one Wess--Zumino--Witten model; this is the
+classical example of an \emph{enhanced symmetry point} of a compactification. (The identification
+$V_{A_1}\cong L_{\lfivesl}(1,0)$ is mathematics the library does \emph{not} formalise; see
+Section~\ref{l05:sec:A1}.)
+
+\subsection{Background charge}
+
+Finally, one may keep the free-boson vertex algebra but change the stress tensor:
+\begin{equation}\label{l05:eq:Tlambda}
+ T_\lambda(z)=\frac12{:}J(z)^2{:}+\mu\,\partial J(z)\qquad(k=1).
+\end{equation}
+The extra term is a total derivative, so $T_\lambda$ still generates translations ($L_{-1}$ is
+unchanged), and on the zero-momentum Fock space $L_0$ is unchanged too. But the central charge moves:
+the double contraction of $\mu\partial J$ with itself contributes $-12\mu^2$, so
+$c=1-12\mu^2$. In the library's sign convention $\mu=-\lambda$ and $c=1-12\lambda^2$. This is the
+\emph{Coulomb gas} or \emph{Feigin--Fuchs} free field, physically a boson coupled to background
+curvature (the \emph{linear dilaton}); with real $\lambda$ one gets $c<1$ (the free-field
+realisation of the Virasoro minimal models, Dotsenko--Fateev), with imaginary $\lambda$ one gets
+$c>1$ (the linear dilaton of non-critical string theory). In the normalisation in which the
+background charge $\alpha_0$ is the coefficient of $\partial J$ one writes $c=1-12\alpha_0^2$; the
+Dotsenko--Fateev normalisation $T=-\frac14(\partial\varphi)^2+i\alpha_0\partial^2\varphi$ gives
+$c=1-24\alpha_0^2$ instead. These are the same family with $\alpha_0$ rescaled by $\sqrt2$.
+
+%======================================================================
+\section{The files and the two implementations}\label{l05:sec:map}
+%======================================================================
+
+The library contains \emph{two} independent implementations of the Heisenberg vertex operator
+algebra and \emph{two} independent implementations of lattice vertex operator algebras. A referee must
+keep them apart, because they live on different Lean types and no isomorphism between them is
+proved.
+
+\begin{center}
+\small
+\begin{tabular}{p{3.1cm}p{4.3cm}p{6.0cm}}
+\toprule
+Object & Lean name / type & Files and remarks\\
+\midrule
+rank-one Heisenberg, level $k$ & \lean{VOA.heisenbergVOA k hk} on \lean{VOA.Fock} $=$ \lean{MvPolynomial ℕ ℂ} &
+\leanpath{HeisenbergFock}, \leanpath{HeisenbergVertex}, \leanpath{HeisenbergVirasoro},
+\leanpath{HeisenbergCentral}, \leanpath{HeisenbergCreation}, \leanpath{HeisenbergGrading},
+\leanpath{HeisenbergStructure}, \leanpath{HeisenbergConformal}, \leanpath{HeisenbergVOA}. This chapter.\\
+rank-$r$ Heisenberg, level $k$ & \lean{VOA.HeisenbergN.heisenbergNVOA r k hk} on \lean{FockN r} $=$
+\lean{MvPolynomial (ℕ × Fin r) ℂ} & \leanpath{HeisenbergN*}. Chapter~\ref{ch:03},
+Theorem~\ref{ch03:thm:heisVOA}; the alias \lean{heisenbergVOA' n} (level $1$) is in
+\leanpath{Heisenberg.lean}.\\
+general even lattice & \lean{VOA.LatGen.latticeVOAGen L hEven hPos} on \lean{LatModuleGen L} &
+\leanpath{LatticeGen*}, \leanpath{LatticeGeneralLocality}. Chapter~\ref{ch:03},
+Theorem~\ref{ch03:thm:latticeVOA}; fidelity in Section~\ref{l05:sec:general}.\\
+$A_1$ lattice & \lean{VOA.LatExp.latticeVOA_A1} on \lean{LatticeVOA.LatModule} &
+\leanpath{LatticeA1}, \leanpath{LatticeExp}, \leanpath{LatticeFields}, \leanpath{LatticeChargeM*},
+\leanpath{Lattice*Locality*}, \leanpath{LatticeVOAInstance}, \leanpath{LatticeA1VOA},
+\leanpath{Lattice.lean}. Section~\ref{l05:sec:A1}.\\
+charge-zero subalgebra & \lean{VOA.LatGen.chargeZeroSubVOA} & \leanpath{LatticeCharge}.
+Section~\ref{l05:sec:charge}.\\
+free boson, background charge & \lean{VOA.FBgc.freeBosonVOA lam} on \lean{VOA.Fock} &
+\leanpath{FreeBosonGeneralC}. Section~\ref{l05:sec:bg}.\\
+lattice background charge & \lean{VOA.LatGen.BgA.LBg}, \lean{VOA.LatGen.BgB.LBG} &
+\leanpath{LatticeBackgroundChargeA}, \leanpath{LatticeBackgroundChargeB},
+\leanpath{LatticeQuadRefine}. Section~\ref{l05:sec:latbg}.\\
+non-$C_2$-cofiniteness & \lean{VOA.heisenberg_not_C2Cofinite} & \leanpath{HeisenbergC2}.
+Section~\ref{l05:sec:c2}.\\
+PBW boundary & \lean{VOA.VHat.DLM3.heisenbergAdjointBottomProjection} &
+\leanpath{HeisenbergPBWFreeness}. Section~\ref{l05:sec:pbw}.\\
+spectral flow (open) & \lean{VOA.Heisenberg.LiConjugation} & \leanpath{FockBaseChange},
+\leanpath{FockBC2}. Section~\ref{l05:sec:li}.\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The historical reason for the duplication is that the rank-one Heisenberg algebra and the $A_1$
+lattice were the project's first test cases (``Phase 3'' in the source comments), built before the
+general machinery existed. The general constructions (rank $r$, arbitrary even lattice) were then
+written by ``lifting'' the rank-one proofs; the rank-one files were kept because other parts of the
+library (the Virasoro chapter, Chapter~\ref{ch:L06}; the $\lfivesl$ chapters; the $C_2$ theory) refer
+to them. Nothing in the library identifies \lean{heisenbergVOA 1 _} with
+\lean{heisenbergNVOA 1 1 _}, nor \lean{latticeVOA_A1} with \lean{latticeVOAGen} of a rank-one lattice
+with Gram matrix $(2)$; on paper both identifications are obvious (rename the polynomial variables),
+and nothing depends on them.
+
+%======================================================================
+\section{The rank-one Heisenberg vertex operator algebra at level \texorpdfstring{$k$}{k}}\label{l05:sec:heis1}
+%======================================================================
+
+All declarations of this section live in the namespace \lean{VOA} and in the files
+\leanpath{VOA/\allowbreak Examples/\allowbreak HeisenbergFock.lean} through
+\leanpath{VOA/\allowbreak Examples/\allowbreak HeisenbergVOA.lean}. The construction is the
+rank-one, level-$k$ version of the rank-$r$ construction of Chapter~\ref{ch:03},
+Section~\ref{ch03:sec:heisenberg}; we present it in full because it is the object on which the
+$C_2$ theorem, the PBW instance, the background-charge family and several Virasoro results of
+Chapter~\ref{ch:L06} are stated.
+
+\subsection{The Fock space and the oscillators}
+
+\begin{definition}[Fock space, oscillators, vacuum]\label{l05:def:fock}
+Let $\lfiveF=\C[X_0,X_1,X_2,\ldots]$ be the polynomial ring in countably many variables. The variable
+$X_i$ stands for the state $a_{-(i+1)}\lfivevac$. For $k\in\C$ and $n\in\Z$ define
+$a_n=\lean{osc k n}\in\End\lfiveF$ by
+\begin{equation*}
+ a_n=\begin{cases}\text{multiplication by }X_{-n-1}, & n<0,\\ 0, & n=0,\\
+ n\,k\,\dfrac{\partial}{\partial X_{n-1}}, & n>0,\end{cases}
+\end{equation*}
+and let the vacuum be $\lfivevac=1$, the constant polynomial.
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/HeisenbergFock.lean}.
+\begin{leancode}
+abbrev Fock : Type := MvPolynomial ℕ ℂ
+
+noncomputable def mulX (i : ℕ) : Fock →ₗ[ℂ] Fock :=
+  (LinearMap.mul ℂ Fock (X i)).comp (LinearMap.id)
+
+noncomputable def pderivLM (i : ℕ) : Fock →ₗ[ℂ] Fock :=
+  (pderiv i : Derivation ℂ Fock Fock).toLinearMap
+
+noncomputable def osc (k : ℂ) (n : ℤ) : Fock →ₗ[ℂ] Fock :=
+  if n < 0 then mulX (-n - 1).toNat
+  else if 0 < n then (n : ℂ) • k • pderivLM (n - 1).toNat
+  else 0
+
+noncomputable def vacuum : Fock := (1 : Fock)
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Decoding.} \lean{MvPolynomial ℕ ℂ} is Mathlib's ring of complex polynomials in variables
+indexed by the natural numbers; \lean{X i} is the variable $X_i$. \lean{abbrev} makes \lean{Fock} a
+transparent synonym, so all of Mathlib's polynomial API applies. \lean{Fock →ₗ[ℂ] Fock} is the type of
+$\C$-linear endomorphisms. \lean{LinearMap.mul ℂ Fock (X i)} is left multiplication by $X_i$ (the
+composition with \lean{LinearMap.id} is cosmetic). \lean{pderiv i} is Mathlib's partial derivative
+$\partial/\partial X_i$, a derivation, turned into a linear map. \lean{(-n - 1).toNat} converts the
+integer $-n-1$ to a natural number; in the branch $n<0$ it is non-negative, so no truncation occurs.
+In the branch $n>0$, \lean{(n - 1).toNat} $=n-1$. The scalar is $n\cdot k$.
+
+\textbf{Same as the textbook?} Yes, with one presentational difference: the textbook defines $\lfiveF$ as
+the module induced from the one-dimensional representation of the non-negative part of the
+Heisenberg algebra, and \emph{proves} (by Poincar\'e--Birkhoff--Witt) that it is a polynomial ring. The
+library \emph{defines} $\lfiveF$ to be the polynomial ring and then proves that the operators $a_n$
+satisfy the Heisenberg relations (Theorem~\ref{l05:thm:osccomm}) and that $\lfivevac$ is annihilated by
+$a_n$, $n\ge0$. For $k\neq0$ these two facts characterise the induced module up to isomorphism, so
+nothing is lost, and no PBW theorem is needed (this is why the Heisenberg algebra never needed
+\lean{VOA.pbw}).
+
+\textbf{The zero mode is zero by definition.} The third branch makes $a_0=0$. This is correct for the
+\emph{vacuum} module (zero momentum), and it is a load-bearing fact later: it is why the background
+charge does not move $L_0$ (Section~\ref{l05:sec:bg}) and why charged modules need a separate
+construction (Section~\ref{l05:sec:li}). It also means that \lean{Fock} can never be used as a model of a
+charged Fock module $\lfiveF_p$, $p\neq0$.
+
+\textbf{The level.} No hypothesis is placed on $k$; at $k=0$ all annihilators vanish and the
+definition still makes sense (but the vertex operator algebra will need $k\neq0$).
+\end{dictionary}
+
+\begin{physics}
+$\lfiveF$ is the space of finite-energy states of one chiral free boson at zero momentum. The variable
+$X_i$ is one quantum in the oscillator mode of energy $i+1$, a monomial is a multi-particle state, and the
+constant $1$ is the $SL_2$-invariant vacuum. The operators $a_n$ are the Laurent modes of the current
+$J=i\partial X$: for $n<0$ they create a quantum (multiplication), for $n>0$ they annihilate one (a
+derivative, weighted so that the canonical commutator comes out as $nk$), and $a_0$ is the momentum, which
+vanishes on this sector.
+\end{physics}
+
+\begin{status}
+Definitions; no proof obligations. \leanpath{HeisenbergFock.lean} records
+\texttt{\#print axioms} $=$ \texttt{[propext, Classical.choice, Quot.sound]} for all of its declarations.
+\end{status}
+
+\begin{theorem}[Heisenberg relations; vacuum]\label{l05:thm:osccomm}
+For all $k\in\C$ and $m,n\in\Z$, $[a_m,a_n]=m\,k\,\delta_{m+n,0}\,\mathrm{id}_{\lfiveF}$. Moreover
+$a_n\lfivevac=0$ for every $n\ge0$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/HeisenbergFock.lean}.
+\begin{leancode}
+theorem osc_comm (k : ℂ) (m n : ℤ) :
+    osc k m * osc k n - osc k n * osc k m
+      = (if m + n = 0 then (m : ℂ) * k else 0) • LinearMap.id
+
+theorem osc_vacuum (k : ℂ) (n : ℤ) (hn : 0 ≤ n) : osc k n vacuum = 0
+\end{leancode}
+
+\begin{dictionary}
+In \lean{Module.End ℂ Fock} the product \lean{*} is composition, so the left side is the commutator
+$a_ma_n-a_na_m$. The right side is the scalar $mk$ if $m+n=0$ and $0$ otherwise, times the identity. This
+is \eqref{l05:eq:heis} exactly; it is quantified over all integers, zero modes included. Note that when
+$m+n=0$ the scalar is $mk$, which is $0$ for $m=0$, as it must be.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+This is the rank-one case of Chapter~\ref{ch:03}, Theorem~\ref{ch03:thm:oscN_comm}, and the proof is the same
+case analysis. Two creation operators are multiplications, which commute; two annihilators are
+multiples of partial derivatives, which commute; a zero mode is $0$. In all these cases $m+n\ne0$ or
+$m=0$, so the right side vanishes too. If $m<0<n$, then $a_m$ is multiplication by $X_{-m-1}$ and $a_n$ is
+$nk\,\partial/\partial X_{n-1}$; these commute unless $-m-1=n-1$, i.e.\ $m+n=0$, and then
+$[X,\partial_X]=-1$ gives $[a_m,a_n]=-nk=mk$. The case $m>0>n$ is symmetric. The vacuum statement holds
+because $a_0=0$ and the derivative of a constant is zero.
+\end{proof}
+
+\begin{physics}
+These are the canonical commutation relations of an infinite family of harmonic oscillators, one per
+positive mode number, equivalently the current--current OPE \eqref{l05:eq:JJ}. The vacuum condition says
+that $\lfivevac$ is the ground state: it is annihilated by every lowering operator and has zero momentum.
+\end{physics}
+
+\begin{status}
+Proved, unconditional (no hypothesis on $k$). \texttt{\#print axioms VOA.osc\_comm} $=$
+\texttt{[propext, Classical.choice, Quot.sound]}, re-checked for this book.
+\end{status}
+
+\subsection{The current and its locality}
+
+\begin{definition}[The current]\label{l05:def:current}
+The basic current is the formal distribution $\alpha(z)=\sum_{n\in\Z}a_nz^{-n-1}$. In the library's
+indexing by powers of $z$, its $z^j$-coefficient is $a_{-j-1}$.
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/HeisenbergFock.lean}.
+\begin{leancode}
+noncomputable def current (k : ℂ) : FormalDist (Module.End ℂ Fock) := fun j => osc k (-j - 1)
+
+theorem current_mode (k : ℂ) (m : ℤ) : mode (current k) m = osc k m
+
+theorem bracketDist_current_eq_deltaDeriv (k : ℂ) :
+    bracketDist (current k) (current k) = deltaDeriv 1 (opeCoeff k)
+
+theorem current_local (k : ℂ) : Local (current k) (current k)
+\end{leancode}
+
+\begin{dictionary}
+\lean{FormalDist (Module.End ℂ Fock)} is the type of two-sided formal series $\sum_{j\in\Z}f_jz^j$ with
+coefficients in $\End\lfiveF$, stored as the function $j\mapsto f_j$ (Chapter~\ref{ch:L01},
+Definition~\ref{l01:def:formaldist}). \lean{mode f m} is $f_{-m-1}$, the coefficient of $z^{-m-1}$
+(Definition~\ref{l01:def:mode}); so \lean{current_mode} says that the $m$-th mode of $\alpha(z)$ in the
+vertex-algebra sense is the oscillator $a_m$, which pins the index convention down. \lean{bracketDist}
+is the commutator $[\alpha(z_1),\alpha(z_2)]$ as a two-variable distribution; \lean{deltaDeriv 1 c} is
+$c(z_2)\,\partial_{z_2}\delta(z_1/z_2)$ and \lean{opeCoeff k} is the constant distribution $k\cdot\mathrm{id}$.
+So the third statement is the identity
+$[\alpha(z_1),\alpha(z_2)]=k\,\partial_{z_2}\delta(z_1-z_2)$, the algebraic form of \eqref{l05:eq:JJ}.
+\lean{Local a b} is mutual locality, $(z_1-z_2)^N[a(z_1),b(z_2)]=0$ for some $N$
+(Definition~\ref{l01:def:bracket}); here $N=2$ works.
+\end{dictionary}
+
+\begin{physics}
+$\alpha(z)$ is the chiral current $J(z)=i\partial X(z)$. Its self-commutator is a derivative of a delta
+function, which is the statement that the only singularity of $J(z)J(w)$ is the double pole
+$k/(z-w)^2$, with a c-number coefficient. Locality with $N=2$ is the order of that pole.
+\end{physics}
+
+\begin{status}
+Proved, unconditional, axiom-clean (\leanpath{HeisenbergFock.lean}).
+\end{status}
+
+\subsection{The conformal-weight grading}
+
+\begin{definition}[Weight spaces]\label{l05:def:gradingW}
+Give $X_i$ the weight $i+1$. For $w\in\N$ let $\lfiveF_w$ be the span of the monomials
+$\prod_iX_i^{e_i}$ of total weight $\sum_i(i+1)e_i=w$. For $n\in\Z$ put $\lfiveF_{(n)}=\lfiveF_n$ if $n\ge0$ and
+$\lfiveF_{(n)}=0$ if $n<0$.
+\end{definition}
+
+\noindent Files \leanpath{VOA/Examples/HeisenbergFock.lean} and
+\leanpath{VOA/Examples/HeisenbergGrading.lean}.
+\begin{leancode}
+def weightFn : ℕ → ℕ := fun i => i + 1
+
+def gradingW (w : ℕ) : Submodule ℂ Fock :=
+  weightedHomogeneousSubmodule ℂ weightFn w
+
+noncomputable def gradingZ (n : ℤ) : Submodule ℂ Fock :=
+  if 0 ≤ n then gradingW n.toNat else ⊥
+\end{leancode}
+
+\begin{dictionary}
+\lean{weightedHomogeneousSubmodule ℂ weightFn w} is Mathlib's subspace of polynomials all of whose
+monomials have weighted degree $w$, where the variable $X_i$ has weight \lean{weightFn i} $=i+1$. A
+\lean{Submodule ℂ Fock} is a complex linear subspace, and \lean{⊥} is the zero subspace. The $\Z$-indexed
+version is needed because the library's \lean{PreVertexAlgebra} is $\Z$-graded
+(Definition~\ref{l03:def:VA}).
+\end{dictionary}
+
+\begin{physics}
+The weight of $X_i$ is the energy $i+1$ of the mode $a_{-(i+1)}$, so $\lfiveF_w$ is the space of states of
+energy $w$ (the eigenvalue of $L_0$, proved below). Its dimension is the number of partitions of $w$, and the
+graded dimension is $\prod_{n\ge1}(1-q^n)^{-1}=q^{1/24}/\eta(\tau)$, the partition function of one chiral boson
+at zero momentum.
+\end{physics}
+
+\begin{theorem}[Graded structure of CFT type]\label{l05:thm:gradingZ}
+$\lfiveF=\bigoplus_{n\in\Z}\lfiveF_{(n)}$; each $\lfiveF_{(n)}$ is finite-dimensional;
+$\lfiveF_{(0)}=\C\lfivevac$; and $\lfiveF_{(n)}=0$ for $n<0$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/HeisenbergStructure.lean}.
+\begin{leancode}
+theorem gradingZ_isInternal : DirectSum.IsInternal gradingZ :=
+  DirectSum.isInternal_submodule_of_iSupIndep_of_iSup_eq_top
+
+theorem gradingZ_finrank (n : ℤ) : FiniteDimensional ℂ (gradingZ n)
+
+theorem gradingZ_zero_eq_span_vacuum : gradingZ 0 = ℂ ∙ vacuum
+
+theorem gradingZ_positivity (n : ℤ) (hn : n < 0) : gradingZ n = ⊥ := gradingZ_of_neg hn
+\end{leancode}
+
+\begin{dictionary}
+\lean{DirectSum.IsInternal g} says that the canonical map $\bigoplus_n g_n\to\lfiveF$ is a linear
+isomorphism, i.e.\ $\lfiveF$ is the internal direct sum of the $g_n$. \lean{FiniteDimensional ℂ S} is
+finite-dimensionality of the subspace $S$. \lean{ℂ ∙ vacuum} is the line spanned by the vacuum. These
+four statements are exactly the grading fields \lean{isInternal}, \lean{finrank}, \lean{vacuum_grade},
+\lean{positivity} of Definitions~\ref{l03:def:VA} and~\ref{l03:def:VOA}.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+Mathlib provides the decomposition of a polynomial ring into weighted-homogeneous components; adding
+zero pieces in negative degree does not affect independence or spanning. A monomial of weight $w$ only
+involves variables $X_i$ with $i+1\le w$ and exponents $\le w$, so there are finitely many of them. A
+monomial of weight $0$ is the constant monomial.
+\end{proof}
+
+\begin{physics}
+These are the requirements that the spectrum of the chiral theory be discrete, with finite
+degeneracies, bounded below, and with a unique vacuum: the conditions under which characters
+$\operatorname{Tr}q^{L_0-c/24}$ make sense.
+\end{physics}
+
+\begin{status}
+Proved, unconditional, axiom-clean (\leanpath{HeisenbergStructure.lean}).
+\end{status}
+
+\subsection{The vertex operators}
+
+\begin{definition}[Vertex operators of the rank-one Fock space]\label{l05:def:Y}
+For $i\in\N$ put $g_i(z)=\frac1{i!}\partial_z^i\alpha(z)$. For a list $l=[i_1,\ldots,i_s]$ define the
+right-nested normal-ordered product
+\begin{equation*}
+ Y_l(z)={:}g_{i_1}(z)\,{:}g_{i_2}(z)\cdots{:}g_{i_s}(z)\,\mathrm{id}{:}\cdots{:}{:},
+ \qquad Y_{[\,]}=\mathrm{id}.
+\end{equation*}
+For a monomial $X^e=\prod_iX_i^{e_i}$ let $l(e)$ be the list in which each $i$ occurs $e_i$ times, in
+increasing order, and define $Y(X^e,z)=Y_{l(e)}(z)$; extend $Y$ linearly to all of $\lfiveF$.
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/HeisenbergVertex.lean}.
+\begin{leancode}
+noncomputable def dcurrent (k : ℂ) (j : ℕ) : FormalDist (End ℂ Fock) :=
+  (deriv^[j]) (current k)
+
+noncomputable def genField (k : ℂ) (i : ℕ) : FormalDist (End ℂ Fock) :=
+  (i.factorial : ℂ)⁻¹ • dcurrent k i
+
+noncomputable def YwordF (k : ℂ) : List ℕ → { f : FormalDist (End ℂ Fock) // IsField f }
+  | [] => ⟨idField, idField_isField⟩
+  | (i :: rest) =>
+      let p := YwordF k rest
+      ⟨nprod (genField_isField k i) p.2, (genField_isField k i).nprod p.2⟩
+
+noncomputable def Yword (k : ℂ) (l : List ℕ) : FormalDist (End ℂ Fock) := (YwordF k l).1
+
+noncomputable def monoWord (a : ℕ →₀ ℕ) : List ℕ :=
+  (a.support.sort (· ≤ ·)).flatMap (fun i => List.replicate (a i) i)
+
+noncomputable def Ymon (k : ℂ) (a : ℕ →₀ ℕ) : FormalDist (End ℂ Fock) :=
+  Yword k (monoWord a)
+
+noncomputable def Y (k : ℂ) : Fock →ₗ[ℂ] FormalDist (End ℂ Fock) :=
+  Finsupp.linearCombination ℂ (Ymon k)
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Decoding.} \lean{deriv^[j]} is the $j$-fold iterate of the formal derivative $\partial_z$;
+\lean{i.factorial} is $i!$. \lean{{ f // IsField f }} is the type of pairs (distribution, proof that it
+is a field), needed because \lean{nprod} (the normal-ordered product ${:}a(z)b(z){:}$ of
+Chapter~\ref{ch:L03}) is only defined for fields; the recursion carries the
+proof along. \lean{idField} is the identity field $\mathrm{id}\cdot z^0$. An exponent vector
+\lean{a : ℕ →₀ ℕ} is a finitely supported function, i.e.\ a monomial; \lean{a.support.sort (· ≤ ·)} lists
+the variables that occur in increasing order, and \lean{List.replicate (a i) i} repeats $i$ as often as its
+exponent. Mathlib stores a polynomial as a finitely supported function from exponent vectors to
+coefficients, so \lean{Finsupp.linearCombination ℂ (Ymon k)} is the linear map
+$\sum_ec_eX^e\mapsto\sum_ec_e\,Y_{l(e)}$.
+
+\textbf{Is this the right $Y$?} Two features could worry a referee. (i) The \emph{order} of the factors:
+the rank-one implementation sorts the variables, so $Y$ is a deterministic function; in the rank-$r$
+implementation of Chapter~\ref{ch:03} the order is the unspecified order of \lean{Finset.toList}. In both
+cases the order is irrelevant on paper, because the $g_i$ are mutually local with scalar commutators, so
+nested normal-ordered products of them commute. (ii) Whether $Y$ is ``the'' vertex operator at all: this is
+settled by the theorems below. \lean{Y_creation} shows $Y(u,z)\lfivevac|_{z=0}=u$ for every $u$, and
+\lean{Y_local} shows that all $Y(u,z)$ are mutually local; by Goddard's uniqueness theorem
+(Theorem~\ref{l03:thm:goddard}) these two properties determine $Y(u,z)$ uniquely. So no other choice
+could satisfy the axioms.
+\end{dictionary}
+
+\begin{physics}
+This is the free-field rule for local operators: the operator creating $a_{-i_1-1}\cdots a_{-i_s-1}\lfivevac$
+from the vacuum is the normal-ordered product ${:}\partial^{i_1}J\cdots\partial^{i_s}J{:}$, divided by the
+factorials. Normal ordering (annihilators to the right) is the standard way to make a product of free
+fields at the same point finite; Wick's theorem then computes all OPEs.
+\end{physics}
+
+\begin{theorem}[The axioms VA1--VA5 of the library's \texttt{PreVertexAlgebra}]\label{l05:thm:VAaxioms}
+For every $k\in\C$: $Y(\lfivevac,z)=\mathrm{id}$; $Y(a_{-1}\lfivevac,z)=\alpha(z)$; for every $u$,
+$u_{(-1)}\lfivevac=u$ and $u_{(n)}\lfivevac=0$ for $n\ge0$; any two $Y(u,z)$, $Y(v,z)$ are mutually local;
+for all $u,v$ there is $N$ with $u_{(n)}v=0$ for $n\ge N$; and if $u\in\lfiveF_{(p)}$, $v\in\lfiveF_{(q)}$
+then $u_{(n)}v\in\lfiveF_{(p+q-n-1)}$.
+\end{theorem}
+
+\noindent Files \leanpath{VOA/Examples/HeisenbergVertex.lean},
+\leanpath{VOA/Examples/HeisenbergCreation.lean}, \leanpath{VOA/Examples/HeisenbergStructure.lean},
+\leanpath{VOA/Examples/HeisenbergGrading.lean}.
+\begin{leancode}
+theorem Y_vacuum (k : ℂ) : Y k vacuum = idField
+
+theorem Y_current (k : ℂ) : Y k (osc k (-1) vacuum) = current k
+
+theorem Y_creation (k : ℂ) (u : Fock) :
+    mode (Y k u) (-1) vacuum = u ∧ ∀ n : ℤ, 0 ≤ n → mode (Y k u) n vacuum = 0
+
+theorem Y_local (k : ℂ) (u v : Fock) : Local (Y k u) (Y k v)
+
+theorem va5_regularity (k : ℂ) (u v : Fock) :
+    ∃ N : ℤ, ∀ n : ℤ, N ≤ n → mode (Y k u) n v = 0
+
+theorem va1_grading_mode (kk : ℂ) {k ℓ : ℤ} (u : Fock) (hu : u ∈ gradingZ k)
+    (v : Fock) (hv : v ∈ gradingZ ℓ) (n : ℤ) :
+    mode (Y kk u) n v ∈ gradingZ (k + ℓ - n - 1)
+\end{leancode}
+
+\begin{dictionary}
+\lean{mode (Y k u) n v} is $u_{(n)}v$. In \lean{va1_grading_mode} the level is renamed \lean{kk} because
+\lean{k} is used for a weight; the statement is VA1 of Definition~\ref{l03:def:VA}. None of these
+theorems assumes $k\ne0$: the axioms VA1--VA5 of \lean{PreVertexAlgebra} hold at every level, including $k=0$ (where the
+algebra is commutative). Only the conformal structure needs $k\neq0$. These five axioms do \emph{not} include
+translation covariance (Chapter~\ref{ch:L03}, Section~\ref{l03:sec:counter}), so by themselves they do not certify a vertex
+algebra in the standard sense; translation covariance is the field \lean{translation} of the VOA of
+Theorem~\ref{l05:thm:heisVOA}, proved for $k\neq0$.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+\emph{Vacuum and current.} The vacuum is the empty monomial, whose word is empty, so $Y(\lfivevac,z)$ is the
+identity field; $a_{-1}\lfivevac=X_0$ has word $[0]$ and $g_0=\alpha$.
+\emph{Creation.} Each $g_i(z)$ has the property that its coefficients of negative powers of $z$ kill the
+vacuum, and its $z^0$-coefficient on $\lfivevac$ is $\frac1{i!}\cdot i!\,a_{-i-1}\lfivevac=X_i$. For a
+normal-ordered product ${:}a(z)b(z){:}$ in which $a$ has this property and $b(z)\lfivevac$ is regular, the
+product applied to the vacuum is regular with constant term $a_{(-1)}(b_{(-1)}\lfivevac)$; induction along
+the word gives $Y(X^e,z)\lfivevac=X^e+O(z)$.
+\emph{Locality.} The currents $g_i$ are mutually local (derivatives of a self-local field are mutually
+local). By Dong's lemma (Theorem~\ref{l03:thm:dong}), if $a,b,c$ are pairwise local then ${:}ab{:}$ is local
+with $c$; iterating along the words shows all $Y_l$ are pairwise local, and locality is bilinear.
+\emph{Regularity} is the field property of $Y(u,z)$ applied to $v$.
+\emph{Grading.} $g_i$ shifts the weight of a state by $i+1$ in the appropriate sense (it is a ``graded field
+of weight $i+1$''), normal-ordered products of graded fields are graded with additive weights, and the weight
+of the word of $X^e$ equals the weight of $X^e$.
+\end{proof}
+
+\begin{physics}
+Together these statements say that the free-boson local operators form a consistent operator algebra:
+the identity operator corresponds to the vacuum, $J$ is the field of the one-particle state, each state is
+created from the vacuum by its own field, OPEs have poles of finite order, and OPE coefficients respect
+scaling dimensions.
+\end{physics}
+
+\begin{status}
+Proved, unconditional, axiom-clean. The six statements are packaged as the \lean{PreVertexAlgebra}
+\lean{heisVA} of Theorem~\ref{l05:thm:heisVOA}. As a Lean statement \lean{heisVA} certifies only the weak structure
+(no translation covariance; release audit 2026-10-27, finding M-1); for $k\neq0$ it underlies the genuine VOA
+\lean{heisenbergVOA}, so it is mathematically a vertex algebra, but the Lean statement says less.
+\end{status}
+
+\subsection{The Sugawara conformal vector}
+
+\begin{definition}[Sugawara field and conformal vector]\label{l05:def:sugawara}
+For $k\ne0$ put $T(z)=\frac1{2k}{:}\alpha(z)\alpha(z){:}=\sum_mL_mz^{-m-2}$, i.e.\
+$L_m=\frac1{2k}\sum_{j}{:}a_{m-j}a_j{:}$, and $\omega=\frac1{2k}a_{-1}a_{-1}\lfivevac=\frac1{2k}X_0^2$.
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/HeisenbergVirasoro.lean}.
+\begin{leancode}
+noncomputable def sugawaraField (k : ℂ) : FormalDist (End ℂ Fock) :=
+  (1 / (2 * k)) • nprod (isField_current k) (isField_current k)
+
+noncomputable def Lvir (k : ℂ) (m : ℤ) : End ℂ Fock :=
+  (1 / (2 * k)) • nprod (isField_current k) (isField_current k) (-m - 2)
+
+noncomputable def ω (k : ℂ) : Fock := (1 / (2 * k)) • osc k (-1) (osc k (-1) vacuum)
+\end{leancode}
+
+\begin{dictionary}
+The field ${:}\alpha\alpha{:}$ has conformal weight $2$, so its coefficient of $z^{-m-2}$ is the mode
+$L_m$ (up to the factor); \lean{nprod … (-m - 2)} is that coefficient. In Lean, $1/(2k)$ is defined for
+$k=0$ as $0$ (division by zero is zero in Mathlib), so the definitions make sense for all $k$ but are
+meaningful only for $k\neq0$; every theorem about them assumes \lean{hk : k ≠ 0}.
+\end{dictionary}
+
+\begin{physics}
+$T$ is the stress tensor of the free boson, the Sugawara construction for the abelian current algebra.
+The conformal vector is the state $T(z)\lfivevac|_{z=0}=L_{-2}\lfivevac$ (library lemma
+\lean{Lvir_neg_two_vacuum}).
+\end{physics}
+
+\begin{theorem}[Virasoro relations with $c=1$]\label{l05:thm:virasoro}
+Let $k\ne0$. Then $[L_m,a_n]=-n\,a_{m+n}$ and
+$[L_m,L_n]=(m-n)L_{m+n}+\delta_{m+n,0}\frac{m^3-m}{12}\mathrm{id}$ for all $m,n\in\Z$; and
+$L_2\omega=\frac12\lfivevac$.
+\end{theorem}
+
+\noindent Files \leanpath{VOA/Examples/HeisenbergVirasoro.lean},
+\leanpath{VOA/Examples/HeisenbergCentral.lean}.
+\begin{leancode}
+theorem L_comm_osc (k : ℂ) (hk : k ≠ 0) (m n : ℤ) :
+    Lvir k m * osc k n - osc k n * Lvir k m = (-(n : ℂ)) • osc k (m + n)
+
+theorem L_two_omega (k : ℂ) (hk : k ≠ 0) :
+    Lvir k 2 (ω k) = ((1 : ℂ) / 2) • vacuum
+
+theorem L_virasoro (k : ℂ) (hk : k ≠ 0) (m n : ℤ) :
+    Lvir k m * Lvir k n - Lvir k n * Lvir k m
+      = ((m : ℂ) - n) • Lvir k (m + n)
+        + (if m + n = 0 then ((m : ℂ)^3 - m) / 12 else 0) • (LinearMap.id : End ℂ Fock)
+\end{leancode}
+
+\begin{dictionary}
+The central term is $\frac{m^3-m}{12}$ with no factor $c$, i.e.\ $c=1$. \lean{L_two_omega} is the
+standard way to read off the central charge: $[L_2,L_{-2}]\lfivevac=\frac c2\lfivevac$ and
+$L_{-2}\lfivevac=\omega$. The level $k$ enters only through \lean{hk}: the statements are the same for all
+nonzero $k$.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+$[L_m,a_n]$: commute $a_n$ through each quadratic term ${:}a_{m-j}a_j{:}$ using \eqref{l05:eq:heis}; only
+the two terms with $j=-n$ or $m-j=-n$ contribute, each giving $-\frac{n}{2}a_{m+n}$. For $[L_m,L_n]$, apply
+$[L_m,\cdot]$ to the defining sum of $L_n$ using the first relation; the result is $(m-n)L_{m+n}$ up to the
+cost of re-normal-ordering, which is a finite ``window'' sum of scalars; evaluating it with the power sums
+$\sum i=\frac{N(N-1)}2$ and $\sum i^2=\frac{N(N-1)(2N-1)}6$ gives $\frac{m^3-m}{12}\delta_{m+n,0}$. Finally
+$L_2(a_{-1}a_{-1}\lfivevac)=\frac1{2k}a_1a_1a_{-1}a_{-1}\lfivevac=\frac1{2k}\cdot2k^2\lfivevac$, so
+$L_2\omega=\frac1{2k}\cdot\frac1{2k}\cdot 2k^2\lfivevac=\frac12\lfivevac$.
+\end{proof}
+
+\begin{physics}
+$[L_m,a_n]=-na_{m+n}$ says that $J$ is a primary field of weight one. The central term is the conformal
+anomaly of one free boson, $c=1$, coming from the double Wick contraction in $T(z)T(w)$. It is independent
+of the normalisation $k$ of the current, as it must be, since $c$ counts degrees of freedom.
+\end{physics}
+
+\begin{status}
+Proved, conditional only on $k\neq0$. \texttt{\#print axioms VOA.L\_virasoro} $=$
+\texttt{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\subsection{The vertex operator algebra}
+
+\begin{theorem}[The Heisenberg vertex operator algebra at level $k$]\label{l05:thm:heisVOA}
+For every $k\in\C\setminus\{0\}$, $(\lfiveF,Y,\lfivevac,\omega)$ with the grading
+$(\lfiveF_{(n)})_{n\in\Z}$ is a vertex operator algebra of CFT type with central charge $1$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/HeisenbergVOA.lean}.
+\begin{leancode}
+noncomputable def heisVA (k : ℂ) (_hk : k ≠ 0) : PreVertexAlgebra Fock where
+  grading := gradingZ
+  isInternal := gradingZ_isInternal
+  finrank := gradingZ_finrank
+  Y := Y k
+  vacuum := vacuum
+  vacuum_mem := mem_gradingZ_of_gradingW vacuum_mem_gradingW
+  grading_mode := fun u hu v hv n => va1_grading_mode k u hu v hv n
+  vacuum_Y := by rw [Y_vacuum, idField_eq_one]
+  creation := fun u => Y_creation k u
+  locality := fun u v => Y_local k u v
+  regularity := fun u v => va5_regularity k u v
+
+noncomputable def heisenbergVOA (k : ℂ) (hk : k ≠ 0) : VertexOperatorAlgebra Fock where
+  toPreVertexAlgebra := heisVA k hk
+  conformalVector := ω k
+  conformal_mem := omega_mem_gradingZ_two k
+  centralCharge := 1
+  virasoro := fun m n => conf_virasoro k hk m n
+  L0_grading := fun v hv => conf_L0_grading k hk v hv
+  translation := fun v => conf_translation k hk v
+  vacuum_grade := gradingZ_zero_eq_span_vacuum
+  positivity := fun n hn => gradingZ_positivity n hn
+
+theorem heisenberg_central_charge (k : ℂ) (hk : k ≠ 0) :
+    (heisenbergVOA k hk).centralCharge = 1 := rfl
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Every field is a theorem.} To write down a term of type \lean{VertexOperatorAlgebra Fock}, Lean demands
+a value for every field of the structure of Definition~\ref{l03:def:VOA}, including the proof fields. The
+quoted definitions fill each one with a named theorem: the grading fields with
+Theorem~\ref{l05:thm:gradingZ}, the vertex algebra axioms with Theorem~\ref{l05:thm:VAaxioms}, \lean{virasoro}
+with \lean{conf_virasoro} (which is \lean{L_virasoro} transported through the identification
+$\omega_{(m+1)}=L_m$, library lemma \lean{Lvir_eq_mode_Y_omega}), \lean{L0_grading} with
+\lean{conf_L0_grading} ($L_0$ acts on $\lfiveF_{(n)}$ by $n$), and \lean{translation} with
+\lean{conf_translation} ($Y(L_{-1}v,z)=\partial_zY(v,z)$). The vertex-algebra hypothesis \lean{_hk} of
+\lean{heisVA} is unused (the underscore says so); it is there only so that \lean{heisVA k hk} and
+\lean{heisenbergVOA k hk} take the same arguments.
+
+\textbf{The central charge.} \lean{heisenberg_central_charge} is proved by \lean{rfl}: it reads off the field
+\lean{centralCharge := 1}. This is \emph{not} circular, because the field \lean{virasoro} must be proved with
+that same value; a wrong value would make the structure impossible to build. In addition
+\lean{L_two_omega} computes $c/2=\frac12$ directly.
+
+\textbf{How the statement could have been weaker.} A vertex operator algebra in this library is of CFT
+type, so the theorem includes $V_0=\C\lfivevac$ and $V_n=0$ for $n<0$; these are true of $M(1)$. The level is
+any nonzero complex number; nothing requires $k=1$ or $k$ real. The theorem does \emph{not} say that the
+algebras for different $k$ are isomorphic (they are, via $X_i\mapsto\sqrt{k'/k}\,X_i$ on paper), nor that
+\lean{heisenbergVOA 1 _} is isomorphic to \lean{heisenbergNVOA 1 1 _} of Chapter~\ref{ch:03} (it is, by
+renaming variables). It also does not assert simplicity of $M(1)$, which is true (for $k\ne0$ the Fock space
+is irreducible under the Heisenberg algebra) but not stated in these files.
+
+\textbf{Could it be vacuous?} No: the carrier is the infinite-dimensional polynomial ring, $\omega\neq0$ for
+$k\ne0$, and $L_2\omega=\frac12\lfivevac\ne0$.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+All fields except \lean{translation} are the theorems listed above. Translation, $Y(L_{-1}v,z)=\partial_zY(v,z)$, is
+proved by Goddard's uniqueness theorem: both sides are fields local with every $Y(b,z)$, and they agree on the
+vacuum. The latter is shown by an induction over the powers of $z$, using that every $Y(v,z)$ is
+$L_{-1}$-covariant, $[L_{-1},Y(v,z)]=\partial_zY(v,z)$ (\lean{Y_DCovariant}). That covariance holds for the
+current (it is the case $m=-1$ of $[L_m,a_n]=-na_{m+n}$), is preserved by derivatives, and is preserved by
+normal-ordered products by the Leibniz rule $\partial{:}ab{:}={:}(\partial a)b{:}+{:}a\,\partial b{:}$.
+\end{proof}
+
+\begin{physics}
+This is the statement that the chiral free boson is a consistent chiral conformal field theory with $c=1$:
+a space of states, a vacuum, local fields for every state, a stress tensor generating the conformal symmetry,
+and a grading by energy. Its character is $\operatorname{Tr}q^{L_0-1/24}=1/\eta(\tau)$. Because it has a
+continuum of irreducible modules (Section~\ref{l05:sec:c2}), it is the basic example of an irrational
+vertex operator algebra.
+\end{physics}
+
+\begin{status}
+Proved, conditional only on $k\neq0$. \texttt{\#print axioms VOA.heisenbergVOA} $=$
+\texttt{[propext, Classical.choice, Quot.sound]}, re-checked for this book; \lean{VOA.pbw} is not used.
+\end{status}
+
+\begin{definition}[The rank-$n$ alias at level one]\label{l05:def:heisN}
+$\lean{heisenbergVOA' n}$ is the rank-$n$ Heisenberg vertex operator algebra of Chapter~\ref{ch:03},
+Theorem~\ref{ch03:thm:heisVOA}, at level $k=1$; its central charge is $n$.
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/Heisenberg.lean}.
+\begin{leancode}
+noncomputable def heisenbergVOA' (n : ℕ) : VertexOperatorAlgebra (HeisenbergN.FockN n) :=
+  HeisenbergN.heisenbergNVOA n 1 one_ne_zero
+
+theorem heisenbergVOA'_centralCharge (n : ℕ) :
+    (heisenbergVOA' n).centralCharge = (n : ℂ) := rfl
+\end{leancode}
+
+\begin{dictionary}
+\lean{one_ne_zero} is the proof that $1\ne0$, discharging the level hypothesis. The carrier is
+\lean{FockN n} $=$ \lean{MvPolynomial (ℕ × Fin n) ℂ}, a \emph{different type} from \lean{Fock}; in
+particular \lean{heisenbergVOA' 1} and \lean{heisenbergVOA 1 _} are different Lean objects with no
+isomorphism proved between them.
+\end{dictionary}
+
+\begin{physics}
+$n$ independent free bosons, the oscillator part of a string on an $n$-torus; the central charges add.
+\end{physics}
+
+\begin{status}
+Definition by alias; axiom-clean.
+\end{status}
+
+%======================================================================
+\section{The free boson is not \texorpdfstring{$C_2$}{C2}-cofinite}\label{l05:sec:c2}
+%======================================================================
+
+\subsection{\texorpdfstring{$C_2$}{C2}-cofiniteness}
+
+\begin{definition}[$\lfiveO$, $\lfiveA$, $C_2$-cofiniteness; Zhu]\label{l05:def:C2}
+For a vertex operator algebra $V$ let $\lfiveO(V)$ be the linear span of all $u_{(-2)}v$, $u,v\in V$, and
+$\lfiveA(V)=V/\lfiveO(V)$. $V$ is \emph{$C_2$-cofinite} if $\lfiveA(V)$ is finite-dimensional.
+\end{definition}
+
+\noindent File \leanpath{VOA/Modules/C2Cofinite.lean}.
+\begin{leancode}
+def O₂ (W : VertexOperatorAlgebra 𝒱) : Submodule ℂ 𝒱 :=
+  Submodule.span ℂ {x | ∃ u v : 𝒱, x = W.smul u (-2) v}
+
+abbrev A₂ (W : VertexOperatorAlgebra 𝒱) : Type u := 𝒱 ⧸ O₂ W
+
+def mk₂ (W : VertexOperatorAlgebra 𝒱) : 𝒱 →ₗ[ℂ] A₂ W := (O₂ W).mkQ
+
+def C2Cofinite (W : VertexOperatorAlgebra 𝒱) : Prop := FiniteDimensional ℂ (A₂ W)
+\end{leancode}
+
+\begin{dictionary}
+\lean{W.smul u (-2) v} is $u_{(-2)}v$ (Definition~\ref{l03:def:VA}). \lean{Submodule.span ℂ S} is the linear
+span; \lean{𝒱 ⧸ O₂ W} is the quotient vector space and \lean{mkQ} the quotient map. The definition is Zhu's
+(and Gannon's Definition~5.3.5) verbatim. This notion is developed in Chapter~\ref{ch:L12}; here we only need
+the definition.
+\end{dictionary}
+
+\begin{physics}
+$\lfiveA(V)$ is the ``classical limit'' of the chiral algebra: in it, all derivatives of fields are set to
+zero, and what remains is a commutative Poisson algebra, the ring of functions on the \emph{associated
+variety} of $V$. $C_2$-cofiniteness says this variety is a point (finitely many states survive). It is the
+algebraic avatar of having finitely many sectors: $C_2$-cofiniteness alone gives finitely many irreducible
+modules, and for rational $C_2$-cofinite $V$ their characters span a representation of $SL_2(\Z)$ (Zhu). Rationality
+is needed: for the $C_2$-cofinite but irrational triplet algebras $\mathcal W(p)$ the ordinary characters do not close
+under $SL_2(\Z)$, and pseudo-traces must be added. The library's forms of Zhu's theorem accordingly assume
+$C_2$-cofiniteness together with a rationality hypothesis: \lean{zhuModularity_}\allowbreak\lean{canonical_of_}\allowbreak\lean{C2Cofinite_}\allowbreak\lean{admissiblyRational}
+(\lean{C2Cofinite W} and \lean{AdmissiblyRational W}) and \lean{zhuModularity_stronglyRational} (\lean{StronglyRational W}),
+Chapter~\ref{ch:L15}.
+\end{physics}
+
+\subsection{The theorem}
+
+\begin{theorem}[Zhu; Gaberdiel--Neitzke]\label{l05:thm:notC2}
+For every $k\ne0$ the Heisenberg vertex operator algebra $M(1)=\lean{heisenbergVOA k hk}$ is not
+$C_2$-cofinite. More precisely, the classes of $X_0^n=(a_{-1})^n\lfivevac$, $n\in\N$, are linearly independent
+in $\lfiveA(M(1))$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/HeisenbergC2.lean}.
+\begin{leancode}
+theorem constantCoeff_smul_neg_two_eq_zero (k : ℂ) (hk : k ≠ 0) (u v : Fock) :
+    MvPolynomial.constantCoeff ((heisenbergVOA k hk).smul u (-2) v) = 0
+
+theorem heisenberg_vacuum_notMem_O₂ (k : ℂ) (hk : k ≠ 0) :
+    (vacuum : Fock) ∉ O₂ (heisenbergVOA k hk)
+
+theorem coeff_single0_eq_zero_of_mem_O₂ (k : ℂ) (hk : k ≠ 0) (n : ℕ) {p : Fock}
+    (hp : p ∈ O₂ (heisenbergVOA k hk)) :
+    MvPolynomial.coeff (Finsupp.single 0 n) p = 0
+
+theorem heisenberg_A2_tower_linearIndependent (k : ℂ) (hk : k ≠ 0) :
+    LinearIndependent ℂ (fun n : ℕ => mk₂ (heisenbergVOA k hk) ((X 0 : Fock) ^ n))
+
+theorem heisenberg_not_C2Cofinite (k : ℂ) (hk : k ≠ 0) :
+    ¬ C2Cofinite (heisenbergVOA k hk)
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Decoding.} \lean{MvPolynomial.constantCoeff p} is the constant term of $p$, an algebra map
+$\lfiveF\to\C$ (the \emph{augmentation} $\varepsilon$). \lean{Finsupp.single 0 n} is the exponent vector of
+$X_0^n$, so \lean{MvPolynomial.coeff (Finsupp.single 0 n) p} is the coefficient of $X_0^n$ in $p$.
+\lean{LinearIndependent ℂ f} says the family $f:\N\to\lfiveA$ is linearly independent (every finite linear
+relation is trivial). \lean{¬} is negation.
+
+\textbf{Strength.} The headline is the negation of Definition~\ref{l05:def:C2} for the Heisenberg algebra at
+every nonzero level; the intermediate statement \lean{heisenberg_A2_tower_linearIndependent} is stronger
+(it exhibits an explicit infinite independent family). The full description $\lfiveA(M(1))\cong\C[x]$ (the
+images of $X_0^n$ \emph{span} as well) is not stated in the library, and neither is the corresponding fact for
+Zhu's algebra $A(M(1))\cong\C[x]$; only the lower bound needed for the negation is proved.
+
+\textbf{Could it be vacuous?} A theorem of the form $\neg P(V)$ is only interesting if $V$ is the intended
+object. Here $V$ is the algebra of Theorem~\ref{l05:thm:heisVOA}, and \lean{C2Cofinite} is used positively
+elsewhere in the library (for example the trivial algebra of Section~\ref{l05:sec:trivial} is proved
+$C_2$-cofinite in \leanpath{ZhuInstantiation.lean}), so the predicate is not identically false.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+\emph{Step 1: $\lfiveO\subseteq\ker\varepsilon$.} Let $u,v$ be monomials, of weights $p$ and $q$. By VA1,
+$u_{(-2)}v$ has weight $p+q+1\ge1$, so it is a combination of non-constant monomials and its constant term
+vanishes. By bilinearity $\varepsilon(u_{(-2)}v)=0$ for all $u,v$, and $\ker\varepsilon$ is a subspace, so
+$\lfiveO\subseteq\ker\varepsilon$. In particular $\lfivevac\notin\lfiveO$ since $\varepsilon(1)=1$.
+
+\emph{Step 2: $a_1$ preserves $\lfiveO$.} The mode $a_1$ is $(a_{-1}\lfivevac)_{(1)}$, and the commutator
+formula (Theorem~\ref{l03:thm:comm}) gives
+$[a_1,v_{(-2)}]=(a_0v)_{(-1)}+(a_1v)_{(-2)}=(a_1v)_{(-2)}$ because $a_0=0$ on $\lfiveF$. Hence
+$a_1(v_{(-2)}w)=(a_1v)_{(-2)}w+v_{(-2)}(a_1w)\in\lfiveO$. Since $a_1=k\,\partial/\partial X_0$ and $k\ne0$,
+$\partial/\partial X_0$ preserves $\lfiveO$ too.
+
+\emph{Step 3: the $X_0^n$-coefficient vanishes on $\lfiveO$.} For any polynomial $p$, the constant term of
+$(\partial/\partial X_0)^np$ is $n!$ times the coefficient of $X_0^n$ in $p$. If $p\in\lfiveO$ then
+$(\partial/\partial X_0)^np\in\lfiveO\subseteq\ker\varepsilon$ by Steps 1--2, so that coefficient is $0$.
+
+\emph{Step 4: independence.} If $\sum_n\ell_n[X_0^n]=0$ in $\lfiveA$, then $q=\sum_n\ell_nX_0^n\in\lfiveO$, and
+by Step 3 every coefficient $\ell_m$ of $q$ vanishes. An infinite linearly independent family cannot live in a
+finite-dimensional space, which contradicts \lean{C2Cofinite}.
+\end{proof}
+
+\begin{physics}
+The surviving classes $[(a_{-1})^n\lfivevac]$ are the classical functions $x^n$ of the zero mode of the
+boson, the coordinate on the (non-compact) target line. Physically the theorem says that the free boson
+on $\lfiveR$ has a continuous spectrum of sectors: for every momentum $p$ there is a module $\lfiveF_p$
+of lowest weight $p^2/2k$, and Zhu's correspondence identifies the lowest-weight data with points of a
+line. Compactifying (Section~\ref{l05:sec:general}) discretises the momenta and restores finiteness:
+lattice vertex operator algebras of positive-definite even lattices are $C_2$-cofinite (proved in the
+library as \lean{latticeVOAGen_c2Cofinite}, in \leanpath{VOA/\allowbreak Classification/\allowbreak COne/\allowbreak LatticeC2.lean},
+Chapter~\ref{ch:L22}).
+\end{physics}
+
+\begin{status}
+Proved, conditional only on $k\ne0$. \texttt{\#print axioms VOA.heisenberg\_not\_C2Cofinite} $=$
+\texttt{[propext, Classical.choice, Quot.sound]}, re-checked for this book.
+\end{status}
+
+%======================================================================
+\section{The Heisenberg instance of the PBW boundary}\label{l05:sec:pbw}
+%======================================================================
+
+This section concerns one file, \leanpath{VOA/\allowbreak Examples/\allowbreak HeisenbergPBWFreeness.lean},
+whose role is entirely internal to the library's proof of Zhu's bijection (Chapter~\ref{ch:L13}). We explain
+just enough of that context to state what is proved and, more importantly, what is \emph{not}.
+
+\subsection{Context}
+
+Zhu's theorem identifies irreducible modules of a vertex operator algebra $W$ with irreducible modules of
+its Zhu algebra $A(W)$. The hard direction starts from an $A(W)$-module $U$ and constructs a $W$-module
+whose lowest-weight space is $U$. Following Dong--Li--Mason, the library forms an induced (``generalized
+Verma'') module $M(U)=\mathcal U(\hat W)\otimes_{\mathcal U(P)}U$, where $\hat W$ is the Lie algebra of modes
+of $W$ and $P$ a parabolic subalgebra, and it needs the \emph{bottom map} $u\mapsto[1\otimes u]$ to be
+injective and to admit a projection back. In the classical setting this follows from the
+Poincar\'e--Birkhoff--Witt theorem, which the library now proves in the relative form needed (\lean{VOA.pbw}, a
+formerly a project axiom, now a theorem; Chapter~\ref{ch:L02}, Section~\ref{l02:sec:pbwproof}). While it was an axiom,
+every \lean{pbw}-dependent result had an axiom-free twin taking the needed conclusion as an explicit hypothesis, a
+\lean{BottomProjection}; those twins remain in the library, with that hypothesis now always dischargeable
+(Chapter~\ref{ch:L02}, Section~\ref{l02:sec:history}).
+
+\begin{definition}[Bottom projection; PBW freeness]\label{l05:def:bottomproj}
+Let $P$ be a parabolic representation on a vector space $U$ (in the case used below: an $A(W)$-module viewed
+as a representation of the degree-zero modes), $M(U)$ the induced module and $\iota:U\to M(U)$ the bottom
+map. A \emph{bottom projection} is a linear map $\pi:M(U)\to U$ with $\pi\circ\iota=\mathrm{id}_U$ that
+vanishes on every level of $M(U)$ other than the bottom one. \emph{PBW freeness} means that $\iota$ is
+injective and the levels of $M(U)$ are independent.
+\end{definition}
+
+\noindent Files \leanpath{VOA/Modules/ZhuVermaAnArchDLM3Survival.lean},
+\leanpath{VOA/Modules/ZhuVermaAnArchDLM3PBWSplit.lean}.
+\begin{leancode}
+structure BottomProjection (P : ParabolicRep W n U) where
+  proj : IndMod P →ₗ[ℂ] U
+  proj_bottom : ∀ u : U, proj (indBottom P u) = u
+  proj_levCover : ∀ ⦃k : ℤ⦄, k ≠ (n : ℤ) → ∀ ⦃z : IndMod P⦄, z ∈ levCover P k → proj z = 0
+
+structure PBWFreeness (P : ParabolicRep W n U) : Prop where
+  bottom_injective : Function.Injective (indBottom P)
+  levels_iSupIndep : iSupIndep (levCover P)
+\end{leancode}
+
+\begin{dictionary}
+\lean{IndMod P} is the induced module $M_n(U)$, \lean{indBottom P} the bottom map $\iota$, and
+\lean{levCover P k} the level-$k$ part of $M_n(U)$ (spanned by $[y\otimes u]$ with $y$ of degree $k-n$ in the
+universal enveloping algebra). \lean{iSupIndep} is independence of a family of subspaces (each meets the sum
+of the others in $0$). These objects are defined and studied in Chapter~\ref{ch:L13}; for this chapter the
+only point is that \lean{BottomProjection} is \emph{data} (a map with two properties) and \lean{PBWFreeness} a
+\emph{proposition}. A bottom projection forces \lean{indBottom} to be injective
+(\lean{BottomProjection.indBottom_injective}).
+\end{dictionary}
+
+\begin{physics}
+The induced module is the chiral-algebra analogue of a Verma module: one takes a space of ground states and
+acts freely with all energy-raising modes. The bottom projection projects onto the ground states.
+Its existence says that the ground states are not destroyed by the construction, i.e.\ that the ``Verma
+module'' really has the prescribed ground states, which is what physicists assume tacitly when they build a
+representation from its highest-weight space.
+\end{physics}
+
+\subsection{The Heisenberg instance}
+
+\begin{theorem}[A nonzero Heisenberg instance]\label{l05:thm:pbw}
+Let $k\ne0$, $W=M(1)$ the Heisenberg algebra at level $k$, and $U=W_0=\C\lfivevac$ its weight-zero subspace,
+viewed as a module for Zhu's algebra. Then the induced module of $U$ has a bottom projection and is PBW-free;
+the vacuum is a nonzero vector of $U$ and its image in the induced module is nonzero.
+\end{theorem}
+
+\noindent Files \leanpath{VOA/Examples/HeisenbergPBWFreeness.lean} and
+\leanpath{VOA/Modules/ZhuVermaAnArchDLM3AdjointBottom.lean}.
+\begin{leancode}
+def adjointPBWFreeness (W : VertexOperatorAlgebra 𝒱) :
+    PBWFreeness (parabolicRepOfAMod W (adjointBottomAMod W)) :=
+  pbwFreeness_of_bottom_injective _ (adjoint_indBottom_injective W)
+
+noncomputable def adjointBottomProjection (W : VertexOperatorAlgebra 𝒱) :
+    BottomProjection (parabolicRepOfAMod W (adjointBottomAMod W)) :=
+  bottomProjectionOfInjective _ (adjoint_indBottom_injective W)
+
+def heisenbergAdjointPBWFreeness (k : ℂ) (hk : k ≠ 0) :
+    PBWFreeness
+      (parabolicRepOfAMod (heisenbergVOA k hk) (adjointBottomAMod (heisenbergVOA k hk))) :=
+  adjointPBWFreeness (heisenbergVOA k hk)
+
+noncomputable def heisenbergAdjointBottomProjection (k : ℂ) (hk : k ≠ 0) :
+    BottomProjection
+      (parabolicRepOfAMod (heisenbergVOA k hk) (adjointBottomAMod (heisenbergVOA k hk))) :=
+  adjointBottomProjection (heisenbergVOA k hk)
+
+theorem heisenbergAdjointBottomVacuum_ne_zero (k : ℂ) (hk : k ≠ 0) :
+    heisenbergAdjointBottomVacuum k hk ≠ 0
+
+theorem heisenberg_indBottom_vacuum_ne_zero (k : ℂ) (hk : k ≠ 0) :
+    indBottom
+        (parabolicRepOfAMod (heisenbergVOA k hk) (adjointBottomAMod (heisenbergVOA k hk)))
+        (heisenbergAdjointBottomVacuum k hk) ≠ 0
+\end{leancode}
+
+\begin{dictionary}
+\textbf{What the Heisenberg declarations are.} The first two quoted declarations hold for \emph{every}
+vertex operator algebra $W$: \lean{adjointBottomAMod W} is the weight-zero subspace of the adjoint module,
+made into an $A(W)$-module, and \lean{parabolicRepOfAMod} turns it into a parabolic representation. The
+Heisenberg declarations are their specialisations to $W=M(1)$; a Lean check made for this book (not part of
+this release) confirms that
+\lean{heisenbergAdjointBottomProjection k hk} is \emph{definitionally equal} to
+\lean{adjointBottomProjection (heisenbergVOA k hk)}. The only genuinely Heisenberg-specific content is the
+pair of non-vanishing theorems: the bottom space contains the nonzero vector \lean{vacuum} (the polynomial
+$1$), and its image in the induced module is nonzero. These guard against the instance being satisfied on a
+zero carrier.
+
+\textbf{What is not claimed.} The module docstring is explicit and we repeat it: this is a
+\emph{satisfiability} witness for the abstract structures, \emph{not} a discharge of the hypothesis that the
+downstream Zhu bijection needs. That hypothesis concerns the \emph{regular} module \lean{regularAMod W}, not
+the adjoint bottom \lean{adjointBottomAMod W}, and no identification of these two $A(W)$-modules is asserted.
+In particular this file does not make any \lean{pbw}-dependent theorem unconditional, for Heisenberg or for
+anything else.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+The weight-zero space of the adjoint module embeds into $W$, and that inclusion is equivariant for the
+Frenkel--Zhu action of the parabolic subalgebra. By the universal property of the induced module the inclusion
+extends to a map $M(U)\to W$ whose composite with $\iota$ is the inclusion, which is injective; hence $\iota$ is
+injective. Level independence holds for every parabolic representation (an Euler-operator argument proved in
+Chapter~\ref{ch:L13}), and injectivity plus independence gives the projection. For Heisenberg, the vacuum $1$
+has weight $0$ and is nonzero, and injectivity of $\iota$ transfers non-vanishing to its image.
+\end{proof}
+
+\begin{physics}
+For the free boson the statement is the expected one: the induced module generated from the vacuum is the
+vacuum module, its ground state is the vacuum, and the vacuum survives. The interest is purely structural: it
+shows the abstract hypotheses of the \lean{Pr}-hypothesis form of Zhu's theorem can be met by a nonzero example.
+\end{physics}
+
+\begin{status}
+Proved, conditional only on $k\ne0$. \texttt{\#print axioms} for
+\lean{heisenbergAdjointBottomProjection}, \lean{heisenbergAdjointPBWFreeness},
+\lean{heisenberg_indBottom_vacuum_ne_zero}: \texttt{[propext, Classical.choice, Quot.sound]} in each case.
+\lean{VOA.pbw} is not used.
+\end{status}
+
+%======================================================================
+\section{The free boson with background charge}\label{l05:sec:bg}
+%======================================================================
+
+The file \leanpath{VOA/\allowbreak Examples/\allowbreak FreeBosonGeneralC.lean} turns the rank-one
+Heisenberg algebra at level $1$ into a one-parameter family of vertex operator algebras with central charge
+$1-12\lambda^2$, $\lambda\in\C$. The Virasoro relation it relies on is proved in
+\leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroFock.lean} (a Chapter~\ref{ch:L06} file); we quote it
+because the construction depends on it.
+
+\begin{definition}[Linear-dilaton modes]\label{l05:def:Lld}
+For $\lambda\in\C$ and $n\in\Z$ put $L^\lambda_n=L_n+\lambda(n+1)a_n$ on $\lfiveF$, where $L_n$ and $a_n$ are the
+level-one Sugawara modes and oscillators of Section~\ref{l05:sec:heis1}.
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/VirasoroFock.lean}.
+\begin{leancode}
+noncomputable def Lld (lam : ℂ) (n : ℤ) : End ℂ Fock :=
+  Lvir 1 n + (lam * ((n : ℂ) + 1)) • osc 1 n
+
+theorem Lld_virasoro (lam : ℂ) (m n : ℤ) :
+    Lld lam m * Lld lam n - Lld lam n * Lld lam m
+      = ((m : ℂ) - n) • Lld lam (m + n)
+        + (if m + n = 0 then ((m : ℂ) ^ 3 - m) / 12 * (1 - 12 * lam ^ 2) else 0)
+            • (LinearMap.id : End ℂ Fock)
+\end{leancode}
+
+\begin{dictionary}
+\lean{Lvir 1 n} is $L_n$ at level $k=1$ and \lean{osc 1 n} is $a_n$. The relation is the Virasoro algebra
+with central charge $1-12\lambda^2$. No hypothesis on $\lambda$.
+\end{dictionary}
+
+\begin{physics}
+These are the modes of $T_\lambda(z)=\frac12{:}J^2{:}-\lambda\,\partial J$: the mode of $\partial J$ at
+$z^{-n-2}$ is $-(n+1)a_n$. The shift of the central charge by $-12\lambda^2$ comes from the double
+contraction $\lambda^2\langle\partial J(z)\partial J(w)\rangle=-6\lambda^2/(z-w)^4$; the cross terms
+$\langle{:}J^2{:}\,\partial J\rangle$ vanish because a three-point function of an odd number of
+free-field currents is zero.
+\end{physics}
+
+\begin{status}
+Proved, unconditional (\leanpath{VirasoroFock.lean}, Chapter~\ref{ch:L06}); axiom-clean.
+\end{status}
+
+\begin{definition}[Deformed conformal vector]\label{l05:def:omegaLD}
+$\omega^\lambda=\omega-\lambda\,a_{-2}\lfivevac=\frac12X_0^2-\lambda X_1\in\lfiveF_2$, with $\omega$ the
+level-one Heisenberg conformal vector.
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/FreeBosonGeneralC.lean}.
+\begin{leancode}
+noncomputable def omegaLD (lam : ℂ) : Fock := ω 1 - lam • osc 1 (-2) vacuum
+
+theorem mode_Y_omegaLD (lam : ℂ) (n : ℤ) :
+    mode (Y 1 (omegaLD lam)) (n + 1) = Lld lam n
+
+theorem Lld_zero (lam : ℂ) : Lld lam 0 = Lvir 1 0
+
+theorem Lld_neg_one (lam : ℂ) : Lld lam (-1) = Lvir 1 (-1)
+\end{leancode}
+
+\begin{dictionary}
+\lean{osc 1 (-2) vacuum} is $a_{-2}\lfivevac=X_1$, whose field is $\partial\alpha(z)$; since
+$\operatorname{mode}(\partial\alpha)(n+1)=-(n+1)a_n$, the minus sign in $\omega^\lambda$ is exactly what makes
+$\omega^\lambda_{(n+1)}=L^\lambda_n$ (\lean{mode_Y_omegaLD}). This is the bridge between the operator family of
+Definition~\ref{l05:def:Lld} and the state--field correspondence. \lean{Lld_zero} and \lean{Lld_neg_one} say
+that $L_0$ and $L_{-1}$ are \emph{not} deformed: $a_0=0$ on $\lfiveF$, and the coefficient $\lambda(n+1)$
+vanishes at $n=-1$.
+\end{dictionary}
+
+\begin{physics}
+$\omega^\lambda$ is the state of the improved stress tensor $T_\lambda$. The improvement term is a total
+derivative, so it does not change the generator of translations $L_{-1}$, and on the zero-momentum sector
+it does not change the energy $L_0$. It does change which fields are primary: for example
+$L^\lambda_1(a_{-1}\lfivevac)=2\lambda\,\lfivevac\neq0$, so for $\lambda\ne0$ the current is no longer a primary
+field (it acquires an anomalous transformation law, the hallmark of a background charge at infinity).
+\end{physics}
+
+\begin{status}
+Proved, unconditional, axiom-clean.
+\end{status}
+
+\begin{theorem}[The free boson at general central charge]\label{l05:thm:freeboson}
+For every $\lambda\in\C$, the vertex algebra $\lfiveF$ of Theorem~\ref{l05:thm:heisVOA} at level $1$, with
+conformal vector $\omega^\lambda$, is a vertex operator algebra of CFT type with central charge
+$1-12\lambda^2$; its vertex algebra, its grading, $L_0$ and $L_{-1}$ are those of the undeformed algebra.
+Consequently every complex number is the central charge of a vertex operator algebra structure on $\lfiveF$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/FreeBosonGeneralC.lean}.
+\begin{leancode}
+noncomputable def freeBosonVOA (lam : ℂ) : VertexOperatorAlgebra Fock where
+  toPreVertexAlgebra := heisVA 1 one_ne_zero
+  conformalVector := omegaLD lam
+  conformal_mem := omegaLD_mem_gradingZ_two lam
+  centralCharge := 1 - 12 * lam ^ 2
+  virasoro := fun m n => confLD_virasoro lam m n
+  L0_grading := fun v hv => confLD_L0_grading lam v hv
+  translation := fun v => confLD_translation lam v
+  vacuum_grade := gradingZ_zero_eq_span_vacuum
+  positivity := fun n hn => gradingZ_positivity n hn
+
+theorem freeBosonVOA_centralCharge (lam : ℂ) :
+    (freeBosonVOA lam).centralCharge = 1 - 12 * lam ^ 2 := rfl
+
+theorem freeBosonVOA_toPreVertexAlgebra (lam : ℂ) :
+    (freeBosonVOA lam).toPreVertexAlgebra = heisVA 1 one_ne_zero := rfl
+
+theorem freeBosonVOA_L_zero (lam : ℂ) :
+    (freeBosonVOA lam).L 0 = (heisenbergVOA 1 one_ne_zero).L 0
+
+theorem exists_centralCharge (c : ℂ) :
+    ∃ lam : ℂ, (freeBosonVOA lam).centralCharge = c
+
+theorem centralCharge_surjective :
+    Function.Surjective (fun lam : ℂ => (freeBosonVOA lam).centralCharge) :=
+  fun c => exists_centralCharge c
+\end{leancode}
+
+\begin{dictionary}
+\textbf{What changes and what does not.} The underlying \lean{PreVertexAlgebra} is literally \lean{heisVA 1 _}
+(\lean{freeBosonVOA_toPreVertexAlgebra} is \lean{rfl}); so $Y$, the vacuum, the grading by oscillator level and
+all vertex algebra axioms are those of $M(1)$ at level $1$. Only \lean{conformalVector},
+\lean{conformal_mem}, \lean{centralCharge} and \lean{virasoro} change; \lean{L0_grading} and
+\lean{translation} are the undeformed proofs after rewriting with \lean{Lld_zero} and \lean{Lld_neg_one}.
+\lean{(freeBosonVOA lam).L 0} is $L^\lambda_0=\omega^\lambda_{(1)}$, and \lean{freeBosonVOA_L_zero} says it is
+the undeformed $L_0$.
+
+\textbf{Is the grading the expected one?} Yes, for the vacuum module: the conformal weight of
+$X^e$ is still $\sum(i+1)e_i$, since $L^\lambda_0=L_0$. (On a charged module $\lfiveF_p$ the weights would shift
+to $\frac12p^2+\lambda p$ in this sign convention, cf.\ the lattice version in Section~\ref{l05:sec:latbg}, but charged modules are
+not part of this file.)
+
+\textbf{The central charge is not a free label.} As in Theorem~\ref{l05:thm:heisVOA}, the \lean{rfl} proof of
+\lean{freeBosonVOA_centralCharge} is meaningful because \lean{virasoro} is proved with that value. A
+Lean check made for this book (not part of this release) confirms the triplet value
+$c(\lean{freeBosonVOA (1/2)})=-2$ and that the vertex algebra does not depend on $\lambda$.
+
+\textbf{\lean{exists_centralCharge}.} This is the elementary fact that $1-12\lambda^2=c$ has a solution
+$\lambda\in\C$ for every $c$ ($\C$ is algebraically closed). It says that the conformal vector, not the vertex
+algebra, carries the central charge: one and the same vertex algebra admits conformal vectors of every central
+charge. It is \emph{not} a statement about unitary or rational theories.
+
+\textbf{Two sign conventions in the library.} Here $\omega^\lambda=\omega-\lambda a_{-2}\lfivevac$ and
+$L^\lambda_n=L_n+\lambda(n+1)a_n$. The lattice files of Section~\ref{l05:sec:latbg} use the opposite sign,
+$\omega_\lambda=\omega+\lambda(-2)\lfivevac$ and $L^\lambda_n=L_n-(n+1)\lambda(n)$. The two families are related by
+$\lambda\mapsto-\lambda$; the central charge is even in $\lambda$ and does not see the difference, but the
+deformed weights do. A referee comparing statements across files should keep this in mind.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+The vertex algebra axioms are inherited. \emph{VOA1}: by \lean{mode_Y_omegaLD} the modes of $\omega^\lambda$ are
+$L^\lambda_n$, which satisfy the Virasoro relation with $c=1-12\lambda^2$ (\lean{Lld_virasoro}). The latter is
+proved by expanding $[L_m+\lambda(m+1)a_m,\,L_n+\lambda(n+1)a_n]$ into four commutators: $[L_m,L_n]$ gives
+$(m-n)L_{m+n}+\frac{m^3-m}{12}\delta_{m+n,0}$; the two cross terms give, by $[L_m,a_n]=-na_{m+n}$,
+$-\lambda(n+1)n\,a_{m+n}+\lambda(m+1)m\,a_{m+n}=\lambda(m-n)(m+n+1)a_{m+n}$, which is exactly the $a$-part of $(m-n)L^\lambda_{m+n}$; and
+$\lambda^2(m+1)(n+1)[a_m,a_n]=\lambda^2(m+1)(1-m)m\,\delta_{m+n,0}=-\lambda^2(m^3-m)\delta_{m+n,0}$, which is
+$\frac{m^3-m}{12}(-12\lambda^2)$. \emph{VOA2, VOA3}: $L^\lambda_0=L_0$, $L^\lambda_{-1}=L_{-1}$. \emph{CFT type}:
+unchanged. Finally $\omega^\lambda\in\lfiveF_2$ since $X_0^2$ and $X_1$ have weight $2$.
+\end{proof}
+
+\begin{physics}
+This is the Coulomb-gas (Feigin--Fuchs, Dotsenko--Fateev) free field, or the linear dilaton of string
+theory: a free boson whose stress tensor is improved by $-\lambda\partial J$. Real $\lambda$ gives $c<1$; the
+Virasoro minimal model $M(p,q)$ with $c_{p,q}=1-6(p-q)^2/(pq)$ is realised at $\lambda^2=(p-q)^2/(2pq)$, its
+primaries arising from vertex operators with special momenta and its null vectors from screening charges
+(Chapter~\ref{ch:L06}). Imaginary $\lambda$ gives $c>1$, as for the Liouville and linear-dilaton theories. The
+value $\lambda=\frac12$, $c=-2$, is the symplectic-fermion/triplet point (Chapter~\ref{ch:L18}). Physically the
+background charge is a charge placed at infinity on the sphere, which is why the $U(1)$ charge conservation of
+correlators is shifted and the current is no longer primary.
+\end{physics}
+
+\begin{status}
+Proved, unconditional (no hypothesis on $\lambda$). \texttt{\#print axioms} for \lean{VOA.FBgc.freeBosonVOA},
+\lean{exists_centralCharge}, \lean{centralCharge_surjective}: \texttt{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+%======================================================================
+\section{Lattice vertex operator algebras in general: what exactly is proved}\label{l05:sec:general}
+%======================================================================
+
+The construction of $V_L$ for an even positive-definite lattice $L$ is presented in full in
+Chapter~\ref{ch:03} (Sections~\ref{ch03:sec:cocycle}--\ref{ch03:sec:reconstruction}), with every
+definition and the locality and reconstruction theorems. Here we restate the headline and carry out the
+fidelity analysis the task of this chapter calls for: \emph{which lattices are allowed, what the central
+charge is, and whether the grading is the expected one.}
+
+\subsection{Lattices}
+
+\begin{definition}[Integral lattice; even; positive-definite; rank]\label{l05:def:lattice}
+An integral lattice is a finitely generated free abelian group $L$ with a symmetric $\Z$-valued bilinear form.
+It is even if $\langle v,v\rangle\in2\Z$ for all $v$, positive-definite if $\langle v,v\rangle>0$ for $v\ne0$, and
+its rank is its rank as a free $\Z$-module. (Chapter~\ref{ch:03}, Definition~\ref{ch03:def:lattice}.)
+\end{definition}
+
+\noindent Files \leanpath{VOA/Foundations/Lattices.lean} and \leanpath{VOA/Foundations/LatticeCocycle.lean}.
+\begin{leancode}
+structure IntegralLattice where
+  carrier : Type u
+  [addCommGroup : AddCommGroup carrier]
+  [free : Module.Free ℤ carrier]
+  [finite : Module.Finite ℤ carrier]
+  form : LinearMap.BilinForm ℤ carrier
+  isSymm : form.IsSymm
+
+def Even : Prop := ∀ v : L.carrier, 2 ∣ L.form v v
+
+def PosDef : Prop := ∀ v : L.carrier, v ≠ 0 → 0 < L.form v v
+
+noncomputable def rank : ℕ := Module.finrank ℤ L.carrier
+\end{leancode}
+
+\begin{dictionary}
+The fields \lean{free} and \lean{finite} make the carrier isomorphic to $\Z^n$ without fixing a basis.
+\lean{2 ∣ x} is divisibility. Nothing requires the form to be non-degenerate or unimodular; positive-definiteness
+implies non-degeneracy. The rank may be $0$.
+\end{dictionary}
+
+\begin{physics}
+$L$ is the lattice of chiral momenta of $r$ compactified bosons. Evenness makes every vertex operator
+${:}e^{i\alpha\cdot X}{:}$ bosonic with integer weight, positive-definiteness makes the energy
+$\frac12\langle\alpha,\alpha\rangle$ positive (a Euclidean target torus). Unimodularity, not required here, is
+what modular invariance of the chiral partition function would need.
+\end{physics}
+
+\subsection{The state space and the grading}
+
+Recall from Chapter~\ref{ch:03} (Definitions~\ref{ch03:def:LatModuleGen} and~\ref{ch03:def:gradingLatGen})
+that $V_L=\lfiveF_r\otimes\C[L]$, $r=\operatorname{rank}L$, with $\lfiveF_r=\lean{FockN r}$ the rank-$r$ Fock space
+and $\C[L]$ the vector space with basis $e^\alpha$; that \lean{halfNorm L α} is $\langle\alpha,\alpha\rangle/2$
+(integer division); and that the weight-$n$ space is $\sum_\alpha(\lfiveF_r)_{n-\langle\alpha,\alpha\rangle/2}\otimes e^\alpha$.
+
+\noindent Files \leanpath{VOA/Examples/LatticeGenGrading.lean}, \leanpath{VOA/Examples/LatticeQuadRefine.lean}.
+\begin{leancode}
+noncomputable def halfNorm (α : L.carrier) : ℤ := L.form α α / 2
+
+noncomputable def bigradα (wα : ℤ × L.carrier) : Submodule ℂ (LatModuleGen L) :=
+  (HeisenbergN.gradingZN (rank L) wα.1).map (mkEα L wα.2)
+
+noncomputable def gradingLatGen (k : ℤ) : Submodule ℂ (LatModuleGen L) :=
+  ⨆ α : L.carrier, bigradα L (k - halfNorm L α, α)
+
+theorem gradingLatGen_isInternal_free : DirectSum.IsInternal (gradingLatGen L)
+\end{leancode}
+
+\begin{theorem}[The grading is the expected one]\label{l05:thm:latgrading}
+For any integral lattice $L$, $V_L=\bigoplus_n(V_L)_n$ (no hypothesis). If $L$ is even and positive-definite,
+then for every $\alpha\in L$ the charged vacuum $e^\alpha=1\otimes e^\alpha$ lies in the weight space
+$(V_L)_{\langle\alpha,\alpha\rangle/2}$ of the vertex operator algebra $V_L$; more generally
+$p\otimes e^\alpha$ with $p$ of oscillator level $w$ has weight $w+\frac12\langle\alpha,\alpha\rangle$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/LatticeGenGrading.lean}.
+\begin{leancode}
+theorem bigradα_le_gradingLatGen (w : ℤ) (α : L.carrier) :
+    bigradα L (w, α) ≤ gradingLatGen L (w + halfNorm L α)
+\end{leancode}
+
+\begin{dictionary}
+\lean{bigradα L (w, α)} is $(\lfiveF_r)_w\otimes e^\alpha$; the library lemma says it sits in weight
+$w+\lean{halfNorm}(\alpha)$. A Lean check made for this book (\lean{latChargeGen_mem_grading}, not part of this release) specialises to
+$w=0$, $p=1$ and reads the result inside the
+\lean{grading} field of \lean{latticeVOAGen}, so it is a statement about the vertex operator algebra and not only
+about an auxiliary family of subspaces. For even $L$, \lean{halfNorm} is exactly $\langle\alpha,\alpha\rangle/2$
+(\lean{two_halfNorm}, Chapter~\ref{ch:03}); without evenness integer division would round, which is one of the
+reasons evenness is a hypothesis. \lean{gradingLatGen_isInternal_free} (in \leanpath{LatticeQuadRefine.lean})
+shows that the direct-sum decomposition itself needs \emph{no} hypothesis; evenness and positivity are needed for
+finite-dimensionality, for the absence of negative weights, and for $V_0=\C\lfivevac$
+(Chapter~\ref{ch:03}, Theorem~\ref{ch03:thm:gradingLat}). The module docstring of
+\leanpath{LatticeGenGrading.lean} still calls the finiteness of bounded vectors an ``isolated crux''; that is
+stale, the crux is discharged (\lean{IntegralLattice.boundedFinite}).
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+Internality: $V_L=\bigoplus_{(w,\alpha)}(\lfiveF_r)_w\otimes e^\alpha$ because both tensor factors are graded, and
+regrouping the pieces of a direct sum along any map of index sets (here $(w,\alpha)\mapsto w+\langle\alpha,\alpha\rangle/2$)
+keeps it a direct sum. The weight of the vacuum $1\in\lfiveF_r$ is $0$, so $1\otimes e^\alpha$ has weight
+$\langle\alpha,\alpha\rangle/2$.
+\end{proof}
+
+\begin{physics}
+The conformal weight $h=w+\frac12p^2$ is oscillator energy plus the kinetic energy of the zero mode. The
+graded dimension is $\theta_L(q)/\prod(1-q^n)^r$, the torus partition function of the chiral bosons at the
+lattice point $L$.
+\end{physics}
+
+\begin{status}
+\lean{gradingLatGen_isInternal_free}: proved, unconditional. \lean{latChargeGen_mem_grading}: checked in Lean against the library (the check is not part of this release),
+compiled with \texttt{lake env lean -DmaxSynthPendingDepth=3}; \texttt{\#print axioms} $=$
+\texttt{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\subsection{The theorem}
+
+\begin{theorem}[Lattice vertex operator algebras]\label{l05:thm:latticeVOAGen}
+Let $L$ be an even positive-definite integral lattice of rank $r\ge0$. Then $V_L$, with the FLM vertex
+operators, vacuum $1\otimes e^0$, conformal vector $\omega=\frac12\sum_{a=1}^rh_a(-1)^2\lfivevac\otimes e^0$ and the
+grading of Theorem~\ref{l05:thm:latgrading}, is a vertex operator algebra of CFT type with central charge $r$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/LatticeGenInstance.lean}.
+\begin{leancode}
+noncomputable def latticeVOAGen (hEven : L.Even) (hPos : L.PosDef) :
+    VertexOperatorAlgebra (LatModuleGen L) where
+  grading := gradingLatGen L
+  isInternal := gradingLatGen_isInternal_of_posDef L hEven hPos
+  finrank := gradingLatGen_finrank_of_posDef L hEven hPos
+  Y := YfullGen L hEven hPos
+  vacuum := latVacuumGen L
+  vacuum_mem := by
+    rw [gradingLatGen_zero_eq_span_vacuum L hEven hPos]
+    exact Submodule.mem_span_singleton_self (latVacuumGen L)
+  grading_mode := fun u hu v hv j => YfullGen_grading_mode L hEven hPos u hu v hv j
+  vacuum_Y := YfullGen_vacuum L hEven hPos
+  creation := YfullGen_creation L hEven hPos
+  locality := YfullGen_local L hEven hPos
+  regularity := YfullGen_regularity L hEven hPos
+  conformalVector := omegaLatGen L
+  conformal_mem := omegaLatGen_mem L
+  centralCharge := (rank L : ℂ)
+  virasoro := YfullGen_virasoro L hEven hPos
+  L0_grading := fun v hv => YfullGen_L0_grading L hEven hPos v hv
+  translation := YfullGen_translation_omega L hEven hPos
+  vacuum_grade := gradingLatGen_zero_eq_span_vacuum L hEven hPos
+  positivity := fun n hn => gradingLatGen_positivity L hEven hPos n hn
+
+theorem latticeVOAGen_centralCharge (hEven : L.Even) (hPos : L.PosDef) :
+    (latticeVOAGen L hEven hPos).centralCharge = (rank L : ℂ) := rfl
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Which lattices.} Exactly the even, positive-definite ones, of any rank including $0$. The rank is
+not bounded and unimodularity is not assumed: $A_1$, $\sqrt2\Z$, $E_8$, $\Leech$ and the rank-zero lattice are all
+covered. Odd lattices are excluded (they give vertex \emph{super}algebras, Chapter~\ref{ch:L17}); for example the
+standard lattice $\Z^1$ is not even (checked in Lean, \lean{std1_not_even}; the check is not part of this release). Indefinite lattices are excluded
+(their $V_L$ has infinite-dimensional weight spaces and is not a vertex operator algebra in the sense of
+Definition~\ref{l03:def:VOA}; the library's \lean{NearVOA} is meant for them).
+
+\textbf{The central charge} is \lean{rank L}, the rank as a free $\Z$-module (\lean{Module.finrank ℤ}), as it
+should be.
+
+\textbf{The vertex operators.} \lean{YfullGen} is obtained from the reconstruction theorem by choice
+(\lean{.choose}); it is nevertheless unique, by Goddard's theorem, and its values on the generating fields are
+the explicit FLM formulas $Y(e^\alpha,z)=E^-(\alpha,z)E^+(\alpha,z)e_\alpha z^{\alpha(0)}$ with the cocycle
+$\varepsilon$ (Chapter~\ref{ch:03}, Theorems~\ref{ch03:thm:latYfull} and Definition~\ref{ch03:def:Yealpha}).
+The cocycle is built on a basis chosen by \lean{Module.Free.chooseBasis}; different choices give isomorphic
+algebras (Chapter~\ref{ch:03}, Theorem~\ref{ch03:thm:cocCompare}).
+
+\textbf{A non-vacuity sanity check.} A Lean check made for this book (not part of this release)
+instantiates the theorem at the rank-one lattice \lean{sqrt2Lattice} $=\sqrt2\Z$ (form $\langle v,w\rangle=2vw$),
+proving its evenness and positivity and that the resulting algebra \lean{latticeVOA_sqrt2} has central charge
+$1$. This is a \emph{second}, independent $A_1$ lattice vertex operator algebra, besides the one of
+Section~\ref{l05:sec:A1}.
+
+\textbf{What is not in these files.} Simplicity of $V_L$, its modules $V_{L+\lambda}$ for $\lambda\in L^*$, the
+rationality and $C_2$-cofiniteness of $V_L$, and the description of $(V_L)_1$ as a Lie algebra for general $L$
+are not stated in this chapter's files. Two of these are proved elsewhere: $C_2$-cofiniteness for every even
+positive-definite $L$ (\lean{latticeVOAGen_c2Cofinite}), and strong rationality in rank one
+(\lean{V2m_stronglyRational}, for $V_{\sqrt{2m}\Z}$); see Chapter~\ref{ch:L22}. The Moonshine part proves the facts it needs for $\Leech$ (rootlessness:
+Chapter~\ref{ch:03}, Theorem~\ref{ch03:thm:rootless}; invariant forms: Chapter~\ref{ch:04}).
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+See Chapter~\ref{ch:03}, Sections~\ref{ch03:sec:cocycle}--\ref{ch03:sec:reconstruction}: the charge oscillators
+satisfy the Heisenberg relations with the lattice form; the FLM vertex operators are mutually local because the
+boson reordering produces $(z_1-z_2)^{\langle\alpha,\beta\rangle}$ and the cocycle supplies the sign
+$(-1)^{\langle\alpha,\beta\rangle}$; the reconstruction theorem builds $Y$ for all states from the generating fields;
+the Sugawara vector gives the Virasoro algebra with $c=r$, and the grading identities follow from
+$\frac12|\alpha+\beta|^2=\frac12|\alpha|^2+\frac12|\beta|^2+\langle\alpha,\beta\rangle$.
+\end{proof}
+
+\begin{physics}
+$V_L$ is the chiral algebra of $r$ bosons compactified on the torus dual to $L$ (Frenkel--Kac, Segal, FLM,
+Borcherds). Its weight-one space contains the $r$ abelian currents and one current $e^\alpha$ for every root
+$\langle\alpha,\alpha\rangle=2$; when roots exist the $U(1)^r$ symmetry is enhanced to a non-abelian simply-laced current
+algebra at level one. For unimodular $L$ (e.g.\ $E_8$, $\Leech$) the theory is holomorphic.
+\end{physics}
+
+\begin{status}
+Proved, conditional only on \lean{hEven} and \lean{hPos}. \texttt{\#print axioms VOA.LatGen.latticeVOAGen} $=$
+\texttt{[propext, Classical.choice, Quot.sound]} (re-checked); \lean{VOA.pbw} not used.
+\end{status}
+
+\subsection{The rank-zero lattice: the trivial vertex operator algebra}\label{l05:sec:trivial}
+
+\begin{definition}[Trivial vertex operator algebra]\label{l05:def:trivial}
+$\lean{trivialVOA}=V_{\{0\}}$, the lattice vertex operator algebra of the rank-zero lattice $\Z^0$. Its carrier is
+$\lfiveF_0\otimes\C[\{0\}]\cong\C$, spanned by the vacuum; its central charge is $0$.
+\end{definition}
+
+\noindent Files \leanpath{VOA/Foundations/Lattices.lean}, \leanpath{VOA/Examples/ZhuInstantiation.lean}.
+\begin{leancode}
+noncomputable def stdLattice (n : ℕ) : IntegralLattice where
+  carrier := Fin n → ℤ
+  form := Matrix.toBilin' (1 : Matrix (Fin n) (Fin n) ℤ)
+
+theorem std0_even : (stdLattice 0).Even
+
+theorem std0_posDef : (stdLattice 0).PosDef
+
+noncomputable def trivialVOA : VertexOperatorAlgebra (LatGen.LatModuleGen (stdLattice 0)) :=
+  LatGen.latticeVOAGen (stdLattice 0) std0_even std0_posDef
+
+noncomputable def trivialCarrierEquiv : LatGen.LatModuleGen (stdLattice 0) ≃ₗ[ℂ] ℂ :=
+  (TensorProduct.congr fockZeroEquiv chargeZeroEquiv).trans (TensorProduct.lid ℂ ℂ)
+
+theorem trivial_finrank : Module.finrank ℂ (LatGen.LatModuleGen (stdLattice 0)) = 1
+\end{leancode}
+
+\begin{dictionary}
+\lean{stdLattice n} is $\Z^n$ with the identity Gram matrix (\lean{Matrix.toBilin'} turns a matrix into a bilinear
+form). It is even only for $n=0$, where both evenness and positivity hold vacuously. \lean{≃ₗ[ℂ]} is a linear
+isomorphism; \lean{trivialCarrierEquiv} identifies the carrier with $\C$, and \lean{trivial_finrank} says it is
+one-dimensional. The central charge is \lean{rank (stdLattice 0)} $=0$ (checked in Lean; not part of this release). So \lean{trivialVOA} is the
+vertex operator algebra $\C\lfivevac$ with $\omega=0$ and $c=0$, as intended. It was used in Chapter~\ref{ch:L15} as
+the first non-vacuity witness for Zhu's modularity theorem, where it is proved $C_2$-cofinite, regular and rational;
+nontrivial instances (\lean{zhuModularity_V2m}, every $m\ge1$, and \lean{zhuModularity_V2mPlus}) are now proved as well
+(Chapters~\ref{ch:L15} and~\ref{ch:L22}).
+
+\textbf{The zero space is also a VOA.} The library's axioms are satisfied by the zero space ($\lfivevac = 0$, and
+$V_0 = \C\cdot0 = 0$ is allowed; release audit 2026-10-27, finding m-4). So a non-vacuity witness must be visibly
+nonzero; \lean{trivial_finrank} shows that \lean{trivialVOA} is one-dimensional, not zero, and hence is a genuine witness.
+\end{dictionary}
+
+\begin{physics}
+The trivial chiral algebra is the theory with no degrees of freedom: one state, no fields but the identity,
+$c=0$, character $1$. It is the unit for tensor products of chiral algebras, and the simplest (degenerate)
+rational, holomorphic vertex operator algebra.
+\end{physics}
+
+\begin{status}
+\lean{trivialVOA}: \texttt{\#print axioms} $=$ \texttt{[propext, Classical.choice, Quot.sound]}. The file is
+assigned to Chapter~\ref{ch:L15}.
+\end{status}
+
+%======================================================================
+\section{The \texorpdfstring{$A_1$}{A1} lattice vertex operator algebra}\label{l05:sec:A1}
+%======================================================================
+
+Before the general construction existed, the library built the lattice vertex operator algebra of the $A_1$ root
+lattice $\Z\alpha$, $\langle\alpha,\alpha\rangle=2$, by hand. That construction is complete and closed, and
+the general one was obtained by ``lifting'' its proofs. It lives in the namespaces \lean{VOA.LatticeVOA} and
+\lean{VOA.LatExp}. Its distinctive design choice is a normalisation without $\sqrt2$: the single boson is taken
+at \emph{level $k=2$}, so that the oscillator algebra is $[\alpha_m,\alpha_n]=2m\delta_{m+n,0}$, i.e.\ the
+lattice norm \emph{is} the level.
+
+\subsection{The state space, the cocycle and the boson}
+
+\begin{definition}[State space of $V_{A_1}$]\label{l05:def:A1space}
+$V_{A_1}=\lfiveF_1\otimes\C[\Z]$, where $\C[\Z]$ has basis $e^{n\alpha}$ ($n\in\Z$); the vacuum is $1\otimes e^0$;
+the form is $\langle m\alpha,n\alpha\rangle=2mn$; the cocycle is $\varepsilon\equiv1$; the oscillators are those of
+the rank-one Heisenberg algebra $\lean{FockN 1}$ at level $2$.
+\end{definition}
+
+\noindent Files \leanpath{VOA/Examples/LatticeA1.lean}, \leanpath{VOA/Examples/LatticeExp.lean}.
+\begin{leancode}
+abbrev LatGrp : Type := AddMonoidAlgebra ℂ ℤ
+
+noncomputable def eVec (n : ℤ) : LatGrp := AddMonoidAlgebra.single n (1 : ℂ)
+
+abbrev LatModule : Type := HeisenbergN.FockN 1 ⊗[ℂ] LatGrp
+
+noncomputable def latState (n : ℤ) : LatModule :=
+  (1 : HeisenbergN.FockN 1) ⊗ₜ[ℂ] eVec n
+
+noncomputable def latVacuum : LatModule := latState 0
+
+def latForm (m n : ℤ) : ℤ := 2 * m * n
+
+def cocycle (_m _n : ℤ) : ℂ := 1
+
+noncomputable abbrev B : Type := FockN 1
+
+noncomputable def α (m : ℤ) : End ℂ B := oscN 1 2 0 m
+\end{leancode}
+
+\begin{dictionary}
+\lean{AddMonoidAlgebra ℂ ℤ} is the group algebra of $(\Z,+)$; \lean{single n 1} is the basis vector $e^{n\alpha}$.
+\lean{⊗[ℂ]} is the algebraic tensor product and \lean{p ⊗ₜ[ℂ] x} a pure tensor. \lean{oscN 1 2 0 m} is the oscillator
+$h_0(m)$ of the rank-one Fock space \lean{FockN 1} (Chapter~\ref{ch:03}, Definition~\ref{ch03:def:oscN}) at level
+\textbf{$2$}. The cocycle is identically $1$: this is legitimate for $A_1$ because $\langle m\alpha,n\alpha\rangle=2mn$
+is even, so the required commutator sign $(-1)^{\langle\cdot,\cdot\rangle}$ is $+1$ and the trivial cocycle works
+(library lemmas \lean{cocycle_cocycle}, \lean{cocycle_comm}). It would be wrong for a lattice with odd inner
+products, which is why the general construction needs the FLM cocycle.
+\end{dictionary}
+
+\begin{physics}
+One boson at the self-dual radius, with momentum lattice $\Z\alpha$. Normalising the current so that
+$J(z)J(w)\sim2/(z-w)^2$ makes the momentum of $e^{n\alpha}$ equal to $2n$ (the eigenvalue of the zero mode
+$\alpha_0$) and its energy $n^2=\frac14(2n)^2$, matching $\frac12\langle n\alpha,n\alpha\rangle$.
+\end{physics}
+
+\begin{status}
+Definitions; the cocycle identities are proved, axiom-clean.
+\end{status}
+
+\subsection{The vertex operators}
+
+\begin{definition}[$Y(e^{m\alpha},z)$]\label{l05:def:Yemalpha}
+For $c\in\C$ let $E^-(c\alpha,z)=\exp\big(c\sum_{n\ge1}\frac{\alpha_{-n}}nz^n\big)$ (multiplication by Schur-type
+polynomials $p^{(c)}_N$ at $z^N$) and $E^+(c\alpha,z)=\exp\big(-c\sum_{n\ge1}\frac{\alpha_n}nz^{-n}\big)$, both defined
+by Newton recursions, and $EE(c\alpha,z)={:}E^-(c\alpha,z)E^+(c\alpha,z){:}$. For $m\in\Z$, the vertex operator
+$Y(e^{m\alpha},z)$ acts on $p\otimes e^{n\alpha}$ by
+\begin{equation*}
+ Y(e^{m\alpha},z)(p\otimes e^{n\alpha})=z^{2mn}\,\big(EE(m\alpha,z)p\big)\otimes e^{(n+m)\alpha}.
+\end{equation*}
+\end{definition}
+
+\noindent Files \leanpath{VOA/Examples/LatticeChargeM.lean}, \leanpath{VOA/Examples/LatticeChargeMFields.lean}.
+\begin{leancode}
+noncomputable def cSchurC (c : ℂ) : ℕ → B
+  | 0 => 1
+  | (N+1) => ((N+1 : ℂ))⁻¹ • (c • ∑ m ∈ Finset.range (N+1), cVar m * cSchurC c (N - m))
+
+noncomputable def aExpC (c : ℂ) : ℕ → End ℂ B
+  | 0 => LinearMap.id
+  | (N+1) => ((N+1 : ℂ))⁻¹ • (c • ∑ m ∈ Finset.range (N+1), (-(α (m+1 : ℤ))).comp (aExpC c (N - m)))
+
+noncomputable def EminusC (c : ℂ) : FormalDist (End ℂ B) :=
+  fun t => if 0 ≤ t then EminusOpC c t.toNat else 0
+
+noncomputable def EplusC (c : ℂ) : FormalDist (End ℂ B) :=
+  fun t => if t ≤ 0 then aExpC c (-t).toNat else 0
+
+noncomputable def EEC (c : ℂ) : FormalDist (End ℂ B) := nprod (EminusC_isField c) (EplusC_isField c)
+
+noncomputable def Yemα (m t : ℤ) : LatModule →ₗ[ℂ] LatModule :=
+  TensorProduct.lift (Finsupp.lsum ℂ (YemαFam m t)).flip
+
+theorem Yemα_tmul (m t n : ℤ) (p : B) :
+    Yemα m t (p ⊗ₜ[ℂ] eVec n) = (EEC (m : ℂ) (t - 2 * m * n) p) ⊗ₜ[ℂ] eVec (n + m)
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Decoding.} \lean{cVar m} is the variable $X_{(m,0)}$, i.e.\ $\alpha_{-m-1}\lfivevac$. The recursion for
+\lean{cSchurC c} is Newton's identity for the coefficients of $\exp(c\sum_n\alpha_{-n}z^n/n)$:
+$(N+1)p_{N+1}=c\sum_{m=0}^Np_{N-m}X_{(m,0)}$. Similarly \lean{aExpC c N} is the coefficient of $z^{-N}$ in
+$\exp(-c\sum_n\alpha_nz^{-n}/n)$. \lean{EminusOpC c N} is multiplication by \lean{cSchurC c N}. As formal
+distributions indexed by powers of $z$, $E^-$ lives in non-negative and $E^+$ in non-positive powers.
+\lean{Yemα m t} is the coefficient of $z^t$ of $Y(e^{m\alpha},z)$; by \lean{Yemα_tmul} it sends
+$p\otimes e^{n\alpha}$ to $EE(m\alpha)_{t-2mn}\,p\otimes e^{(n+m)\alpha}$, which is the $z^t$-coefficient of
+$z^{2mn}EE(m\alpha,z)p\otimes e^{(n+m)\alpha}$. The factor $z^{2mn}$ is $z^{\alpha_0}$ acting on $e^{n\alpha}$ (with
+$\alpha_0=2n$ there, scaled by $m$), the shift $e^{n\alpha}\mapsto e^{(n+m)\alpha}$ carries the trivial cocycle. This is
+the FLM formula $Y(e^\beta,z)=E^-(\beta,z)E^+(\beta,z)e_\beta z^{\beta(0)}$ for $\beta=m\alpha$, with the library's
+naming $E^\mp(\beta)$ for FLM's $E^\mp(-\beta)$ (Chapter~\ref{ch:03}).
+\end{dictionary}
+
+\begin{physics}
+$Y(e^{m\alpha},z)={:}e^{im\alpha\cdot X(z)}{:}$, the vertex operator of charge $m$. Its conformal weight is
+$\frac12\langle m\alpha,m\alpha\rangle=m^2$; the charges $\pm1$ have weight one and are the currents $J^\pm$ of
+$\widehat{\lfivesl}_1$. The factor $z^{2mn}$ produces the OPE singularity $(z-w)^{2mn}$ between charges $m$ and $n$:
+for $mn<0$ a pole, for $mn>0$ a zero.
+\end{physics}
+
+\begin{status}
+Definitions; \lean{Yemα_tmul} proved, axiom-clean.
+\end{status}
+
+\subsection{Locality and the instance}
+
+\begin{theorem}[$V_{A_1}$]\label{l05:thm:A1}
+The vertex operators $Y(e^{m\alpha},z)$, $m\in\Z$, are pairwise mutually local. Consequently $V_{A_1}$, with the
+vertex map reconstructed from the boson current and the $Y(e^{m\alpha},z)$, the vacuum $1\otimes e^0$, the conformal
+vector $\omega=\frac14\alpha_{-1}^2\lfivevac\otimes e^0$ and the grading in which $p\otimes e^{n\alpha}$ ($p$ of level $w$)
+has weight $w+n^2$, is a vertex operator algebra of CFT type with central charge $1$.
+\end{theorem}
+
+\noindent Files \leanpath{VOA/Examples/LatticeOppSignLocality.lean}, \leanpath{VOA/Examples/LatticeGrading.lean},
+\leanpath{VOA/Examples/LatticeVOAInstance.lean}, \leanpath{VOA/Examples/LatticeA1VOA.lean},
+\leanpath{VOA/Examples/Lattice.lean}.
+\begin{leancode}
+theorem Yemα_local (m m' : ℤ) : Local (Yemα m) (Yemα m')
+
+noncomputable def mkE (n : ℤ) : B →ₗ[ℂ] LatModule :=
+  (TensorProduct.mk ℂ B LatGrp).flip (eVec n)
+
+noncomputable def bigrad (wn : ℤ × ℤ) : Submodule ℂ LatModule :=
+  (gradingZN 1 wn.1).map (mkE wn.2)
+
+noncomputable def gradingLat (k : ℤ) : Submodule ℂ LatModule :=
+  ⨆ n : ℤ, bigrad (k - n ^ 2, n)
+
+noncomputable def omegaLat : LatModule := mkE 0 (HeisenbergN.ωN 1 2)
+
+noncomputable def Yfull : LatModule →ₗ[ℂ] FormalDist (End ℂ LatModule) :=
+  (latYfull_of_locality hYloc).choose
+
+noncomputable def latticeVOA_A1_of_locality
+    (hYloc : ∀ m m' : ℤ, Local (Yemα m) (Yemα m')) :
+    VertexOperatorAlgebra LatModule where
+  grading := gradingLat
+  isInternal := gradingLat_isInternal
+  finrank := gradingLat_finrank
+  Y := Yfull hYloc
+  vacuum := latVacuum
+  ...
+  conformalVector := omegaLat
+  conformal_mem := omegaLat_mem
+  centralCharge := 1
+  virasoro := Yfull_virasoro hYloc
+  L0_grading := fun v hv => Yfull_L0_grading hYloc v hv
+  translation := Yfull_translation_omega hYloc
+  vacuum_grade := gradingLat_zero_eq_span_vacuum
+  positivity := fun n hn => gradingLat_positivity n hn
+
+noncomputable def latticeVOA_A1 : VertexOperatorAlgebra LatModule :=
+  latticeVOA_A1_of_locality Yemα_local
+
+theorem latticeVOA_A1_centralCharge : latticeVOA_A1.centralCharge = 1 := rfl
+\end{leancode}
+
+\begin{dictionary}
+\textbf{The grading.} \lean{bigrad (w, n)} is $(\lfiveF_1)_w\otimes e^{n\alpha}$ and \lean{gradingLat k} collects the
+pieces with $w+n^2=k$. Since $\frac12\langle n\alpha,n\alpha\rangle=n^2$, this is the expected weight
+$w+\frac12\langle\beta,\beta\rangle$, specialised to $A_1$.
+
+\textbf{The conformal vector.} \lean{HeisenbergN.ωN 1 2} is $\frac1{2k}h(-1)^2\lfivevac$ at $k=2$, i.e.\
+$\frac14\alpha_{-1}^2\lfivevac$, the Sugawara vector of a level-$2$ current (Chapter~\ref{ch:03},
+\eqref{ch03:eq:omegaHeis}); \lean{mkE 0} places it in the charge-zero sector.
+
+\textbf{The gate.} \lean{latticeVOA_A1_of_locality} takes the locality of all charged generators as a hypothesis
+\lean{hYloc}; \lean{Yfull} is the vertex map produced from that hypothesis by the reconstruction theorem
+(Chapter~\ref{ch:L03}, Theorem~\ref{l03:thm:reconstruct}) via \lean{.choose}. The elided fields (\lean{...}) are
+\lean{vacuum_mem}, \lean{grading_mode}, \lean{vacuum_Y}, \lean{creation}, \lean{locality}, \lean{regularity}, each a
+named theorem in the same file taking \lean{hYloc}. The gate is discharged by the theorem \lean{Yemα_local}, so
+\lean{latticeVOA_A1} has \emph{no} hypotheses. The same definition is re-exported as \lean{VOA.latticeVOA_A1} in
+\leanpath{Lattice.lean}.
+
+\textbf{What is not proved.} The identification $V_{A_1}\cong L_{\lfivesl}(1,0)$ with the simple affine vertex
+operator algebra of level one (Frenkel--Kac) is not in the library; the module docstring of
+\leanpath{LatticeA1.lean} mentions ``$=\widehat{\lfivesl}_2$ level 1'' as motivation only. Nor is it proved that
+$\dim(V_{A_1})_1=3$ or that $(V_{A_1})_1\cong\lfivesl$, nor that \lean{latticeVOA_A1} is isomorphic to the general
+construction at $\sqrt2\Z$ (\lean{latticeVOA_sqrt2}, Section~\ref{l05:sec:general}). Both statements
+are true on paper.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+\emph{Locality.} For $m=0$, $Y(e^0,z)$ is the identity field. For $mm'\ge1$ (same sign), the boson
+reordering $E^+(m\alpha,z_1)E^-(m'\alpha,z_2)=(1-z_2/z_1)^{2mm'}E^-(m'\alpha,z_2)E^+(m\alpha,z_1)$ is a finite binomial
+expansion, and the two operator orders differ by $(-1)^{2mm'}=1$, so the operators commute exactly (bound $0$).
+For $mm'\le-1$ the reordering factor $(1-z_2/z_1)^{2mm'}$ is an infinite geometric-type series, and multiplying
+by $(z_1-z_2)^{2|mm'|}$ collapses both orders to the same normal-ordered four-fold product, giving locality with
+bound $2|mm'|$. \emph{Instance.} Exactly as in the general case (Chapter~\ref{ch:03}): the boson current is local with
+itself and with every $Y(e^{m\alpha},z)$ (a simple pole with residue the charge $2m$); Dong's lemma propagates locality
+to all word fields; reconstruction produces $Y$; the Sugawara vector at level $2$ gives $c=1$ and $L_0$ acting by
+$w+n^2$.
+\end{proof}
+
+\begin{physics}
+$V_{A_1}$ is the chiral algebra of the compact boson at the self-dual radius, equivalently the $SU(2)$ level-one
+WZW model: the three weight-one states $\alpha_{-1}\lfivevac$, $e^{\alpha}$, $e^{-\alpha}$ give the currents $J^3,J^\pm$ and
+$V_{A_1}$ is the vacuum module of $\widehat{\lfivesl}_1$ (Frenkel--Kac). Its character is
+$\theta_{A_1}(\tau)/\eta(\tau)=\sum_nq^{n^2}/\eta(\tau)$, the level-one $SU(2)$ vacuum character. Since $A_1$ has
+determinant $2$, $V_{A_1}$ has exactly two irreducible modules, $V_{A_1}$ and $V_{A_1+\alpha/2}$ (spin $0$ and spin
+$\frac12$), as the $SU(2)_1$ WZW model does.
+\end{physics}
+
+\begin{status}
+Proved, unconditional. \texttt{\#print axioms} for \lean{VOA.LatExp.latticeVOA_A1}, \lean{VOA.latticeVOA_A1},
+\lean{VOA.LatExp.Yemα_local}: \texttt{[propext, Classical.choice, Quot.sound]}, \lean{pbw}-free.
+\end{status}
+
+\subsection{Two placeholders in the same files}
+
+\begin{warning}
+\textbf{The superseded operator \lean{LatticeVOA.Yeα}.} \leanpath{VOA/\allowbreak Examples/\allowbreak LatticeA1.lean}
+defines an early ``lattice vertex operator'' whose boson factor is replaced by the identity in degree $0$:
+\begin{leancode}
+noncomputable def EminusOp : FormalDist (End ℂ LatModule) :=
+  fun t => if t = 0 then LinearMap.id else 0
+
+noncomputable def Yeα : FormalDist (End ℂ LatModule) :=
+  fun t => if t = 0 then (eShift 1).comp (EminusOp 0) else (eShift 1).comp (EminusOp t)
+\end{leancode}
+This operator is $e_\alpha$ concentrated in $z^0$; it has no oscillator dressing and is \emph{not} the lattice vertex
+operator. (The same file's \lean{alphaCur}/\lean{expoNeg} also use level $1$, the wrong normalisation for $A_1$.) The
+module docstring of \leanpath{Lattice.lean} says explicitly that it ``is superseded by the genuine boson-dressed
+\lean{LatExp.Yeα}''. Nothing downstream uses it; \lean{latticeVOA_A1} uses \lean{LatExp.Yemα}. A referee should not
+read the lemma \lean{Yeα_creation_z0} as a statement about $V_{A_1}$.
+\end{warning}
+
+\begin{warning}
+\textbf{\lean{OPEStructure} and \lean{latticeA1_local_of_nonneg} say nothing about operators.} The predicate
+\begin{leancode}
+def OPEStructure (m n : ℤ) : Prop :=
+  ∃ N : ℕ, (latForm m n : ℤ) = (N : ℤ) ∧
+    mulBySubPow N (expandPos (-(N : ℤ))) = expandPos 0
+
+theorem latticeA1_local_of_nonneg {m n : ℤ} (h : 0 ≤ LatticeVOA.latForm m n) :
+    LatticeVOA.OPEStructure m n :=
+  LatticeVOA.OPEStructure_of_nonneg h
+\end{leancode}
+(\leanpath{VOA/Examples/LatticeA1.lean}, \leanpath{VOA/Examples/Lattice.lean}) mentions only the integer $2mn$ and
+the scalar distribution $\iota_{12}(z_1-z_2)^{-N}$: it says ``$2mn$ is a natural number $N$ and
+$(z_1-z_2)^N\iota_{12}(z_1-z_2)^{-N}=1$''. The second clause is a general identity of formal calculus. A
+Lean check made for this book (\lean{OPEStructure_iff}, not part of this release) proves that
+\lean{LatticeVOA.OPEStructure m n} holds if and only if \lean{0 ≤ LatticeVOA.latForm m n}, so \lean{latticeA1_local_of_nonneg} is the tautology ``if $2mn\ge0$ then $2mn\ge0$''. Its docstring (``so the two
+lattice VOs are mutually local'') over-claims. The genuine locality theorem is \lean{LatExp.Yemα_local} above.
+Likewise the theorem named \lean{latticeA1_centralCharge} in \leanpath{Lattice.lean} states
+\lean{(heisenbergVOA' 1).centralCharge = 1}, a fact about the rank-one Heisenberg algebra, not about $V_{A_1}$; the
+lattice statement is \lean{latticeVOA_A1_centralCharge}.
+\end{warning}
+
+%======================================================================
+\section{Charge sectors and the charge-zero subalgebra}\label{l05:sec:charge}
+%======================================================================
+
+The file \leanpath{VOA/\allowbreak Examples/\allowbreak LatticeCharge.lean} proves that every vertex operator of
+$V_L$ shifts the momentum by the momentum of its state, deduces that the momentum-zero sector is a vertex operator
+subalgebra, and obtains from it the first ``non-adjoint'' modules of the library.
+
+\subsection{Charge sectors}
+
+\begin{definition}[Charge sectors; charge shift]\label{l05:def:chargeSec}
+For $\gamma\in L$ the \emph{charge-$\gamma$ sector} of $V_L$ is $\lfiveF_r\otimes e^\gamma$. A formal distribution
+$f(z)=\sum_jf_jz^j$ with coefficients in $\End V_L$ \emph{shifts charge by $\alpha$} if every $f_j$ maps
+$\lfiveF_r\otimes e^\beta$ into $\lfiveF_r\otimes e^{\alpha+\beta}$, for every $\beta\in L$.
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/LatticeCharge.lean}.
+\begin{leancode}
+noncomputable def chargeSec (γ : L.carrier) : Submodule ℂ (LatModuleGen L) :=
+  LinearMap.range (mkEα L γ)
+
+def ShiftsCharge (f : FormalDist (Module.End ℂ (LatModuleGen L))) (α : L.carrier) : Prop :=
+  ∀ (β : L.carrier) (k : ℤ), ∀ x ∈ chargeSec L β, f k x ∈ chargeSec L (α + β)
+\end{leancode}
+
+\begin{dictionary}
+\lean{mkEα L γ} is the linear map $p\mapsto p\otimes e^\gamma$ (Chapter~\ref{ch:03}), and \lean{LinearMap.range} its
+image, so \lean{chargeSec L γ} $=\lfiveF_r\otimes e^\gamma$. In \lean{ShiftsCharge} the integer \lean{k} indexes powers of
+$z$, but since the condition is required for all \lean{k} this makes no difference. The quantifiers are as in the
+definition.
+\end{dictionary}
+
+\begin{physics}
+$V_L=\bigoplus_\gamma\lfiveF_r\otimes e^\gamma$ is the decomposition of the Hilbert space by the $U(1)^r$ momentum charges.
+A field shifts charge by $\alpha$ when it has definite charge $\alpha$; charge conservation says that the field of a
+state of charge $\alpha$ does exactly that.
+\end{physics}
+
+\begin{theorem}[Charge additivity]\label{l05:thm:shifts}
+Let $L$ be even and positive-definite. The boson currents shift charge by $0$, $Y(e^\alpha,z)$ shifts charge by
+$\alpha$, and for every state $u$ in the charge-$\alpha$ sector, $Y(u,z)$ shifts charge by $\alpha$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/LatticeCharge.lean}.
+\begin{leancode}
+theorem alphaLatGen_shiftsCharge (a : Fin (rank L)) :
+    ShiftsCharge L (alphaLatGen L a) 0
+
+theorem Yeαvec_shiftsCharge (α : L.carrier) :
+    ShiftsCharge L (Yeαvec L α) α
+
+theorem YfullGen_shiftsCharge (hEven : L.Even) (hPos : L.PosDef) (α : L.carrier)
+    {u : LatModuleGen L} (hu : u ∈ chargeSec L α) :
+    ShiftsCharge L (YfullGen L hEven hPos u) α
+\end{leancode}
+
+\begin{dictionary}
+\lean{alphaLatGen L a} is the direction-$a$ boson current of $V_L$ including its momentum zero mode
+(Chapter~\ref{ch:03}); \lean{Yeαvec L α} is $Y(e^\alpha,z)$ (Definition~\ref{ch03:def:Yealpha}); \lean{YfullGen} is the
+vertex map of \lean{latticeVOAGen}. The last statement is the one that matters: it is about the actual vertex
+operators of the vertex operator algebra of Theorem~\ref{l05:thm:latticeVOAGen}, for every state of definite charge.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+The boson current acts on the Fock factor only, and its zero mode multiplies $p\otimes e^\beta$ by a scalar; so it
+preserves each sector. $Y(e^\alpha,z)$ sends $p\otimes e^\beta$ to a multiple of $(\ldots)\otimes e^{\alpha+\beta}$ by its
+defining formula. The property ``shifts charge by $\alpha$'' is preserved by derivatives, scalar multiples and sums,
+and if $a$ shifts by $\alpha$ and $b$ by $\alpha'$ then every coefficient of ${:}ab{:}$ is a sum of composites $a_mb_n$
+or $b_na_m$, which shift by $\alpha+\alpha'$. Hence every word field ${:}\partial^{i_1}h_{a_1}\cdots Y(e^\alpha){:}$ shifts by
+$\alpha$. Finally the charge-$\alpha$ sector is spanned by the charge-$\alpha$ word states, the vertex map sends each word
+state to its word field, and the vertex map is linear.
+\end{proof}
+
+\begin{physics}
+This is $U(1)^r$ charge conservation in operator form: the OPE of a charge-$\alpha$ field with a charge-$\beta$ field
+contains only charge-$(\alpha+\beta)$ fields.
+\end{physics}
+
+\begin{status}
+Proved, conditional on \lean{hEven}, \lean{hPos} for the last statement (the first two need no hypothesis).
+\texttt{\#print axioms VOA.LatGen.YfullGen\_shiftsCharge} $=$ \texttt{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\subsection{The charge-zero subalgebra}
+
+Recall (Chapter~\ref{ch:L04}, Definition~\ref{l04:def:subalg}) that a vertex operator subalgebra of $W$ is a subspace
+containing the vacuum and the conformal vector, closed under all products $u_{(n)}v$, and graded (stable under the
+projections onto the weight spaces). By Theorem~\ref{l04:thm:subalg} it is itself a vertex operator algebra
+(\lean{VOASubalgebra.toVOA}) with the same central charge.
+
+\noindent File \leanpath{VOA/Modularity/Twisted.lean}.
+\begin{leancode}
+structure VOASubalgebra (W : VertexOperatorAlgebra 𝒱) where
+  carrier : Submodule ℂ 𝒱
+  vacuum_mem : W.vacuum ∈ carrier
+  conformal_mem : W.conformalVector ∈ carrier
+  smul_mem : ∀ u ∈ carrier, ∀ (n : ℤ), ∀ v ∈ carrier, W.smul u n v ∈ carrier
+  graded : ∀ (n : ℤ), ∀ v ∈ carrier, piHom W n v ∈ carrier
+\end{leancode}
+
+\begin{definition}[The charge-zero subalgebra]\label{l05:def:chargeZero}
+For $L$ even and positive-definite, $V_L^{(0)}=\lfiveF_r\otimes e^0\subseteq V_L$, as a vertex operator subalgebra.
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/LatticeCharge.lean}.
+\begin{leancode}
+theorem chargeSec_zero_smul_mem (hEven : L.Even) (hPos : L.PosDef)
+    {u : LatModuleGen L} (hu : u ∈ chargeSec L 0) (n : ℤ)
+    {v : LatModuleGen L} (hv : v ∈ chargeSec L 0) :
+    (latticeVOAGen L hEven hPos).smul u n v ∈ chargeSec L 0
+
+theorem chargeSec_zero_graded (hEven : L.Even) (hPos : L.PosDef)
+    (n : ℤ) {v : LatModuleGen L} (hv : v ∈ chargeSec L 0) :
+    piHom (latticeVOAGen L hEven hPos) n v ∈ chargeSec L 0
+
+noncomputable def chargeZeroSubVOA (hEven : L.Even) (hPos : L.PosDef) :
+    VOASubalgebra (latticeVOAGen L hEven hPos) where
+  carrier := chargeSec L 0
+  vacuum_mem := latVacuumGen_mem_chargeSec L
+  conformal_mem := omegaLatGen_mem_chargeSec L
+  smul_mem := fun _ hu n _ hv => chargeSec_zero_smul_mem L hEven hPos hu n hv
+  graded := fun n _ hv => chargeSec_zero_graded L hEven hPos n hv
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Decoding.} \lean{piHom W n} is the projection of $W$ onto its weight-$n$ space along the direct-sum
+decomposition (defined in \leanpath{VOA/\allowbreak Modules/\allowbreak FiniteGenerationProof.lean}). The four
+fields are: the vacuum $1\otimes e^0$ and $\omega=\frac12\sum_ah_a(-1)^2\lfivevac\otimes e^0$ lie in the charge-zero sector
+(by definition); products of charge-zero states are charge-zero (Theorem~\ref{l05:thm:shifts} at $\alpha=0$); and the
+charge-zero sector is the sum of its weight pieces $(\lfiveF_r)_w\otimes e^0$, so the weight projections preserve it.
+
+\textbf{What the subalgebra is.} A Lean check made for this book (not part of this release) confirms by
+\lean{rfl} that its carrier is \lean{chargeSec L 0} and that \lean{(chargeZeroSubVOA L hEven hPos).toVOA} has central
+charge \lean{rank L}. On paper $V_L^{(0)}$ is the rank-$r$ Heisenberg vertex operator algebra at level $1$,
+$\lean{heisenbergVOA' r}$; the library does \emph{not} state this isomorphism, and the module docstring's phrase ``the
+Heisenberg subalgebra'' is a description, not a theorem. The library calls it the Heisenberg subalgebra because the
+charge-zero sector is exactly the space spanned by oscillator monomials on $e^0$, and the vertex operators restricted
+to it are the Heisenberg fields.
+
+\textbf{Same conformal vector.} \lean{VOASubalgebra} requires $\omega\in S$, so this is a ``full'' (conformal)
+subalgebra; this is why the central charge is unchanged.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+As described in the dictionary. The only non-formal input is Theorem~\ref{l05:thm:shifts}.
+\end{proof}
+
+\begin{physics}
+$V_L^{(0)}$ is the \emph{neutral sector}: the chiral algebra of $r$ free bosons \emph{before} compactification, i.e.\ the
+fields that carry no momentum (polynomials in $\partial X$ and its derivatives). It contains the stress tensor, and
+$V_L$ is an extension of it by the charged vertex operators. This is the simplest example of the general principle that
+a rational CFT is a (simple-current or lattice) extension of a smaller, often irrational, chiral algebra: here the
+irrational Heisenberg algebra (Section~\ref{l05:sec:c2}) is extended to the rational $V_L$.
+\end{physics}
+
+\begin{status}
+Proved, conditional only on \lean{hEven}, \lean{hPos}. \texttt{\#print axioms VOA.LatGen.chargeZeroSubVOA} $=$
+\texttt{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\subsection{\texorpdfstring{$V_L$}{V\_L} as a module over its Heisenberg subalgebra}
+
+\begin{theorem}[Charged Fock modules inside $V_L$]\label{l05:thm:heismod}
+Let $L$ be even and positive-definite. Then $V_L$ is a weak module over $V_L^{(0)}$ by restriction of the adjoint
+action, and each charge sector $\lfiveF_r\otimes e^\alpha$ is a submodule.
+\end{theorem}
+
+\noindent Files \leanpath{VOA/Modules/ModuleRestrict.lean}, \leanpath{VOA/Examples/LatticeCharge.lean}.
+\begin{leancode}
+noncomputable def adjointRestrict : WeakModule S.toVOA 𝒱 :=
+  S.restrictWeakModule (adjointWeakModule W)
+
+noncomputable def latticeAsHeisenbergModule (hEven : L.Even) (hPos : L.PosDef) :
+    WeakModule (chargeZeroSubVOA L hEven hPos).toVOA (LatModuleGen L) :=
+  (chargeZeroSubVOA L hEven hPos).adjointRestrict
+
+theorem chargeSec_invariant (hEven : L.Even) (hPos : L.PosDef) (α : L.carrier)
+    (u : (chargeZeroSubVOA L hEven hPos).carrier) (n : ℤ)
+    {x : LatModuleGen L} (hx : x ∈ chargeSec L α) :
+    (latticeAsHeisenbergModule L hEven hPos).act u n x ∈ chargeSec L α
+\end{leancode}
+
+\begin{dictionary}
+\lean{WeakModule V M} is a weak module (Definition~\ref{l12:def:weakmodule}): a field-valued linear map $Y_M$ with
+vacuum, truncation and module Jacobi identity. \lean{restrictWeakModule} composes $Y_M$ with the inclusion
+$S\hookrightarrow W$; every axiom is the $W$-axiom evaluated on elements of $S$, so in particular the module Jacobi
+identity is \emph{inherited} from the Borcherds identity of $V_L$ rather than re-proved. \lean{act u n x} is
+$u_{(n)}x$. So \lean{chargeSec_invariant} says that $\lfiveF_r\otimes e^\alpha$ is stable under all modes of all
+neutral fields, i.e.\ is a $V_L^{(0)}$-submodule. On paper it is the charged Fock module $\lfiveF_\alpha$ of momentum
+$\alpha$; the library does not identify it further (e.g.\ it does not prove irreducibility or compute the lowest
+weight as a module statement), and these are \emph{weak} modules (no grading conditions are asserted).
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+Restriction of a module along a subalgebra is a module. Invariance of the sector is Theorem~\ref{l05:thm:shifts} at
+charge $0$.
+\end{proof}
+
+\begin{physics}
+$V_L=\bigoplus_{\alpha\in L}\lfiveF_\alpha$ as a representation of the neutral free-boson algebra: the compactified boson
+is the sum, over allowed momenta, of the charged Fock sectors of the non-compact one. The charged Fock modules are
+realised \emph{inside} $V_L$ rather than constructed separately; for momenta not in $L$ one would need spectral flow
+(Section~\ref{l05:sec:li}).
+\end{physics}
+
+\begin{status}
+Proved, conditional only on \lean{hEven}, \lean{hPos}. \texttt{\#print axioms} for
+\lean{VOA.LatGen.latticeAsHeisenbergModule} and \lean{VOA.LatGen.chargeSec_invariant}:
+\texttt{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+%======================================================================
+\section{Background charge on lattice vertex operator algebras}\label{l05:sec:latbg}
+%======================================================================
+
+On $V_L$ the zero mode of a current is not zero: on $\lfiveF_r\otimes e^\gamma$ the direction-$a$ zero mode acts by the
+$a$-th frame coordinate of $\gamma$. So the free-boson construction of Section~\ref{l05:sec:bg} does not transfer
+verbatim, and $L_0$ \emph{does} change. Two files treat this, in two parallel styles:
+\leanpath{LatticeBackgroundChargeA.lean} (namespace \lean{VOA.LatGen.BgA}, an operator-algebra route through an abstract
+lemma) and \leanpath{LatticeBackgroundChargeB.lean} (namespace \lean{VOA.LatGen.BgB}, a vertex-operator route). They
+prove the same mathematics; we present B as primary and A's abstract lemma, which is of independent interest. These files
+are inputs to the triplet algebras of Chapter~\ref{ch:L18}.
+
+\subsection{An abstract lemma}
+
+\begin{theorem}[Background-charge deformation of a Virasoro family]\label{l05:thm:bgcore}
+Let $W$ be a vector space, $(P_s)_{s\in\Z}$ operators satisfying the Virasoro relation with central charge $c_0$, and
+$(\beta_t)_{t\in\Z}$ operators with $[P_s,\beta_t]=-t\beta_{s+t}$ and $[\beta_s,\beta_t]=\kappa\,s\,\delta_{s+t,0}$. Then
+$P^\beta_n=P_n-(n+1)\beta_n$ satisfies the Virasoro relation with central charge $c_0-12\kappa$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/LatticeBackgroundChargeA.lean}.
+\begin{leancode}
+theorem bg_virasoro_core (P β : ℤ → End ℂ W) (c₀ κ : ℂ)
+    (hPP : ∀ s t : ℤ, P s * P t - P t * P s
+      = ((s : ℂ) - t) • P (s + t)
+        + (if s + t = 0 then ((s : ℂ) ^ 3 - s) / 12 * c₀ else 0) • (1 : End ℂ W))
+    (hPb : ∀ s t : ℤ, P s * β t - β t * P s = (-(t : ℂ)) • β (s + t))
+    (hbb : ∀ s t : ℤ, β s * β t - β t * β s
+      = (if s + t = 0 then κ * (s : ℂ) else 0) • (1 : End ℂ W))
+    (m n : ℤ) :
+    (P m - ((m : ℂ) + 1) • β m) * (P n - ((n : ℂ) + 1) • β n)
+      - (P n - ((n : ℂ) + 1) • β n) * (P m - ((m : ℂ) + 1) • β m)
+      = ((m : ℂ) - n) • (P (m + n) - (((m + n : ℤ) : ℂ) + 1) • β (m + n))
+        + (if m + n = 0 then ((m : ℂ) ^ 3 - m) / 12 * (c₀ - 12 * κ) else 0) • (1 : End ℂ W)
+\end{leancode}
+
+\begin{dictionary}
+The three hypotheses are exactly: $P$ is Virasoro with charge $c_0$ (\lean{hPP}), $\beta$ is a weight-one primary current
+for $P$ (\lean{hPb}), and $\beta$ is a Heisenberg current of level $\kappa$ (\lean{hbb}). The conclusion is the
+Virasoro relation for $P_n-(n+1)\beta_n$ with charge $c_0-12\kappa$. The hypotheses are all genuinely needed and
+satisfiable (the free boson gives $c_0=\kappa=1$). This is the lemma behind both \lean{Lld_virasoro} (with the opposite
+sign of $\beta$) and the lattice statements below.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+Expand the commutator into four pieces as in the proof of Theorem~\ref{l05:thm:freeboson}. The cross terms give
+$-(n+1)[P_m,\beta_n]-(m+1)[\beta_m,P_n]=n(n+1)\beta_{m+n}-m(m+1)\beta_{m+n}$, which equals $-(m-n)(m+n+1)\beta_{m+n}$, the $\beta$-part of
+$(m-n)P^\beta_{m+n}$; and $(m+1)(n+1)\kappa m\delta_{m+n,0}=-\kappa(m^3-m)\delta_{m+n,0}$, which shifts the central
+charge by $-12\kappa$.
+\end{proof}
+
+\begin{physics}
+The universal mechanism of background charge: improving a stress tensor by the derivative of a primary $U(1)$
+current of level $\kappa$ shifts $c$ by $-12\kappa$ times the square of the coefficient (here normalised to $1$).
+\end{physics}
+
+\begin{status}
+Proved, unconditional in the displayed hypotheses; axiom-clean.
+\end{status}
+
+\subsection{The deformed conformal vector of \texorpdfstring{$V_L$}{V\_L}}
+
+\begin{definition}[Background charge on $V_L$]\label{l05:def:latbg}
+Let $L$ be even and positive-definite of rank $r$ and $\lambda\in\C^r$ a vector of coordinates in the orthonormal frame of
+Chapter~\ref{ch:03} (Definition~\ref{ch03:def:frame}). Put $\lambda(z)=\sum_a\lambda_ah^a(z)$, the current in direction
+$\lambda$ \emph{including} its momentum zero mode, $\langle\lambda,\mu\rangle=\sum_a\lambda_a\mu_a$,
+$\langle\lambda,\beta\rangle=\sum_a\lambda_a\beta^\perp_a$ for $\beta\in L$, and
+\begin{equation*}
+\omega_\lambda=\omega+\lambda(-2)\lfivevac\otimes e^0,\qquad L^\lambda_n=L_n-(n+1)\lambda(n),\qquad
+c_\lambda=r-12\langle\lambda,\lambda\rangle .
+\end{equation*}
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/LatticeBackgroundChargeB.lean}.
+\begin{leancode}
+noncomputable def bgCurrent (lam : Fin (rank L) → ℂ) : FormalDist (End ℂ (LatModuleGen L)) :=
+  ∑ a : Fin (rank L), lam a • alphaLatGen L a
+
+noncomputable def bgMode (lam : Fin (rank L) → ℂ) (n : ℤ) : End ℂ (LatModuleGen L) :=
+  mode (bgCurrent L lam) n
+
+noncomputable def bgInner (lam mu : Fin (rank L) → ℂ) : ℂ := ∑ a : Fin (rank L), lam a * mu a
+
+noncomputable def bgPair (lam : Fin (rank L) → ℂ) (β : L.carrier) : ℂ :=
+  bgInner L lam (chargeCoord L β)
+
+noncomputable def bgState (lam : Fin (rank L) → ℂ) : LatModuleGen L :=
+  ∑ a : Fin (rank L), lam a • wordStateLatGen L [(1, a)] 0
+
+noncomputable def omegaBG (lam : Fin (rank L) → ℂ) : LatModuleGen L :=
+  omegaLatGen L + bgState L lam
+
+noncomputable def LBG (lam : Fin (rank L) → ℂ) (n : ℤ) : End ℂ (LatModuleGen L) :=
+  LLGen L n - ((n : ℂ) + 1) • bgMode L lam n
+
+noncomputable def bgCentralCharge (lam : Fin (rank L) → ℂ) : ℂ :=
+  (rank L : ℂ) - 12 * bgInner L lam lam
+\end{leancode}
+
+\begin{dictionary}
+\textbf{The background charge is not a lattice vector.} \lean{lam : Fin (rank L) → ℂ} is an arbitrary complex vector
+in frame coordinates; it need not lie in $L$, nor in $L\otimes\Q$. This is essential: in the applications
+(triplet algebras) $\lambda\in L\otimes\Q\setminus L$. \lean{chargeCoord L β} are the frame coordinates $\beta^\perp$
+of a lattice vector, with $\sum_a\beta^\perp_a\gamma^\perp_a=\langle\beta,\gamma\rangle$ (Chapter~\ref{ch:03}).
+\lean{wordStateLatGen L [(1, a)] 0} is the word state $h_a(-2)\lfivevac\otimes e^0$ (the pair \lean{(1, a)} means
+``derivative order $1$, direction $a$''), so \lean{bgState} is $\lambda(-2)\lfivevac\otimes e^0$
+(\lean{bgState_eq_mkEα}). \lean{LLGen L n} is the lattice Virasoro mode $L_n=\omega_{(n+1)}$ of
+\lean{latticeVOAGen}. \lean{alphaLatGen} carries the momentum zero mode at index $-1$, which is the point of the
+construction.
+\end{dictionary}
+
+\begin{physics}
+$\omega_\lambda$ is the state of the improved stress tensor $T+\partial\lambda(z)$ of $r$ compact bosons with a background
+charge $\lambda$ in target space. Because the momentum zero mode is now nonzero, the improvement shifts the weights of
+the charged states: a vertex operator $e^\beta$ acquires weight $\frac12\langle\beta,\beta\rangle-\langle\lambda,\beta\rangle$, the
+familiar Coulomb-gas formula $h=\frac12p(p-2\alpha_0)$ up to normalisation.
+\end{physics}
+
+\begin{theorem}[The lattice background-charge Virasoro algebra]\label{l05:thm:latbg}
+Let $L$ be even and positive-definite and $\lambda\in\C^{\operatorname{rank}L}$. Then
+$Y(\omega_\lambda,z)=T(z)+\partial_z\lambda(z)$, the modes of $Y(\omega_\lambda,z)$ are $(\omega_\lambda)_{(n+1)}=L^\lambda_n$, these
+satisfy the Virasoro relation with central charge $\operatorname{rank}L-12\langle\lambda,\lambda\rangle$, and
+$L^\lambda_0e^\beta=\big(\frac12\langle\beta,\beta\rangle-\langle\lambda,\beta\rangle\big)e^\beta$ for every $\beta\in L$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/LatticeBackgroundChargeB.lean}.
+\begin{leancode}
+theorem YfullGen_omegaBG (hEven : L.Even) (hPos : L.PosDef) (lam : Fin (rank L) → ℂ) :
+    YfullGen L hEven hPos (omegaBG L lam)
+      = sugFieldGen L + VOA.deriv (bgCurrent L lam)
+
+theorem mode_YfullGen_omegaBG (hEven : L.Even) (hPos : L.PosDef) (lam : Fin (rank L) → ℂ)
+    (n : ℤ) :
+    mode (YfullGen L hEven hPos (omegaBG L lam)) (n + 1) = LBG L lam n
+
+theorem LBG_virasoro (hPos : L.PosDef) (lam : Fin (rank L) → ℂ) (m n : ℤ) :
+    LBG L lam m * LBG L lam n - LBG L lam n * LBG L lam m
+      = ((m : ℂ) - n) • LBG L lam (m + n)
+        + (if m + n = 0 then ((m : ℂ) ^ 3 - m) / 12 * bgCentralCharge L lam else 0)
+            • (1 : End ℂ (LatModuleGen L))
+
+theorem YfullGen_omegaBG_virasoro (hEven : L.Even) (hPos : L.PosDef)
+    (lam : Fin (rank L) → ℂ) (m n : ℤ) :
+    ⁅mode (YfullGen L hEven hPos (omegaBG L lam)) (m + 1),
+      mode (YfullGen L hEven hPos (omegaBG L lam)) (n + 1)⁆
+      = ((m : ℂ) - n) • mode (YfullGen L hEven hPos (omegaBG L lam)) (m + n + 1)
+        + (if m + n = 0 then ((m : ℂ) ^ 3 - m) / 12 * bgCentralCharge L lam else 0)
+            • (1 : End ℂ (LatModuleGen L))
+
+theorem LBG_zero_latChargeGen (hPos : L.PosDef) (lam : Fin (rank L) → ℂ) (β : L.carrier) :
+    LBG L lam 0 (latChargeGen L β)
+      = ((1 / 2 : ℂ) * ((L.form β β : ℤ) : ℂ) - bgPair L lam β) • latChargeGen L β
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Decoding.} \lean{sugFieldGen L} is $T(z)=Y(\omega,z)$ of $V_L$ and \lean{VOA.deriv} is $\partial_z$.
+\lean{YfullGen_omegaBG_virasoro} is the exact shape of the field \lean{virasoro} of Definition~\ref{l03:def:VOA} for the
+conformal vector $\omega_\lambda$, with central charge \lean{bgCentralCharge L lam}. \lean{LBG_zero_latChargeGen} is the
+deformed weight of $e^\beta$; with $\langle\beta,\beta\rangle$ even, $\frac12\langle\beta,\beta\rangle$ is an integer, but
+$\langle\lambda,\beta\rangle$ is in general not.
+
+\textbf{What is not claimed: this is not a vertex operator algebra.} Only one of the four conformal axioms of
+Definition~\ref{l03:def:VOA} is proved for $\omega_\lambda$ (VOA1, the Virasoro relation). The others fail or are not
+stated: for $\lambda\ne0$ the eigenvalues of $L^\lambda_0$ are not the integer weights of the grading
+\lean{gradingLatGen} (so VOA2 fails for that grading), they need not be integers or bounded below, and
+$\omega_\lambda$ need not lie in a weight-$2$ space of a CFT-type grading. The source says so explicitly
+(``the $L_0$-grading and the vacuum axioms are of course \emph{not} claimed''). No \lean{VertexOperatorAlgebra} instance
+with conformal vector $\omega_\lambda$ is built in this chapter's files; the grading needed for one is the subject of
+the next subsection.
+
+\textbf{Sign convention.} $\omega_\lambda=\omega+\lambda(-2)\lfivevac$ and $L^\lambda_n=L_n-(n+1)\lambda(n)$, opposite to
+Section~\ref{l05:sec:bg}. The sign is pinned by the weight formula: with $\langle\alpha,\alpha\rangle=2p$ and
+$\lambda=\frac{p-1}{2p}\alpha$, $\langle\lambda,\alpha\rangle=p-1$, so $e^\alpha$ has weight $p-(p-1)=1$ and $e^{-\alpha}$ has
+weight $p+(p-1)=2p-1$, the normalisation used for the triplet algebras.
+
+\textbf{The duplicate file.} \leanpath{LatticeBackgroundChargeA.lean} proves the same Virasoro relation
+(\lean{BgA.LBg_virasoro}, central charge \lean{(rank L : ℂ) - 12 * bgForm L lam lam}), the same weight formula
+(\lean{BgA.LBg_weight_latChargeGen}) and the same mode identification (\lean{BgA.mode_YfullGen_omegaBg}), by applying
+Theorem~\ref{l05:thm:bgcore} sector by sector. The two developments are independent and agree.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+$\omega_\lambda$ is a linear combination of word states whose fields are known: $Y(\omega,z)=T(z)$ and
+$Y(h_a(-2)\lfivevac\otimes e^0,z)=\partial h^a(z)$; linearity of $Y$ gives $Y(\omega_\lambda,z)=T+\partial\lambda$. Taking modes,
+$\partial_z$ turns into the factor $-(n+1)$. The Virasoro relation follows from Theorem~\ref{l05:thm:bgcore} with $c_0=r$
+(Chapter~\ref{ch:03}, Theorem~\ref{ch03:thm:virasoroN} in its lattice form) and $\kappa=\langle\lambda,\lambda\rangle$, once one
+checks $[L_m,\lambda(n)]=-n\lambda(m+n)$. That check is where the momentum zero mode matters: on the charge-$\gamma$ sector
+$[L_m,\lambda(n)]$ computed with the Fock oscillator alone misses a term $\delta_{m+n,0}\langle\gamma,\lambda\rangle$, which is
+exactly supplied by the zero mode $\lambda(0)=\langle\lambda,\gamma\rangle$. Finally $L_0e^\beta=\frac12\langle\beta,\beta\rangle e^\beta$ and
+$\lambda(0)e^\beta=\langle\lambda,\beta\rangle e^\beta$.
+\end{proof}
+
+\begin{physics}
+This is the lattice Coulomb gas: compact bosons with a background charge, whose central charge
+$r-12\langle\lambda,\lambda\rangle$ and shifted vertex-operator weights are the starting point of the free-field realisations of
+$W$-algebras and of the logarithmic triplet algebras $\mathcal W(p)$: for $L=\sqrt{2p}\,\Z$ and
+$\lambda=\frac{p-1}{2p}\alpha$ one gets $c=1-6(p-1)^2/p$, which is $-2$ at $p=2$.
+\end{physics}
+
+\begin{status}
+Proved, conditional only on \lean{hPos} (and \lean{hEven} where \lean{YfullGen} appears).
+\texttt{\#print axioms} for \lean{BgB.LBG_virasoro}, \lean{BgB.YfullGen_omegaBG_virasoro}, \lean{BgA.LBg_virasoro},
+\lean{BgA.LBg_weight_latChargeGen}, \lean{BgA.mode_YfullGen_omegaBg}: \texttt{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\begin{warning}
+\textbf{The ``triplet checks'' are arithmetic only.} \leanpath{LatticeBackgroundChargeB.lean} ends with
+\begin{leancode}
+theorem bgWeight_triplet (p : ℂ) :
+    ((1 / 2 : ℂ) * (2 * p) - (p - 1) = 1) ∧
+      ((1 / 2 : ℂ) * (2 * p) - (-(p - 1)) = 2 * p - 1)
+
+theorem bgCentralCharge_triplet (p : ℂ) (hp : p ≠ 0) :
+    (1 : ℂ) - 12 * ((p - 1) ^ 2 / (2 * p)) = 1 - 6 * (p - 1) ^ 2 / p
+\end{leancode}
+These are identities between complex numbers; they do not mention a lattice, a vertex operator or a weight. They
+record what one gets by substituting $\langle\alpha,\alpha\rangle=2p$, $\langle\lambda,\alpha\rangle=p-1$ into the weight
+formula, but the substitution itself (that the lattice $\sqrt{2p}\,\Z$ with $\lambda=\frac{p-1}{2p}\alpha$ has these pairings)
+is not part of these theorems. The general, non-arithmetic statements are \lean{LBg_weight_charge_self} and
+\lean{LBg_weight_charge_neg} in \leanpath{LatticeBackgroundChargeA.lean}, which compute
+$L^\lambda_0e^{\pm\alpha}=(\frac12\mp c)\langle\alpha,\alpha\rangle e^{\pm\alpha}$ for $\lambda=c\alpha$.
+\end{warning}
+
+\subsection{\texorpdfstring{$\Q$}{Q}-valued gradings}
+
+\begin{definition}[Quadratic refinement; refined grading]\label{l05:def:quadrefine}
+A \emph{quadratic refinement} of $L$ is a function $q:L\to\Q$ with $q(\alpha+\beta)-q(\alpha)-q(\beta)=\langle\alpha,\beta\rangle$.
+The \emph{refined grading} of $V_L$ puts $(\lfiveF_r)_w\otimes e^\alpha$ in degree $w+q(\alpha)\in\Q\subset\C$.
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/LatticeQuadRefine.lean}.
+\begin{leancode}
+structure QuadRefine where
+  q : L.carrier → ℚ
+  polarization : ∀ α β : L.carrier, q (α + β) - q α - q β = (L.form α β : ℚ)
+
+noncomputable def gradingLatGenQ (qr : QuadRefine L) (k : ℂ) : Submodule ℂ (LatModuleGen L) :=
+  gradeCollapse (bigradα L) (wtQ L qr) k
+
+noncomputable def halfNormRefine (hEven : L.Even) : QuadRefine L where
+  q := fun α => (halfNorm L α : ℚ)
+
+def PosQuad (qr : QuadRefine L) : Prop := ∀ α : L.carrier, α ≠ 0 → 0 < qr.q α
+
+def QFinite (qr : QuadRefine L) : Prop := ∀ N : ℚ, {α : L.carrier | qr.q α ≤ N}.Finite
+
+theorem gradingLatGenQ_isInternal (qr : QuadRefine L) :
+    DirectSum.IsInternal (gradingLatGenQ L qr) :=
+  gradeCollapse_isInternal (bigradα_iSupIndep L) (bigradα_iSup_eq_top L) (wtQ L qr)
+
+theorem gradingLatGenQ_halfNormRefine (hEven : L.Even) (k : ℤ) :
+    gradingLatGenQ L (halfNormRefine L hEven) (k : ℂ) = gradingLatGen L k
+
+theorem gradingLatGenQ_finrank {qr : QuadRefine L} (hqf : QFinite L qr) (k : ℂ) :
+    FiniteDimensional ℂ (gradingLatGenQ L qr k)
+\end{leancode}
+
+\begin{dictionary}
+\lean{gradeCollapse t f k} is the sum of the pieces $t_i$ with $f(i)=k$; \lean{wtQ L qr (w, α)} is $w+q(\alpha)$ cast to
+$\C$. The grading is indexed by $\C$ (as for the library's super vertex algebras), not by $\Z$. Every quadratic
+refinement has the form $q(\alpha)=\frac12\langle\alpha,\alpha\rangle-\langle\lambda,\alpha\rangle$ for an additive
+$\langle\lambda,\cdot\rangle:L\to\Q$ (library lemma \lean{QuadRefine.bgCharge_add}, under evenness), so these are exactly the
+gradings by background-charge weights with rational pairings. Internality holds for every $q$ with no hypothesis on $L$;
+finite-dimensionality needs \lean{QFinite}; CFT-type statements need \lean{PosQuad}; at $q=\frac12\langle\cdot,\cdot\rangle$ the
+refined grading is the standard one. The file builds five of the nine grading-dependent fields of a vertex operator
+algebra (a sixth, \lean{vacuum_mem}, is immediate from \lean{vacuum_grade}) and deliberately leaves out the remaining three (\lean{grading_mode}, \lean{conformal_mem}, \lean{L0_grading}) that
+depend on the deformed $L_0$; so it does not yet produce a vertex operator algebra.
+\end{dictionary}
+
+\begin{physics}
+With a background charge the conformal weights of charged states are rational (for the doublet algebras even
+half-integral), so the chiral algebra is graded by $\Q$; one must then check which sectors have integral weights to
+extract a bosonic vertex operator algebra.
+\end{physics}
+
+\begin{status}
+Proved (internality unconditional; finiteness under \lean{QFinite}); axiom-clean. Infrastructure only.
+\end{status}
+
+%======================================================================
+\section{Spectral flow on the Fock space: an open identity}\label{l05:sec:li}
+%======================================================================
+
+To construct the charged Fock modules $\lfiveF_\lambda$ of the free boson (for $\lambda\notin L$, so not inside any $V_L$) the
+library follows Li's $\Delta$-operator method: $Y_\lambda(u,z)=Y(\Delta(\lambda,z)u,z)$ with
+$\Delta(\lambda,z)=z^{\lambda a_0}\exp\big(-\sum_{n\ge1}\frac{\lambda}{n}a_n(-z)^{-n}\big)$. On \lean{Fock}, where $a_0=0$, $\Delta$ is the
+substitution $X_i\mapsto X_i+\lambda k(-1)^iz^{-i-1}$, implemented in \leanpath{VOA/\allowbreak Examples/\allowbreak LiDelta.lean}
+(Chapter~\ref{ch:L11}). The module Jacobi identity for $Y_\lambda$ would follow from Li's conjugation identity
+\begin{equation}\label{l05:eq:li}
+ \Delta(\lambda,z)\,Y(u,z_0)\,\Delta(\lambda,z)^{-1}=Y\big(\Delta(\lambda,z+z_0)u,\,z_0\big).
+\end{equation}
+The two files of this chapter, \leanpath{FockBaseChange.lean} and \leanpath{FockBC2.lean}, set up the spaces on which
+\eqref{l05:eq:li} typechecks and state it.
+
+\begin{definition}[Base change and Li's conjugation identity]\label{l05:def:li}
+Let $\lfiveF_W=\lfiveF\otimes\C[w]$ ($w=z^{-1}$) and transport each operator $T$ on $\lfiveF$ to $T\otimes\mathrm{id}$ on
+$\lfiveF_W$. \lean{LiConjugation k λ} is the statement that for every $u\in\lfiveF$ and every $j\in\Z$ the $z_0^j$-coefficient of
+the left side of \eqref{l05:eq:li} equals that of the right side, where the right side is expanded in $z_0$ and the
+coefficients of $\Delta(\lambda,z+z_0)u$ are convolved against the vertex index.
+\end{definition}
+
+\noindent Files \leanpath{VOA/Examples/FockBaseChange.lean}, \leanpath{VOA/Examples/FockBC2.lean}.
+\begin{leancode}
+noncomputable def fockWEquiv : Fock ⊗[ℂ] Polynomial ℂ ≃ₐ[ℂ] FockW :=
+
+noncomputable def bcEnd (T : Module.End ℂ Fock) : Module.End ℂ FockW :=
+
+theorem bcEnd_comp (T S : Module.End ℂ Fock) :
+    bcEnd (T * S) = bcEnd T * bcEnd S
+
+theorem bcR_isField {a : FormalDist (Module.End ℂ Fock)} (ha : IsField a) :
+
+noncomputable def coeffZ₀ (l : ℕ) : FockW₂ →ₗ[ℂ] FockW :=
+  Finsupp.mapRange.linearMap
+    ((PowerSeries.coeff l : CoeffW₂ →ₗ[Polynomial ℂ] Polynomial ℂ).restrictScalars ℂ)
+
+def LiConjugation (k lam : ℂ) : Prop :=
+  ∀ (u : Fock) (j : ℤ),
+    ((deltaSubW k lam).restrictScalars ℂ).toLinearMap ∘ₗ (YW k u j) ∘ₗ
+        ((deltaSubW k (-lam)).restrictScalars ℂ).toLinearMap
+      = ∑ᶠ l : ℕ, YWfull k (coeffZ₀ l (deltaSub₂ k lam u)) (j - l)
+\end{leancode}
+
+\begin{dictionary}
+\lean{FockW} $=$ \lean{MvPolynomial ℕ (Polynomial ℂ)} (Fock states with coefficients polynomial in $w=z^{-1}$),
+\lean{FockW₂} $=$ \lean{MvPolynomial ℕ (PowerSeries (Polynomial ℂ))} (coefficients also power series in $z_0$).
+\lean{≃ₐ[ℂ]} is an algebra isomorphism. \lean{bcEnd} and its generalisation \lean{bcR} transport operators to the
+base-changed spaces; they are ring maps on operators and preserve the field property. \lean{YW k u j} is
+$Y(u,z_0)$'s $z_0^j$-coefficient acting on $\lfiveF_W$, \lean{YWfull} extends $Y$ to states with coefficients, and
+\lean{deltaSubW k lam}, \lean{deltaSub₂ k lam} are Li's $\Delta(\lambda,z)$ and $\Delta(\lambda,z+z_0)$ as substitutions
+(\leanpath{LiDelta.lean}, \leanpath{LiDelta2.lean}). \lean{∘ₗ} is composition of linear maps and \lean{∑ᶠ} a finite sum.
+\textbf{\lean{LiConjugation} is a definition of a proposition; it is not proved anywhere in the library.}
+\end{dictionary}
+
+\begin{physics}
+Spectral flow by $\lambda$ shifts the momentum of every state by $\lambda$: it maps the vacuum module $\lfiveF_0$ to the charged
+module $\lfiveF_\lambda$, the sector created by the vertex operator ${:}e^{\lambda X}{:}$. Identity \eqref{l05:eq:li} says that the
+twisted fields still form a representation of the same chiral algebra. The intended application (the goal stated in the docstrings of
+the source file) is the family $\lambda\mapsto\lfiveF_\lambda$ and, by differentiating in $\lambda$, a first logarithmic (Jordan-block)
+module.
+\end{physics}
+
+\begin{status}
+\lean{bcEnd}, \lean{bcR}, \lean{YW}, \lean{YWfull}, \lean{bcR_isField} and the ring-map laws are proved, axiom-clean.
+\lean{LiConjugation}: \textbf{open} (stated, not proved). Nothing in this chapter depends on it.
+\end{status}
+
+\begin{warning}
+\textbf{A false version of Li's identity, recorded in the source.} An earlier draft of \leanpath{FockBC2.lean} extended $Y$ to
+$\lfiveF_{W_2}$-states by treating the coefficient ring as inert scalars ($u\otimes c\mapsto c\cdot Y(u)$). For $\lfiveF_W$ this is
+correct (its coefficients depend only on $z$, which is inert for the vertex variable $z_0$), but for $\lfiveF_{W_2}$ it is wrong:
+the coefficients carry $z_0$-dependence, and $Y(f(z_0)v,z_0)$ means the product of series $f(z_0)Y(v,z_0)$, whose
+$j$-th coefficient is a convolution. The source gives the counterexample $u=X_i$: conjugating $Y(X_i,z_0)$ by
+$\Delta$ shifts every creation oscillator, spreading the correction over infinitely many indices $j$, while the inert-scalar
+right side puts the whole correction on $Y(\lfivevac,z_0)$, supported at the single index $j=0$. The present
+\lean{LiConjugation} uses the convolution (\lean{∑ᶠ l, … (j - l)}).
+\end{warning}
+
+%======================================================================
+\section{Recorded traps and Lean defects}\label{l05:sec:traps}
+%======================================================================
+
+The warnings of Sections~\ref{l05:sec:A1} and~\ref{l05:sec:latbg} record the substantive defects (a placeholder vertex
+operator, a tautological ``locality'' predicate, a misnamed central-charge lemma, and arithmetic-only ``triplet checks'').
+We collect here the remaining, minor ones, so that the referee has them in one place. None affects a headline theorem.
+
+\begin{warning}
+\textbf{Redundant hypothesis in \lean{heisVA}.} \lean{VOA.heisVA k _hk} (\leanpath{VOA/Examples/HeisenbergVOA.lean})
+takes \lean{k ≠ 0} but never uses it (hence the underscore): all vertex-algebra axioms of the rank-one Fock space are
+proved for every $k$, including $k=0$ (Theorem~\ref{l05:thm:VAaxioms} has no hypothesis on $k$). The hypothesis is
+harmless (it only restricts the definition) but it is not a genuine condition. Severity: redundant hypothesis.
+\end{warning}
+
+\begin{warning}
+\textbf{Stale or over-stated docstrings.}
+\begin{itemize}
+\item \leanpath{VOA/Examples/LatticeGenGrading.lean}: the module docstring still calls the finiteness of bounded lattice
+  vectors an ``isolated crux'' blocking \lean{gradingLatGen_isInternal} and \lean{gradingLatGen_finrank}. It is
+  discharged (\lean{IntegralLattice.boundedFinite}, used by the \lean{_of_posDef} versions), and internality needs no
+  hypothesis at all (\lean{gradingLatGen_isInternal_free}).
+\item \leanpath{VOA/Examples/LatticeCharge.lean}: the module docstring says that ``what remains for the sub-VOA'' is the
+  transport from word states to all of $V_L$; the same file completes it (\lean{YfullGen_shiftsCharge},
+  \lean{chargeZeroSubVOA}).
+\item \leanpath{VOA/Examples/LatticeA1.lean}: the title advertises ``$=\widehat{\lfivesl}_2$ level 1'' and
+  \lean{LatticeVOA.OPEStructure} is described as ``the Stage-2 locality input''; neither the identification with
+  $\widehat{\lfivesl}_2$ at level $1$ nor any use of \lean{OPEStructure} in the locality proof exists.
+\item \leanpath{VOA/Examples/LatticeCharge.lean}: \lean{chargeZeroSubVOA} is documented as ``the Heisenberg subalgebra'';
+  no isomorphism with a Heisenberg vertex operator algebra is proved (Section~\ref{l05:sec:charge}).
+\end{itemize}
+\end{warning}
+
+\begin{warning}
+\textbf{Two sign conventions for the background charge.} \leanpath{FreeBosonGeneralC.lean} uses
+$\omega^\lambda=\omega-\lambda a_{-2}\lfivevac$ (and \leanpath{VirasoroFock.lean} $L^\lambda_n=L_n+\lambda(n+1)a_n$), while
+\leanpath{LatticeBackgroundChargeA.lean} and \leanpath{LatticeBackgroundChargeB.lean} use $\omega_\lambda=\omega+\lambda(-2)\lfivevac$.
+Both are internally consistent and documented, and central charges agree, but deformed weights computed with one
+convention must be translated ($\lambda\mapsto-\lambda$) before comparing with the other.
+\end{warning}
+
+%======================================================================
+\section{Machine verification for this chapter}\label{l05:sec:audit}
+%======================================================================
+
+The headline declarations were audited on a scratch file importing the relevant modules, compiled with
+\texttt{lake env lean -DmaxSynthPendingDepth=3} (never bare \texttt{lake env lean}, which can silently insert
+\lean{sorryAx}); no full \texttt{lake build} was run for this chapter. Output (abridged; every line had the same axiom
+list):
+\begin{plaincode}
+'VOA.heisenbergVOA' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.heisenbergVOA'' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.L_virasoro' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.osc_comm' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.heisenberg_not_C2Cofinite' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.heisenberg_A2_tower_linearIndependent' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.VHat.DLM3.heisenbergAdjointBottomProjection' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.VHat.DLM3.heisenbergAdjointPBWFreeness' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.VHat.DLM3.heisenberg_indBottom_vacuum_ne_zero' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.LatExp.latticeVOA_A1' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.latticeVOA_A1' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.LatExp.Yemα_local' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.LatGen.latticeVOAGen' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.LatGen.chargeZeroSubVOA' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.LatGen.latticeAsHeisenbergModule' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.LatGen.chargeSec_invariant' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.LatGen.YfullGen_shiftsCharge' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.LatGen.BgA.LBg_virasoro' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.LatGen.BgA.LBg_weight_latChargeGen' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.LatGen.BgA.mode_YfullGen_omegaBg' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.LatGen.BgB.LBG_virasoro' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.LatGen.BgB.YfullGen_omegaBG_virasoro' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.FBgc.freeBosonVOA' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.FBgc.exists_centralCharge' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.FBgc.centralCharge_surjective' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.trivialVOA' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.latticeA1_local_of_nonneg' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Heisenberg.bcR_isField' depends on axioms: [propext, Classical.choice, Quot.sound]
+\end{plaincode}
+The PBW theorem \lean{VOA.pbw} appears nowhere. The Lean checks made for this book outside the library
+(same compilation command; not part of this release) prove \lean{OPEStructure_iff},
+\lean{latChargeGen_mem_grading}, \lean{latticeVOA_sqrt2} and \lean{std1_not_even} and the \lean{rfl}/\lean{norm_num}
+checks described in this chapter, each with axioms \texttt{[propext, Classical.choice, Quot.sound]}.
+
+\paragraph{Release audit 2026-10-27.} \texttt{Notes/\allowbreak Textbook/\allowbreak referee/\allowbreak RELEASE\_AUDIT\_FOUNDATIONS.md}
+(at an earlier commit; no \texttt{lake build}; not re-run for this edition). It re-ran \texttt{\#print axioms} on \lean{VOA.heisenbergVOA} and
+\lean{VOA.LatGen.latticeVOAGen} (three standard axioms each), checked \lean{VOA.Fock = MvPolynomial ℕ ℂ} by \lean{rfl}, and
+judged both constructions \textbf{genuine}: VOAs of CFT type on the standard carriers, with no hypothesis beyond $k\ne0$,
+respectively evenness and \lean{PosDef}. It also records that \lean{heisVA} and \lean{heisVAN} are \lean{PreVertexAlgebra}s,
+certified only in the weak sense (no translation covariance).
+
+%======================================================================
+\section{Referee's checklist}\label{l05:sec:checklist}
+%======================================================================
+
+Abbreviations: E $=$ \lean{hEven}, P $=$ \lean{hPos}. ``Uncond.'' means no hypothesis beyond the displayed data. All
+entries are \texttt{\#print axioms}-clean (\texttt{[propext, Classical.choice, Quot.sound]}); none uses \lean{VOA.pbw}.
+
+{\footnotesize
+\begin{longtable}{>{\raggedright\arraybackslash}p{4.6cm}>{\raggedright\arraybackslash}p{5.2cm}>{\raggedright\arraybackslash}p{2.4cm}>{\raggedright\arraybackslash}p{1.8cm}}
+\toprule
+Lean declaration & Intended meaning & Hypotheses & Fidelity\\
+\midrule\endhead
+\lean{osc_comm} & $[a_m,a_n]=mk\delta_{m+n,0}$ on $\C[X_0,X_1,\ldots]$ & uncond. & Thm.~\ref{l05:thm:osccomm}\\
+\lean{Y_creation}, \lean{Y_local}, \lean{va1_grading_mode} & VA axioms of the rank-one Fock space & uncond. (any $k$) & Thm.~\ref{l05:thm:VAaxioms}\\
+\lean{L_virasoro} & Sugawara modes are Virasoro, $c=1$ & $k\ne0$ & Thm.~\ref{l05:thm:virasoro}\\
+\lean{heisenbergVOA} & $M(1)$ at level $k$ is a VOA of CFT type, $c=1$ & $k\ne0$ & Thm.~\ref{l05:thm:heisVOA}\\
+\lean{heisenbergVOA'} & rank-$n$ Heisenberg at level $1$, $c=n$ & uncond. & Def.~\ref{l05:def:heisN}\\
+\lean{heisenberg_not_C2Cofinite} & $\lfiveA(M(1))$ infinite-dimensional & $k\ne0$ & Thm.~\ref{l05:thm:notC2}\\
+\lean{heisenbergAdjointBottomProjection} & bottom projection for the adjoint bottom of $M(1)$ (generic specialisation; not the regular-module gate) & $k\ne0$ & Thm.~\ref{l05:thm:pbw}\\
+\lean{heisenberg_indBottom_vacuum_ne_zero} & that instance is nonzero & $k\ne0$ & Thm.~\ref{l05:thm:pbw}\\
+\lean{FBgc.freeBosonVOA} & free boson with background charge, $c=1-12\lambda^2$; same VA, grading, $L_0$, $L_{-1}$ & uncond. & Thm.~\ref{l05:thm:freeboson}\\
+\lean{FBgc.exists_centralCharge} & every $c\in\C$ is realised & uncond. & Thm.~\ref{l05:thm:freeboson}\\
+\lean{LatGen.latticeVOAGen} & $V_L$ is a VOA of CFT type, $c=\operatorname{rank}L$ & E, P & Thm.~\ref{l05:thm:latticeVOAGen}\\
+\lean{gradingLatGen_isInternal_free} & $V_L=\bigoplus(V_L)_n$ & uncond. & Thm.~\ref{l05:thm:latgrading}\\
+\lean{latChargeGen_mem_grading} (outside the library) & $\wt e^\alpha=\frac12\langle\alpha,\alpha\rangle$ & E, P & Thm.~\ref{l05:thm:latgrading}\\
+\lean{trivialVOA} & $V_{\{0\}}=\C\lfivevac$, $c=0$ & uncond. & Def.~\ref{l05:def:trivial}\\
+\lean{LatExp.Yemα_local} & $Y(e^{m\alpha}),Y(e^{m'\alpha})$ mutually local in $V_{A_1}$ & uncond. & Thm.~\ref{l05:thm:A1}\\
+\lean{LatExp.latticeVOA_A1} & $V_{A_1}$ is a VOA, $c=1$ (no link to $\widehat{\lfivesl}_1$ proved) & uncond. & Thm.~\ref{l05:thm:A1}\\
+\lean{latticeA1_local_of_nonneg} & tautology, \emph{not} a locality statement & --- & Sec.~\ref{l05:sec:A1} (warning)\\
+\lean{LatGen.YfullGen_shiftsCharge} & charge conservation of $Y$ & E, P & Thm.~\ref{l05:thm:shifts}\\
+\lean{LatGen.chargeZeroSubVOA} & $\lfiveF_r\otimes e^0$ is a conformal subalgebra & E, P & Def.~\ref{l05:def:chargeZero}\\
+\lean{LatGen.latticeAsHeisenbergModule}, \lean{chargeSec_invariant} & $V_L$ is a $V_L^{(0)}$-module with submodules $\lfiveF_r\otimes e^\alpha$ & E, P & Thm.~\ref{l05:thm:heismod}\\
+\lean{BgA.bg_virasoro_core} & $P-(n+1)\beta$ Virasoro with $c_0-12\kappa$ & displayed & Thm.~\ref{l05:thm:bgcore}\\
+\lean{BgB.LBG_virasoro}, \lean{YfullGen_omegaBG_virasoro} & $\omega_\lambda$ gives Virasoro, $c=r-12\langle\lambda,\lambda\rangle$ (not a VOA instance) & P (E) & Thm.~\ref{l05:thm:latbg}\\
+\lean{BgB.LBG_zero_latChargeGen} & $\wt_\lambda e^\beta=\frac12\langle\beta,\beta\rangle-\langle\lambda,\beta\rangle$ & P & Thm.~\ref{l05:thm:latbg}\\
+\lean{gradingLatGenQ_isInternal} & $\Q$-refined grading is a direct sum & uncond. & Def.~\ref{l05:def:quadrefine}\\
+\lean{Heisenberg.LiConjugation} & Li's conjugation identity & \textbf{open} (not proved) & Def.~\ref{l05:def:li}\\
+\bottomrule
+\end{longtable}}
+
+Points a referee should specifically confirm:
+\begin{enumerate}
+\item \emph{Two implementations.} \lean{heisenbergVOA} (on \lean{Fock}) and \lean{heisenbergNVOA} (on \lean{FockN r});
+  \lean{latticeVOA_A1} and \lean{latticeVOAGen}. No isomorphisms between them are proved; none is needed.
+\item \emph{Index conventions.} \lean{FormalDist} is indexed by powers of $z$, \lean{mode f n = f (-n-1)}; \lean{X i} is
+  $a_{-i-1}\lfivevac$; the $A_1$ boson is at level $2$.
+\item \emph{Hypotheses.} $k\ne0$ (Heisenberg VOA); even and positive-definite (lattices, any rank including $0$).
+\item \emph{Not claimed in this chapter's files.} Simplicity, rationality, $C_2$-cofiniteness of $V_L$
+  ($C_2$-cofiniteness: \lean{latticeVOAGen_c2Cofinite}; rank-one strong rationality: \lean{V2m_stronglyRational};
+  both in Chapter~\ref{ch:L22}); $V_{A_1}\cong L_{\lfivesl}(1,0)$;
+  $\lfiveA(M(1))\cong\C[x]$; a VOA structure with conformal vector $\omega_\lambda$ on $V_L$; Li's identity.
+\item \emph{Placeholders/tautologies.} \lean{LatticeVOA.Yeα}, \lean{OPEStructure}, \lean{latticeA1_local_of_nonneg},
+  \lean{latticeA1_centralCharge}, \lean{bgWeight_triplet}, \lean{bgCentralCharge_triplet} (warnings in
+  Sections~\ref{l05:sec:A1} and~\ref{l05:sec:latbg}).
+\end{enumerate}
+
+\section*{Notes and references}\addcontentsline{toc}{section}{Notes and references}
+\label{l05:sec:notes}
+
+The Heisenberg vertex operator algebra and lattice vertex operator algebras are treated in I.~B.~Frenkel,
+J.~Lepowsky and A.~Meurman, \emph{Vertex Operator Algebras and the Monster}, Pure and Applied Mathematics~134, Academic
+Press, 1988 (Chapters~1--4 for Heisenberg algebras and Fock spaces, Chapters~7--8 for the vertex operators
+$E^-(\alpha,z)E^+(\alpha,z)e_\alpha z^\alpha$ and $V_L$); in V.~G.~Kac, \emph{Vertex Algebras for Beginners}, 2nd ed., University
+Lecture Series~10, AMS, 1998, \S\S3.5, 5.4--5.5; in E.~Frenkel and D.~Ben-Zvi, \emph{Vertex Algebras and Algebraic Curves},
+2nd ed., Mathematical Surveys and Monographs~88, AMS, 2004, Chapters~2 and~5 (free bosons, lattice vertex algebras,
+reconstruction); and in J.~Lepowsky and H.~Li, \emph{Introduction to Vertex Operator Algebras and Their Representations},
+Progress in Mathematics~227, Birkh\"auser, 2004, Chapter~6. The library's primary reference for definitions is T.~Gannon,
+\emph{Moonshine beyond the Monster}, Cambridge University Press, 2006, \S5.2.2 (equations (5.2.5)) and \S5.3.
+
+The representation theory of lattice vertex operator algebras (rationality, the modules $V_{L+\lambda}$) is
+C.~Dong, ``Vertex algebras associated with even lattices'', \emph{J.\ Algebra}~161 (1993), 245--265. The vertex-operator
+construction of level-one affine algebras from root lattices, and hence $V_{A_1}\cong L_{\lfivesl}(1,0)$, is I.~B.~Frenkel and
+V.~G.~Kac, ``Basic representations of affine Lie algebras and dual resonance models'', \emph{Invent.\ Math.}~62 (1980),
+23--66, and G.~Segal, ``Unitary representations of some infinite dimensional groups'', \emph{Comm.\ Math.\ Phys.}~80 (1981),
+301--342.
+
+$C_2$-cofiniteness, Zhu's algebra and the modularity theorem are due to Y.~Zhu, ``Modular invariance of characters of vertex
+operator algebras'', \emph{J.\ Amer.\ Math.\ Soc.}~9 (1996), 237--302; the failure of $C_2$-cofiniteness for the free boson and
+the description $\lfiveA(M(1))\cong\C[x]$ are discussed there and in M.~R.~Gaberdiel and A.~Neitzke, ``Rationality,
+quasirationality and finite W-algebras'', \emph{Comm.\ Math.\ Phys.}~238 (2003), 305--331 (arXiv:hep-th/0009235). The
+induced-module construction behind Section~\ref{l05:sec:pbw} is C.~Dong, H.~Li and G.~Mason, ``Vertex operator algebras and
+associative algebras'', \emph{J.\ Algebra}~206 (1998), 67--96 (arXiv:q-alg/9612010).
+
+The background charge (Coulomb gas) is B.~L.~Feigin and D.~B.~Fuchs, ``Representations of the Virasoro algebra'', in
+\emph{Representation of Lie groups and related topics}, Gordon and Breach, 1990, and Vl.~S.~Dotsenko and V.~A.~Fateev,
+``Conformal algebra and multipoint correlation functions in 2D statistical models'', \emph{Nucl.\ Phys.}~B240 (1984),
+312--348; for the triplet algebras see H.~G.~Kausch, ``Extended conformal algebras generated by a multiplet of primary
+fields'', \emph{Phys.\ Lett.}~B259 (1991), 448--455, and D.~Adamovi\'c and A.~Milas, ``On the triplet vertex algebra
+$\mathcal W(p)$'', \emph{Adv.\ Math.}~217 (2008), 2664--2699 (arXiv:0707.1857). Li's $\Delta$-operator is H.~Li,
+``The physics superselection principle in vertex operator algebra theory'', \emph{J.\ Algebra}~196 (1997), 436--457, and
+H.~Li, ``Local systems of twisted vertex operators, vertex operator superalgebras and twisted modules'', in
+\emph{Moonshine, the Monster, and related topics}, Contemp.\ Math.~193, AMS, 1996, 203--236. For the physics of the
+compact boson and the $SU(2)_1$ point see P.~Di~Francesco, P.~Mathieu and D.~S\'en\'echal, \emph{Conformal Field Theory},
+Springer, 1997, Chapters~6, 10 and~15.
+\endgroup

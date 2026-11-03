@@ -1,0 +1,83 @@
+/-
+# Arakawa--Dai boundary classical freeness
+
+Formal proofs of arXiv:2609.33348, Theorems 1.1 and 1.2, for every positive
+boundary index.
+-/
+import VOA.Commutative.QPochhammer
+import VOA.Commutative.QBinomial
+import VOA.Commutative.QBinomialSeries
+import VOA.Commutative.SymmetricOccupancy
+import VOA.Commutative.QBinomialFiniteSum
+import VOA.Commutative.GordonTwoBlock
+import VOA.Commutative.QMultiplicityProfile
+import VOA.Commutative.BoundaryAuxiliaryHilbert
+import VOA.Commutative.GordonFullDivisor
+import VOA.Filtered.AffineArcHilbert
+import VOA.Filtered.InfiniteLiDifferential
+import VOA.Filtered.LiPoissonVertexAlgebra
+import VOA.Filtered.LiC2Bridge
+import VOA.Examples.AffineSl2AdmissiblePrimitive
+import VOA.Examples.AffineSl2AdmissibleCharacterRange
+import VOA.Examples.AffineSl2BoundaryHarmonicSymbol
+import VOA.Examples.AffineSl2BoundaryRelationBridge
+import VOA.Examples.AffineSl2BoundarySymbolNonzero
+import VOA.Commutative.PoissonVertexHom
+import VOA.Commutative.InfiniteJetPoissonUniqueness
+import VOA.Filtered.InfiniteLiPoisson
+import VOA.Commutative.BoundaryAuxiliarySectors
+import VOA.Commutative.GordonInvariantHilbert
+import VOA.Commutative.GordonPartitionBound
+import VOA.Commutative.GordonPartitionProfile
+import VOA.Examples.AffineSl2SimpleCharacterRank
+import VOA.Commutative.BoundaryArcHamiltonian
+import VOA.Commutative.GordonConformalCharacter
+import VOA.Examples.AffineSl2FirstNullDimension
+import VOA.Filtered.AffineSl2UniversalLiPBW
+import VOA.Commutative.PoissonVertexTransport
+import VOA.Commutative.PoissonVertexQuotient
+import VOA.Commutative.InfiniteJetHamiltonian
+import VOA.Commutative.InfiniteJetHamiltonianLaws
+import VOA.Commutative.InfiniteJetPVAHamiltonian
+import VOA.Filtered.LiPBWCoordinates
+import VOA.Filtered.AffineSl2WakimotoLiBridge
+import VOA.Filtered.AffineSl2UniversalJetPVA
+import VOA.Filtered.BoundaryArcPoisson
+import VOA.Filtered.BoundaryArcLiPoisson
+import VOA.Commutative.InfiniteJetMasterFormula
+import VOA.Commutative.InfiniteJetBaseEmbedding
+import VOA.Filtered.C2LiAlgebra
+import VOA.Filtered.ArcBaseExactness
+import VOA.Filtered.BoundarySimpleArcPoisson
+import VOA.Filtered.BoundaryArcConformalSqueeze
+import VOA.Examples.AffineSl2BoundaryClassicalFreeness
+import VOA.Examples.AffineSl2PrimitiveEnergy
+import VOA.Examples.AffineSl2HorizontalString
+import VOA.Examples.AffineSl2FirstNullAllCharges
+import VOA.Examples.AffineSl2ParabolicEvaluation
+import VOA.Commutative.FiniteResolutionEuler
+import VOA.Commutative.QWeylCharacter
+import VOA.Examples.AffineSl2ParabolicJoint
+import VOA.Examples.AffineSl2ParabolicVacuum
+import VOA.Examples.AffineSl2KacParabolicCoefficient
+import VOA.Examples.AffineSl2BoundaryParabolicRoots
+import VOA.Examples.AffineSl2ReflectionFirstForm
+
+import VOA.Examples.AffineSl2HorizontalPowerRadical
+import VOA.Examples.AffineSl2ReflectionTangent
+
+import VOA.Examples.AffineSl2VacuumDeterminantOrder
+
+import VOA.Examples.AffineSl2ParabolicFirstBlock
+import VOA.Examples.AffineSl2BoundaryParabolicDeterminant
+import VOA.Commutative.PolynomialMatrixRootOrder
+import VOA.Examples.AffineSl2BoundaryCharacterLowerBound
+import VOA.Examples.AffineSl2BoundaryVacuumResonances
+import VOA.Examples.AffineSl2ParabolicChargeSum
+import VOA.Examples.AffineSl2ParabolicRadical
+import VOA.Examples.AffineSl2HighestEnergyShift
+
+import VOA.Commutative.QWeylPairing
+import VOA.Examples.AffineSl2BoundaryDeterminantCharacter
+import VOA.Examples.AffineSl2BoundaryMainTheorems
+import VOA.Examples.AffineSl2BoundaryTheorem11

@@ -1,0 +1,262 @@
+/-
+Copyright (c) 2026 Leonardo Rastelli. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Leonardo Rastelli
+-/
+import VOA.Examples.AffineSl2VOAInstance
+import VOA.Core.BorcherdsIdentity
+
+/-!
+# Strong singularity from the currents alone, for `V^k(𝔰𝔩₂)`
+
+This file supplies the two structural inputs that every "the universal affine VOA
+`V^k(𝔰𝔩₂)` is not simple" argument needs (`Examples/AffineSimpleQuotient`, §4, items 1 and 2 of the recipe).  Both are proved
+here **for every** level `k` with `k + 2 ≠ 0`; nothing below is specific to an admissible
+level, let alone to `k = -8/5`.
+
+## The two inputs
+
+* `affineSl2_qp` — the quasi-primarity hypothesis `hqp` demanded by the canonical FHL
+  form: `∀ v ∈ 𝒱₁, L₁ v = 0`.  Weight-one states are spanned by the currents
+  `Jᵃ₋₁|0⟩` (`gradingZA_le_hspan` at `p = 1`, plus the arithmetic of `wordDegA`), and
+  `L₁ Jᵃ₋₁|0⟩ = 0` is `Vir.current_primary`.
+
+* `strongly_singular_of_SingP` — the *Dong-type upgrade*: from
+  "every **positive current** mode kills `t`" to "every **non-weight-raising mode of every
+  state** kills `t`", which is the `annihilated` field of `SingVec.IsStronglySingularOfWeight`.
+
+## Why the upgrade is not the naive induction
+
+The obvious statement — *"if all positive modes of a generating set kill `s`, then `s` is
+strongly singular"* — is **false as an induction hypothesis with `s` held fixed**.  Expanding
+`(Jᵃ₋ₙ₋₁ w)₍N₎ s` by `mode_iterate` produces, among the terms, the summand
+
+  `w₍₋ₙ₋₁₊N₎ (Jᵃ₍₀₎ s)`,
+
+and `Jᵃ₀ s` is in general **not** zero — for the `k = -8/5` vector one has `J^H₀ s = 2s` and
+`J^F₀ s ≠ 0`, since `s` is a horizontal-`𝔰𝔩₂` highest-weight vector of spin `1`, not a singlet.
+
+The repair is to run the induction over the whole `Jᵃ₀`-stable *set* rather than over the
+single vector: `SingP k t` says every positive current mode kills `t`, and `SingP.zeroMode`
+shows `SingP` is preserved by the zero modes.  That closes the induction, and it uses only
+the affine commutator `current_comm` — the central term is absent because the mode indices
+of the two currents sum to `i + 0 = i ≠ 0`.
+
+Note that this cheapness is special to **weight-one** generators: for a generator `u` of
+weight `w ≥ 2` the "bad" indices are `i = 0, …, w-1`, and e.g. `ω₍₀₎ s = T s` raises the
+weight, so the induction would have to carry a whole tower of weights.
+
+⚠ **Precision.** What is established is that *this induction* does not close for generators of
+weight `≥ 2` — the `i = 0, …, w−1` terms escape it.  That is a statement about the proof, **not**
+a refutation of the abstract Core-level lemma, which is neither proved nor disproved here; calling
+the lemma "false" would be an overclaim.  What is
+accurate: the cheap route is available for weight-one generators, which is exactly the affine
+case, and anyone wanting the general statement needs a different argument, not this one.
+
+## Axiom status
+
+Everything in this file is `#print axioms`-clean (`[propext, Classical.choice, Quot.sound]`)
+and in particular does **not** consume `VOA.pbw`.  Note that `Inst.closed_vacuum_ne_zero`
+*does* consume `pbw` and must not be used to discharge the `hne` slot downstream; use a
+Wakimoto-side nonvanishing statement instead.
+-/
+
+namespace VOA.AffineVOA.Strong
+
+open VOA VOA.AffineVOA VOA.AffineVOA.Inst
+open Module (End)
+
+/-! ## §1  Degree-one words are exactly `[(a, 0)]`
+
+`wordDegA` sums `n + 1` over the letters `(a, n)`, so every letter contributes at least `1`.
+Hence a word of degree `1` is a single letter with `n = 0`, and its state is the current
+`Jᵃ₋₁|0⟩ = currentState k a`.  (The analogous `wordDeg_eq_zero_iff` for `AffineLie.wordDeg`
+is about a different degree function and does not transfer.) -/
+
+theorem wordDegA_nonneg : ∀ l : List (Fin 3 × ℕ), 0 ≤ wordDegA l
+  | [] => le_rfl
+  | (ai :: L) => by
+      rw [wordDegA_cons]
+      have h := wordDegA_nonneg L
+      have : (0 : ℤ) ≤ (ai.2 : ℤ) := Int.natCast_nonneg _
+      omega
+
+theorem wordDegA_eq_zero_iff : ∀ l : List (Fin 3 × ℕ), wordDegA l = 0 ↔ l = []
+  | [] => by simp
+  | (ai :: L) => by
+      rw [wordDegA_cons]
+      have h := wordDegA_nonneg L
+      have : (0 : ℤ) ≤ (ai.2 : ℤ) := Int.natCast_nonneg _
+      constructor
+      · intro hc; omega
+      · intro hc; exact absurd hc (by simp)
+
+theorem wordDegA_one : ∀ l : List (Fin 3 × ℕ), wordDegA l = 1 → ∃ a : Fin 3, l = [(a, 0)]
+  | [] => by simp [wordDegA]
+  | (ai :: L) => by
+      intro h
+      rw [wordDegA_cons] at h
+      have hL := wordDegA_nonneg L
+      have h2 : (0 : ℤ) ≤ (ai.2 : ℤ) := Int.natCast_nonneg _
+      have hn : (ai.2 : ℤ) = 0 := by omega
+      have hd : wordDegA L = 0 := by omega
+      refine ⟨ai.1, ?_⟩
+      rw [(wordDegA_eq_zero_iff L).mp hd]
+      have : ai.2 = 0 := by exact_mod_cast hn
+      rw [← this]
+
+/-! ## §2  The quasi-primarity hypothesis `hqp` -/
+
+/-- Every state in the weight-one word span is killed by `ω₍₂₎ = L₁`: the span is generated by
+the currents, and the currents are primary (`Vir.current_primary`). -/
+theorem qp_hspan (k : ℂ) (hk : k + 2 ≠ 0) :
+    ∀ w ∈ HSpan k 1, mode (YA k hk (omegaA k)) 2 w = 0 := by
+  intro w hw
+  rw [HSpan] at hw
+  induction hw using Submodule.span_induction with
+  | mem z hz =>
+      obtain ⟨l, hl, rfl⟩ := hz
+      obtain ⟨a, rfl⟩ := wordDegA_one l hl
+      rw [show wordStateA k [(a, 0)] = J k a (-1) (vacuumA k) from by
+        rw [wordStateA_cons, wordStateA_nil]; norm_num]
+      exact Vir.current_primary k hk a
+  | zero => exact map_zero _
+  | add x y _ _ ihx ihy => rw [map_add, ihx, ihy, add_zero]
+  | smul c x _ ihx => rw [map_smul, ihx, smul_zero]
+
+/-- **Weight-one states of `V^k(𝔰𝔩₂)` are quasi-primary**: `∀ v ∈ 𝒱₁, L₁ v = 0`.
+
+This is exactly the hypothesis `hqp` of `canonicalInvariantForm_isFullyInvariant`, hence of
+`SingVec.not_isSimple_of_stronglySingular_FHL`.  It discharges item 2 of the recipe in
+`Examples/AffineSimpleQuotient`, §4. -/
+theorem affineSl2_qp (k : ℂ) (hk : k + 2 ≠ 0) :
+    ∀ v, v ∈ (affineSl2VOA_closed k hk).grading 1 → (affineSl2VOA_closed k hk).L 1 v = 0 := by
+  intro v hv
+  rw [closed_grading] at hv
+  have hL : (affineSl2VOA_closed k hk).L 1 = mode (YA k hk (omegaA k)) 2 := by
+    rw [VertexOperatorAlgebra.L_def, closed_Y, closed_conformalVector]
+    norm_num
+  rw [hL]
+  exact qp_hspan k hk v (gradingZA_le_hspan k 1 hv)
+
+/-! ## §3  From positive current modes to strong singularity -/
+
+/-- The **generator-singular** predicate: every strictly positive mode of every current kills
+`t`.  This is what a concrete singular-vector computation delivers (e.g.
+`Sl2Sing85.sl2Singular85_pos`).  Deliberately carries no weight and no grading hypothesis —
+the induction of `word_ann` only ever compares `wordDegA l` with the mode index. -/
+def SingP (k : ℂ) (t : WakModule k) : Prop := ∀ (a : Fin 3) (i : ℤ), 1 ≤ i → J k a i t = 0
+
+/-- **`SingP` is stable under the zero modes `Jᵃ₀`.**  This is the step the naive
+"positive modes of the generators" induction is missing: for `i ≥ 1`,
+`J^b_i J^a_0 t = J^a_0 J^b_i t + ∑_c f^{ba}_c J^c_i t = 0`, the central term being absent
+because `i + 0 = i ≠ 0`. -/
+theorem SingP.zeroMode {k : ℂ} {t : WakModule k} (ht : SingP k t) (a : Fin 3) :
+    SingP k (J k a 0 t) := by
+  intro b i hi
+  have hcomm := current_comm k b a i 0
+  rw [if_neg (by omega : ¬ (i + (0 : ℤ) = 0))] at hcomm
+  have hc := congrArg (fun T : End ℂ (WakModule k) => T t) hcomm
+  simp only [LinearMap.sub_apply, Module.End.mul_apply, add_zero,
+    LinearMap.sum_apply, LinearMap.smul_apply] at hc
+  rw [ht b i hi, map_zero, sub_zero] at hc
+  rw [hc]
+  refine Finset.sum_eq_zero (fun c _ => ?_)
+  rw [ht c i hi, smul_zero]
+
+/-- **The Dong-type induction over mode-words.**  If `SingP k t` then every mode `N ≥ wordDegA l`
+of every basis word state `wordStateA k l` annihilates `t`.
+
+The proof is `mode_iterate` on `(Jᵃ₋ₙ₋₁ w)₍N₎`: the first family of terms dies on the inductive
+hypothesis for `w` (the mode index only goes up), and the second family dies on `SingP` for
+`i ≥ 1` and — the point of `SingP.zeroMode` — on the inductive hypothesis applied to the *new*
+vector `Jᵃ₀ t` when `i = 0`.  Every summand vanishes individually, so `finsum_zero` finishes
+without any finiteness argument. -/
+theorem word_ann (k : ℂ) (hk : k + 2 ≠ 0) (l : List (Fin 3 × ℕ)) :
+    ∀ (t : WakModule k), SingP k t → ∀ N : ℤ, wordDegA l ≤ N →
+      (affineSl2VOA_closed k hk).smul (wordStateA k l) N t = 0 := by
+  induction l with
+  | nil =>
+      intro t _ N hN
+      rw [wordDegA_nil] at hN
+      rw [wordStateA_nil]
+      change (affineSl2VOA_closed k hk).smul (affineSl2VOA_closed k hk).vacuum N t = 0
+      rw [PreVertexAlgebra.smul_vacuum_left, if_neg (by omega)]
+  | cons ai rest ih =>
+      obtain ⟨a, n⟩ := ai
+      intro t ht N hN
+      rw [wordDegA_cons] at hN
+      have hdn : (0 : ℤ) ≤ (n : ℤ) := Int.natCast_nonneg _
+      rw [wordStateA_cons]
+      change (affineSl2VOA_closed k hk).smul (J k a (-(n : ℤ) - 1) (wordStateA k rest)) N t = 0
+      rw [← smul_currentState_eq_J k hk a (-(n : ℤ) - 1) (wordStateA k rest),
+        VertexOperatorAlgebra.mode_iterate]
+      have hterm : ∀ i : ℕ,
+          (((-1 : ℂ) ^ i * gBinom (-(n : ℤ) - 1) i) •
+            ((affineSl2VOA_closed k hk).smul (currentState k a) (-(n : ℤ) - 1 - (i : ℤ))
+                ((affineSl2VOA_closed k hk).smul (wordStateA k rest) (N + (i : ℤ)) t)
+              - ((-1 : ℂ) ^ (-(n : ℤ) - 1)) •
+                (affineSl2VOA_closed k hk).smul (wordStateA k rest)
+                  ((-(n : ℤ) - 1) + N - (i : ℤ))
+                  ((affineSl2VOA_closed k hk).smul (currentState k a) (i : ℤ) t)))
+          = 0 := by
+        intro i
+        have hi0 : (0 : ℤ) ≤ (i : ℤ) := Int.natCast_nonneg _
+        have h1 : (affineSl2VOA_closed k hk).smul (wordStateA k rest) (N + (i : ℤ)) t = 0 :=
+          ih t ht (N + (i : ℤ)) (by omega)
+        rcases Nat.eq_zero_or_pos i with rfl | hipos
+        · have h2 : (affineSl2VOA_closed k hk).smul (wordStateA k rest)
+              ((-(n : ℤ) - 1) + N - ((0 : ℕ) : ℤ)) (J k a 0 t) = 0 :=
+            ih _ (ht.zeroMode a) _ (by push_cast; omega)
+          simp only [smul_currentState_eq_J, Nat.cast_zero, sub_zero, add_zero] at h1 h2 ⊢
+          rw [h1, h2]
+          simp
+        · have h2 : (affineSl2VOA_closed k hk).smul (currentState k a) (i : ℤ) t = 0 := by
+            rw [smul_currentState_eq_J]
+            exact ht a (i : ℤ) (by exact_mod_cast hipos)
+          rw [h1, h2]
+          simp
+      rw [finsum_congr hterm, finsum_zero]
+
+/-- The word induction transported to the whole homogeneous span `HSpan k m`. -/
+theorem hspan_ann (k : ℂ) (hk : k + 2 ≠ 0) {t : WakModule k} (ht : SingP k t) (m : ℤ) :
+    ∀ u ∈ HSpan k m, ∀ N : ℤ, m ≤ N → (affineSl2VOA_closed k hk).smul u N t = 0 := by
+  intro u hu
+  rw [HSpan] at hu
+  induction hu using Submodule.span_induction with
+  | mem z hz =>
+      obtain ⟨l, hl, rfl⟩ := hz
+      intro N hN
+      exact word_ann k hk l t ht N (by rw [hl]; exact hN)
+  | zero => intro N _; simp
+  | add x y _ _ ihx ihy =>
+      intro N hN
+      rw [PreVertexAlgebra.smul_add_left, ihx N hN, ihy N hN, add_zero]
+  | smul c x _ ihx =>
+      intro N hN
+      rw [PreVertexAlgebra.smul_smul_left, ihx N hN, smul_zero]
+
+/-- **The strong-generation upgrade.**  If every positive current mode kills `t`, then for
+*every* state `u` of *every* weight `m` and every non-weight-raising index `N ≥ m`, `u₍N₎t = 0`.
+
+This is verbatim the `annihilated` field of `SingVec.IsStronglySingularOfWeight`, and it
+discharges item 1's second bullet in the recipe of `Examples/AffineSimpleQuotient`, §4.
+Note that `m` ranges over all of `ℤ`, negative values included: `gradingZA_le_hspan` holds
+for every `p : ℤ` (both sides are `⊥` for `p < 0`), so no positivity axiom is needed. -/
+theorem strongly_singular_of_SingP (k : ℂ) (hk : k + 2 ≠ 0) {t : WakModule k} (ht : SingP k t)
+    {m : ℤ} {u : WakModule k} (hu : u ∈ (affineSl2VOA_closed k hk).grading m) :
+    ∀ N : ℤ, m ≤ N → (affineSl2VOA_closed k hk).smul u N t = 0 := by
+  rw [closed_grading] at hu
+  exact hspan_ann k hk ht m u (gradingZA_le_hspan k m hu)
+
+/-- Packaged form: `SingP` plus nonvanishing, homogeneity and positive weight give strong
+singularity outright.  This is the single entry point a concrete level should call. -/
+theorem isStronglySingular_of_SingP (k : ℂ) (hk : k + 2 ≠ 0) {t : WakModule k}
+    (ht : SingP k t) (hne : t ≠ 0) {w : ℤ} (hw : 0 < w) (hmem : t ∈ gradingZA k w) :
+    SingVec.IsStronglySingularOfWeight (affineSl2VOA_closed k hk) w t where
+  ne_zero := hne
+  weight_pos := hw
+  homogeneous := by rw [closed_grading]; exact hmem
+  annihilated := fun _ _ hu n hn => strongly_singular_of_SingP k hk ht hu n hn
+
+end VOA.AffineVOA.Strong

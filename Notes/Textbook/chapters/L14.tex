@@ -1,0 +1,2856 @@
+\chapter{Modular forms and the analytic toolkit}\label{ch:L14}
+\begingroup\setlength{\emergencystretch}{3em}
+
+\providecommand{\lfourteenH}{\mathbb{H}}
+\providecommand{\lfourteenSL}{\mathrm{SL}_2(\mathbb{Z})}
+\providecommand{\lfourteenGt}{\Gamma_\theta}
+\providecommand{\lfourteenE}{\mathcal{E}_{46}}
+\providecommand{\lfourteenGS}{\mathcal{G}}
+\providecommand{\lfourteenev}{\mathrm{ev}}
+\providecommand{\lfourteenIm}{\operatorname{Im}}
+\providecommand{\lfourteenRe}{\operatorname{Re}}
+
+This chapter documents the release of the LeanVOA library named in the front matter; it was first written against an earlier state of the library, and checks that were
+run at an earlier state of the library and not re-run for this edition are marked as such. Every Lean quotation below is taken from the files of the release and is machine-checked by \texttt{scripts/textbook/sync.py} to
+occur verbatim (up to whitespace and comments) in the source. The chapter covers the files of
+\leanpath{VOA/\allowbreak Modularity/} assigned to it in \texttt{Notes/Textbook/assignment.txt}: the Eisenstein series and the
+level-one structure theorem, the bridge between formal $q$-series and holomorphic functions on the upper half-plane, the
+Serre derivative, Lambert series, the growth (``subexponential'') estimates and the majorant method for formal modular
+differential equations, the cusp $q\to0$, the slash action restricted to subgroups and the theta group $\lfourteenGt$, the
+read-off of the modular $S$-matrix, Jacobi characters, the analytic $j$-invariant, and the abstract ``Moonshine corollary''
+of Zhu's theorem. About thirty-five files and ten thousand lines of Lean are involved.
+
+\paragraph{How this chapter relates to its neighbours.} Chapter~\ref{ch:05} already develops, for the Moonshine
+construction, the classical theory of $\lfourteenSL$, the slash operator, the Eisenstein series $E_4,E_6$, the
+discriminant $\Delta$, the functions $j$ and $J$, theta series and the formal series \lean{E4Series},
+\lean{E6Series}, \lean{deltaSeries}, \lean{jShift}, \lean{JShift} of \leanpath{VOA/\allowbreak Modularity/\allowbreak JFunction.lean} and
+\lean{lambertCoeff} of \leanpath{VOA/\allowbreak Modularity/\allowbreak LambertSeries.lean}. We do not repeat that material: we
+recall it in Section~\ref{l14:sec:recall} with pointers and then cover what is \emph{general} or \emph{different}. The
+reader should know three other chapters. Chapter~\ref{ch:01} is the book's Lean toolkit (structures, \lean{∑ᶠ},
+\lean{tsum}, coercions, \lean{Classical.choose}); we point to it instead of re-explaining Lean idioms.
+Chapter~\ref{ch:L12} defines modules, their formal characters \lean{gradedDim} and one-point functions \lean{onePoint}
+(Definition~\ref{l12:def:char}), conformal weights (Definition~\ref{l12:def:lowest}), the $T$-periodicity of characters
+(Theorem~\ref{l12:thm:Tperiod}), Zhu's algebra $A(V)$ (Section~\ref{l12:sec:zhu}) and $C_2$-cofiniteness
+(Definition~\ref{l12:def:c2}). Chapter~\ref{ch:L15} proves Zhu's modularity theorem --- for the one-point functions of a
+$C_2$-cofinite, rational $V$ (rational in the sense of the library's \lean{AdmissiblyRational}), through a more general form
+for $C_2$-cofinite $V$ whose Zhu algebra is \emph{semisimple} --- and is the main
+\emph{consumer} of this chapter: almost every analytic statement here was written to serve one step of Zhu's argument, and we say which.
+Where a statement of this chapter needs an object that is formally owned by Chapter~\ref{ch:L15} (the Zhu-normalised
+Eisenstein coefficients \lean{zhuG}, the square-bracket modes \lean{vSqZ}, the trace functions \lean{traceFun}) we quote its
+definition here, with its file, so that the chapter can be read on its own.
+
+\emph{Release revision.} The chapter was revised for the first public release, applying the release audit \texttt{Notes/\allowbreak Textbook/\allowbreak referee/\allowbreak
+RELEASE\_AUDIT\_ZHU.md} (2026-10-27). No quotation of this chapter changed; the edits concern how the consumer theorem of
+Chapter~\ref{ch:L15} is described.
+
+\emph{Second release revision (2026-10-28).} At this revision the description of
+that consumer theorem was corrected again, following finding F2 of \texttt{Notes/\allowbreak Textbook/\allowbreak
+referee/\allowbreak RELEASE\_AUDIT\_NEW\_DECLS.md}. The first release revision said that the library ``does not derive it from
+rationality''. That was wrong. The library proves ``rational $\Rightarrow A(V)$ semisimple''
+(\lean{isSemisimpleRing_}\allowbreak\lean{A_of_}\allowbreak\lean{admissiblyRational}, Chapter~\ref{ch:L15},
+Theorem~\ref{l15:thm:zhuss}), and Zhu's theorem is stated for $C_2$-cofinite rational $V$
+(Theorem~\ref{l15:thm:rational}) and proved for every lattice VOA $V_{\sqrt{2m}\Z}$. No quotation of this chapter changed.
+
+\paragraph{The findings of this chapter, in brief.} Every headline theorem of this chapter is proved in Lean and
+\texttt{\#print axioms}-clean (only \lean{propext}, \lean{Classical.choice}, \lean{Quot.sound}); none uses \lean{VOA.pbw} (the PBW theorem of Chapter~\ref{ch:L02}; formerly a project axiom, now a theorem). The analytic layer is faithful and, in several places, genuinely new relative to Mathlib (the
+equivariance of the Serre derivative, holomorphy and term-by-term differentiation of evaluated $q$-series, the majorant
+theorem). The fidelity checks did, however, turn up the following, each explained in a red box where it occurs.
+\begin{itemize}
+\item The structure theorem \lean{levelOne_coe_mem_E46} (``$M_* = \C[E_4,E_6]$'') proves only that every modular form lies
+  in the \emph{algebra generated} by $E_4$ and $E_6$. Algebraic independence and homogeneity are not part of it. They are
+  proved, in full, elsewhere in the library (the vendored \lean{ModularForm.levelOne_eq_polynomial} of
+  Chapter~\ref{ch:02}); the two developments are not connected, and a predicate documented as ``missing''
+  (\lean{E46HasWeightedPolynomialReps}) is in fact a consequence of the vendored theorem. A separate Lean check
+  (Theorem~\ref{l14:thm:certreps}) proved it first; the argument is now a library theorem,
+  \lean{e46HasWeightedPolynomialReps}.
+\item The Ramanujan/Serre closure \lean{E46SerreClosed} ($\partial_k M_k\subseteq M_{k+2}$) is a library theorem,
+  \lean{e46SerreClosed} (\leanpath{VOA/\allowbreak Modularity/\allowbreak EisensteinSerreClosure.lean}), proved through
+  \lean{serreForm}: the Serre derivative of a level-one form is a level-one form. It is consumed by Chapter~\ref{ch:L16}.
+\item The $\Gamma_\theta$ ``conjectures'' of \leanpath{GammaThetaStatement.lean} carry a free proposition slot
+  \lean{hFam} through \lean{CompleteRationalFamily}, which is the identity on propositions, and the character families in
+  \lean{SuperCharacterSystem} and \lean{SuperRealisesLawOn} are not tied to the super VOA at all. They are statements, not
+  theorems, and are honest about it; but as written they are templates whose content depends entirely on what is plugged in
+  (checked in Lean, Proposition~\ref{l14:prop:certtheta}).
+\item The ``Hauptmodul step'' \lean{char_eq_jInvariant_add_const} assumes a weight-zero modular form equal to $\chi - j$;
+  this hypothesis carries the whole content. Nothing in this chapter is instantiated at $\Vnat$: the library's theorem
+  $\chi_{\Vnat} = J$ (Chapter~\ref{ch:05}) is a computation and does not pass through these files.
+\item The chapter's main consumer, Zhu's modularity theorem, is stated in Chapter~\ref{ch:L15} under $C_2$-cofiniteness and
+  rationality (\lean{AdmissiblyRational}), and in a more general form under $C_2$-cofiniteness and semisimplicity of $A(V)$, for
+  one-point functions; the convergence of the $q$-series it evaluates is a \emph{separate} theorem
+  (\lean{onePointSubexp_of_c2} together with this chapter's \lean{qSummableAt_of_subexponential}), not part of its conclusion.
+\item Several docstrings are stale or wrong: one says that $p(n)\le 2^n$ gives subexponential growth (it does not); several
+  call residuals open that are proved in other files; the Moonshine-corollary files say $\Vnat$ does not exist.
+\end{itemize}
+
+%======================================================================
+\section{Conventions, and what is recalled from Chapter 5}\label{l14:sec:recall}
+%======================================================================
+
+\subsection{Three kinds of ``$q$-series''}\label{l14:sec:threekinds}
+
+The single most important thing to keep track of in this chapter is \emph{which kind of object} a statement is about. The
+library uses three, and each has its own job: \textbf{(1)} carries characters and one-point functions of modules (exponents
+$h+n$ with $h\in\C$ arbitrary), and is the language of Zhu's recursion and of the formal differential equations of
+Section~\ref{l14:sec:ode}; \textbf{(2)} carries the coefficient rings (Eisenstein series, $E_4$, $E_6$, $\Delta$, $j$) and the
+coefficients of those equations; \textbf{(3)} is where modularity is a statement at all, since $\lfourteenSL$ acts on $\tau$, not on
+coefficients. Objects of types (1) and (2) are formal: equalities are coefficientwise and no convergence is involved. Objects
+of type (3) are honest functions, but whenever one is \emph{produced} from a type-(1) object by an infinite sum, Lean uses
+\lean{tsum}, which returns the junk value $0$ on a divergent series (Chapter~\ref{ch:01}, Section~\ref{ch01:sec:junk}); so every
+theorem that needs the honest value of such a sum carries a summability or growth hypothesis, and we point this out each
+time.
+\begin{enumerate}
+\item \textbf{Formal $q$-series with complex exponents}, the type \lean{FormalQSeries}, which is literally \lean{ℂ → ℂ}
+  (Chapter~\ref{ch:L12}, Definition~\ref{l12:def:char}). A function $\chi:\C\to\C$ is read as the formal sum
+  $\sum_{e\in\C}\chi(e)\,q^e$. No convergence is implied, and the sum may have uncountable support; but every series that
+  actually occurs is supported on a single progression $h+\N$, because characters of modules with a conformal weight
+  are. The formal character of a module $M$ with central charge $c$ is
+  \begin{equation*}
+    \chi_M = \sum_{\alpha}(\dim M_\alpha)\,q^{\alpha - c/24},\qquad \text{i.e. } \mathtt{gradedDim}\,N\,(e) = \dim M_{e+c/24}.
+  \end{equation*}
+\item \textbf{Formal power series} \lean{PowerSeries ℂ} $=\C[[X]]$ (Mathlib), with natural-number exponents. This is the
+  setting of Chapter~\ref{ch:05}'s $E_4$, $E_6$, $\Delta$, $j$, and of all coefficient rings of differential equations below.
+  Notation: \lean{PowerSeries.coeff n F} is $[X^n]F$, \lean{PowerSeries.mk a} is $\sum_na_nX^n$; see Chapter~\ref{ch:05},
+  Section~\ref{ch05:sec:formal}.
+\item \textbf{Holomorphic functions} on the upper half-plane $\lfourteenH = \{\tau\in\C:\lfourteenIm\tau>0\}$. Mathlib's type is
+  \lean{UpperHalfPlane} (notation \lean{ℍ}), whose elements are complex numbers bundled with a proof that the imaginary part
+  is positive. For calculus the library prefers the \emph{open subset} \lean{imGT 0} $=\{z\in\C : 0<\lfourteenIm z\}$ of $\C$
+  itself and functions $\C\to\C$, so that Mathlib's one-variable \lean{HasDerivAt}, \lean{deriv} and
+  \lean{DifferentiableOn} apply directly; the dictionary between the two pictures is \lean{qEvalC_coe},
+  \lean{mobiusC_coe}, \lean{slashC} versus Mathlib's \lean{∣[k]} (all below).
+\end{enumerate}
+The passage between (1)/(2) and (3) is \emph{evaluation}: $\chi\mapsto\sum_n\chi(h+n)q^{h+n}$ at $q = e^{2\pi i\tau}$. It is
+only meaningful when the series converges, and a large part of this chapter proves, or reduces to named data, the
+estimates that make it converge. The reverse passage, from a holomorphic $q$-periodic function to its coefficients, is
+Mathlib's \lean{qExpansion}, and its injectivity (uniqueness of $q$-expansions) is Mathlib's
+\lean{qExpansion_coeff_unique}.
+
+\begin{warning}
+\textbf{The \lean{tsum} convention.} An infinite sum in Lean, \lean{∑' n, f n} (\lean{tsum}), is defined for every $f$: if
+$f$ is not summable it is $0$ by convention (Chapter~\ref{ch:01}). So a definition such as \lean{qEvalAt} below is
+\emph{always} a complex number, and an equation between two \lean{tsum}s can be ``true'' because both sides are the junk
+value $0$. Every theorem below that manipulates such sums either carries a summability hypothesis or proves summability
+first; we check this in each fidelity box. Similarly \lean{∑ᶠ} (\lean{finsum}) is $0$ on infinite support.
+\end{warning}
+
+\subsection{The objects recalled from Chapter 5}
+
+From Chapter~\ref{ch:05} we use: the upper half-plane and the action of $\lfourteenSL$ by $\gamma\tau = (a\tau+b)/(c\tau+d)$;
+the generators $S = \left(\begin{smallmatrix}0&-1\\1&0\end{smallmatrix}\right)$, $T =
+\left(\begin{smallmatrix}1&1\\0&1\end{smallmatrix}\right)$ (Mathlib \lean{ModularGroup.S}, \lean{ModularGroup.T}); the
+slash operator $(f|_k\gamma)(\tau) = (c\tau+d)^{-k}f(\gamma\tau)$ and modular forms of level one
+(Definition~\ref{ch05:def:modform}; Mathlib's type \lean{ModularForm 𝒮ℒ k}, where \lean{𝒮ℒ} is $\lfourteenSL$ viewed as a
+subgroup of $\mathrm{GL}_2(\mathbb R)$); Mathlib's normalised Eisenstein series \lean{ModularForm.E hk} of weight
+$k\ge3$, with \lean{ModularForm.E₄}, \lean{ModularForm.E₆}; the discriminant \lean{ModularForm.discriminant} and the
+identity $\Delta = (E_4^3-E_6^2)/1728$ (Remark~\ref{ch05:rem:deltadef}); the Lambert coefficient
+$\lambda_s(n) = \sum_{ab=n}a^s = \sigma_s(n)$ (\lean{lambertCoeff}, \lean{lambertCoeff_eq_sigma},
+Definition~\ref{ch05:def:lambert}, Theorem~\ref{ch05:thm:lambert}); and the formal $E_4$, $E_6$, $\Delta$, $qj$, $qJ$
+(Definitions~\ref{ch05:def:E46}--\ref{ch05:def:jshift}).
+
+We also use from Mathlib, and explain where it first appears: the quasimodular Eisenstein series
+$E_2 = 1 - 24\sum_{n\ge1}\sigma_1(n)q^n$ (\lean{EisensteinSeries.E2}) and its unnormalised version
+$G_2 = 2\zeta(2)E_2 = \frac{\pi^2}{3}E_2$ (\lean{EisensteinSeries.G2}), the Bernoulli numbers \lean{bernoulli} with
+$B_2 = \tfrac16$, $B_4 = -\tfrac1{30}$, $B_6 = \tfrac1{42}$, and Mathlib's limit at the cusp
+\lean{valueAtInfty} and filter \lean{atImInfty} (``$\lfourteenIm\tau\to\infty$'').
+
+\begin{physics}
+Throughout, the physical dictionary is that of Chapter~\ref{ch:01}: a VOA is the chiral algebra of a two-dimensional
+conformal field theory, a module is a sector, and the character
+$\chi_M(\tau) = \tr_M q^{L_0-c/24}$, $q = e^{2\pi i\tau}$, is the \emph{torus partition function} of that sector: the
+trace over states of the evolution operator $e^{2\pi i\tau(L_0-c/24)}$ around a torus of modular parameter $\tau$. The
+shift $-c/24$ is the Casimir energy of the vacuum on a circle. Two parameters $\tau$ related by $\lfourteenSL$ describe the
+same torus, so a consistent theory has partition functions that transform into each other under $\lfourteenSL$; this
+\emph{modular invariance} is the physical origin of everything in this chapter. The generator $T:\tau\mapsto\tau+1$ is a
+Dehn twist, and acts on a sector by the phase $e^{2\pi i(h-c/24)}$; the generator $S:\tau\mapsto-1/\tau$
+\emph{exchanges the space and time circles of the torus}, and its matrix $\rho(S)$ is the deep piece of data (it determines
+the fusion rules through Verlinde's formula).
+\end{physics}
+
+%======================================================================
+\section{The slash action in the complex-plane picture}\label{l14:sec:slash}
+%======================================================================
+
+The slash operator $f\mapsto f|_k\gamma$ is the standard device of modular-form theory: a function $f$ is modular of weight $k$
+exactly when $f|_k\gamma = f$ for all $\gamma$, and $|_k$ is a right action of $\lfourteenSL$ (Chapter~\ref{ch:05},
+Section~\ref{ch05:sec:modular}). Nothing about it is new here except the domain.
+Mathlib's slash operator \lean{∣[k]} acts on functions \lean{ℍ → ℂ}. To differentiate, the library re-implements it on
+functions $\C\to\C$, restricted to statements on \lean{imGT 0}. We record the definitions.
+
+\begin{definition}[Half-planes; automorphy factor; M\"obius action; slash, in $\C$]\label{l14:def:slashC}
+This is the standard slash operator; we implement it on functions $\C\to\C$ rather than $\lfourteenH\to\C$ so that Mathlib's
+one-variable derivative lemmas apply verbatim. For $c\in\mathbb R$ put $\lfourteenH_c = \{z\in\C : c<\lfourteenIm z\}$, so
+$\lfourteenH_0 = \lfourteenH$. For
+$\gamma = \left(\begin{smallmatrix}a&b\\c&d\end{smallmatrix}\right)\in\lfourteenSL$ and $z\in\C$ put
+$j(\gamma,z) = cz+d$ and $\gamma z = (az+b)/(cz+d)$. For $k\in\Z$ and $f:\C\to\C$ put
+$(f|_k\gamma)(z) = f(\gamma z)\,j(\gamma,z)^{-k}$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak QEvalHolomorphic.lean}.
+\begin{leancode}
+def imGT (c : ℝ) : Set ℂ := {z : ℂ | c < z.im}
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SerreDerivative.lean}.
+\begin{leancode}
+noncomputable def denomC (γ : SL(2, ℤ)) (z : ℂ) : ℂ := (γ 1 0 : ℂ) * z + (γ 1 1 : ℂ)
+
+noncomputable def mobiusC (γ : SL(2, ℤ)) (z : ℂ) : ℂ :=
+  ((γ 0 0 : ℂ) * z + (γ 0 1 : ℂ)) / denomC γ z
+
+noncomputable def slashC (k : ℤ) (γ : SL(2, ℤ)) (f : ℂ → ℂ) (z : ℂ) : ℂ :=
+  f (mobiusC γ z) * (denomC γ z) ^ (-k)
+\end{leancode}
+\begin{dictionary}
+\lean{γ i j} is the $(i,j)$ matrix entry with indices in \lean{Fin 2} $=\{0,1\}$, so \lean{γ 1 0} $=c$, \lean{γ 1 1} $=d$,
+\lean{γ 0 0} $=a$, \lean{γ 0 1} $=b$; the casts \lean{(· : ℂ)} send integers to complex numbers. \lean{SL(2, ℤ)} is
+Mathlib's notation for $\lfourteenSL$. The exponent \lean{(-k)} is an integer power (\lean{zpow}), so the formula is the
+textbook $(cz+d)^{-k}f(\gamma z)$. Off $\lfourteenH$ the functions are junk (for instance \lean{mobiusC} divides by zero at
+$z=-d/c$, where Lean's division returns $0$); every theorem below is stated for $z\in$ \lean{imGT 0}, where
+\lean{denomC_ne_zero} and \lean{mobiusC_mem_imGT} (both proved) guarantee $cz+d\neq0$ and $\gamma z\in\lfourteenH$. The
+agreement with Mathlib is \lean{mobiusC_coe}: \lean{mobiusC γ (τ : ℂ) = ((γ • τ : UpperHalfPlane) : ℂ)}. These are
+definitions; there is nothing to be vacuous.
+\end{dictionary}
+\begin{physics}
+$j(\gamma,\tau)^k$ is the factor by which a field of conformal weight $k$ (more precisely, a one-point function of a state
+of weight $k$) rescales when the torus is reparametrised; a weight-$k$ object is a $k$-form $f(\tau)(d\tau)^{k/2}$ on the
+moduli space, and $d(\gamma\tau) = (c\tau+d)^{-2}d\tau$. Partition functions are weight $0$; one-point functions of weight-$k$
+states are weight $k$.
+\end{physics}
+\begin{status}
+Definitions. Supporting lemmas \lean{denomC_ne_zero}, \lean{mobiusC_mem_imGT}, \lean{hasDerivAt_mobiusC}
+($\frac{d}{dz}\gamma z = (cz+d)^{-2}$, using $ad-bc=1$) and \lean{slashC_mul}
+($f|_{k}\gamma\cdot g|_l\gamma = (fg)|_{k+l}\gamma$) are proved without hypotheses.
+\end{status}
+
+\begin{theorem}[The derivative does not commute with slashing]\label{l14:thm:slashderiv}
+Let $k\in\Z$, $\gamma\in\lfourteenSL$, $z\in\lfourteenH$, and let $f$ be complex-differentiable at $\gamma z$. Then
+\begin{equation*}
+  (f')|_{k+2}\gamma\,(z) \;=\; \frac{d}{dz}\bigl(f|_k\gamma\bigr)(z) \;+\; \frac{k\,c}{cz+d}\,(f|_k\gamma)(z).
+\end{equation*}
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SerreDerivative.lean}.
+\begin{leancode}
+theorem slashC_deriv_eq (k : ℤ) (γ : SL(2, ℤ)) (f : ℂ → ℂ) {z : ℂ} (hz : z ∈ imGT 0)
+    (hf : DifferentiableAt ℂ f (mobiusC γ z)) :
+    slashC (k + 2) γ (_root_.deriv f) z
+      = _root_.deriv (slashC k γ f) z
+        + (k : ℂ) * (γ 1 0 : ℂ) * (denomC γ z)⁻¹ * slashC k γ f z
+\end{leancode}
+\begin{dictionary}
+\lean{_root_.deriv f} is Mathlib's complex derivative $f'$ (the prefix \lean{_root_} only disambiguates the name). The
+hypothesis \lean{hf} is needed: \lean{deriv} of a non-differentiable function is $0$ by convention, and the identity would
+then fail. Only differentiability at the single point $\gamma z$ is required. Same as the textbook identity.
+\end{dictionary}
+\noindent\emph{Proof.} Chain rule: $\frac{d}{dz}[f(\gamma z)(cz+d)^{-k}] = f'(\gamma z)(cz+d)^{-2}(cz+d)^{-k} -
+kc\,f(\gamma z)(cz+d)^{-k-1}$, using $\frac{d}{dz}\gamma z = (cz+d)^{-2}$. Rearranging gives the claim.
+\begin{physics}
+The anomalous term $kc/(cz+d)$ is why the naive $\tau$-derivative of a modular form of weight $k$ is \emph{not} modular of
+weight $k+2$. In CFT it is the reason that inserting the stress tensor $T(z)$ (the field of $\omega$, whose torus zero mode $L_{[0]}$ is what $\partial_\tau$ inserts
+into the trace) produces a non-covariant term; it is cured by the quasi-modular $E_2$, Theorem~\ref{l14:thm:G2slash}.
+\end{physics}
+\begin{status}
+Unconditional (beyond the stated differentiability). \texttt{\#print axioms}: the standard three.
+\end{status}
+
+\begin{definition}[$G_2$ in the $\C$ picture]\label{l14:def:G2C}
+$G_2^{\C}(z) = G_2(z)$ for $z\in\lfourteenH$, where $G_2 = \sum_{c}\sum_{d}{}'(cz+d)^{-2}$ is Mathlib's (Eisenstein-summed)
+weight-two Eisenstein series, $G_2 = 2\zeta(2)E_2 = \frac{\pi^2}{3}(1-24\sum\sigma_1(n)q^n)$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SerreDerivative.lean}.
+\begin{leancode}
+noncomputable def G2C (z : ℂ) : ℂ := EisensteinSeries.G2 (UpperHalfPlane.ofComplex z)
+\end{leancode}
+\begin{dictionary}
+\lean{UpperHalfPlane.ofComplex} is Mathlib's retraction $\C\to\lfourteenH$, the identity on $\lfourteenH$ and an
+arbitrary point elsewhere; so \lean{G2C} is $G_2$ on $\lfourteenH$ and junk outside (\lean{G2C_coe} records the agreement
+on $\lfourteenH$).
+\end{dictionary}
+\begin{physics}
+$G_2$ (equivalently $E_2$) is the torus one-point function of the stress tensor, up to normalisation; see the physics box of Theorem~\ref{l14:thm:G2slash}.
+\end{physics}
+
+\begin{theorem}[Quasimodularity of $G_2$; Mathlib's \lean{G2_slash_action}]\label{l14:thm:G2slash}
+For $\gamma\in\lfourteenSL$ and $z\in\lfourteenH$: $(G_2|_2\gamma)(z) = G_2(z) - \dfrac{2\pi i\,c}{cz+d}$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SerreDerivative.lean}.
+\begin{leancode}
+theorem slashC_G2C (γ : SL(2, ℤ)) {z : ℂ} (hz : z ∈ imGT 0) :
+    slashC 2 γ G2C z
+      = G2C z - 2 * (Real.pi : ℂ) * Complex.I * (γ 1 0 : ℂ) * (denomC γ z)⁻¹
+\end{leancode}
+\begin{dictionary}
+A transcription of Mathlib's \lean{EisensteinSeries.G2_slash_action}, $G_2|_2\gamma = G_2 - D_2(\gamma)$ with
+$D_2(\gamma)(z) = 2\pi i c/(cz+d)$, into the $\C$ picture. Not reproved: Mathlib supplies it. Exactly the classical law
+(Zagier, \emph{Elliptic modular forms}, eq.~(17)).
+\end{dictionary}
+\noindent\emph{Proof.} Mathlib. Classically: $G_2$ is defined by an iterated, conditionally convergent sum; exchanging the
+order of summation under $\tau\mapsto-1/\tau$ produces the defect $2\pi i/\tau$, computed by Hecke's trick
+$G_2 = \lim_{s\to0}\sum(m\tau+n)^{-2}|m\tau+n|^{-s}$.
+\begin{physics}
+$E_2$ is, up to normalisation, the torus one-point function of the stress tensor in the vacuum of a theory with no
+states but the vacuum descendants of the identity: $\langle T\rangle_{\text{torus}}\propto\partial_\tau\log\eta$, and
+$\eta(\tau)^{24}=\Delta$ has weight $12$, so $\partial_\tau\log\eta = \frac{2\pi i}{24}E_2$ fails to be modular exactly by
+the anomaly of Theorem~\ref{l14:thm:slashderiv}. The defect $2\pi ic/(cz+d)$ is the conformal anomaly of the stress tensor
+on the torus.
+\end{physics}
+\begin{status}
+Unconditional. Standard axioms.
+\end{status}
+
+%======================================================================
+\section{Eisenstein series in Zhu's normalisation}\label{l14:sec:eis}
+%======================================================================
+
+Zhu's recursion (Chapter~\ref{ch:L15}) produces, from traces of modes, the coefficients of a specific normalisation of the
+Eisenstein series, which we call $\mathcal G_{2j}$; it is \emph{neither} $E_{2j}$ (constant term $1$) nor the lattice sum
+$G_{2j} = 2\zeta(2j)E_{2j}$. Getting this normalisation wrong is, as the library itself warns, the most likely failure mode
+of the whole modularity development, so we are careful.
+
+\begin{definition}[Zhu's Eisenstein coefficients]\label{l14:def:zhuG}
+For $j\in\N$ let $g_j:\N\to\C$ be
+\begin{equation*}
+  g_j(0) = -\frac{B_{2j}}{(2j)!},\qquad g_j(m) = \frac{2}{(2j-1)!}\,\sigma_{2j-1}(m)\quad(m\ge1),
+\end{equation*}
+and $\mathcal G_{2j} = \sum_{m\ge0}g_j(m)q^m$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak ZhuNormalization.lean} (a Chapter~\ref{ch:L15} file, quoted here).
+\begin{leancode}
+noncomputable def zhuG (j : ℕ) : ℕ → ℂ :=
+  fun m =>
+    if m = 0 then -(((bernoulli (2 * j) : ℚ) : ℂ) / (Nat.factorial (2 * j) : ℂ))
+    else (2 / (Nat.factorial (2 * j - 1) : ℂ)) * lambertCoeff (2 * j - 1) m
+\end{leancode}
+\begin{dictionary}
+\lean{bernoulli n} is Mathlib's $B_n$ (a rational number, cast to $\C$), with the convention $B_1 = -\tfrac12$ (irrelevant
+here, only even indices occur). \lean{lambertCoeff (2j−1) m} is $\sigma_{2j-1}(m)$ by \lean{lambertCoeff_eq_sigma}
+(Chapter~\ref{ch:05}, Theorem~\ref{ch05:thm:lambert}). Natural-number subtraction \lean{2 * j - 1} is truncated at $0$; it
+is only used for $j\ge1$. At $j=0$ the definition is meaningless junk ($g_0(0) = -B_0 = -1$) and is never used.
+\textbf{Normalisation check.} With $E_{2j} = 1 - \frac{4j}{B_{2j}}\sum\sigma_{2j-1}(m)q^m$ one has
+$g_j(0)E_{2j} = -\frac{B_{2j}}{(2j)!} + \frac{4j}{(2j)!}\sum\sigma_{2j-1}q^m$, and $\frac{4j}{(2j)!} =
+\frac{2}{(2j-1)!}$; so $\mathcal G_{2j} = g_j(0)\,E_{2j}$ (proved analytically, Theorem~\ref{l14:thm:zhuGCE}). Equivalently,
+$\mathcal G_{2j} = G_{2j}/(2\pi i)^{2j}$ with $G_{2j}$ the lattice sum: Zhu's $G_{2k}(\tau)$ in J.~AMS 9 (1996), §3. The library
+records (in \leanpath{ZhuNormalization.lean}) that the alternatives ``constant term $1$'' and ``constant term $0$'' are
+refuted by the Heisenberg computation.
+\end{dictionary}
+\begin{physics}
+In Zhu's derivation the Eisenstein series arise as $\sum_{m\neq0} m^{2j-1}q^m/(1-q^m)$-type sums from moving a mode
+$a_{(n)}$ once around the torus: each passage around the time circle costs $q^{n}$, and summing the geometric series over
+the winding produces Lambert series. The constant term $-B_{2j}/(2j)!$ comes from the zero-winding (``plane'') contribution
+and is the Taylor coefficient of $z^{2j}$ in the Weierstrass-type function $\wp$ on the cylinder. A heuristic gloss on a
+definition.
+\end{physics}
+
+The library also contains a second, older formal family in the normalisation $E_k$:
+
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak EisensteinFormal.lean}.
+\begin{leancode}
+noncomputable def eisensteinCoeff (k : ℕ) (m : ℕ) : ℂ :=
+  if m = 0 then 1
+  else -(2 * (k : ℂ) / ((bernoulli k : ℚ) : ℂ))
+        * ((ArithmeticFunction.sigma (k - 1) m : ℕ) : ℂ)
+
+noncomputable def zhuEisenstein (j : ℕ) : ℕ → ℂ := eisensteinCoeff (2 * j)
+
+def ZhuRecursionEisenstein (N : OrdVModule W M) (a v : 𝒱) (ka : ℕ) : Prop :=
+  ZhuRecursionAt N zhuEisenstein a v ka
+\end{leancode}
+\begin{dictionary}
+\lean{eisensteinCoeff k m} is the $m$-th coefficient of $E_k = 1-\frac{2k}{B_k}\sum\sigma_{k-1}(m)q^m$, exactly Mathlib's
+formula \lean{EisensteinSeries.E_qExpansion_coeff}; and \lean{zhuEisenstein j} $=E_{2j}$. \lean{ZhuRecursionEisenstein}
+instantiates Zhu's recursion (\lean{ZhuRecursionAt}, Chapter~\ref{ch:L15}) at this family. It is a \lean{Prop}, never proved.
+\end{dictionary}
+\begin{warning}
+\textbf{Superseded normalisation; stale docstring (documentation only).} The recursion that the library proves (Chapter~\ref{ch:L15}) uses
+\lean{zhuG}, not \lean{zhuEisenstein}; since $g_j(0)\neq1$, \lean{ZhuRecursionEisenstein} is the recursion with the
+\emph{wrong} normalisation and would be false. It has no consumer. The module docstring of \leanpath{EisensteinFormal.lean}
+still says that the link to Mathlib's $E_k$ is ``deferred'' and that the normalisation is unsettled; both were settled
+(\leanpath{EisensteinAnalytic.lean}, \leanpath{QExpansionBridge.lean}, \leanpath{ZhuNormalization.lean}).
+\end{warning}
+
+\begin{theorem}[$B_{2j}\neq0$]\label{l14:thm:bernoulli}
+For every $j\ge1$, $B_{2j}\neq0$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak EisensteinAnalytic.lean}.
+\begin{leancode}
+theorem bernoulli_two_mul_ne_zero {j : ℕ} (hj : j ≠ 0) :
+    ((bernoulli (2 * j) : ℚ) : ℂ) ≠ 0
+\end{leancode}
+\noindent\emph{Proof.} Euler: $\zeta(2j) = (-1)^{j+1}\frac{(2\pi)^{2j}B_{2j}}{2(2j)!}$ (Mathlib \lean{riemannZeta_two_mul_nat}),
+and $\zeta(s)\neq0$ for $\lfourteenRe s>1$ (Euler product; Mathlib \lean{riemannZeta_ne_zero_of_one_lt_re}).
+\begin{physics}
+A purely arithmetic lemma; it ensures $g_j(0)\neq0$, i.e.\ that Zhu's Eisenstein functions have a nonzero value at the cusp,
+which is needed when the cusp is used as a reference point (Section~\ref{l14:sec:cusp}).
+\end{physics}
+\begin{status}
+Unconditional. Standard axioms. It discharges a hypothesis that \leanpath{ZhuNormalization.lean} once carried.
+\end{status}
+
+\begin{definition}[Zhu's Eisenstein function]\label{l14:def:zhuGC}
+For $j\in\N$ and $z\in\C$, $\mathcal G_{2j}(z) = \sum_{n\ge0}g_j(n)\,e^{2\pi inz}$; and $q_{\C}(z) = e^{2\pi iz}$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak EisensteinAnalytic.lean}.
+\begin{leancode}
+noncomputable def qC (z : ℂ) : ℂ := Complex.exp (2 * (Real.pi : ℂ) * Complex.I * z)
+
+noncomputable def zhuGC (j : ℕ) (z : ℂ) : ℂ :=
+  ∑' n : ℕ, zhuG j n * Complex.exp (2 * (Real.pi : ℂ) * Complex.I * (n : ℂ) * z)
+\end{leancode}
+\begin{dictionary}
+A \lean{tsum}: junk where the series diverges. On $\lfourteenH$ it converges absolutely
+(\lean{summable_norm_zhuG_qexp}, from $|g_j(n)|\le|g_j(0)| + Cn^{2j}$ and $|q|<1$), so on $\lfourteenH$ it is the honest sum.
+\end{dictionary}
+\begin{physics}
+$\mathcal G_{2j}(\tau)$ is the Eisenstein coefficient of the genus-one Ward identity evaluated on an actual torus of modulus $\tau$, rather than as a formal series.
+\end{physics}
+
+\begin{theorem}[Identification with Mathlib's Eisenstein series]\label{l14:thm:zhuGCE}
+For $j\ge2$ and $z\in\lfourteenH$, $\mathcal G_{2j}(z) = g_j(0)\,E_{2j}(z)$, where $E_{2j}$ is Mathlib's normalised Eisenstein
+modular form of weight $2j$. Consequently, for all $\gamma\in\lfourteenSL$, $\mathcal G_{2j}|_{2j}\gamma = \mathcal G_{2j}$ on
+$\lfourteenH$. (Note $g_j(0) = -B_{2j}/(2j)!\neq1$: Zhu's $\mathcal G_{2j}$ is \emph{not} $E_{2j}$, but a nonzero constant multiple of it.)
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak EisensteinAnalytic.lean}.
+\begin{leancode}
+theorem zhuGC_eq_mul_E {j : ℕ} (hj : 2 ≤ j) {z : ℂ} (hz : z ∈ imGT 0) :
+    zhuGC j z = zhuG j 0 * ModularForm.E (show 3 ≤ 2 * j by omega) (⟨z, hz⟩ : UpperHalfPlane)
+
+theorem slashC_zhuGC {j : ℕ} (hj : 2 ≤ j) (γ : SL(2, ℤ)) {z : ℂ} (hz : z ∈ imGT 0) :
+    slashC (2 * j : ℤ) γ (zhuGC j) z = zhuGC j z
+\end{leancode}
+\begin{dictionary}
+\lean{ModularForm.E h} is Mathlib's normalised Eisenstein series of weight $k$, needing a proof \lean{h : 3 ≤ k}, here
+supplied inline by \lean{omega}. \lean{⟨z, hz⟩ : UpperHalfPlane} packages $z$ with the proof that $\lfourteenIm z>0$. The
+hypothesis $j\ge2$ is genuine: at $j=1$ there is no weight-two modular form, and the correct statement is
+Theorem~\ref{l14:thm:zhuGCone}. So these are exactly the textbook statements, with Mathlib's $E_{2j}$ used, not reproved.
+\end{dictionary}
+\noindent\emph{Proof.} Mathlib's \lean{q_expansion_bernoulli} gives $E_{2j} = 1 - \frac{4j}{B_{2j}}\sum_{n\ge1}\sigma_{2j-1}(n)q^n$
+on $\lfourteenH$; multiply by $g_j(0)$ and use $\frac{4j}{(2j)!} = \frac2{(2j-1)!}$. Modularity then follows from that of
+$E_{2j}$ (Mathlib's \lean{slash_action_eqn}).
+\begin{physics}
+For $j\ge2$ the coefficients that appear in Zhu's genus-one recursion are honest modular forms. This is what makes the
+recursion $\lfourteenSL$-covariant: the torus Ward identities have modular coefficients, so the space of solutions (the
+conformal blocks on the torus) is a representation of the mapping class group.
+\end{physics}
+\begin{status}
+Unconditional. Standard axioms (both).
+\end{status}
+
+\begin{theorem}[The anomalous weight $j=1$]\label{l14:thm:zhuGCone}
+For $z\in\lfourteenH$: $\sum_{n\ge0}g_1(n)q^n = -E_2(z)/12$, and $\mathcal G_2(z) = (2\pi i)^{-2}G_2(z)$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak EisensteinBridge.lean}.
+\begin{leancode}
+theorem zhuG_one_eq_neg_E2_div_twelve (z : ℍ) :
+    zhuG 1 0 + ∑' n : ℕ+, zhuG 1 n * (qParam z) ^ (n : ℕ) = -(E2 z) / 12
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak EisensteinAnalytic.lean}.
+\begin{leancode}
+theorem zhuGC_one {z : ℂ} (hz : z ∈ imGT 0) :
+    zhuGC 1 z = ((2 * (Real.pi : ℂ) * Complex.I)⁻¹) ^ 2 * G2C z
+\end{leancode}
+\begin{dictionary}
+\lean{ℕ+} is the type of positive integers, so the \lean{tsum} runs over $n\ge1$. \lean{qParam z} $=e^{2\pi iz}$
+(Definition~\ref{l14:def:qeval}). \lean{E2} is Mathlib's $E_2$. Arithmetic check: $g_1(0) = -B_2/2! = -\tfrac1{12}$ and
+$g_1(n) = 2\sigma_1(n)$, so the left side is $-\tfrac1{12}(1 - 24\sum\sigma_1q^n)$. And $(2\pi i)^{-2}G_2 =
+-\frac{1}{4\pi^2}\cdot\frac{\pi^2}{3}E_2 = -E_2/12$. The \lean{tsum} converges (Mathlib's \lean{E2_eq_tsum_cexp} is proved
+for the convergent series), so there is no junk-value issue. Same as textbook.
+\end{dictionary}
+\begin{physics}
+The weight-two term of Zhu's recursion is the only non-modular one, and it is exactly $E_2$: this is the torus conformal
+anomaly again (Theorem~\ref{l14:thm:G2slash}). In Zhu's argument it is absorbed into the Serre derivative
+(Section~\ref{l14:sec:serre}): the $L_{[0]}$-insertion on the torus is $q\frac{d}{dq}$ plus an $E_2$ correction.
+\end{physics}
+\begin{status}
+Unconditional. Standard axioms.
+\end{status}
+
+\begin{theorem}[Values at the cusp]\label{l14:thm:cusplim}
+(i) Every modular form $f$ (for a subgroup with the cusp $\infty$) satisfies $f(\tau)\to f(\infty)$ as
+$\lfourteenIm\tau\to\infty$. (ii) $E_k(\infty) = 1$ for even $k\ge3$. (iii) $\mathcal G_{2j}(\tau)\to g_j(0)$ as
+$\lfourteenIm\tau\to\infty$, for $j\ge2$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak EisensteinCuspLimit.lean}.
+\begin{leancode}
+theorem valueAtInfty_E {k : ℕ} (hk : 3 ≤ k) (hk2 : Even k) :
+    valueAtInfty (fun τ : UpperHalfPlane => ModularForm.E hk τ) = 1
+
+theorem tendsto_zhuGC_atImInfty {j : ℕ} (hj : 2 ≤ j) :
+    Tendsto (fun τ : UpperHalfPlane => zhuGC j (τ : ℂ)) atImInfty (𝓝 (zhuG j 0))
+\end{leancode}
+\begin{dictionary}
+\lean{Tendsto f atImInfty (𝓝 L)} is ``$f(\tau)\to L$ as $\lfourteenIm\tau\to\infty$'' in Mathlib's filter language
+(Chapter~\ref{ch:01}); \lean{valueAtInfty f} is Mathlib's name for that limit (a \lean{limUnder}, junk if the limit does not
+exist). Statement (i) is \lean{tendsto_modularForm_atImInfty}, stated for any \lean{ModularFormClass} over a subgroup $\Gamma$
+of $\mathrm{GL}_2(\mathbb R)$ with $\infty$ a cusp and determinant $\pm1$ (type-class hypotheses, all satisfied by
+$\lfourteenSL$). Same as textbook.
+\end{dictionary}
+\noindent\emph{Proof.} (i) Mathlib's \lean{exp_decay_sub_atImInfty'}: $f - f(\infty) = O(e^{-c\lfourteenIm\tau})$. (ii) The
+constant term of the $q$-expansion of $E_k$ is $1$ and equals $f(\infty)$ (\lean{qExpansion_coeff_zero}). (iii) From (i),
+(ii) and Theorem~\ref{l14:thm:zhuGCE}.
+\begin{physics}
+$\lfourteenIm\tau\to\infty$ is the limit of a very long torus: the time circle is infinitely long, so only the ground state
+propagates (``$q\to0$ projects onto the vacuum''). The cusp values of the Eisenstein coefficients therefore describe Zhu's
+recursion on the infinite cylinder, i.e.\ the algebra of zero modes on the ground states; Section~\ref{l14:sec:cusp} makes
+this precise.
+\end{physics}
+\begin{status}
+Unconditional. Standard axioms.
+\end{status}
+
+%======================================================================
+\section{The level-one structure theorem}\label{l14:sec:levelone}
+%======================================================================
+
+\subsection{The algebra generated by \texorpdfstring{$E_4$}{E4} and \texorpdfstring{$E_6$}{E6}}
+
+\begin{definition}[$\lfourteenE$]\label{l14:def:E46}
+$\lfourteenE$ is the $\C$-subalgebra of the algebra of all functions $\lfourteenH\to\C$ (pointwise operations) generated
+by $E_4$ and $E_6$; its elements are the functions $P(E_4,E_6)$ for $P\in\C[X,Y]$ \emph{not necessarily homogeneous}.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak LevelOneStructure.lean}.
+\begin{leancode}
+noncomputable def E46 : Subalgebra ℂ (UpperHalfPlane → ℂ) :=
+  Algebra.adjoin ℂ {(⇑ModularForm.E₄ : UpperHalfPlane → ℂ), (⇑ModularForm.E₆ : UpperHalfPlane → ℂ)}
+\end{leancode}
+\begin{dictionary}
+\lean{Algebra.adjoin ℂ s} is the smallest $\C$-subalgebra containing the set $s$; \lean{⇑F} is the underlying function of a
+bundled modular form. So \lean{E46} is a set of functions, not a graded ring: a sum $E_4 + E_6$ of different weights is an
+element. This is a deliberate simplification (``no graded-ring plumbing''), and costs nothing for the use in
+Chapter~\ref{ch:L15}, which needs only finite generation. It is \emph{not} Mathlib's graded ring \lean{ModularForm.ring}.
+\end{dictionary}
+\begin{physics}
+$\lfourteenE$ is the ring in which the coefficients of modular linear differential equations live (Mathur--Mukhi--Sen): every
+torus amplitude of a rational CFT satisfies an ODE in $\tau$ whose coefficients are polynomials in $E_4$, $E_6$.
+\end{physics}
+
+\begin{theorem}[Every level-one modular form is a polynomial in $E_4$, $E_6$]\label{l14:thm:levelone}
+For every $k\in\Z$ and every $f\in M_k(\lfourteenSL)$, the function $f$ lies in $\lfourteenE$. In particular $E_k\in\lfourteenE$
+for $k\ge3$ and $\mathcal G_{2j}\in\lfourteenE$ for $j\ge2$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak LevelOneStructure.lean}.
+\begin{leancode}
+theorem levelOne_coe_mem_E46 : ∀ (k : ℤ) (f : ModularForm 𝒮ℒ k),
+    (⇑f : UpperHalfPlane → ℂ) ∈ E46
+
+theorem E_mem_E46 {k : ℕ} (hk : 3 ≤ k) :
+    (⇑(ModularForm.E hk) : UpperHalfPlane → ℂ) ∈ E46
+
+theorem zhuGC_mem_E46 {j : ℕ} (hj : 2 ≤ j) :
+    (fun z : UpperHalfPlane => zhuGC j (z : ℂ)) ∈ E46
+\end{leancode}
+\begin{dictionary}
+\lean{ModularForm 𝒮ℒ k} is Mathlib's space $M_k$ of holomorphic level-one modular forms of weight $k$, holomorphic at the cusp
+(Chapter~\ref{ch:05}, Definition~\ref{ch05:def:modform}). No hypotheses. \textbf{Weaker than the textbook statement.} The
+textbook ``$M_* = \C[E_4,E_6]$'' has three parts: (a) generation, (b) homogeneity (a weight-$k$ form is a combination of
+$E_4^aE_6^b$ with $4a+6b=k$), (c) algebraic independence of $E_4$, $E_6$. \lean{levelOne_coe_mem_E46} is (a) only. Parts (b)
+and (c) are \emph{true and proved in the library}, but in a different file: the vendored
+\lean{ModularForm.levelOne_eq_polynomial} in \leanpath{VOA/\allowbreak LatticesAndCodes/\allowbreak ModularForms/\allowbreak LevelOne.lean}
+(Chapter~\ref{ch:02}) gives, for even $k\ge0$, a basis of $M_k$ consisting of the monomials $E_4^aE_6^b$, $4a+6b=k$. The
+docstring's name ``structure theorem'' should be read as ``generation''. \emph{Could it be vacuous?} No: $\lfourteenE$ is a
+proper subalgebra of all functions, and membership is a genuine statement.
+\end{dictionary}
+\noindent\emph{Proof (Serre's induction).} Negative and odd weights: $M_k = 0$ (Mathlib). $k=0$: constants. $k=2$: $M_2 = 0$
+(Mathlib). For even $k\ge4$ pick a monomial $F = E_4^aE_6^b$ of weight $k$; it tends to $1$ at the cusp
+(\lean{exists_unit_modularForm}, by induction on $k$ in steps of $4$, from $E_4,E_6\to1$). Put $c = f(\infty)$. Then
+$f - cF$ has $q$-expansion with zero constant term, so it is a cusp form; Mathlib's isomorphism
+\lean{CuspForm.discriminantEquiv} $:S_k\cong M_{k-12}$ divides it by $\Delta$, and $f = cF + \Delta\cdot g$ with
+$g\in M_{k-12}$. By induction $g\in\lfourteenE$; and $\Delta = (E_4^3-E_6^2)/1728\in\lfourteenE$ (Mathlib's
+\lean{discriminant_eq_E₄_cube_sub_E₆_sq}). For $\mathcal G_{2j}$ use Theorem~\ref{l14:thm:zhuGCE}.
+\begin{physics}
+The heuristic content (Chapter~\ref{ch:05}): modular covariant partition functions have very little freedom; any weight-$k$
+modular object is fixed by finitely many leading $q$-coefficients. Here it is used for a structural reason: the
+coefficients of Zhu's genus-one relations lie in a \emph{finitely generated, Noetherian} ring, so the relation module is
+finitely generated and dimension counts are possible (Chapter~\ref{ch:L15}).
+\end{physics}
+\begin{status}
+Unconditional. \texttt{\#print axioms levelOne\_coe\_mem\_E46}, \texttt{zhuGC\_mem\_E46}: the standard three (run for this
+chapter). Mathlib's dimension formula and $\Delta$-division are used, not reproved.
+\end{status}
+
+\begin{warning}
+\textbf{Duplicate development (documentation only).} The library proves level-one generation twice: once here (non-homogeneous, functions)
+and once, with homogeneity and independence, in the vendored \leanpath{LatticesAndCodes/\allowbreak ModularForms/\allowbreak LevelOne.lean}
+(\lean{span_eisBasisFun}, \lean{levelOne_eq_polynomial}). Neither file mentions the other. The stronger vendored theorem
+discharges the predicate below that \leanpath{EisensteinRamanujan.lean} used to record as ``missing''
+(Theorem~\ref{l14:thm:certreps}; now the library theorem \lean{e46HasWeightedPolynomialReps}).
+\end{warning}
+
+\subsection{Weights inside \texorpdfstring{$\lfourteenE$}{E46}, and the Ramanujan boundary}\label{l14:sec:ramanujan}
+
+Because $\lfourteenE$ is not graded, the library adds a weight predicate. We separate what is \emph{defined and used} (the
+weight predicate and homogeneous representatives, Definition~\ref{l14:def:E46Weight}) from three \emph{named propositions}
+(Definition~\ref{l14:def:serreclosed}), all three now theorems of the library.
+
+\paragraph{The Serre derivative, in advance.} Serre closure involves the \emph{Serre derivative}, studied in
+Section~\ref{l14:sec:serre} (Definition~\ref{l14:def:serre}). For the reader's convenience we give it now: for $k\in\Z$ and
+$f:\C\to\C$,
+\begin{equation*}
+  \partial_kf \;=\; \frac{1}{2\pi i}f' + \frac{k}{(2\pi i)^2}\,G_2\,f \;=\; q\frac{df}{dq} - \frac{k}{12}E_2f\qquad\text{on }\lfourteenH,
+\end{equation*}
+with $G_2$ the weight-two Eisenstein series of Definition~\ref{l14:def:G2C} ($G_2 = \frac{\pi^2}3E_2$). The point of the
+correction term is that $\partial_k$ commutes with slashing (weight $k$ in, weight $k+2$ out), which the plain derivative does
+not (Theorem~\ref{l14:thm:slashderiv}); this equivariance is proved in Theorem~\ref{l14:thm:serreslash}. In Lean it is
+\lean{serreDerivC k f z}.
+
+\begin{definition}[Weighted elements; homogeneous representatives]\label{l14:def:E46Weight}
+For $f\in\lfourteenE$ and $k\in\Z$: $f$ \emph{has weight $k$} if $f$ is (the function of) some $F\in M_k$. $f$ \emph{has a
+homogeneous polynomial representative of weight $k$} if $f = \sum_{(a,b)\in t}c_{ab}E_4^aE_6^b$ for a finite set $t$ of
+pairs with $4a+6b = k$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak EisensteinRamanujan.lean}.
+\begin{leancode}
+noncomputable def e46C (f : E46) (z : ℂ) : ℂ :=
+  (f : UpperHalfPlane → ℂ) (UpperHalfPlane.ofComplex z)
+
+def E46Weight (k : ℤ) (f : E46) : Prop :=
+  ∃ F : ModularForm 𝒮ℒ k, (f : UpperHalfPlane → ℂ) = F
+
+noncomputable def e46E4 : E46 := ⟨⇑ModularForm.E₄, E4_mem_E46⟩
+
+noncomputable def e46E6 : E46 := ⟨⇑ModularForm.E₆, E6_mem_E46⟩
+
+noncomputable def e46Monomial (a b : ℕ) : E46 := e46E4 ^ a * e46E6 ^ b
+
+def E46WeightedPolynomialRep (k : ℤ) (f : E46) : Prop :=
+  ∃ (t : Finset (ℕ × ℕ)) (c : ℕ × ℕ → ℂ),
+    f = ∑ ab ∈ t, c ab • e46Monomial ab.1 ab.2 ∧
+      ∀ ab ∈ t, 4 * (ab.1 : ℤ) + 6 * (ab.2 : ℤ) = k
+\end{leancode}
+\begin{dictionary}
+\lean{e46C f} extends $f$ from $\lfourteenH$ to $\C$ through Mathlib's retraction \lean{ofComplex}; only its values on
+\lean{imGT 0} matter, and all equalities below are restricted there. \lean{E46Weight k f} is an existential over modular forms:
+it retains holomorphy at the cusp, so it is the right notion of ``coefficient of weight $k$''. These are predicates about a
+given $f$; they assert nothing by themselves.
+\end{dictionary}
+\begin{physics}
+A weight-$k$ element is a candidate coefficient of a modular linear differential equation: the coefficient of
+$\partial^{n-r}$ in an order-$n$ MLDE must be a weight-$2r$ modular form.
+\end{physics}
+\begin{status}
+Definitions. Proved closure properties: \lean{E46Weight} is closed under $+,-,\cdot,$ scalars and finite sums
+(\lean{E46Weight.add}, \dots, \lean{E46Weight.sum}); $E_4^aE_6^b$ has weight $4a+6b$ (\lean{e46Monomial_weight}). Standard axioms.
+\end{status}
+
+\begin{definition}[Three named propositions: homogeneous representatives, monomial and full Serre closure]\label{l14:def:serreclosed}
+(a) \emph{Homogeneous representatives}: every $f\in\lfourteenE$ of weight $k$ has a homogeneous polynomial representative of
+weight $k$. (b) \emph{Monomial Serre closure}: for all $a,b$, $\partial_{4a+6b}(E_4^aE_6^b)$ equals on $\lfourteenH$ an element of
+$\lfourteenE$ of weight $4a+6b+2$. (c) \emph{Serre closure}: for every $f$ of weight $k$ there is $g\in\lfourteenE$ of weight $k+2$
+with $g = \partial_kf$ on $\lfourteenH$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak EisensteinRamanujan.lean}.
+\begin{leancode}
+def E46HasWeightedPolynomialReps : Prop :=
+  ∀ (k : ℤ) (f : E46), E46Weight k f → E46WeightedPolynomialRep k f
+
+def E46SerreMonomialClosed : Prop :=
+  ∀ (a b : ℕ), ∃ g : E46,
+    E46Weight (4 * (a : ℤ) + 6 * (b : ℤ) + 2) g ∧
+      ∀ z ∈ imGT 0,
+        e46C g z = serreDerivC (4 * (a : ℤ) + 6 * (b : ℤ))
+          (e46C (e46Monomial a b)) z
+
+def E46SerreClosed : Prop :=
+  ∀ (k : ℤ) (f : E46), E46Weight k f →
+    ∃ g : E46, E46Weight (k + 2) g ∧
+      ∀ z ∈ imGT 0, e46C g z = serreDerivC k (e46C f) z
+\end{leancode}
+\begin{dictionary}
+Each is a \lean{def … : Prop}, i.e.\ a \emph{statement}; all three are proved separately (status box below). (c) is the classical fact $\partial_kM_k\subseteq M_{k+2}$.
+\textbf{Equivariance is not closure.} Theorem~\ref{l14:thm:serreslash} (proved) shows that $\partial_kf$ transforms with weight
+$k+2$; what it does not give is that $\partial_kf$ is \emph{holomorphic at the cusp} with a $q$-expansion, i.e.\ is again in
+$M_{k+2}$, nor that it lies in $\lfourteenE$; that extra content (classically: Ramanujan's identities plus the structure theorem)
+is exactly (b)/(c). The library proves the aggregation step
+\lean{e46SerreClosed_of_weightedPolynomialReps : E46HasWeightedPolynomialReps → E46SerreMonomialClosed → E46SerreClosed}.
+Mathlib (\leanpath{NumberTheory/\allowbreak ModularForms/\allowbreak Derivative.lean}) defines its own \lean{serreDerivative} on
+\lean{ℍ → ℂ} with the same normalisation ($DF - \frac{k}{12}E_2F$) but proves no modularity-preservation theorem for it.
+\end{dictionary}
+\begin{physics}
+Serre closure is the statement that the ring of modular forms is closed under the covariant derivative of the torus
+moduli space. Physically it is what makes a modular linear differential equation (MLDE) $[\partial^n + \phi_4\partial^{n-2}+
+\cdots]\chi = 0$ meaningful: each $\partial$ raises the weight by $2$ and the coefficient $\phi_{2r}$ must be a weight-$2r$
+modular form. The monomial case is Ramanujan's identities $\partial_4E_4 = -\frac13E_6$, $\partial_6E_6 = -\frac12E_4^2$.
+\end{physics}
+\begin{status}
+\textbf{Status of the three propositions.}
+\begin{itemize}
+\item (a) \lean{E46HasWeightedPolynomialReps}: \textbf{proved} in the library (\lean{e46HasWeightedPolynomialReps},
+  from the argument of Theorem~\ref{l14:thm:certreps}).
+\item (b) \lean{E46SerreMonomialClosed}: \textbf{proved} (\lean{e46SerreMonomialClosed}, the monomial case of (c)).
+\item (c) \lean{E46SerreClosed}: \textbf{proved} (\lean{e46SerreClosed}). The proof does not go through Ramanujan's
+  identities: \lean{serreForm} packages $\partial_nF$, for $F$ a level-one form of weight $n$, as a level-one form of weight
+  $n+2$ (holomorphy on $\lfourteenH$ and boundedness at $i\infty$ from the $q$-expansion, the weight-$(n+2)$ law from
+  Theorem~\ref{l14:thm:serreslash}), and \lean{levelOne_coe_mem_E46} places it in $\lfourteenE$. The reduction
+  \lean{e46SerreClosed_of_weightedPolynomialReps} gives a second proof (\lean{e46SerreClosed'}). The hypothesis
+  \lean{hclose} of the Arakawa--Kawasetsu MLDE of Chapter~\ref{ch:L16} is thereby discharged.
+  (\leanpath{VOA/\allowbreak Modularity/\allowbreak EisensteinSerreClosure.lean}; not compiled for this chapter.)
+\end{itemize}
+\end{status}
+
+\begin{theorem}[Homogeneous representatives exist]\label{l14:thm:certreps}
+Every $f\in\lfourteenE$ of weight $k$ is a linear combination of monomials $E_4^aE_6^b$ with $4a+6b=k$; that is,
+\lean{E46HasWeightedPolynomialReps} holds.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak EisensteinSerreClosure.lean}.
+\begin{plaincode}
+theorem e46HasWeightedPolynomialReps : E46HasWeightedPolynomialReps
+\end{plaincode}
+\noindent\emph{Proof.} If $k<0$, $F=0$. If $k = n\ge0$, the vendored \lean{ModularForm.span_eisBasisFun n} says the
+weight-$n$ monomials span $M_n$; write $F$ as a finite combination, push it through the linear coercion \lean{coeLm}, and
+read the result as an identity in $\lfourteenE$. (Odd $n$: the index set \lean{wtIdx n} is empty and $F=0$.)
+\begin{physics}
+Arithmetic bookkeeping: the statement that ``a weight-$k$ coefficient is a homogeneous polynomial''. It reduces Serre closure
+to Ramanujan's two identities.
+\end{physics}
+\begin{status}
+First compiled for this chapter as a separate check with \texttt{lake env lean -DmaxSynthPendingDepth=3} at an earlier commit (not re-run for this edition): no errors, no
+\lean{sorry}. The library has since adopted this proof as \lean{e46HasWeightedPolynomialReps}
+(\leanpath{EisensteinSerreClosure.lean}), and the docstring of \lean{E46HasWeightedPolynomialReps}, which used to call it
+missing, now points to it.
+\end{status}
+
+\subsection{Points of \texorpdfstring{$\lfourteenE$}{E46}: the cusp and the interior}\label{l14:sec:points}
+
+The \emph{cusp} is the boundary point $\tau = i\infty$ of $\lfourteenH$ (the one point added to $\lfourteenSL\backslash\lfourteenH$ to
+compactify it, Chapter~\ref{ch:05}). Approaching it means $\lfourteenIm\tau\to\infty$, i.e.\ $q\to0$. Geometrically the torus
+degenerates: its time circle becomes infinitely long, the torus becomes a cylinder, and in a trace only the ground states survive.
+Every element of $\lfourteenE$ has a limit there, so the cusp behaves like a point of $\lfourteenE$ on the same footing as the
+interior points.
+
+\begin{definition}[Evaluation at the cusp and at interior points]\label{l14:def:evInfty}
+$\lfourteenev_\infty:\lfourteenE\to\C$, $f\mapsto\lim_{\lfourteenIm\tau\to\infty}f(\tau)$, and for $z_0\in\lfourteenH$,
+$\lfourteenev_{z_0}:\lfourteenE\to\C$, $f\mapsto f(z_0)$. Both are $\C$-algebra homomorphisms.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak CuspPoint.lean}.
+\begin{leancode}
+noncomputable def cuspLimSubalg : Subalgebra ℂ (UpperHalfPlane → ℂ) where
+  carrier := {f : UpperHalfPlane → ℂ | ∃ L : ℂ, Tendsto f atImInfty (𝓝 L)}
+  mul_mem' := fun ⟨L₁, h₁⟩ ⟨L₂, h₂⟩ => ⟨L₁ * L₂, h₁.mul h₂⟩
+  add_mem' := fun ⟨L₁, h₁⟩ ⟨L₂, h₂⟩ => ⟨L₁ + L₂, h₁.add h₂⟩
+  zero_mem' := ⟨0, tendsto_const_nhds⟩
+  one_mem' := ⟨1, tendsto_const_nhds⟩
+  algebraMap_mem' := fun c => ⟨c, tendsto_const_nhds⟩
+
+theorem evInfty_zhuGC {j : ℕ} (hj : 2 ≤ j) :
+    evInfty ⟨_, zhuGC_mem_E46 hj⟩ = zhuG j 0
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak E46Point.lean}.
+\begin{leancode}
+noncomputable def evAt (z₀ : UpperHalfPlane) : E46 →ₐ[ℂ] ℂ where
+  toFun f := (f : UpperHalfPlane → ℂ) z₀
+  map_one' := rfl
+  map_mul' _ _ := rfl
+  map_zero' := rfl
+  map_add' _ _ := rfl
+  commutes' _ := rfl
+
+theorem ker_isMaximal (φ : E46 →ₐ[ℂ] ℂ) :
+    (RingHom.ker (φ : E46 →+* ℂ)).IsMaximal
+\end{leancode}
+\begin{dictionary}
+\lean{evInfty : E46 →ₐ[ℂ] ℂ} (same file \leanpath{CuspPoint.lean}) is \lean{valueAtInfty}, shown to be an algebra hom because
+$\lfourteenE\le$ \lean{cuspLimSubalg} (\lean{E46_le_cuspLimSubalg}: $E_4$, $E_6$ have cusp limits, and limits respect
+$+$ and $\cdot$). \lean{→ₐ[ℂ]} is ``$\C$-algebra homomorphism''. \lean{ker_isMaximal}: the kernel of any such hom is a maximal
+ideal (residue field $\C$). \lean{evInfty_zhuGC}: $\lfourteenev_\infty(\mathcal G_{2j}) = g_j(0)$. Statements are exactly the
+textbook ones. They are infrastructure: no theorem in this chapter compares the two fibres (that is the open ``flatness''
+residual of Chapter~\ref{ch:L15}).
+\end{dictionary}
+\begin{physics}
+The two kinds of points are two geometries of the torus: an interior point $z_0$ is a torus of fixed shape, the cusp is the
+degenerate torus (a pinched cycle = an infinitely long cylinder). Conformal blocks over the family of tori form a sheaf over
+the $(E_4,E_6)$-plane; its fibre at the cusp is computed algebraically from $A(V)$ (Section~\ref{l14:sec:cusp}), and
+transporting the dimension to an interior point is the statement that the number of torus blocks does not jump.
+\end{physics}
+\begin{status}
+Unconditional, standard axioms (\lean{evInfty_zhuGC}, \lean{ker_evAt_isMaximal}).
+\end{status}
+
+\begin{theorem}[No fibre of {$\C[[q]]$} at $q_0\neq0$]\label{l14:thm:noalghom}
+There is no $\C$-algebra homomorphism $\varphi:\C[[q]]\to\C$ with $\varphi(q)\neq0$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak FormalSpecialization.lean}.
+\begin{leancode}
+theorem no_algHom_powerSeries_X_ne_zero (φ : PowerSeries ℂ →ₐ[ℂ] ℂ) {q₀ : ℂ} (hq : q₀ ≠ 0) :
+    φ PowerSeries.X ≠ q₀
+\end{leancode}
+\noindent\emph{Proof.} $1 - q_0^{-1}q$ has constant term $1$, hence is a unit of $\C[[q]]$; $\varphi$ would send it to
+$1 - q_0^{-1}q_0 = 0$, which is not a unit.
+\begin{dictionary}
+Exactly the stated fact. It is recorded as a \emph{dead end}: a purely formal argument over $\C[[q]]$ can only reach the
+special fibre $q=0$ and the generic fibre $\C((q))$, never a genuine torus $0<|q|<1$. This is why the library moved its
+coefficient ring from $\C[[q]]$ to the function algebra $\lfourteenE$, where evaluation at $z_0$ \emph{is} a homomorphism.
+\end{dictionary}
+\begin{physics}
+Formal power series know only infinitesimally long tori. A physical statement about a torus of finite size needs
+convergence, i.e.\ analysis. The theorem is the algebraic shadow of that fact.
+\end{physics}
+\begin{status}
+Unconditional. Standard axioms.
+\end{status}
+
+%======================================================================
+\section{From formal \texorpdfstring{$q$}{q}-series to holomorphic functions}\label{l14:sec:bridge}
+%======================================================================
+
+\subsection{Subexponential growth and summability}
+
+\begin{definition}[Subexponential sequence]\label{l14:def:subexp}
+A real sequence $(a_n)_{n\in\N}$ is \emph{subexponential} if for every $r>1$ there is $C$ with $a_n\le Cr^n$ for all $n$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak ConvergenceBridge.lean}.
+\begin{leancode}
+def Subexponential (a : ℕ → ℝ) : Prop :=
+  ∀ r : ℝ, 1 < r → ∃ C : ℝ, ∀ n : ℕ, a n ≤ C * r ^ n
+\end{leancode}
+\begin{dictionary}
+Quantifiers: $\forall r>1\ \exists C\ \forall n$; $C$ depends on $r$. This is an upper bound only (no absolute value); it is
+always applied to $a_n = \|\chi(h+n)\|\ge0$. Equivalent to $\limsup a_n^{1/n}\le1$ for nonnegative $a$, i.e.\ to the power
+series $\sum a_nx^n$ having radius of convergence $\ge1$. So it is exactly the condition for convergence on the whole disc
+$|q|<1$, the right condition for a character.
+\end{dictionary}
+\begin{physics}
+The degeneracies of a CFT grow like $\dim V_n\sim\exp(2\pi\sqrt{c_{\mathrm{eff}}n/6})$ (Cardy's formula, derived from the
+$S$-transformation: the high-temperature behaviour of $Z(\tau)$ is controlled by the vacuum in the dual channel). That growth
+is subexponential: $e^{a\sqrt n}\le C_r r^n$ for every $r>1$ (\lean{subexponential_exp_sqrt}). Subexponentiality is the
+weakest growth condition that makes the partition function a well-defined function on all of $\lfourteenH$; Cardy growth is
+much stronger.
+\end{physics}
+
+\begin{theorem}[Closure properties]\label{l14:thm:subexpclosure}
+Subexponential sequences are closed under domination, nonnegative scalar multiples, addition, finite sums, polynomial factors
+$n^p$, index shifts in both directions, and Cauchy products (for complex sequences, in absolute value); constants and
+$e^{c\sqrt n}$ are subexponential. The subexponential formal power series form a $\C$-subalgebra $\mathcal S$ of $\C[[q]]$,
+stable under $\theta = q\frac{d}{dq}$.
+\end{theorem}
+\noindent Files \leanpath{VOA/\allowbreak Modularity/\allowbreak ConvergenceBridge.lean}, \leanpath{GrowthClosure.lean},
+\leanpath{SubexpClosure.lean}, \leanpath{SubexpSeriesRing.lean}, \leanpath{QDerivProductRule.lean}. File
+\leanpath{VOA/\allowbreak Modularity/\allowbreak ConvergenceBridge.lean}.
+\begin{leancode}
+theorem subexponential_exp_sqrt (c : ℝ) :
+    Subexponential (fun n : ℕ => Real.exp (c * Real.sqrt n))
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak GrowthClosure.lean}.
+\begin{leancode}
+theorem Subexponential.mul_pow {a : ℕ → ℝ} (ha : Subexponential a) (hnn : ∀ n, 0 ≤ a n) (p : ℕ) :
+    Subexponential (fun n : ℕ => (n : ℝ) ^ p * a n)
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SubexpClosure.lean}.
+\begin{leancode}
+theorem Subexponential.of_shift {a : ℕ → ℝ} (k : ℕ)
+    (ha : Subexponential (fun n => a (n + k))) : Subexponential a
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SubexpSeriesRing.lean}.
+\begin{leancode}
+theorem subexponential_cauchy {a b : ℕ → ℂ}
+    (ha : Subexponential fun m : ℕ => ‖a m‖) (hb : Subexponential fun m : ℕ => ‖b m‖) :
+    Subexponential fun n : ℕ => ‖∑ m ∈ Finset.range (n + 1), a m * b (n - m)‖
+
+def SubexpPS : Subalgebra ℂ (PowerSeries ℂ) where
+  carrier := {F : PowerSeries ℂ | Subexponential fun n : ℕ => ‖PowerSeries.coeff n F‖}
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak QDerivProductRule.lean}.
+\begin{leancode}
+noncomputable def theta (F : PowerSeries ℂ) : PowerSeries ℂ :=
+  PowerSeries.mk fun n => (n : ℂ) * PowerSeries.coeff n F
+
+theorem theta_mem_subexpPS {F : PowerSeries ℂ} (hF : F ∈ SubexpPS) : theta F ∈ SubexpPS
+\end{leancode}
+\begin{dictionary}
+\lean{‖·‖} is the complex absolute value. \lean{Finset.range (n+1)} is $\{0,\dots,n\}$, so the Cauchy-product sum is
+$\sum_{m\le n}a_mb_{n-m}$. The quoted part of \lean{SubexpPS} is its carrier; the closure fields (\lean{mul_mem'} etc.) are
+proved from \lean{subexponential_cauchy}. \lean{Subexponential.mul_pow} needs $a\ge0$ (otherwise the inequality could be
+reversed by a negative factor). All statements are the textbook ones. \lean{theta F} is $qF'(q)$:
+$[q^n]\theta F = n[q^n]F$; \lean{theta_mul} proves it is a derivation.
+\end{dictionary}
+\noindent\emph{Proof sketch.} $e^{c\sqrt n - n\log r}\le e^{c^2/(4\log r)}$ by completing the square. $n^p\le C_1(\sqrt r)^n$
+and $a_n\le C_2(\sqrt r)^n$ give $n^pa_n\le C_1C_2r^n$. Cauchy: choose $1<s<r$; then $\sum_{m\le n}Ds^m\cdot Cr^{n-m}\le
+CD(1-s/r)^{-1}r^n$. Shifts absorb finitely many terms into the constant.
+\begin{physics}
+These are the bookkeeping rules of state counting: tensoring theories (Cauchy product of characters), multiplying by a
+polynomial in the energy (inserting $L_0^p$, which is what $\theta^p$ does), and shifting the vacuum energy all preserve the
+property ``the partition function converges for every $\tau\in\lfourteenH$''.
+\end{physics}
+\begin{status}
+All unconditional; standard axioms (\lean{subexponential_exp_sqrt}, \lean{theta_mem_subexpPS} checked for this chapter).
+\end{status}
+
+\begin{theorem}[Subexponential coefficients converge on the open disc]\label{l14:thm:summable}
+If $a_n\ge0$ is subexponential and $0\le t<1$, then $\sum_na_nt^n$ converges.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak ConvergenceBridge.lean}.
+\begin{leancode}
+theorem summable_of_subexponential {a : ℕ → ℝ} (hpos : ∀ n, 0 ≤ a n) (hsub : Subexponential a)
+    {t : ℝ} (ht0 : 0 ≤ t) (ht : t < 1) : Summable (fun n : ℕ => a n * t ^ n)
+\end{leancode}
+\noindent\emph{Proof.} Choose $1<r<t^{-1}$; compare with $C\sum(rt)^n$.
+\begin{physics}
+The partition function at inverse temperature $\beta$ ($t = e^{-2\pi\beta}$) is finite.
+\end{physics}
+\begin{status}
+Unconditional; standard axioms.
+\end{status}
+
+\subsection{Evaluation}
+
+\begin{definition}[The $q$-parameter; summability at $\tau$; evaluation]\label{l14:def:qeval}
+For $\tau\in\lfourteenH$ put $q = e^{2\pi i\tau}$. For $\chi$ a formal $q$-series and a base point $h\in\C$, $\chi$ is
+\emph{summable at $\tau$ along $h$} if $\sum_{n\ge0}\chi(h+n)q^n$ converges, and its \emph{evaluation} is
+$\chi_h(\tau) = e^{2\pi i\tau h}\sum_{n\ge0}\chi(h+n)q^n$, the formal $\sum_n\chi(h+n)q^{h+n}$ with $q^h := e^{2\pi i\tau h}$.
+In the $\C$ picture, $\chi_h^{\C}(z) = e^{2\pi izh}\sum_n\chi(h+n)e^{2\pi inz}$. (The function $q_{\C}(z) = e^{2\pi iz}$ of
+Definition~\ref{l14:def:zhuGC} is the same $q$ in the $\C$ picture.) The base point $h$ is the lowest exponent of the series:
+for the character of a module of conformal weight $h_M$ it is the ground-state energy $h = h_M - c/24$, so that the evaluation
+is $\tr\,q^{L_0-c/24}$ (Chapter~\ref{ch:L12}, Definition~\ref{l12:def:char}).
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak ConvergenceBridge.lean}.
+\begin{leancode}
+noncomputable def qParam (τ : UpperHalfPlane) : ℂ :=
+  Complex.exp (2 * (Real.pi : ℂ) * Complex.I * (τ : ℂ))
+
+def QSummableAt (χ : FormalQSeries) (h : ℂ) (τ : UpperHalfPlane) : Prop :=
+  Summable (fun n : ℕ => χ (h + n) * (qParam τ) ^ n)
+
+noncomputable def qEvalAt (χ : FormalQSeries) (h : ℂ) (τ : UpperHalfPlane) : ℂ :=
+  Complex.exp (2 * (Real.pi : ℂ) * Complex.I * (τ : ℂ) * h) *
+    ∑' n : ℕ, χ (h + n) * (qParam τ) ^ n
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak QEvalHolomorphic.lean}.
+\begin{leancode}
+noncomputable def qTerm (χ : FormalQSeries) (h : ℂ) (n : ℕ) (z : ℂ) : ℂ :=
+  χ (h + (n : ℂ)) * Complex.exp (2 * (Real.pi : ℂ) * Complex.I * (n : ℂ) * z)
+
+noncomputable def qSeriesC (χ : FormalQSeries) (h : ℂ) (z : ℂ) : ℂ := ∑' n : ℕ, qTerm χ h n z
+
+noncomputable def qEvalC (χ : FormalQSeries) (h : ℂ) (z : ℂ) : ℂ :=
+  Complex.exp (2 * (Real.pi : ℂ) * Complex.I * z * h) * qSeriesC χ h z
+\end{leancode}
+\begin{dictionary}
+\textbf{Decoding.} The prefactor \lean{exp(2πi τ h)} is $q^h$ with the principal choice $q^h = e^{2\pi i\tau h}$ (no branch
+ambiguity, because it is defined through $\tau$, not through $q$). \lean{qEvalAt} reads $\chi$ only along $h+\N$; values of
+$\chi$ off that progression are ignored, so \lean{qEvalAt χ h} depends on the choice of $h$, and the caller must choose $h$
+to be the lowest exponent (for a character of a module of conformal weight $h_M$, $h = h_M - c/24$). \lean{qEvalC_coe}
+proves \lean{qEvalC χ h (τ : ℂ) = qEvalAt χ h τ}. \textbf{Junk value.} If the series diverges, \lean{qEvalAt} is $0$.
+Theorems that need the honest value carry \lean{QSummableAt} or a \lean{Subexponential} hypothesis. \textbf{Not Mathlib's
+\lean{qExpansion}.} Mathlib goes from functions to coefficients; this goes from coefficients to functions.
+\end{dictionary}
+\begin{physics}
+$\chi_h(\tau) = \tr_Mq^{L_0-c/24}$ is the torus partition function of the sector $M$; the choice $h = h_M - c/24$ is the
+ground-state energy on the cylinder.
+\end{physics}
+
+\begin{theorem}[The convergence bridge]\label{l14:thm:qsummable}
+If $\|\chi(h+n)\|$ is subexponential then $\chi$ is summable at every $\tau\in\lfourteenH$ along $h$. In particular, if the
+graded dimensions of a module $N$ along $h+\N$ are subexponential, its character converges on $\lfourteenH$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak ConvergenceBridge.lean}.
+\begin{leancode}
+theorem qSummableAt_of_subexponential (χ : FormalQSeries) (h : ℂ)
+    (hsub : Subexponential (fun n : ℕ => ‖χ (h + n)‖)) (τ : UpperHalfPlane) :
+    QSummableAt χ h τ
+
+def SubexponentialCoeffs (N : OrdVModule W M) (h : ℂ) : Prop :=
+  Subexponential (fun n : ℕ => ‖gradedDim N (h + n)‖)
+\end{leancode}
+\begin{dictionary}
+\lean{OrdVModule W M} is an ordinary $V$-module on $M$ (Chapter~\ref{ch:L12}, Definition~\ref{l12:def:ordmodule});
+\lean{gradedDim N (h+n)} $=\dim M_{h+n+c/24}$ (cast to $\C$). \lean{SubexponentialCoeffs} is the named ``growth datum''. The
+docstring of \leanpath{ConvergenceBridge.lean} says its supply from $C_2$-cofiniteness is ``not built''; that is stale: it
+is proved for the adjoint module (\lean{subexponentialCoeffs_adjoint_of_C2Cofinite}, Chapter~\ref{ch:L15}) and for modules
+with a finite lowest-weight generating family (\lean{subexponentialCoeffs_of_C2Cofinite}).
+\end{dictionary}
+\noindent\emph{Proof.} Fix $\tau\in\lfourteenH$ and put $t = |q| = e^{-2\pi\lfourteenIm\tau}$; then $0\le t<1$
+(\lean{norm_qParam_lt_one}). Choose any $r$ with $1<r<t^{-1}$ (if $t = 0$ there is nothing to prove), for instance
+$r = (1+t^{-1})/2$. By subexponentiality, applied at this $r$, there is $C$ with $\|\chi(h+n)\|\le Cr^n$ for all $n$. Hence
+\begin{equation*}
+  \sum_{n\ge0}\|\chi(h+n)q^n\| = \sum_{n\ge0}\|\chi(h+n)\|\,t^n \le C\sum_{n\ge0}(rt)^n = \frac{C}{1-rt}<\infty ,
+\end{equation*}
+since $0\le rt<1$. This is Theorem~\ref{l14:thm:summable} with $a_n = \|\chi(h+n)\|$. An absolutely convergent series of complex
+numbers converges, which is \lean{QSummableAt}.
+\begin{physics}
+Growth bound on degeneracies $\Rightarrow$ finite partition function at every temperature and every twist.
+\end{physics}
+\begin{status}
+Unconditional; standard axioms.
+\end{status}
+
+\begin{warning}
+\textbf{A wrong docstring claim (documentation only).} The ``Residual'' section of \leanpath{ConvergenceBridge.lean} says that only
+``that $p(n)$ is subexponential'' is needed, ``which follows from $p(n)\le2^n$-type bounds''. It does not: $2^n$ is not
+subexponential ($2^n\le C(3/2)^n$ fails for large $n$). The library's actual partition bound (Theorem~\ref{l14:thm:pcount})
+is the correct generating-function estimate $p_g(n)t^n\le\exp(gt/(1-t)^2)$ for all $t\in(0,1)$, which does give
+subexponential growth. No theorem is affected.
+\end{warning}
+
+\begin{theorem}[Holomorphy and term-by-term differentiation]\label{l14:thm:holo}
+Let $\chi$ be a formal $q$-series with $\|\chi(h+n)\|$ subexponential. Then $z\mapsto\chi^{\C}_h(z)$ is holomorphic on
+$\lfourteenH$, and for $z\in\lfourteenH$
+\begin{equation*}
+  \frac{d}{dz}\chi^{\C}_h(z) = 2\pi i\,(D\chi)^{\C}_h(z),\qquad (D\chi)(e) := e\,\chi(e).
+\end{equation*}
+In particular the character of a $C_2$-cofinite VOA (with $\mathbf 1\neq0$) is holomorphic on $\lfourteenH$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak ZhuBlockConditions.lean} (a Chapter~\ref{ch:L15} file).
+\begin{leancode}
+noncomputable def qDeriv (χ : FormalQSeries) : FormalQSeries := fun e => e * χ e
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak QEvalHolomorphic.lean}.
+\begin{leancode}
+theorem differentiableOn_qEvalC (χ : FormalQSeries) (h : ℂ)
+    (hsub : Subexponential (fun n : ℕ => ‖χ (h + (n : ℂ))‖)) :
+    DifferentiableOn ℂ (qEvalC χ h) (imGT 0)
+
+theorem deriv_qEvalC (χ : FormalQSeries) (h : ℂ)
+    (hsub : Subexponential (fun n : ℕ => ‖χ (h + (n : ℂ))‖)) {z : ℂ} (hz : z ∈ imGT 0) :
+    _root_.deriv (qEvalC χ h) z = 2 * (Real.pi : ℂ) * Complex.I * qEvalC (qDeriv χ) h z
+
+theorem differentiableOn_char_adjoint (W : VertexOperatorAlgebra 𝒱) (hne : W.vacuum ≠ 0)
+    (hC2 : C2Cofinite W) :
+    DifferentiableOn ℂ
+      (qEvalC (gradedDim (adjointModule W)) (0 - W.centralCharge / 24)) (imGT 0)
+\end{leancode}
+\begin{dictionary}
+\lean{qDeriv} is the formal Euler operator $q\frac{d}{dq}$ on series with complex exponents: $q\frac{d}{dq}q^e = eq^e$.
+\lean{DifferentiableOn ℂ f U} is complex differentiability at every point of $U$, i.e.\ holomorphy on the open set $U$.
+The formula is exactly $\frac{d}{d\tau} = 2\pi i\,q\frac{d}{dq}$ applied termwise. \lean{adjointModule W} is $V$ as a module
+over itself (Definition~\ref{l12:def:adjoint}); its conformal weight is $0$, whence the base point $0 - c/24$. The hypothesis
+\lean{hne} excludes the zero VOA. The derivative statement uses $\lfourteenH$ only (\lean{hz}); the growth hypothesis is the
+only analytic input. Same as textbook.
+\end{dictionary}
+\noindent\emph{Proof.} On $\lfourteenH_c$ ($c>0$), $|q^n|\le r^n$ with $r = e^{-2\pi c}<1$; subexponentiality at
+$s = (1+r^{-1})/2$ (so $s>1$ and $sr<1$) gives $|\chi(h+n)\,2\pi n\,q^n|\le C\,2\pi n(sr)^n$, a summable dominant
+independent of $z$. Mathlib's \lean{hasDerivAt_tsum_of_isPreconnected} differentiates the series termwise on the convex
+(hence preconnected) open set $\lfourteenH_c$. The prefactor $e^{2\pi izh}$ is entire; product rule. For the adjoint
+module, Chapter~\ref{ch:L15} supplies the growth datum from $C_2$-cofiniteness.
+\begin{physics}
+$\frac{1}{2\pi i}\frac{d}{d\tau}\chi = \tr(L_0 - c/24)q^{L_0-c/24}$: differentiating in the modular parameter inserts the
+Hamiltonian, i.e.\ the zero mode of the stress tensor on the cylinder. This is the bridge between Zhu's recursion (stated
+with the formal operator $D$) and differential equations in $\tau$.
+\end{physics}
+\begin{status}
+\lean{differentiableOn_qEvalC}, \lean{deriv_qEvalC}: unconditional beyond the growth hypothesis. \lean{differentiableOn_char_adjoint}:
+unconditional for $C_2$-cofinite $V$ with $\mathbf 1\neq0$. All \texttt{\#print axioms}-clean (standard three); no
+\lean{VOA.pbw}.
+\end{status}
+
+\subsection{Algebra of evaluation}
+
+\begin{definition}[Convolution with an $\N$-indexed series]\label{l14:def:qConv}
+For $f:\N\to\C$ and a formal $q$-series $g$: $(f\star g)(e) = \sum_{n\in\N}f(n)\,g(e-n)$ (a \lean{finsum}: $0$ if the support
+is infinite).
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak ZhuRecursion.lean} (a Chapter~\ref{ch:L15} file).
+\begin{leancode}
+noncomputable def qConv (f : ℕ → ℂ) (g : FormalQSeries) : FormalQSeries :=
+  fun e => ∑ᶠ n : ℕ, f n * g (e - (n : ℂ))
+\end{leancode}
+\begin{physics}
+On coefficients, multiplying a torus amplitude by a $q$-series (an Eisenstein coefficient of a Ward identity) convolves the state counts level by level.
+\end{physics}
+
+\begin{theorem}[Convolution becomes multiplication]\label{l14:thm:qconv}
+If $\chi(h+i) = 0$ for all integers $i<0$, and both $\sum|f(n)q^n|$ and $\sum|\chi(h+n)q^n|$ converge at $z$, then
+$(f\star\chi)^{\C}_h(z) = \bigl(\sum_nf(n)e^{2\pi inz}\bigr)\cdot\chi^{\C}_h(z)$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak QEvalConv.lean}.
+\begin{leancode}
+theorem qEvalC_qConv (f : ℕ → ℂ) (χ : FormalQSeries) (h : ℂ) {z : ℂ}
+    (hsupp : ∀ i : ℤ, i < 0 → χ (h + (i : ℂ)) = 0)
+    (hf : Summable fun n : ℕ => ‖f n * Complex.exp (2 * (Real.pi : ℂ) * Complex.I * (n : ℂ) * z)‖)
+    (hχ : Summable fun n : ℕ =>
+      ‖χ (h + (n : ℂ)) * Complex.exp (2 * (Real.pi : ℂ) * Complex.I * (n : ℂ) * z)‖) :
+    qEvalC (qConv f χ) h z
+      = (∑' n : ℕ, f n * Complex.exp (2 * (Real.pi : ℂ) * Complex.I * (n : ℂ) * z))
+          * qEvalC χ h z
+\end{leancode}
+\begin{dictionary}
+\lean{hsupp} makes $(f\star\chi)(h+m) = \sum_{n\le m}f(n)\chi(h+m-n)$ a genuine finite sum (\lean{qConv_apply_of_support});
+without it the \lean{finsum} could have infinite support and be junk. The two absolute-summability hypotheses are what
+Mertens' theorem on Cauchy products needs (Mathlib \lean{tsum_mul_tsum_eq_tsum_sum_range_of_summable_norm}). Same as textbook.
+\end{dictionary}
+\noindent\emph{Proof.} Cauchy product of two absolutely convergent series.
+\begin{physics}
+Multiplying a torus amplitude by an Eisenstein series (as Zhu's recursion does) is, on coefficients, a convolution of state
+counts.
+\end{physics}
+\begin{status}
+Unconditional beyond hypotheses; standard axioms.
+\end{status}
+
+\begin{theorem}[Linearity, rebasing, leading coefficient]\label{l14:thm:qevallin}
+(i) Evaluation is additive and commutes with finite sums where the series converge, and is homogeneous unconditionally.
+(ii) $(D\chi)^{\C}_h = (2\pi i)^{-1}\frac{d}{dz}\chi^{\C}_h$ under the growth hypothesis.
+(iii) If $\chi(d+s) = 0$ for $s<k$ and $\chi$ is summable at $\tau$ along $d$, then $\chi_d(\tau) = \chi_{d+k}(\tau)$.
+(iv) If $\|\chi(e_0+n)\|$ is subexponential and $\chi_{e_0}(it) = 0$ for all $t>0$, then $\chi(e_0) = 0$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak QEvalLinear.lean}.
+\begin{leancode}
+theorem qEvalC_finsum {ι : Type*} (g : ι → FormalQSeries) (h : ℂ) {z : ℂ}
+    (hfin : (Function.support g).Finite)
+    (hsum : ∀ i, Summable (fun n : ℕ => qTerm (g i) h n z)) :
+    qEvalC (∑ᶠ i, g i) h z = ∑ᶠ i, qEvalC (g i) h z
+
+theorem qEvalC_qDeriv (χ : FormalQSeries) (h : ℂ)
+    (hsub : Subexponential (fun n : ℕ => ‖χ (h + (n : ℂ))‖)) {z : ℂ} (hz : z ∈ imGT 0) :
+    qEvalC (qDeriv χ) h z
+      = (2 * (Real.pi : ℂ) * Complex.I)⁻¹ * _root_.deriv (qEvalC χ h) z
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak QEvalShift.lean}.
+\begin{leancode}
+theorem qEvalAt_shift (χ : FormalQSeries) (d : ℂ) (k : ℕ) (τ : UpperHalfPlane)
+    (hsum : QSummableAt χ d τ) (hvan : ∀ s : ℕ, s < k → χ (d + (s : ℂ)) = 0) :
+    qEvalAt χ d τ = qEvalAt χ (d + (k : ℂ)) τ
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak LeadingCoeff.lean}.
+\begin{leancode}
+theorem leading_coeff_eq_zero_of_qEvalAt_imAxis_eq_zero (χ : FormalQSeries) (e₀ : ℂ)
+    (hsub : Subexponential (fun n : ℕ => ‖χ (e₀ + (n : ℂ))‖))
+    (hzero : ∀ (t : ℝ) (ht : 0 < t), qEvalAt χ e₀ (imAxis t ht) = 0) :
+    χ e₀ = 0
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak TraceNonvanish.lean} (a Chapter~\ref{ch:L15} file).
+\begin{leancode}
+noncomputable def imAxis (t : ℝ) (ht : 0 < t) : UpperHalfPlane :=
+  ⟨Complex.I * (t : ℂ), by simp [ht]⟩
+\end{leancode}
+\begin{dictionary}
+(i) \lean{qEvalC_finsum}: \lean{(Function.support g).Finite} says only finitely many $g_i$ are nonzero, so both
+\lean{finsum}s are honest finite sums; summability of each term series is required because \lean{tsum} is additive only on
+summable families. \lean{qEvalAt_finsetSum} (\leanpath{QEvalLinearity.lean}) is the same for \lean{qEvalAt} and a
+\lean{Finset}. (iii) \lean{qEvalAt_shift}: the summability hypothesis is needed to split off finitely many terms. Because the
+library's progressions are rigid, rebasing is what allows comparison of characters of modules whose weights differ by
+integers. (iv) \lean{imAxis t} is $\tau = it$, where $q = e^{-2\pi t}\in(0,1)$. The conclusion is only about the
+\emph{leading} coefficient; iterating it (with (iii)) gives uniqueness of all coefficients. The hypothesis \lean{hzero}
+quantifies over the whole imaginary axis, which is strictly more than needed (a sequence $t\to\infty$ suffices), so the
+theorem is slightly weaker than it could be but adequate.
+\end{dictionary}
+\noindent\emph{Proof of (iv).} On the imaginary axis $q = \rho\in(0,1)$ is real; $0 = \chi(e_0) + \sum_{n\ge1}\chi(e_0+n)\rho^n$
+and the tail is $\le\rho\,C$ for $\rho\le\frac12$, with $C = \sum_n|\chi(e_0+n+1)|2^{-n}<\infty$. Let $\rho\to0$. No identity
+theorem is needed.
+\begin{physics}
+(iv) is the elementary form of ``the low-temperature limit of the partition function sees the ground state'': as $t\to\infty$
+only the lowest level survives. It is used to prove linear independence of characters of inequivalent sectors (Zhu's
+Theorem~5.3.3, Chapter~\ref{ch:L15}).
+\end{physics}
+\begin{status}
+All four unconditional beyond hypotheses; standard axioms.
+\end{status}
+
+\subsection{The \texorpdfstring{$T$}{T}-transformation, analytically}
+
+\begin{definition}[Modular data; $T$-entries]\label{l14:def:moddata}
+For a finite family $(M_i)_{i\in\iota}$ of irreducible $V$-modules with conformal weights $h_i$, a \emph{modular datum} is a
+group homomorphism $\rho:\lfourteenSL\to\mathrm{Mat}_\iota(\C)$ (multiplicative) together with a matrix $\rho_S$ such that
+$\rho(S) = \rho_S$ and $\rho(T) = \mathrm{diag}\bigl(e^{2\pi i(h_i-c/24)}\bigr)$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak ZhuTheorem.lean} (a Chapter~\ref{ch:L15} file).
+\begin{leancode}
+noncomputable def modularTEntry (W : VertexOperatorAlgebra 𝒱) (h : ℂ) : ℂ :=
+  Complex.exp (2 * (Real.pi : ℂ) * Complex.I * (h - W.centralCharge / 24))
+
+noncomputable def modularRepT {ι : Type*} [DecidableEq ι] (W : VertexOperatorAlgebra 𝒱)
+    (h : ι → ℂ) : ι → ι → ℂ :=
+  fun i j => if i = j then modularTEntry W (h i) else 0
+
+structure ModularData (W : VertexOperatorAlgebra 𝒱) (ι : Type*) [Fintype ι] [DecidableEq ι] where
+  Mfam : ι → IrrModule W
+  h : ι → ℂ
+  hasWeight : ∀ i, HasConformalWeight (Mfam i).isMod (h i)
+  rep : Matrix.SpecialLinearGroup (Fin 2) ℤ →* Matrix ι ι ℂ
+  repS : ι → ι → ℂ
+  rep_S : rep ModularGroup.S = Matrix.of repS
+  rep_T : rep ModularGroup.T = Matrix.of (modularRepT W h)
+\end{leancode}
+\begin{dictionary}
+\lean{IrrModule W} bundles an irreducible ordinary module (carrier, structure, irreducibility; \leanpath{VOA/\allowbreak Modules/\allowbreak Rationality.lean});
+\lean{HasConformalWeight} is Definition~\ref{l12:def:lowest} ($M_h\neq0$ and all weights in $h+\N$). \lean{→*} is a monoid
+homomorphism, i.e.\ a representation of $\lfourteenSL$ on $\C^\iota$. \lean{ModularData} contains \emph{no} link between
+$\rho$ and the characters; that link is the proposition \lean{ZhuModularityAnalytic} (Chapter~\ref{ch:L15}). Note that
+$\rho(T)$ is pinned but $\rho_S$ is free data. A \lean{ModularData} need not exist for an arbitrary weight vector: $\rho$
+must be a homomorphism, so $\rho(T)$ must be compatible with the relations of $\lfourteenSL$ for some $\rho(S)$. The interesting objects are those produced by Zhu's theorem.
+\end{dictionary}
+\begin{physics}
+A modular datum is the data of a rational CFT's modular tensor category at the level of the torus: the $T$-matrix (spins and central charge) and the $S$-matrix (exchange of space and time), forming a representation of the mapping class group $\lfourteenSL$ of the torus.
+\end{physics}
+
+\begin{theorem}[Zhu's law on the translation subgroup, analytically]\label{l14:thm:Tanalytic}
+For every modular datum $D$, every $i$, every $k\in\N$ and $\tau'=\tau+k$:
+$\chi_{M_i}(\tau') = \sum_j\rho(T^k)_{ij}\chi_{M_j}(\tau)$, where $\chi_{M_i}$ is the evaluated character based at
+$h_i - c/24$. No convergence hypothesis is needed.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak ConvergenceBridge.lean}.
+\begin{leancode}
+theorem zhu_modularity_T_pow_analytic {ι : Type*} [Fintype ι] [DecidableEq ι]
+    {W : VertexOperatorAlgebra 𝒱} (D : ModularData W ι) (i : ι) (k : ℕ)
+    {τ τ' : UpperHalfPlane} (hτ : (τ' : ℂ) = (τ : ℂ) + k) :
+    qEvalAt (gradedDim (D.Mfam i).isMod) (D.h i - W.centralCharge / 24) τ'
+      = ∑ j : ι, D.rep (ModularGroup.T ^ k) i j
+          * qEvalAt (gradedDim (D.Mfam j).isMod) (D.h i - W.centralCharge / 24) τ
+\end{leancode}
+\begin{dictionary}
+The right side evaluates \emph{every} $\chi_{M_j}$ at the base point of $M_i$; this is harmless because $\rho(T^k)$ is
+diagonal and only $j=i$ survives. \textbf{Why no summability is needed:} $\tau\mapsto\tau+k$ multiplies each term
+$\chi(h+n)q^{h+n}$ by the same phase $e^{2\pi ikh}$, so the identity holds termwise, and \lean{tsum} commutes with constant
+multiples even for non-summable families (both sides junk-$0$ together). Hence this is a true statement also when the
+character diverges; it is fully meaningful when it converges. The companion \lean{zhu_modularity_T_analytic} (same file, $k=1$)
+is stated with an arbitrary base point $h$ for all $j$, which is also true by the same termwise argument.
+\end{dictionary}
+\noindent\emph{Proof.} \lean{qEvalAt_translate} identifies $\tau\mapsto\tau+1$ with the formal $q$-shift $q^e\mapsto
+e^{2\pi ie}q^e$; the character's $T$-periodicity (Theorem~\ref{l12:thm:Tperiod}) says this is multiplication by
+$e^{2\pi i(h_i-c/24)}$; and $\rho(T)^k$ is diagonal (\lean{Matrix.diagonal_pow}).
+\begin{physics}
+The Dehn twist $T$ acts on each sector by its spin phase $e^{2\pi i(h-c/24)}$; this is the trivially true half of modular
+invariance, valid for any theory with a well-defined $L_0$.
+\end{physics}
+\begin{status}
+Unconditional. Standard axioms.
+\end{status}
+
+%======================================================================
+\section{Formal \texorpdfstring{$q$}{q}-series as a module over \texorpdfstring{$\C[[q]]$}{C[[q]]}}\label{l14:sec:qconvmodule}
+%======================================================================
+
+The convolution $\star$ of Definition~\ref{l14:def:qConv} is the only multiplication on \lean{FormalQSeries}. For it to make
+``the $R$-span of the block values'' a meaningful object, it must be an \emph{action} of a ring.
+
+\begin{definition}[Series based at $h$; the {$\C[[q]]$}-action]\label{l14:def:QSeriesAt}
+$\mathcal Q_h$ is the subspace of formal $q$-series supported on $h+\N$ (i.e.\ $\chi(e) = 0$ unless $e = h+n$, $n\in\N$). For
+$F = \sum F_nq^n\in\C[[q]]$ and $\chi\in\mathcal Q_h$, $F\cdot\chi := (n\mapsto F_n)\star\chi$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak QConvModule.lean}.
+\begin{leancode}
+def QSeriesAt (h : ℂ) : Submodule ℂ FormalQSeries where
+  carrier := {χ : FormalQSeries | ∀ e : ℂ, (∀ n : ℕ, e ≠ h + (n : ℂ)) → χ e = 0}
+
+noncomputable def psSMul (F : PowerSeries ℂ) (χ : FormalQSeries) : FormalQSeries :=
+  qConv (fun n => PowerSeries.coeff n F) χ
+
+theorem psSMul_mul (F G : PowerSeries ℂ) {h : ℂ} {χ : FormalQSeries} (hχ : χ ∈ QSeriesAt h) :
+    psSMul (F * G) χ = psSMul F (psSMul G χ)
+
+noncomputable instance instModulePowerSeriesQSeriesAt (h : ℂ) :
+    Module (PowerSeries ℂ) ↥(QSeriesAt h) where
+\end{leancode}
+\begin{dictionary}
+Only the carrier of \lean{QSeriesAt} is quoted; closure under $+$, $0$, scalars is proved in the omitted fields.
+\lean{↥(QSeriesAt h)} is the subspace regarded as a type. The \lean{instance} line is quoted without its six proof fields
+(\lean{one_smul}, \lean{mul_smul}, \dots), which are discharged by \lean{psSMul_one}, \lean{psSMul_mul}, etc.
+\textbf{Why the support condition is on all of $\C$.} The library notes (and we confirm) that requiring vanishing only at
+$h+i$, $i<0$, is \emph{not} enough: it constrains $\chi$ only on the coset $h+\Z$, and at $e\notin h+\Z$ the \lean{finsum}
+$\sum_n F_n\chi(e-n)$ may have infinite support (junk value $0$), destroying associativity. With the support on $h+\N$ every
+convolution is a finite sum $\sum_{n\le N}F_n\chi(h+N-n)$. Faithful.
+\end{dictionary}
+\noindent\emph{Proof.} Unitality is immediate; associativity is the re-indexing of $\sum_{n+k\le N}$ by rows versus
+antidiagonals (\lean{sum_triangle_swap}), i.e.\ associativity of the Cauchy product.
+\begin{physics}
+$\mathcal Q_h$ is the space of formal ``partition functions'' of sectors with ground-state energy $h$, and $\C[[q]]$ acts by
+multiplication with $q$-series (e.g.\ Eisenstein series), exactly as in the coefficient form of a Ward identity.
+\end{physics}
+\begin{status}
+Unconditional. \texttt{\#print axioms psSMul\_mul}: standard three.
+\end{status}
+
+\begin{theorem}[The Euler operator is a derivation over the action]\label{l14:thm:productrule}
+For $\chi\in\mathcal Q_h$ and $F\in\C[[q]]$: $D(F\cdot\chi) = F\cdot D\chi + (\theta F)\cdot\chi$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak QDerivProductRule.lean}.
+\begin{leancode}
+theorem qDeriv_psSMul (F : PowerSeries ℂ) {h : ℂ} {χ : FormalQSeries} (hχ : χ ∈ QSeriesAt h) :
+    qDeriv (psSMul F χ) = psSMul F (qDeriv χ) + psSMul (theta F) χ
+\end{leancode}
+\noindent\emph{Proof.} At $h+N$: $(h+N)F_n\chi(h+N-n) = F_n(h+N-n)\chi(h+N-n) + nF_n\chi(h+N-n)$.
+\begin{dictionary}
+Exactly the Leibniz rule for $q\frac d{dq}$. The docstring's point: the coefficient ring of Zhu's formal ODE need not be
+closed under $\theta$ (which would require Ramanujan's identities, e.g.\ $\theta E_2 = (E_2^2-E_4)/12$), because the
+downstream consumer only needs \emph{subexponential} coefficients, and $\mathcal S$ is $\theta$-stable
+(Theorem~\ref{l14:thm:subexpclosure}). This is a genuine simplification, correctly argued.
+\end{dictionary}
+\begin{physics}
+Differentiating a product of an Eisenstein coefficient and an amplitude: the $E_2$-type terms that appear are the
+non-covariant pieces that the Serre derivative reorganises; for the growth estimate they are harmless.
+\end{physics}
+\begin{status}
+Unconditional; standard axioms.
+\end{status}
+
+%======================================================================
+\section{The \texorpdfstring{$q$}{q}-expansion bridge and the Noetherian coefficient ring}\label{l14:sec:qexp}
+%======================================================================
+
+\begin{definition}[Functions with analytic cusp function; the $q$-expansion map]\label{l14:def:cuspAnalytic}
+A $1$-periodic $f:\lfourteenH\to\C$ has a \emph{cusp function} $\tilde f$ with $f(\tau) = \tilde f(e^{2\pi i\tau})$ (Mathlib
+\lean{cuspFunction 1 f}, defined on the punctured disc and extended to $0$ by its limit). Let $\mathcal C$ be the set of $f$
+whose cusp function is analytic at $0$; its \emph{$q$-expansion} is the Taylor series of $\tilde f$ at $0$ (Mathlib
+\lean{qExpansion 1 f}).
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak QExpansionBridge.lean}.
+\begin{leancode}
+noncomputable def CuspAnalytic : Subalgebra ℂ (UpperHalfPlane → ℂ) where
+  carrier := {f : UpperHalfPlane → ℂ | AnalyticAt ℂ (cuspFunction 1 f) 0}
+
+noncomputable def qExpansionAlgHom : CuspAnalytic →ₐ[ℂ] PowerSeries ℂ where
+  toFun f := qExpansion 1 (f : UpperHalfPlane → ℂ)
+  map_one' := qExpansion_one 1
+  map_mul' f g := qExpansion_mul f.2 g.2
+  map_zero' := qExpansion_zero 1
+  map_add' f g := qExpansion_add f.2 g.2
+\end{leancode}
+\begin{dictionary}
+\lean{AnalyticAt ℂ g 0}: $g$ is given by a convergent power series near $0$. Mathlib's \lean{qExpansion} is defined for any
+function; it is a ring homomorphism only where the cusp functions are analytic (\lean{qExpansion_mul} needs both), which is why
+the domain is restricted to $\mathcal C$. The quoted carrier omits closure proofs; \lean{qExpansionAlgHom} is quoted without
+its \lean{commutes'} field. This is the statement ``$q$-expansion turns pointwise products into Cauchy products''.
+\end{dictionary}
+\begin{physics}
+The partition function as a function of the torus versus its list of state counts: multiplication of partition functions
+(stacking decoupled theories) corresponds to convolution of degeneracies.
+\end{physics}
+
+\begin{theorem}[Formal and analytic Eisenstein coefficients agree]\label{l14:thm:qexpzhuG}
+For $j\ge2$: the $q$-expansion of $\tau\mapsto\mathcal G_{2j}(\tau)$ is $\sum_mg_j(m)q^m$; the $q$-expansion coefficients of
+$E_{2j}$ are $g_j(m)/g_j(0)$; and $\sum g_j(m)q^m$ lies in the subalgebra $\C[\widehat{E}_4,\widehat{E}_6]\subseteq\C[[q]]$
+generated by the $q$-expansions of $E_4,E_6$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak QExpansionBridge.lean}.
+\begin{leancode}
+theorem qExpansion_zhuGC {j : ℕ} (hj : 2 ≤ j) :
+    qExpansion 1 (fun z : UpperHalfPlane => zhuGC j (z : ℂ)) = PowerSeries.mk (zhuG j)
+
+noncomputable def E46Series : Subalgebra ℂ (PowerSeries ℂ) :=
+  Algebra.adjoin ℂ ({qExpansion 1 (⇑ModularForm.E₄ : UpperHalfPlane → ℂ),
+    qExpansion 1 (⇑ModularForm.E₆ : UpperHalfPlane → ℂ)} : Set (PowerSeries ℂ))
+
+theorem mk_zhuG_mem_E46Series {j : ℕ} (hj : 2 ≤ j) :
+    PowerSeries.mk (zhuG j) ∈ E46Series
+\end{leancode}
+\begin{dictionary}
+This is the honest formal $\leftrightarrow$ analytic dictionary for the Eisenstein coefficients: the \emph{formal} sequence
+\lean{zhuG j} (a definition) is proved to be the Fourier coefficient sequence of the \emph{holomorphic} function
+\lean{zhuGC j}, by Mathlib's uniqueness of $q$-expansions (\lean{ModularFormClass.qExpansion_coeff_unique}). Then
+generation (Theorem~\ref{l14:thm:levelone}) is transported to $\C[[q]]$ along \lean{qExpansionAlgHom}. Faithful.
+\end{dictionary}
+\noindent\emph{Proof.} $\mathcal G_{2j}$ has the convergent expansion $\sum g_j(m)q^m$ on $\lfourteenH$
+(\lean{hasSum_zhuG}); a function with a convergent $q$-expansion has that expansion as its \lean{qExpansion}. For membership:
+$\mathcal G_{2j}\in\lfourteenE\subseteq\mathcal C$ and \lean{qExpansionAlgHom} maps $\lfourteenE$ into \lean{E46Series}.
+\begin{physics}
+The Eisenstein coefficients of Zhu's recursion are, as formal series, polynomials in the $q$-expansions of $E_4$, $E_6$:
+the formal recursion lives over a finitely generated ring.
+\end{physics}
+\begin{status}
+Unconditional; standard axioms.
+\end{status}
+
+\begin{definition}[Zhu's quasimodular coefficient ring]\label{l14:def:GSeries}
+$\lfourteenGS = \C[\mathcal G_2,\mathcal G_4,\mathcal G_6]\subseteq\C[[q]]$, the subalgebra generated by the three formal
+series $\sum_mg_j(m)q^m$, $j=1,2,3$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak QExpansionBridge.lean}.
+\begin{leancode}
+noncomputable def GSeries : Subalgebra ℂ (PowerSeries ℂ) :=
+  Algebra.adjoin ℂ ({PowerSeries.mk (zhuG 1), PowerSeries.mk (zhuG 2),
+    PowerSeries.mk (zhuG 3)} : Set (PowerSeries ℂ))
+
+theorem mk_zhuG_mem_GSeries {j : ℕ} (hj : 1 ≤ j) :
+    PowerSeries.mk (zhuG j) ∈ GSeries
+
+theorem isNoetherianRing_GSeries : IsNoetherianRing GSeries
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SubexpSeriesRing.lean}.
+\begin{leancode}
+theorem subexponential_coeff_of_mem_GSeries {F : PowerSeries ℂ} (hF : F ∈ GSeries) :
+    Subexponential fun n : ℕ => ‖PowerSeries.coeff n F‖
+\end{leancode}
+\begin{dictionary}
+\lean{IsNoetherianRing}: every ideal finitely generated (Hilbert's basis theorem, via \lean{Algebra.FiniteType}). The
+\emph{formal} $\mathcal G_2$ is included as a generator because $\mathcal G_2$ is not a polynomial in $E_4$, $E_6$. All
+$\mathcal G_{2j}$, $j\ge1$, lie in $\lfourteenGS$, every element of $\lfourteenGS$ has subexponential coefficients
+($\lfourteenGS\le\mathcal S$ because $|g_j(n)|\le C+Cn^{2j}$). Faithful; these are exactly the properties used in
+Chapter~\ref{ch:L15}.
+\end{dictionary}
+\begin{physics}
+$\C[E_2,E_4,E_6]$ is the ring of quasimodular forms, the natural home of torus amplitudes with stress-tensor insertions
+(Kaneko--Zagier). Its Noetherianity is what ensures that Zhu's infinitely many relations reduce to finitely many, i.e.\ that
+torus characters satisfy a differential equation of finite order.
+\end{physics}
+\begin{status}
+Unconditional; standard axioms (\lean{mk_zhuG_mem_GSeries}, \lean{isNoetherianRing_GSeries},
+\lean{subexponential_coeff_of_mem_GSeries}).
+\end{status}
+
+%======================================================================
+\section{The Serre derivative}\label{l14:sec:serre}
+%======================================================================
+
+\begin{definition}[Serre derivative]\label{l14:def:serre}
+For $k\in\Z$ and $f:\C\to\C$: $\partial_kf = \frac{1}{2\pi i}f' + \frac{k}{(2\pi i)^2}G_2f$. On $\lfourteenH$, with
+$G_2 = \frac{\pi^2}3E_2$, this is $\partial_kf = q\frac{df}{dq} - \frac{k}{12}E_2f$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SerreDerivative.lean}.
+\begin{leancode}
+noncomputable def serreDerivC (k : ℤ) (f : ℂ → ℂ) (z : ℂ) : ℂ :=
+  (2 * (Real.pi : ℂ) * Complex.I)⁻¹ * _root_.deriv f z
+    + (k : ℂ) * ((2 * (Real.pi : ℂ) * Complex.I)⁻¹) ^ 2 * (G2C z * f z)
+\end{leancode}
+\begin{dictionary}
+$(2\pi i)^{-1}\frac{d}{dz} = q\frac{d}{dq}$. $(2\pi i)^{-2} = -\frac1{4\pi^2}$, so $\frac{k}{(2\pi i)^2}G_2 = -\frac{k}{4\pi^2}\cdot
+\frac{\pi^2}{3}E_2 = -\frac k{12}E_2$: the classical $\vartheta_k = D - \frac k{12}E_2$ (Zagier; Kaneko--Zagier), and the same
+as Mathlib's \lean{serreDerivative} (which is defined on \lean{ℍ → ℂ}). The docstring's claim that the coefficient
+$k(2\pi i)^{-2}$ is \emph{forced} by equivariance is correct: by Theorems~\ref{l14:thm:slashderiv} and~\ref{l14:thm:G2slash}
+the anomalies cancel for exactly this coefficient.
+\end{dictionary}
+\begin{physics}
+The Serre derivative is the covariant derivative on the moduli space of tori; $E_2$ is the connection. It is the operation of
+inserting the zero mode $L_{[0]}$ of the \emph{torus} stress tensor (Zhu's square-bracket $\tilde\omega = \omega -
+\frac c{24}\mathbf 1$): this is the content of Zhu's $\omega$-block condition, where the $E_2$ term is precisely the $j=1$
+Eisenstein coefficient (Theorem~\ref{l14:thm:zhuGCone}). In Mathur--Mukhi--Sen's classification of rational CFTs, characters
+satisfy MLDEs $\bigl[\partial^n + \sum_r\phi_{2r}\partial^{n-r}\bigr]\chi = 0$ with $\partial^n = \partial_{2n-2}\circ\cdots
+\circ\partial_0$ and $\phi_{2r}\in M_{2r}$; the second-order case with $\phi_4 = \mu E_4$ produces the famous list
+$c = -\frac{22}5,1,2,\frac{14}5,4,\frac{26}5,6,7,\frac{38}5,8$ (Lee--Yang and the Deligne series of WZW models; quoted from
+the literature, not formalised).
+\end{physics}
+
+\begin{theorem}[Equivariance of the Serre derivative]\label{l14:thm:serreslash}
+For $k\in\Z$, $\gamma\in\lfourteenSL$, $z\in\lfourteenH$, and $f$ differentiable at $\gamma z$:
+$(\partial_kf)|_{k+2}\gamma\,(z) = \partial_k(f|_k\gamma)(z)$. (No modularity of $f$ is required. This is equivariance only:
+it does \emph{not} show that $\partial_k$ maps $M_k$ into $M_{k+2}$, which also needs holomorphy at the cusp; that is
+Serre closure, Definition~\ref{l14:def:serreclosed}, proved separately in \leanpath{EisensteinSerreClosure.lean}.)
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SerreDerivative.lean}.
+\begin{leancode}
+theorem serreDerivC_slashC (k : ℤ) (γ : SL(2, ℤ)) (f : ℂ → ℂ) {z : ℂ} (hz : z ∈ imGT 0)
+    (hf : DifferentiableAt ℂ f (mobiusC γ z)) :
+    slashC (k + 2) γ (serreDerivC k f) z = serreDerivC k (slashC k γ f) z
+\end{leancode}
+\begin{dictionary}
+Pointwise in $\gamma$ and $z$; differentiability at one point. No modularity of $f$ is assumed: the statement is an identity of
+operators, and it implies at once that $\partial_k$ maps weight-$k$ slash-invariant functions to weight-$(k+2)$ ones.
+\textbf{Not in Mathlib}, which defines \lean{serreDerivative} but proves no equivariance; this is the library's own theorem.
+It does \emph{not} prove holomorphy at the cusp of $\partial_kf$, which is why Serre closure (\lean{E46SerreClosed}) is
+a separate statement, proved separately in \leanpath{EisensteinSerreClosure.lean} (\lean{e46SerreClosed}). Same as the textbook (Zagier, Prop.~5 for the case of modular $f$).
+\end{dictionary}
+\noindent\emph{Proof.} Split $\partial_kf$ into its two terms. The derivative term picks up the anomaly
+$\frac{k}{2\pi i}\frac{c}{cz+d}(f|_k\gamma)$ (Theorem~\ref{l14:thm:slashderiv}); the $G_2$ term picks up
+$\frac{k}{(2\pi i)^2}(-\frac{2\pi ic}{cz+d})(f|_k\gamma)$ (Theorem~\ref{l14:thm:G2slash}); they cancel.
+\begin{physics}
+This one computation is ``the only genuine computation in Zhu's $S$-law'' (library docstring), and the physical statement is
+that the trace of the torus stress-tensor zero mode is a modular-covariant insertion: the conformal anomaly of $\partial_\tau$
+and the anomaly of $E_2$ cancel exactly. It is what makes MLDEs $\lfourteenSL$-covariant and hence what forces the solution
+space (the characters of a RCFT) to carry a representation of $\lfourteenSL$.
+\end{physics}
+\begin{status}
+Unconditional; \texttt{\#print axioms serreDerivC\_slashC}: standard three. Every declaration in this section is pointwise in
+$\gamma$, so it restricts verbatim to any subgroup (Section~\ref{l14:sec:theta}).
+\end{status}
+
+\begin{proposition}[Leibniz rule]\label{l14:prop:serremul}
+$\partial_{k+l}(fg) = (\partial_kf)g + f(\partial_lg)$ at points where $f$, $g$ are differentiable
+(\lean{serreDerivC_mul}, \leanpath{EisensteinRamanujan.lean}); $\partial_k$ is additive and $\C$-linear
+(\lean{serreDerivC_add}, \lean{serreDerivC_smul}).
+\end{proposition}
+\noindent\emph{Proof.} The product rule; the $G_2$ terms add up because $(k+l) = k + l$. Unconditional, standard axioms.
+\begin{physics}
+Inserting the covariant torus derivative into a product of amplitudes obeys the Leibniz rule, with weights adding; this is what makes the coefficient algebra of MLDEs a differential ring.
+\end{physics}
+
+%======================================================================
+\section{Growth of degeneracies from ordered spanning sets}\label{l14:sec:growth}
+%======================================================================
+
+\paragraph{Why growth estimates.} A character or one-point function is first constructed as a formal series. To speak of its
+modular transformation one must evaluate it at every $\tau\in\lfourteenH$, and by Theorems~\ref{l14:thm:summable}
+and~\ref{l14:thm:qsummable} this is possible exactly when the coefficients (the degeneracies $\dim M_{h+n}$, or the traces
+$\tr_{M_{h+n}}o(v)$) are subexponential: for every $r>1$, bounded by $Cr^n$. Holomorphy and term-by-term differentiation
+(Theorem~\ref{l14:thm:holo}) then come for free. Nothing in the VOA axioms gives such a bound directly; the library has two
+routes to it, and this section and the next develop them. \emph{Route 1} (this section): a finite ordered spanning set,
+available under $C_2$-cofiniteness, bounds $\dim M_{h+n}$ by the number of states of finitely many free bosons, which grows like
+$e^{c\sqrt n}$, a subexponential rate. \emph{Route 2} (Section~\ref{l14:sec:ode}): if the one-point functions satisfy a formal
+modular differential equation with subexponential coefficients, a majorant induction transfers the bound from the
+coefficients to the solution. Route 2 is needed for the traces $\tr\,o(v)$ with $v\neq\mathbf 1$, which are not dimensions.
+
+\begin{definition}[Coloured partition count]\label{l14:def:pcount}
+For $g,n\in\N$, $p_g(\le n)$ is the number of functions $\mu:\{1..g\}\times\{1..n\}\to\{0..n\}$ with
+$\sum_{(i,m)}\mu(i,m)\,m\le n$: the number of $g$-coloured partitions of integers $\le n$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak GrowthBound.lean}.
+\begin{leancode}
+def partMultsLe (g n : ℕ) : Finset (Fin g × Fin n → Fin (n + 1)) :=
+  Finset.univ.filter (fun μ => ∑ p, (μ p : ℕ) * (p.2 + 1) ≤ n)
+
+def pcountLe (g n : ℕ) : ℕ := (partMultsLe g n).card
+\end{leancode}
+\begin{dictionary}
+\lean{Fin n} $=\{0,\dots,n-1\}$; the part size is \lean{p.2 + 1} $\in\{1,\dots,n\}$, the multiplicity \lean{μ p}
+$\in\{0,\dots,n\}$ (enough, since a multiplicity exceeding $n$ is impossible when the total is $\le n$). So the cardinality is
+exactly the number of $g$-coloured partitions of size $\le n$.
+\end{dictionary}
+\begin{physics}
+$p_g(\le n)$ counts the states of $g$ free chiral bosons up to level $n$; it is the reference count against which degeneracies of any finitely strongly generated theory are bounded.
+\end{physics}
+
+\begin{theorem}[The generating-function bound]\label{l14:thm:pcount}
+For $0<t<1$: $p_g(\le n)\,t^n\le\exp\!\bigl(g\,t/(1-t)^2\bigr)$. Hence $n\mapsto p_g(\le n)$ is subexponential.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak GrowthBound.lean}.
+\begin{leancode}
+theorem pcountLe_mul_pow_le (g n : ℕ) {t : ℝ} (ht0 : 0 < t) (ht1 : t < 1) :
+    (pcountLe g n : ℝ) * t ^ n ≤ Real.exp (g * (t / (1 - t) ^ 2))
+
+theorem pcountLe_subexponential (g : ℕ) : Subexponential (fun n => (pcountLe g n : ℝ))
+\end{leancode}
+\noindent\emph{Proof.} $p_g(\le n)t^n\le\sum_\mu t^{|\mu|}\le\prod_{k=1}^n(1-t^k)^{-g}\le\exp\bigl(g\sum_k\frac{t^k}{1-t^k}\bigr)$
+$\le\exp(gt/(1-t)^2)$, using $(1-x)^{-1}\le e^{x/(1-x)}$. A uniform bound $a_nt^n\le K(t)$ for every $t\in(0,1)$ is equivalent
+to subexponentiality (\lean{Subexponential.of_mul_pow_le}, with $t = r^{-1}$).
+\begin{physics}
+$\prod(1-q^k)^{-g}$ is the partition function of $g$ free chiral bosons (up to $q^{-g/24}$), and this is the elementary
+(non-modular) half of Cardy's estimate. The true asymptotic $e^{\pi\sqrt{2gn/3}}$ needs the $S$-transformation of $\eta$;
+here only subexponentiality is needed and the crude bound suffices.
+\end{physics}
+\begin{status}
+Unconditional; standard axioms.
+\end{status}
+
+\begin{definition}[PBW and ordered spanning data]\label{l14:def:pbw}
+For a module $N$ with base weight $h$: \emph{PBW spanning data} are finitely many generator weights $w_1,\dots,w_g\ge1$,
+finitely many bottom weights $b_1,\dots,b_B\in\N$, and vectors $x_{\mu,j}$, indexed by multiplicity functions
+$\mu:\{1..g\}\times\N\to\N$ of finite support and $j\le B$, with $x_{\mu,j}\in M_{h + b_j + \sum\mu(i,m)(w_i+m)}$, which span
+$M$. \emph{Ordered spanning data} supply the $x_{\mu,j}$ as ordered monomials
+$\prod_{(i,m)}(s_i)_{(-m-1)}^{\mu(i,m)}u_j$ in homogeneous generators $s_i\in V_{w_i}$ applied to bottom vectors $u_j$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak GrowthBound.lean}.
+\begin{leancode}
+structure PBWSpanningData (N : OrdVModule W M) (h : ℂ) where
+  g : ℕ
+  wt : Fin g → ℕ
+  wt_pos : ∀ i, 1 ≤ wt i
+  b : ℕ
+  botWt : Fin b → ℕ
+  mono : (Fin g × ℕ →₀ ℕ) → Fin b → M
+  mono_mem : ∀ μ j, mono μ j ∈ N.weight (h + (botWt j : ℂ) + (multWDeg wt μ : ℂ))
+  spans : (⊤ : Submodule ℂ M) = Submodule.span ℂ {x | ∃ μ j, x = mono μ j}
+
+def BuhlSpanning (W : VertexOperatorAlgebra 𝒱) : Prop :=
+  ∀ (M : Type u) [AddCommGroup M] [Module ℂ M] (N : OrdVModule W M) (h : ℂ),
+    HasConformalWeight N h → Nonempty (OrderedSpanningData N h)
+\end{leancode}
+\begin{dictionary}
+\lean{Fin g × ℕ →₀ ℕ} is a finitely supported function $\mu$; \lean{multWDeg wt μ} $=\sum\mu(i,m)(w_i+m)$. \lean{N.weight α}
+is the weight space $M_\alpha$. \lean{OrderedSpanningData} (same file) has the same shape with \lean{mono μ j} replaced by
+\lean{orderedMonomial N gen μ (bot j)}, factors applied in lexicographic order of $(i,m)$; \lean{OrderedSpanningData.toPBW}
+converts. \textbf{Weaker than Buhl / Gaberdiel--Neitzke.} No strict decrease of mode indices is required: repetitions are
+allowed. This suffices for growth (coloured partitions allow repeats) but not for $C_m$-cofiniteness, as the library itself
+warns. \textbf{Stronger than Buhl's theorem as a hypothesis.} \lean{BuhlSpanning W} asks for ordered spanning data for
+\emph{every} module with a conformal weight, with a \emph{finite} bottom family; Buhl's theorem concerns modules generated by
+one vector. Chapter~\ref{ch:L15} proves the adjoint case unconditionally and the module case under an explicit finite
+lowest-weight generation hypothesis (\leanpath{BuhlSpanningC2.lean}); the ``Residual'' section of
+\leanpath{GrowthBound.lean} is partly stale on this point (documentation only).
+\end{dictionary}
+\begin{physics}
+An ordered (PBW) spanning set realises the module as a quotient of a Fock space of $g$ generalised oscillators built on finitely
+many primaries; state counting is then bounded by that of $g$ free bosons.
+\end{physics}
+
+\begin{theorem}[PBW spanning data give the growth datum]\label{l14:thm:pbwgrowth}
+Given PBW spanning data for $N$ at $h$: $\dim M_{h+n}\le B\cdot p_g(\le n)$ for all $n$, hence the graded dimensions are
+subexponential along $h - c/24$. Under \lean{BuhlSpanning}, every module with a conformal weight has subexponential graded
+dimensions.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak GrowthBound.lean}.
+\begin{leancode}
+theorem finrank_weight_le_of_pbw (N : OrdVModule W M) (h : ℂ) (d : PBWSpanningData N h) (n : ℕ) :
+    Module.finrank ℂ (N.weight (h + n)) ≤ d.b * pcountLe d.g n
+
+theorem subexponentialCoeffs_of_pbw (N : OrdVModule W M) (h : ℂ) (d : PBWSpanningData N h) :
+    SubexponentialCoeffs N (h - W.centralCharge / 24)
+
+theorem subexponentialCoeffs_of_buhl {W : VertexOperatorAlgebra 𝒱} (hB : BuhlSpanning W)
+    {M : Type u} [AddCommGroup M] [Module ℂ M] (N : OrdVModule W M) (h : ℂ)
+    (hw : HasConformalWeight N h) : SubexponentialCoeffs N (h - W.centralCharge / 24)
+\end{leancode}
+\begin{dictionary}
+The base point shifts from the $L_0$-weight $h$ to $h - c/24$ because \lean{gradedDim} indexes by $L_0 - c/24$. Since
+\lean{Module.finrank} of an infinite-dimensional space is $0$ (Mathlib), the dimension bound could be vacuous only if weight
+spaces were infinite-dimensional; they are finite-dimensional for every \lean{OrdVModule} (field \lean{finrank}). Faithful.
+\end{dictionary}
+\noindent\emph{Proof.} A spanning vector of weight exactly $h+n$ has $b_j + \sum\mu(i,m)(w_i+m) = n$, hence
+$\sum\mu(i,m)(m+1)\le n$ (as $w_i\ge1$); restrict $\mu$ to the box $\{1..g\}\times\{0..n-1\}$, injective on such $\mu$. Then
+the weight space is spanned by at most $B\cdot p_g(\le n)$ vectors. Theorem~\ref{l14:thm:pcount}.
+\begin{physics}
+Cardy-type growth of degeneracies, in the crude form ``at most free-boson growth'', from a finite set of strong generators.
+\end{physics}
+\begin{status}
+Unconditional (beyond the data); standard axioms (\lean{subexponentialCoeffs_of_buhl} checked).
+\end{status}
+
+%======================================================================
+\section{Formal modular differential equations and the indicial equation}\label{l14:sec:ode}
+%======================================================================
+
+Classically, Zhu proves convergence of one-point functions by showing that they satisfy a linear ODE in $q$ with a regular
+singular point at $q=0$ and then invoking the Frobenius--Fuchs theory. The library replaces the whole theory by its
+\emph{coefficient-estimate half}, which is elementary and is all that is needed for subexponential growth. Mathlib has no
+regular-singular-point theory.
+
+\begin{theorem}[The majorant theorem]\label{l14:thm:majorant}
+Let $\chi_n, a_n, b_n\ge0$ with $a$, $b$ subexponential, let $p_n\to+\infty$, and suppose that for some $N_0$ and all $n\ge N_0$
+\begin{equation*}
+  p_n\,\chi_n \;\le\; \sum_{m<n}a_{n-m}\,\chi_m + b_n.
+\end{equation*}
+Then $\chi$ is subexponential.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak Majorant.lean}.
+\begin{leancode}
+theorem subexponential_of_majorant_recursion {χ a b p : ℕ → ℝ}
+    (hχ0 : ∀ n, 0 ≤ χ n) (ha0 : ∀ n, 0 ≤ a n) (hb0 : ∀ n, 0 ≤ b n)
+    (ha : Subexponential a) (hb : Subexponential b)
+    (hp : Tendsto p atTop atTop) (N₀ : ℕ)
+    (hrec : ∀ n, N₀ ≤ n → p n * χ n ≤ (∑ m ∈ Finset.range n, a (n - m) * χ m) + b n) :
+    Subexponential χ
+\end{leancode}
+\begin{dictionary}
+\lean{Tendsto p atTop atTop}: $p_n\to+\infty$. All hypotheses are visible and are the intended ones. \textbf{Why $p_n\to\infty$
+and not merely $p_n\ge c>0$} (the library's warning, which we verify): to prove $\chi_n\le Kr^n$ for a given $r$ one bounds the
+right side by $(D\theta+1)Kr^n$ with $\theta = \frac{\sigma/r}{1-\sigma/r}$ and $D = D(\sigma)$ from $a_n\le D\sigma^n$
+($1<\sigma<r$); one needs $p_n\ge D\theta+1$, and since $D(\sigma)$ may blow up as $\sigma\to1$ (equivalently as $r\to1$), a
+fixed lower bound on $p$ does not serve every $r$. With $p_n\to\infty$ it suffices to start the induction late enough. The
+finitely many initial values $n<N_0$ (where the recursion may fail, e.g.\ at resonances) are absorbed into $K$.
+\end{dictionary}
+\noindent\emph{Proof.} Fix $r>1$, $\sigma = (1+r)/2$, $t = \sigma/r$. Choose $N\ge N_0$ with $p_n\ge D\theta+1$ for $n\ge N$, and
+$K\ge E$ (the constant of $b$ at $r$) with $\chi_n\le Kr^n$ for $n<N$. Strong induction: for $n\ge N$,
+$p_n\chi_n\le\sum_{m<n}D\sigma^{n-m}Kr^m + Er^n\le(D\theta+1)Kr^n\le p_nKr^n$.
+\begin{physics}
+The majorant method is the elementary core of the statement ``a solution of a Fuchsian ODE in $q$ around a regular singular
+point converges in the largest disc free of other singularities''. For characters the ODE is the MLDE of the theory, and the
+conclusion is that the partition function converges on $|q|<1$: the theory has a finite free energy at every temperature.
+\end{physics}
+\begin{status}
+Unconditional; standard axioms. The docstring's ``not yet connected to a VOA'' is stale: it is connected through
+Theorem~\ref{l14:thm:formalODE} (documentation only).
+\end{status}
+
+\begin{definition}[Indicial polynomial, kernel and divisor]\label{l14:def:indicial}
+For a monic order-$s$ equation $D^sF + \sum_{i<s}g_i(q)D^iF = 0$ with $g_i = \sum_kg_{i,k}q^k$, and an exponent $\lambda$:
+$P(\lambda+n) = (\lambda+n)^s + \sum_{i<s}g_{i,0}(\lambda+n)^i$ (indicial polynomial along $\lambda+\N$),
+$a_k = \sum_{i<s}|g_{i,k}|$ (kernel), and $p_n = |P(\lambda+n)|/(\max(|\lambda|,1)+n)^{s-1}$ (divisor).
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak IndicialRecursion.lean}.
+\begin{leancode}
+noncomputable def indicialP (lam : ℂ) (s : ℕ) (g : ℕ → ℕ → ℂ) (n : ℕ) : ℂ :=
+  (lam + (n : ℂ)) ^ s + ∑ i ∈ Finset.range s, g i 0 * (lam + (n : ℂ)) ^ i
+
+noncomputable def indicialKernel (s : ℕ) (g : ℕ → ℕ → ℂ) (k : ℕ) : ℝ :=
+  ∑ i ∈ Finset.range s, ‖g i k‖
+
+noncomputable def indicialDivisor (lam : ℂ) (s : ℕ) (g : ℕ → ℕ → ℂ) (n : ℕ) : ℝ :=
+  ‖indicialP lam s g n‖ / (max ‖lam‖ 1 + (n : ℝ)) ^ (s - 1)
+\end{leancode}
+\begin{dictionary}
+\lean{g i k} is $g_{i,k}$, the $k$-th coefficient of the $i$-th ODE coefficient. \lean{indicialP} is the classical indicial
+polynomial evaluated at $\lambda+n$; its roots are the Frobenius exponents. The divisor normalisation by $(B+n)^{s-1}$ is the
+device that turns the $m$-dependent weights $(\lambda+m)^i$ into a single factor (see below).
+\end{dictionary}
+\begin{physics}
+The roots of the indicial polynomial at $q=0$ are the possible leading exponents $h_i - c/24$ of the characters: in
+Mathur--Mukhi--Sen, the indicial equation of the MLDE determines the central charge and the conformal weights of the RCFT
+from the order $n$ and the number $\ell$ of zeros of the Wronskian, via $\sum_i(h_i - c/24) = \frac{n(n-1)}{12} - \frac\ell6$.
+\end{physics}
+
+\begin{theorem}[Indicial recursion $\Rightarrow$ subexponential; the divisor grows]\label{l14:thm:indicial}
+(i) If $s\ge1$, all $\|g_{i,\cdot}\|$ are subexponential, $p_n\to\infty$, and
+$P(\lambda+n)\chi_n = -\sum_{m<n}\sum_{i<s}g_{i,n-m}(\lambda+m)^i\chi_m$ for all $n$, then $|\chi_n|$ is subexponential.
+(ii) For $s\ge1$, $p_n\to\infty$ always (monicity).
+\end{theorem}
+\noindent Files \leanpath{VOA/\allowbreak Modularity/\allowbreak IndicialRecursion.lean} and \leanpath{IndicialGrowth.lean}. File
+\leanpath{VOA/\allowbreak Modularity/\allowbreak IndicialRecursion.lean}.
+\begin{leancode}
+theorem subexponential_of_indicial_recursion {χ : ℕ → ℂ} (lam : ℂ) {s : ℕ} (hs : 1 ≤ s)
+    (g : ℕ → ℕ → ℂ) (hg : ∀ i, Subexponential (fun k => ‖g i k‖))
+    (hp : Tendsto (indicialDivisor lam s g) atTop atTop)
+    (hrec : ∀ n : ℕ, indicialP lam s g n * χ n
+      = - ∑ m ∈ Finset.range n, ∑ i ∈ Finset.range s,
+          g i (n - m) * (lam + (m : ℂ)) ^ i * χ m) :
+    Subexponential (fun n => ‖χ n‖)
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak IndicialGrowth.lean}.
+\begin{leancode}
+theorem tendsto_indicialDivisor_atTop (lam : ℂ) {s : ℕ} (hs : 1 ≤ s) (g : ℕ → ℕ → ℂ) :
+    Tendsto (indicialDivisor lam s g) atTop atTop
+\end{leancode}
+\begin{dictionary}
+In (i) the hypothesis \lean{hp} is redundant given (ii); it is kept separate for modularity of the proof. \textbf{Resonances
+are harmless.} If $P(\lambda+n) = 0$ for some $n$ (a second Frobenius exponent at integer distance, the logarithmic
+case), the recursion at that $n$ says $0 = \cdots$ and gives no information on $\chi_n$; the majorant inequality
+$p_n|\chi_n|\le\cdots$ then holds trivially because $p_n = 0$, and since $p_n\to\infty$ such $n$ are finitely many. So the theorem
+is correct in the resonant case, where classical Frobenius theory needs logarithms. The docstring of
+\leanpath{IndicialRecursion.lean} cites the growth lemma as \lean{tendsto_indicial_quotient}; its actual name is
+\lean{tendsto_indicialDivisor_atTop} (documentation only, trivial).
+\end{dictionary}
+\noindent\emph{Proof.} (i) For $m<n$, $i<s$: $|\lambda+m|^i\le(B+n)^{s-1}$ with $B = \max(|\lambda|,1)$; divide the norm of the
+recursion by $(B+n)^{s-1}$ and apply Theorem~\ref{l14:thm:majorant} with $b=0$. (ii) With $u = |\lambda+n|$ and
+$C = \sum|g_{i,0}|$: $|P|\ge u^{s-1}(u-C)$ for $u\ge1$; for $n\ge2B+4C+4$, $u/(B+n)\ge\frac14$ and $u\ge n/2$, so
+$p_n\ge4^{-(s-1)}(n/4)$.
+\begin{physics}
+The exponents of a Fuchsian equation are finitely many; beyond them each coefficient of the solution is determined from the
+lower ones with a ``large denominator'' $P(\lambda+n)\sim n^s$, which is what keeps the degeneracies from growing
+exponentially.
+\end{physics}
+\begin{status}
+Both unconditional; standard axioms.
+\end{status}
+
+\begin{definition}[One-point functions on the torus; support and growth data]\label{l14:def:onepoint}
+For a module $N$ and $v\in V$, $Z_N(v)$ is the formal one-point function $\sum_\alpha\tr_{M_\alpha}o(v)\,q^{\alpha-c/24}$
+(Chapter~\ref{ch:L12}, Definition~\ref{l12:def:char}). The \emph{support datum} at base $h$ says $Z_N(v)(h+i) = 0$ for integers
+$i<0$, for all $v$; the \emph{growth datum} says $n\mapsto|Z_N(v)(h+n)|$ is subexponential for all $v$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak OnePointFunctions.lean} (a Chapter~\ref{ch:L15} file).
+\begin{leancode}
+noncomputable def torusOnePoint (N : OrdVModule W M) (v : 𝒱) : FormalQSeries := onePoint N v
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak AnalyticBlock.lean} (a Chapter~\ref{ch:L15} file).
+\begin{leancode}
+def OnePointSupported (N : OrdVModule W M) (h : ℂ) : Prop :=
+  ∀ (v : 𝒱) (i : ℤ), i < 0 → torusOnePoint N v (h + (i : ℂ)) = 0
+
+def OnePointSubexp (N : OrdVModule W M) (h : ℂ) : Prop :=
+  ∀ v : 𝒱, Subexponential (fun n : ℕ => ‖torusOnePoint N v (h + (n : ℂ))‖)
+\end{leancode}
+\begin{dictionary}
+\lean{onePoint N v e} $=\tr_{M_{e+c/24}}o(v)$ with $o(v)$ the zero mode (Chapter~\ref{ch:L12}). At $v=\mathbf 1$, $o(\mathbf
+1) = \mathrm{id}$ and \lean{OnePointSubexp} specialises to \lean{SubexponentialCoeffs}. The support datum follows from a
+conformal weight (\lean{onePointSupported_of_hasConformalWeight}).
+\end{dictionary}
+\begin{physics}
+$Z_N(v)$ is the torus one-point function of the field $v$ in the sector $N$; the support datum says the sector has no states below its ground-state energy, the growth datum that its twisted partition functions converge.
+\end{physics}
+
+\begin{theorem}[A formal ODE gives the growth datum]\label{l14:thm:formalODE}
+Let $N$ have the support datum at $h$. Suppose that for every $v$ there are $s\ge1$ and sequences $g_i$ ($i<s$) with
+$|g_{i,\cdot}|$ subexponential such that, as formal $q$-series,
+\begin{equation*}
+  D^sZ_N(v) + \sum_{i<s}g_i\star D^iZ_N(v) = 0 .
+\end{equation*}
+Then $N$ has the growth datum at $h$. The same conclusion holds if the coefficients $g_i$ are elements of $\lfourteenGS =
+\C[\mathcal G_2,\mathcal G_4,\mathcal G_6]$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak FormalODE.lean}.
+\begin{leancode}
+theorem onePointSubexp_of_formalODE (N : OrdVModule W M) (hbase : ℂ)
+    (hsupp : OnePointSupported N hbase)
+    (hODE : ∀ v : 𝒱, ∃ (s : ℕ) (g : ℕ → ℕ → ℂ), 1 ≤ s ∧
+      (∀ i, Subexponential (fun k => ‖g i k‖)) ∧
+      ∀ e : ℂ, (qDeriv^[s] (torusOnePoint N v)) e
+        + ∑ i ∈ Finset.range s, qConv (g i) (qDeriv^[i] (torusOnePoint N v)) e = 0) :
+    OnePointSubexp N hbase
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SubexpSeriesRing.lean}.
+\begin{leancode}
+theorem onePointSubexp_of_GSeriesODE (N : OrdVModule W M) (hbase : ℂ)
+    (hsupp : OnePointSupported N hbase)
+    (hODE : ∀ v : 𝒱, ∃ (s : ℕ) (G : ℕ → PowerSeries ℂ), 1 ≤ s ∧
+      (∀ i, G i ∈ GSeries) ∧
+      ∀ e : ℂ, (qDeriv^[s] (torusOnePoint N v)) e
+        + ∑ i ∈ Finset.range s,
+            qConv (fun k => PowerSeries.coeff k (G i)) (qDeriv^[i] (torusOnePoint N v)) e = 0) :
+    OnePointSubexp N hbase
+\end{leancode}
+\begin{dictionary}
+\lean{qDeriv^[i]} is the $i$-th iterate $D^i$; since $D$ is diagonal, $D^i\chi(e) = e^i\chi(e)$ (\lean{qDeriv_iterate_apply}).
+The equation is stated at \emph{every} $e\in\C$, monic of order $s\ge1$, with $s$ and $g$ allowed to depend on $v$ (as in
+Zhu). The ODE is a \textbf{hypothesis}: producing it for a $C_2$-cofinite VOA is Zhu's Lemma 4.4.4, done (or not) in
+Chapter~\ref{ch:L15}. These theorems are exactly ``ODE $\Rightarrow$ convergence''. They are formal-power-series statements:
+no holomorphy is assumed or concluded; holomorphy then follows from Theorem~\ref{l14:thm:holo}.
+\end{dictionary}
+\noindent\emph{Proof.} Evaluating the equation at $\lambda+n$ and splitting off the $m=n$ term gives the indicial recursion
+(\lean{indicialP_recursion_of_formalODE}); apply Theorem~\ref{l14:thm:indicial}. For $\lfourteenGS$ use
+\lean{subexponential_coeff_of_mem_GSeries} (Section~\ref{l14:sec:qexp}).
+\begin{physics}
+``Characters satisfying a modular linear differential equation converge'', in its formal form: the MMS equation for the
+one-point functions forces Cardy-compatible (subexponential) growth.
+\end{physics}
+\begin{status}
+Unconditional given the ODE hypothesis; standard axioms (both).
+\end{status}
+
+\begin{theorem}[First-order systems]\label{l14:thm:system}
+Let $z_1,\dots,z_g$ be sequences and $a_{kl}$ subexponential sequences with
+$(h+N)z_k(N) = \sum_l\sum_{j\le N}a_{kl}(j)z_l(N-j)$ for all $k$, $N$. Then every $|z_k|$ is subexponential.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SystemGrowth.lean}.
+\begin{leancode}
+theorem subexponential_of_system {g : ℕ} {hbase : ℂ}
+    (z : Fin g → ℕ → ℂ) (a : Fin g → Fin g → ℕ → ℂ)
+    (ha : ∀ k l, Subexponential (fun j => ‖a k l j‖))
+    (hrec : ∀ (k : Fin g) (N : ℕ),
+      (hbase + (N : ℂ)) * z k N
+        = ∑ l, ∑ j ∈ Finset.range (N + 1), a k l j * z l (N - j)) :
+    ∀ k, Subexponential (fun N => ‖z k N‖)
+\end{leancode}
+\begin{dictionary}
+This is the coefficient form of $q\frac{d}{dq}\vec z = A(q)\vec z$ (a first-order system) for a vector of series based at
+\lean{hbase}. Note that the $j=0$ term of the right side involves $z_l(N)$ itself, which is why the proof moves it to the left
+with $K = \sum|a_{kl}(0)|$. No eigenvalue or matrix-inverse condition is needed. Faithful.
+\end{dictionary}
+\noindent\emph{Proof.} Sum the norms over $k$: $Z_N = \sum_k|z_k(N)|$ satisfies $(|h+N| - K)Z_N\le\sum_{m<N}B_{N-m}Z_m$; apply
+Theorem~\ref{l14:thm:majorant} with $p_N = |h+N| - K\to\infty$.
+\begin{physics}
+A vector-valued modular form (the vector of characters of all sectors) satisfying a first-order modular system
+$D\vec\chi = A\vec\chi$; the system form is how block conditions in Zhu's argument are naturally organised.
+\end{physics}
+\begin{status}
+Unconditional; standard axioms.
+\end{status}
+
+%======================================================================
+\section{The cylinder-to-torus coordinate: formal identities}\label{l14:sec:coord}
+%======================================================================
+
+Zhu's theorem rests on the change of coordinate $w = e^z - 1$ from the plane to the cylinder (and thence the torus). The library
+does all of its consequences as identities in $\C[[w]]$, without Laurent series or analysis. We collect the statements.
+
+\subsection{The square-bracket modes}
+
+\begin{definition}[Square-bracket coefficients and modes]\label{l14:def:sqbracket}
+In $\C[[w]]$ let $\log(1+w) = \sum_{i\ge1}(-1)^{i+1}w^i/i$ and $u = \log(1+w)/w = \sum_i(-1)^iw^i/(i+1)$, a unit. For
+$k\in\N$, $m,i\in\Z$ put
+\begin{equation*}
+  c(k,m,i) = [w^{i-m}]\bigl((1+w)^{k-1}u^m\bigr)\quad(i\ge m),\qquad c(k,m,i) = 0\quad(i<m).
+\end{equation*}
+For $a\in V$ and $m\in\Z$, $a[m]_k = \sum_{i\in\Z}c(k,m,i)\,a_{(i)}$ (a finite sum on each vector), and the torus Virasoro modes are
+$L_{[n]} = \omega[n+1]_2 - \frac{c}{24}\mathbf 1[n+1]_0$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak OnePointFunctions.lean} (a Chapter~\ref{ch:L15} file).
+\begin{leancode}
+noncomputable def logOnePlusXSeries : PowerSeries ℂ :=
+  PowerSeries.mk (fun i => if i = 0 then 0 else (-1 : ℂ) ^ (i + 1) / (i : ℂ))
+
+noncomputable def onePlusXUnit : (PowerSeries ℂ)ˣ := onePlusX_isUnit.unit
+
+noncomputable def uSeries : PowerSeries ℂ := PowerSeries.mk (fun i => (-1 : ℂ) ^ i / (i + 1 : ℂ))
+
+noncomputable def sqBracketCoeffZ (k : ℕ) (m i : ℤ) : ℂ :=
+  if 0 ≤ i - m then
+    PowerSeries.coeff (R := ℂ) (i - m).toNat
+      ((↑(onePlusXUnit ^ ((k : ℤ) - 1)) : PowerSeries ℂ) * (↑(uUnit ^ m) : PowerSeries ℂ))
+  else 0
+
+noncomputable def vSqZ (v : 𝒱) (k : ℕ) (m : ℤ) : 𝒱 →ₗ[ℂ] 𝒱 where
+  toFun x := ∑ᶠ i : ℤ, sqBracketCoeffZ k m i • mode (W.Y v) i x
+
+noncomputable def Lsq (n : ℤ) : Module.End ℂ 𝒱 :=
+  vSqZ W W.conformalVector 2 (n + 1)
+    - (W.centralCharge / 24) • vSqZ W W.vacuum 0 (n + 1)
+\end{leancode}
+\begin{dictionary}
+\lean{mode (W.Y v) i} is $v_{(i)}$ (Chapter~\ref{ch:01}). \lean{onePlusXUnit} is $1+w$ as a unit, so that $(1+w)^{k-1}$
+makes sense for $k=0$ ($=(1+w)^{-1}$); \lean{uUnit} is $u$ as a unit, so $u^m$ makes sense for negative $m$. The \lean{finsum}
+is finite on each $x$ (\lean{sqModeZ_support_finite}: $c(k,m,i) = 0$ for $i<m$, and $v_{(i)}x = 0$ for $i\gg0$). In Lean
+\lean{vSqZ W v k m} takes the explicit VOA argument \lean{W} (a section variable). \textbf{Agreement with Zhu.} Zhu defines
+$Y[a,z] = Y(a,e^z-1)e^{z\,\mathrm{wt}\,a}$ and $a[m] = \Res_zz^mY[a,z]$ for $a\in V_k$. Substituting $w = e^z-1$:
+$z = \log(1+w)$, $dz = dw/(1+w)$, $e^{kz} = (1+w)^k$, so $a[m] = \Res_wY(a,w)(1+w)^{k-1}\log(1+w)^m = \sum_ia_{(i)}[w^i]
+\bigl((1+w)^{k-1}w^mu^m\bigr) = \sum_ic(k,m,i)a_{(i)}$. So \lean{vSqZ W a k m} is Zhu's $a[m]$ \emph{provided $k = \mathrm{wt}\,a$};
+the library passes the weight as a separate argument and imposes $a\in V_k$ where needed. $L_{[n]} = \tilde\omega[n+1]$ with
+$\tilde\omega = \omega - \frac c{24}\mathbf 1$, as in Zhu.
+\end{dictionary}
+\begin{physics}
+$a[m]$ are the modes of the field $a$ on the cylinder $z\in\C/2\pi i\Z$ (equivalently on the torus before imposing periodicity
+in $\tau$); $L_{[0]}$ is the cylinder Hamiltonian. The shift $\tilde\omega = \omega - \frac c{24}$ is the Schwarzian
+transformation of the stress tensor under $w = e^z - 1$, which produces the Casimir energy $-c/24$ (next theorem).
+\end{physics}
+
+\begin{theorem}[The Schwarzian of $e^z-1$]\label{l14:thm:schwarzian}
+In $\C[[z]]$, with $\{f;z\} = f'''/f' - \frac32(f''/f')^2$: $\{e^z-1;z\} = -\frac12$, and $\{z;z\} = 0$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak Schwarzian.lean}.
+\begin{leancode}
+noncomputable def schwarzian (f : PowerSeries ℂ) : PowerSeries ℂ :=
+  derivativeFun (derivativeFun (derivativeFun f)) * (derivativeFun f)⁻¹
+    - (3 / 2 : ℂ) • ((derivativeFun (derivativeFun f) * (derivativeFun f)⁻¹) ^ 2)
+
+noncomputable def expMinusOne : PowerSeries ℂ := PowerSeries.exp ℂ - 1
+
+theorem schwarzian_expMinusOne :
+    schwarzian expMinusOne = (-(1 / 2) : ℂ) • (1 : PowerSeries ℂ)
+\end{leancode}
+\begin{dictionary}
+\lean{derivativeFun} is the formal derivative; \lean{⁻¹} on \lean{PowerSeries ℂ} is the inverse when the constant term is
+nonzero (here $f' = e^z$, a unit), junk otherwise. So the definition is meaningful exactly for $f$ with $f'(0)\neq0$.
+Faithful.
+\end{dictionary}
+\noindent\emph{Proof.} All derivatives of $e^z-1$ are $e^z$; $1 - \frac32 = -\frac12$.
+\begin{physics}
+The stress tensor transforms as $T(z) = f'(z)^2T(f(z)) + \frac{c}{12}\{f;z\}$. For the cylinder map the Schwarzian is the
+constant $-\frac12$, so $T_{\text{cyl}} = \cdots - \frac c{24}$: the vacuum on a circle has energy $-c/24$. This is the origin
+of the $q^{-c/24}$ in every character.
+\end{physics}
+\begin{status}
+Unconditional; standard axioms. The docstring's ``Residual'' calls the operator $T_f$ of (C2) unbuilt; it is built in
+\leanpath{ChangeCoord.lean} (documentation only). The two files also contradict each other on whether (C3) is a prerequisite of Zhu's theorem
+(documentation only).
+\end{status}
+
+\begin{theorem}[$\exp\circ\log$ and the weight-matching identities]\label{l14:thm:explog}
+In $\C[[w]]$: $\exp(\log(1+w)) = 1+w$; $\exp(n\log(1+w)) = \sum_r\binom nrw^r$ for $n\in\Z$. Consequently, for $k\ge1$,
+$d\in\Z$, $r\in\N$:
+\begin{align*}
+ \text{(I1)}\quad&\sum_{m=0}^{r}\frac{d^m}{m!}c(k,m,r) = \binom{k-1+d}{r},\\
+ \text{(I3)}\quad&\sum_{m\ge0}\frac{2d^{2m+1}}{(2m+1)!}c(k,2m+1,r) = \binom{k-1+d}{r} - \binom{k-1-d}{r},\\
+ \text{(I2)}\quad&c(k,-1,r) - \binom{k-1}{r+1} - \tfrac12\binom{k-1}{r} = \sum_{m\ge0}g_{m+1}(0)\,c(k,2m+1,r).
+\end{align*}
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak ExpLogBinomial.lean}.
+\begin{leancode}
+theorem exp_subst_log : (exp ℂ).subst (log ℂ) = 1 + X
+
+theorem expLog_intCast_eq_binomSeries (n : ℤ) : expLog n = binomSeries n
+
+theorem sum_pow_div_factorial_mul_sqBracketCoeff {k : ℕ} (hk : 1 ≤ k) (d : ℤ) (r : ℕ) :
+    ∑ m ∈ Finset.range (r + 1), ((d : ℂ) ^ m / (m.factorial : ℂ)) * sqBracketCoeff k m r
+      = cbz ((k : ℤ) - 1 + d) r
+
+theorem finsum_odd_pow_mul_sqBracketCoeff {k : ℕ} (hk : 1 ≤ k) (d : ℤ) (r : ℕ) :
+    ∑ᶠ m : ℕ, (2 * (d : ℂ) ^ (2 * m + 1) / ((2 * m + 1).factorial : ℂ))
+        * sqBracketCoeff k (2 * m + 1) r
+      = cbz ((k : ℤ) - 1 + d) r - cbz ((k : ℤ) - 1 - d) r
+
+theorem sqBracketCoeffZ_neg_one_eq {k : ℕ} (hk : 1 ≤ k) (r : ℕ) :
+    sqBracketCoeffZ k (-1) r - cbz ((k : ℤ) - 1) ((r : ℤ) + 1) - (1 / 2) * cbz ((k : ℤ) - 1) r
+      = ∑ᶠ m : ℕ, zhuG (m + 1) 0 * sqBracketCoeff k (2 * m + 1) r
+\end{leancode}
+\begin{dictionary}
+\lean{log ℂ} is Mathlib's $\log(1+X)$ series, \lean{exp ℂ} the exponential series, \lean{.subst} formal substitution
+(meaningful as the substituted series has zero constant term). \lean{expLog c} $=\exp(c\log(1+X))$ and \lean{binomSeries n}
+$=\sum_r\binom nrX^r$ (same file). \lean{cbz n r} is the generalised binomial $\binom nr$, $0$ for $r<0$ (Chapter~\ref{ch:01}).
+\lean{sqBracketCoeff k m r} is the natural-index version $[w^r]((1+w)^{k-1}\log(1+w)^m)$, equal to $c(k,m,r)$. The
+\lean{finsum}s are finite (terms vanish for $2m+1>r$). In (I2), $g_{m+1}(0) = -B_{2m+2}/(2m+2)!$, the cusp values of Zhu's
+Eisenstein coefficients. Faithful.
+\end{dictionary}
+\noindent\emph{Proof.} Both $\exp(c\log(1+X))$ and $\sum\binom crX^r$ solve $(1+X)F' = cF$, $F(0) = 1$, whose solution is
+unique coefficientwise (\lean{onePlusX_ode_unique}). (I1) is $[w^r]$ of $(1+w)^{k-1}e^{d\log(1+w)} = (1+w)^{k-1+d}$; (I3) is its
+odd part; (I2) is $u = B(\log(1+w))$ with $B(z) = z/(e^z-1) = \sum B_nz^n/n!$, read through $\exp\circ\log = \mathrm{id}$.
+\begin{physics}
+These identities match the weights of the plane and cylinder mode expansions: they are the combinatorics behind Zhu's
+recursion formula for torus one-point functions (Prop.~4.3.2), in which Bernoulli numbers enter as the cusp values of the
+Eisenstein series.
+\end{physics}
+\begin{status}
+Unconditional; standard axioms (all five).
+\end{status}
+
+\begin{theorem}[Torus Virasoro relations with the same central charge]\label{l14:thm:Lsq}
+For all $m,n\in\Z$: $[L_{[m]},L_{[n]}] = (m-n)L_{[m+n]} + \delta_{m+n,0}\frac{m^3-m}{12}c$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak GelfandFuks.lean}.
+\begin{leancode}
+theorem Lsq_virasoro (W : VertexOperatorAlgebra 𝒱) (m n : ℤ) :
+    ⁅Lsq W m, Lsq W n⁆
+      = ((m : ℂ) - (n : ℂ)) • Lsq W (m + n)
+        + (if m + n = 0 then (((m : ℂ) ^ 3 - (m : ℂ)) / 12 * W.centralCharge)
+             • (1 : Module.End ℂ 𝒱) else 0)
+\end{leancode}
+\begin{dictionary}
+\lean{⁅A, B⁆} is the commutator $AB - BA$ of endomorphisms. No hypotheses: true for every library VOA. Faithful (Zhu,
+Theorem~4.2.1; Gannon (5.3.15)).
+\end{dictionary}
+\noindent\emph{Proof.} The commutator of $\omega[m+1]$ and $\omega[n+1]$ is computed from the plane Virasoro relations; the
+central term is the moment $S(m,n) = \sum_ad[m,a]d[n,-a](a^3-a)$ of the change-of-basis coefficients, which equals
+$(m^3-m)\delta_{m+n,0} - \frac{m-n}2\delta_{m+n,-2}$ (\lean{centralMomentClosed_holds}, proved by three formal Euler-operator
+ODE computations). The anomalous $\delta_{m+n,-2}$ term is exactly cancelled by the $-\frac c{24}\mathbf 1[n+1]$ correction,
+which is nonzero only at $n=-2$.
+\begin{physics}
+The Virasoro algebra on the cylinder has the same central charge as on the plane; the Schwarzian only shifts $L_0$ by $-c/24$.
+The $\delta_{m+n,-2}$ cocycle is a coboundary, removed by redefining $\omega$ to $\tilde\omega$.
+\end{physics}
+\begin{status}
+Unconditional; standard axioms.
+\end{status}
+
+\begin{definition}[The coordinate-change operator]\label{l14:def:changeCoord}
+For coefficients $(a_k)_{k\ge1}$, $A_f = \sum_{k\ge1}a_kL_k$ is locally nilpotent on $V$, and $T_f = \exp(A_f)$ is a linear
+automorphism of $V$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak ChangeCoord.lean}.
+\begin{leancode}
+noncomputable def coordGen (W : VertexOperatorAlgebra 𝒱) (a : ℕ → ℂ) : 𝒱 →ₗ[ℂ] 𝒱 where
+  toFun x := ∑ᶠ k : ℕ, a k • W.L ((k : ℤ) + 1) x
+
+noncomputable def changeCoord (W : VertexOperatorAlgebra 𝒱) (a : ℕ → ℂ) : 𝒱 ≃ₗ[ℂ] 𝒱 :=
+  expEquiv (coordGen_isLocNilp W a)
+\end{leancode}
+\begin{dictionary}
+\lean{a k} plays $a_{k+1}$. Each $L_k$, $k\ge1$, lowers the $L_0$-grade by $k$, and the grading is bounded below, so $A_f$ is
+locally nilpotent and the exponential is a finite sum (Chapter~\ref{ch:L04}'s \lean{expEquiv}). \lean{≃ₗ[ℂ]} is a linear
+equivalence. Only the operator is built; the transformation law $T_fY(v,z)T_f^{-1} = \cdots$ (Huang's change of variables) is
+\textbf{not} formalised (named residual (C3) in the docstring).
+\end{dictionary}
+\begin{physics}
+$T_f$ implements a holomorphic reparametrisation $f(z) = z + a_1z^2+\cdots$ of the local coordinate at a puncture; on states
+it acts through the positive Virasoro modes.
+\end{physics}
+\begin{status}
+Definitions; standard axioms (\lean{changeCoord}). No theorem uses the transformation law.
+\end{status}
+
+%======================================================================
+\section{The cusp: Zhu's relations at \texorpdfstring{$q=0$}{q=0}}\label{l14:sec:cusp}
+%======================================================================
+
+At $q=0$ the Eisenstein series become their constant terms, and Zhu's genus-one relations degenerate into the defining relations
+of Zhu's algebra. This is the bridge from torus blocks to $A(V)$.
+
+\begin{theorem}[A Bernoulli identity]\label{l14:thm:bernsq}
+With $B(z) = z/(e^z-1)$: $B(z)^2e^z = B(z) - zB'(z)$, hence $[z^n](B^2e^z) = (1-n)B_n/n!$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak CuspDegeneration.lean}.
+\begin{leancode}
+theorem bernoulliSq_mul_exp :
+    (bernoulliPowerSeries ℂ) ^ 2 * exp ℂ
+      = bernoulliPowerSeries ℂ - X * derivative ℂ (bernoulliPowerSeries ℂ)
+\end{leancode}
+\noindent\emph{Proof.} Differentiate $B(e^z-1) = z$: $Be^z + (e^z-1)B' = 1$; multiply by $B$ and use $B(e^z-1) = z$ again.
+\begin{dictionary}
+\lean{bernoulliPowerSeries ℂ} is Mathlib's $\sum B_nz^n/n!$. Equivalent to the expansion $e^z/(e^z-1)^2 =
+z^{-2} + \sum_{n\ge1}(2n-1)g_n(0)z^{2n-2}$, i.e.\ the Laurent expansion of $\wp$ on the cylinder.
+\end{dictionary}
+\begin{physics}
+$e^z/(e^z-1)^2$ is the cylinder propagator (the two-point function of a free boson current); its Laurent coefficients are the
+cusp values of the Eisenstein series.
+\end{physics}
+\begin{status}
+Unconditional; standard axioms.
+\end{status}
+
+\begin{theorem}[DLM Lemma 9.2(c): the $q\to0$ limit of the {$[-2]$}-family]\label{l14:thm:negtwo}
+For $k\ge1$ and $a,v\in V$:
+\begin{equation*}
+  a[-2]v + \sum_{n\ge2}(2n-1)g_n(0)\,a[2n-2]v \;=\; a\circ v + \tfrac1{12}a[0]v,
+\end{equation*}
+where all square-bracket modes are taken with weight parameter $k$ and $a\circ v = \sum_{i=0}^{k}\binom ki a_{(i-2)}v =
+\Res_z\frac{(1+z)^k}{z^2}Y(a,z)v$ is Zhu's circle product.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuModule.lean} (a Chapter~\ref{ch:L12} file).
+\begin{leancode}
+noncomputable def Pres (W : VertexOperatorAlgebra 𝒱) (M : ℕ) (a b : 𝒱) (n : ℕ) : 𝒱 :=
+  ∑ i ∈ Finset.range (M + n + 1), cbz ((M : ℤ) + n) (i : ℤ) • W.smul a ((i : ℤ) - 2 - n) b
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak CuspDegeneration.lean}.
+\begin{leancode}
+theorem negTwoFamily_cusp {k : ℕ} (hk : 1 ≤ k) (a v : 𝒱) :
+    vSqZ W a k (-2) v
+        + ∑ᶠ m : ℕ, (((2 * (m + 2) - 1 : ℕ) : ℂ) * zhuG (m + 2) 0)
+            • vSqZ W a k (2 * ((m : ℤ) + 2) - 2) v
+      = Pres W k a v 0 + (1 / 12 : ℂ) • vSqZ W a k 0 v
+\end{leancode}
+\begin{dictionary}
+\lean{W.smul a j b} is $a_{(j)}b$; \lean{Pres W k a v 0} $=\sum_{i\le k}\binom ki a_{(i-2)}v$, Zhu's $a\circ v$ for
+$a\in V_k$. The \lean{finsum} index $m$ is $n-2$. The $\frac1{12}$ is the missing $n=1$ term ($(2\cdot1-1)g_1(0) = -\frac1{12}$),
+i.e.\ the $E_2$ anomaly. \textbf{Stronger than DLM:} no hypothesis $a\in V_k$; the identity holds for any $a$ once all modes use
+the same weight parameter $k$ (it is a scalar identity of coefficients). Faithful.
+\end{dictionary}
+\noindent\emph{Proof.} All modes are finite combinations of $a_{(i)}v$ over a common window; coefficientwise, the identity is
+$[w^{r}]$ of $(1+w)^{k-1}u^{-2}\cdot(B^2e^z)|_{z=\log(1+w)} = (1+w)^k$, i.e.\ Theorem~\ref{l14:thm:bernsq} pushed through
+$z = \log(1+w)$ (\lean{sqBracketCoeffZ_neg_two_cusp}).
+\begin{physics}
+On a degenerate (infinitely long) torus, the torus Ward identity for an insertion of $a$ next to $v$ becomes the
+operator-product relation defining $A(V)$: $a\circ v$ acts by zero on ground states. This is why Zhu's algebra controls the
+characters: it is the $q\to0$ fibre of the sheaf of torus conformal blocks.
+\end{physics}
+\begin{status}
+Unconditional; standard axioms.
+\end{status}
+
+\begin{definition}[Cusp relation spaces]\label{l14:def:cuspRel}
+$R_\infty = O(V) + \mathrm{span}\{a[0]v : a\in V_k, k\ge1\}$; and $R'_\infty$ is the span of the two Zhu relation families with
+the Eisenstein values replaced by their constant terms: all $a[0]v$, and all
+$a[-2]v + \sum_{m<K}(2m+3)g_{m+2}(0)a[2m+2]v$ with $K$ beyond the support.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak CuspFunctionalCount.lean}.
+\begin{leancode}
+def cuspRelSpan : Submodule ℂ 𝒱 :=
+  O W ⊔ Submodule.span ℂ
+    {x : 𝒱 | ∃ (ka : ℕ) (a v : 𝒱), 1 ≤ ka ∧ a ∈ W.grading (ka : ℤ) ∧ x = vSqZ W a ka 0 v}
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak CuspLimit.lean}.
+\begin{leancode}
+def blockRelSpanAtCusp : Submodule ℂ 𝒱 :=
+  Submodule.span ℂ
+    ({x : 𝒱 | ∃ (ka : ℕ) (a v : 𝒱), 1 ≤ ka ∧ a ∈ W.grading (ka : ℤ) ∧ x = vSqZ W a ka 0 v} ∪
+     {x : 𝒱 | ∃ (ka K : ℕ) (a v : 𝒱), 1 ≤ ka ∧ a ∈ W.grading (ka : ℤ) ∧
+        (∀ m : ℕ, K ≤ m → vSqZ W a ka (2 * (m + 1) - 2 : ℤ) v = 0) ∧
+        x = vSqZ W a ka (-2) v + ∑ m ∈ Finset.range K,
+              (((2 * (m + 2) - 1 : ℕ) : ℂ) * zhuG (m + 2) 0)
+                • vSqZ W a ka (2 * (m + 2) - 2 : ℤ) v})
+\end{leancode}
+\begin{dictionary}
+\lean{O W} is Zhu's $O(V)$ (Chapter~\ref{ch:L12}, Section~\ref{l12:sec:zhu}); \lean{⊔} is the sum of subspaces. Only
+homogeneous $a$ of positive weight $k$ enter (weight-$0$ elements are multiples of $\mathbf 1$ under
+\lean{VacuumGradeZero}). The truncation $K$ in \lean{blockRelSpanAtCusp} is a witness that the tail vanishes, so the finite
+sum is the full sum. These are the definitions used in DLM §9.
+\end{dictionary}
+\begin{physics}
+These are the torus Ward identities on the infinitely long torus: the relations that ground-state traces must satisfy.
+\end{physics}
+
+\begin{theorem}[The cusp fibre is {$A(V)/[A(V),A(V)]$}]\label{l14:thm:cuspfibre}
+Assume $V_0\subseteq\C\mathbf 1$. Then $R'_\infty = R_\infty$, and $V/R_\infty\cong A(V)/[A(V),A(V)]$; in particular
+$\dim V/R'_\infty = \dim A(V)/[A(V),A(V)]$, which equals the number $n$ of Wedderburn factors when
+$A(V)\cong\prod_{i\le n}\mathrm{Mat}_{d_i}(\C)$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak BlockZeroMode.lean} (a Chapter~\ref{ch:L15} file).
+\begin{leancode}
+def VacuumGradeZero : Prop := W.grading 0 ≤ Submodule.span ℂ ({W.vacuum} : Set 𝒱)
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak CuspLimit.lean}.
+\begin{leancode}
+theorem blockRelSpanAtCusp_eq_cuspRelSpan :
+    blockRelSpanAtCusp W = cuspRelSpan W
+
+theorem finrank_quot_blockRelSpanAtCusp_eq :
+    letI := instRingA W
+    letI := instAlgebraA W
+    Module.finrank ℂ (𝒱 ⧸ blockRelSpanAtCusp W)
+      = Module.finrank ℂ (A W ⧸ commSpan ℂ (A W))
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak CuspFunctionalCount.lean}.
+\begin{leancode}
+theorem finrank_quot_cuspRelSpan_eq_of_algEquiv_pi_matrix
+    (hfd : letI := instRingA W; FiniteDimensional ℂ (A W))
+    {n : ℕ} {d : Fin n → ℕ} (hd : ∀ i, NeZero (d i))
+    (e : letI := instRingA W; letI := instAlgebraA W;
+      A W ≃ₐ[ℂ] ∀ i : Fin n, Matrix (Fin (d i)) (Fin (d i)) ℂ) :
+    finrank ℂ (𝒱 ⧸ cuspRelSpan W) = n
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SemisimpleTrace.lean} (a Chapter~\ref{ch:L15} file).
+\begin{leancode}
+def commSpan : Submodule K A := Submodule.span K {x : A | ∃ a b : A, x = a * b - b * a}
+\end{leancode}
+\begin{dictionary}
+\lean{letI := instRingA W} installs the ring structure on Zhu's algebra \lean{A W} (Theorem~\ref{l12:thm:zhuring});
+\lean{commSpan ℂ (A W)} is $[A,A]$, the span of commutators; \lean{⧸} is the quotient space. \lean{Module.finrank} is $0$ on
+infinite-dimensional spaces, so the equality of \lean{finrank}s is informative only when $A(V)$ is finite-dimensional (true
+under $C_2$, Chapter~\ref{ch:L12}); the theorem is nonetheless correct as stated since the underlying linear equivalence
+\lean{cuspRelSpanQuotEquiv} holds unconditionally. The Wedderburn form needs an algebra isomorphism
+\lean{e} with a product of full matrix algebras. \textbf{Scope:} this is the $q=0$ fibre only; the analogous statement at
+$z_0\in\lfourteenH$ is \emph{false} as an identity of relation spaces (\lean{blockRelSpan W z₀} moves with $z_0$, as the
+docstring notes), and the dimension transfer is a residual of Chapter~\ref{ch:L15}.
+\end{dictionary}
+\begin{warning}
+\textbf{Redundant hypothesis (moderate) --- removed from the cusp theorems.} The statements quoted above no longer carry
+\lean{hzero}; the library dropped it after this finding. (Some other theorems of Chapter~\ref{ch:L15} still carry it.)
+\lean{VacuumGradeZero W} holds for \emph{every} library VOA: it is the structure field
+\lean{vacuum_grade : grading 0 = ℂ ∙ vacuum} weakened to $\le$, and the library itself proves this as
+\lean{vacuumGradeZero_of_vacuum_grade} (in \leanpath{AKSl2Payoff.lean}, Chapter~\ref{ch:L16}). So every theorem of this
+section carrying \lean{hzero} is in fact unconditional. Harmless, but a referee should not count it as an assumption.
+\end{warning}
+\noindent\emph{Proof.} $\subseteq$: Theorem~\ref{l14:thm:negtwo} turns each $[-2]$-relation into $a\circ v + \frac1{12}a[0]v$ with
+$a\circ v\in O(V)$. $\supseteq$: $O(V)$ is spanned by $(L_{-1}+L_0)u\circ v$-type elements which are Zhu circle products
+(\lean{zhuMul_L_base}); weight-$0$ $u$ contributes $\mathbf 1_{(-2)} = 0$. The quotient: in $A(V)$, $a[0]v$ maps to
+$a*v - v*a$ (Zhu), so $V/R_\infty = A(V)/[A,A]$. For $\prod\mathrm{Mat}_{d_i}$, $[A,A]$ is the sum of trace-zero parts, of
+codimension $n$.
+\begin{physics}
+At the cusp the torus conformal blocks are the symmetric (trace-like) linear functionals on $A(V)$; for a rational theory with
+$A(V) = \bigoplus\mathrm{End}(M_{i,h})$ there is one for each sector, the trace over its ground states. This is the
+infinite-cylinder version of ``number of torus blocks = number of primaries''.
+\end{physics}
+\begin{status}
+No hypothesis on $V$; the Wedderburn form is conditional on the
+decomposition \lean{e}. Standard axioms (all three). The companions \lean{exists_finset_span_sup_blockRelSpanAtCusp}
+(\leanpath{CuspPoint.lean}: a spanning family of size $\dim A/[A,A]$ modulo $R'_\infty$) and
+\lean{exists_finrank_cuspFunctionals_le} (functionals killing the relations; at most $n$ independent) are proved likewise.
+\end{status}
+
+%======================================================================
+\section{Zhu's transformation law, the read-off of \texorpdfstring{$\rho(S)$}{rho(S)}, and characters}\label{l14:sec:rhoS}
+%======================================================================
+
+This section states, in the language built above, what ``the trace functions transform under $\lfourteenSL$'' means in the
+library, and proves the parts that are pure modular-group theory. The deep inputs (that the trace functions span the torus
+blocks) are Chapter~\ref{ch:L15}'s.
+
+\begin{definition}[Trace functions; the law at $A$; trace spanning]\label{l14:def:realises}
+For a family $(M_i)$ of irreducible modules with weights $h_i$, $v\in V$ and $\tau\in\lfourteenH$, the \emph{trace function}
+is $S_i(v,\tau) = Z_{M_i}(v)$ evaluated at $\tau$ along $h_i - c/24$. With $j(A,\tau) = c\tau+d$, a matrix $\rho_A$
+\emph{realises the law at $A$} if for every $n\in\N$, every $v$ of square-bracket weight $n$ ($L_{[0]}v = nv$), every $i$ and
+$\tau$:
+\begin{equation*}
+  S_i(v,A\tau) = j(A,\tau)^n\sum_j(\rho_A)_{ij}S_j(v,\tau).
+\end{equation*}
+\emph{Trace spanning} means that every $A\in\lfourteenSL$ has such a $\rho_A$. The law \emph{on $\Gamma$} asks this only for
+$A\in\Gamma$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak ZhuTheorem.lean} (a Chapter~\ref{ch:L15} file).
+\begin{leancode}
+noncomputable def autFactor (A : Matrix.SpecialLinearGroup (Fin 2) ℤ) (τ : UpperHalfPlane) : ℂ :=
+  ((A : Matrix (Fin 2) (Fin 2) ℤ) 1 0 : ℂ) * (τ : ℂ)
+    + ((A : Matrix (Fin 2) (Fin 2) ℤ) 1 1 : ℂ)
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak BlockSpanning.lean} (a Chapter~\ref{ch:L15} file).
+\begin{leancode}
+noncomputable def traceFun (Mfam : ι → IrrModule W) (h : ι → ℂ) (i : ι) (v : 𝒱)
+    (τ : UpperHalfPlane) : ℂ :=
+  qEvalAt (torusOnePoint (Mfam i).isMod v) (h i - W.centralCharge / 24) τ
+
+def TraceSpanning (Mfam : ι → IrrModule W) (h : ι → ℂ) : Prop :=
+  ∀ A : SL(2, ℤ), ∃ ρA : ι → ι → ℂ, ∀ (n : ℕ) (v : 𝒱), v ∈ sqWeightSpace W (n : ℂ) →
+    ∀ (i : ι) (τ : UpperHalfPlane),
+      traceFun Mfam h i v (A • τ) = autFactor A τ ^ n * ∑ j, ρA i j * traceFun Mfam h j v τ
+
+def RealisesLaw (Mfam : ι → IrrModule W) (h : ι → ℂ) (A : SL(2, ℤ)) (ρA : ι → ι → ℂ) : Prop :=
+  ∀ (n : ℕ) (v : 𝒱), v ∈ sqWeightSpace W (n : ℂ) → ∀ (i : ι) (τ : UpperHalfPlane),
+    traceFun Mfam h i v (A • τ) = autFactor A τ ^ n * ∑ j, ρA i j * traceFun Mfam h j v τ
+
+def ZhuModularityAnalytic (D : ModularData W ι) : Prop :=
+  ∀ (A : SL(2, ℤ)) (n : ℕ) (v : 𝒱), v ∈ sqWeightSpace W (n : ℂ) → ∀ (i : ι) (τ : UpperHalfPlane),
+    traceFun D.Mfam D.h i v (A • τ)
+      = autFactor A τ ^ n * ∑ j, D.rep A i j * traceFun D.Mfam D.h j v τ
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SquareBracketGrading.lean} (a Chapter~\ref{ch:L15} file).
+\begin{leancode}
+noncomputable def sqWeightSpace (W : VertexOperatorAlgebra 𝒱) (k : ℂ) : Submodule ℂ 𝒱 :=
+  LinearMap.ker (Lsq W 0 - k • (LinearMap.id : 𝒱 →ₗ[ℂ] 𝒱))
+\end{leancode}
+\begin{dictionary}
+\lean{A • τ} is Mathlib's Möbius action; \lean{autFactor A τ} is $c\tau+d$. The law is Zhu's Theorem~5.3.2 / Gannon (5.3.18a)
+with weights in the \emph{square-bracket} grading, which is correct: Zhu's one-point functions are modular of weight $n$ for
+$v\in V_{[n]}$, not for $v\in V_n$. \lean{traceFun} is a \lean{qEvalAt}, i.e.\ junk $0$ where the series diverges; in all
+theorems below the growth datum \lean{OnePointSubexp} is a hypothesis, so the values are honest. A family of trace functions
+that are all identically $0$ would satisfy every law with any $\rho$; this is excluded where it matters by
+\lean{TraceNonvanishing} / \lean{TraceIndependent}, which make $\rho_A$ unique (\lean{rho_unique}).
+\end{dictionary}
+\begin{physics}
+$S_i(v,\tau)$ is the torus one-point function $\tr_{M_i}o(v)q^{L_0-c/24}$: the expectation value of the field $v$ inserted
+on the torus, summed over states of the sector $M_i$ running around the time circle. The law says these amplitudes form a
+finite-dimensional representation of the mapping class group of the torus, with $v$ contributing its conformal weight.
+\end{physics}
+
+\begin{theorem}[$\rho(S)$ from the $S$-slash spanning statement]\label{l14:thm:rhoS}
+Assume that the $M_i$ have conformal weights $h_i$ and the growth datum, and that the $S$-slash of each trace block is a linear
+combination of the trace blocks (\lean{SlashSpannedAtS}). Then trace spanning holds for every $A\in\lfourteenSL$. If moreover
+the weights $h_i$ are pairwise incongruent mod $\Z$ (equivalently $T$-eigenvalues distinct) and the trace functions do not all
+vanish, Zhu's law holds with a genuine representation $\rho$. (Of these hypotheses, the $S$-spanning statement is the deep
+one, Zhu's Theorem~5.3.3; the growth datum is supplied under $C_2$ in Chapter~\ref{ch:L15}; nonvanishing follows from the
+growth datum; distinctness of weights mod $\Z$ is a genuine restriction.)
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak RhoS.lean}.
+\begin{leancode}
+def SlashSpannedAtS (Mfam : ι → IrrModule W) (h : ι → ℂ) : Prop :=
+  ∀ i : ι, ∃ c : ι → ℂ, ∀ (n : ℤ) (v : 𝒱), v ∈ sqWeightSpace W (n : ℂ) → ∀ z ∈ imGT 0,
+    blockSlash W ModularGroup.S (traceBlock Mfam h i) v z
+      = ∑ j, c j * traceBlock Mfam h j v z
+
+theorem traceSpanning_of_slashSpannedAtS (hcw : ∀ i, HasConformalWeight (Mfam i).isMod (h i))
+    (hsub : ∀ i, OnePointSubexp (Mfam i).isMod (h i - W.centralCharge / 24))
+    (hS : SlashSpannedAtS Mfam h) : TraceSpanning Mfam h
+
+theorem zhu_modularity_of_slashSpannedAtS (hcw : ∀ i, HasConformalWeight (Mfam i).isMod (h i))
+    (hsub : ∀ i, OnePointSubexp (Mfam i).isMod (h i - W.centralCharge / 24))
+    (hS : SlashSpannedAtS Mfam h)
+    (hinj : Function.Injective (tEigen W h)) (hnv : TraceNonvanishing Mfam h) :
+    ZhuModularityAnalytic
+      (modularDataOf Mfam h (traceSpanning_of_slashSpannedAtS Mfam h hcw hsub hS)
+        (traceIndependent_of_tEigen_injective Mfam h hcw hinj hnv) hcw)
+\end{leancode}
+\begin{dictionary}
+\lean{traceBlock Mfam h i} is the trace function in the $\C$ picture (\lean{traceBlock_coe}: it agrees with \lean{traceFun} on
+$\lfourteenH$); \lean{blockSlash W γ F v} $=$ \lean{slashC (sqWtOf W v) γ (F v)}, slashing each $v$ by its own square-bracket
+weight (\leanpath{GradedBlock.lean}, Chapter~\ref{ch:L15}). \lean{tEigen W h i} $=e^{2\pi i(h_i-c/24)}$; \lean{TraceNonvanishing}
+asks that each $S_i$ be nonzero somewhere. \lean{modularDataOf} assembles a \lean{ModularData} (Definition~\ref{l14:def:moddata})
+from the matrices, and \lean{ZhuModularityAnalytic D} is the law of Definition~\ref{l14:def:realises} for every $A$ with
+$\rho = D.\mathtt{rep}$. \textbf{Hypotheses.} \lean{hS} is the deep input (the spanning half of Zhu's Theorem~5.3.3, at $S$
+only); \lean{hsub} the growth datum; \lean{hinj} an honest restriction (false for tensor products and many lattice VOAs, as
+\leanpath{TEigenInjective.lean} records; Chapter~\ref{ch:L15} removes it via fibre independence). The conclusion is the
+textbook law. Conditional, and the conditions are visible.
+\end{dictionary}
+\noindent\emph{Proof.} The law at $S$ follows from \lean{hS} by reading off coefficients (\lean{realisesLaw_of_slashSpanned}).
+The law at $T$ is $T$-periodicity (Theorem~\ref{l14:thm:Tanalytic}). The set of $A$ admitting a law is closed under products
+(the cocycle $j(AB,\tau) = j(A,B\tau)j(B,\tau)$, \lean{autFactor_mul}) and contains $1$; and $\lfourteenSL$ is generated by $S$, $T$
+\emph{as a monoid}, because $S^{-1} = S^3$ and $T^{-1} = (ST)^5S$ (\lean{submonoid_closure_S_T_eq_top},
+\leanpath{TraceSpanningS.lean}). Independence (from distinct $T$-eigenvalues) makes the $\rho_A$ unique, so $A\mapsto\rho_A$ is
+multiplicative.
+\begin{physics}
+Modular invariance of a rational CFT is fixed by two pieces of data: the diagonal $T$ (spins) and the matrix $S$ (exchange of
+space and time). Once one knows that the $S$-transformed amplitudes lie in the span of the old ones, the full
+$\lfourteenSL$-representation follows from group theory. $\rho(S)$ is the CFT's modular $S$-matrix, input to the Verlinde
+formula.
+\end{physics}
+\begin{status}
+Conditional on the named hypotheses. \texttt{\#print axioms} of both: standard three; no \lean{VOA.pbw}. The library's
+$S$-matrix is \lean{rhoS_of_blockSpanned} (same file), conditional likewise.
+\end{status}
+
+\begin{theorem}[$T$-eigenvalues are distinct iff the weights are distinct mod $\Z$]\label{l14:thm:teigen}
+$e^{2\pi i(h_i-c/24)} = e^{2\pi i(h_j-c/24)}$ iff $h_i - h_j\in\Z$; hence \lean{tEigen W h} is injective iff the $h_i$ are pairwise
+incongruent mod $\Z$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak TEigenInjective.lean}.
+\begin{leancode}
+theorem tEigen_injective_iff (h : ι → ℂ) :
+    Function.Injective (tEigen W h) ↔ ∀ i j : ι, (∃ n : ℤ, h i - h j = (n : ℂ)) → i = j
+\end{leancode}
+\noindent\emph{Proof.} $e^x = e^y$ iff $x - y\in2\pi i\Z$ (Mathlib \lean{exp_eq_exp_iff_exists_int}).
+\begin{physics}
+Sectors with spins differing by an integer cannot be told apart by the Dehn twist; then independence of characters needs the
+finer ground-state analysis of Theorem~\ref{l14:thm:qevallin}(iv).
+\end{physics}
+\begin{status}
+Unconditional; standard axioms. Used by \lean{traceIndependent_of_weights_distinct_mod_int} (same file), which is conditional
+on ordered spanning data and the distinctness.
+\end{status}
+
+\begin{definition}[Jacobi characters; Gannon §5.3.5]\label{l14:def:jacobi}
+For $u,v\in V_1$ and a bilinear form $\beta$ on $V$:
+$Z_M(\tau,u,v) = \sum_n\tr_{M_{h+n}}\bigl(e^{2\pi i(o(v)-\beta(u,v)/2)}e^{2\pi i\tau o(u)}\bigr)e^{2\pi i\tau(h+n-(c+12\beta(u,u))/24)}$,
+operator exponentials taken blockwise on the finite-dimensional weight spaces; $\chi^J_M(\tau,v,w) = e^{2\pi iw}Z_M(\tau,0,v)$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak JacobiCharacter.lean}.
+\begin{leancode}
+noncomputable def jacobiChar (N : OrdVModule W M) (h : ℂ) (β : 𝒱 →ₗ[ℂ] 𝒱 →ₗ[ℂ] ℂ) (v : 𝒱) (w : ℂ)
+    (τ : UpperHalfPlane) : ℂ :=
+  Complex.exp (twoPiI * w) * Zfun N h β 0 v τ
+
+def JacobiTransformation (D : ModularData W ι) (β : 𝒱 →ₗ[ℂ] 𝒱 →ₗ[ℂ] ℂ) : Prop :=
+  ∀ (A : SL(2, ℤ)) (v : 𝒱), v ∈ W.grading 1 → ∀ (w : ℂ) (i : ι) (τ : UpperHalfPlane),
+    jacobiChar (D.Mfam i).isMod (D.h i) β ((autFactor A τ)⁻¹ • v)
+        (w - ((A : Matrix (Fin 2) (Fin 2) ℤ) 1 0 : ℂ) * β v v / (2 * autFactor A τ)) (A • τ)
+      = ∑ j, D.rep A i j * jacobiChar (D.Mfam j).isMod (D.h j) β v w τ
+
+theorem jacobiTransformation_zero (D : ModularData W ι) (β : 𝒱 →ₗ[ℂ] 𝒱 →ₗ[ℂ] ℂ)
+    (hJ : JacobiTransformation D β) (A : SL(2, ℤ)) (i : ι) (τ : UpperHalfPlane) :
+    qEvalAt (gradedDim (D.Mfam i).isMod) (D.h i - W.centralCharge / 24) (A • τ)
+      = ∑ j, D.rep A i j * qEvalAt (gradedDim (D.Mfam j).isMod) (D.h j - W.centralCharge / 24) τ
+\end{leancode}
+\begin{dictionary}
+\lean{Zfun} (same file) is the displayed $Z_M$, a \lean{tsum} (junk if divergent); \lean{twoPiI} $=2\pi i$. \lean{β} is an
+arbitrary bilinear form; the intended instance is an invariant form, but invariance is \emph{not} required by the statement.
+\lean{JacobiTransformation} is the Jacobi-form law $\chi^J_i(A\tau,\frac v{c\tau+d},w-\frac{c\beta(v,v)}{2(c\tau+d)}) =
+\sum\rho(A)_{ij}\chi^J_j(\tau,v,w)$ (Gannon (5.3.20); Miyamoto; Krauel--Mason), a named \lean{Prop}, \textbf{never proved}.
+\lean{jacobiTransformation_zero} only checks that its $v=0$, $w=0$ instance is Zhu's law for characters (at $v=0$ the Jacobi
+character is the character, \lean{jacobiChar_zero_zero}).
+\end{dictionary}
+\begin{physics}
+$Z_M(\tau,u,v)$ is the partition function twisted by the flavour (current) charges of the conserved currents in $V_1$: a
+torus with background gauge field. Its transformation as a Jacobi form encodes the anomaly (level) of the current algebra.
+\end{physics}
+\begin{status}
+\lean{JacobiTransformation}: statement only (open). \lean{jacobiTransformation_zero}: proved, standard axioms, but it is a
+consistency check, not a step toward the law.
+\end{status}
+
+%======================================================================
+\section{Subgroups and the theta group}\label{l14:sec:theta}
+%======================================================================
+
+\begin{definition}[Slash relations on a subgroup; the theta group]\label{l14:def:theta}
+For a family $F:V\to(\C\to\C)$ and $\gamma$: $G$ is the \emph{slash of $F$ by $\gamma$} if $G(v) = F(v)|_n\gamma$ on
+$\lfourteenH$ for every integer $n$ and $v\in V_{[n]}$. $F$ is \emph{modular on $\Gamma$} if $F$ is its own slash by every
+$\gamma\in\Gamma$. The \emph{theta group} is $\lfourteenGt = \langle S,T^2\rangle\le\lfourteenSL$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak BlockSlash.lean} (a Chapter~\ref{ch:L15} file).
+\begin{leancode}
+def IsSlashOf (W : VertexOperatorAlgebra 𝒱) (γ : SL(2, ℤ)) (F G : 𝒱 → ℂ → ℂ) : Prop :=
+  ∀ (n : ℤ) (v : 𝒱), v ∈ sqWeightSpace W (n : ℂ) → ∀ z ∈ imGT 0, G v z = slashC n γ (F v) z
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SlashSubgroup.lean}.
+\begin{leancode}
+def ModularOn (W : VertexOperatorAlgebra 𝒱) (Γ : Subgroup SL(2, ℤ)) (F : 𝒱 → ℂ → ℂ) : Prop :=
+  ∀ γ ∈ Γ, IsSlashOf W γ F F
+
+def RealisesLawOn (Γ : Subgroup SL(2, ℤ)) : Prop :=
+  ∀ A ∈ Γ, ∃ ρA : ι → ι → ℂ, RealisesLaw Mfam h A ρA
+
+def thetaGroup : Subgroup SL(2, ℤ) :=
+  Subgroup.closure ({ModularGroup.S, ModularGroup.T ^ 2} : Set SL(2, ℤ))
+
+def ThetaGroupProper : Prop := ModularGroup.T ∉ thetaGroup
+\end{leancode}
+\begin{dictionary}
+All in namespace \lean{VOA.SlashSub}. \lean{Subgroup.closure s} is the subgroup generated by $s$. The classical theta group is
+$\{\gamma\equiv I\text{ or }S\bmod 2\}$, of index $3$; \lean{thetaGroup} is \emph{defined} by generators. The identification
+with the congruence description, properness ($T\notin\lfourteenGt$) and index $3$ are proved in
+\leanpath{ThetaGroup.lean} (Chapter~\ref{ch:L17}) and imported into \leanpath{GammaThetaStatement.lean} as
+\lean{thetaGroup_eq}, \lean{thetaGroupProper}, \lean{thetaGroup_index}, \lean{gamma_two_le_thetaGroup}. So
+\lean{ThetaGroupProper}, stated ``deliberately not proved'' in \leanpath{SlashSubgroup.lean}, is a theorem of the library (that
+file's comment is stale, documentation only). \lean{IsSlashOf} only constrains $G$ on \emph{integer} square-bracket weights; for a bosonic VOA
+every $V_{[n]}$ with $n\notin\N$ is $0$ (\lean{sqWeightSpace_eq_bot_of_not_natCast}), so nothing is lost there, but the layer
+cannot express half-integral weights (the library proves this limitation explicitly: \lean{isSlashOf_of_eqOn_int},
+\lean{blockSlash_apply_of_notInt}).
+\end{dictionary}
+\begin{physics}
+$\lfourteenGt$ is the stabiliser of the Neveu--Schwarz spin structure on the torus (antiperiodic fermions in both directions):
+$T$ changes the time-direction boundary condition of fermions (NS $\to$ $\widetilde{\mathrm{NS}}$) and is therefore not a
+symmetry of the NS partition function, while $T^2$ and $S$ are. Fermionic theories, and bosonic theories with half-integral
+weights, have characters modular only for $\lfourteenGt$.
+\end{physics}
+
+\begin{theorem}[$\lfourteenGt$ as a monoid, and bosonic $\lfourteenGt$-modularity]\label{l14:thm:thetamonoid}
+(i) $\lfourteenGt$ is contained in the submonoid generated by $S$, $T^2$, $T^{-2}$. (ii) For any family with conformal weights, the
+law at $S$ implies the law on $\lfourteenGt$. (iii) $[\lfourteenSL:\lfourteenGt] = 3$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SlashSubgroup.lean}.
+\begin{leancode}
+theorem thetaGroup_le_submonoidClosure (A : SL(2, ℤ)) (hA : A ∈ thetaGroup) :
+    A ∈ Submonoid.closure
+      ({ModularGroup.S, ModularGroup.T ^ 2, (ModularGroup.T ^ 2)⁻¹} : Set SL(2, ℤ))
+
+theorem realisesLawOn_thetaGroup_of_S (hcw : ∀ i, HasConformalWeight (Mfam i).isMod (h i))
+    (hS : ∃ ρ : ι → ι → ℂ, RealisesLaw Mfam h ModularGroup.S ρ) :
+    RealisesLawOn Mfam h thetaGroup
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak GammaThetaStatement.lean}.
+\begin{leancode}
+theorem thetaGroup_index : SlashSub.thetaGroup.index = 3 :=
+  ThetaGroup.genSTsq_index_eq_three
+\end{leancode}
+\begin{dictionary}
+(i) uses $S^{-1} = S^3$; $T^{-2}$ must be adjoined because $\lfourteenGt/\{\pm1\}\cong\Z/2*\Z$ is free on $\bar S$, $\bar T^2$ (as the
+docstring says; not proved, and not needed). (ii) the laws at $T^{\pm2}$ come free from $T$-periodicity, since $\rho(T)$ is
+diagonal and invertible; so for a \emph{bosonic} VOA $\lfourteenGt$-modularity costs exactly the $S$-law, i.e.\ restriction buys
+nothing (correctly stated). (iii) a one-line import from Chapter~\ref{ch:L17}.
+\end{dictionary}
+\noindent\emph{Proof.} (i) Every element of the subgroup closure is a word in $S^{\pm1}$, $T^{\pm2}$. (ii) Realising matrices
+form a submonoid (Theorem~\ref{l14:thm:rhoS}'s proof). (iii) Chapter~\ref{ch:L17}.
+\begin{physics}
+For a bosonic theory the NS-sector subtlety is absent, so modularity for $\lfourteenGt$ is weaker than, and implied by, modularity
+for $\lfourteenSL$.
+\end{physics}
+\begin{status}
+Unconditional ((i), (iii)); conditional on the $S$-law ((ii)). Standard axioms (all three).
+\end{status}
+
+\begin{theorem}[The mechanism: the $T$-phase of half-integral weights]\label{l14:thm:tphase}
+For $m\in\Z$: $e^{2\pi i\,m/2} = (-1)^m$, which is $-1$ for odd $m$; and $e^{2\pi i\cdot2\cdot m/2} = 1$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak GammaThetaStatement.lean}.
+\begin{leancode}
+theorem tPhase_half (m : ℤ) :
+    Complex.exp (2 * (Real.pi : ℂ) * Complex.I * ((m : ℂ) / 2)) = (-1 : ℂ) ^ m
+
+theorem tSqPhase_half (m : ℤ) :
+    Complex.exp (2 * (Real.pi : ℂ) * Complex.I * (2 * ((m : ℂ) / 2))) = 1
+\end{leancode}
+\begin{physics}
+A state of weight $m/2$ picks up a sign under the Dehn twist $T$ when $m$ is odd, and nothing under $T^2$. This is the entire
+reason the symmetry group drops to $\langle S,T^2\rangle$. The library's docstring stresses, correctly, that it is the
+half-integral \emph{weight}, not the fermion parity, that matters: a $\Z$-graded super VOA has supertraces modular for all of
+$\lfourteenSL$ (Dong--Zhao), while its plain traces are modular for $\Gamma_0(2)$-type subgroups (the other spin structures).
+\end{physics}
+\begin{status}
+Unconditional arithmetic; standard axioms.
+\end{status}
+
+\begin{definition}[Half-integral automorphy factors; the super law; character systems]\label{l14:def:halfaut}
+A \emph{half-integral automorphy factor} is a consistent choice of square root of $c\tau+d$, needed to give meaning to
+$(c\tau+d)^{m/2}$; since a square root cannot be chosen multiplicatively, a multiplier $\mu$ records the failure of the cocycle
+law (for the theta group it is a root of unity, the theta multiplier). Precisely, a half-integral automorphy factor on $\Gamma$
+is a function $\sqrt{j}(A,\tau)$ with $\sqrt j(A,\tau)^2 = c\tau+d$, nowhere
+zero, $\sqrt j(1,\tau) = 1$, and a $\tau$-independent multiplier $\mu(A,B)$ with $\sqrt j(AB,\tau) =
+\mu(A,B)\sqrt j(A,B\tau)\sqrt j(B,\tau)$ for $A,B\in\Gamma$. A \emph{super character system} for a super VOA $W$ is a grading
+$\mathrm{sqWt}$ of $V$ supported on $\frac12\Z$ with $\mathbf 1$ in weight $0$, and a family $\chi_i(v,\tau)$ with
+$\chi_i(0,\tau) = 0$. The \emph{law on $\Gamma$} asks $\chi_i(v,A\tau) = \sqrt j(A,\tau)^m\sum_j\rho(A)_{ij}\chi_j(v,\tau)$ for
+$v$ of weight $m/2$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SlashSubgroup.lean}.
+\begin{leancode}
+structure HalfAutFactor (Γ : Subgroup SL(2, ℤ)) where
+  sq : SL(2, ℤ) → UpperHalfPlane → ℂ
+  sq_sq : ∀ A ∈ Γ, ∀ τ : UpperHalfPlane, sq A τ ^ (2 : ℤ) = autFactor A τ
+  sq_ne_zero : ∀ A ∈ Γ, ∀ τ : UpperHalfPlane, sq A τ ≠ 0
+  mult : SL(2, ℤ) → SL(2, ℤ) → ℂ
+  cocycle : ∀ A ∈ Γ, ∀ B ∈ Γ, ∀ τ : UpperHalfPlane,
+    sq (A * B) τ = mult A B * (sq A (B • τ) * sq B τ)
+  sq_one : ∀ τ : UpperHalfPlane, sq 1 τ = 1
+
+def SuperRealisesLawOn (W : SuperVertexOperatorAlgebra 𝒱) {ι : Type*} [Fintype ι]
+    (Γ : Subgroup SL(2, ℤ)) (J : HalfAutFactor Γ)
+    (χ : ι → 𝒱 → UpperHalfPlane → ℂ) (ρ : SL(2, ℤ) → ι → ι → ℂ) : Prop :=
+  ∀ A ∈ Γ, ∀ (m : ℤ) (v : 𝒱), v ∈ W.grading ((m : ℂ) / 2) → ∀ (i : ι) (τ : UpperHalfPlane),
+    χ i v (A • τ) = J.sq A τ ^ m * ∑ j, ρ A i j * χ j v τ
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak GammaThetaStatement.lean}.
+\begin{leancode}
+structure SuperCharacterSystem (W : SuperVertexOperatorAlgebra 𝒱) (ι : Type v) [Fintype ι] where
+  sqWt : ℂ → Submodule ℂ 𝒱
+  sqWt_halfInt : ∀ k : ℂ, (∀ m : ℤ, ((m : ℂ) / 2) ≠ k) → sqWt k = ⊥
+  vacuum_mem_sqWt : W.vacuum ∈ sqWt 0
+  chi : ι → 𝒱 → UpperHalfPlane → ℂ
+  chi_zero : ∀ (i : ι) (τ : UpperHalfPlane), chi i 0 τ = 0
+
+def CompleteRationalFamily (_S : SuperCharacterSystem W ι) : Prop → Prop := fun P => P
+
+def Conjecture_HalfWeight (S : SuperCharacterSystem W ι) (hFam : Prop) : Prop :=
+  SuperC2Cofinite W → IsHalfIntegerGraded W → HasStrictHalfWeight W →
+    CharacterIndependent S → CompleteRationalFamily S hFam → GammaThetaModularityHolds S
+\end{leancode}
+\begin{dictionary}
+\lean{SuperVertexOperatorAlgebra} is Chapter~\ref{ch:L17}'s notion; \lean{W.grading} its $L_0$-grading (complex weights).
+\lean{GammaThetaModularityHolds S} $=\exists J\,\exists\rho$, law of \lean{ModularLawOn} (the same shape as
+\lean{SuperRealisesLawOn} but with \lean{S.sqWt} in place of \lean{W.grading}) on \lean{thetaGroup}. \lean{CharacterIndependent}
+is linear independence of the \lean{chi i}; \lean{SuperC2Cofinite}, \lean{IsHalfIntegerGraded}, \lean{HasStrictHalfWeight} are the
+evident predicates (super $C_2$; weights in $\frac12\Z$; some weight in $\frac12+\Z$ nonzero). \textbf{What is and is not tied
+to $W$.} Nothing in \lean{SuperCharacterSystem} relates \lean{chi} to traces over $W$-modules, and \lean{sqWt} need not be
+$W$'s square-bracket grading; these are explicitly abstracted because the library has no super module theory (the docstring
+says so). \lean{SuperRealisesLawOn} uses $L_0$-weights rather than $L_{[0]}$-weights (also documented, and repaired by
+\lean{ModularLawOn}). \lean{HalfAutFactor} is satisfiable: on $\langle T^2\rangle$ by \lean{translationHalfAutFactor}, and on all
+of $\lfourteenGt$ by \lean{thetaHalfAutFactorExists} (\leanpath{ThetaHalfAutFactor.lean}, Chapter~\ref{ch:L17}, principal square
+root); the docstring of \lean{ThetaHalfAutFactorExists} in \leanpath{GammaThetaStatement.lean} calling it ``OPEN (task T5)'' (an internal project task label) is
+stale (documentation only).
+\end{dictionary}
+\begin{warning}
+\textbf{Template statements (moderate).} \lean{CompleteRationalFamily S P} is \emph{definitionally} $P$, so \lean{Conjecture_HalfWeight
+S hFam} takes an arbitrary proposition as its last hypothesis. With \lean{hFam := False} it is trivially true; with \lean{hFam :=
+True} it asserts $\lfourteenGt$-modularity of an \emph{arbitrary} independent family \lean{chi} (unrelated to $W$), which is false
+in general. So the ``conjecture'' has content only after the caller supplies, in \lean{hFam} and \lean{chi}, the module theory
+the library lacks. Likewise \lean{SuperRealisesLawOn} (and \lean{IsGammaThetaModular}) is satisfied by the zero family for every
+$\Gamma$, $J$, $\rho$. The library is candid that these are \lean{def}s, not theorems, and no theorem depends on them, but
+the names suggest more. Checked in Lean against the library (the check is not part of this release):
+\lean{completeRationalFamily_iff}, \lean{conjecture_halfWeight_false}, \lean{superRealisesLawOn_zero}; compiled for this chapter.
+\end{warning}
+\begin{physics}
+The intended statement (Höhn; Dong--Zhao; van Ekeren) is that the NS-sector characters of a $C_2$-cofinite, $\frac12\Z$-graded
+theory form a representation of the theta group, with the half-integral factor $(c\tau+d)^{m/2}$ coming from the
+$\eta$-function multiplier (the theta multiplier $\theta(A\tau)/\theta(\tau)$).
+\end{physics}
+
+\begin{proposition}[Check for the template warning]\label{l14:prop:certtheta}
+For every super character system $S$: $\mathtt{CompleteRationalFamily}\,S\,P\iff P$; $\mathtt{Conjecture\_HalfWeight}\,S\,
+\mathrm{False}$ holds; and the zero family satisfies \lean{SuperRealisesLawOn} for every $\Gamma$, $J$, $\rho$.
+\end{proposition}
+\noindent\emph{Proof.} Definitional unfolding; and $0 = J^m\cdot\sum\rho\cdot0$.
+\begin{status}
+Checked in Lean against the library, compiled with \texttt{lake env lean -DmaxSynthPendingDepth=3}: no errors. The check is not
+part of this release.
+\end{status}
+\begin{physics}
+None: this is a logical check that the template statements have no physical content until the missing module theory is supplied.
+\end{physics}
+
+\begin{theorem}[Consistency: bosonic VOAs satisfy the $\lfourteenGt$ statements]\label{l14:thm:thetaboson}
+(i) If $D$ is a modular datum satisfying Zhu's law, then the character system of $D$ (genuine square-bracket grading, genuine
+trace functions) satisfies the half-integral law on $\lfourteenGt$ for every half-integral factor $J$. (ii) For a $C_2$-cofinite VOA
+with semisimple $A(V)$, a finite irreducible family of the right cardinality with simple, pairwise non-isomorphic bottoms,
+and the datum \lean{Pr}, the characters are $\lfourteenGt$-modular.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak GammaThetaStatement.lean}.
+\begin{leancode}
+theorem modularLawOn_thetaGroup_of_zhuModularityAnalytic (D : ModularData W ι)
+    (hD : ZhuModularityAnalytic D) (J : SlashSub.HalfAutFactor SlashSub.thetaGroup) :
+    IsGammaThetaModular (ofModularData D) J (fun A i j => D.rep A i j)
+
+theorem characterModularOn_thetaGroup_of_C2Cofinite [Finite (Φ W)]
+    (Mfam : ι → IrrModule W) (hw : ι → ℂ)
+    (hC2 : C2Cofinite W)
+    (hss : letI := instRingA W; IsSemisimpleRing (A W))
+    (Pr : BottomProjection (parabolicRepOfAMod W (regularAMod W)))
+    (hcard : Fintype.card ι = Nat.card (Φ W))
+    (hcw : ∀ i, HasConformalWeight (Mfam i).isMod (hw i))
+    (hsep : ∀ j k : ι, j ≠ k → hw j = hw k →
+      IsEmpty (AModEquiv W (lowestAMod (hcw j).2) (lowestAMod (hcw k).2))) :
+    ∃ ρ : SL(2, ℤ) → ι → ι → ℂ,
+      CharacterModularOn SlashSub.thetaGroup
+        (fun i τ => traceFun Mfam hw i W.vacuum τ) ρ
+\end{leancode}
+\begin{dictionary}
+(i) is a pure restriction: on even doubled weight $m=2n$, $J^{2n} = (c\tau+d)^n$ (\lean{HalfAutFactor.zpow_even}); on odd $m$
+the bosonic weight space is $0$. (ii) chains (i)'s character form off Chapter~\ref{ch:L15}'s headline
+\lean{zhuModularity_pinned_of_C2Cofinite}; \lean{Φ W} is the set of iso-classes of irreducibles, \lean{Pr : BottomProjection …}
+is the datum discussed in Chapter~\ref{ch:L13} (supplied for every $V$ by \lean{voaPBWBottomProjection}, from the theorem \lean{VOA.pbw}; MISTAKES entry 61, now resolved),
+the former redundant hypotheses \lean{hzero} and \lean{hsimp} have been removed from the current statement. \lean{CharacterModularOn Γ χ ρ} is $\chi_i(A\tau) =
+\sum_j\rho(A)_{ij}\chi_j(\tau)$ for $A\in\Gamma$. As the library says, these buy nothing mathematically over $\lfourteenSL$-modularity;
+they are type-checks of the statements. The hypotheses \lean{[Finite (Φ W)]}, \lean{hcard}, \lean{hcw}, \lean{hsep} and
+\lean{Pr} of (ii) are all dischargeable: finiteness is the theorem \lean{finite_Φ_of_C2Cofinite_pbw} from $C_2$ alone, and
+the canonical family of Chapter~\ref{ch:L15} (Theorem~\ref{l15:thm:canonical}) satisfies the family hypotheses. The
+hypothesis \lean{hss} is semisimplicity of $A(V)$, not rationality; for a rational $V$ (\lean{AdmissiblyRational}) it is
+supplied by the theorem \lean{isSemisimpleRing_}\allowbreak\lean{A_of_}\allowbreak\lean{admissiblyRational}
+(Chapter~\ref{ch:L15}, Theorem~\ref{l15:thm:zhuss}).
+\end{dictionary}
+\begin{physics}
+A bosonic theory trivially passes the NS-sector test.
+\end{physics}
+\begin{status}
+(i) conditional on \lean{hD}; (ii) conditional on $C_2$, semisimplicity, the family hypotheses and \lean{Pr}. Both
+\texttt{\#print axioms}-clean (standard three), \textbf{not} using \lean{VOA.pbw}; the datum \lean{Pr} is supplied for every $V$ by
+\lean{voaPBWBottomProjection} (from the theorem \lean{VOA.pbw}; Chapter~\ref{ch:L15}'s \lean{_voaPBW} variants).
+\end{status}
+
+%======================================================================
+\section{The analytic \texorpdfstring{$j$}{j}-invariant and the abstract Moonshine corollary}\label{l14:sec:moonshine}
+%======================================================================
+
+\begin{definition}[Analytic $j$]\label{l14:def:jinv}
+$j(\tau) = E_4(\tau)^3/\Delta(\tau)$ on $\lfourteenH$. It is $\lfourteenSL$-invariant (\lean{jInvariant_smul}). The ``Hauptmodul
+step'' \lean{eq_jInvariant_add_const} states: \textbf{if one is given} a weight-$0$ modular form $F$ (holomorphic, also at the cusp)
+with $F = \chi - j$, then $\chi = j + c$. \textbf{The hypothesis is the Hauptmodul content}: it is assumed, not proved.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak JInvariantAnalytic.lean}.
+\begin{leancode}
+noncomputable def jInvariant (z : ℍ) : ℂ :=
+  (ModularForm.E₄ z) ^ 3 / ModularForm.discriminant z
+
+theorem jInvariant_smul (γ : SL(2, ℤ)) (z : ℍ) : jInvariant (γ • z) = jInvariant z
+
+theorem eq_jInvariant_add_const (F : ModularForm 𝒮ℒ 0) (χ : ℍ → ℂ)
+    (hF : ∀ z, F z = χ z - jInvariant z) : ∃ c : ℂ, ∀ z, χ z = jInvariant z + c
+\end{leancode}
+\begin{dictionary}
+Division is honest because $\Delta$ has no zeros on $\lfourteenH$ (Mathlib \lean{discriminant_ne_zero}; \lean{jInvariant_eq_iff}).
+Mathlib has $E_4$ and $\Delta$ but not $j$ (true at this Mathlib version), so this is new, though elementary.
+\lean{discriminant_slash} first upgrades Mathlib's $S$- and $T$-invariance of $\Delta$ to all of $\lfourteenSL$ (the invariance
+set is a subgroup containing the generators). \lean{eq_jInvariant_add_const}: \textbf{the hypothesis carries the whole
+content.} It \emph{assumes} a holomorphic weight-$0$ form $F$, holomorphic at the cusp, with $F = \chi - j$; then $F$ is
+constant (Mathlib \lean{levelOne_weight_zero_const}). Proving that $\chi - j$ is such a form (holomorphy of $\chi$ and
+cancellation of the cusp poles) is exactly the Hauptmodul step, and it is \textbf{not} done anywhere in the library. The
+textbook Hauptmodul theorem (Chapter~\ref{ch:05}, Theorem~\ref{ch05:thm:haupt}) is not formalised.
+\end{dictionary}
+\begin{physics}
+$j$ is the unique (up to constant) modular-invariant function with a simple pole $q^{-1}$: the partition function of a
+holomorphic $c=24$ CFT is $j + \text{const}$, the constant being $\dim V_1 - 744$.
+\end{physics}
+\begin{status}
+\lean{jInvariant_smul}, \lean{eq_jInvariant_add_const}: unconditional, standard axioms. The second is nearly a restatement of
+Mathlib's lemma.
+\end{status}
+
+\begin{definition}[Formal character of a VOA; the Moonshine hypotheses and identity]\label{l14:def:moonchar}
+$\mathrm{ch}(V) = \sum_n(\dim V_n)q^n\in\C[[q]]$. The \emph{Moonshine hypotheses} are $c=24$, $V_1 = 0$, $V$ holomorphic and
+$C_2$-cofinite; the \emph{Moonshine character identity} is $\mathrm{ch}(V) = qJ$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak MoonshineCorollary.lean}.
+\begin{leancode}
+noncomputable def charSeries (W : VertexOperatorAlgebra 𝒱) : PowerSeries ℂ :=
+  PowerSeries.mk (fun n => (Module.finrank ℂ (W.grading n) : ℂ))
+
+structure MoonshineHypotheses (W : VertexOperatorAlgebra 𝒱) : Prop where
+  centralCharge_eq : W.centralCharge = 24
+  grading_one_eq_bot : W.grading 1 = ⊥
+  holomorphic : Holomorphic W
+  c2 : C2Cofinite W
+
+def MoonshineCharacter (W : VertexOperatorAlgebra 𝒱) : Prop := charSeries W = JShift
+\end{leancode}
+\begin{dictionary}
+\lean{JShift} $=qJ$ (Chapter~\ref{ch:05}, Definition~\ref{ch05:def:jshift}); \lean{Holomorphic} is Chapter~\ref{ch:L12}'s
+Definition~\ref{l12:def:gannon}. \lean{MoonshineCharacter} is a \lean{Prop}; \textbf{the library never proves it for any $V$},
+and \lean{MoonshineHypotheses} is not used by any theorem. The library's actual $\chi_{\Vnat} = J$ (Chapter~\ref{ch:05}) is stated
+for the concrete $\Vnat$ and does not mention these definitions.
+\end{dictionary}
+\begin{physics}
+$\mathrm{ch}(V)$ is $q\cdot Z(\tau)$, the torus partition function with the Casimir factor $q^{-1}$ removed (Chapter~\ref{ch:05}).
+\end{physics}
+\begin{status}
+Definitions. The small lemmas \lean{moonshineCharacter_coeff_zero_iff} ($\Rightarrow\dim V_0 = 1$) and
+\lean{coeff_one_charSeries_of_grading_one_eq_bot} are proved, standard axioms.
+\end{status}
+
+\begin{theorem}[Zhu's theorem forces invariance of a $c=24$ weight-$0$ character]\label{l14:thm:moonsl2}
+Let $V$ have $c = 24$ and an irreducible module $M$ of conformal weight $0$ (for instance $M = V$). If trace spanning and trace
+independence hold for the one-element family $\{M\}$ and the character of $M$ is not identically zero, then $\rho$ is trivial and
+the character is $\lfourteenSL$-invariant. Under $C_2$-cofiniteness, the growth datum and $\dim(\text{analytic $S$-slash
+ambient})\le1$, the same conclusion holds without the spanning/independence hypotheses. (For a one-element family,
+independence is automatic once the character is nonzero; spanning is the real hypothesis of the first form, and the rank bound
+replaces it in the second.) Finally, \textbf{if one is given} a weight-$0$ modular form equal to $\chi_M - j$, then $\chi_M = j +
+\text{const}$; \textbf{this last hypothesis is the Hauptmodul content and is assumed, not proved}, anywhere in the library.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak MoonshineCorollary.lean}.
+\begin{leancode}
+theorem char_SL2Z_invariant_of_spanning (V : IrrModule W)
+    (hsp : TraceSpanning (singleFam V) (fun _ => (0 : ℂ)))
+    (hind : TraceIndependent (singleFam V) (fun _ => (0 : ℂ)))
+    (hcw : HasConformalWeight V.isMod 0) (hc : W.centralCharge = 24)
+    (hne : ∃ τ : UpperHalfPlane, traceFun (singleFam V) (fun _ => (0 : ℂ)) () W.vacuum τ ≠ 0)
+    (A : SL(2, ℤ)) (τ : UpperHalfPlane) :
+    traceFun (singleFam V) (fun _ => (0 : ℂ)) () W.vacuum (A • τ)
+      = traceFun (singleFam V) (fun _ => (0 : ℂ)) () W.vacuum τ
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak MoonshineFromBlocks.lean}.
+\begin{leancode}
+theorem char_SL2Z_invariant_of_analyticRank (V : IrrModule W) (hC2 : C2Cofinite W) {z₀ : ℂ}
+    (hz₀ : z₀ ∈ imGT 0) (hcw : HasConformalWeight V.isMod 0)
+    (hsub : ∀ i : Unit, OnePointSubexp (singleFam V i).isMod
+      ((fun _ : Unit => (0 : ℂ)) i - W.centralCharge / 24))
+    (hle : Module.finrank ℂ (analyticSlashAmbient (singleFam V) (fun _ => (0 : ℂ))) ≤ 1)
+    (hc : W.centralCharge = 24)
+    (A : SL(2, ℤ)) (τ : UpperHalfPlane) :
+    traceFun (singleFam V) (fun _ => (0 : ℂ)) () W.vacuum (A • τ)
+      = traceFun (singleFam V) (fun _ => (0 : ℂ)) () W.vacuum τ
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak MoonshineHauptmodul.lean}.
+\begin{leancode}
+theorem char_eq_jInvariant_add_const (V : IrrModule W) (F : ModularForm 𝒮ℒ 0)
+    (hF : ∀ z : UpperHalfPlane,
+      F z = traceFun (singleFam V) (fun _ => (0 : ℂ)) () W.vacuum z - jInvariant z) :
+    ∃ c : ℂ, ∀ τ : UpperHalfPlane,
+      traceFun (singleFam V) (fun _ => (0 : ℂ)) () W.vacuum τ = jInvariant τ + c
+\end{leancode}
+\begin{dictionary}
+\lean{singleFam V : Unit → IrrModule W} is the one-element family; \lean{()} its index. \lean{traceFun … () W.vacuum} is the
+character $\chi_M(\tau) = \tr_Mq^{L_0-1}$ (base point $0 - 24/24$, $o(\mathbf 1) = \mathrm{id}$). \textbf{Holomorphy of $V$ is not
+assumed}: the theorem is about one module of weight $0$, and uses $c = 24$ only to make $\rho(T) = e^{2\pi i(0-1)} = 1$. Then
+$\rho(-1) = 1$ (law at $-1$ on $\mathbf 1$, using \lean{hne}), $\rho(S)^2 = \rho(-1) = 1$ and $\rho(S)^3 = \rho((ST)^3)\rho(T)^{-3} =
+1$, so $\rho(S) = 1$ and $\rho$ is trivial (\lean{modularRepOf_eq_one_of_holomorphic}). In
+\lean{char_SL2Z_invariant_of_analyticRank}, \lean{analyticSlashAmbient} is Chapter~\ref{ch:L15}'s finite-dimensional space of
+analytic blocks containing the trace block and its $S$-slash; its finite-dimensionality is a theorem there, and the bound
+$\le1$ is the honest hypothesis (``$\#\Phi = 1$''). \lean{char_eq_jInvariant_add_const} inherits the vacuous-looking hypothesis
+of \lean{eq_jInvariant_add_const}: it assumes the conclusion's analytic content.
+\end{dictionary}
+\noindent\emph{Proof.} As in the dictionary, plus Theorem~\ref{l14:thm:rhoS}'s machinery for the second statement (independence
+is free for one module once the character is nonzero, and nonvanishing is free from the growth datum: on the imaginary axis the character is a convergent series with
+nonnegative coefficients and positive leading coefficient, \lean{traceFun_vacuum_ne_zero}, Chapter~\ref{ch:L15}).
+\begin{physics}
+A $c=24$ theory with a single sector (holomorphic) has a modular-invariant partition function; with $V_1 = 0$ it is $J$. These
+theorems get the first half from the torus Ward identities alone; the second half (Hauptmodul) is assumed.
+\end{physics}
+\begin{status}
+Conditional on the visible hypotheses; standard axioms, no \lean{VOA.pbw} (all three).
+\end{status}
+\begin{warning}
+\textbf{Not instantiated at $\Vnat$; formerly stale docstrings (documentation only).} No theorem of this section is applied to the library's $\Vnat$.
+The library's $\chi_{\Vnat} = J$ (Chapter~\ref{ch:05}) is proved by computing both sides (theta series, $\dim M_{12} = 2$, the
+level-two identity) and uses none of the modularity machinery of this chapter. When this chapter was first written, the docstrings of
+\leanpath{MoonshineCorollary.lean}, \leanpath{MoonshineFromBlocks.lean}, \leanpath{MoonshineHauptmodul.lean} said that $\Vnat$ did
+not exist in the repository (``Phase-3 project''), although the library already constructed $\Vnat$, and the
+``Residual'' of \leanpath{MoonshineCorollary.lean} listed $[q^2]\mathtt{jShift} = 196884$ as open, although it is \lean{coeff_two_jShift}
+(Chapter~\ref{ch:05}). At a pre-release build commit these docstrings have been corrected: they name \lean{Moonshine.moonshine} as the
+construction of $\Vnat$ and record \lean{coeff_two_jShift} as proved.
+\end{warning}
+
+%======================================================================
+\section{Recorded traps, dead ends and defects}\label{l14:sec:traps}
+%======================================================================
+
+Severities are graded on a four-step scale: serious (a statement that is wrong or vacuous), moderate (weaker or stronger than advertised, or a redundant
+hypothesis), open gap (a conditional result whose hypothesis is not discharged, or a missing piece), and documentation
+only (docstrings and notes).
+\begin{enumerate}
+\item \lean{levelOne_coe_mem_E46} is generation only; homogeneity and independence are elsewhere (vendored
+  \lean{levelOne_eq_polynomial}); the two developments are disconnected (documentation only; Theorem~\ref{l14:thm:levelone}).
+\item \lean{E46HasWeightedPolynomialReps} was documented as missing but follows from the vendored \lean{span_eisBasisFun}
+  (Theorem~\ref{l14:thm:certreps}). \textbf{Closed}: now the library theorem \lean{e46HasWeightedPolynomialReps}.
+\item \lean{E46SerreClosed} / \lean{E46SerreMonomialClosed} (Ramanujan identities, Serre closure) were open named predicates.
+  \textbf{Closed}: \lean{e46SerreClosed}, \lean{e46SerreMonomialClosed} (Section~\ref{l14:sec:ramanujan}).
+\item \lean{ZhuRecursionEisenstein} uses the superseded $E_{2j}$ normalisation and would be false; no consumer; docstring of
+  \leanpath{EisensteinFormal.lean} stale (documentation only).
+\item \lean{VacuumGradeZero} was a redundant hypothesis of the cusp theorems (it holds for every VOA,
+  \lean{vacuumGradeZero_of_vacuum_grade}) (moderate; Section~\ref{l14:sec:cusp}); fixed in the library since.
+\item \lean{CompleteRationalFamily} is the identity; \lean{Conjecture_HalfWeight}/\lean{Conjecture_ZGradedSuper} have a free
+  proposition slot; \lean{SuperCharacterSystem}, \lean{SuperRealisesLawOn} are not tied to $W$ (moderate; checked in Lean,
+  Proposition~\ref{l14:prop:certtheta}).
+\item \lean{eq_jInvariant_add_const} and \lean{char_eq_jInvariant_add_const} assume the Hauptmodul content (moderate; open gap).
+\item \lean{JacobiTransformation} (Gannon Thm 5.3.9), \lean{MoonshineCharacter}: statements only (open gap).
+\item \lean{BuhlSpanning} is stronger than Buhl's theorem (all modules, finite bottom); its ordered monomials are weaker than
+  GN/Buhl (no strict decrease) (moderate, documented by the library).
+\item Docstrings: ``$p(n)\le2^n$ gives subexponential'' (false) in \leanpath{ConvergenceBridge.lean}; ``growth datum not built''
+  (\leanpath{ConvergenceBridge.lean}, \leanpath{GrowthBound.lean}); ``not connected to a VOA'' (\leanpath{Majorant.lean});
+  \lean{tendsto_indicial_quotient} misnamed (\leanpath{IndicialRecursion.lean}); (C2) unbuilt and (C3) prerequisite
+  contradiction (\leanpath{Schwarzian.lean} vs \leanpath{ChangeCoord.lean}); \lean{ThetaGroupProper} ``not proved''
+  (\leanpath{SlashSubgroup.lean}); \lean{ThetaHalfAutFactorExists} ``OPEN'' (\leanpath{GammaThetaStatement.lean}); $\Vnat$ ``does
+  not exist'' and $[q^2]j$ ``open'' (\leanpath{MoonshineCorollary.lean} and siblings) (all documentation only).
+\item Dead end, recorded by the library: the purely formal $\C[[q]]$ route cannot reach a point of $\lfourteenH$
+  (Theorem~\ref{l14:thm:noalghom}). Dead end: a fixed positive lower bound on the indicial divisor does not close the majorant
+  induction; $p_n\to\infty$ is needed (Theorem~\ref{l14:thm:majorant}).
+\end{enumerate}
+
+%======================================================================
+\section{Referee's checklist}\label{l14:sec:checklist}
+%======================================================================
+
+\begingroup\small
+\begin{longtable}{p{4.3cm}p{4.4cm}p{3.3cm}p{1.5cm}}
+\toprule
+Lean declaration & intended meaning & hypotheses; status & check \\
+\midrule
+\endhead
+\lean{slashC_deriv_eq}, \lean{slashC_G2C} & slash vs.\ derivative; $G_2$ quasimodular & differentiability; unconditional & Thms.~\ref{l14:thm:slashderiv}, \ref{l14:thm:G2slash}\\
+\lean{zhuG}, \lean{zhuGC} & Zhu's $\mathcal G_{2j} = -\frac{B_{2j}}{(2j)!}+\frac2{(2j-1)!}\sum\sigma q^n$ & definitions & Defs.~\ref{l14:def:zhuG}, \ref{l14:def:zhuGC}\\
+\lean{zhuGC_eq_mul_E}, \lean{slashC_zhuGC} & $\mathcal G_{2j} = g_j(0)E_{2j}$, modular & $j\ge2$; unconditional & Thm.~\ref{l14:thm:zhuGCE}\\
+\lean{zhuGC_one}, \lean{zhuG_one_eq_neg_E2_div_twelve} & $\mathcal G_2 = -E_2/12$ & unconditional & Thm.~\ref{l14:thm:zhuGCone}\\
+\lean{tendsto_zhuGC_atImInfty} & cusp value $g_j(0)$ & $j\ge2$; unconditional & Thm.~\ref{l14:thm:cusplim}\\
+\lean{levelOne_coe_mem_E46} & $M_k\subseteq\C\langle E_4,E_6\rangle$ & none; \textbf{generation only} & Thm.~\ref{l14:thm:levelone}\\
+\lean{E46SerreClosed}, \lean{e46SerreClosed} & $\partial_kM_k\subseteq M_{k+2}$ & \textbf{proved} (\lean{serreForm}); unconditional & §\ref{l14:sec:ramanujan}\\
+\lean{evInfty}, \lean{evAt}, \lean{ker_isMaximal} & cusp and interior points of $\lfourteenE$ & unconditional & Def.~\ref{l14:def:evInfty}\\
+\lean{no_algHom_powerSeries_X_ne_zero} & no fibre of $\C[[q]]$ at $q_0\neq0$ (dead end) & unconditional & Thm.~\ref{l14:thm:noalghom}\\
+\lean{Subexponential} and closure lemmas & radius of convergence $\ge1$ & unconditional & Def.~\ref{l14:def:subexp}, Thm.~\ref{l14:thm:subexpclosure}\\
+\lean{qEvalAt}, \lean{qEvalC}, \lean{qSummableAt_of_subexponential} & evaluation of formal series & growth; unconditional & Def.~\ref{l14:def:qeval}, Thm.~\ref{l14:thm:qsummable}\\
+\lean{differentiableOn_qEvalC}, \lean{deriv_qEvalC} & holomorphy; $\frac d{d\tau} = 2\pi iD$ & growth & Thm.~\ref{l14:thm:holo}\\
+\lean{differentiableOn_char_adjoint} & character of a $C_2$ VOA holomorphic & $C_2$, $\mathbf 1\neq0$ & Thm.~\ref{l14:thm:holo}\\
+\lean{qEvalC_qConv}, \lean{qEvalC_finsum}, \lean{qEvalAt_shift} & convolution $\to$ product; linearity; rebasing & support, summability & Thms.~\ref{l14:thm:qconv}, \ref{l14:thm:qevallin}\\
+\lean{leading_coeff_eq_zero_of_qEvalAt_imAxis_eq_zero} & leading coefficient detected at $\tau=it$ & growth & Thm.~\ref{l14:thm:qevallin}\\
+\lean{zhu_modularity_T_pow_analytic} & law on $\langle T\rangle$ & none (termwise) & Thm.~\ref{l14:thm:Tanalytic}\\
+\lean{psSMul_mul}, \lean{instModulePowerSeriesQSeriesAt} & $\mathcal Q_h$ is a $\C[[q]]$-module & support on $h+\N$ & Def.~\ref{l14:def:QSeriesAt}\\
+\lean{qDeriv_psSMul}, \lean{theta_mem_subexpPS} & Leibniz rule; $\theta$-stability of $\mathcal S$ & unconditional & Thm.~\ref{l14:thm:productrule}\\
+\lean{qExpansion_zhuGC}, \lean{mk_zhuG_mem_GSeries}, \lean{isNoetherianRing_GSeries} & formal = analytic Eisenstein; Noetherian $\C[\mathcal G_2,\mathcal G_4,\mathcal G_6]$ & unconditional & Thm.~\ref{l14:thm:qexpzhuG}, Def.~\ref{l14:def:GSeries}\\
+\lean{serreDerivC}, \lean{serreDerivC_slashC} & Serre derivative is equivariant & differentiability; unconditional & Def.~\ref{l14:def:serre}, Thm.~\ref{l14:thm:serreslash}\\
+\lean{pcountLe_subexponential}, \lean{subexponentialCoeffs_of_pbw}, \lean{subexponentialCoeffs_of_buhl} & free-boson bound on degeneracies & spanning data / \lean{BuhlSpanning} & Thms.~\ref{l14:thm:pcount}, \ref{l14:thm:pbwgrowth}\\
+\lean{subexponential_of_majorant_recursion} & majorant theorem & $p_n\to\infty$ & Thm.~\ref{l14:thm:majorant}\\
+\lean{subexponential_of_indicial_recursion}, \lean{tendsto_indicialDivisor_atTop} & indicial recursion $\Rightarrow$ growth; divisor grows & monic, $s\ge1$ & Thm.~\ref{l14:thm:indicial}\\
+\lean{onePointSubexp_of_formalODE}, \lean{onePointSubexp_of_GSeriesODE} & formal MLDE $\Rightarrow$ growth datum & ODE hypothesis & Thm.~\ref{l14:thm:formalODE}\\
+\lean{subexponential_of_system} & first-order systems & subexponential coefficients & Thm.~\ref{l14:thm:system}\\
+\lean{schwarzian_expMinusOne}, \lean{exp_subst_log}, (I1)--(I3) & $\{e^z-1;z\} = -\frac12$; weight identities & unconditional & Thms.~\ref{l14:thm:schwarzian}, \ref{l14:thm:explog}\\
+\lean{Lsq_virasoro} & torus Virasoro, same $c$ & none & Thm.~\ref{l14:thm:Lsq}\\
+\lean{changeCoord} & $T_f = \exp\sum a_kL_k$ & definition; law (C3) open & Def.~\ref{l14:def:changeCoord}\\
+\lean{negTwoFamily_cusp} & DLM Lemma 9.2(c) & $k\ge1$; unconditional & Thm.~\ref{l14:thm:negtwo}\\
+\lean{blockRelSpanAtCusp_eq_cuspRelSpan}, \lean{finrank_quot_cuspRelSpan_eq_of_algEquiv_pi_matrix} & cusp fibre $= A/[A,A]$; dimension $=$ \#Wedderburn factors & none (former \lean{VacuumGradeZero} removed); decomposition & Thm.~\ref{l14:thm:cuspfibre}\\
+\lean{traceSpanning_of_slashSpannedAtS}, \lean{zhu_modularity_of_slashSpannedAtS} & $S$-spanning $\Rightarrow$ Zhu's law & weights, growth, $S$-spanning, distinct $T$-eigenvalues, nonvanishing & Thm.~\ref{l14:thm:rhoS}\\
+\lean{tEigen_injective_iff} & distinct $T$-eigenvalues $\iff$ weights distinct mod $\Z$ & unconditional & Thm.~\ref{l14:thm:teigen}\\
+\lean{JacobiTransformation} & Jacobi-form law & \textbf{statement only} & Def.~\ref{l14:def:jacobi}\\
+\lean{thetaGroup}, \lean{thetaGroup_le_submonoidClosure}, \lean{realisesLawOn_thetaGroup_of_S}, \lean{thetaGroup_index} & $\lfourteenGt$; monoid generation; bosonic case & $S$-law (for the law) & Thm.~\ref{l14:thm:thetamonoid}\\
+\lean{HalfAutFactor}, \lean{SuperCharacterSystem}, \lean{Conjecture_HalfWeight} & half-integral law; $\lfourteenGt$ conjecture & \textbf{templates}; free \lean{hFam} & Def.~\ref{l14:def:halfaut}\\
+\lean{modularLawOn_thetaGroup_of_zhuModularityAnalytic}, \lean{characterModularOn_thetaGroup_of_C2Cofinite} & bosonic consistency & Zhu's law / $C_2$, semisimple, \lean{Pr} & Thm.~\ref{l14:thm:thetaboson}\\
+\lean{jInvariant_smul}, \lean{eq_jInvariant_add_const} & $j$ invariant; Hauptmodul step & \textbf{assumes} $\chi - j\in M_0$ & Def.~\ref{l14:def:jinv}\\
+\lean{char_SL2Z_invariant_of_spanning}, \lean{char_SL2Z_invariant_of_analyticRank} & $c=24$, $h=0$ character invariant & spanning data, or $C_2$, growth, rank $\le1$ & Thm.~\ref{l14:thm:moonsl2}\\
+\lean{MoonshineCharacter} & $\mathrm{ch}\,V = qJ$ & \textbf{statement only}; not instantiated & Def.~\ref{l14:def:moonchar}\\
+\bottomrule
+\end{longtable}
+\endgroup
+
+All \texttt{\#print axioms} results quoted in this chapter were obtained at an earlier commit (not re-run for this edition) by running a scratch file
+importing the relevant modules with \texttt{lake env lean -DmaxSynthPendingDepth=3} (never a bare \texttt{lake env lean}); 69
+headline declarations were checked, and every one reports exactly
+\begin{plaincode}
+[propext, Classical.choice, Quot.sound]
+\end{plaincode}
+No headline of this chapter uses \lean{VOA.pbw}. No full \texttt{lake build} was run for this chapter. The
+separate Lean checks of this chapter (not part of this release) compiled with no errors.
+
+\paragraph{Release audit 2026-10-27: RELEASE\_AUDIT\_ZHU.md.} The release audit
+(\texttt{Notes/\allowbreak Textbook/\allowbreak referee/\allowbreak RELEASE\_AUDIT\_ZHU.md}) found this chapter's two headlines
+that it examined faithful as stated: \lean{levelOne_coe_mem_E46} (generation of the level-one modular forms by $E_4$, $E_6$
+only, as Section~\ref{l14:sec:levelone} says) and \lean{subexponential_of_majorant_recursion} (an abstract lemma about
+nonnegative real sequences). Checked again later, at a commit before this edition (not re-run for this edition), with \texttt{lake env lean -DmaxSynthPendingDepth=3}:
+\lean{VOA.qSummableAt_of_subexponential}, standard three axioms. No other entry was re-run.
+
+\paragraph{Second release revision 2026-10-28.} Only the description of the consumer theorem of Chapter~\ref{ch:L15} changed
+(finding F2 of \texttt{RELEASE\_AUDIT\_NEW\_DECLS.md}: ``rational $\Rightarrow A(V)$ semisimple'' is proved in the library, so
+Zhu's theorem holds for $C_2$-cofinite \lean{AdmissiblyRational} $V$). No statement of this chapter changed and no
+\texttt{\#print axioms} of this chapter was re-run; the axiom checks of the new Chapter~\ref{ch:L15} theorems are recorded
+there (standard three axioms, at an earlier commit, not re-run for this edition). No \texttt{lake build} was run.
+
+%======================================================================
+\section{Notes and references}\label{l14:sec:notes}
+%======================================================================
+
+\textbf{Modular forms.} J.-P.~Serre, \emph{A Course in Arithmetic}, Graduate Texts in Mathematics 7, Springer (1973), Ch.~VII
+(the structure of $M_*$, Eisenstein series, $\Delta$, $j$). D.~Zagier, ``Elliptic modular forms and their applications'', in
+\emph{The 1-2-3 of Modular Forms}, Universitext, Springer (2008), 1--103 (quasimodular $E_2$, eq.~(17); the Serre derivative and
+Ramanujan's identities, §5). M.~Kaneko and D.~Zagier, ``Supersingular $j$-invariants, hypergeometric series, and Atkin's
+orthogonal polynomials'', in \emph{Computational Perspectives on Number Theory}, AMS/IP Stud.\ Adv.\ Math.\ 7 (1998), 97--126
+(the Kaneko--Zagier equation, a second-order MLDE). T.~Gannon, \emph{Moonshine beyond the Monster}, Cambridge University Press
+(2006), §§2.3, 5.3 (the conventions transcribed by the library, eqs.~(5.3.15)--(5.3.21)).
+
+\textbf{Modular linear differential equations.} S.~D.~Mathur, S.~Mukhi and A.~Sen, ``On the classification of rational conformal
+field theories'', \emph{Phys.\ Lett.\ B} 213 (1988), 303--308; ``Reconstruction of conformal field theories from modular
+geometry on the torus'', \emph{Nucl.\ Phys.\ B} 318 (1989), 483--540. G.~Mason, ``Vector-valued modular forms and linear
+differential operators'', \emph{Int.\ J.\ Number Theory} 3 (2007), 377--390.
+
+\textbf{Zhu's theorem and its analytic toolkit.} Y.~Zhu, ``Modular invariance of characters of vertex operator algebras'',
+\emph{J.\ Amer.\ Math.\ Soc.} 9 (1996), 237--302 (square-bracket modes §4.2; recursion Prop.~4.3.2; ODE §4.4; Thm.~5.3.2). C.~Dong,
+H.~Li and G.~Mason, ``Modular-invariance of trace functions in orbifold theory and generalized Moonshine'', \emph{Comm.\ Math.\
+Phys.} 214 (2000), 1--56, arXiv:q-alg/9703016 (Lemma~9.2, the cusp degeneration; Thm.~5.4, the Serre derivative). G.~Buhl, ``A
+spanning set for VOA modules'', \emph{J.\ Algebra} 254 (2002), 125--151, arXiv:math/0111296. M.~Gaberdiel and A.~Neitzke,
+``Rationality, quasirationality and finite W-algebras'', \emph{Comm.\ Math.\ Phys.} 238 (2003), 305--331, arXiv:hep-th/0009235.
+Y.-Z.~Huang, \emph{Two-dimensional Conformal Geometry and Vertex Operator Algebras}, Birkh\"auser (1997) (change of coordinates).
+
+\textbf{Jacobi forms, theta group, super VOAs.} M.~Miyamoto, ``A modular invariance on the theta functions defined on vertex
+operator algebras'', \emph{Duke Math.\ J.} 101 (2000), 221--236. M.~Krauel and G.~Mason, ``Vertex operator algebras and weak Jacobi
+forms'', \emph{Int.\ J.\ Math.} 23 (2012), 1250024. G.~H\"ohn, \emph{Selbstduale Vertexoperatorsuperalgebren und das
+Babymonster}, PhD thesis, Bonn (1995), arXiv:0706.0236. C.~Dong and Z.~Zhao, ``Modularity in orbifold theory for vertex operator
+superalgebras'', \emph{Comm.\ Math.\ Phys.} 260 (2005), 227--256, arXiv:math/0411524. J.~van Ekeren, ``Modular invariance for twisted
+modules over a vertex operator superalgebra'', \emph{Comm.\ Math.\ Phys.} 322 (2013), 333--371, arXiv:1111.0682.
+
+\textbf{Physics.} J.~L.~Cardy, ``Operator content of two-dimensional conformally invariant theories'', \emph{Nucl.\ Phys.\ B} 270
+(1986), 186--204 (the growth of degeneracies from modular invariance). E.~Verlinde, ``Fusion rules and modular transformations in
+2D conformal field theory'', \emph{Nucl.\ Phys.\ B} 300 (1988), 360--376. P.~Di~Francesco, P.~Mathieu and D.~S\'en\'echal,
+\emph{Conformal Field Theory}, Springer (1997), Ch.~10 (modular invariance on the torus).
+
+\endgroup

@@ -1,0 +1,14 @@
+import VOA.Classification.COne.OrbIcoVFockData
+
+set_option Elab.async false
+set_option maxSynthPendingDepth 3
+set_option maxRecDepth 16384
+namespace VOA.Classification.COne.OrbIcoV
+open VOA.SparseRational
+
+theorem fockBSAData_step_12 :
+    normalizeQ (rawScale 12 (rawPrepend 0 (fockBSAData 12)) ++ fockBSASourceData 12) = [] := by
+  set_option maxHeartbeats 20000000 in
+  decide +kernel
+
+end VOA.Classification.COne.OrbIcoV

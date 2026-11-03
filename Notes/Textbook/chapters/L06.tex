@@ -1,0 +1,3076 @@
+\chapter[The Virasoro VOA: Verma modules, Kac determinant, screenings]{The Virasoro vertex operator algebra: Verma modules, the Kac determinant, screenings}\label{ch:L06}
+\begingroup\setlength{\emergencystretch}{3em}
+
+\providecommand{\lsixvac}{\mathbf{1}}
+\providecommand{\lsixVir}{\mathfrak{Vir}}
+\providecommand{\lsixU}{U(\mathfrak{Vir})}
+\providecommand{\lsixV}{V(c,0)}
+\providecommand{\lsixL}{L(c,0)}
+\providecommand{\lsixM}{M(c,h)}
+\providecommand{\lsixK}{K}
+\providecommand{\lsixhrs}{h_{r,s}}
+\providecommand{\lsixct}{c(t)}
+\providecommand{\lsixpp}{\mathrm{p}}
+\providecommand{\lsixpt}{\mathrm{p}_{2}}
+\providecommand{\lsixG}{G}
+\providecommand{\lsixform}[2]{\langle #1,#2\rangle}
+
+This chapter documents the release of the LeanVOA library named in the front matter. Every Lean quotation below is checked by \texttt{scripts/textbook/sync.py}
+to occur verbatim (up to whitespace and comments) in the source files of that release. The chapter was
+first written against an earlier state of the library; checks that were run at that earlier state and not re-run for this edition are marked as such. The chapter covers the 117 files
+\leanpath{VOA/\allowbreak Examples/\allowbreak Virasoro*.lean} that \texttt{Notes/Textbook/assignment.txt} assigns to it
+(the Virasoro files about rigidity, Benoit--Saint-Aubin vectors, fusion and the boundary models belong
+to Chapter~\ref{ch:L07} and Chapter~\ref{ch:L19}). A small number of definitions that these files
+use live in files of other chapters --- most importantly the general Verma module $M(c,h)$, which is
+defined in \leanpath{VOA/\allowbreak Examples/\allowbreak InverseDSVirasoroVerma.lean} (a file of
+Chapter~\ref{ch:L19}); we quote them here, with their file, because the statements of this chapter
+cannot be read without them.
+
+\paragraph{What the chapter establishes.} In one paragraph, and with the honesty that the rest of the
+chapter will justify in detail:
+\begin{enumerate}
+\item For \emph{every} complex number $c$ the library constructs the universal Virasoro vertex
+  operator algebra $\lsixV$ on the universal vacuum module $U(\lsixVir)/J(c)$
+  (\lean{VirModule.virasoroVOA}), proves that its creation monomials indexed by partitions into
+  parts $\ge2$ form a basis (so $\dim\lsixV_n$ is the number of such partitions), and constructs its
+  simple quotient $\lsixL$ (\lean{VirSimple.}\allowbreak\lean{virasoroSimple}), proved simple for every $c$
+  (\lean{VirSimple.}\allowbreak\lean{virasoroSimple_}\allowbreak\lean{isSimple}). Unconditional; \lean{VOA.pbw} (the PBW theorem of Chapter~\ref{ch:L02}; formerly a project axiom, now a theorem) is
+  \emph{not} used.
+\item For every $(c,h)\in\C^2$ it constructs the Verma module $M(c,h)$, its PBW basis, its
+  contravariant (Shapovalov) form, the Gram matrices of that form at every level, and the irreducible
+  quotient $L(c,h)$ with $\dim L(c,h)_n = \operatorname{rank}G_n(c,h)$. Unconditional.
+\item \textbf{The Kac determinant formula} for Virasoro Verma modules, at every level and every
+  $(c,h)$, is proved --- but it is \emph{not} stated as a single library declaration. The library
+  states a conditional version (\lean{vermaWeightDeterminant_}\allowbreak\lean{eq_}\allowbreak\lean{kac_}\allowbreak\lean{of_}\allowbreak\lean{singular}, which assumes the
+  existence of singular vectors), an extension theorem (\lean{verma_}\allowbreak\lean{kac_}\allowbreak\lean{all_}\allowbreak\lean{of_}\allowbreak\lean{nonreal_}\allowbreak\lean{singular}), and,
+  in a separate file, an unconditional construction of the singular vectors from screening operators
+  (\lean{screening_}\allowbreak\lean{nonreal_}\allowbreak\lean{kac_}\allowbreak\lean{singular}). The composition is two lines; we performed it in Lean against the
+  library (the check is not part of this release), and it
+  compiled with only the three standard axioms (Section~\ref{l06:sec:kacunconditional}). Several
+  docstrings in the Kac files still say that the singular-vector premise ``remains open''; they were
+  written before the screening files landed and are outdated (Warning~\ref{l06:warn:docstrings}).
+\item For the \emph{vacuum} module the library proves the explicit Gram determinants at levels
+  $4,5,6$ (the Kac determinant of $\lsixV$ there), the general degree and leading coefficient of the
+  vacuum Gram determinant, and the fact that it has a \emph{simple} zero at every minimal-model central
+  charge $c_{p,q}$ at the first singular level $(p-1)(q-1)$; it does \emph{not} state the full
+  vacuum determinant formula at all levels.
+\item It computes graded dimensions of $\lsixL$ at Lee--Yang ($c = -22/5$: $\dim = 1,1,2$ at levels
+  $4,5,6$), Ising ($c = 1/2$: $\dim L_6 = 3$) and $M(2,7)$ ($c = -68/7$: $\dim L_6 = 3$). It does
+  \emph{not} prove the full character formulas (Rogers--Ramanujan, the Ising vacuum character) beyond
+  these levels.
+\end{enumerate}
+
+\paragraph{How to read the chapter.} Section~\ref{l06:sec:physics} gives the physical picture: the
+stress tensor, the central charge, Verma modules as conformal families, null vectors, the Kac table,
+the minimal models and the Coulomb gas. Sections~\ref{l06:sec:modes}--\ref{l06:sec:simple} build the
+universal and the simple Virasoro vertex operator algebras. Section~\ref{l06:sec:gram} treats the
+invariant form on the vacuum module and its Gram matrices, and Section~\ref{l06:sec:dims} the graded
+dimensions of the minimal models that the library computes. Sections~\ref{l06:sec:verma}
+and~\ref{l06:sec:shap} treat general Verma modules and their contravariant forms;
+Section~\ref{l06:sec:kac} the Kac determinant; Section~\ref{l06:sec:screening} the screening
+construction of singular vectors; Section~\ref{l06:sec:vacuumkac} the passage from Verma modules back
+to the vacuum module, which is the input of the graded (first-order) rigidity theorem of Chapter~\ref{ch:L07}.
+Section~\ref{l06:sec:others} lists the remaining files. The chapter closes with the warnings and dead
+ends, the verification record, the referee's checklist and the references.
+
+The Lie-algebraic objects (the Witt algebra, the Gel'fand--Fuks cocycle, the Virasoro algebra
+$\lsixVir$, its universal enveloping algebra and the universal vacuum module) are defined in
+Chapter~\ref{ch:L02}, Sections ``The Witt algebra and the Virasoro algebra'' and ``The universal
+Virasoro vacuum module''. The notions of vertex algebra, vertex operator algebra, field, locality,
+mode, ideal, simplicity, quotient and invariant bilinear form are those of Chapters~\ref{ch:L01}--\ref{ch:L04} and
+Chapters~\ref{ch:L03}--\ref{ch:L04}. We recall each one at the point where it is used.
+
+%======================================================================
+\section{The physical picture}\label{l06:sec:physics}
+%======================================================================
+
+\subsection{The stress tensor and the central charge}
+
+A two-dimensional conformal field theory has a conserved, traceless stress--energy tensor. In complex
+coordinates its traceless part splits into a holomorphic field $T(z)$ and an antiholomorphic field
+$\bar T(\bar z)$; the chiral algebra studied in this book is the algebra generated by holomorphic
+fields such as $T(z)$. Expanding in modes,
+\begin{equation}\label{l06:eq:Tmodes}
+ T(z) = \sum_{n\in\Z}L_n\,z^{-n-2},
+\end{equation}
+the coefficients $L_n$ are the generators of infinitesimal conformal transformations
+$z\mapsto z+\epsilon z^{n+1}$ acting on the space of states (radial quantisation: states live on
+circles $|z| = r$ and $L_0$ generates dilatations, i.e.\ it is the Hamiltonian). The operator product
+expansion of $T$ with itself is
+\begin{equation}\label{l06:eq:TT}
+ T(z)T(w) \sim \frac{c/2}{(z-w)^4} + \frac{2T(w)}{(z-w)^2} + \frac{\partial T(w)}{z-w},
+\end{equation}
+and in modes it is the Virasoro algebra
+\begin{equation}\label{l06:eq:vir}
+ [L_m,L_n] = (m-n)L_{m+n} + \frac{c}{12}(m^3-m)\,\delta_{m+n,0}.
+\end{equation}
+The number $c$ is the \emph{central charge}. Classically (for the Witt algebra of vector fields
+$-z^{n+1}\partial_z$) it is absent; quantum mechanically it appears as an anomaly: the stress tensor
+does not transform as a tensor under finite conformal maps but picks up $\frac{c}{12}$ times the
+Schwarzian derivative; on a curved surface the trace of the stress tensor is $\propto c R$ (the
+conformal or trace anomaly); and on a cylinder of circumference $L$ the ground-state energy is shifted
+by $-\pi c/(6L)$ (the Casimir energy). The central charge ``counts degrees of freedom'': a free boson
+has $c = 1$, a free Majorana fermion $c = 1/2$.
+
+\subsection{Primary fields, Verma modules and descendants}
+
+A \emph{primary} field $\phi(z)$ of conformal weight $h$ has OPE
+$T(z)\phi(w)\sim h\phi(w)/(z-w)^2 + \partial\phi(w)/(z-w)$; the corresponding state
+$|h\rangle = \phi(0)|0\rangle$ satisfies $L_0|h\rangle = h|h\rangle$ and $L_n|h\rangle = 0$ for $n>0$.
+Such a state is called a \emph{highest-weight vector}. Acting with the creation modes $L_{-n}$, $n>0$,
+produces the \emph{descendants} $L_{-n_1}\cdots L_{-n_k}|h\rangle$, of weight $h+n_1+\dots+n_k$; together
+they form the \emph{conformal family} of $\phi$. The \emph{Verma module} $M(c,h)$ is the conformal family
+in which no relation is imposed among descendants other than those forced by \eqref{l06:eq:vir}: by the
+Poincar\'e--Birkhoff--Witt theorem a basis is given by the ordered monomials
+$L_{-n_1}\cdots L_{-n_k}|h\rangle$ with $n_1\ge\dots\ge n_k\ge1$, so the number of states at level $N$
+(weight $h+N$) is the number $\lsixpp(N)$ of partitions of $N$. The generating function of these
+numbers is the \emph{character}
+\begin{equation*}
+ \chi_{M(c,h)}(q) = \operatorname{tr}_{M(c,h)}q^{L_0-c/24} = q^{h-c/24}\prod_{n\ge1}\frac{1}{1-q^n}.
+\end{equation*}
+The \emph{vacuum} conformal family is special: the vacuum is invariant under the global conformal group
+$\mathrm{SL}_2$ generated by $L_{-1},L_0,L_1$, so $L_{-1}|0\rangle = 0$ as well. The universal vacuum
+module $\lsixV$ is therefore spanned by monomials $L_{-n_1}\cdots L_{-n_k}|0\rangle$ with $n_i\ge2$, and its
+character is $q^{-c/24}\prod_{n\ge2}(1-q^n)^{-1}$; the state $L_{-2}|0\rangle$ is the stress tensor
+itself ($T(z)\leftrightarrow L_{-2}|0\rangle$ by the state--field correspondence).
+
+\subsection{The Shapovalov form and null vectors}
+
+Unitarity (or, more generally, the existence of a two-point function) is encoded in a bilinear form
+with $\langle h|h\rangle = 1$ and $L_n^\dagger = L_{-n}$. Its matrix at level $N$, in the PBW basis, is the
+\emph{Gram} or \emph{Shapovalov} matrix $G_N(c,h)$; for example
+\begin{equation*}
+ G_1 = (2h),\qquad
+ G_2 = \begin{pmatrix} 4h(2h+1) & 6h\\ 6h & 4h+c/2\end{pmatrix}
+ \quad\text{in the basis }(L_{-1}^2|h\rangle, L_{-2}|h\rangle).
+\end{equation*}
+A \emph{null vector} is a nonzero state orthogonal to every state. The basic example is a
+\emph{singular vector}: a descendant $|\chi\rangle$ at level $N>0$ that is itself annihilated by all
+$L_n$, $n>0$; it is automatically orthogonal to everything, because pairing it with a descendant
+$L_{-n_1}\cdots|h\rangle$ moves the $L_{-n_i}$ across as $L_{n_i}$, which kill $|\chi\rangle$. Null
+vectors \emph{decouple}: all their correlation functions vanish, and in a consistent theory they are
+set to zero. Setting $|\chi\rangle = 0$ inside a correlation function turns into a linear differential
+equation for the correlator, because $L_{-n}$ acts on a primary field at $w$ inside correlators as a
+differential operator in the other insertion points --- this is the mechanism by which Belavin,
+Polyakov and Zamolodchikov solved the minimal models.
+
+\subsection{The Kac determinant and the Kac table}
+
+Null vectors exist at level $N$ exactly when $\det G_N(c,h) = 0$. Kac's theorem computes this
+determinant. Parametrise
+\begin{equation}\label{l06:eq:kacparam}
+ c = 13-6t-\frac6t,\qquad
+ h_{r,s}(t) = \frac{(rt-s)^2-(t-1)^2}{4t}\qquad(r,s\ge1).
+\end{equation}
+Then, up to a nonzero constant,
+\begin{equation}\label{l06:eq:kac}
+ \det G_N(c,h) \;\propto\; \prod_{\substack{r,s\ge1\\ rs\le N}}\bigl(h-h_{r,s}(t)\bigr)^{\lsixpp(N-rs)}.
+\end{equation}
+The factor $h-h_{r,s}$ reflects a singular vector at level $rs$ in $M(c,h_{r,s})$; its exponent
+$\lsixpp(N-rs)$ is the number of its descendants at level $N$. When $t = p/q$ with $p,q\ge2$ coprime,
+\begin{equation*}
+ c = c_{p,q} = 1-\frac{6(p-q)^2}{pq},
+\end{equation*}
+and the weights $h_{r,s}$, $1\le r\le q-1$, $1\le s\le p-1$ (with the identification
+$h_{r,s} = h_{q-r,p-s}$) form the \emph{Kac table}: the $(p-1)(q-1)/2$ primary fields of the
+\emph{minimal model} $M(p,q)$. Each $h_{r,s}$ in the table carries two independent singular vectors
+and the irreducible module $L(c_{p,q},h_{r,s})$ is much smaller than the Verma module. Examples:
+the Ising model $M(4,3)$, $c = 1/2$, with $h\in\{0,\frac1{16},\frac12\}$; the Lee--Yang model $M(5,2)$,
+$c = -22/5$, with $h\in\{0,-\frac15\}$; the trivial model $M(3,2)$, $c = 0$.
+
+For the vacuum $h = 0$: the label $(1,1)$ always gives $h_{1,1} = 0$, the singular vector being
+$L_{-1}|0\rangle$, which the vacuum module already removes. At $c = c_{p,q}$ the next zero-weight label
+is $(q-1,p-1)$ (for $p>q$), giving a vacuum null vector at level $(p-1)(q-1)$: level $4$ for
+Lee--Yang, $6$ for Ising, $2$ for $c = 0$ (where $L_{-2}|0\rangle$ itself is null: $\langle T,T\rangle = c/2 = 0$).
+
+\subsection{Characters of minimal models}
+
+The irreducible vacuum module $L(c_{p,q},0)$ has character (Rocha-Caridi)
+\begin{equation*}
+ \chi_{0}(q) = \frac{q^{-c/24}}{\prod_{n\ge1}(1-q^n)}\sum_{k\in\Z}\bigl(q^{a(k)}-q^{b(k)}\bigr)
+\end{equation*}
+for suitable quadratic exponents $a(k),b(k)$. For Lee--Yang ($c=-22/5$, so $-c/24 = 11/60$) it is the Rogers--Ramanujan series $H(q)$,
+$q^{-11/60}\chi_0 = \sum_{n\ge0}q^{n(n+1)}/((1-q)\cdots(1-q^n)) = 1+q^2+q^3+q^4+q^5+2q^6+\cdots$;
+for Ising it is $1+q^2+q^3+2q^4+2q^5+3q^6+\cdots$. The library computes some of these coefficients
+(Section~\ref{l06:sec:dims}).
+
+\subsection{The Coulomb gas and screening charges}
+
+Feigin and Fuchs, and in physics Dotsenko and Fateev, realised all these modules with a single free
+boson $\varphi$ with a \emph{background charge}: modify the free-boson stress tensor
+$T = -\frac12(\partial\varphi)^2$ to $T = -\frac12(\partial\varphi)^2 + i\sqrt2\,\alpha_0\partial^2\varphi$; then
+$c = 1-24\alpha_0^2$ (in one common normalisation), and the vertex operators $e^{i\alpha\varphi}$ are
+primary of weight $\alpha^2-2\alpha\alpha_0$ (again normalisation-dependent). Two values $\alpha_\pm$ give
+fields $V_\pm = e^{i\alpha_\pm\varphi}$ of weight exactly one; their contour integrals
+$Q_\pm = \oint V_\pm(z)\,dz$ commute with the Virasoro algebra (the integrand changes by a total
+derivative). These are the \emph{screening charges}. Applying $r$ of them,
+\begin{equation*}
+ Q^r|p\rangle = \oint\!\cdots\!\oint dz_1\cdots dz_r\,\prod_{i<j}(z_i-z_j)^{2t}\prod_i z_i^{(\cdots)}
+ \exp\Bigl(\beta\sum_{n>0}\frac{a_{-n}}{n}\sum_i z_i^n\Bigr)|p\rangle ,
+\end{equation*}
+produces a state in a Fock module that is annihilated by all $L_n$, $n>0$ --- a singular vector ---
+at level $rs$ and highest weight $h_{r,s}$. When $t = \beta^2$ is a positive integer the factor
+$\prod(z_i-z_j)^{2t}$ is a polynomial, the contour integral is the extraction of a single coefficient,
+and everything is finite algebra. This is exactly the route the library takes
+(Section~\ref{l06:sec:screening}): it constructs the screening states for $t = m^2$, proves they are
+nonzero and singular, deduces that $\det G_{rs}$ vanishes on the Kac curve at $t = 1,4,9,\dots$, and then
+uses that the determinant is a Laurent polynomial in $t$ to conclude it vanishes for every $t$.
+
+\subsection{The Sugawara construction}
+
+When a theory has currents $J^a(z)$ forming an affine Lie algebra at level $k$, its stress tensor can be
+built from them: $T(z) = \frac{1}{2(k+h^\vee)}\sum_a{:}J^aJ^a{:}(z)$, the \emph{Sugawara construction},
+with $c = k\dim\mathfrak g/(k+h^\vee)$. For one free boson ($\mathfrak g = \C$, $h^\vee = 0$) this is
+$T = \frac{1}{2k}{:}JJ{:}$ with $c = 1$. The library's file \leanpath{VirasoroSugawara.lean} treats
+exactly this abelian case (Section~\ref{l06:sec:sugawara}); the non-abelian affine $\mathfrak{sl}_2$
+Sugawara vector is in Chapter~\ref{ch:L08}.
+
+%======================================================================
+\section{The Virasoro modes on the universal vacuum module}\label{l06:sec:modes}
+%======================================================================
+
+\subsection{The vacuum module, recalled}
+
+\begin{definition}[Universal vacuum module; Chapter~\ref{ch:L02}]\label{l06:def:Vc}
+Let $\lsixVir$ be the Virasoro Lie algebra with basis $L_n$ ($n\in\Z$), $C$ and bracket
+$[L_m,L_n] = (m-n)L_{m+n}+\frac{m^3-m}{12}\delta_{m+n,0}C$, $C$ central, and let $\lsixU$ be its universal
+enveloping algebra. For $c\in\C$ let $J(c)\subseteq\lsixU$ be the left ideal generated by $L_n$
+($n\ge-1$) and $C-c$. The universal vacuum module is $\lsixV := \lsixU/J(c)$, with vacuum
+$\lsixvac := [1]$ and $\lsixVir$ acting by left multiplication. Write $L_n$ also for the operator by
+which $L_n$ acts.
+\end{definition}
+
+File \leanpath{VOA/Foundations/VirasoroModule.lean}.
+\begin{leancode}
+abbrev UVir : Type := UniversalEnvelopingAlgebra ℂ Virasoro
+
+def vacGens (c : ℂ) : Set UVir :=
+  {a | (∃ n : ℤ, -1 ≤ n ∧ a = ι ℂ (L n)) ∨ a = ι ℂ C - algebraMap ℂ UVir c}
+
+noncomputable def vacIdeal (c : ℂ) : Submodule UVir UVir :=
+  Submodule.span _ (vacGens c)
+
+abbrev VirUniv (c : ℂ) : Type := UVir ⧸ vacIdeal c
+
+noncomputable def virVacRho (c : ℂ) : Virasoro →ₗ⁅ℂ⁆ Module.End ℂ (VirUniv c) :=
+  (Algebra.lsmul ℂ ℂ (VirUniv c)).toLieHom.comp (ι ℂ)
+
+noncomputable def vacVec (c : ℂ) : VirUniv c := Submodule.Quotient.mk 1
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroField.lean}.
+\begin{leancode}
+noncomputable def Lop (n : ℤ) : End ℂ (VirUniv c) := virVacRho c (L n)
+
+theorem Lop_bracket (m n : ℤ) :
+    Lop c m * Lop c n - Lop c n * Lop c m
+      = ((m : ℂ) - n) • Lop c (m + n)
+        + (if m + n = 0 then ((m : ℂ) ^ 3 - m) / 12 * c else 0) • (1 : End ℂ (VirUniv c)) := by
+
+theorem Lop_vacuum {n : ℤ} (hn : -1 ≤ n) : Lop c n (vacVec c) = 0 :=
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Decoding.} \lean{UniversalEnvelopingAlgebra ℂ Virasoro} is Mathlib's $\lsixU$, and \lean{ι ℂ}
+the canonical Lie map $\lsixVir\to\lsixU$. A \lean{Submodule UVir UVir} is a left ideal ($\lsixU$
+acting on itself by left multiplication), \lean{Submodule.span} is the left ideal generated by a set,
+and \lean{⧸} is the quotient module. \lean{algebraMap ℂ UVir c} is the scalar $c\cdot1$. So
+\lean{VirUniv c} is $\lsixV$ exactly. \lean{Algebra.lsmul} is left multiplication of $\lsixU$ on the
+quotient, and composing with \lean{ι ℂ} gives the Lie action; \lean{Lop c n} is the operator $L_n$.
+\lean{Lop_bracket} is \eqref{l06:eq:vir} as an identity of operators, with $C$ replaced by $c$ (this
+uses that $C$ acts by $c$ on the whole module, \lean{vac_acts_central}, Chapter~\ref{ch:L02}); the term
+\lean{if m + n = 0 then … else 0} is the Kronecker delta, and \lean{(1 : End ℂ (VirUniv c))} is the
+identity operator. \lean{Lop_vacuum} is $L_n\lsixvac = 0$ for $n\ge-1$.
+
+\textbf{The name.} The docstrings of \leanpath{VirasoroField.lean} and of some neighbouring files call
+this module ``$L(c,0)$''. That is a historical misnomer: \lean{VirUniv c} is the \emph{universal}
+module $\lsixV$, which differs from the simple $\lsixL$ at the degenerate central charges. The
+library recorded the renaming (Chapter~\ref{ch:L02}); we write $\lsixV$ throughout.
+
+\textbf{Vacuity.} If $\lsixV$ were the zero module every statement here would be trivially true. That
+it is not is \lean{vacVec_ne_zero} (proved for every $c$, without \lean{VOA.pbw},
+in \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroNonvanishing.lean}; Chapter~\ref{ch:L02} gives the statement and the
+linear-dilaton proof, and we recall it in Theorem~\ref{l06:thm:nonvanishing}).
+\end{dictionary}
+
+\begin{physics}
+$\lsixV$ is the conformal family of the identity operator, before any null state has been removed:
+every state that can be created from the vacuum by the stress tensor. The relation $L_{-1}\lsixvac = 0$
+is translation invariance of the vacuum, $L_0\lsixvac = 0$ says it has energy zero, and $L_n\lsixvac = 0$
+for $n\ge1$ says $T(z)\lsixvac$ is regular at $z = 0$.
+\end{physics}
+
+\begin{theorem}[The vacuum is nonzero, for every $c$]\label{l06:thm:nonvanishing}
+For every $c\in\C$, $\lsixvac\ne0$ in $\lsixV$.
+\end{theorem}
+
+File \leanpath{VOA/Examples/VirasoroNonvanishing.lean}.
+\begin{leancode}
+theorem exists_lam (c : ℂ) : ∃ lam : ℂ, 1 - 12 * lam ^ 2 = c := by
+
+theorem vacVec_ne_zero (c : ℂ) : VirModule.vacVec c ≠ 0 := by
+\end{leancode}
+
+\begin{dictionary}
+The statement is exactly ``$\lsixvac\ne0$''. Its only content is that the left ideal $J(c)$ does not
+contain $1$. There are no hypotheses. Without it, $\lsixV = 0$ would be a model of every statement of
+this chapter about $\lsixV$, so every later non-vacuity argument rests on this theorem.
+\end{dictionary}
+
+\begin{physics}
+The vacuum exists at every central charge: the abstract ``conformal family of the identity'' is a
+nonzero space. The witness is physical: a free boson with a background charge (a linear dilaton) has
+a translation-invariant vacuum and central charge $1-12\lambda^2$, which takes every complex value.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+On the free-boson Fock space $\C[x_1,x_2,\dots]$ with oscillators $a_n$, the operators
+$L^\lambda_n = \frac12\sum_m{:}a_{n-m}a_m{:}+\lambda(n+1)a_n$ satisfy \eqref{l06:eq:vir} with
+$c = 1-12\lambda^2$ (\lean{Lld_virasoro}, \leanpath{VirasoroFock.lean}), and kill the Fock vacuum $1$ for
+$n\ge-1$ (\lean{Lld_vacuum}: for $n=-1$ the background term carries the factor $n+1 = 0$). Choose
+$\lambda$ with $1-12\lambda^2 = c$ (\lean{exists_lam}; $\C$ is algebraically closed). By the universal
+property, $a\mapsto a\cdot1$ is a $\lsixU$-linear map $\lsixU\to\mathrm{Fock}$ killing the generators of
+$J(c)$, hence all of $J(c)$; it therefore factors through $\lsixV$ and sends $\lsixvac$ to $1\ne0$.
+\end{proof}
+
+\begin{status}
+\lean{VOA.vacVec_ne_zero}: \texttt{\#print axioms} gives \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}
+(run for this chapter, Section~\ref{l06:sec:verification}). Unconditional, \lean{VOA.pbw}-free.
+\end{status}
+
+\subsection{The conformal field and its self-locality}
+
+\begin{definition}[Conformal vector and conformal field]\label{l06:def:omega}
+$\omega := L_{-2}\lsixvac\in\lsixV$, and $T(z) = Y(\omega,z) := \sum_{n\in\Z}L_n z^{-n-2}$, a formal
+distribution with coefficients in $\End\lsixV$.
+\end{definition}
+
+File \leanpath{VOA/Examples/VirasoroField.lean}.
+\begin{leancode}
+noncomputable def omegaVir : VirUniv c := Lop c (-2) (vacVec c)
+
+noncomputable def YomegaVir : FormalDist (End ℂ (VirUniv c)) := fun t => Lop c (-t - 2)
+
+theorem mode_YomegaVir (m : ℤ) : mode (YomegaVir c) m = Lop c (m - 1) := by
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Index conventions --- read carefully.} A \lean{FormalDist A} is a function $\Z\to A$, the
+value at $t$ being the coefficient of $z^t$ (Chapter~\ref{ch:L01}, Definition~\ref{l01:def:formaldist}).
+So \lean{YomegaVir c t = Lop c (-t-2)} says the coefficient of $z^t$ is $L_{-t-2}$, i.e.\
+$\sum_tL_{-t-2}z^t = \sum_nL_nz^{-n-2}$, which is \eqref{l06:eq:Tmodes}. The \emph{vertex-algebra mode}
+\lean{mode f n} is the coefficient of $z^{-n-1}$, i.e.\ \lean{mode f n = f (-n-1)}
+(Definition~\ref{l01:def:mode}). Hence \lean{mode (YomegaVir c) m} $= L_{m-1}$, i.e.\
+$\omega_{(m)} = L_{m-1}$, the standard convention $L_n = \omega_{(n+1)}$.
+\end{dictionary}
+
+\begin{physics}
+$\omega$ is the state of the stress tensor, and $Y(\omega,z) = T(z)$. The weight of $\omega$ is $2$:
+the stress tensor has dimension $(2,0)$.
+\end{physics}
+
+\begin{theorem}[The $TT$ OPE and self-locality]\label{l06:thm:selflocal}
+As formal distributions in two variables,
+\begin{equation*}
+ [T(z),T(w)] = \partial T(w)\,\delta(z-w) + 2T(w)\,\partial_w\delta(z-w) + \frac{c}{12}\,\partial_w^3\delta(z-w),
+\end{equation*}
+and consequently $(z-w)^4[T(z),T(w)] = 0$: $T$ is local with itself. Moreover $T$ is a field: for
+every $v\in\lsixV$, $L_nv = 0$ for all sufficiently large $n$.
+\end{theorem}
+
+File \leanpath{VOA/Examples/VirasoroField.lean}.
+\begin{leancode}
+theorem bracketDist_YomegaVir_deltaDeriv :
+    bracketDist (YomegaVir c) (YomegaVir c)
+      = deltaDeriv 0 (YomegaVir_deriv c) + deltaDeriv 1 ((2 : ℂ) • YomegaVir c)
+        + deltaDeriv 3 (YomegaVir_unit c) := by
+
+theorem YomegaVir_self_local : Local (YomegaVir c) (YomegaVir c) := by
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroIsField.lean}.
+\begin{leancode}
+theorem YomegaVir_isField : IsField (YomegaVir c) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{bracketDist a b} is the commutator $[a(z),b(w)]$ as a two-variable distribution;
+\lean{deltaDeriv j f} is $f(w)\cdot\frac{1}{j!}\partial_w^j\delta(z-w)$ in the library's normalisation
+(Chapter~\ref{ch:L01}); \lean{YomegaVir_deriv c} is $\partial T$ (its coefficient of $w^u$ is
+$(u+1)L_{-u-3}$) and \lean{YomegaVir_unit c} is the constant distribution $\frac{c}{12}\cdot1$ sitting at
+$w^0$. With $\frac1{3!}\partial^3$ in \lean{deltaDeriv 3}, the last term is $\frac{c}{12}\cdot\frac{1}{6}
+\cdot 6\,\partial^3_w\delta = $ the $\frac{c/2}{(z-w)^4}$ pole of \eqref{l06:eq:TT} (the residue $c/2$ of the
+fourth-order pole corresponds to $\frac{c}{2}\cdot\frac{1}{3!}\partial^3\delta$). \lean{Local a b} is
+$\exists N,\ (z-w)^N[a(z),b(w)] = 0$ (Definition~\ref{l01:def:bracket}); the proof takes $N = 4$.
+\lean{IsField f} is: for every vector $x$ there is $B$ with \lean{f j x = 0} for $j<-B$
+(Definition~\ref{l01:def:field}), i.e.\ $L_nx = 0$ for $n$ large. These are the standard notions, and the
+statements are exactly the theorem.
+\end{dictionary}
+
+\begin{physics}
+This is the $TT$ OPE \eqref{l06:eq:TT} written as a commutator of fields: the $(z-w)^{-4}$ term is the
+central charge (the two-point function $\langle T(z)T(w)\rangle = \frac{c/2}{(z-w)^4}$), the
+$(z-w)^{-2}$ term says $T$ has weight $2$, the $(z-w)^{-1}$ term says $T$ generates translations.
+Locality ($T(z)T(w) = T(w)T(z)$ up to singularities at $z = w$) is the chiral version of the statement
+that the stress tensor is a local observable.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+The coefficient of $z^sw^t$ of $[T(z),T(w)]$ is $[L_{-s-2},L_{-t-2}]$, which by \eqref{l06:eq:vir}
+equals $(t-s)L_{-s-t-4}$ plus the central term at $s+t+4 = 0$. Expanding the three
+$\delta$-derivative terms coefficientwise produces exactly the same numbers
+(\lean{bracketDist_YomegaVir}); multiplication by $(z-w)^{j+1}$ kills $\partial^j\delta(z-w)$, so
+$(z-w)^4$ kills all three. For the field property: $\lsixV$ is spanned by $a\cdot\lsixvac$ with
+$a\in\lsixU$; $L_m\lsixvac = 0$ for $m\ge-1$, and commuting $L_m$ past a generator $\iota(x)$ of
+$\lsixU$ gives $[L_m,x]$, which for $m$ large is again a mode of large index (plus a central term that
+vanishes for $m$ large); induction on the length of $a$ gives a bound (\lean{Lop_ann}).
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{VirModule.}\allowbreak\lean{YomegaVir_}\allowbreak\lean{self_}\allowbreak\lean{local}, \lean{VOA.}\allowbreak\lean{VirModule.}\allowbreak\lean{YomegaVir_}\allowbreak\lean{isField}:
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}. Unconditional. No free-field realisation is used: the
+locality comes from the abstract relation \eqref{l06:eq:vir} alone.
+\end{status}
+
+%======================================================================
+\section{The grading and the partition basis of the vacuum module}\label{l06:sec:basis}
+%======================================================================
+
+\subsection{Creation words and their energy}
+
+\begin{definition}[Creation monomials and the energy grading]\label{l06:def:grading}
+For a list $w = [i_1,\dots,i_k]$ of natural numbers put
+\begin{equation*}
+ L_w\lsixvac := L_{-i_1-2}L_{-i_2-2}\cdots L_{-i_k-2}\lsixvac,\qquad
+ E(w) := \sum_j(i_j+2),
+\end{equation*}
+and let $\lsixV_n$ be the span of all $L_w\lsixvac$ with $E(w) = n$ (and $\lsixV_n = 0$ for $n<0$).
+\end{definition}
+
+File \leanpath{VOA/Examples/VirasoroGrading.lean}.
+\begin{leancode}
+def energyVir : List ℕ → ℕ
+  | [] => 0
+  | (i :: rest) => (i + 2) + energyVir rest
+
+noncomputable def gradingVir (n : ℤ) : Submodule ℂ (VirUniv c) :=
+  Submodule.span ℂ {x | ∃ ws : List ℕ, (energyVir ws : ℤ) = n ∧ negWordVir c ws = x}
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroSpanning.lean}.
+\begin{leancode}
+noncomputable def negWordVir : List ℕ → VirUniv c
+  | [] => vacVec c
+  | n :: ws => Lop c (-(n : ℤ) - 2) (negWordVir ws)
+\end{leancode}
+
+\begin{dictionary}
+\textbf{The shift by two.} The list entry $i$ stands for the mode $L_{-i-2}$, so the entries are
+$\ge0$ exactly when the modes are $L_{-2},L_{-3},\dots$ --- the modes that act nontrivially on the
+vacuum. This encoding makes it impossible to write $L_{-1}$ or a positive mode in a creation word.
+\lean{gradingVir c n} is the $\C$-span (\lean{Submodule.span ℂ}) of the monomials of energy $n$; for
+$n<0$ the set is empty and the span is $0$. Note that the definition does \emph{not} say the
+monomials are independent, nor that $\lsixV$ is the sum of these spaces; both are theorems below.
+\end{dictionary}
+
+\begin{physics}
+$L_{-i_1-2}\cdots L_{-i_k-2}\lsixvac$ is the state of the normal-ordered product of derivatives of the
+stress tensor, ${:}\partial^{i_1}T\cdots\partial^{i_k}T{:}$ (up to factorials). Its energy $E(w)$ is its
+scaling dimension.
+\end{physics}
+
+\begin{theorem}[$\lsixV$ is graded by $L_0$ with finite-dimensional pieces]\label{l06:thm:grading}
+\begin{enumerate}
+\item $L_0(L_w\lsixvac) = E(w)\,L_w\lsixvac$ for every word $w$.
+\item The creation monomials span $\lsixV$.
+\item $\lsixV = \bigoplus_{n\in\Z}\lsixV_n$ (an internal direct sum), $\lsixV_n = 0$ for $n<0$,
+  $\lsixV_0 = \C\lsixvac$, and each $\lsixV_n$ is finite-dimensional.
+\end{enumerate}
+\end{theorem}
+
+File \leanpath{VOA/Examples/VirasoroGrading.lean}.
+\begin{leancode}
+theorem L0_negWord (ws : List ℕ) :
+    Lop c 0 (negWordVir c ws) = (energyVir ws : ℂ) • negWordVir c ws := by
+
+theorem gradingVir_neg (n : ℤ) (hn : n < 0) : gradingVir c n = ⊥ := by
+
+theorem gradingVir_zero : gradingVir c 0 = ℂ ∙ vacVec c := by
+
+theorem gradingVir_isInternal : DirectSum.IsInternal (gradingVir c) := by
+
+theorem gradingVir_finiteDimensional (n : ℤ) : FiniteDimensional ℂ (gradingVir c n) := by
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroSpanning.lean}.
+\begin{leancode}
+noncomputable def negSpanVir : Submodule ℂ (VirUniv c) :=
+  Submodule.span ℂ (Set.range (negWordVir c))
+
+theorem negSpanVir_eq_top : negSpanVir c = ⊤ := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{⊥} is the zero subspace, \lean{⊤} the whole space, \lean{ℂ ∙ v} the line spanned by $v$.
+\lean{DirectSum.}\allowbreak\lean{IsInternal (gradingVir c)} is Mathlib's ``the canonical map
+$\bigoplus_n\lsixV_n\to\lsixV$ is bijective'', i.e.\ $\lsixV$ is the internal direct sum of the
+$\lsixV_n$. \lean{FiniteDimensional ℂ (gradingVir c n)} is literal finite-dimensionality. The theorem
+is exactly the textbook statement; nothing about the \emph{dimensions} is claimed here (that is
+Theorem~\ref{l06:thm:pbw}).
+\end{dictionary}
+
+\begin{physics}
+$L_0$ is the Hamiltonian in radial quantisation; its eigenvalue on a descendant is the scaling dimension
+$h+N$. The finite-dimensionality of each $\lsixV_n$ is what makes the partition function
+$\operatorname{tr}q^{L_0-c/24}$ a well-defined formal power series.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+(1) Commute $L_0$ to the right: $[L_0,L_{-n}] = nL_{-n}$ with no central term (as $-n\ne0$), and
+$L_0\lsixvac = 0$. (2) $\lsixV$ is generated by $\lsixvac$ over $\lsixU$ (cyclicity), and $\lsixU$ is
+spanned by monomials in the $L_n$ and $C$; the span of the creation monomials contains $\lsixvac$ and is
+stable under every $L_n$ (for $n\le-2$ by definition; for $n\ge-1$ by commuting $L_n$ to the right,
+which produces shorter creation monomials and finally hits $L_n\lsixvac = 0$) and under $C = c$
+(\lean{negSpan_rho_stable}); hence it is all of $\lsixV$. (3) By (1), $\lsixV_n$ lies in the
+$n$-eigenspace of $L_0$; eigenspaces for distinct eigenvalues are independent, and by (2) the
+$\lsixV_n$ span. A word of energy $n$ has length at most $n/2$ and entries at most $n$, so there are
+finitely many of them (\lean{finite_energyEq}), giving finite dimension. $\lsixV_0$ is spanned by the
+empty word, i.e.\ by $\lsixvac$.
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{VirModule.}\allowbreak\lean{gradingVir_}\allowbreak\lean{isInternal}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}; the other
+items of the theorem are used by \lean{virasoroVOA}, whose axiom list is the same. Unconditional and
+\lean{VOA.pbw}-free: the internal direct sum comes from $L_0$-eigenspaces, not from a PBW basis (as for the
+affine analogue in Chapter~\ref{ch:L02}, Section~\ref{l02:sec:grading}).
+\end{status}
+
+\subsection{The partition basis}
+
+\begin{definition}[Sorted words]\label{l06:def:sorted}
+A word $w$ is \emph{sorted} if it is weakly decreasing. A sorted word of energy $n$ is the same thing
+as a partition of $n$ into parts $\ge2$ (part $i_j+2$). Write $\lsixpt(n)$ for the number of such
+partitions.
+\end{definition}
+
+File \leanpath{VOA/Examples/VirasoroPartitionBasis.lean}.
+\begin{leancode}
+def SortedWord (w : List ℕ) : Prop := w.Pairwise (· ≥ ·)
+
+def SortedOfEnergy (n : ℕ) : Type := {w : List ℕ // SortedWord w ∧ energyVir w = n}
+\end{leancode}
+
+\begin{dictionary}
+\lean{w.Pairwise (· ≥ ·)} says every earlier entry is $\ge$ every later entry: weakly decreasing.
+\lean{SortedOfEnergy n} is the subtype of such lists with energy $n$, a finite type. The same predicate
+\lean{SortedWord} is reused for Verma modules (Section~\ref{l06:sec:verma}), where entry $i$ means
+$L_{-i-1}$ instead; the reader must keep track of which shift is in force. The two conventions are
+stated in the docstrings and we flag them each time.
+\end{dictionary}
+
+\begin{physics}
+Partitions into parts $\ge2$ count the states of the identity family: $\prod_{n\ge2}(1-q^n)^{-1} =
+1+q^2+q^3+2q^4+2q^5+4q^6+\cdots$. The absence of parts equal to $1$ is the absence of $L_{-1}\lsixvac$,
+i.e.\ translation invariance of the vacuum.
+\end{physics}
+
+\begin{theorem}[PBW basis of $\lsixV$, at every $c$]\label{l06:thm:pbw}
+For every $c\in\C$ and $n\in\N$, the monomials $L_w\lsixvac$ with $w$ sorted of energy $n$ form a
+basis of $\lsixV_n$. Hence $\dim\lsixV_n = \lsixpt(n)$, and the sorted monomials of all energies form a
+basis of $\lsixV$. In particular $\dim\lsixV_n = 1,0,1,1,2,2,4,4,7$ for $n = 0,\dots,8$ and
+$\dim\lsixV_{16} = 55$.
+\end{theorem}
+
+File \leanpath{VOA/Examples/VirasoroPartitionBasis.lean}.
+\begin{leancode}
+noncomputable def gradedBasis (c : ℂ) (n : ℕ) : Module.Basis (SortedOfEnergy n) ℂ
+    (gradingVir c (n : ℤ)) :=
+  Module.Basis.mk (gradedWord_linearIndependent c n) (gradedWord_span c n)
+
+theorem finrank_gradingVir (c : ℂ) (n : ℕ) :
+    Module.finrank ℂ (gradingVir c (n : ℤ)) = Fintype.card (SortedOfEnergy n) :=
+
+theorem sortedWord_linearIndependent (c : ℂ) :
+    LinearIndependent ℂ (fun w : {w : List ℕ // SortedWord w} => negWordVir c w.1) := by
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroTopSymbol.lean}.
+\begin{leancode}
+def sortedWords (n : ℕ) : Finset (List ℕ) := sortedAux n n n
+
+theorem mem_sortedWords (n : ℕ) (w : List ℕ) :
+    w ∈ sortedWords n ↔ (SortedWord w ∧ energyVir w = n) := by
+
+theorem finrank_gradingVir_eq_card (c : ℂ) (n : ℕ) :
+    Module.finrank ℂ (gradingVir c (n : ℤ)) = (sortedWords n).card := by
+
+theorem card_sortedWords_le_eight :
+    (sortedWords 0).card = 1 ∧ (sortedWords 1).card = 0 ∧ (sortedWords 2).card = 1 ∧
+      (sortedWords 3).card = 1 ∧ (sortedWords 4).card = 2 ∧ (sortedWords 5).card = 2 ∧
+      (sortedWords 6).card = 4 ∧ (sortedWords 7).card = 4 ∧ (sortedWords 8).card = 7 :=
+
+theorem finrank_gradingVir_sixteen (c : ℂ) : Module.finrank ℂ (gradingVir c 16) = 55 := by
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Decoding.} \lean{Module.Basis ι ℂ M} is a basis of $M$ indexed by $\iota$;
+\lean{Module.Basis.mk} builds one from a linearly independent spanning family. So \lean{gradedBasis c n}
+is a basis of $\lsixV_n$ indexed by partitions of $n$ into parts $\ge2$, whose vectors are (by
+\lean{gradedWord_val}) the monomials $L_w\lsixvac$. \lean{Module.finrank} is the dimension;
+\lean{Fintype.card} the number of elements of a finite type. \lean{sortedWords n} is a computable finite
+set of lists, proved equal (\lean{mem_sortedWords}) to the set of sorted words of energy $n$, so that
+the dimension at a given level is a kernel computation (\lean{card_}\allowbreak\lean{sortedWords_}\allowbreak\lean{le_}\allowbreak\lean{eight}).
+
+\textbf{Uniformity in $c$.} The index type \lean{SortedOfEnergy n} does not depend on $c$; this is what
+lets the Gram matrices of Section~\ref{l06:sec:gram} be matrices with $c$-independent rows and columns,
+and their determinants polynomials in $c$.
+
+\textbf{Could it be wrong?} A basis needs independence, which fails in many superficially similar
+modules (e.g.\ in the simple quotient $\lsixL$). It holds here at \emph{every} $c$, including all the
+minimal-model charges; that is correct, because $\lsixV$ is the universal module (free over the
+subalgebra generated by $L_{-2},L_{-3},\dots$); the null vectors at degenerate $c$ are nonzero vectors
+of $\lsixV$, not linear relations among the monomials.
+\end{dictionary}
+
+\begin{physics}
+The universal vacuum character is $q^{-c/24}\prod_{n\ge2}(1-q^n)^{-1}$ for every $c$. All the physics of
+special central charges is in the passage to the irreducible quotient, where null vectors are set to
+zero.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+\emph{Spanning by sorted words.} Transposing two adjacent creation modes costs a merged mode:
+$L_{-i-2}L_{-j-2} = L_{-j-2}L_{-i-2} + (j-i)L_{-(i+j+2)-2}$ (\lean{negWordVir_swap}; no central term since
+$-i-2-j-2\ne0$). The merged word is shorter and has the same energy, so induction on energy and length
+sorts every word (\lean{Lop_sorted_insert}).
+
+\emph{Independence: the top symbol.} Realise $\lsixV$ in the free-boson Fock space
+$\C[X_0,X_1,\dots]$ by the linear dilaton of Theorem~\ref{l06:thm:nonvanishing}. The creation mode
+$L^\lambda_{-n}$ ($n\ge2$) splits, by polynomial degree, into multiplication by the quadratic
+$P_n = \frac12\sum_{a+b=n-2}X_aX_b$ (degree $+2$), a degree-preserving part, and $\lambda(1-n)X_{n-1}$
+(degree $+1$). Applying $k$ modes to the vacuum $1$, the degree-$2k$ component of the image of
+$L_w\lsixvac$ is therefore $\prod_jP_{i_j+2}$ --- with \emph{no} $\lambda$ in it
+(\lean{topSymbol_fockWordVir}). These products, over sorted words, are linearly independent: substitute
+$X_p\mapsto t^{B^p}$ for a large base $B$; then $\prod_jP_{i_j+2}$ becomes a one-variable polynomial
+whose degree encodes the partition in base $B$, so distinct partitions have distinct degrees. Given a
+relation $\sum_wa_wL_w\lsixvac = 0$, map it to Fock, take the top-degree component of the longest words
+present, and conclude their coefficients vanish; induct downward on length
+(\lean{negWordVir_coef_zero}). Since $\lambda$ never enters the top symbol, the argument is uniform in $c$.
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{VirModule.}\allowbreak\lean{gradedBasis}, \lean{VOA.}\allowbreak\lean{VirModule.}\allowbreak\lean{finrank_}\allowbreak\lean{gradingVir},
+\lean{VOA.}\allowbreak\lean{VirModule.}\allowbreak\lean{finrank_}\allowbreak\lean{gradingVir_}\allowbreak\lean{sixteen}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}.
+Unconditional, \lean{VOA.pbw}-free.
+\end{status}
+
+\begin{theorem}[Feigin--Fuchs embedding of the universal vacuum module]\label{l06:thm:ffembed}
+For every $c$ and every $\lambda$ with $1-12\lambda^2 = c$, the map $\Phi_\lambda:\lsixV\to\mathrm{Fock}$,
+$[a]\mapsto a\cdot1$ (linear-dilaton action), is injective; its kernel on $\lsixU$ is exactly $J(c)$.
+\end{theorem}
+
+File \leanpath{VOA/Examples/VirasoroTopSymbol.lean}.
+\begin{leancode}
+theorem evAlg_vacuum_eq_zero_iff {c lam : ℂ} (hlam : 1 - 12 * lam ^ 2 = c) (a : UVir) :
+    evAlg lam a vacuum = 0 ↔ a ∈ vacIdeal c := by
+
+theorem fockMap_injective {c lam : ℂ} (hlam : 1 - 12 * lam ^ 2 = c) :
+    Function.Injective (fockMap hlam) := by
+
+theorem exists_injective_fockMap (c : ℂ) :
+    ∃ Φ : VirUniv c →ₗ[ℂ] Fock, Function.Injective Φ ∧ Φ (vacVec c) = 1 := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{evAlg lam} is the algebra map $\lsixU\to\End(\mathrm{Fock})$ extending the linear-dilaton
+representation; \lean{vacuum} is the Fock vacuum $1$; \lean{fockMap hlam} is the induced linear map
+$\lsixV\to\mathrm{Fock}$. The statements hold at \emph{every} $c$, the degenerate minimal-model charges
+included. A reader may expect the opposite (a free-field realisation ``loses'' null vectors); the
+docstring explains why it does not: injectivity is a statement about the universal module, whose null
+vectors are nonzero vectors that map to nonzero (singular) vectors of the Fock module. The non-injective
+maps in the Felder complex are the screening maps \emph{between} Fock modules, which this theorem does
+not consider.
+\end{dictionary}
+
+\begin{physics}
+Every state of the identity family is realised by a free boson with background charge (``Coulomb gas''),
+faithfully, at every central charge. Null states of $\lsixV$ are realised by genuinely nonzero Fock
+states; they become zero only in the quotient that defines the minimal model.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Expand $[a]$ in the partition basis; its image is the same linear combination of the Fock images of the
+sorted monomials, and these are independent by the top-symbol argument of Theorem~\ref{l06:thm:pbw}.
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{VirModule.}\allowbreak\lean{fockMap_}\allowbreak\lean{injective}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}. Unconditional.
+\end{status}
+
+%======================================================================
+\section{The universal Virasoro vertex operator algebra}\label{l06:sec:voa}
+%======================================================================
+
+\subsection{Word fields}
+
+To make $\lsixV$ a vertex operator algebra one must assign to every state a field. The plan is the
+reconstruction theorem (Chapter~\ref{ch:L03}, Theorem~\ref{l03:thm:reconstruct}):
+give fields for a spanning family of states, check that they are mutually local, create their states
+from the vacuum, and are translation covariant; then a unique vertex algebra structure exists.
+
+\begin{definition}[Word fields]\label{l06:def:wordfields}
+For $i\in\N$ let $T_i(z) := \frac{1}{i!}\partial_z^iT(z)$, the field of $L_{-i-2}\lsixvac$. For a word
+$w = [i_1,\dots,i_k]$ define $Y_w(z) := {:}T_{i_1}(z){:}T_{i_2}(z)\cdots{:}T_{i_k}(z)\mathbf{1}{:}\cdots{:}$, the
+iterated normal-ordered product (with $Y_{[\,]} = \mathrm{id}$).
+\end{definition}
+
+File \leanpath{VOA/Examples/VirasoroWordFields.lean}.
+\begin{leancode}
+noncomputable def genFieldVir (i : ℕ) : FormalDist (End ℂ (VirUniv c)) :=
+  (i.factorial : ℂ)⁻¹ • (VOA.deriv^[i] (YomegaVir c))
+
+noncomputable def idFieldVir : FormalDist (End ℂ (VirUniv c)) :=
+  fun j => if j = 0 then LinearMap.id else 0
+
+noncomputable def YwordVirF :
+    List ℕ → { f : FormalDist (End ℂ (VirUniv c)) // IsField f }
+  | [] => ⟨idFieldVir c, idFieldVir_isField c⟩
+  | (i :: rest) =>
+      let p := YwordVirF rest
+      ⟨nprod (genFieldVir_isField c i) p.2, IsField.nprod (genFieldVir_isField c i) p.2⟩
+
+noncomputable def YwordVir (ws : List ℕ) : FormalDist (End ℂ (VirUniv c)) := (YwordVirF c ws).1
+
+theorem YwordVir_local : ∀ (ws₁ ws₂ : List ℕ), Local (YwordVir c ws₁) (YwordVir c ws₂) := by
+
+theorem YwordVir_vacuum_base (ws : List ℕ) :
+    (YwordVir c ws) 0 (vacVec c) = negWordVir c ws := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{VOA.deriv^[i]} is the $i$-fold formal derivative $\partial_z^i$; \lean{nprod} is the normal-ordered
+product ${:}a(z)b(z){:}$ of two fields (Chapter~\ref{ch:L03}), which needs proofs that both factors are
+fields --- hence the recursive packaging \lean{YwordVirF} of a distribution with its field
+certificate. \lean{YwordVir_local} is mutual locality of all word fields (via Dong's lemma,
+Theorem~\ref{l03:thm:dong}); \lean{YwordVir_vacuum_base} says the $z^0$-coefficient of $Y_w(z)\lsixvac$ is
+$L_w\lsixvac$, i.e.\ $Y_w$ creates the creation monomial (there is also \lean{YwordVir_vacuum_neg}: no
+negative powers of $z$ appear in $Y_w(z)\lsixvac$).
+\end{dictionary}
+
+\begin{physics}
+$Y_w$ is the field ${:}\partial^{i_1}T\cdots\partial^{i_k}T{:}$ (divided by factorials) --- all composite
+operators that can be built from $T$. Their mutual locality is the statement that composites of local
+fields are local.
+\end{physics}
+
+\begin{theorem}[Reconstruction of the vertex operators]\label{l06:thm:virYA}
+There is a linear map $Y:\lsixV\to\End(\lsixV)[[z^{\pm1}]]$ with $Y(L_w\lsixvac,z) = Y_w(z)$ for every
+word $w$, every $Y(u,z)$ a field, all mutually local, $Y(u,z)\lsixvac = u+O(z)$, and
+$[L_{-1},Y(u,z)] = \partial_zY(u,z)$.
+\end{theorem}
+
+File \leanpath{VOA/Examples/VirasoroReconstruct.lean}.
+\begin{leancode}
+theorem virYA_exists :
+    ∃ YA : VirUniv c →ₗ[ℂ] FormalDist (End ℂ (VirUniv c)),
+      (∀ ws : List ℕ, YA (negWordVir c ws) = YwordVir c ws) ∧
+      (∀ u : VirUniv c, IsField (YA u)) ∧
+      (∀ u v : VirUniv c, Local (YA u) (YA v)) ∧
+      (∀ u : VirUniv c, (YA u) 0 (vacVec c) = u) ∧
+      (∀ u : VirUniv c, ∀ q : ℤ, q < 0 → (YA u) q (vacVec c) = 0) ∧
+      (∀ u : VirUniv c, DCovariant (Ltrans c) (YA u)) :=
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroConformal.lean}.
+\begin{leancode}
+noncomputable def virYA : VirUniv c →ₗ[ℂ] FormalDist (End ℂ (VirUniv c)) := (virYA_exists c).choose
+
+theorem virYA_omega : virYA c (omegaVir c) = YomegaVir c := by
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Decoding.} The six conjuncts are, in order: $Y$ agrees with the word fields on creation
+monomials; every $Y(u)$ is a field; mutual locality; the $z^0$ coefficient of $Y(u,z)\lsixvac$ is $u$;
+negative powers of $z$ in $Y(u,z)\lsixvac$ vanish; \lean{DCovariant (Ltrans c) f} is
+$[L_{-1},f(z)] = \partial_zf(z)$ (\lean{Ltrans c = Lop c (-1)}, Definition~\ref{l03:def:dcov}).
+\lean{virYA c} is \emph{a} map with these properties, chosen by \lean{Classical.choice} (\lean{.choose});
+by Goddard uniqueness (Theorem~\ref{l03:thm:goddard}) there is only one, so the choice is harmless.
+\lean{virYA_omega} says the chosen map sends $\omega$ to $T(z)$.
+
+\textbf{Hypotheses.} None beyond $c\in\C$. The term proof (not shown in full) passes the word fields,
+\lean{negSpanVir_eq_top}, \lean{YwordVir_local}, the creation tower and translation covariance of the
+word fields to the general theorem \lean{Reconstruction.}\allowbreak\lean{reconstruct} of Chapter~\ref{ch:L03}.
+\end{dictionary}
+
+\begin{physics}
+The state--field correspondence for the identity family: every state of $\lsixV$ is created from the
+vacuum by a unique local field built from $T$. The theorem says that the $TT$ OPE \eqref{l06:eq:TT}
+alone determines the whole chiral algebra.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+This is the reconstruction theorem: given a spanning family of states with mutually local fields
+that create them and are translation covariant, define $Y$ on the span; well-definedness (two words with
+the same state give the same field) follows from Goddard's uniqueness: a field $F$ that is local with
+every $Y_w$ and satisfies $F(z)\lsixvac = 0$ is zero (\lean{field_}\allowbreak\lean{eq_}\allowbreak\lean{zero_}\allowbreak\lean{of_}\allowbreak\lean{vacuum}), because
+$F(z)Y_w(x)\lsixvac$ and $Y_w(x)F(z)\lsixvac = 0$ agree after multiplying by a power of $(z-x)$, and setting
+$x = 0$ gives $F(z)L_w\lsixvac = 0$ for all $w$, which span. Locality, the creation property and
+covariance of the extended fields are then inherited from the generators by linearity and Dong's lemma.
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{VirModule.}\allowbreak\lean{virYA_}\allowbreak\lean{exists}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}. Unconditional.
+\end{status}
+
+\subsection{The vertex operator algebra}
+
+\begin{definition}[The universal Virasoro VOA $\lsixV$]\label{l06:def:virVOA}
+For $c\in\C$, the vertex operator algebra with state space $\lsixV$, grading $\lsixV_n$, vertex
+operators $Y$ of Theorem~\ref{l06:thm:virYA}, vacuum $\lsixvac$, conformal vector $\omega$ and central
+charge $c$.
+\end{definition}
+
+File \leanpath{VOA/Examples/VirasoroInstance.lean}.
+\begin{leancode}
+noncomputable def virasoroVOA : VertexOperatorAlgebra (VirUniv c) where
+  grading := gradingVir c
+  isInternal := gradingVir_isInternal c
+  finrank := gradingVir_finiteDimensional c
+  Y := virYA c
+  vacuum := vacVec c
+  vacuum_mem := vacVec_mem_gradingVir_zero c
+  grading_mode := fun u hu v hv n => virYA_grading_mode c u hu v hv n
+  vacuum_Y := virYA_vacuum c
+  creation := virYA_creation c
+  locality := virYA_local c
+  regularity := virYA_regularity c
+  conformalVector := omegaVir c
+  conformal_mem := omegaVir_mem_gradingVir_two c
+  centralCharge := c
+  virasoro := virYA_virasoro c
+  L0_grading := fun {_} v hv => virYA_L0_grading c v hv
+  translation := virYA_omega_translation c
+  vacuum_grade := gradingVir_zero c
+  positivity := gradingVir_neg c
+
+theorem virasoroVOA_centralCharge : (virasoroVOA c).centralCharge = c := rfl
+
+theorem omegaVir_ne_zero : omegaVir c ≠ 0 := LeeYang.L2vac_ne_zero c
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroConformal.lean}.
+\begin{leancode}
+theorem virYA_virasoro (m n : ℤ) :
+    ⁅mode (virYA c (omegaVir c)) (m + 1), mode (virYA c (omegaVir c)) (n + 1)⁆
+      = ((m : ℂ) - n) • mode (virYA c (omegaVir c)) (m + n + 1)
+        + (if m + n = 0 then (((m : ℂ) ^ 3 - m) / 12 * c) • (1 : End ℂ (VirUniv c)) else 0) := by
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Every field of the structure} \lean{VertexOperatorAlgebra} (Definition~\ref{l03:def:VOA}) is
+discharged by a named theorem. Reading them against the definition: \lean{grading}/\lean{isInternal}/
+\lean{finrank} are Theorem~\ref{l06:thm:grading} (the field named \lean{finrank} is the
+finite-dimensionality of each $\lsixV_n$); \lean{grading_mode} is $u_{(n)}\lsixV_\ell\subseteq
+\lsixV_{k+\ell-n-1}$ for $u\in\lsixV_k$ (\lean{virYA_grading_mode}, \leanpath{VirasoroGradedField.lean});
+\lean{vacuum_Y} is $Y(\lsixvac,z) = \mathrm{id}$; \lean{creation} is $u_{(-1)}\lsixvac = u$ and $u_{(n)}\lsixvac = 0$
+for $n\ge0$; \lean{locality} and \lean{regularity} ($u_{(n)}v = 0$ for $n\gg0$) are from
+Theorem~\ref{l06:thm:virYA}; \lean{virasoro} is \lean{virYA_virasoro}: the modes
+$L_n = \omega_{(n+1)}$ satisfy \eqref{l06:eq:vir} with central charge \lean{c} (the bracket \lean{⁅·,·⁆}
+on $\End$ is the commutator); \lean{L0_grading} is $L_0 = n$ on $\lsixV_n$; \lean{translation} is
+$Y(L_{-1}u,z) = \partial_zY(u,z)$; \lean{vacuum_grade} is $\lsixV_0 = \C\lsixvac$; \lean{positivity} is
+$\lsixV_n = 0$ for $n<0$.
+
+\textbf{Universal, not simple.} The docstring of \lean{virasoroVOA} reads ``\emph{the general
+central-charge Virasoro vertex operator algebra} $\mathrm{Vir}(c) = L(c,0)$, the universal Virasoro vacuum
+VOA''. The equation with $L(c,0)$ is a misnomer: this is the \emph{universal} $\lsixV$
+(Warning~\ref{l06:warn:docstrings}); the simple one is Definition~\ref{l06:def:simple}.
+
+\textbf{Non-degeneracy.} \lean{omegaVir_ne_zero}: $\omega\ne0$, for every $c$. (An earlier version assumed
+$c\ne0$, because its proof used $L_2\omega = \frac c2\lsixvac$; for $c = 0$, $\omega\ne0$ too --- it is a basis
+vector by Theorem~\ref{l06:thm:pbw}. This book flagged the hypothesis as redundant (Warning~\ref{l06:warn:omega}), and the library has
+since removed it: the current statement, quoted above, is hypothesis-free and is proved via the Lee--Yang
+computation \lean{LeeYang.L2vac_ne_zero}.)
+\end{dictionary}
+
+\begin{physics}
+The chiral algebra of a CFT of central charge $c$ generated by the stress tensor alone, with no relation
+imposed. Every CFT with central charge $c$ contains a quotient of it (the vacuum sector of its Virasoro
+symmetry).
+\end{physics}
+
+\begin{proof}[Proof on paper]
+All axioms but three are restatements of Theorems~\ref{l06:thm:grading} and~\ref{l06:thm:virYA}.
+\emph{Virasoro relation}: since $Y(\omega) = T$, the modes $\omega_{(n+1)}$ are the operators $L_n$, which
+satisfy \eqref{l06:eq:vir} by Theorem~\ref{l06:thm:selflocal}'s source \lean{Lop_bracket}.
+\emph{Translation}: both $Y(L_{-1}v,z)$ and $\partial_zY(v,z)$ are $L_{-1}$-covariant, local with all word
+fields, and agree on the vacuum to first order; Goddard uniqueness identifies them.
+\emph{Grading of modes}: each word field is a ``graded field of weight $E(w)$'' (its $z^j$ coefficient
+shifts the weight by $E(w)+j$), a property preserved by derivatives and normal-ordered products
+(\lean{GradedFieldVir.nprod}).
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{VirModule.}\allowbreak\lean{virasoroVOA}, \lean{VOA.}\allowbreak\lean{VirModule.}\allowbreak\lean{omegaVir_}\allowbreak\lean{ne_}\allowbreak\lean{zero}:
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}. Unconditional, for every $c\in\C$, \lean{VOA.pbw}-free.
+\end{status}
+
+\subsection{The free boson at \texorpdfstring{$c = 1$}{c = 1}: the abelian Sugawara construction}\label{l06:sec:sugawara}
+
+Before the general construction existed, the library realised a Virasoro VOA at $c = 1$ inside the
+Heisenberg VOA of Chapter~\ref{ch:L05}. It remains in the library.
+
+\begin{theorem}[Sugawara at $c = 1$]\label{l06:thm:sugawara}
+For every $k\ne0$, in the rank-one Heisenberg VOA at level $k$ with conformal vector
+$\omega = \frac1{2k}a_{-1}^2\lsixvac$, the modes $L_n = \omega_{(n+1)}$ satisfy \eqref{l06:eq:vir} with
+$c = 1$. At $k = 1$ this VOA is recorded as \lean{virasoroVOA1}.
+\end{theorem}
+
+File \leanpath{VOA/Examples/VirasoroSugawara.lean}.
+\begin{leancode}
+noncomputable def L (k : ℂ) (_hk : k ≠ 0) (n : ℤ) : End ℂ Fock :=
+  mode (Y k (ω k)) (n + 1)
+
+theorem virasoro_relation_c1 (k : ℂ) (hk : k ≠ 0) (m n : ℤ) :
+    ⁅L k hk m, L k hk n⁆
+      = ((m : ℂ) - n) • L k hk (m + n)
+        + (if m + n = 0 then ((m : ℂ) ^ 3 - m) / 12 else 0) • (1 : End ℂ Fock) := by
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroVOA.lean}.
+\begin{leancode}
+noncomputable def virasoroVOA1 : VertexOperatorAlgebra Fock :=
+  heisenbergVOA 1 one_ne_zero
+
+theorem virasoroVOA1_centralCharge : virasoroVOA1.centralCharge = 1 := rfl
+\end{leancode}
+
+\begin{dictionary}
+\lean{Y k}, \lean{ω k}, \lean{heisenbergVOA} are the Heisenberg VOA of Chapter~\ref{ch:L05} at level
+$k$. \textbf{Caution on what \lean{virasoroVOA1} is}: it is literally the Heisenberg VOA on the full Fock
+space (\lean{heisenbergVOA 1 one_}\allowbreak\lean{ne_}\allowbreak\lean{zero}), not the Virasoro sub-VOA generated by $\omega$. It ``is the
+$c = 1$ Virasoro VOA'' only in the sense that its conformal vector generates a Virasoro algebra of central
+charge $1$. The file's header (written before Section~\ref{l06:sec:voa} existed) still says the general-$c$
+Virasoro VOA is ``the documented next step''; that is outdated (Warning~\ref{l06:warn:docstrings}).
+\end{dictionary}
+
+\begin{physics}
+The stress tensor of a free boson is $T = \frac1{2k}{:}JJ{:}$, the Sugawara construction for the abelian
+current algebra, with $c = 1$: one bosonic degree of freedom. The non-abelian version,
+$T = \frac{1}{2(k+h^\vee)}\sum{:}J^aJ^a{:}$, is treated for $\widehat{\mathfrak{sl}}_2$ in Chapter~\ref{ch:L08}.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+The Heisenberg relations $[a_m,a_n] = km\delta_{m+n,0}$ and the explicit formula
+$L_n = \frac1{2k}\sum_j{:}a_{n-j}a_j{:}$ give $[L_m,a_n] = -na_{m+n}$ and then \eqref{l06:eq:vir} with
+$c = 1$ by the standard normal-ordering computation (done in \leanpath{HeisenbergCentral.lean},
+Chapter~\ref{ch:L05}); this file transports it to the VOA modes.
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{VirasoroVOA.}\allowbreak\lean{virasoro_}\allowbreak\lean{relation_}\allowbreak\lean{c1}, \lean{VOA.virasoroVOA1}: \lean{[propext, Classical.}\allowbreak\lean{choice,
+Quot.}\allowbreak\lean{sound]}. Unconditional.
+\end{status}
+
+\begin{definition}[Minimal-model central charges]\label{l06:def:cpq}
+$c_{p,q} := 1-6(p-q)^2/(pq)\in\Q$ for $p,q\in\N$.
+\end{definition}
+
+File \leanpath{VOA/Examples/VirasoroVOA.lean}.
+\begin{leancode}
+def minimalCentralCharge (p q : ℕ) : ℚ := 1 - 6 * ((p : ℚ) - q) ^ 2 / (p * q)
+
+theorem minimalCentralCharge_ising : minimalCentralCharge 3 4 = 1 / 2 := by
+\end{leancode}
+
+\begin{dictionary}
+A rational number, cast silently to $\C$ when used as a central charge. Lean defines division by zero as
+zero, so $c_{p,0} = 1$; every theorem using it assumes $p,q\ge2$. The formula is symmetric in $(p,q)$.
+Examples: $c_{2,3} = 0$, $c_{2,5} = -22/5$, $c_{3,4} = 1/2$, $c_{2,7} = -68/7$, $c_{4,5} = 7/10$.
+\end{dictionary}
+
+\begin{physics}
+The BPZ minimal-model central charges: $c_{3,4} = \frac12$ is the critical Ising model,
+$c_{2,5} = -\frac{22}5$ the Lee--Yang edge singularity, $c_{m,m+1}$ the unitary series of Friedan, Qiu
+and Shenker.
+\end{physics}
+
+%======================================================================
+\section{The simple quotient \texorpdfstring{$L(c,0)$}{L(c,0)}}\label{l06:sec:simple}
+%======================================================================
+
+\begin{definition}[Simple Virasoro VOA]\label{l06:def:simple}
+$\lsixL := \lsixV/I_{\max}(c)$, where $I_{\max}(c)$ is the sum of all proper graded ideals of $\lsixV$,
+with the quotient VOA structure.
+\end{definition}
+
+File \leanpath{VOA/Core/QuotientVOA.lean}.
+\begin{leancode}
+def maxGradedIdeal (W : VertexOperatorAlgebra 𝒱) : Submodule ℂ 𝒱 :=
+  sSup (ProperGradedIdeals W)
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroSimple.lean}.
+\begin{leancode}
+noncomputable def maxIdealVir (c : ℂ) : Submodule ℂ (VirUniv c) :=
+  maxGradedIdeal (virasoroVOA c)
+
+noncomputable def virasoroSimple (c : ℂ) :
+    VertexOperatorAlgebra (VirUniv c ⧸ maxIdealVir c) :=
+  maxQuotientVOA (virasoroVOA c)
+\end{leancode}
+
+\begin{dictionary}
+\lean{ProperGradedIdeals W} is the set of graded ideals not containing the vacuum, and \lean{sSup} their
+sum (Chapter~\ref{ch:L04}, ``maximal ideal''). \lean{maxQuotientVOA} is the quotient VOA by it
+(Definition~\ref{l04:def:quot}). The central charge of the quotient is still $c$
+(\lean{virasoroSimple_}\allowbreak\lean{centralCharge}, by \lean{rfl}); its $n$-th graded piece is the image of $\lsixV_n$
+(\lean{virasoroSimple_grading}); the projection intertwines all products, $[u_{(n)}v] = [u]_{(n)}[v]$
+(\lean{virasoroSimple_}\allowbreak\lean{mkQ_}\allowbreak\lean{smul}).
+\end{dictionary}
+
+\begin{physics}
+$\lsixL$ is the identity sector of the CFT with all null states removed: the chiral algebra that is
+actually realised. At generic $c$ it equals $\lsixV$; at the minimal-model charges it is the vacuum
+module of the minimal model.
+\end{physics}
+
+\begin{theorem}[$\lsixL$ is simple and nondegenerate, for every $c$]\label{l06:thm:simple}
+For every $c\in\C$: $\lsixL$ is a simple VOA (nonzero, and its only ideals are $0$ and itself); its
+vacuum is nonzero; for $c\ne0$ its conformal vector is nonzero; and $\lsixV$ itself is simple if and
+only if $I_{\max}(c) = 0$.
+\end{theorem}
+
+File \leanpath{VOA/Core/BilinearForm.lean}.
+\begin{leancode}
+def IsSimple (W : VertexOperatorAlgebra 𝒱) : Prop :=
+  (⊤ : Submodule ℂ 𝒱) ≠ ⊥ ∧ ∀ I : Submodule ℂ 𝒱, W.IsIdeal I → I = ⊥ ∨ I = ⊤
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroSimple.lean}.
+\begin{leancode}
+theorem virasoroSimple_isSimple : (virasoroSimple c).IsSimple :=
+  isSimple_maxQuotientVOA' (virasoroVOA c) (vacVec_ne_zero c)
+
+theorem virasoroSimple_vacuum_ne_zero : (virasoroSimple c).vacuum ≠ 0 := by
+
+theorem virasoroSimple_conformalVector_ne_zero (hc : c ≠ 0) :
+    (virasoroSimple c).conformalVector ≠ 0 := by
+
+theorem virasoroVOA_isSimple_iff : (virasoroVOA c).IsSimple ↔ maxIdealVir c = ⊥ :=
+\end{leancode}
+
+\begin{dictionary}
+\lean{IsSimple} is the standard definition; \lean{W.IsIdeal I} is a two-sided ideal ($u_{(n)}I\subseteq I$
+and $I_{(n)}u\subseteq I$; Chapter~\ref{ch:L04}). The proof term of \lean{virasoroSimple_}\allowbreak\lean{isSimple} is the
+general theorem ``a VOA with nonzero vacuum has a simple maximal quotient'' fed with
+\lean{vacVec_ne_zero}. \textbf{Graded versus all ideals.} \lean{IsSimple} quantifies over \emph{all}
+ideals, but $I_{\max}$ is a sum of \emph{graded} ideals. The gap is closed by
+\lean{QuotVOA.}\allowbreak\lean{isGradedIdeal_}\allowbreak\lean{of_}\allowbreak\lean{isIdeal} (every ideal of a VOA is graded, as it is $L_0$-stable and $L_0$
+acts semisimply with integer eigenvalues); so the statement is the textbook one.
+
+\textbf{At $c = 0$.} The theorem holds for $c = 0$, where $\lsixL = \C\lsixvac$ is one-dimensional
+(Section~\ref{l06:sec:dims}); simplicity is then trivially true, and the conformal vector is $0$ --- which
+is why \lean{virasoroSimple_}\allowbreak\lean{conformalVector_}\allowbreak\lean{ne_}\allowbreak\lean{zero} assumes $c\ne0$. The theorem does not say which $c$
+have $I_{\max}(c)\ne0$; that is Kac theory (Section~\ref{l06:sec:kac}).
+\end{dictionary}
+
+\begin{physics}
+Removing all null states gives an irreducible chiral algebra. The conformal vector survives (the stress
+tensor is not null) exactly when $\langle T,T\rangle = c/2\ne0$; at $c = 0$ the stress tensor is null and
+the irreducible vacuum sector is trivial, as for the trivial minimal model $M(3,2)$.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+The sum of all proper graded ideals is proper: a proper graded ideal meets $\lsixV_0 = \C\lsixvac$ in
+zero, so the sum lies in $\bigoplus_{n\ne0}\lsixV_n$, which does not contain $\lsixvac\ne0$. Ideals of the
+quotient pull back to ideals containing $I_{\max}$, which are $I_{\max}$ or everything. For $c\ne0$:
+$\omega_{(3)}\omega = L_2\omega = \frac c2\lsixvac$, so an ideal containing $\omega$ contains $\lsixvac$.
+The last claim: if $I_{\max} = 0$ the projection is an isomorphism; conversely a simple VOA has no
+proper nonzero ideal.
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{VirSimple.}\allowbreak\lean{virasoroSimple_}\allowbreak\lean{isSimple}, \lean{…virasoroSimple_}\allowbreak\lean{conformalVector_}\allowbreak\lean{ne_}\allowbreak\lean{zero},
+\lean{…virasoroVOA_}\allowbreak\lean{isSimple_}\allowbreak\lean{iff}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}. Unconditional.
+\end{status}
+
+The library also proves that $\lsixL$ is \emph{self-dual} in the sense of Chapter~\ref{ch:L12} (it has a
+nondegenerate fully invariant bilinear form), for every $c$:
+
+File \leanpath{VOA/Examples/VirasoroSelfDual.lean}.
+\begin{leancode}
+theorem virasoroSimple_grading_one : (virasoroSimple c).grading 1 = ⊥ := by
+
+theorem virasoroSimple_selfDual : (virasoroSimple c).SelfDual :=
+\end{leancode}
+Here \lean{SelfDual W} is ``there is an invariant form $B$, fully invariant, with zero left radical''
+(\leanpath{VOA/\allowbreak Modules/\allowbreak StronglyRational.lean}); for a simple VOA it is equivalent to
+$L_1\lsixV_1 = 0$ (\lean{selfDual_iff}), which holds vacuously since $\lsixL_1 = 0$. Physically: the
+contragredient of the vacuum module is itself, i.e.\ the two-point function of the identity sector is
+nondegenerate. Axioms: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}.
+
+%======================================================================
+\section{The invariant form on the vacuum module and its Gram matrices}\label{l06:sec:gram}
+%======================================================================
+
+\subsection{The canonical form}
+
+\begin{definition}[Canonical invariant form on $\lsixV$]\label{l06:def:canB}
+$\lsixform{\cdot}{\cdot}_c$ is the unique bilinear form on $\lsixV$ that is invariant in the sense of
+Frenkel--Huang--Lepowsky (Chapter~\ref{ch:L04}) and normalised by $\lsixform{\lsixvac}{\lsixvac} = 1$. In
+particular $\lsixform{L_na}{b} = \lsixform{a}{L_{-n}b}$ for all $n$.
+\end{definition}
+
+File \leanpath{VOA/Examples/VirasoroGram4.lean}.
+\begin{leancode}
+noncomputable def canB : InvariantForm (virasoroVOA c) :=
+  canonicalInvariantForm (vacVec_ne_zero c) (virasoroVOA_qp c)
+
+theorem canB_adj (n : ℤ) (a b : VirUniv c) :
+    (canB c).form (Lop c n a) b = (canB c).form a (Lop c (-n) b) := by
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroFormSymmetry.lean}.
+\begin{leancode}
+theorem canB_isSymmetric (c : ℂ) : (canB c).IsSymmetric := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{InvariantForm W} and \lean{canonicalInvariantForm} are the invariant-form structure and Li's
+construction of Chapter~\ref{ch:L04} (Theorem~\ref{l04:thm:canonical}); the two arguments discharge its
+hypotheses: $\lsixvac\ne0$ and $L_1\lsixV_1 = 0$ (vacuous since $\lsixV_1 = 0$). The form is normalised
+(\lean{canB_normalized}). \lean{canB_adj} is Virasoro adjointness. \lean{canB_isSymmetric} is symmetry
+of this particular form; the docstring warns that symmetry of a general \lean{InvariantForm} is false
+(\lean{not_forall_isSymmetric}, Chapter~\ref{ch:L04}); here it follows because a form with
+$\lsixform{\lsixvac}{\lsixvac} = 1$ and adjointness is unique, and its transpose has the same properties.
+\end{dictionary}
+
+\begin{physics}
+$\lsixform{a}{b}$ is the two-point function of the corresponding fields, normalised by
+$\langle0|0\rangle = 1$; $L_n^\dagger = L_{-n}$ is the reality of the stress tensor (BPZ conjugation).
+\end{physics}
+
+\subsection{Gram matrices and the dimension of \texorpdfstring{$L(c,0)$}{L(c,0)}}
+
+\begin{theorem}[Graded dimension of $\lsixL$ is a Gram rank]\label{l06:thm:dimrank}
+Let $G_n(c)$ be the matrix of $\lsixform\cdot\cdot_c$ on $\lsixV_n$ in the partition basis. Then
+$\dim\lsixL_n = \operatorname{rank}G_n(c)$ for every $c$ and $n$. In particular $\dim\lsixL_n =
+\lsixpt(n)$ if $\det G_n(c)\ne0$, and $\dim\lsixL_n<\lsixpt(n)$ if $\det G_n(c) = 0$.
+\end{theorem}
+
+File \leanpath{VOA/Examples/VirasoroSimpleGram.lean}.
+\begin{leancode}
+theorem finrank_virasoroSimple_grading_partition (n : ℕ) :
+    finrank ℂ ((virasoroSimple c).grading (n : ℤ))
+      = (GramMat.canGram (vacVec_ne_zero c) (virasoroVOA_qp c) (n : ℤ)
+          (gradedBasis c n)).rank :=
+
+theorem finrank_virasoroSimple_lt_of_det_eq_zero {ι : Type*} [Fintype ι] [DecidableEq ι] (n : ℤ)
+    (e : Basis ι ℂ ((virasoroVOA c).grading n))
+    (h : (GramMat.canGram (vacVec_ne_zero c) (virasoroVOA_qp c) n e).det = 0) :
+    finrank ℂ ((virasoroSimple c).grading n) < finrank ℂ ((virasoroVOA c).grading n) :=
+\end{leancode}
+File \leanpath{VOA/Core/GradedFormMatrix.lean}.
+\begin{leancode}
+noncomputable def canGram : Matrix ι ι ℂ := gramMatrix (canonicalInvariantForm hne hqp) n e
+\end{leancode}
+
+\begin{dictionary}
+\lean{GramMat.}\allowbreak\lean{canGram hne hqp n e} is the matrix $(\lsixform{e_i}{e_j})_{i,j}$ of the canonical form on
+the graded piece of weight $n$, in the basis $e$ (Chapter~\ref{ch:L04}, ``Gram-rank spine'').
+\lean{Matrix.rank} is the rank. The equation is the precise form of ``$\lsixL_n = \lsixV_n/\mathrm{rad}$''.
+\end{dictionary}
+
+\begin{physics}
+The number of physical (non-null) states at level $n$ of the identity sector equals the rank of the
+matrix of two-point functions: null states are exactly the kernel.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+The radical of the canonical form on a VOA of this type equals the maximal ideal
+(Theorem~\ref{l04:thm:lirad}; Li's theorem, Chapter~\ref{ch:L04}); the radical is graded and its
+weight-$n$ part is the kernel of $G_n(c)$; so $\dim\lsixL_n = \dim\lsixV_n - \dim\ker G_n = \operatorname{rank}G_n$.
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{VirSimpleGram.}\allowbreak\lean{finrank_}\allowbreak\lean{virasoroSimple_}\allowbreak\lean{grading_}\allowbreak\lean{partition}: \lean{[propext, Classical.}\allowbreak\lean{choice,
+Quot.}\allowbreak\lean{sound]}. Unconditional.
+\end{status}
+
+\subsection{Explicit Kac determinants of the vacuum module at levels 4, 5, 6}
+
+\begin{theorem}[Vacuum Gram matrices at levels $4,5,6$]\label{l06:thm:gram456}
+In the bases $(L_{-2}^2\lsixvac,L_{-4}\lsixvac)$, $(L_{-5}\lsixvac,L_{-3}L_{-2}\lsixvac)$ and
+$(L_{-6}\lsixvac,L_{-4}L_{-2}\lsixvac,L_{-3}^2\lsixvac,L_{-2}^3\lsixvac)$,
+\begin{gather*}
+ G_4 = \begin{pmatrix}\frac{c(c+8)}2 & 3c\\ 3c & 5c\end{pmatrix},\qquad
+ G_5 = \begin{pmatrix}10c & 4c\\ 4c & c(c+6)\end{pmatrix},\\
+ G_6 = \begin{pmatrix}
+ \frac{35}2c & 5c & 18c & 24c\\
+ 5c & \frac{5c^2+16c}2 & 14c & \frac{9c^2+48c}2\\
+ 18c & 14c & 8c^2+36c & 30c\\
+ 24c & \frac{9c^2+48c}2 & 30c & \frac{3c(c+8)(c+16)}4
+ \end{pmatrix},
+\end{gather*}
+and
+\begin{equation*}
+ \det G_4 = \tfrac12c^2(5c+22),\quad \det G_5 = 2c^2(5c+22),\quad
+ \det G_6 = \tfrac34c^4(2c-1)(5c+22)^2(7c+68).
+\end{equation*}
+In particular $\det G_6(c) = 0$ iff $c\in\{0,\frac12,-\frac{22}5,-\frac{68}7\}$.
+\end{theorem}
+
+File \leanpath{VOA/Examples/VirasoroGram4.lean}.
+\begin{leancode}
+noncomputable def canGram4 : Matrix (Fin 2) (Fin 2) ℂ :=
+  !![(canB c).form (L2L2vac c) (L2L2vac c), (canB c).form (L2L2vac c) (L4vac c);
+     (canB c).form (L4vac c) (L2L2vac c), (canB c).form (L4vac c) (L4vac c)]
+
+theorem canGram4_eq :
+    canGram4 c = !![c * (c + 8) / 2, 3 * c; 3 * c, 5 * c] := by
+
+theorem det_canGram4 : (canGram4 c).det = c ^ 2 * (5 * c + 22) / 2 := by
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroGram56.lean}.
+\begin{leancode}
+theorem canGram5_eq : canGram5 c = !![10 * c, 4 * c; 4 * c, c * (c + 6)] := by
+
+theorem det_canGram5 : (canGram5 c).det = 2 * c ^ 2 * (5 * c + 22) := by
+
+theorem canGram6_eq :
+    canGram6 c =
+      !![35 / 2 * c, 5 * c, 18 * c, 24 * c;
+         5 * c, (5 * c ^ 2 + 16 * c) / 2, 14 * c, (9 * c ^ 2 + 48 * c) / 2;
+         18 * c, 14 * c, 8 * c ^ 2 + 36 * c, 30 * c;
+         24 * c, (9 * c ^ 2 + 48 * c) / 2, 30 * c,
+           3 * c * (c + 8) * (c + 16) / 4] := by
+
+theorem det_canGram6 :
+    (canGram6 c).det = 3 / 4 * c ^ 4 * (2 * c - 1) * (5 * c + 22) ^ 2 * (7 * c + 68) := by
+
+theorem det_canGram6_eq_zero_iff :
+    (canGram6 c).det = 0 ↔ c = 0 ∨ c = isingC ∨ c = leeYangC ∨ c = m27C := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{!![a, b; c, d]} is Mathlib notation for an explicit matrix, rows separated by \lean{;}.
+\lean{L2L2vac c} $= L_{-2}L_{-2}\lsixvac$, \lean{L4vac c} $= L_{-4}\lsixvac$ (defined in
+\leanpath{LeeYangSingular.lean}, Chapter~\ref{ch:L19}); the level-5 and level-6 vectors are defined in
+\leanpath{VirasoroGram56.lean} in the orders displayed (\lean{canGram5} uses $(L_{-5}\lsixvac,
+L_{-3}L_{-2}\lsixvac)$, \lean{canGram6} uses $(L_{-6},L_{-4}L_{-2},L_{-3}L_{-3},L_{-2}^3)\lsixvac$). The
+matrices are the Gram matrices of the canonical form (not of some other bilinear form; an earlier
+version of the project used a form with the wrong normalisation, which is why the file stresses ``the
+right form''). \lean{isingC} $= 1/2$, \lean{leeYangC} $= -22/5$, \lean{m27C} $= -68/7$ are complex
+constants; \lean{isingC_}\allowbreak\lean{eq_}\allowbreak\lean{minimalCentralCharge} identifies $1/2$ with $c_{3,4}$, and similarly for $m27C$
+and $c_{2,7}$.
+
+\textbf{Consistency with Kac.} The degree of $\det G_n$ in $c$ equals the total number of parts over all
+partitions of $n$ into parts $\ge2$: $2+1 = 3$ at level 4, $1+2 = 3$ at level 5, $1+2+2+3 = 8$ at level 6;
+the zeros are at the minimal-model charges with $(p-1)(q-1)\le n$: $c_{2,3} = 0$ (level 2), $c_{2,5}$
+(level 4), $c_{3,4}$ and $c_{2,7}$ (level 6).
+\end{dictionary}
+
+\begin{physics}
+These are the first nontrivial vacuum Kac determinants. A zero of $\det G_n$ at $c$ is a central charge
+at which the identity family has a null state at level $\le n$; the four values at level 6 are the trivial
+model, Ising, Lee--Yang and $M(2,7)$. The factor $(5c+22)^2$ at level 6 is the Lee--Yang null vector of
+level 4: its two level-6 descendants $L_{-2}\chi$ and $L_{-1}^2\chi$ are null, and the nullity of $G_6$ at
+$c = -\frac{22}5$ is indeed $2$ (Theorem~\ref{l06:thm:dims}).
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Each entry is computed by moving the left monomial to the right as positive modes and commuting, using
+\eqref{l06:eq:vir} and $L_n\lsixvac = 0$ for $n\ge-1$. For example
+$\lsixform{L_{-4}\lsixvac}{L_{-2}^2\lsixvac} = \lsixform{\lsixvac}{L_4L_{-2}^2\lsixvac}$ and
+$L_4L_{-2}L_{-2}\lsixvac = [L_4,L_{-2}]L_{-2}\lsixvac = 6L_2L_{-2}\lsixvac = 6\cdot\frac c2\lsixvac$, giving
+$3c$. The determinants are then polynomial algebra.
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{VirGram4.}\allowbreak\lean{canGram4_}\allowbreak\lean{eq}, \lean{…det_canGram4}, \lean{VOA.}\allowbreak\lean{VirGram56.}\allowbreak\lean{det_}\allowbreak\lean{canGram5},
+\lean{…det_canGram6}, \lean{…det_}\allowbreak\lean{canGram6_}\allowbreak\lean{eq_}\allowbreak\lean{zero_}\allowbreak\lean{iff}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}.
+Unconditional.
+\end{status}
+
+\subsection{The vacuum Gram determinant at every level: degree and leading coefficient}
+
+\begin{definition}[Polynomial vacuum Gram matrix]\label{l06:def:partgram}
+$G^{\mathrm{vac}}_n\in\mathrm{Mat}_{\lsixpt(n)}(\C[c])$ is the matrix whose $(\lambda,\mu)$ entry is the
+polynomial in $c$ computing $\lsixform{L_\lambda\lsixvac}{L_\mu\lsixvac}_c$ by the commutation algorithm.
+\end{definition}
+
+File \leanpath{VOA/Examples/VirasoroPartitionObstruction.lean}.
+\begin{leancode}
+noncomputable def partitionGramPolynomial (n : ℕ) :
+    Matrix (SortedOfEnergy n) (SortedOfEnergy n) (Polynomial ℂ) :=
+  fun i j => wordPolynomial ((partitionWord n i).reverse.map Neg.neg ++ partitionWord n j)
+
+theorem partitionGramPolynomial_eval (c : ℂ) (n : ℕ) :
+    (partitionGramPolynomial n).map (Polynomial.eval c) =
+      GramMat.gramMatrix (VirGram4.canB c) (n:ℤ) (gradedBasis c n) := by
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroGramLeadingCoefficient.lean}.
+\begin{leancode}
+theorem partitionDeterminant_natDegree (n : ℕ) :
+    (partitionGramPolynomial n).det.natDegree = ∑ j : SortedOfEnergy n, j.val.length := by
+
+theorem partitionDeterminant_leadingCoeff (n : ℕ) :
+    (partitionGramPolynomial n).det.leadingCoeff =
+      ∏ j : SortedOfEnergy n, diagonalContraction j.val := by
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroContractionDiagonal.lean}.
+\begin{leancode}
+noncomputable def contractionWeight (a : ℕ) : ℂ :=
+  (((a:ℂ)+2)^3-((a:ℂ)+2))/12
+
+noncomputable def diagonalContraction : List ℕ → ℂ
+  | [] => 1
+  | a::w => (((w.count a+1:ℕ):ℂ)*contractionWeight a)*diagonalContraction w
+\end{leancode}
+
+\begin{dictionary}
+\lean{partitionWord n i} is the list of mode indices $-(i_j+2)$ of the partition; the word
+\lean{(partitionWord n i).}\allowbreak\lean{reverse.}\allowbreak\lean{map Neg.}\allowbreak\lean{neg ++ partitionWord n j} is ``the adjoint of the left
+monomial followed by the right monomial'', and \lean{wordPolynomial} is the vacuum coefficient of that
+mode word, computed with $c$ as a formal variable (\leanpath{VirasoroUniversalPairing.lean},
+\lean{universal_gram_entry}). \lean{partitionGramPolynomial_}\allowbreak\lean{eval} proves that evaluating at $c$ gives the
+actual Gram matrix of the canonical form in the partition basis --- so this is not a separately postulated
+polynomial. The leading coefficient is $\prod_\lambda\prod_k\bigl(\frac{k^3-k}{12}\bigr)^{m_k}m_k!$, $m_k$ the
+multiplicity of the part $k$ in $\lambda$ (each repeated index contributes its running count, giving the
+factorial).
+\end{dictionary}
+
+\begin{physics}
+The highest power of $c$ comes from contracting each $L_{-k}$ on the left with an $L_{-k}$ on the right
+through the central term $\frac{c}{12}(k^3-k)$ alone: the ``free-field'' or large-$c$ limit, in which the
+modes $L_{-k}$ behave like independent oscillators. That the determinant has exactly the expected degree is
+the statement that at large $c$ the vacuum family has no null states.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Each entry has $c$-degree at most $\min(\ell(\lambda),\ell(\mu))$ (one power of $c$ per central
+contraction); so the determinant has degree at most $\sum_\lambda\ell(\lambda)$, and the coefficient of
+that power is the determinant of the ``top'' matrix of equal-length contractions. A content argument shows
+this top matrix is diagonal (contractions pair equal modes, so off-diagonal equal-length partitions give
+zero), with diagonal entries $\prod_k(\frac{k^3-k}{12})^{m_k}m_k!\ne0$.
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{VirDeformModes.}\allowbreak\lean{NormalOrdering.}\allowbreak\lean{partitionDeterminant_}\allowbreak\lean{natDegree},
+\lean{…partitionDeterminant_}\allowbreak\lean{leadingCoeff}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}. Unconditional.
+\textbf{Not formalised}: the full factorisation of $\det G^{\mathrm{vac}}_n(c)$ at every level (the vacuum
+Kac formula of Gorelik--Kac). What is proved in general is its simple zero at the first singular level
+of each minimal model (Section~\ref{l06:sec:vacuumkac}).
+\end{status}
+
+%======================================================================
+\section{Graded dimensions of the minimal models: Lee--Yang, Ising, \texorpdfstring{$M(2,7)$}{M(2,7)}}\label{l06:sec:dims}
+%======================================================================
+
+\begin{theorem}[Low-level dimensions of $L(c_{p,q},0)$]\label{l06:thm:dims}
+\begin{enumerate}
+\item Lee--Yang, $c = -\frac{22}5$: $\dim\lsixL_4 = 1$, $\dim\lsixL_5 = 1$, $\dim\lsixL_6 = 2$
+  (against $2,2,4$ for $\lsixV$).
+\item Ising, $c = \frac12$: $\dim\lsixL_6 = 3$; $M(2,7)$, $c = -\frac{68}7$: $\dim\lsixL_6 = 3$.
+\item $c = 0$: $\dim\lsixL_6 = 0$.
+\item For $c\notin\{0,-\frac{22}5\}$, $\dim\lsixL_4 = 2$; for $c\notin\{0,\frac12,-\frac{22}5,-\frac{68}7\}$,
+  $\dim\lsixL_6 = 4$; at each of these four charges $\dim\lsixL_6<4$.
+\item No linear isomorphism $L(-\frac{22}5,0)\to L(\frac12,0)$ maps the weight-6 space onto the weight-6
+  space.
+\item $c = 1$: the maximal ideal of $V(1,0)$ meets $V(1,0)_n$ trivially for $n = 4,5,6$.
+\end{enumerate}
+\end{theorem}
+
+File \leanpath{VOA/Examples/VirasoroSimpleGram.lean}.
+\begin{leancode}
+theorem finrank_virasoroSimple_leeYang_four :
+    finrank ℂ ((virasoroSimple leeYangC).grading 4) = 1 := by
+
+theorem finrank_virasoroSimple_four_of_generic (h0 : c ≠ 0) (hLY : c ≠ leeYangC) :
+    finrank ℂ ((virasoroSimple c).grading 4) = 2 := by
+
+theorem finrank_virasoroSimple_six_of_generic (h0 : c ≠ 0) (hI : c ≠ isingC)
+    (hLY : c ≠ leeYangC) (h27 : c ≠ m27C) :
+    finrank ℂ ((virasoroSimple c).grading 6) = 4 := by
+
+theorem finrank_virasoroSimple_six_lt_of_degenerate
+    (h : c = 0 ∨ c = isingC ∨ c = leeYangC ∨ c = m27C) :
+    finrank ℂ ((virasoroSimple c).grading 6) < 4 := by
+
+theorem maxIdealVir_one_inf_grading_six_eq_bot :
+    QuotVOA.maxGradedIdeal (virasoroVOA (1 : ℂ)) ⊓ (virasoroVOA (1 : ℂ)).grading 6 = ⊥ :=
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroSimpleSix.lean}.
+\begin{leancode}
+theorem finrank_virasoroSimple_six_zero :
+    finrank ℂ ((virasoroSimple (0 : ℂ)).grading 6) = 0 :=
+
+theorem finrank_virasoroSimple_six_ising :
+    finrank ℂ ((virasoroSimple isingC).grading 6) = 3 :=
+
+theorem finrank_virasoroSimple_six_m27 :
+    finrank ℂ ((virasoroSimple m27C).grading 6) = 3 :=
+
+theorem finrank_virasoroSimple_six_leeYang :
+    finrank ℂ ((virasoroSimple leeYangC).grading 6) = 2 :=
+
+theorem finrank_virasoroSimple_five_leeYang :
+    finrank ℂ ((virasoroSimple leeYangC).grading 5) = 1 :=
+
+theorem no_gradedEquiv_leeYang_ising :
+    ¬ ∃ e : (VirUniv leeYangC ⧸ maxIdealVir leeYangC) ≃ₗ[ℂ] (VirUniv isingC ⧸ maxIdealVir isingC),
+        ∀ x, x ∈ (virasoroSimple leeYangC).grading 6 ↔ e x ∈ (virasoroSimple isingC).grading 6 :=
+\end{leancode}
+
+\begin{dictionary}
+\lean{leeYangC : ℂ := -22 / 5} is defined in \leanpath{VOA/\allowbreak Examples/\allowbreak LeeYangSingular.lean}
+(Chapter~\ref{ch:L19}); \lean{isingC} and \lean{m27C} in \leanpath{VirasoroGram56.lean}. All statements are
+about the actual simple quotient \lean{virasoroSimple c} at that $c$, through
+Theorem~\ref{l06:thm:dimrank}. \lean{⊓} is intersection of subspaces; \lean{≃ₗ[ℂ]} a linear isomorphism.
+Item 6 is honest about its scope: it says nothing about $V(1,0)_n$ for $n\ge7$. (Classically $V(1,0)$ is
+simple at every level, since $c = 1$ is not of the form $c_{p,q}$ with $p,q\ge2$ coprime; the library does
+not state this.) \textbf{What is not proved}: the full
+characters. The dimensions given are coefficients of the Rogers--Ramanujan series ($q^4,q^5,q^6$) and of the
+Ising vacuum character ($q^6$); they are \emph{evidence} that the definitions are right, not the character
+identities.
+\end{dictionary}
+
+\begin{physics}
+The vacuum characters of the minimal models begin
+\begin{equation*}
+ \text{Lee--Yang: }1+q^2+q^3+q^4+q^5+2q^6+\cdots,\qquad
+ \text{Ising: }1+q^2+q^3+2q^4+2q^5+3q^6+\cdots,
+\end{equation*}
+against $1+q^2+q^3+2q^4+2q^5+4q^6$ for the universal module. The Lee--Yang null vector
+$5L_{-2}^2\lsixvac-3L_{-4}\lsixvac$ at level $4$ removes one state at level 4, its descendant $L_{-1}\chi$
+one at level 5, and two at level 6; the Ising null vector at level 6 removes one state. At $c = 0$ the
+stress tensor is null, $\lsixL = \C\lsixvac$ and all positive levels vanish. Item 5 says Lee--Yang and Ising
+have genuinely different chiral algebras, distinguished already by state counting.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+By Theorem~\ref{l06:thm:dimrank}, compute the rank of the explicit matrices of
+Theorem~\ref{l06:thm:gram456} at the given $c$. Lee--Yang, level 4: $G_4(-\frac{22}5)$ is a nonzero matrix
+with zero determinant, so rank $1$. Level 6 at Lee--Yang: the determinant vanishes to second order in
+$(5c+22)$; the rank is at most $2$ by an explicit factorisation of $G_6(-\frac{22}5)$
+(\lean{canGram6_leeYang_factor}) and at least $2$ by a nonzero $2\times2$ minor. Ising, level 6: the root is simple, and a nonzero $3\times3$ minor gives rank $3$.
+At $c = 0$, $G_6(0) = 0$. Item 5: an isomorphism matching the weight-6 spaces would make their dimensions
+equal, $2\ne3$.
+\end{proof}
+
+\begin{status}
+All items: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (Section~\ref{l06:sec:verification}).
+Unconditional.
+\end{status}
+
+%======================================================================
+\section{Verma modules}\label{l06:sec:verma}
+%======================================================================
+
+\begin{definition}[Verma module $M(c,h)$]\label{l06:def:verma}
+For $(c,h)\in\C^2$ let $I(c,h)\subseteq\lsixU$ be the left ideal generated by $L_n$ ($n>0$), $C-c$ and
+$L_0-h$. The Verma module is $M(c,h) := \lsixU/I(c,h)$, with highest-weight vector $v_h := [1]$ and
+$\lsixVir$ acting by left multiplication. For a list $w = [i_1,\dots,i_k]$ write
+$L^{(1)}_wv_h := L_{-i_1-1}\cdots L_{-i_k-1}v_h$ and $|w| := \sum_j(i_j+1)$ (the \emph{level}).
+\end{definition}
+
+File \leanpath{VOA/Examples/InverseDSVirasoroVerma.lean}.
+\begin{leancode}
+def vermaGens (c h : ℂ) : Set UVir :=
+  {a | (∃ n : ℤ, 0 < n ∧ a = ι ℂ (L n))
+      ∨ a = ι ℂ C - algebraMap ℂ UVir c
+      ∨ a = ι ℂ (L 0) - algebraMap ℂ UVir h}
+
+noncomputable def vermaIdeal (c h : ℂ) : Submodule UVir UVir :=
+  Submodule.span _ (vermaGens c h)
+
+abbrev Verma (c h : ℂ) : Type := UVir ⧸ vermaIdeal c h
+
+noncomputable def vermaRho (c h : ℂ) : LieHom ℂ Virasoro (End ℂ (Verma c h)) :=
+  (Algebra.lsmul ℂ ℂ (Verma c h)).toLieHom.comp (ι ℂ)
+
+noncomputable def highestVector (c h : ℂ) : Verma c h :=
+  Submodule.Quotient.mk 1
+
+def vermaMode (c h : ℂ) (m : ℤ) : End ℂ (Verma c h) :=
+  vermaRho c h (L m)
+
+def negWord (c h : ℂ) : List ℕ → Verma c h
+  | [] => highestVector c h
+  | i :: w => vermaMode c h (-(i : ℤ) - 1) (negWord c h w)
+
+def energyHW (w : List ℕ) : ℕ := (w.map fun i => i + 1).sum
+
+noncomputable def sortedSpan (c h : ℂ) (N : ℕ) : Submodule ℂ (Verma c h) :=
+  Submodule.span ℂ {x | ∃ w : List ℕ,
+    SortedWord w ∧ energyHW w = N ∧ negWord c h w = x}
+\end{leancode}
+
+\begin{dictionary}
+\textbf{The shift is now one, not two.} In \lean{negWord c h} the entry $i$ means $L_{-i-1}$, so entry
+$0$ is $L_{-1}$, which acts nontrivially on $v_h$ when $h\ne0$. Compare \lean{negWordVir}, where entry $i$
+means $L_{-i-2}$. \lean{energyHW} is the level. \lean{sortedSpan c h N} is the span of sorted (weakly
+decreasing) words of level $N$, i.e.\ the span of the PBW monomials indexed by partitions of $N$ into
+positive parts. It is defined as a span; that it is the level-$N$ eigenspace of $L_0-h$ is proved
+(\lean{verma_}\allowbreak\lean{mem_}\allowbreak\lean{level_}\allowbreak\lean{iff_}\allowbreak\lean{eigen}, \leanpath{VirasoroVermaEigenspaces.lean}).
+
+\textbf{Same construction as $\lsixV$}, with $L_{-1}$ and $L_0-h$ in place of $L_{-1}$ and $L_0$: indeed
+$\lsixV$ is a quotient of $M(c,0)$ (Theorem~\ref{l06:thm:vacexact}).
+\end{dictionary}
+
+\begin{physics}
+$M(c,h)$ is the conformal family of a primary field of weight $h$ with no null state removed:
+the primary state $v_h = |h\rangle$ and all its descendants.
+\end{physics}
+
+\begin{definition}[Highest-weight vectors and the universal property]\label{l06:def:hwv}
+In a representation $R$ of $\lsixVir$ on $V$, a vector $v$ is a \emph{highest-weight vector of weight
+$(c,h)$} if $R$ has central charge $c$, $L_nv = 0$ for $n>0$ and $L_0v = hv$. For such $v$ there is a
+unique $\lsixVir$-linear map $M(c,h)\to V$ with $v_h\mapsto v$.
+\end{definition}
+
+File \leanpath{VOA/Examples/InverseDSVirasoroVerma.lean}.
+\begin{leancode}
+structure IsHighestWeightVector (R : VirRep V) (v : V) (c h : ℂ) : Prop where
+  centralCharge : R.centralCharge = c
+  pos_annihilate : ∀ n : ℤ, 0 < n → virMode R n v = 0
+  zero_acts : virMode R 0 v = h • v
+
+noncomputable def universalMap (R : VirRep V) (v : V) {c h : ℂ}
+    (hv : IsHighestWeightVector R v c h) : Verma c h →ₗ[ℂ] V :=
+  (((vermaIdeal c h).restrictScalars ℂ).liftQ (eval R v)
+      (vermaIdeal_le_ker_eval R v hv)).comp
+    (Submodule.Quotient.restrictScalarsEquiv ℂ (vermaIdeal c h)).symm.toLinearMap
+
+theorem universalMap_intertwines (R : VirRep V) (v : V) {c h : ℂ}
+    (hv : IsHighestWeightVector R v c h) (x : Virasoro) (w : Verma c h) :
+    universalMap R v hv (vermaRho c h x w) =
+      R.ρ x (universalMap R v hv w) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{VirRep V} (Chapter~\ref{ch:L02}) is a Lie representation $\rho$ of $\lsixVir$ on $V$ with a number
+\lean{centralCharge} and the proof that $\rho(C)$ is that number times the identity; \lean{virMode R n}
+$= \rho(L_n)$. \lean{eval R v} is $a\mapsto a\cdot v$ on $\lsixU$; \lean{liftQ} factors it through the
+quotient (the side condition \lean{vermaIdeal_le_ker_eval} is the check that the generators of $I(c,h)$
+kill $v$). The remaining composition only changes the scalar ring of the quotient from $\lsixU$ to $\C$.
+\lean{universalMap_}\allowbreak\lean{intertwines} says the result is a map of representations.
+\end{dictionary}
+
+\begin{physics}
+Any primary state $|h\rangle$ in any theory receives a map from the Verma module: one simply lets the
+descendants of the abstract primary go to the actual descendants. Null vectors of the actual theory are
+the kernel of this map.
+\end{physics}
+
+\begin{theorem}[PBW basis of $M(c,h)$, for every $(c,h)$]\label{l06:thm:vermabasis}
+For every $(c,h)\in\C^2$: $v_h\ne0$; the sorted monomials $L^{(1)}_wv_h$, $w$ weakly decreasing, form a
+basis of $M(c,h)$; at each level $N$ the sorted words of level $N$ form a basis of the level-$N$ subspace,
+whose dimension is the number $\lsixpp(N)$ of partitions of $N$.
+\end{theorem}
+
+File \leanpath{VOA/Examples/VirasoroVermaNonvanishing.lean}.
+\begin{leancode}
+theorem highestVector_ne_zero (c h : ℂ) : highestVector c h ≠ 0 := by
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroVermaMomentumPolynomial.lean}.
+\begin{leancode}
+theorem verma_sortedWord_linearIndependent (c h : ℂ) :
+    LinearIndependent ℂ (fun w : {w : List ℕ // SortedWord w} => negWord c h w.val) := by
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroVermaBasis.lean}.
+\begin{leancode}
+noncomputable def vermaSortedBasis :
+    Module.Basis {w : List ℕ // SortedWord w} ℂ (Verma c h) :=
+  Module.Basis.mk (verma_sortedWord_linearIndependent c h) (verma_sortedWord_span_top c h)
+
+def VermaPartitions (n : ℕ) := {w : List ℕ // SortedWord w ∧ energyHW w=n}
+
+noncomputable def vermaLevelBasis (n : ℕ) :
+    Module.Basis (VermaPartitions n) ℂ (sortedSpan c h n) :=
+  Module.Basis.mk (vermaLevelWord_linearIndependent c h n) (vermaLevelWord_span c h n)
+
+theorem vermaLevel_finrank (n : ℕ) :
+    Module.finrank ℂ (sortedSpan c h n)=Fintype.card (VermaPartitions n) :=
+\end{leancode}
+
+\begin{dictionary}
+\lean{VermaPartitions n} is the finite type of sorted words of level $n$ (entry $i$ = part $i+1$), i.e.\
+partitions of $n$ into positive parts; its cardinality is $\lsixpp(n)$. The $c$ and $h$ in
+\lean{vermaSortedBasis}, \lean{vermaLevelBasis}, \lean{vermaLevel_finrank} are section variables
+(\lean{variable (c h : ℂ)} in the file), so they are universally quantified. Independence is proved
+without \lean{VOA.pbw}; the affine field of \lean{VOA.pbw} would not apply here, although its relative field
+(\lean{PBWTheorem.bottom_injective}, Chapter~\ref{ch:L02}) would give the nonvanishing of Verma highest-weight
+vectors.
+\end{dictionary}
+
+\begin{physics}
+The Verma character $q^{h-c/24}\prod_{n\ge1}(1-q^n)^{-1}$, for every central charge and weight.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+\emph{Nonvanishing}: as for the vacuum, find a concrete representation with a nonzero highest-weight vector
+of weight $(c,h)$: the charged free boson of Section~\ref{l06:sec:screening} with background $\ell$ and
+momentum $p$ has central charge $1-24\ell^2$ and vacuum weight $p^2-2\ell p$; choose $\ell^2 = (1-c)/24$
+and $(p-\ell)^2 = h+\ell^2$ (\lean{exists_}\allowbreak\lean{chargedFock_}\allowbreak\lean{parameters}). \emph{Spanning}: straightening, as in
+Theorem~\ref{l06:thm:pbw}. \emph{Independence}: map $M(c,h)$ to a family of Fock modules depending
+polynomially on a momentum parameter; the coefficient of the top power of the momentum in the image of a
+sorted monomial is a monomial that determines the word (\lean{vermaWordPolynomial_}\allowbreak\lean{top}), and a triangularity
+argument on these leading terms gives independence (\leanpath{VirasoroVermaMomentumPolynomial.lean}).
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{InverseDS.}\allowbreak\lean{VirasoroVerma.}\allowbreak\lean{highestVector_}\allowbreak\lean{ne_}\allowbreak\lean{zero},
+\lean{…verma_}\allowbreak\lean{sortedWord_}\allowbreak\lean{linearIndependent}, \lean{…vermaLevel_finrank}:
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}. Unconditional, \lean{VOA.pbw}-free.
+\end{status}
+
+\begin{theorem}[The vacuum module as a Verma quotient]\label{l06:thm:vacexact}
+For every $c$, $L_{-1}v_0$ is a highest-weight vector of weight $(c,1)$ in $M(c,0)$, the induced map
+$\iota:M(c,1)\to M(c,0)$ is injective, the map $\pi:M(c,0)\to\lsixV$, $v_0\mapsto\lsixvac$, is surjective,
+and $\ker\pi = \operatorname{im}\iota$. Hence $M(c,0)/M(c,1)\cong\lsixV$.
+\end{theorem}
+
+File \leanpath{VOA/Examples/VirasoroVacuumExactSequence.lean}.
+\begin{leancode}
+noncomputable def translationEmbedding (c : ℂ) : Verma c 1 →ₗ[ℂ] Verma c 0 :=
+  universalMap (vermaRep c 0) _ (translation_highest c)
+
+theorem translationEmbedding_injective (c : ℂ) :
+    Function.Injective (translationEmbedding c) := by
+
+theorem vacuumProjection_surjective (c : ℂ) : Function.Surjective (vacuumProjection c) := by
+
+theorem vacuumProjection_ker (c : ℂ) :
+    LinearMap.ker (vacuumProjection c) = LinearMap.range (translationEmbedding c) := by
+
+noncomputable def vacuumQuotientEquiv (c : ℂ) :
+    (Verma c 0 ⧸ LinearMap.range (translationEmbedding c)) ≃ₗ[ℂ] VirUniv c :=
+  (Submodule.quotEquivOfEq _ _ (vacuumProjection_ker c).symm).trans
+    ((vacuumProjection c).quotKerEquivOfSurjective (vacuumProjection_surjective c))
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroVacuumProjection.lean}.
+\begin{leancode}
+noncomputable def vacuumProjection (c : ℂ) : Verma c 0 →ₗ[ℂ] VirUniv c :=
+  universalMap (virVacRep c) (vacVec c) (vacuum_highest c)
+\end{leancode}
+
+\begin{dictionary}
+\lean{translation_highest c} is the proof that $L_{-1}v_0$ is a highest-weight vector of weight $(c,1)$;
+\lean{vacuum_highest c} that $\lsixvac$ is one of weight $(c,0)$ in the representation \lean{virVacRep c}
+on $\lsixV$. \lean{LinearMap.ker}/\lean{LinearMap.range} are kernel and image; \lean{≃ₗ[ℂ]} a linear
+isomorphism. The statement is an exact sequence $0\to M(c,1)\to M(c,0)\to\lsixV\to0$, proved in the actual
+carriers, at every $c$ (including the minimal-model charges, where $M(c,0)$ has further singular vectors
+that survive in $\lsixV$).
+\end{dictionary}
+
+\begin{physics}
+The vacuum module is the conformal family of the identity with exactly one null vector removed:
+$L_{-1}|0\rangle$, the statement that the identity operator is constant. Everything else about the identity
+family at special $c$ is in the further quotient to $\lsixL$.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+$L_1L_{-1}v_0 = 2L_0v_0 = 0$, $L_2L_{-1}v_0 = 3L_1v_0 = 0$, and $L_0L_{-1}v_0 = L_{-1}v_0$; so $L_{-1}v_0$ is
+highest of weight $1$. The images under $\iota$ of the PBW basis of $M(c,1)$ are the PBW monomials of
+$M(c,0)$ ending in $L_{-1}$ (sorted words with a final entry $0$), a subfamily of a basis --- hence
+injectivity. The PBW monomials of $M(c,0)$ \emph{not} ending in $L_{-1}$ map bijectively to the partition
+basis of $\lsixV$, giving surjectivity and the kernel.
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{InverseDS.}\allowbreak\lean{VirasoroVerma.}\allowbreak\lean{vacuumProjection_}\allowbreak\lean{ker}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}.
+Unconditional.
+\end{status}
+
+%======================================================================
+\section{The Shapovalov form, singular vectors and the irreducible quotient}\label{l06:sec:shap}
+%======================================================================
+
+\begin{definition}[Contravariant form]\label{l06:def:shap}
+The \emph{contravariant} (Shapovalov) form on $M(c,h)$ is the bilinear form $\lsixform\cdot\cdot$ with
+$\lsixform{v_h}{v_h} = 1$ and $\lsixform{L_mu}{v} = \lsixform{u}{L_{-m}v}$ for all $m\in\Z$.
+\end{definition}
+
+File \leanpath{VOA/Examples/VirasoroVermaContravariant.lean}.
+\begin{leancode}
+noncomputable def vermaHighestCoordinate (c h : ℂ) : Module.Dual ℂ (Verma c h) :=
+  (Finsupp.lapply ⟨[], sortedWord_nil⟩).comp (vermaSortedBasis c h).repr.toLinearMap
+
+noncomputable def vermaContravariant (c h : ℂ) :
+    Verma c h →ₗ[ℂ] Module.Dual ℂ (Verma c h) :=
+  universalMap (vermaDualRep c h) (vermaHighestCoordinate c h)
+    (vermaHighestCoordinate_isHighest c h)
+
+theorem vermaContravariant_adj (c h : ℂ) (m : ℤ) (u v : Verma c h) :
+    vermaContravariant c h (vermaMode c h m u) v =
+      vermaContravariant c h u (vermaMode c h (-m) v) := by
+
+theorem vermaContravariant_symm (c h : ℂ) (u v : Verma c h) :
+    vermaContravariant c h u v = vermaContravariant c h v u := by
+
+theorem vermaContravariant_unique (c h : ℂ)
+    (B : Verma c h →ₗ[ℂ] Module.Dual ℂ (Verma c h))
+    (hnorm : B (highestVector c h) (highestVector c h) = 1)
+    (hadj : ∀ m u v, B (vermaMode c h m u) v = B u (vermaMode c h (-m) v)) :
+    B = vermaContravariant c h := by
+
+theorem vermaContravariant_translation_norm (c h : ℂ) :
+    vermaContravariant c h (negWord c h [0]) (negWord c h [0]) = 2*h := by
+\end{leancode}
+
+\begin{dictionary}
+\textbf{The construction.} \lean{Module.Dual ℂ M} is the algebraic dual $M^* = \mathrm{Hom}(M,\C)$; a
+bilinear form is a linear map $M\to M^*$. \lean{vermaHighestCoordinate} is the functional ``coefficient of
+$v_h$ in the PBW basis''. \lean{vermaDualRep} makes $M^*$ a representation by $(L_m f)(v) = f(L_{-m}v)$
+(\lean{vermaDualMode}; reversing indices and composition preserves \eqref{l06:eq:vir}). The highest
+coordinate is a highest-weight vector of weight $(c,h)$ in $M^*$, so the universal property gives a
+$\lsixVir$-map $M\to M^*$; that is the form. There is \textbf{no complex conjugation}: this is the
+bilinear Shapovalov form, not a Hermitian form, so no positivity is involved.
+
+\textbf{Pinning it down.} \lean{vermaContravariant_}\allowbreak\lean{unique}: any linear $B:M\to M^*$ with
+$B(v_h)(v_h) = 1$ and adjointness equals this one. \lean{vermaContravariant_adj}: adjointness.
+\lean{vermaContravariant_}\allowbreak\lean{symm}: symmetry. \lean{vermaContravariant_}\allowbreak\lean{translation_}\allowbreak\lean{norm}: the smoke test
+$\lsixform{L_{-1}v_h}{L_{-1}v_h} = 2h$. So this is exactly Definition~\ref{l06:def:shap}.
+\end{dictionary}
+
+\begin{physics}
+$\lsixform{u}{v}$ is the two-point function $\langle u|v\rangle$ of descendants of a primary with
+$L_n^\dagger = L_{-n}$. The norm $2h$ of $L_{-1}|h\rangle$ is the statement that $\partial\phi$ has two-point
+function $\propto h$: for $h = 0$ the field is constant and its derivative is null.
+\end{physics}
+
+\begin{definition}[Gram matrix, radical, irreducible quotient]\label{l06:def:gramverma}
+$G_n(c,h)$ is the matrix of $\lsixform\cdot\cdot$ on the level-$n$ subspace in the partition basis. The
+\emph{radical} $\mathrm{Rad}(c,h)$ is $\{u : \lsixform{u}{\cdot} = 0\}$, and $L(c,h) := M(c,h)/\mathrm{Rad}(c,h)$.
+\end{definition}
+
+File \leanpath{VOA/Examples/VirasoroVermaGramPolynomial.lean}.
+\begin{leancode}
+noncomputable def vermaGramMatrix (c h : ℂ) (n : ℕ) :
+    Matrix (VermaPartitions n) (VermaPartitions n) ℂ := fun i j =>
+  vermaContravariant c h (negWord c h i.val) (negWord c h j.val)
+
+noncomputable def vermaGramPolynomial (n : ℕ) :
+    Matrix (VermaPartitions n) (VermaPartitions n) (MvPolynomial (Fin 2) ℂ) :=
+  vermaAlgebraGramMatrix (MvPolynomial.X 0) (MvPolynomial.X 1) n
+
+theorem vermaGramPolynomial_det_eval (c h : ℂ) (n : ℕ) [DecidableEq (VermaPartitions n)] :
+    MvPolynomial.aeval (fun i : Fin 2 => if i=0 then c else h)
+      (vermaGramPolynomial n).det = (vermaGramMatrix c h n).det := by
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroVermaMaximalRadical.lean}.
+\begin{leancode}
+noncomputable def vermaRadical (c h : ℂ) : Submodule ℂ (Verma c h) :=
+  LinearMap.ker (vermaContravariant c h)
+
+abbrev VermaSimple (c h : ℂ) := Verma c h ⧸ vermaRadical c h
+\end{leancode}
+
+\begin{dictionary}
+\lean{vermaGramMatrix c h n} is literally the matrix of the form on the partition words. 
+\lean{vermaGramPolynomial n} is a matrix over $\C[X_0,X_1]$ ($X_0$ = central charge, $X_1$ = highest
+weight) computed by the finite commutation algorithm; \lean{vermaGramPolynomial_}\allowbreak\lean{det_}\allowbreak\lean{eval} proves that
+its determinant, evaluated at $(c,h)$, is the actual determinant --- so $\det G_n$ is a polynomial in
+$(c,h)$, proved, not postulated. \lean{vermaRadical} is the kernel of $u\mapsto\lsixform{u}{\cdot}$.
+\end{dictionary}
+
+\begin{physics}
+The Gram matrix collects all two-point functions of level-$n$ descendants. The radical is the space of
+null states; $L(c,h)$ is the physical conformal family.
+\end{physics}
+
+\begin{theorem}[Radical, irreducibility, dimensions]\label{l06:thm:radical}
+For every $(c,h)$: $\mathrm{Rad}(c,h)$ is the unique maximal proper submodule of $M(c,h)$; $L(c,h)$ is
+irreducible and nonzero; $\dim L(c,h)_n = \operatorname{rank}G_n(c,h)$; and $L(c,0)$ (Verma version) is
+linearly isomorphic to the simple VOA $\lsixL$ of Definition~\ref{l06:def:simple}.
+\end{theorem}
+
+File \leanpath{VOA/Examples/VirasoroVermaMaximalRadical.lean}.
+\begin{leancode}
+theorem vermaRadical_maximal (c h : ℂ) (S : Submodule ℂ (Verma c h))
+    (hS : VermaModeStable c h S) (hr : vermaRadical c h≤S) :
+    S=vermaRadical c h ∨ S=⊤ := by
+
+theorem vermaSimple_irreducible (c h : ℂ) (S : Submodule ℂ (VermaSimple c h))
+    (hS : ∀ m : ℤ, ∀ v∈S, vermaSimpleMode c h m v∈S) : S=⊥ ∨ S=⊤ := by
+
+theorem vermaSimple_highest_ne_zero (c h : ℂ) :
+    (vermaRadical c h).mkQ (highestVector c h)≠0 := by
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroVermaQuotientDimensions.lean}.
+\begin{leancode}
+noncomputable def vermaSimpleLevel (c h : ℂ) (n : ℕ) : Submodule ℂ (VermaSimple c h) :=
+  (sortedSpan c h n).map (vermaRadical c h).mkQ
+
+theorem vermaSimpleLevel_finrank_eq_gramRank (c h : ℂ) (n : ℕ) :
+    Module.finrank ℂ (vermaSimpleLevel c h n)=(vermaGramMatrix c h n).rank := by
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroVermaSimpleVacuum.lean}.
+\begin{leancode}
+noncomputable def vermaSimpleVacuumEquiv (c : ℂ) :
+    VermaSimple c 0 ≃ₗ[ℂ] (VirUniv c ⧸ maxIdealVir c) :=
+  (Submodule.quotEquivOfEq _ _ (simpleVacuumProjection_ker c).symm).trans
+    ((simpleVacuumProjection c).quotKerEquivOfSurjective (simpleVacuumProjection_surjective c))
+\end{leancode}
+
+\begin{dictionary}
+\lean{VermaModeStable c h S} says $S$ is stable under every $L_m$ (and $\lsixVir$-submodule);
+\lean{vermaSimpleMode} is the induced action on the quotient. \lean{vermaRadical_maximal} is maximality,
+\lean{vermaSimple_}\allowbreak\lean{irreducible} irreducibility of the quotient (no nonzero proper invariant subspace), and
+\lean{vermaSimple_}\allowbreak\lean{highest_}\allowbreak\lean{ne_}\allowbreak\lean{zero} says the quotient is nonzero. (\lean{verma_}\allowbreak\lean{proper_}\allowbreak\lean{submodule_}\allowbreak\lean{le_}\allowbreak\lean{radical},
+in the same file, gives ``every proper submodule lies in the radical''.) The isomorphism
+\lean{vermaSimpleVacuumEquiv} is only a \emph{linear} isomorphism, built from the kernel identity
+\lean{simpleVacuumProjection_}\allowbreak\lean{ker}: the composite $M(c,0)\to\lsixV\to\lsixL$ has kernel exactly
+$\mathrm{Rad}(c,0)$; \lean{vermaSimpleVacuumEquiv_}\allowbreak\lean{mode} records that it intertwines the modes.
+\end{dictionary}
+
+\begin{physics}
+$L(c,h)$ is the irreducible conformal family; its character is $\sum_n\operatorname{rank}G_n(c,h)\,q^{h+n-c/24}$.
+For $h = 0$ it is the vacuum module of the chiral algebra $\lsixL$.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+A proper submodule $S$ is graded and does not contain $v_h$, so it lies in $\bigoplus_{n>0}M_n$; for
+$u\in S$ and any $v$, $\lsixform{u}{L_{-m_1}\cdots v_h} = \lsixform{L_{m_k}\cdots L_{m_1}u}{v_h}$, which is the
+$v_h$-coefficient of an element of $S$, hence $0$. So $S\subseteq\mathrm{Rad}$; the radical is itself
+proper ($\lsixform{v_h}{v_h} = 1$) and a submodule (adjointness). Levels are orthogonal
+(\lean{vermaContravariant_}\allowbreak\lean{orthogonal}), so the radical at level $n$ is the kernel of $G_n$, giving the rank
+formula. For $h = 0$, both $\mathrm{Rad}(c,0)$ and the preimage of $I_{\max}(c)$ are the maximal proper
+submodule.
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{InverseDS.}\allowbreak\lean{VirasoroVerma.}\allowbreak\lean{vermaSimple_}\allowbreak\lean{irreducible}, \lean{…vermaSimpleLevel_}\allowbreak\lean{finrank_}\allowbreak\lean{eq_}\allowbreak\lean{gramRank},
+\lean{…vermaSimpleVacuumEquiv}, \lean{…vermaContravariant_}\allowbreak\lean{unique}, \lean{…vermaContravariant_}\allowbreak\lean{symm}:
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}. Unconditional.
+\end{status}
+
+\subsection{Singular vectors}
+
+\begin{definition}[Singular vector]\label{l06:def:singular}
+A \emph{singular vector} at level $n>0$ in $M(c,h)$ is a nonzero $v$ in the level-$n$ subspace with
+$L_1v = L_2v = 0$ (equivalently $L_mv = 0$ for all $m>0$, since $L_1,L_2$ generate the positive part).
+\end{definition}
+
+File \leanpath{VOA/Examples/VirasoroKacCollisionStates.lean}.
+\begin{leancode}
+def HasNonzeroSingular (c h : ℂ) (n : ℕ) : Prop :=
+  ∃ v : Verma c h, v≠0 ∧ v∈sortedSpan c h n ∧
+    vermaMode c h 1 v=0 ∧ vermaMode c h 2 v=0
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroVermaWardSpecialization.lean}.
+\begin{leancode}
+theorem verma_positive_zero_of_one_two (c h : ℂ) (v : Verma c h)
+    (h1 : vermaMode c h 1 v=0) (h2 : vermaMode c h 2 v=0) :
+    ∀ n : ℤ, 0<n → vermaMode c h n v=0 := by
+\end{leancode}
+
+\begin{dictionary}
+Many statements of the library write the singular condition inline as ``$v\ne0$, $v\in$
+\lean{sortedSpan c h n}, \lean{vermaMode c h 1 v = 0}, \lean{vermaMode c h 2 v = 0}'' (sometimes with $v$
+an element of the subtype \lean{sortedSpan c h n}). \lean{verma_}\allowbreak\lean{positive_}\allowbreak\lean{zero_}\allowbreak\lean{of_}\allowbreak\lean{one_}\allowbreak\lean{two} justifies using
+only $L_1,L_2$: $[L_2,L_1] = L_3$, $[L_{m},L_1] = (m-1)L_{m+1}$ generate all $L_m$, $m>0$.
+\end{dictionary}
+
+\begin{physics}
+A singular vector is a descendant that is itself primary: a null field. Its existence is the condition
+under which BPZ differential equations hold.
+\end{physics}
+
+\begin{theorem}[Singular vectors versus the Gram determinant]\label{l06:thm:singgram}
+Let $n>0$.
+\begin{enumerate}
+\item If $M(c,h)$ has a singular vector at level $n$, then $\det G_n(c,h) = 0$; conversely if
+  $\det G_n(c,h)\ne0$ there is none.
+\item If $\det G_n(c,h) = 0$ and $\det G_k(c,h)\ne0$ for all $k<n$, then $M(c,h)$ has a singular vector at
+  level $n$.
+\item A singular vector $v$ at level $n$ generates an injective image of $M(c,h+n)$; consequently
+  $(X-h)^{\lsixpp(m)}$ divides $\det G_{n+m}(c,X)$ as a polynomial in the highest weight $X$, for every
+  $m\ge0$.
+\item Singular vectors at a given level are unique up to scalar.
+\end{enumerate}
+\end{theorem}
+
+File \leanpath{VOA/Examples/VirasoroVermaGramPolynomial.lean}.
+\begin{leancode}
+theorem vermaGramMatrix_nonsingular_no_singular (c h : ℂ) (n : ℕ)
+    [DecidableEq (VermaPartitions n)] (hn : 0 < n)
+    (hd : (vermaGramMatrix c h n).det ≠ 0)
+    (v : Verma c h) (hv : v ∈ sortedSpan c h n)
+    (h1 : vermaMode c h 1 v = 0) (h2 : vermaMode c h 2 v = 0) : v = 0 := by
+
+theorem verma_singular_of_first_gram_root (c h : ℂ) (n : ℕ)
+    [∀ k : ℕ, DecidableEq (VermaPartitions k)]
+    (hroot : (vermaGramMatrix c h n).det = 0)
+    (hlower : ∀ k < n, (vermaGramMatrix c h k).det ≠ 0) :
+    ∃ v : Verma c h, v ≠ 0 ∧ v ∈ sortedSpan c h n ∧
+      ∀ m : ℤ, 0 < m → vermaMode c h m v = 0 := by
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroVermaSingularEmbedding.lean}.
+\begin{leancode}
+noncomputable def vermaSingularMap (c h : ℂ) (n : ℕ) (v : Verma c h)
+    (hv : v ∈ sortedSpan c h n)
+    (h1 : vermaMode c h 1 v=0) (h2 : vermaMode c h 2 v=0) :
+    Verma c (h+(n:ℂ)) →ₗ[ℂ] Verma c h :=
+  universalMap (vermaRep c h) v (verma_singular_isHighest c h n v hv h1 h2)
+
+theorem vermaSingularMap_injective (c h : ℂ) (n : ℕ) (v : Verma c h)
+    (hv : v ∈ sortedSpan c h n) (hne : v≠0)
+    (h1 : vermaMode c h 1 v=0) (h2 : vermaMode c h 2 v=0) :
+    Function.Injective (vermaSingularMap c h n v hv h1 h2) :=
+
+noncomputable def vermaWeightGramPolynomial (c : ℂ) (n : ℕ) :
+    Matrix (VermaPartitions n) (VermaPartitions n) (Polynomial ℂ) :=
+  vermaAlgebraGramMatrix (Polynomial.C c) Polynomial.X n
+
+theorem vermaWeightDeterminant_dvd_of_singular (c h : ℂ) (n m : ℕ)
+    [DecidableEq (VermaPartitions (n+m))] (hn : 0<n)
+    (v : sortedSpan c h n) (hv : v≠0)
+    (h1 : vermaMode c h 1 (v : Verma c h)=0)
+    (h2 : vermaMode c h 2 (v : Verma c h)=0) :
+    (Polynomial.X-Polynomial.C h)^(Fintype.card (VermaPartitions m)) ∣
+      (vermaWeightGramPolynomial c (n+m)).det := by
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroSingularUniqueness.lean}.
+\begin{leancode}
+theorem verma_singular_eq_smul (c h : ℂ) (n : ℕ) (v w : Verma c h)
+    (hv : v ∈ sortedSpan c h n) (hw : w ∈ sortedSpan c h n) (hwne : w ≠ 0)
+    (hv1 : vermaMode c h 1 v = 0) (hv2 : vermaMode c h 2 v = 0)
+    (hw1 : vermaMode c h 1 w = 0) (hw2 : vermaMode c h 2 w = 0) :
+    v = (vermaTopCoordinate c h n v / vermaTopCoordinate c h n w) • w := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{vermaWeightGramPolynomial c n} is the Gram matrix at fixed $c$ as a matrix of polynomials in the
+highest weight $X$ (\lean{Polynomial.C c} is the constant $c$); \lean{vermaWeightGramPolynomial_}\allowbreak\lean{eval}
+shows that evaluating at $h$ gives \lean{vermaGramMatrix c h n}. \lean{∣} is divisibility of polynomials.
+\lean{[DecidableEq …]} arguments are bookkeeping required to form a determinant and carry no
+mathematical content. \lean{vermaTopCoordinate c h n v} is the coefficient of $L_{-1}^nv_h$ in $v$;
+uniqueness is proved by showing it is nonzero on every singular vector (\lean{verma_}\allowbreak\lean{singular_}\allowbreak\lean{top_}\allowbreak\lean{ne_}\allowbreak\lean{zero}).
+In item 2 the hypothesis \lean{hlower} is needed: without it a zero of $\det G_n$ may be caused only by
+descendants of lower singular vectors.
+\end{dictionary}
+
+\begin{physics}
+Item 3 is the source of the exponents $\lsixpp(N-rs)$ in Kac's formula: a null vector at level $rs$ drags
+along its whole conformal family of null descendants, $\lsixpp(m)$ of them at level $rs+m$. Item 4 is the
+classical uniqueness of the null vector at given level (used by BPZ to write explicit null-vector
+equations).
+\end{physics}
+
+\begin{proof}[Proof on paper]
+(1) A singular vector lies in the radical (it is orthogonal to everything, as moving creation modes across
+turns them into annihilation modes); its coefficient vector is a nonzero kernel vector of $G_n$. If
+$\det G_n\ne0$ the kernel is zero. (2) A kernel vector $u$ at level $n$ is in the radical; then $L_mu$,
+$m>0$, is in the radical at level $n-m<n$, where the form is nondegenerate, so $L_mu = 0$. (3) The universal
+map is injective because a nonzero vector of a Verma module has linearly independent PBW descendants
+(\lean{vermaDescendant_}\allowbreak\lean{linearIndependent}: $\lsixU^-$ acts freely). The $\lsixpp(m)$ independent
+descendants at level $n+m$ lie in the radical of $M(c,h)$. Now use an elementary fact about polynomial
+matrices: if $A(X)$ is a square polynomial matrix and $k$ linearly independent vectors lie in the kernel
+of $A(h)$, then $(X-h)^k$ divides $\det A(X)$ (complete them to a basis; the corresponding columns of
+$A(X)P$ vanish at $h$, so each is divisible by $X-h$). (4) Two singular vectors at level $n$ with the same
+top coordinate differ by a singular vector with zero top coordinate, which must be zero.
+\end{proof}
+
+\begin{status}
+All items: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}. Unconditional.
+\end{status}
+
+%======================================================================
+\section{The Kac determinant}\label{l06:sec:kac}
+%======================================================================
+
+\subsection{The Kac parametrisation and the Kac product}
+
+\begin{definition}[Kac parametrisation]\label{l06:def:kacparam}
+For $t\in\C\setminus\{0\}$ and $r,s\in\C$ put $c(t) := 13-6t-6/t$ and
+$h_{r,s}(t) := \bigl((rt-s)^2-(t-1)^2\bigr)/(4t)$.
+\end{definition}
+
+File \leanpath{VOA/Examples/VirasoroVermaBSA.lean}.
+\begin{leancode}
+noncomputable def vermaBSACharge (t : ℂ) : ℂ := 13-6*t-6/t
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroFusionLabelRoots.lean}.
+\begin{leancode}
+noncomputable def fusionKacWeight (u v t : ℂ) : ℂ :=
+  ((u*t-v)^2-(t-1)^2)/(4*t)
+\end{leancode}
+
+\begin{dictionary}
+The names are historical (\lean{vermaBSACharge}: the charge on the Benoit--Saint-Aubin curve of
+Chapter~\ref{ch:L07}; \lean{fusionKacWeight}: introduced for the fusion construction) but the formulas are
+exactly \eqref{l06:eq:kacparam}. Lean's total division gives $6/0 = 0$, so at $t = 0$ the value $c(0) = 13$
+is meaningless; every theorem below assumes $t\ne0$. \textbf{Surjectivity}: every $c\in\C$ is $c(t)$ for
+some $t\ne0$ (the quadratic $6t^2-(13-c)t+6 = 0$ has roots with product $1$), so statements ``for all
+$t\ne0$'' cover all central charges. \textbf{Orientation}: at $t = p/q$, $c(p/q) = c_{p,q}$ and
+$h_{r,s}(p/q) = ((pr-qs)^2-(p-q)^2)/(4pq)$ (\lean{fusionKacWeight_}\allowbreak\lean{minimal},
+\lean{minimalKacWeight}); with $p>q$ the vacuum label at the first singular level is $(r,s) = (q-1,p-1)$.
+Under $t\mapsto1/t$, $c$ is invariant and $h_{r,s}\leftrightarrow h_{s,r}$ (\lean{vermaBSACharge_inv},
+\lean{fusionKacWeight_}\allowbreak\lean{swap_}\allowbreak\lean{inv}).
+\end{dictionary}
+
+\begin{physics}
+In the Coulomb gas $t = \alpha_+^2$ (up to normalisation) and $h_{r,s}$ is the weight of the vertex
+operator with charge $\alpha_{r,s} = \frac{1-r}2\alpha_++\frac{1-s}2\alpha_-$. The symmetry $t\leftrightarrow1/t$
+exchanges the two screening charges.
+\end{physics}
+
+\begin{definition}[The Kac product]\label{l06:def:kacproduct}
+For $t\ne0$ and $n\in\N$,
+\begin{equation*}
+ \mathcal K_n(t;X) := \prod_{\substack{r,s\ge1\\ rs\le n}}\bigl(X-h_{r,s}(t)\bigr)^{\lsixpp(n-rs)}\in\C[X],
+ \qquad
+ K_n := \prod_{\lambda\vdash n}\ \prod_{k\ge1}(2k)^{m_k(\lambda)}m_k(\lambda)!,
+\end{equation*}
+where $m_k(\lambda)$ is the multiplicity of the part $k$ in the partition $\lambda$.
+\end{definition}
+
+File \leanpath{VOA/Examples/VirasoroKacProduct.lean}.
+\begin{leancode}
+noncomputable def kacLabels (n : ℕ) : Finset (Fin n × Fin n) :=
+  Finset.univ.filter (fun i => (i.1.val+1)*(i.2.val+1) ≤ n)
+
+noncomputable def kacWeightProduct (t : ℂ) (n : ℕ) : Polynomial ℂ :=
+  ∏ i ∈ kacLabels n,
+    (Polynomial.X-Polynomial.C (fusionKacWeight (i.1.val+1) (i.2.val+1) t)) ^
+      Fintype.card (VermaPartitions (n-(i.1.val+1)*(i.2.val+1)))
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroVermaGramLeading.lean}.
+\begin{leancode}
+noncomputable def vermaDiagonalContraction : List ℕ → ℂ
+  | [] => 1
+  | a::w => (((w.count a+1:ℕ):ℂ)*(2*((a:ℂ)+1)))*vermaDiagonalContraction w
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Labels.} \lean{Fin n × Fin n} indexes pairs $(i,j)$ with $0\le i,j<n$; the label is
+$(r,s) = (i+1,j+1)$, and the filter keeps $rs\le n$. Since $rs\le n$ forces $r,s\le n$, no label is lost by
+the bound $<n$ on the indices. \textbf{Exponents.} \lean{Fintype.}\allowbreak\lean{card (VermaPartitions m)} is $\lsixpp(m)$
+(partitions into positive parts; \lean{n-…} is natural-number subtraction, harmless since $rs\le n$).
+\textbf{Constant.} For a sorted word $w$ (entry $a$ = part $a+1$) \lean{vermaDiagonalContraction w}
+multiplies, for each entry, $2(a+1)$ (i.e.\ $2k$ for the part $k$) by the number of later equal entries plus
+one; over a block of $m$ equal parts this gives $(2k)^mm!$. So
+$\prod_{w}$\lean{vermaDiagonalContraction w} $= K_n$. Example: $K_2 = 4\cdot(2^2\cdot2!) = 32$, and indeed
+$\det G_2 = 32h\,(h-h_{1,2})(h-h_{2,1})$.
+\end{dictionary}
+
+\begin{physics}
+$\mathcal K_n$ lists the expected null vectors at level $\le n$, each with its family of descendants;
+$K_n$ is the large-$h$ normalisation, in which each $L_{-k}$ contracted with $L_k$ contributes $2kh$.
+\end{physics}
+
+\subsection{What the library proves about the determinant in general}
+
+\begin{theorem}[Degree, leading coefficient and the degree count]\label{l06:thm:degree}
+For every $c\in\C$ and $n\in\N$, $\det G_n(c,X)\in\C[X]$ has degree exactly $\sum_{\lambda\vdash n}\ell(\lambda)$
+and leading coefficient $K_n$ (independent of $c$). Moreover
+$\sum_{\lambda\vdash n}\ell(\lambda) = \sum_{rs\le n}\lsixpp(n-rs)$, so $\mathcal K_n(t;X)$ is monic of the same
+degree.
+\end{theorem}
+
+File \leanpath{VOA/Examples/VirasoroVermaGramLeading.lean}.
+\begin{leancode}
+theorem vermaWeightDeterminant_natDegree (c : ℂ) (n : ℕ) :
+    (vermaWeightGramPolynomial c n).det.natDegree=∑ j : VermaPartitions n, j.val.length := by
+
+theorem vermaWeightDeterminant_leadingCoeff (c : ℂ) (n : ℕ) :
+    (vermaWeightGramPolynomial c n).det.leadingCoeff=
+      ∏ j : VermaPartitions n, vermaDiagonalContraction j.val := by
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroKacDegreeCount.lean}.
+\begin{leancode}
+theorem verma_partition_lengths_eq_kac_count (n : ℕ) :
+    (∑ w : VermaPartitions n, w.val.length)=
+      ∑ a ∈ Finset.range n, ∑ k ∈ Finset.range n,
+        if (a+1)*(k+1)≤n then
+          Fintype.card (VermaPartitions (n-(a+1)*(k+1))) else 0 := by
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroKacProduct.lean}.
+\begin{leancode}
+theorem kacWeightProduct_monic (t : ℂ) (n : ℕ) : (kacWeightProduct t n).Monic := by
+
+theorem kacWeightProduct_natDegree (t : ℂ) (n : ℕ) :
+    (kacWeightProduct t n).natDegree = ∑ w : VermaPartitions n, w.val.length := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{natDegree}, \lean{leadingCoeff}, \lean{Monic} are Mathlib's degree, leading coefficient and
+``leading coefficient $1$''. \lean{w.val.length} is the number of parts $\ell(\lambda)$.
+\lean{Finset.range n} is $\{0,\dots,n-1\}$. The combinatorial identity is the classical one: every
+partition with a marked part of size $a+1$ occurring at least $k+1$ times corresponds to a partition of
+$n-(a+1)(k+1)$, so both sides count pairs (partition, marked part-occurrence).
+\end{dictionary}
+
+\begin{physics}
+At large $h$ the descendants of a primary behave like free oscillators and the Gram matrix becomes
+diagonal: $\lsixform{L_\lambda v_h}{L_\lambda v_h}\approx\prod_k(2kh)^{m_k}m_k!$. The degree identity
+says the null vectors predicted by Kac account for exactly the total number of ``oscillator
+excitations'' --- no room is left for unexpected zeros.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Each entry $\lsixform{L_\lambda v_h}{L_\mu v_h}$ has $h$-degree $\le\min(\ell(\lambda),\ell(\mu))$ (each power of
+$h$ comes from one contraction $[L_k,L_{-k}]\ni2kL_0$), so $\deg\det\le\sum\ell(\lambda)$, with coefficient
+the determinant of the matrix of top coefficients. That matrix vanishes between partitions of different
+content (contractions must pair equal modes), is diagonal on equal content, and its diagonal entries are
+$\prod_k(2k)^{m_k}m_k!\ne0$; it is independent of $c$ (\lean{vermaWeightTopMatrix_}\allowbreak\lean{charge_}\allowbreak\lean{independent}).
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{InverseDS.}\allowbreak\lean{VirasoroVerma.}\allowbreak\lean{vermaWeightDeterminant_}\allowbreak\lean{natDegree}, \lean{…leadingCoeff},
+\lean{…verma_}\allowbreak\lean{partition_}\allowbreak\lean{lengths_}\allowbreak\lean{eq_}\allowbreak\lean{kac_}\allowbreak\lean{count}, \lean{…kacWeightProduct_}\allowbreak\lean{natDegree}:
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}. Unconditional.
+\end{status}
+
+\begin{theorem}[Kac formula from singular vectors (conditional form)]\label{l06:thm:kaccond}
+Let $c\in\C$, $n\in\N$ and $t\in\C$ with $\operatorname{Im}t\ne0$. Suppose that for every label $(r,s)$ with
+$rs\le n$ the Verma module $M(c,h_{r,s}(t))$ has a singular vector at level $rs$. Then
+\begin{equation*}
+ \det G_n(c,X) = K_n\cdot\mathcal K_n(t;X).
+\end{equation*}
+\end{theorem}
+
+File \leanpath{VOA/Examples/VirasoroKacProduct.lean}.
+\begin{leancode}
+theorem fusionKacWeight_injective_positive (t : ℂ) (ht : t.im ≠ 0)
+    (r s r' s' : ℕ) (hr : 0 < r) (hr' : 0 < r')
+    (he : fusionKacWeight r s t = fusionKacWeight r' s' t) : r = r' ∧ s = s' := by
+
+theorem vermaWeightDeterminant_eq_kac_of_singular (c t : ℂ) (n : ℕ) (ht : t.im ≠ 0)
+    (hs : ∀ i ∈ kacLabels n,
+      ∃ v : sortedSpan c (fusionKacWeight (i.1.val+1) (i.2.val+1) t)
+        ((i.1.val+1)*(i.2.val+1)), v ≠ 0 ∧
+        vermaMode c (fusionKacWeight (i.1.val+1) (i.2.val+1) t) 1 v = 0 ∧
+        vermaMode c (fusionKacWeight (i.1.val+1) (i.2.val+1) t) 2 v = 0) :
+    (vermaWeightGramPolynomial c n).det =
+      Polynomial.C (∏ w : VermaPartitions n, vermaDiagonalContraction w.val) *
+        kacWeightProduct t n := by
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Hypotheses.} \lean{ht : t.im ≠ 0}: $t$ is not real. This guarantees that the weights $h_{r,s}(t)$ of
+distinct positive labels are distinct (\lean{fusionKacWeight_}\allowbreak\lean{injective_}\allowbreak\lean{positive}), so that the factors
+$X-h_{r,s}$ are pairwise coprime. \lean{hs}: for every label in \lean{kacLabels n}, a nonzero
+$v\in$\lean{sortedSpan c h_{r,s} (rs)} with $L_1v = L_2v = 0$: a singular vector. \textbf{Note} that $c$
+and $t$ are independent variables; the hypothesis \lean{hs} can only hold for all labels when $c$ is
+compatible with $t$ (for $n\ge2$ it forces $c = c(t)$), but the theorem does not need to say so.
+\textbf{Conclusion}: an equality of polynomials in $X$ (\lean{Polynomial.C} is the constant polynomial).
+
+\textbf{Status of the hypothesis.} The docstring says ``The displayed singular existence premise remains
+open in general, so this is not an unconditional Kac or rigidity theorem.'' When this chapter was first written, this was already outdated (the docstring has since been corrected): the premise is discharged, for $c = c(t)$ and every nonreal $t$, by
+\lean{screening_}\allowbreak\lean{nonreal_}\allowbreak\lean{kac_}\allowbreak\lean{singular} (Theorem~\ref{l06:thm:screenkac}); see
+Theorem~\ref{l06:thm:kacfull} and Warning~\ref{l06:warn:docstrings}. The theorem itself is correct as stated.
+\end{dictionary}
+
+\begin{physics}
+Each primary of weight $h_{r,s}$ with a null vector at level $rs$ forces the factor
+$(h-h_{r,s})^{\lsixpp(n-rs)}$ in the level-$n$ determinant, by Theorem~\ref{l06:thm:singgram}(3). Kac's
+insight is that these are all the zeros: the counting of Theorem~\ref{l06:thm:degree} leaves no room for more.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+By Theorem~\ref{l06:thm:singgram}(3), each $(X-h_{r,s}(t))^{\lsixpp(n-rs)}$ divides $D(X) := \det G_n(c,X)$. For
+nonreal $t$ the $h_{r,s}(t)$ are distinct: if $h_{r,s} = h_{r',s'}$ then $(rt-s)^2 = (r't-s')^2$, so
+$(r-r')t = s-s'$ or $(r+r')t = s+s'$; taking imaginary parts, $r = r'$ (then $s = s'$) or $r+r' = 0$,
+impossible. Pairwise coprime factors each dividing $D$ give $\mathcal K_n\mid D$. Both have the same degree
+(Theorem~\ref{l06:thm:degree}), $\mathcal K_n$ is monic and $D$ has leading coefficient $K_n$; hence
+$D = K_n\mathcal K_n$.
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{InverseDS.}\allowbreak\lean{VirasoroVerma.}\allowbreak\lean{vermaWeightDeterminant_}\allowbreak\lean{eq_}\allowbreak\lean{kac_}\allowbreak\lean{of_}\allowbreak\lean{singular}:
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}. Conditional on the displayed hypothesis \lean{hs}, which is
+dischargeable (Theorem~\ref{l06:thm:kacfull}).
+\end{status}
+
+\begin{theorem}[Extension from nonreal to all nonzero $t$]\label{l06:thm:kacextend}
+Fix $N$. If for every nonreal $z$ and every label with $rs\le N$, $M(c(z),h_{r,s}(z))$ has a singular vector
+at level $rs$, then for every $t\ne0$ and every $k\le N$, $\det G_k(c(t),X) = K_k\,\mathcal K_k(t;X)$.
+\end{theorem}
+
+File \leanpath{VOA/Examples/VirasoroKacVacuumCoefficient.lean}.
+\begin{leancode}
+theorem vermaWeightDeterminant_kac_extend (n : ℕ)
+    (hs : ∀ z : ℂ, z.im ≠ 0 →
+      (vermaWeightGramPolynomial (vermaBSACharge z) n).det =
+        Polynomial.C (∏ w : VermaPartitions n, vermaDiagonalContraction w.val) *
+          kacWeightProduct z n)
+    (t : ℂ) (ht : t ≠ 0) :
+    (vermaWeightGramPolynomial (vermaBSACharge t) n).det =
+      Polynomial.C (∏ w : VermaPartitions n, vermaDiagonalContraction w.val) *
+        kacWeightProduct t n := by
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroKacSingularTransfer.lean}.
+\begin{leancode}
+theorem verma_kac_all_of_nonreal_singular (N : ℕ)
+    (hs : ∀ z : ℂ, z.im ≠ 0 → ∀ r s : ℕ, 0 < r → 0 < s → r*s ≤ N →
+      ∃ v : sortedSpan (vermaBSACharge z) (fusionKacWeight r s z) (r*s),
+        v ≠ 0 ∧ vermaMode (vermaBSACharge z) (fusionKacWeight r s z) 1 v = 0 ∧
+          vermaMode (vermaBSACharge z) (fusionKacWeight r s z) 2 v = 0)
+    (t : ℂ) (ht : t ≠ 0) (k : ℕ) (hk : k ≤ N) :
+    (vermaWeightGramPolynomial (vermaBSACharge t) k).det =
+      Polynomial.C (∏ w : VermaPartitions k,vermaDiagonalContraction w.val) *
+        kacWeightProduct t k := by
+\end{leancode}
+
+\begin{dictionary}
+In both statements the central charge is now tied to the parameter: \lean{vermaBSACharge z} $= c(z)$.
+The conclusion holds at \emph{every} nonzero $t$, including real $t$ where labels collide (e.g.\ $t = p/q$,
+the minimal models): the identity of polynomials is extended by continuity in $t$ of both sides (the Gram
+entries are polynomials in $c(t)$ and $X$, continuous in $t\ne0$), not by re-running the coprimality
+argument, which would fail at collisions. The hypothesis of \lean{verma_}\allowbreak\lean{kac_}\allowbreak\lean{all_}\allowbreak\lean{of_}\allowbreak\lean{nonreal_}\allowbreak\lean{singular} is
+stated with natural-number labels $r,s>0$ instead of \lean{kacLabels}; the proof converts.
+\end{dictionary}
+
+\begin{physics}
+The Kac formula holds uniformly, including at the rational values of $t$ where the Kac table
+degenerates and weights coincide (e.g.\ $h_{r,s} = h_{q-r,p-s}$ in the minimal models) --- there the factors
+simply merge, and the exponents add.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+For nonreal $z$ Theorem~\ref{l06:thm:kaccond} applies at every level $k\le N$. The coefficients of both
+sides, as polynomials in $X$, are continuous functions of $z$ on $\C\setminus\{0\}$; nonreal numbers are
+dense; so the coefficients agree at every $t\ne0$.
+\end{proof}
+
+\begin{status}
+\lean{…vermaWeightDeterminant_}\allowbreak\lean{kac_}\allowbreak\lean{extend}, \lean{…verma_}\allowbreak\lean{kac_}\allowbreak\lean{all_}\allowbreak\lean{of_}\allowbreak\lean{nonreal_}\allowbreak\lean{singular}:
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}. Conditional on \lean{hs}, discharged in
+Theorem~\ref{l06:thm:kacfull}.
+\end{status}
+
+\subsection{Roots imply singular vectors; Laurent interpolation}
+
+\begin{theorem}[Bootstrap from roots]\label{l06:thm:bootstrap}
+Let $\operatorname{Im}t\ne0$ and $N\in\N$. If $\det G_{rs}(c(t),h_{r,s}(t)) = 0$ for every label with $rs\le N$,
+then for every such label $M(c(t),h_{r,s}(t))$ has a singular vector at level $rs$.
+\end{theorem}
+
+File \leanpath{VOA/Examples/VirasoroKacRootBootstrap.lean}.
+\begin{leancode}
+theorem verma_singular_of_nonreal_kac_roots (t : ℂ) (ht : t.im ≠ 0) (N : ℕ)
+    (hroots : ∀ r s : ℕ, 0 < r → 0 < s → r*s ≤ N →
+      (vermaGramMatrix (vermaBSACharge t) (fusionKacWeight r s t) (r*s)).det = 0) :
+    ∀ r s : ℕ, 0 < r → 0 < s → r*s ≤ N →
+      ∃ v : sortedSpan (vermaBSACharge t) (fusionKacWeight r s t) (r*s),
+        v ≠ 0 ∧ vermaMode (vermaBSACharge t) (fusionKacWeight r s t) 1 v = 0 ∧
+          vermaMode (vermaBSACharge t) (fusionKacWeight r s t) 2 v = 0 := by
+\end{leancode}
+
+\begin{dictionary}
+The hypothesis is only that $\det G_{rs}$ \emph{vanishes} at the first expected level; nothing about
+lower levels is assumed. The conclusion is the hypothesis \lean{hs} of Theorem~\ref{l06:thm:kaccond} for
+$c = c(t)$.
+\end{dictionary}
+
+\begin{physics}
+A zero of the determinant at the first level where the label $(r,s)$ can contribute is a genuine null
+\emph{primary} (not a descendant of an earlier null vector), because at nonreal $t$ no other null vector
+lives below.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Strong induction on $rs$. For a label $(r,s)$ and $k<rs$, the labels $(r',s')$ with $r's'\le k$ have
+singular vectors by induction, so Theorem~\ref{l06:thm:kaccond} gives $\det G_k(c(t),h) = K_k\mathcal K_k(t;h)$
+at $h = h_{r,s}(t)$; this is nonzero because $h_{r,s}(t)\ne h_{r',s'}(t)$ for the (different) labels with
+$r's'\le k<rs$. Hence $\det G_{rs} = 0$ is the first degenerate level, and
+Theorem~\ref{l06:thm:singgram}(2) produces a singular vector.
+\end{proof}
+
+\begin{status}
+\lean{…verma_}\allowbreak\lean{singular_}\allowbreak\lean{of_}\allowbreak\lean{nonreal_}\allowbreak\lean{kac_}\allowbreak\lean{roots}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}. Conditional on
+\lean{hroots}, discharged in Theorem~\ref{l06:thm:screenkac}.
+\end{status}
+
+\begin{theorem}[Infinitely many roots on a Kac curve suffice]\label{l06:thm:laurent}
+Fix $r,s,n$. The function $t\mapsto\det G_n(c(t),h_{r,s}(t))$ is a Laurent polynomial in $t$. If it vanishes on
+an infinite set of nonzero $t$, it vanishes at every $t\ne0$.
+\end{theorem}
+
+File \leanpath{VOA/Examples/VirasoroKacLaurent.lean}.
+\begin{leancode}
+theorem kacGram_root_of_infinite (r s n : ℕ) (S : Set ℂ) (hS : S.Infinite)
+    (hne : ∀ t ∈ S, t ≠ 0)
+    (hz : ∀ t ∈ S, (vermaGramMatrix (vermaBSACharge t)
+      (fusionKacWeight r s t) n).det = 0) (t : ℂ) (ht : t ≠ 0) :
+    (vermaGramMatrix (vermaBSACharge t) (fusionKacWeight r s t) n).det = 0 := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{S.Infinite}: the set $S$ is infinite. No density or accumulation point is required; that is the
+point of using Laurent polynomials (\lean{ℂ[T;T⁻¹]}, Mathlib's \lean{LaurentPolynomial}): the
+determinant is the polynomial \lean{vermaGramPolynomial n} evaluated at the Laurent polynomials
+$13-6T-6T^{-1}$ and $\frac14T^{-1}((rT-s)^2-(T-1)^2)$ (\lean{kacGramLaurent}, \lean{kacGramLaurent_eval}).
+\end{dictionary}
+
+\begin{physics}
+Algebraic continuation in the Coulomb-gas parameter: a statement verified at the special values where the
+screening integrals are finite sums propagates to all central charges.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Multiply the Laurent polynomial by $T^m$ to clear negative powers; an ordinary polynomial with infinitely
+many roots is zero, and $T^m$ is a unit.
+\end{proof}
+
+\begin{status}
+\lean{…kacGram_}\allowbreak\lean{root_}\allowbreak\lean{of_}\allowbreak\lean{infinite}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}. Unconditional.
+\end{status}
+
+%======================================================================
+\section{Screening operators and the Kac roots}\label{l06:sec:screening}
+%======================================================================
+
+\subsection{The charged free boson}
+
+\begin{definition}[Charged Fock representation]\label{l06:def:chargedfock}
+Let $\mathcal F = \C[x_1,x_2,\dots]$ be the rank-one Fock space with oscillators $\alpha_n$,
+$[\alpha_m,\alpha_n] = 2m\,\delta_{m+n,0}$ (a lattice vector of norm $2$). For a background $\ell\in\C$ and a
+momentum $p\in\C$ define
+\begin{equation*}
+ L^{\ell,p}_n := \tfrac14\sum_j{:}\alpha_{n-j}\alpha_j{:}+p\,\alpha_n+p^2\delta_{n,0}
+ -(n+1)\ell\bigl(\alpha_n+2p\,\delta_{n,0}\bigr).
+\end{equation*}
+These satisfy \eqref{l06:eq:vir} with $c = 1-24\ell^2$, and the Fock vacuum $1$ is a highest-weight vector
+of weight $h = p^2-2\ell p$.
+\end{definition}
+
+File \leanpath{VOA/Examples/InverseDSLeeYangFockVirasoro.lean}.
+\begin{leancode}
+def alphaMode (n : ℤ) : End ℂ LeeYangFock := HeisenbergN.oscN 1 2 0 n
+
+def sectorCurrent (p : ℂ) (n : ℤ) : End ℂ LeeYangFock :=
+  alphaMode n + (if n = 0 then 2 * p else 0) • (1 : End ℂ LeeYangFock)
+
+def sectorSugawara (p : ℂ) (n : ℤ) : End ℂ LeeYangFock :=
+  HeisenbergN.LvirN 1 2 n + p • alphaMode n
+    + (if n = 0 then p ^ 2 else 0) • (1 : End ℂ LeeYangFock)
+
+def sectorBackgroundCurrent (ell p : ℂ) (n : ℤ) : End ℂ LeeYangFock :=
+  ell • sectorCurrent p n
+
+def sectorVirasoro (ell p : ℂ) (n : ℤ) : End ℂ LeeYangFock :=
+  sectorSugawara p n - ((n : ℂ) + 1) • sectorBackgroundCurrent ell p n
+
+theorem sectorVirasoro_virasoro (ell p : ℂ) (m n : ℤ) :
+    sectorVirasoro ell p m * sectorVirasoro ell p n
+        - sectorVirasoro ell p n * sectorVirasoro ell p m =
+      ((m : ℂ) - n) • sectorVirasoro ell p (m + n)
+        + (if m + n = 0 then
+            ((m : ℂ) ^ 3 - m) / 12 * (1 - 24 * ell ^ 2) else 0) •
+          (1 : End ℂ LeeYangFock) := by
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroVermaNonvanishing.lean}.
+\begin{leancode}
+noncomputable def chargedFockRep (ell p : ℂ) : VirRep LeeYangFock where
+  ρ := fixedRho (chargedFockData ell p) rfl
+  centralCharge := 1-24*ell^2
+  acts_central := fixedRho_C (chargedFockData ell p) rfl
+
+theorem exists_chargedFock_parameters (c h : ℂ) :
+    ∃ ell p : ℂ, 1-24*ell^2=c ∧ p^2-2*ell*p=h := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{LeeYangFock} is (an abbreviation for) \lean{FockN 1} $= \C[x_{(k,0)}]$, the rank-one Fock space of
+Chapter~\ref{ch:L05}; the name comes from its first use in the Lee--Yang inverse Drinfeld--Sokolov work
+of Chapter~\ref{ch:L19}. \lean{HeisenbergN.}\allowbreak\lean{oscN 1 2 0 n} is the oscillator at level $2$, i.e.\
+$[\alpha_m,\alpha_n] = 2m\delta$; \lean{LvirN 1 2 n} $= \frac14\sum{:}\alpha\alpha{:}$ is its Sugawara mode.
+\lean{sectorCurrent p} shifts the zero mode by the momentum: $\alpha_0 = 2p$ on the sector of momentum
+$p\alpha$. \lean{chargedFockRep} packages the modes as a \lean{VirRep} via \lean{fixedRho}, the
+extension from mode relations to the Lie algebra. \lean{exists_}\allowbreak\lean{chargedFock_}\allowbreak\lean{parameters}: every $(c,h)$ is
+realised.
+\end{dictionary}
+
+\begin{physics}
+This is the Coulomb gas: a free boson $\varphi$ with background charge $\ell$ (stress tensor
+$T = \frac14(\partial\varphi)^2-\ell\,\partial^2\varphi$ in this normalisation) and a vertex operator of
+momentum $p$, whose conformal weight $p^2-2\ell p$ is the familiar $\alpha(\alpha-2\alpha_0)$.
+\end{physics}
+
+\begin{definition}[Integer screening state]\label{l06:def:screenstate}
+Let $\beta\in\Q\setminus\{0\}$ with $t := \beta^2\in\N$, and $r,s\ge1$. Put
+$\ell := \frac12(\beta-\beta^{-1})$ and $p := \ell+\frac12(r\beta-s\beta^{-1})$. The \emph{screening state}
+$S_{r,s}\in\mathcal F$ is the homogeneous polynomial of degree $rs$ (energy $rs$) whose coefficient on the
+oscillator monomial $\prod_k x_k^{d_k}$ is
+\begin{equation*}
+ \frac{\beta^{\sum d_k}}{\prod_k k^{d_k}d_k!}\cdot
+ \operatorname{coeff}_{\,z_1^{(r-1)t+s}\cdots z_r^{(r-1)t+s}}\Bigl[\,\prod_{i<j}(z_i-z_j)^{2t}\cdot
+ \prod_k p_k(z)^{d_k}\Bigr],
+\end{equation*}
+where $p_k(z) = z_1^k+\dots+z_r^k$ are the power sums.
+\end{definition}
+
+File \leanpath{VOA/Examples/VirasoroScreeningSingular.lean}.
+\begin{leancode}
+def screeningBackground (β : ℚ) : ℚ := (β - 1/β)/2
+
+def screeningMomentum (r s : ℕ) (β : ℚ) : ℚ :=
+  screeningBackground β + ((r:ℚ)*β - (s:ℚ)/β)/2
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroScreeningMoment.lean}.
+\begin{leancode}
+noncomputable def screeningMoment (r s t : ℕ) (P : MvPolynomial (Fin r) ℚ) : ℚ :=
+  (vandermondeLaurent r^(2*t) * auxiliaryLaurent r P)
+    (fun _ : Fin r => (((r-1)*t+s:ℕ):ℤ))
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroScreeningFock.lean}.
+\begin{leancode}
+noncomputable def screeningPrefactor (β : ℚ) (d : ℕ →₀ ℕ) : ℚ :=
+  β ^ (d.sum fun _ n => n) /
+    ∏ i ∈ d.support, ((i+1 : ℕ) : ℚ) ^ d i * (Nat.factorial (d i) : ℚ)
+
+noncomputable def screeningFockCoefficient (r s t : ℕ) (β : ℚ) (d : ℕ →₀ ℕ) : ℚ :=
+  screeningPrefactor β d * screeningMoment r s t
+    (powerSumSubstitution (Fin r) (MvPolynomial.monomial d 1))
+
+noncomputable def screeningFockState (r s t : ℕ) (β : ℚ) : FockN 1 :=
+  ∑ d ∈ (weightDegSetN_finite 1 (r * s)).toFinset,
+    MvPolynomial.monomial d (screeningFockCoefficient r s t β (plainOccupation d) : ℂ)
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Decoding.} \lean{d : ℕ →₀ ℕ} is an occupation: $d(i)$ = number of oscillators of mode $i+1$ (so
+$x_k^{d_k}$ with $k = i+1$; the shift by one is why \lean{(i+1)} appears in \lean{screeningPrefactor}).
+\lean{powerSumSubstitution} sends the formal variable $i$ to the power sum $p_{i+1}$ in $r$ variables;
+\lean{auxiliaryLaurent} embeds polynomials into Laurent polynomials; \lean{vandermondeLaurent r} is
+$\prod_{i<j}(z_i-z_j)$, raised to $2t$; evaluating a Laurent polynomial (a finitely supported function on
+exponent vectors) at the constant vector $((r-1)t+s,\dots)$ extracts that coefficient. The sum in
+\lean{screeningFockState} runs over the finite set of occupations of energy $rs$; \lean{plainOccupation}
+forgets the trivial colour index of \lean{FockN 1}. So the definition is the displayed formula; in
+particular it is a finite sum with rational coefficients, with no infinite series and no contour integral.
+
+\textbf{Parameters.} $c = 1-24\ell^2 = 13-6\beta^2-6\beta^{-2} = c(\beta^2)$ and
+$h = p^2-2\ell p = h_{r,s}(\beta^2)$ (\lean{screening_}\allowbreak\lean{central_}\allowbreak\lean{charge}, \lean{screening_}\allowbreak\lean{highest_}\allowbreak\lean{weight}): the
+Kac parametrisation with $t = \beta^2$. The library uses the screening only at $\beta = m\in\N_{>0}$, so
+$t = m^2$; the variable \lean{t} of \lean{screeningFockState} is the exponent and is set to $m^2$.
+\end{dictionary}
+
+\begin{physics}
+$S_{r,s}$ is the Dotsenko--Fateev/Felder state $Q^r|p_0\rangle$: $r$ screening currents $e^{\beta\varphi}$
+integrated around the origin. The Vandermonde power is the OPE $\prod(z_i-z_j)^{2\beta^2}$ of the screening
+currents, the exponential $\exp(\beta\sum\alpha_{-k}p_k(z)/k)$ is their oscillator part (whence the
+prefactor $\beta^{\sum d}/\prod k^{d_k}d_k!$), and the contour integral picks the residue --- here, since
+$2\beta^2$ is an even integer, a single coefficient.
+\end{physics}
+
+\begin{theorem}[Integer screening states are nonzero singular vectors]\label{l06:thm:screensing}
+For all $r,s,m\ge1$ (with $\beta = m$, $t = m^2$): $S_{r,s}\ne0$, $S_{r,s}$ has energy $rs$, and
+$L^{\ell,p}_1S_{r,s} = L^{\ell,p}_2S_{r,s} = 0$.
+\end{theorem}
+
+File \leanpath{VOA/Examples/VirasoroScreeningSingular.lean}.
+\begin{leancode}
+theorem integer_screening_nonzero_singular (r s m : ℕ) (hr : 0 < r) (hm : 0 < m) :
+    screeningFockState r s (m^2) (m:ℚ) ≠ 0 ∧
+    screeningFockState r s (m^2) (m:ℚ) ∈ gradingWN 1 (r*s) ∧
+    sectorVirasoro (screeningBackground (m:ℚ) : ℂ)
+      (screeningMomentum r s (m:ℚ) : ℂ) 1 (screeningFockState r s (m^2) (m:ℚ)) = 0 ∧
+    sectorVirasoro (screeningBackground (m:ℚ) : ℂ)
+      (screeningMomentum r s (m:ℚ) : ℂ) 2 (screeningFockState r s (m^2) (m:ℚ)) = 0 := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{gradingWN 1 (r*s)} is the energy-$rs$ subspace of the Fock space. No hypothesis on $s$ is needed
+($s = 0$ is allowed by the statement and harmless). The two operators are the \emph{actual} modes
+\lean{sectorVirasoro} of Definition~\ref{l06:def:chargedfock}, not a model of them.
+\end{dictionary}
+
+\begin{physics}
+The screening charge commutes with the Virasoro algebra, so it carries the highest-weight vacuum of one
+Fock module to a highest-weight vector of another: a null vector of the Coulomb gas at level $rs$ and
+weight $h_{r,s}$.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+\emph{Ward identities.} On the coefficients of $S_{r,s}$, the modes $L_1,L_2$ act as the differential
+operators $\sum_i z_i^{n+1}\partial_{z_i}$ ($n = 1,2$) plus multiplications by power sums, applied to the
+integrand $\Delta^{2t}\prod p_k^{d_k}$; at the chosen momentum the result is a total derivative
+$\sum_i\partial_{z_i}(z_i^{n+1}\cdots)$ minus terms that cancel. The finite substitute for ``the contour
+integral of a total derivative vanishes'' is a coefficient identity: at the common exponent $D$, the
+coefficient of
+$\sum_iz_i^{n+1}\partial_iF$ equals $(D-n)$ times the coefficient of $p_n\cdot F$
+(\lean{screening_}\allowbreak\lean{coefficient_}\allowbreak\lean{integration}). Combined with the product rule for $\Delta^{2t}$
+(\lean{screeningVectorField_}\allowbreak\lean{one_}\allowbreak\lean{vandermonde}), these give two exact linear relations among the residues,
+which are exactly the vanishing of the $L_1$- and $L_2$-coefficients (\lean{screeningFockState_}\allowbreak\lean{L1_}\allowbreak\lean{zero},
+\lean{screeningFockState_}\allowbreak\lean{L2_}\allowbreak\lean{zero}).
+
+\emph{Nonvanishing.} By Newton's identities, $(z_1\cdots z_r)^s$ is a polynomial in power sums of weighted
+degree $rs$; its residue is the coefficient of $\prod z_i^{(r-1)t}$ in $\Delta^{2t}$. That central
+coefficient is nonzero: with $P := \Delta^t$, reversing all exponents gives
+$P(1/z) = \pm P(z)/\prod_iz_i^{(r-1)t}$ (each factor $z_i^{-1}-z_j^{-1} = (z_j-z_i)/(z_iz_j)$), so the
+coefficient in question is $\pm$ the constant term of $P(z)P(1/z)$, which is the sum of the squares of the
+rational coefficients of $P$, hence nonzero (\lean{vandermonde_}\allowbreak\lean{central_}\allowbreak\lean{coefficient_}\allowbreak\lean{ne_}\allowbreak\lean{zero}).
+By linearity some single monomial has nonzero residue (\lean{screening_}\allowbreak\lean{nonzero_}\allowbreak\lean{monomial}); the prefactor is
+nonzero for $\beta\ne0$.
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{VirasoroScreening.}\allowbreak\lean{integer_}\allowbreak\lean{screening_}\allowbreak\lean{nonzero_}\allowbreak\lean{singular},
+\lean{VOA.}\allowbreak\lean{VirasoroScreening.}\allowbreak\lean{screeningFockState_}\allowbreak\lean{ne_}\allowbreak\lean{zero}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}.
+Unconditional. No Dyson/Selberg product formula is used.
+\end{status}
+
+\subsection{From Fock singular vectors to Verma Gram roots}
+
+\begin{theorem}[Transfer]\label{l06:thm:transfer}
+Let $N>0$ and $P\in\mathcal F$ be a nonzero vector of energy $N$ with $L^{\ell,p}_1P = L^{\ell,p}_2P = 0$.
+Then $\det G_N(1-24\ell^2,\,p^2-2\ell p) = 0$.
+\end{theorem}
+
+File \leanpath{VOA/Examples/VirasoroFockGramTransfer.lean}.
+\begin{leancode}
+theorem chargedFock_singular_gram_root (ell p : ℂ) (N : ℕ) (hN : 0 < N)
+    (P : FockN 1) (hP : P ∈ gradingWN 1 N) (hne : P ≠ 0)
+    (h1 : sectorVirasoro ell p 1 P = 0) (h2 : sectorVirasoro ell p 2 P = 0) :
+    (vermaGramMatrix (1-24*ell^2) (p^2-2*ell*p) N).det = 0 := by
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroFockLevelDimension.lean}.
+\begin{leancode}
+theorem fock_verma_level_finrank (c h : ℂ) (N : ℕ) :
+    Module.finrank ℂ (gradingWN 1 N) = Module.finrank ℂ (sortedSpan c h N) := by
+\end{leancode}
+
+\begin{dictionary}
+The conclusion is about the actual Verma Gram matrix, at the central charge and weight of the Fock
+module. Faithfulness of the free-field realisation is neither assumed nor claimed (the universal map
+$M\to\mathcal F$ is in general neither injective nor surjective).
+\end{dictionary}
+
+\begin{physics}
+A null vector in the Coulomb gas forces a zero of the Kac determinant at the same $(c,h)$: if the
+abstract conformal family had no null vector at level $N$, the free-field realisation would be
+isomorphic to it up to level $N$, and could not contain one either.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Suppose $\det G_N\ne0$. Then the radical of $M(c,h)$ vanishes at every level $k\le N$ (a nonzero radical
+vector at level $k$ would have a nonzero descendant at level $N$ in the radical, by
+\lean{verma_}\allowbreak\lean{radical_}\allowbreak\lean{zero_}\allowbreak\lean{below}). The kernel of the universal map $M(c,h)\to\mathcal F$ is a proper submodule,
+hence in the radical, hence zero at levels $\le N$. Levels of $M$ and $\mathcal F$ have the same dimension
+$\lsixpp(k)$ (\lean{fock_}\allowbreak\lean{verma_}\allowbreak\lean{level_}\allowbreak\lean{finrank}), so the map is bijective at levels $\le N$. Lift $P$ to
+$u\ne0$ at level $N$; then $L_1u$, $L_2u$ map to $0$ at levels $<N$, where the map is injective, so $u$ is
+singular --- contradicting $\det G_N\ne0$ (Theorem~\ref{l06:thm:singgram}(1)).
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{VirasoroScreening.}\allowbreak\lean{chargedFock_}\allowbreak\lean{singular_}\allowbreak\lean{gram_}\allowbreak\lean{root}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}.
+Unconditional.
+\end{status}
+
+\begin{theorem}[Kac roots and singular vectors at all labels]\label{l06:thm:screenkac}
+For all $r,s\ge1$:
+\begin{enumerate}
+\item for every integer $m\ge1$, $\det G_{rs}(c(m^2),h_{r,s}(m^2)) = 0$;
+\item hence for every $t\ne0$, $\det G_{rs}(c(t),h_{r,s}(t)) = 0$;
+\item for every nonreal $t$, $M(c(t),h_{r,s}(t))$ has a singular vector at level $rs$.
+\end{enumerate}
+\end{theorem}
+
+File \leanpath{VOA/Examples/VirasoroScreeningKacRoots.lean}.
+\begin{leancode}
+theorem integer_screening_kac_root (r s m : ℕ) (hr : 0 < r) (hs : 0 < s)
+    (hm : 0 < m) :
+    (vermaGramMatrix (vermaBSACharge ((m:ℂ)^2))
+      (fusionKacWeight r s ((m:ℂ)^2)) (r*s)).det = 0 := by
+
+theorem infinite_integer_screening_roots (r s : ℕ) (hr : 0 < r) (hs : 0 < s) :
+    ∃ S : Set ℂ, S.Infinite ∧ (∀ t ∈ S, t ≠ 0) ∧
+      ∀ t ∈ S, (vermaGramMatrix (vermaBSACharge t)
+        (fusionKacWeight r s t) (r*s)).det = 0 := by
+
+theorem screening_kac_root (r s : ℕ) (hr : 0 < r) (hs : 0 < s)
+    (t : ℂ) (ht : t ≠ 0) :
+    (vermaGramMatrix (vermaBSACharge t) (fusionKacWeight r s t) (r*s)).det = 0 := by
+
+theorem screening_nonreal_kac_singular (t : ℂ) (ht : t.im ≠ 0)
+    (r s : ℕ) (hr : 0 < r) (hs : 0 < s) :
+    ∃ v : sortedSpan (vermaBSACharge t) (fusionKacWeight r s t) (r*s),
+      v ≠ 0 ∧ vermaMode (vermaBSACharge t) (fusionKacWeight r s t) 1 v = 0 ∧
+        vermaMode (vermaBSACharge t) (fusionKacWeight r s t) 2 v = 0 := by
+\end{leancode}
+
+\begin{dictionary}
+The set $S$ of \lean{infinite_}\allowbreak\lean{integer_}\allowbreak\lean{screening_}\allowbreak\lean{roots} is $\{1,4,9,\dots\}$. Item 3 is \emph{exactly} the
+hypothesis \lean{hs} of \lean{verma_}\allowbreak\lean{kac_}\allowbreak\lean{all_}\allowbreak\lean{of_}\allowbreak\lean{nonreal_}\allowbreak\lean{singular} (for any $N$), and its specialisation is
+the hypothesis of \lean{vermaWeightDeterminant_}\allowbreak\lean{eq_}\allowbreak\lean{kac_}\allowbreak\lean{of_}\allowbreak\lean{singular} with $c = c(t)$.
+\end{dictionary}
+
+\begin{physics}
+Every entry of the (infinite) Kac table gives a zero of $\det G_{rs}$ at every central charge, and a
+singular vector at level $rs$ at every nonreal $t$ --- proved by building the null vectors in the Coulomb gas at
+the special values $t = 1,4,9,\dots$ and continuing algebraically. At real $t$, which includes all minimal
+models, the theorem gives only the vanishing of the determinant.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+(1) Theorems~\ref{l06:thm:screensing} and~\ref{l06:thm:transfer} with $\beta = m$. (2) Theorem~\ref{l06:thm:laurent}
+with $S = \{m^2\}$. (3) Theorem~\ref{l06:thm:bootstrap}, whose hypothesis is (2).
+\end{proof}
+
+\begin{status}
+All four: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}. Unconditional.
+\end{status}
+
+\subsection{The Kac determinant formula, unconditionally}\label{l06:sec:kacunconditional}
+
+\begin{theorem}[Kac determinant formula]\label{l06:thm:kacfull}
+For every $t\in\C\setminus\{0\}$, every $n\in\N$ and every $h\in\C$,
+\begin{equation*}
+ \det G_n\bigl(c(t),h\bigr) = K_n\prod_{\substack{r,s\ge1\\ rs\le n}}\bigl(h-h_{r,s}(t)\bigr)^{\lsixpp(n-rs)} .
+\end{equation*}
+Since every $c\in\C$ is some $c(t)$, this is the Kac determinant for all Virasoro Verma modules.
+\end{theorem}
+
+This theorem is \textbf{not} a declaration of the library. It is the composition of
+Theorem~\ref{l06:thm:kacextend} and Theorem~\ref{l06:thm:screenkac}(3): applying
+\lean{verma_kac_all_of_nonreal_singular} to the singular vectors \lean{screening_nonreal_kac_singular} gives the
+identity of polynomials in $h$, and evaluating it (\lean{vermaWeightDeterminant_eval}) gives the displayed formula.
+We performed this composition in Lean against the library, as two theorems \lean{kac_determinant} and
+\lean{kac_determinant_eval}; the check is not part of this release.
+
+\begin{dictionary}
+The identity is stated with symbols defined above: \lean{vermaWeightGramPolynomial} (Theorem~\ref{l06:thm:singgram}),
+\lean{vermaBSACharge} (Definition~\ref{l06:def:kacparam}), \lean{vermaDiagonalContraction} and
+\lean{kacWeightProduct} (Definition~\ref{l06:def:kacproduct}). The only hypothesis is $t\ne0$. The
+check was compiled against an earlier commit, when this chapter was first written (not re-run for this edition), and \texttt{\#print axioms} reports
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} for both theorems. Why it is not trivially true: the left side
+is the determinant of the actual Shapovalov form, computed by an independent algorithm, and the right side
+is an explicit product; the degree and leading coefficient match by Theorem~\ref{l06:thm:degree}, so any
+error would show up as a wrong root.
+\end{dictionary}
+
+\begin{physics}
+This is Kac's theorem (1979), proved by Feigin--Fuchs (1982--84) via the Coulomb gas: it identifies all the
+central charges and weights at which conformal families contain null states, and is the basis of the
+classification of minimal models.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Combine: singular vectors at nonreal $t$ (Theorem~\ref{l06:thm:screenkac}) give the formula at nonreal $t$
+(Theorem~\ref{l06:thm:kaccond}), which extends to all $t\ne0$ by continuity (Theorem~\ref{l06:thm:kacextend}).
+\end{proof}
+
+\begin{status}
+Checked in Lean against the library (not a library declaration; the check is not part of this release), axioms
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}. \textbf{Unconditional}. The library additionally contains
+older partial results that this subsumes: the formula at levels $<9$ (\lean{vermaWeightDeterminant_}\allowbreak\lean{kac_}\allowbreak\lean{below_}\allowbreak\lean{nine_}\allowbreak\lean{all},
+via Benoit--Saint-Aubin vectors for labels with a part $\le2$), singular vectors at $t = \pm1$ for all
+labels (\lean{kacSingular_at_one}, \lean{kacSingular_at_neg_one}), and the Benoit--Saint-Aubin factors
+$(X-h_{1,N})^{\lsixpp(m)}$ for all $t\ne0$ (\lean{vermaWeightDeterminant_}\allowbreak\lean{bsa_}\allowbreak\lean{factor_}\allowbreak\lean{all}).
+\end{status}
+
+%======================================================================
+\section{From Verma modules back to the vacuum: the simple zero at \texorpdfstring{$c_{p,q}$}{c(p,q)}}\label{l06:sec:vacuumkac}
+%======================================================================
+
+The graded (first-order) rigidity theorem of Chapter~\ref{ch:L07} needs one fact about the \emph{vacuum} Gram determinant
+$D_n(c) := \det G^{\mathrm{vac}}_n(c)$ (Definition~\ref{l06:def:partgram}): at $c = c_{p,q}$ and the first
+singular level $n = (p-1)(q-1)$, $D_n$ has a \emph{simple} zero. This section explains how the library
+derives it from the Verma determinant.
+
+\begin{theorem}[Vacuum block of the Verma determinant]\label{l06:thm:vacblock}
+For every $c$ and $n$:
+\begin{enumerate}
+\item the vacuum Gram matrix $G^{\mathrm{vac}}_n(c)$ is the submatrix of the Verma Gram matrix $G_n(c,0)$ on
+  the partitions without parts equal to $1$;
+\item the coefficient of $X^{\lsixpp(n)}$ in $\det G_{n+1}(c,X)$ equals
+  $D_{n+1}(c)\cdot\det T_n(c)$, where $T_n(c)$ is the first-order (in $X$) block of the Gram matrix on the
+  words ending with $L_{-1}$.
+\end{enumerate}
+\end{theorem}
+
+File \leanpath{VOA/Examples/VirasoroVermaVacuumForm.lean}.
+\begin{leancode}
+theorem vermaGramMatrix_vacuum_submatrix (c : ℂ) (n : ℕ) :
+    (vermaGramMatrix c 0 n).submatrix (vacuumVermaPartition n) (vacuumVermaPartition n) =
+      (partitionGramPolynomial n).map (Polynomial.eval c) := by
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroVacuumDeterminantBlock.lean}.
+\begin{leancode}
+noncomputable def translationFirstGram (c : ℂ) (n : ℕ) :
+    Matrix (VermaPartitions n) (VermaPartitions n) ℂ := fun i j =>
+  (vermaWeightGramPolynomial c (n+1)
+    (translationVermaPartition n i) (translationVermaPartition n j)).coeff 1
+
+theorem vermaWeightDeterminant_vacuum_first (c : ℂ) (n : ℕ) :
+    (vermaWeightGramPolynomial c (n+1)).det.coeff (Fintype.card (VermaPartitions n)) =
+      ((partitionGramPolynomial (n+1)).map (Polynomial.eval c)).det *
+        (translationFirstGram c n).det := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{vacuumVermaPartition n} sends a vacuum partition (entries $i$ meaning $L_{-i-2}$) to the same
+modes in the Verma convention (entries $i+1$ meaning $L_{-i-2}$); \lean{submatrix} restricts rows and
+columns. \lean{translationVermaPartition n} appends an $L_{-1}$ to a level-$n$ word. \lean{.coeff k} is the
+coefficient of $X^k$. Since $\det G_{n+1}(c,X)$ is divisible by $X^{\lsixpp(n)}$ (the factor of the label
+$(1,1)$), item 2 identifies its first possibly nonzero coefficient.
+\end{dictionary}
+
+\begin{physics}
+At $h\to0$ the descendants $L_{-1}(\dots)$ become null (they are descendants of the null vector
+$L_{-1}|0\rangle$); the leading behaviour of the determinant as $h\to0$ factors into the norm of the
+genuine vacuum states times the norm of these ``translation'' states, which behaves like $h$ times the
+Gram matrix of $M(c,1)$.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Order the partition basis of level $n+1$ as (words without $L_{-1}$) $\sqcup$ (words ending in $L_{-1}$).
+Entries pairing a word ending in $L_{-1}$ with anything are divisible by $X$ (move the $L_{-1}$ across as
+$L_1$, which acts on $v_h$-descendants producing a factor that vanishes with $h$); so the matrix has the
+block form $\begin{pmatrix}A(X) & XB(X)\\ XB'(X) & XT(X)\end{pmatrix}$ and the coefficient of $X^{\lsixpp(n)}$
+in its determinant is $\det A(0)\det T(0)$, with $A(0) = G^{\mathrm{vac}}_{n+1}(c)$ by item 1.
+\end{proof}
+
+\begin{status}
+Both items: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}. Unconditional.
+\end{status}
+
+\begin{theorem}[Simple zero of the vacuum determinant at the minimal models]\label{l06:thm:vacsimple}
+Let $p>q\ge2$ be coprime and $N = (p-1)(q-1)$. Then $D_N(c_{p,q}) = 0$ and $D_N'(c_{p,q})\ne0$.
+\end{theorem}
+
+File \leanpath{VOA/Examples/VirasoroKacVacuumTransfer.lean}.
+\begin{leancode}
+theorem vacuum_simple_of_verma_kac (p q n : ℕ) (hq : 2 ≤ q)
+    (hpq : q < p) (hcop : p.Coprime q) (hn : n+1 = (p-1)*(q-1))
+    (hk : ∀ z : ℂ, z ≠ 0 → ∀ k ≤ n+1,
+      (vermaWeightGramPolynomial (vermaBSACharge z) k).det =
+        Polynomial.C (∏ w : VermaPartitions k, vermaDiagonalContraction w.val) *
+          kacWeightProduct z k) :
+    let P := (VirDeformModes.NormalOrdering.partitionGramPolynomial (n+1)).det
+    P.eval (vermaBSACharge ((p:ℂ)/q)) = 0 ∧
+      P.derivative.eval (vermaBSACharge ((p:ℂ)/q)) ≠ 0 := by
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroKacScalarRoot.lean}.
+\begin{leancode}
+theorem kacVacuumScalar_minimal_simple (p q n : ℕ) (hq : 2 ≤ q)
+    (hpq : q < p) (hcop : p.Coprime q) (hn : n+1 = (p-1)*(q-1)) :
+    kacVacuumScalar ((p:ℂ)/q) n = 0 ∧
+      _root_.deriv (fun z => kacVacuumScalar z n) ((p:ℂ)/q) ≠ 0 := by
+\end{leancode}
+File \leanpath{VOA/Examples/VirasoroKacVacuumCoefficient.lean}.
+\begin{leancode}
+noncomputable def kacVacuumScalar (t : ℂ) (n : ℕ) : ℂ :=
+  ∏ i ∈ (kacLabels (n+1)).erase (0,0),
+    (-fusionKacWeight (i.1.val+1) (i.2.val+1) t) ^
+      Fintype.card (VermaPartitions (n+1-(i.1.val+1)*(i.2.val+1)))
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Hypotheses.} \lean{hq}, \lean{hpq}, \lean{hcop}: $2\le q<p$, coprime --- the minimal-model labels with
+the order fixed (the symmetric case $p<q$ follows by $c_{p,q} = c_{q,p}$). \lean{hn}: $n+1 = N$.
+\lean{hk}: the Kac formula at every $z\ne0$ and every level $\le N$ --- which is
+Theorem~\ref{l06:thm:kacfull}, hence dischargeable. \textbf{Conclusion}: $P = D_N$ as a polynomial in $c$;
+\lean{P.derivative} is its derivative; evaluated at \lean{vermaBSACharge (p/q)} $= c_{p,q}$.
+\lean{kacVacuumScalar t n} is $\mathcal K_N(t;0)$ with the factor of the label $(1,1)$ removed (the
+\lean{.erase (0,0)}); \lean{_root_.deriv} is the complex derivative.
+
+\textbf{Docstrings.} Both docstrings say the Kac identity ``remains the missing ordinary
+representation-theory input'' / ``still requires the missing general ordinary Kac representation input''.
+Outdated (Warning~\ref{l06:warn:docstrings}).
+
+\textbf{Unconditional form.} Composing \lean{vacuum_simple_of_verma_kac} with the Kac formula
+(Theorem~\ref{l06:thm:kacfull}, which supplies \lean{hk}) gives the theorem without \lean{hk}; this composition,
+\lean{vacuum_simple_zero}, was checked in Lean against the library (the check is not part of this release),
+with axioms \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}. The library's own unconditional consumer of
+this chain is \lean{minimal_}\allowbreak\lean{graded_}\allowbreak\lean{rigidity} (Chapter~\ref{ch:L07}), which takes the equivalent route
+through \lean{infinite_}\allowbreak\lean{integer_}\allowbreak\lean{screening_}\allowbreak\lean{roots}.
+\end{dictionary}
+
+\begin{physics}
+At a minimal-model central charge the vacuum family acquires exactly one new null vector at level
+$(p-1)(q-1)$ --- the field whose decoupling defines the minimal model --- and its norm, as a function of
+$c$, crosses zero linearly. That is why the central charge cannot be moved while keeping the null
+relation (Chapter~\ref{ch:L07}).
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Set $t$ near $p/q$ and $n+1 = N$. By Theorem~\ref{l06:thm:vacblock}(2) and the Kac formula, comparing
+coefficients of $X^{\lsixpp(n)}$:
+$2^{\lsixpp(n)}D_N(c(t))\det G_n(c(t),1) = K_N\cdot\mathcal K'_N(t)$, where $\mathcal K'_N(t)$ is
+\lean{kacVacuumScalar} (\lean{vacuumDeterminant_}\allowbreak\lean{kac_}\allowbreak\lean{coefficient}). At $t = p/q$: the label $(q-1,p-1)$ has
+$h_{q-1,p-1}(p/q) = 0$ with nonzero $t$-derivative (\lean{fusionKacWeight_}\allowbreak\lean{minimal_}\allowbreak\lean{derivative}) and
+exponent $\lsixpp(0) = 1$; every other label $(r,s)\ne(1,1)$ with $rs\le N$ has $h_{r,s}(p/q)\ne0$
+(\lean{minimalKacWeight_}\allowbreak\lean{zero_}\allowbreak\lean{before_}\allowbreak\lean{first}, a Diophantine argument using coprimality). Hence
+$\mathcal K'_N$ has a simple zero at $p/q$. Also $\det G_n(c(p/q),1)\ne0$, because $1 = h_{r,s}(p/q)$ does
+not happen for $rs\le n<N$ (\lean{kacWeightProduct_}\allowbreak\lean{one_}\allowbreak\lean{minimal_}\allowbreak\lean{ne}). The map $t\mapsto c(t)$ has
+$c'(p/q) = -6+6q^2/p^2\ne0$. By the chain rule (\lean{polynomial_}\allowbreak\lean{simple_}\allowbreak\lean{of_}\allowbreak\lean{curve_}\allowbreak\lean{product}),
+$D_N(c_{p,q}) = 0$ and $D_N'(c_{p,q})\ne0$.
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{InverseDS.}\allowbreak\lean{VirasoroVerma.}\allowbreak\lean{vacuum_}\allowbreak\lean{simple_}\allowbreak\lean{of_}\allowbreak\lean{verma_}\allowbreak\lean{kac},
+\lean{…kacVacuumScalar_}\allowbreak\lean{minimal_}\allowbreak\lean{simple}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}; the first is
+conditional on \lean{hk}, discharged by composition with Theorem~\ref{l06:thm:kacfull} (checked in Lean, not part of
+this release; unconditional,
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}).
+\end{status}
+
+%======================================================================
+\section{Other files of this chapter}\label{l06:sec:others}
+%======================================================================
+
+\begingroup\raggedright
+The remaining files of the chapter are infrastructure for the theorems above or for the rigidity
+argument of Chapter~\ref{ch:L07}. None introduces a hypothesis or axiom; all are \lean{VOA.pbw}-free. We
+group them.
+\begin{itemize}
+\item \emph{Normal ordering and universal pairings} (namespace \lean{VirDeformModes.}\allowbreak\lean{NormalOrdering}):
+  \leanpath{VirasoroNormalOrdering}, \leanpath{VirasoroUniversalPairing}, \leanpath{VirasoroCentralContractions},
+  \leanpath{VirasoroContractionDiagonal}, \leanpath{VirasoroContractionSupport}, \leanpath{VirasoroGramDegree},
+  \leanpath{VirasoroGramLeadingCoefficient}, \leanpath{VirasoroGramDivisibility},
+  \leanpath{VirasoroPartitionObstruction}, \leanpath{VirasoroDeterminantObstruction},
+  \leanpath{VirasoroDeterminantFirstBlock}, \leanpath{VirasoroSingularGram}, \leanpath{VirasoroSingularDescendants},
+  \leanpath{VirasoroSingularSpecialization}, \leanpath{VirasoroWordPairing}, \leanpath{VirasoroFixedReconstruction},
+  \leanpath{VirasoroVacuumEvaluation}. A formal normal-ordering algorithm for mode words with the central charge
+  as a variable; the vacuum Gram polynomial (Definition~\ref{l06:def:partgram}) and its degree and leading
+  coefficient; divisibility of determinants by $(X-c)^{\text{nullity}}$; and the deformation-theoretic results
+  \lean{isTrivial_}\allowbreak\lean{of_}\allowbreak\lean{zero_}\allowbreak\lean{central_}\allowbreak\lean{variation}, \lean{leeYang_}\allowbreak\lean{graded_}\allowbreak\lean{rigidity},
+  \lean{graded_}\allowbreak\lean{rigidity_}\allowbreak\lean{of_}\allowbreak\lean{simple_}\allowbreak\lean{determinant}, \lean{virWord_}\allowbreak\lean{pairing_}\allowbreak\lean{obstruction}, which are stated and
+  explained in Chapter~\ref{ch:L07}.
+\item \emph{Verma infrastructure} (namespace \lean{InverseDS.}\allowbreak\lean{VirasoroVerma}): \leanpath{VirasoroVermaEigenspaces},
+  \leanpath{VirasoroVermaUniformStraightening}, \leanpath{VirasoroVermaMomentumPolynomial},
+  \leanpath{VirasoroVermaPositiveSymbols}, \leanpath{VirasoroVermaDescendantSymbols},
+  \leanpath{VirasoroVermaDescendantIndependence}, \leanpath{VirasoroVermaHighestProjection},
+  \leanpath{VirasoroVermaPolynomialWard}, \leanpath{VirasoroVermaWeightContractions},
+  \leanpath{VirasoroVermaGramDegree}, \leanpath{VirasoroVermaTensorFock}, \leanpath{VirasoroLeadingInvariants},
+  \leanpath{VirasoroTopCoordinate}, \leanpath{VirasoroVermaWardSpecialization}, \leanpath{VirasoroWardClosedKernel}
+  (a singular family at nonreal parameters extends by continuity: \lean{verma_}\allowbreak\lean{highest_}\allowbreak\lean{of_}\allowbreak\lean{nonreal}),
+  \leanpath{VirasoroVermaChargeTransport}, \leanpath{VirasoroVermaChargeResponse} (Ward-type identities used in the
+  fusion construction of Chapter~\ref{ch:L07}).
+\item \emph{Ward operators for descendant fields}: \leanpath{VirasoroDescendantWard}, \leanpath{VirasoroAllDescendantWard},
+  \leanpath{VirasoroDescendantTriangular}, \leanpath{VirasoroDescendantTower}. Coefficient sequences of a
+  would-be intertwining (vertex) operator between Verma modules and the defects of the $L_1$, $L_2$ covariance
+  identities (the conformal Ward identities $[L_m,\phi(z)] = z^m(z\partial+(m+1)\Delta)\phi(z)$ written
+  coefficientwise). They support the fusion construction of singular vectors (Chapter~\ref{ch:L07}); no fusion rule
+  is assumed.
+\item \emph{Screening auxiliaries}: \leanpath{VirasoroScreening\{Laurent, Vandermonde, Moment, Newton, Coefficient,
+  Derivation, PowerSumDerivative, WardWeight, Integration, ResidueFunctional, Differentiation, Factorial,
+  Migration, ShiftCoefficient, ModeCoefficients, PairSums\}}, \leanpath{VirasoroChargedFockGrading},
+  \leanpath{VirasoroFockPositiveOperators}, \leanpath{VirasoroFockShiftSum}, \leanpath{VirasoroFockLevelDimension}:
+  the finite residue calculus of Theorem~\ref{l06:thm:screensing}.
+\item \emph{Vacuum-module auxiliaries}: \leanpath{VirasoroGradedField} (graded fields and the grading axiom),
+  \leanpath{VirasoroGoodFiltration}, \leanpath{VirasoroFiltrationTranslation} (Li-type filtrations, used in
+  Chapter~\ref{ch:L11}), \leanpath{VirasoroFockConjugation} (complex conjugation on Fock space, used for real
+  structures in Chapter~\ref{ch:L19}), \leanpath{VirasoroQuotientForm} (the canonical form \lean{Bsimp} on
+  $\lsixL$ and \lean{gram_simple_negWord}: its Gram entries equal those of $\lsixV$),
+  \leanpath{VirasoroFormSymmetry}, \leanpath{VirasoroDescendantIndependence}, \leanpath{VirasoroVacuumFourShift},
+  \leanpath{VirasoroVacuumFourContinuant} (a finite continuant recurrence at the parameters $t = 4/p$ and a
+  polynomial certificate relating $p$ and $p+4$; the docstring states that the needed nonvanishing is neither
+  assumed nor proved there; no headline theorem of this chapter depends on these files).
+\item \emph{Kac arithmetic}: \leanpath{VirasoroKacLabelSeparation} (\lean{minimalKacWeight} and which labels have
+  weight $0$ or $1$ at $t = p/q$), \leanpath{VirasoroKacSmallLabels}, \leanpath{VirasoroKacCollisionStates}
+  (the partial results superseded by Theorem~\ref{l06:thm:kacfull}), \leanpath{VirasoroKacSingularTransfer}
+  (also containing the conditional graded-rigidity theorems, with conclusion \lean{IsRigidGraded}, \lean{minimal_}\allowbreak\lean{rigidity_}\allowbreak\lean{of_}\allowbreak\lean{nonreal_}\allowbreak\lean{kac_}\allowbreak\lean{singular} and
+  \lean{minimal_}\allowbreak\lean{graded_}\allowbreak\lean{rigidity_}\allowbreak\lean{of_}\allowbreak\lean{kac_}\allowbreak\lean{singular}), \leanpath{VirasoroKacRootBootstrap}
+  (\lean{minimal_}\allowbreak\lean{rigidity_}\allowbreak\lean{of_}\allowbreak\lean{infinite_}\allowbreak\lean{kac_}\allowbreak\lean{roots}, the form consumed by Chapter~\ref{ch:L07}).
+\item \emph{Combinatorics}: \leanpath{VirasoroAdmissibleCombinatorics} --- Salazar's $n$-admissible partitions
+  (\lean{IsNAdmissible}: $w_j\ge w_{j+n-1}+2$) and their counts in lengths $\le2$, the combinatorial side of
+  the conjectural basis of the boundary models $L(c_{2,2n+1},0)$. The file asserts no basis theorem.
+\end{itemize}
+\par\endgroup
+
+%======================================================================
+\section{Warnings, recorded defects and dead ends}\label{l06:sec:warnings}
+%======================================================================
+
+\begin{warning}[title={Outdated docstrings}]\label{l06:warn:docstrings}
+Several docstrings, when this chapter was first written, described the state of the
+library before later files landed. The Lean \emph{statements} are correct; the prose was wrong. At a pre-release build commit
+most of the wording quoted below has been corrected in the sources (the ``Phase-4/5 target'' remark in the header
+of \leanpath{VirasoroVOA.lean} remains); the list is kept as a record.
+\begin{enumerate}
+\item \emph{``The singular-existence premise remains open''.} Module or declaration docstrings of
+  \leanpath{VirasoroKacProduct.lean} (\lean{vermaWeightDeterminant_}\allowbreak\lean{eq_}\allowbreak\lean{kac_}\allowbreak\lean{of_}\allowbreak\lean{singular}),
+  \leanpath{VirasoroKacSingularTransfer.lean} (module header; \lean{minimal_}\allowbreak\lean{rigidity_}\allowbreak\lean{of_}\allowbreak\lean{nonreal_}\allowbreak\lean{kac_}\allowbreak\lean{singular}),
+  \leanpath{VirasoroKacVacuumTransfer.lean} (\lean{vacuum_}\allowbreak\lean{simple_}\allowbreak\lean{of_}\allowbreak\lean{verma_}\allowbreak\lean{kac}, \lean{graded_}\allowbreak\lean{rigidity_}\allowbreak\lean{of_}\allowbreak\lean{verma_}\allowbreak\lean{kac}),
+  \leanpath{VirasoroKacVacuumCoefficient.lean} (module header), \leanpath{VirasoroKacScalarRoot.lean}
+  (\lean{kacVacuumScalar_}\allowbreak\lean{minimal_}\allowbreak\lean{simple}), \leanpath{VirasoroKacRootBootstrap.lean} and
+  \leanpath{VirasoroKacLaurent.lean} (module headers), and \leanpath{VirasoroKacLabelSeparation.lean} (line 191)
+  say the singular-vector or root input is missing. It is supplied by \lean{screening_}\allowbreak\lean{nonreal_}\allowbreak\lean{kac_}\allowbreak\lean{singular} and
+  \lean{infinite_}\allowbreak\lean{integer_}\allowbreak\lean{screening_}\allowbreak\lean{roots} (Theorem~\ref{l06:thm:screenkac}); the composition is
+  Theorem~\ref{l06:thm:kacfull}.
+\item \emph{``General $c$ is the next step''.} The headers of \leanpath{VirasoroVOA.lean} and
+  \leanpath{VirasoroSugawara.lean} say that a standalone Virasoro VOA for general $c$ is ``deferred''/``the
+  documented next step''. It exists: \lean{VirModule.virasoroVOA} (Definition~\ref{l06:def:virVOA}) and
+  \lean{VirSimple.}\allowbreak\lean{virasoroSimple} (Definition~\ref{l06:def:simple}). The same header calls the rationality of
+  minimal models a ``Phase-4/5 target''; it is not proved in this chapter.
+\item \emph{``$L(c,0)$'' for the universal module.} The docstrings of \lean{virasoroVOA} (``$\mathrm{Vir}(c) =
+  L(c,0)$, the universal Virasoro vacuum VOA''), \leanpath{VirasoroField.lean}, \leanpath{VirasoroSpanning.lean},
+  \leanpath{VirasoroWordFields.lean}, \leanpath{VirasoroGrading.lean}, \leanpath{VirasoroNonvanishing.lean} and
+  \leanpath{VirasoroFock.lean} call \lean{VirUniv c} ``$L(c,0)$''. It is the universal $V(c,0)$; the simple
+  $L(c,0)$ is \lean{virasoroSimple c}. \leanpath{VirasoroSimple.lean} records the intended renaming.
+\end{enumerate}
+Severity: documentation only.
+\end{warning}
+
+\begin{warning}[title={Redundant hypothesis $c\ne0$ (since removed from \texttt{omegaVir\_ne\_zero})}]\label{l06:warn:omega}
+\textbf{Update.} Following this finding the library removed the hypothesis: \lean{omegaVir_ne_zero} and
+\lean{virasoroVOA_conformalVector_ne_zero} are now stated for every $c$ (quoted in Section~\ref{l06:sec:voa}'s dictionary). The text below records the situation when the chapter
+was written.
+\lean{VirModule.}\allowbreak\lean{omegaVir_}\allowbreak\lean{ne_}\allowbreak\lean{zero} and \lean{VirModule.}\allowbreak\lean{virasoroVOA_}\allowbreak\lean{conformalVector_}\allowbreak\lean{ne_}\allowbreak\lean{zero}
+(\leanpath{VirasoroInstance.lean}) assume \lean{hc : c ≠ 0}. In the universal module the conclusion
+$\omega\ne0$ holds for every $c$, because $\omega = L_{-2}\lsixvac$ is a partition-basis vector
+(\lean{negWordVir_ne_zero}). A Lean check made for this book (not part of this release) proves
+\lean{omegaVir_}\allowbreak\lean{ne_}\allowbreak\lean{zero_}\allowbreak\lean{all (c : ℂ) : omegaVir c ≠ 0} in one line, axioms \lean{[propext, Classical.}\allowbreak\lean{choice,
+Quot.}\allowbreak\lean{sound]}. (The hypothesis is \emph{not} redundant for the simple quotient:
+\lean{virasoroSimple_}\allowbreak\lean{conformalVector_}\allowbreak\lean{ne_}\allowbreak\lean{zero} genuinely needs $c\ne0$.) Severity: weaker than possible;
+harmless.
+\end{warning}
+
+\begin{warning}[title={The Kac determinant is not a library declaration}]\label{l06:warn:kacnotlib}
+A referee searching the library for ``the Kac determinant formula'' finds only conditional statements
+(\lean{vermaWeightDeterminant_}\allowbreak\lean{eq_}\allowbreak\lean{kac_}\allowbreak\lean{of_}\allowbreak\lean{singular}, \lean{verma_}\allowbreak\lean{kac_}\allowbreak\lean{all_}\allowbreak\lean{of_}\allowbreak\lean{nonreal_}\allowbreak\lean{singular},
+\lean{vermaWeightDeterminant_}\allowbreak\lean{kac_}\allowbreak\lean{extend}) and the finite-level \lean{vermaWeightDeterminant_}\allowbreak\lean{kac_}\allowbreak\lean{below_}\allowbreak\lean{nine_}\allowbreak\lean{all}.
+The unconditional formula at all levels is a two-line composition that the library never states; likewise the
+unconditional vacuum simple-zero theorem. Both were checked in Lean for this book (Theorems~\ref{l06:thm:kacfull} and~\ref{l06:thm:vacsimple}); the checks are
+not part of this release. Severity: conditional gap
+that is closed by composition.
+\end{warning}
+
+\begin{warning}[title={Two word conventions, two free-field normalisations}]\label{l06:warn:conventions}
+(1) In the vacuum module a word entry $i$ means $L_{-i-2}$ (\lean{negWordVir}, \lean{SortedOfEnergy}); in Verma
+modules it means $L_{-i-1}$ (\lean{negWord}, \lean{VermaPartitions}). The map \lean{vacuumVermaPartition} adds one
+to each entry. (2) The linear-dilaton realisation of Theorem~\ref{l06:thm:nonvanishing} uses
+$L_n = L^{\mathrm{Sug}}_n+\lambda(n+1)a_n$ at Heisenberg level $1$ with $c = 1-12\lambda^2$; the charged
+realisation of Definition~\ref{l06:def:chargedfock} uses level $2$, a minus sign and $c = 1-24\ell^2$. Both are
+correct; the formulas must not be mixed.
+\end{warning}
+
+\begin{warning}[title={Dead ends and expectations that turned out false}]\label{l06:warn:deadends}
+\begin{enumerate}
+\item \emph{Isolated collision parameters do not suffice.} Singular vectors constructed only at special
+  parameters (e.g.\ $t = \pm1$, \lean{kacSingular_at_one}) cannot feed the Laurent interpolation of
+  Theorem~\ref{l06:thm:laurent}, which needs infinitely many roots; the docstring of
+  \lean{minimal_}\allowbreak\lean{rigidity_}\allowbreak\lean{of_}\allowbreak\lean{infinite_}\allowbreak\lean{kac_}\allowbreak\lean{roots} records this. The integer screenings supply the infinite
+  family $t\in\{1,4,9,\dots\}$.
+\item \emph{Benoit--Saint-Aubin vectors give only labels with a part $\le2$.} The explicit BSA singular
+  vectors (Chapter~\ref{ch:L07}) cover labels $(1,N)$, $(N,1)$ and (by composition) $(2,N)$; this gives the
+  Kac formula only below level $9$ (\lean{vermaWeightDeterminant_}\allowbreak\lean{kac_}\allowbreak\lean{below_}\allowbreak\lean{nine_}\allowbreak\lean{all}), since $(3,3)$ is the
+  first label with both parts $\ge3$. The general case needed the screening construction.
+\item \emph{The free-field map of the vacuum module is injective at every $c$}
+  (Theorem~\ref{l06:thm:ffembed}). The opposite expectation (that it ``sees'' the minimal-model null vectors as
+  a kernel) is false; the kernels in the Felder complex belong to screening maps between Fock modules.
+\item \emph{Determinant versus rank.} A vanishing vacuum determinant only says ``some null state''; the
+  dimension of $\lsixL_n$ needs the rank (Theorem~\ref{l06:thm:dimrank}). The multiplicity of a root of
+  $\det G_n$ bounds the nullity only from above (a root of order $k$ allows nullity anywhere from $1$ to $k$), so
+  the library computes ranks directly, by explicit factorisations and nonzero minors, rather than reading them
+  off root multiplicities.
+\end{enumerate}
+\end{warning}
+
+%======================================================================
+\section{Verification record}\label{l06:sec:verification}
+%======================================================================
+
+When this chapter was first written we ran \texttt{\#print axioms} on the already-built tree at an earlier commit (not re-run for this edition; no new
+aggregate \texttt{lake build} was run), with a scratch file importing the relevant modules and
+\begin{plaincode}
+export PATH="$HOME/.elan/bin:$PATH"
+lake env lean -DmaxSynthPendingDepth=3 Axioms.lean
+\end{plaincode}
+(the flag avoids the audit trap of Section~\ref{ch15:sec:trap}: a bare \texttt{lake env lean} drops
+\texttt{maxSynthPendingDepth}). All 69 declarations checked
+reported exactly
+\begin{plaincode}
+depends on axioms: [propext, Classical.choice, Quot.sound]
+\end{plaincode}
+None uses \lean{VOA.pbw} or \lean{sorryAx}. The list:
+\begin{quote}\small\raggedright
+\lean{VirModule.virasoroVOA}, \lean{virYA_exists}, \lean{YomegaVir_self_local}, \lean{YomegaVir_isField},
+\lean{gradingVir_isInternal}, \lean{omegaVir_ne_zero}, \lean{VOA.vacVec_ne_zero}, \lean{gradedBasis},
+\lean{finrank_gradingVir}, \lean{fockMap_injective}, \lean{finrank_}\allowbreak\lean{gradingVir_}\allowbreak\lean{sixteen};
+\lean{VirSimple.}\allowbreak\lean{virasoroSimple_}\allowbreak\lean{isSimple}, \lean{virasoroSimple_}\allowbreak\lean{conformalVector_}\allowbreak\lean{ne_}\allowbreak\lean{zero},
+\lean{virasoroVOA_}\allowbreak\lean{isSimple_}\allowbreak\lean{iff}, \lean{virasoroSimple_}\allowbreak\lean{selfDual}; \lean{VirGram4.canGram4_eq},
+\lean{det_canGram4}, \lean{VirGram56.det_canGram5}, \lean{det_canGram6}, \lean{det_}\allowbreak\lean{canGram6_}\allowbreak\lean{eq_}\allowbreak\lean{zero_}\allowbreak\lean{iff},
+\lean{VirFormSym.}\allowbreak\lean{canB_}\allowbreak\lean{isSymmetric}; \lean{VirSimpleGram.}\allowbreak\lean{finrank_}\allowbreak\lean{virasoroSimple_}\allowbreak\lean{grading_}\allowbreak\lean{partition},
+\lean{finrank_}\allowbreak\lean{virasoroSimple_}\allowbreak\lean{leeYang_}\allowbreak\lean{four}, \lean{maxIdealVir_}\allowbreak\lean{one_}\allowbreak\lean{inf_}\allowbreak\lean{grading_}\allowbreak\lean{six_}\allowbreak\lean{eq_}\allowbreak\lean{bot};
+\lean{VirSimpleSix.}\allowbreak\lean{finrank_}\allowbreak\lean{virasoroSimple_}\allowbreak\lean{six_}\allowbreak\lean{ising}, \lean{…six_leeYang}, \lean{…five_leeYang},
+\lean{…six_m27}, \lean{no_}\allowbreak\lean{gradedEquiv_}\allowbreak\lean{leeYang_}\allowbreak\lean{ising}; in \lean{InverseDS.}\allowbreak\lean{VirasoroVerma}:
+\lean{verma_}\allowbreak\lean{sortedWord_}\allowbreak\lean{linearIndependent}, \lean{vermaLevel_finrank}, \lean{highestVector_ne_zero},
+\lean{vermaContravariant_}\allowbreak\lean{unique}, \lean{vermaContravariant_}\allowbreak\lean{symm}, \lean{vermaContravariant_}\allowbreak\lean{singular_}\allowbreak\lean{radical},
+\lean{vermaSimple_}\allowbreak\lean{irreducible}, \lean{vermaSimpleLevel_}\allowbreak\lean{finrank_}\allowbreak\lean{eq_}\allowbreak\lean{gramRank}, \lean{vermaSimpleVacuumEquiv},
+\lean{vacuumProjection_ker}, \lean{vermaGramPolynomial_}\allowbreak\lean{det_}\allowbreak\lean{eval}, \lean{vermaWeightDeterminant_}\allowbreak\lean{natDegree},
+\lean{vermaWeightDeterminant_}\allowbreak\lean{leadingCoeff}, \lean{vermaWeightDeterminant_}\allowbreak\lean{dvd_}\allowbreak\lean{of_}\allowbreak\lean{singular},
+\lean{verma_}\allowbreak\lean{partition_}\allowbreak\lean{lengths_}\allowbreak\lean{eq_}\allowbreak\lean{kac_}\allowbreak\lean{count}, \lean{kacWeightProduct_}\allowbreak\lean{natDegree},
+\lean{vermaWeightDeterminant_}\allowbreak\lean{eq_}\allowbreak\lean{kac_}\allowbreak\lean{of_}\allowbreak\lean{singular}, \lean{vermaWeightDeterminant_}\allowbreak\lean{kac_}\allowbreak\lean{extend},
+\lean{verma_}\allowbreak\lean{kac_}\allowbreak\lean{all_}\allowbreak\lean{of_}\allowbreak\lean{nonreal_}\allowbreak\lean{singular}, \lean{verma_}\allowbreak\lean{singular_}\allowbreak\lean{of_}\allowbreak\lean{first_}\allowbreak\lean{gram_}\allowbreak\lean{root},
+\lean{verma_}\allowbreak\lean{singular_}\allowbreak\lean{of_}\allowbreak\lean{nonreal_}\allowbreak\lean{kac_}\allowbreak\lean{roots}, \lean{kacGram_}\allowbreak\lean{root_}\allowbreak\lean{of_}\allowbreak\lean{infinite},
+\lean{vermaWeightDeterminant_}\allowbreak\lean{kac_}\allowbreak\lean{below_}\allowbreak\lean{nine_}\allowbreak\lean{all}, \lean{kacSingular_at_one}, \lean{verma_singular_eq_smul},
+\lean{vacuum_}\allowbreak\lean{simple_}\allowbreak\lean{of_}\allowbreak\lean{verma_}\allowbreak\lean{kac}, \lean{kacVacuumScalar_}\allowbreak\lean{minimal_}\allowbreak\lean{simple}, \lean{vermaWeightDeterminant_}\allowbreak\lean{vacuum_}\allowbreak\lean{first};
+in \lean{VirasoroScreening}: \lean{screeningFockState_}\allowbreak\lean{ne_}\allowbreak\lean{zero}, \lean{integer_}\allowbreak\lean{screening_}\allowbreak\lean{nonzero_}\allowbreak\lean{singular},
+\lean{chargedFock_}\allowbreak\lean{singular_}\allowbreak\lean{gram_}\allowbreak\lean{root}, \lean{fock_}\allowbreak\lean{verma_}\allowbreak\lean{level_}\allowbreak\lean{finrank}, \lean{integer_}\allowbreak\lean{screening_}\allowbreak\lean{kac_}\allowbreak\lean{root},
+\lean{infinite_}\allowbreak\lean{integer_}\allowbreak\lean{screening_}\allowbreak\lean{roots}, \lean{screening_kac_root}, \lean{screening_}\allowbreak\lean{nonreal_}\allowbreak\lean{kac_}\allowbreak\lean{singular};
+\lean{VirDeformModes.}\allowbreak\lean{NormalOrdering.}\allowbreak\lean{partitionDeterminant_}\allowbreak\lean{natDegree}, \lean{…partitionDeterminant_}\allowbreak\lean{leadingCoeff};
+\lean{VirasoroVOA.}\allowbreak\lean{virasoro_}\allowbreak\lean{relation_}\allowbreak\lean{c1}, \lean{VOA.virasoroVOA1}.
+\end{quote}
+The Lean checks of Theorem~\ref{l06:thm:kacfull}, of the unconditional form of Theorem~\ref{l06:thm:vacsimple} and of
+Warning~\ref{l06:warn:omega} (made outside the library; not part of this release) were compiled the same way and
+reported the same three axioms.
+
+%======================================================================
+\section{Referee's checklist}\label{l06:sec:checklist}
+%======================================================================
+
+{\small\begin{longtable}{>{\raggedright}p{4.1cm}>{\raggedright}p{5.2cm}>{\raggedright}p{2.6cm}>{\raggedright\arraybackslash}p{2.2cm}}
+\toprule
+Lean declaration & Intended meaning & Hypotheses / status & Fidelity check\\
+\midrule
+\endhead
+\lean{VirModule.virasoroVOA} & $V(c,0)$ is a VOA of central charge $c$, for every $c$ & none; unconditional & Def.~\ref{l06:def:virVOA}\\
+\lean{vacVec_ne_zero} & the vacuum of $V(c,0)$ is nonzero & none; uncond. & Thm.~\ref{l06:thm:nonvanishing}\\
+\lean{gradedBasis}, \lean{finrank_gradingVir} & partition basis; $\dim V(c,0)_n = \mathrm{p}_2(n)$ & none; uncond. & Thm.~\ref{l06:thm:pbw}\\
+\lean{fockMap_injective} & $V(c,0)\hookrightarrow$ Fock, all $c$ & $1-12\lambda^2 = c$; uncond. & Thm.~\ref{l06:thm:ffembed}\\
+\lean{VirSimple.}\allowbreak\lean{virasoroSimple_}\allowbreak\lean{isSimple} & $L(c,0)$ is simple, all $c$ & none; uncond. & Thm.~\ref{l06:thm:simple}\\
+\lean{finrank_}\allowbreak\lean{virasoroSimple_}\allowbreak\lean{grading_}\allowbreak\lean{partition} & $\dim L(c,0)_n = \operatorname{rank}G_n(c)$ & none; uncond. & Thm.~\ref{l06:thm:dimrank}\\
+\lean{det_canGram4/5/6} & vacuum Kac determinants at levels 4,5,6 & none; uncond. & Thm.~\ref{l06:thm:gram456}\\
+\lean{finrank_}\allowbreak\lean{virasoroSimple_}\allowbreak\lean{six_}\allowbreak\lean{ising} etc. & Lee--Yang/Ising/$M(2,7)$ dimensions & none; uncond. & Thm.~\ref{l06:thm:dims}\\
+\lean{verma_}\allowbreak\lean{sortedWord_}\allowbreak\lean{linearIndependent}, \lean{vermaLevel_finrank} & PBW basis of $M(c,h)$ & none; uncond. & Thm.~\ref{l06:thm:vermabasis}\\
+\lean{vacuumProjection_ker} & $V(c,0) = M(c,0)/M(c,1)$ & none; uncond. & Thm.~\ref{l06:thm:vacexact}\\
+\lean{vermaContravariant_}\allowbreak\lean{unique} & Shapovalov form exists, unique & none; uncond. & Def.~\ref{l06:def:shap}\\
+\lean{vermaSimple_}\allowbreak\lean{irreducible}, \lean{vermaSimpleLevel_}\allowbreak\lean{finrank_}\allowbreak\lean{eq_}\allowbreak\lean{gramRank} & $L(c,h)$ irreducible, $\dim = $ rank & none; uncond. & Thm.~\ref{l06:thm:radical}\\
+\lean{vermaWeightDeterminant_}\allowbreak\lean{dvd_}\allowbreak\lean{of_}\allowbreak\lean{singular} & singular vector $\Rightarrow(X-h)^{\mathrm p(m)}\mid\det$ & singular vector; uncond. as implication & Thm.~\ref{l06:thm:singgram}\\
+\lean{vermaWeightDeterminant_}\allowbreak\lean{natDegree/leadingCoeff} & degree and leading coeff.\ of $\det G_n$ & none; uncond. & Thm.~\ref{l06:thm:degree}\\
+\lean{vermaWeightDeterminant_}\allowbreak\lean{eq_}\allowbreak\lean{kac_}\allowbreak\lean{of_}\allowbreak\lean{singular} & Kac formula given singular vectors & $\operatorname{Im}t\ne0$, \lean{hs}; conditional (discharged) & Thm.~\ref{l06:thm:kaccond}\\
+\lean{verma_}\allowbreak\lean{kac_}\allowbreak\lean{all_}\allowbreak\lean{of_}\allowbreak\lean{nonreal_}\allowbreak\lean{singular} & Kac formula at all $t\ne0$ given singular vectors & \lean{hs}; conditional (discharged) & Thm.~\ref{l06:thm:kacextend}\\
+\lean{integer_}\allowbreak\lean{screening_}\allowbreak\lean{nonzero_}\allowbreak\lean{singular} & screening states are singular & $r,m>0$; uncond. & Thm.~\ref{l06:thm:screensing}\\
+\lean{chargedFock_}\allowbreak\lean{singular_}\allowbreak\lean{gram_}\allowbreak\lean{root} & Fock singular $\Rightarrow$ Gram root & Fock singular vector; uncond.\ implication & Thm.~\ref{l06:thm:transfer}\\
+\lean{screening_}\allowbreak\lean{nonreal_}\allowbreak\lean{kac_}\allowbreak\lean{singular} & singular vectors at every label, nonreal $t$ & $r,s>0$; uncond. & Thm.~\ref{l06:thm:screenkac}\\
+\lean{kac_determinant} (not in the library) & full Kac formula & $t\ne0$; uncond.\ (check not in this release) & Thm.~\ref{l06:thm:kacfull}\\
+\lean{vacuum_}\allowbreak\lean{simple_}\allowbreak\lean{of_}\allowbreak\lean{verma_}\allowbreak\lean{kac} & simple zero of $D_N$ at $c_{p,q}$ & labels, \lean{hk}; conditional (discharged by composition) & Thm.~\ref{l06:thm:vacsimple}\\
+\lean{VirasoroVOA.}\allowbreak\lean{virasoro_}\allowbreak\lean{relation_}\allowbreak\lean{c1} & abelian Sugawara at $c = 1$ & $k\ne0$; uncond. & Thm.~\ref{l06:thm:sugawara}\\
+\bottomrule
+\end{longtable}}
+
+%======================================================================
+\section{Notes and references}\label{l06:sec:notes}
+%======================================================================
+
+\begin{itemize}
+\item A.~A.~Belavin, A.~M.~Polyakov, A.~B.~Zamolodchikov, \emph{Infinite conformal symmetry in two-dimensional
+  quantum field theory}, Nucl.\ Phys.\ B \textbf{241} (1984) 333--380. Null vectors, their decoupling, minimal
+  models.
+\item V.~G.~Kac, \emph{Contravariant form for infinite-dimensional Lie algebras and superalgebras}, in Lecture
+  Notes in Physics \textbf{94}, Springer (1979) 441--445. The determinant formula.
+\item B.~L.~Feigin, D.~B.~Fuchs, \emph{Verma modules over the Virasoro algebra}, Funct.\ Anal.\ Appl.\
+  \textbf{17} (1983) 241--242, and \emph{Representations of the Virasoro algebra}, in Representations of Lie
+  groups and related topics, Gordon and Breach (1990). Proof of Kac's formula, structure of Verma modules,
+  free-field realisations.
+\item Vl.~S.~Dotsenko, V.~A.~Fateev, \emph{Conformal algebra and multipoint correlation functions in 2D
+  statistical models}, Nucl.\ Phys.\ B \textbf{240} (1984) 312--348. Coulomb gas and screening charges;
+  G.~Felder, \emph{BRST approach to minimal models}, Nucl.\ Phys.\ B \textbf{317} (1989) 215--236.
+\item A.~Tsuchiya, Y.~Kanie, \emph{Fock space representations of the Virasoro algebra --- intertwining
+  operators}, Publ.\ RIMS \textbf{22} (1986) 259--327. Singular vectors as screening integrals.
+\item I.~B.~Frenkel, Y.~Zhu, \emph{Vertex operator algebras associated to representations of affine and Virasoro
+  algebras}, Duke Math.\ J.\ \textbf{66} (1992) 123--168. The VOA structure on $V(c,0)$ and $L(c,0)$.
+\item W.~Wang, \emph{Rationality of Virasoro vertex operator algebras}, Int.\ Math.\ Res.\ Notices (1993) no.~7,
+  197--211. Rationality of $L(c_{p,q},0)$ (not formalised here).
+\item M.~Gorelik, V.~G.~Kac, \emph{On simplicity of vacuum modules}, Adv.\ Math.\ \textbf{211} (2007) 621--677,
+  arXiv:math-ph/0606002. The vacuum determinant and simplicity of $V(c,0)$.
+\item L.~Benoit, Y.~Saint-Aubin, \emph{Degenerate conformal field theories and explicit expressions for some
+  null vectors}, Phys.\ Lett.\ B \textbf{215} (1988) 517--522.
+\item A.~Rocha-Caridi, \emph{Vacuum vector representations of the Virasoro algebra}, in Vertex Operators in
+  Mathematics and Physics, MSRI Publ.\ \textbf{3} (1985) 451--473. Characters of minimal models.
+\item P.~Di Francesco, P.~Mathieu, D.~S\'en\'echal, \emph{Conformal Field Theory}, Springer (1997), Chapters 6--9:
+  the textbook account of everything in Section~\ref{l06:sec:physics}.
+\item D.~Friedan, Z.~Qiu, S.~Shenker, \emph{Conformal invariance, unitarity and critical exponents in two
+  dimensions}, Phys.\ Rev.\ Lett.\ \textbf{52} (1984) 1575--1578.
+\item C.~Salazar, \emph{A basis for the boundary Virasoro models} (admissible monomials), the source of
+  \leanpath{VirasoroAdmissibleCombinatorics}; T.~Gannon, \emph{Moonshine beyond the Monster}, Cambridge (2006),
+  \S3.1.2 and \S5.2--5.3, cited in the file headers.
+\end{itemize}
+
+\endgroup

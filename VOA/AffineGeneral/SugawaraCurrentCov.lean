@@ -1,0 +1,722 @@
+/-
+Copyright (c) 2026 Fedor K. Popov. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Fedor K. Popov
+-/
+import VOA.AffineGeneral.SugawaraField
+
+/-!
+# Finite normal-ordering commutators for the sl3 Sugawara translation
+
+*General-`𝔤` port* of `VOA/Examples/AffineSl3SugawaraCurrentCov.lean` (generated mechanically from that file):
+the index type is `ι`, the Lie data is `D : LieData κ ι`, the dual Coxeter number is `D.h`.  Where the
+text below says sl₃, `Fin 8`, `6` or `3`, read `𝔤`, `ι`, `2 * D.h` and `D.h`.
+
+The actual inverse trace tensor and structure constants enter each operator
+identity. The central terms sum to 2mk; the remaining normal-ordering
+residue is controlled by the proved adjoint Casimir six. Every infinite
+sum used below has proved finite support on each vacuum-module vector.
+-/
+set_option maxHeartbeats 4000000
+set_option maxRecDepth 4096
+open VOA VOA.AffineGeneral
+
+namespace VOA.AffineGeneral.SugawaraCov
+
+open LieData
+variable {𝔤 : Type*} [LieRing 𝔤] [LieAlgebra ℂ 𝔤] [FiniteDimensional ℂ 𝔤]
+variable {κ : LinearMap.BilinForm ℂ 𝔤} {ι : Type*} [Fintype ι] [DecidableEq ι]
+variable (D : LieData κ ι)
+
+open scoped BigOperators
+open Module (End)
+open VOA.AffineLie
+
+universe u
+
+-- Sanity: the target signature (the gate `hJ`).
+example (k : ℂ) (a : ι) : Prop :=
+  Reconstruction.DCovariant (Ltrans D k) (Jfield D k a)
+
+/-! ## The affine Sugawara per-term operator -/
+
+/-- The normal-ordered per-term operator `T^{aa,bb}_p = :J^{aa}_{-p-1} J^{bb}_p:`, the `p`-summand
+of `(nprod (Jfield aa)(Jfield bb))(-1)`. -/
+noncomputable def sugTermJ (k : ℂ) (aa bb : ι) (p : ℤ) : End ℂ (Vacuum D k) :=
+  if 0 ≤ p then J D k aa (-p - 1) * J D k bb p else J D k bb p * J D k aa (-p - 1)
+
+/-- Applying the normal-ordered term uses its specified mode ordering. -/
+theorem sugTermJ_apply (k : ℂ) (aa bb : ι) (p : ℤ) (x : Vacuum D k) :
+    sugTermJ D k aa bb p x
+      = if 0 ≤ p then J D k aa (-p - 1) (J D k bb p x) else J D k bb p (J D k aa (-p - 1) x) := by
+  rw [sugTermJ]; split_ifs <;> rw [Module.End.mul_apply]
+
+/-- The `(-1)`-coefficient of `nprod (Jfield aa)(Jfield bb)` acting on `x` is the finite
+normal-ordered sum `∑ᶠ p, :J^{aa}_{-p-1} J^{bb}_p: x`. -/
+theorem nprod_neg_one_coeff (k : ℂ) (aa bb : ι) (x : Vacuum D k) :
+    nprod (Jfield_isField D k aa) (Jfield_isField D k bb) (-1) x
+      = ∑ᶠ p : ℤ, sugTermJ D k aa bb p x := by
+  rw [nprod_apply]
+  refine finsum_congr fun p => ?_
+  rw [normalOrdered_apply, Jfield_apply, Jfield_apply, sugTermJ_apply,
+      show -(-1 - p) - 1 = p from by ring]
+  by_cases hp : 0 ≤ p
+  · rw [if_pos hp, if_pos hp, Module.End.mul_apply]
+  · rw [if_neg hp, if_neg hp, Module.End.mul_apply]
+
+/-- The Sugawara prefactor `c₀ = (2(k+h^∨))⁻¹ = (2(k+3))⁻¹`. -/
+noncomputable def c0 (k : ℂ) : ℂ := (2 * (k + D.h))⁻¹
+
+/-- **The `Ltrans` action formula** `L₋₁ x = c₀ ∑_{aa,bb} κ⁻¹(aa,bb) ∑ᶠ_p :J^{aa}_{-p-1}J^{bb}_p: x`,
+the affine analogue of `Lvir_apply'`. -/
+theorem Ltrans_apply (k : ℂ) (x : Vacuum D k) :
+    Ltrans D k x
+      = c0 D k • ∑ aa : ι, ∑ bb : ι,
+          kappaInv D aa bb • ∑ᶠ p : ℤ, sugTermJ D k aa bb p x := by
+  rw [Ltrans_eq, sugawaraField]
+  show (c0 D k • (Reconstruction.evalAt (-1) x
+      (∑ aa : ι, ∑ bb : ι,
+        kappaInv D aa bb • nprod (Jfield_isField D k aa) (Jfield_isField D k bb)))) = _
+  rw [map_sum]
+  refine congrArg (c0 D k • ·) ?_
+  refine Finset.sum_congr rfl fun aa _ => ?_
+  rw [map_sum]
+  refine Finset.sum_congr rfl fun bb _ => ?_
+  rw [map_smul]
+  refine congrArg (kappaInv D aa bb • ·) ?_
+  rw [Reconstruction.evalAt_apply, nprod_neg_one_coeff]
+
+/-- The `p`-indexed family `p ↦ sugTermJ aa bb p x` has finite support
+(it is `normalOrdered (Jfield aa)(Jfield bb) p (-1-p) x`). -/
+theorem sugTermJ_support_finite (k : ℂ) (aa bb : ι) (x : Vacuum D k) :
+    (Function.support (fun p : ℤ => sugTermJ D k aa bb p x)).Finite := by
+  have hfin := normalOrdered_diag_support_finite (Jfield_isField D k aa) (Jfield_isField D k bb)
+    (-1) x
+  apply Set.Finite.subset hfin
+  intro p hp
+  rw [Function.mem_support] at hp ⊢
+  intro hzero; apply hp
+  rw [normalOrdered_apply, Jfield_apply, Jfield_apply,
+      show -(-1 - p) - 1 = p from by ring] at hzero
+  rw [sugTermJ_apply]
+  by_cases hpp : 0 ≤ p
+  · rw [if_pos hpp]; rw [if_pos hpp, Module.End.mul_apply] at hzero; exact hzero
+  · rw [if_neg hpp]; rw [if_neg hpp, Module.End.mul_apply] at hzero; exact hzero
+
+/-! ## The elementary current bracket as an operator, and the per-term Leibniz expansion -/
+
+/-- Restating `current_comm` as a clean operator bracket `[J^a_m, J^b_n]`. -/
+theorem J_bracket (k : ℂ) (a b : ι) (m n : ℤ) :
+    J D k a m * J D k b n - J D k b n * J D k a m
+      = (∑ c, structureConstant D a b c • J D k c (m + n))
+        + (if m + n = 0 then ((m : ℂ) * k * formTable D a b) • LinearMap.id else 0) :=
+  current_comm D k a b m n
+
+/-- A scalar multiple of `id` is central: it commutes with any `J^d_s` (so absorbing
+`ID` on either side leaves the single current). -/
+theorem J_mul_smul_id (k : ℂ) (d : ι) (s : ℤ) (cc : ℂ) :
+    J D k d s * (cc • (LinearMap.id : End ℂ (Vacuum D k))) = cc • J D k d s := by
+  rw [mul_smul_comm,
+    show (LinearMap.id : End ℂ (Vacuum D k)) = 1 from rfl, mul_one]
+
+/-- Multiplication by a scalar identity on the left scales the current operator; it introduces no commutator term. -/
+theorem smul_id_mul_J (k : ℂ) (d : ι) (s : ℤ) (cc : ℂ) :
+    (cc • (LinearMap.id : End ℂ (Vacuum D k))) * J D k d s = cc • J D k d s := by
+  rw [smul_mul_assoc,
+    show (LinearMap.id : End ℂ (Vacuum D k)) = 1 from rfl, one_mul]
+
+/-- The Leibniz identity for the bracket of an ordered product `XY` against `Z`. -/
+theorem leibniz_bracket {k : ℂ} (X Y Z : End ℂ (Vacuum D k)) :
+    (X * Y) * Z - Z * (X * Y)
+      = X * (Y * Z - Z * Y) + (X * Z - Z * X) * Y := by
+  rw [mul_sub, sub_mul, mul_assoc, ← mul_assoc Z X Y, mul_assoc X Z Y]; abel
+
+/-- **The per-pair ordered-product Leibniz bracket.**
+`[J^{aa}_r J^{bb}_p , J^c_μ]` expanded by Leibniz, with `current_comm` substituted into each
+elementary bracket. -/
+theorem ordered_bracket (k : ℂ) (aa bb c : ι) (r p μ : ℤ) :
+    (J D k aa r * J D k bb p) * J D k c μ - J D k c μ * (J D k aa r * J D k bb p)
+      = J D k aa r * ((∑ d, structureConstant D bb c d • J D k d (p + μ))
+            + (if p + μ = 0 then ((p : ℂ) * k * formTable D bb c) • LinearMap.id else 0))
+        + ((∑ d, structureConstant D aa c d • J D k d (r + μ))
+            + (if r + μ = 0 then ((r : ℂ) * k * formTable D aa c) • LinearMap.id else 0)) * J D k bb p
+    := by
+  rw [leibniz_bracket, J_bracket D k bb c p μ, J_bracket D k aa c r μ]
+
+/-! ## Structure-constant `Fin 8` identities (the Casimir / dual-Coxeter algebra) -/
+
+/-- The inverse trace tensor raises the first structure index. -/
+noncomputable def graised (a c d : ι) : ℂ := ∑ b, kappaInv D a b * structureConstant D b c d
+
+/-- `g` is **antisymmetric under `a ↔ d`**: `g(a,c,d) = - g(d,c,a)` (the source of the
+dual-Coxeter cancellation), by actual trace invariance. -/
+theorem graised_antisymm (a c d : ι) : graised D a c d = - graised D d c a := by
+  exact LieData.graised_antisymm D a c d
+
+/-- The **adjoint Casimir is `2 h^∨ δ`** (`h^∨ = 3`): `∑_{a,b,d} κ⁻¹(a,b) f(a,c,d) f(b,d,e) = 6 δ_{c,e}`. -/
+theorem casimir_adjoint (c e : ι) :
+    (∑ a, ∑ b, ∑ d, kappaInv D a b * structureConstant D a c d * structureConstant D b d e) = if c = e then 2 * D.h else 0 := by
+  rw [← LieData.struct_casimir_contract D c e]
+  rw [Finset.sum_comm]
+  apply Finset.sum_congr rfl
+  intro b _
+  simp only [Finset.sum_mul]
+  rw [Finset.sum_comm]
+  apply Finset.sum_congr rfl
+  intro a _
+  apply Finset.sum_congr rfl
+  intro d _
+  rw [kappaInv_symm D d b]
+
+/-- The central-collapse identity: `∑_b κ⁻¹(a,b) κ(b,c) = δ_{a,c}` (κ⁻¹ inverts κ on the right). -/
+theorem kappaInv_kappa_right (a c : ι) :
+    (∑ b, kappaInv D a b * formTable D b c) = if a = c then 1 else 0 := by
+  have h := kappaInv_kappa D c a
+  rw [show (∑ b, formTable D c b * kappaInv D b a) = ∑ b, kappaInv D a b * formTable D b c from by
+    refine Finset.sum_congr rfl fun b _ => ?_
+    rw [kappa_symm D c b, kappaInv_symm D b a]; ring] at h
+  rw [h]; by_cases hac : a = c <;> simp [hac, eq_comm]
+
+/-- `∑_{aa,bb} κ⁻¹(aa,bb) f(aa,bb,d) = 0`: κ⁻¹ symmetric contracted with `f` antisymmetric in
+the first two indices, by symmetry and bracket antisymmetry. -/
+theorem kappaInv_structureConstant_antisymm_zero (d : ι) :
+    (∑ aa, ∑ bb, kappaInv D aa bb * structureConstant D aa bb d) = 0 := by
+  exact LieData.kappaInv_fabc_antisymm_zero D d
+
+/-! ## The swap lemma: normal ordering is irrelevant after the `κ⁻¹` symmetrisation -/
+
+/-- The per-pair operator bracket of the normal-ordered `sugTermJ` against `J^c_μ` equals the
+ordered bracket plus a `p<0` correction `-∑_d f(aa,bb,d)[J^d_{-1},J^c_μ]`. -/
+theorem sugTermJ_bracket_eq_ordered (k : ℂ) (aa bb c : ι) (p μ : ℤ) :
+    sugTermJ D k aa bb p * J D k c μ - J D k c μ * sugTermJ D k aa bb p
+      = ((J D k aa (-p - 1) * J D k bb p) * J D k c μ - J D k c μ * (J D k aa (-p - 1) * J D k bb p))
+        - (if p < 0 then
+            ∑ d, structureConstant D aa bb d • (J D k d (-1) * J D k c μ - J D k c μ * J D k d (-1)) else 0) := by
+  rw [sugTermJ]
+  by_cases hp : 0 ≤ p
+  · rw [if_pos hp, if_neg (by omega : ¬ p < 0), sub_zero]
+  · rw [if_neg hp, if_pos (by omega : p < 0)]
+    -- swapped product: J^{bb}_p J^{aa}_{-p-1} = J^{aa}_{-p-1}J^{bb}_p - [J^{aa}_{-p-1},J^{bb}_p]
+    have hsw : J D k bb p * J D k aa (-p - 1)
+        = J D k aa (-p - 1) * J D k bb p - (∑ d, structureConstant D aa bb d • J D k d (-1)) := by
+      have hb := J_bracket D k aa bb (-p - 1) p
+      rw [if_neg (by omega : ¬ -p - 1 + p = 0), add_zero,
+        show (-p - 1 + p : ℤ) = -1 from by ring] at hb
+      -- hb : J^{aa}_{-p-1}J^{bb}_p - J^{bb}_p J^{aa}_{-p-1} = ∑_d f(aa,bb,d)J^d_{-1}
+      rw [eq_sub_iff_add_eq, ← hb]; abel
+    rw [hsw]
+    -- expand brackets
+    rw [sub_mul, mul_sub, Finset.sum_mul, Finset.mul_sum]
+    rw [show (∑ d, structureConstant D aa bb d • (J D k d (-1) * J D k c μ - J D k c μ * J D k d (-1)))
+        = (∑ i, structureConstant D aa bb i • J D k i (-1) * J D k c μ)
+          - ∑ i, J D k c μ * structureConstant D aa bb i • J D k i (-1) from by
+      rw [← Finset.sum_sub_distrib]
+      refine Finset.sum_congr rfl fun d _ => ?_
+      rw [smul_mul_assoc, mul_smul_comm, smul_sub]]
+    abel
+
+/-- **The swap lemma (`κ⁻¹`-weighted): normal ordering is irrelevant.**
+`∑_{aa,bb} κ⁻¹(aa,bb) [sugTermJ aa bb p, J^c_μ] = ∑_{aa,bb} κ⁻¹(aa,bb) [J^{aa}_{-p-1}J^{bb}_p, J^c_μ]`
+(ordered).  The `p<0` correction `-∑_d (∑_{aa,bb} κ⁻¹ f(aa,bb,d))[J^d_{-1},J^c_μ]` vanishes
+since `∑_{aa,bb} κ⁻¹(aa,bb) f(aa,bb,d) = 0`. -/
+theorem swap_sum (k : ℂ) (c : ι) (p μ : ℤ) :
+    (∑ aa, ∑ bb, kappaInv D aa bb •
+        (sugTermJ D k aa bb p * J D k c μ - J D k c μ * sugTermJ D k aa bb p))
+      = ∑ aa, ∑ bb, kappaInv D aa bb •
+          ((J D k aa (-p - 1) * J D k bb p) * J D k c μ
+            - J D k c μ * (J D k aa (-p - 1) * J D k bb p)) := by
+  -- substitute the per-pair identity, splitting off the correction
+  have hstep : (∑ aa, ∑ bb, kappaInv D aa bb •
+        (sugTermJ D k aa bb p * J D k c μ - J D k c μ * sugTermJ D k aa bb p))
+      = (∑ aa, ∑ bb, kappaInv D aa bb •
+          ((J D k aa (-p - 1) * J D k bb p) * J D k c μ
+            - J D k c μ * (J D k aa (-p - 1) * J D k bb p)))
+        - (∑ aa, ∑ bb, kappaInv D aa bb • (if p < 0 then
+              ∑ d, structureConstant D aa bb d • (J D k d (-1) * J D k c μ - J D k c μ * J D k d (-1)) else 0)) := by
+    rw [← Finset.sum_sub_distrib]
+    refine Finset.sum_congr rfl fun aa _ => ?_
+    rw [← Finset.sum_sub_distrib]
+    refine Finset.sum_congr rfl fun bb _ => ?_
+    rw [sugTermJ_bracket_eq_ordered, smul_sub]
+  rw [hstep]
+  -- the correction double-sum vanishes
+  rw [show (∑ aa, ∑ bb, kappaInv D aa bb • (if p < 0 then
+        ∑ d, structureConstant D aa bb d • (J D k d (-1) * J D k c μ - J D k c μ * J D k d (-1)) else 0))
+      = (0 : End ℂ (Vacuum D k)) from ?_, sub_zero]
+  by_cases hp : p < 0
+  · -- pull the `if`, reorder sums, factor the vanishing structure-constant contraction
+    simp only [if_pos hp]
+    set W : ι → End ℂ (Vacuum D k) :=
+      fun d => J D k d (-1) * J D k c μ - J D k c μ * J D k d (-1) with hW
+    -- κ⁻¹ aa bb • ∑_d structureConstant • W = ∑_d (κ⁻¹·structureConstant) • W
+    have hinner : ∀ aa bb : ι,
+        kappaInv D aa bb • ∑ d, structureConstant D aa bb d • W d
+          = ∑ d, (kappaInv D aa bb * structureConstant D aa bb d) • W d := by
+      intro aa bb
+      rw [Finset.smul_sum]
+      refine Finset.sum_congr rfl fun d _ => ?_
+      rw [smul_smul]
+    rw [show (∑ aa, ∑ bb, kappaInv D aa bb • ∑ d, structureConstant D aa bb d • W d)
+        = ∑ d, (∑ aa, ∑ bb, kappaInv D aa bb * structureConstant D aa bb d) • W d from by
+      rw [show (∑ d, (∑ aa, ∑ bb, kappaInv D aa bb * structureConstant D aa bb d) • W d)
+          = ∑ d, ∑ aa, ∑ bb, (kappaInv D aa bb * structureConstant D aa bb d) • W d from by
+        refine Finset.sum_congr rfl fun d _ => ?_
+        rw [Finset.sum_smul]; refine Finset.sum_congr rfl fun aa _ => ?_; rw [Finset.sum_smul]]
+      -- now both sides are triple sums; reorder ∑aa∑bb∑d ↔ ∑d∑aa∑bb
+      rw [Finset.sum_comm (f := fun d aa => ∑ bb, (kappaInv D aa bb * structureConstant D aa bb d) • W d)]
+      refine Finset.sum_congr rfl fun aa _ => ?_
+      rw [Finset.sum_comm (f := fun d bb => (kappaInv D aa bb * structureConstant D aa bb d) • W d)]
+      refine Finset.sum_congr rfl fun bb _ => ?_
+      exact (hinner aa bb).trans (by refine Finset.sum_congr rfl fun d _ => rfl)]
+    refine Finset.sum_eq_zero fun d _ => ?_
+    rw [kappaInv_structureConstant_antisymm_zero, zero_smul]
+  · simp only [if_neg hp, smul_zero, Finset.sum_const_zero]
+
+/-! ## Reducing `[L₋₁, J^c_μ]` to a single finite finsum -/
+
+/-- The κ⁻¹-weighted per-`p` ordered bracket, the summand of `[L₋₁, J^c_μ]`. -/
+noncomputable def Hbr (k : ℂ) (c : ι) (μ p : ℤ) : End ℂ (Vacuum D k) :=
+  ∑ aa, ∑ bb, kappaInv D aa bb •
+    ((J D k aa (-p - 1) * J D k bb p) * J D k c μ - J D k c μ * (J D k aa (-p - 1) * J D k bb p))
+
+/-- `Hbr` summand acting on `x`, with the scalar/application pushed inside. -/
+theorem Hbr_apply (k : ℂ) (c : ι) (μ p : ℤ) (x : Vacuum D k) :
+    Hbr D k c μ p x
+      = (∑ aa, ∑ bb, kappaInv D aa bb •
+          ((J D k aa (-p - 1) * J D k bb p) * J D k c μ
+            - J D k c μ * (J D k aa (-p - 1) * J D k bb p))) x := rfl
+
+/-- `∑_{aa,bb} κ⁻¹ • sugTermJ` acting on `x` equals `(c₀⁻¹)·(L₋₁-piece)`: the `p`-summand of
+`Ltrans_apply` rewritten per-`p`. -/
+theorem Ltrans_apply_finsum (k : ℂ) (x : Vacuum D k) :
+    Ltrans D k x = c0 D k • ∑ᶠ p : ℤ,
+      (∑ aa, ∑ bb, kappaInv D aa bb • sugTermJ D k aa bb p x) := by
+  rw [Ltrans_apply]
+  congr 1
+  -- pull each scalar `κ⁻¹` inside the finsum
+  have hpull : (∑ aa : ι, ∑ bb : ι, kappaInv D aa bb • ∑ᶠ p : ℤ, sugTermJ D k aa bb p x)
+      = ∑ aa : ι, ∑ bb : ι, ∑ᶠ p : ℤ, kappaInv D aa bb • sugTermJ D k aa bb p x := by
+    refine Finset.sum_congr rfl fun aa _ => Finset.sum_congr rfl fun bb _ => ?_
+    rw [smul_finsum' (kappaInv D aa bb) (sugTermJ_support_finite D k aa bb x)]
+  rw [hpull]
+  -- each `κ⁻¹•sugTermJ..x` is finitely supported in `p`
+  have hfin : ∀ aa bb : ι,
+      (Function.support (fun p : ℤ => kappaInv D aa bb • sugTermJ D k aa bb p x)).Finite := by
+    intro aa bb
+    apply (sugTermJ_support_finite D k aa bb x).subset
+    intro p hp; rw [Function.mem_support] at hp ⊢
+    exact fun h => hp (by rw [h, smul_zero])
+  -- commute ∑bb past ∑ᶠp, then ∑aa past ∑ᶠp
+  rw [show (∑ aa : ι, ∑ bb : ι, ∑ᶠ p : ℤ, kappaInv D aa bb • sugTermJ D k aa bb p x)
+      = ∑ aa : ι, ∑ᶠ p : ℤ, ∑ bb : ι, kappaInv D aa bb • sugTermJ D k aa bb p x from by
+    refine Finset.sum_congr rfl fun aa _ => ?_
+    rw [sum_finsum_comm Finset.univ
+      (fun bb p => kappaInv D aa bb • sugTermJ D k aa bb p x) (fun bb _ => hfin aa bb)]]
+  rw [sum_finsum_comm Finset.univ
+    (fun aa p => ∑ bb : ι, kappaInv D aa bb • sugTermJ D k aa bb p x)
+    (fun aa _ => by
+      apply Set.Finite.subset ((Finset.univ : Finset (ι)).finite_toSet.biUnion
+        (fun bb _ => hfin aa bb))
+      intro p hp; rw [Function.mem_support] at hp
+      simp only [Set.mem_iUnion]
+      by_contra hcon
+      push_neg at hcon
+      apply hp
+      refine Finset.sum_eq_zero fun bb _ => ?_
+      have := hcon bb (Finset.mem_coe.mpr (Finset.mem_univ bb))
+      rwa [Function.mem_support, not_not] at this)]
+
+/-- The κ⁻¹-summed `sugTermJ` operator (the `L₋₁` summand operator, pre-`x`). -/
+noncomputable def Lsum (k : ℂ) (p : ℤ) : End ℂ (Vacuum D k) :=
+  ∑ aa, ∑ bb, kappaInv D aa bb • sugTermJ D k aa bb p
+
+/-- The inverse-form contraction of the ordered current products acts by the same finite double sum on a vacuum vector. -/
+theorem Lsum_apply (k : ℂ) (p : ℤ) (x : Vacuum D k) :
+    Lsum D k p x = ∑ aa, ∑ bb, kappaInv D aa bb • sugTermJ D k aa bb p x := by
+  rw [Lsum, LinearMap.sum_apply]
+  refine Finset.sum_congr rfl fun aa _ => ?_
+  rw [LinearMap.sum_apply]
+  refine Finset.sum_congr rfl fun bb _ => ?_
+  rw [LinearMap.smul_apply]
+
+/-- For each vector only finitely many normal-ordering indices contribute to the contracted translation sum. This licenses its algebraic sum. -/
+theorem Lsum_support_finite (k : ℂ) (x : Vacuum D k) :
+    (Function.support (fun p : ℤ => Lsum D k p x)).Finite := by
+  apply Set.Finite.subset ((Finset.univ : Finset (ι)).finite_toSet.biUnion
+    (fun aa _ => (Finset.univ : Finset (ι)).finite_toSet.biUnion
+      (fun bb _ => sugTermJ_support_finite D k aa bb x)))
+  intro p hp; rw [Function.mem_support, Lsum_apply] at hp
+  simp only [Set.mem_iUnion]
+  by_contra hcon; push_neg at hcon; apply hp
+  refine Finset.sum_eq_zero fun aa _ => Finset.sum_eq_zero fun bb _ => ?_
+  have := hcon aa (Finset.mem_coe.mpr (Finset.mem_univ aa)) bb
+    (Finset.mem_coe.mpr (Finset.mem_univ bb))
+  rw [Function.mem_support, not_not] at this
+  rw [this, smul_zero]
+
+/-- `Ltrans k x = c₀ • ∑ᶠ_p Lsum k p x`. -/
+theorem Ltrans_eq_finsum_Lsum (k : ℂ) (x : Vacuum D k) :
+    Ltrans D k x = c0 D k • ∑ᶠ p : ℤ, Lsum D k p x := by
+  rw [Ltrans_apply_finsum]
+  refine congrArg (c0 D k • ·) (finsum_congr fun p => (Lsum_apply D k p x).symm)
+
+/-- The per-`p` commutator of `Lsum` against `J^c_μ` equals `Hbr` (via `swap_sum`):
+`Lsum p · J^c_μ - J^c_μ · Lsum p = Hbr`. -/
+theorem Lsum_comm_eq_Hbr (k : ℂ) (c : ι) (μ p : ℤ) :
+    Lsum D k p * J D k c μ - J D k c μ * Lsum D k p = Hbr D k c μ p := by
+  rw [Lsum, Hbr]
+  -- distribute the multiplication through the double finset-sum
+  rw [Finset.sum_mul, Finset.mul_sum, ← Finset.sum_sub_distrib]
+  have hdist : ∀ aa : ι,
+      (∑ bb, kappaInv D aa bb • sugTermJ D k aa bb p) * J D k c μ
+        - J D k c μ * ∑ bb, kappaInv D aa bb • sugTermJ D k aa bb p
+      = ∑ bb, kappaInv D aa bb •
+          (sugTermJ D k aa bb p * J D k c μ - J D k c μ * sugTermJ D k aa bb p) := by
+    intro aa
+    rw [Finset.sum_mul, Finset.mul_sum, ← Finset.sum_sub_distrib]
+    refine Finset.sum_congr rfl fun bb _ => ?_
+    rw [smul_mul_assoc, mul_smul_comm, smul_sub]
+  rw [Finset.sum_congr rfl (fun aa _ => hdist aa)]
+  exact swap_sum D k c p μ
+
+/-- The current commutator of the translation summands has finite support on each vector, by the two corresponding truncation bounds. -/
+theorem Hbr_support_finite (k : ℂ) (c : ι) (μ : ℤ) (x : Vacuum D k) :
+    (Function.support (fun p : ℤ => Hbr D k c μ p x)).Finite := by
+  -- Hbr p x = Lsum p (J^c x) - J^c (Lsum p x); both have finite support in p.
+  apply Set.Finite.subset
+    ((Lsum_support_finite D k (J D k c μ x)).union (Lsum_support_finite D k x))
+  intro p hp; rw [Function.mem_support] at hp
+  simp only [Set.mem_union, Function.mem_support]
+  by_contra hcon; push_neg at hcon
+  obtain ⟨h1, h2⟩ := hcon
+  apply hp
+  have hval : Hbr D k c μ p x = Lsum D k p (J D k c μ x) - J D k c μ (Lsum D k p x) := by
+    have := Lsum_comm_eq_Hbr D k c μ p
+    have happ := congrArg (fun (T : End ℂ (Vacuum D k)) => T x) this
+    simpa only [LinearMap.sub_apply, Module.End.mul_apply] using happ.symm
+  rw [hval, h1, h2, map_zero, sub_zero]
+
+/-- **The full commutator as a single finsum of `Hbr`.**
+`(L₋₁·J^c_μ - J^c_μ·L₋₁) x = c₀ • ∑ᶠ_p Hbr p x`. -/
+theorem Lcomm_eq_finsum_Hbr (k : ℂ) (c : ι) (μ : ℤ) (x : Vacuum D k) :
+    (Ltrans D k * J D k c μ - J D k c μ * Ltrans D k) x
+      = c0 D k • ∑ᶠ p : ℤ, Hbr D k c μ p x := by
+  rw [LinearMap.sub_apply, Module.End.mul_apply, Module.End.mul_apply,
+    Ltrans_eq_finsum_Lsum D k (J D k c μ x), Ltrans_eq_finsum_Lsum D k x]
+  rw [map_smul, map_finsum (J D k c μ) (Lsum_support_finite D k x), ← smul_sub]
+  congr 1
+  rw [← finsum_sub_distrib (Lsum_support_finite D k (J D k c μ x))
+      ((Lsum_support_finite D k x).subset (fun p hp => by
+        rw [Function.mem_support] at hp ⊢; exact fun h => hp (by rw [h, map_zero])))]
+  refine finsum_congr fun p => ?_
+  have := Lsum_comm_eq_Hbr D k c μ p
+  have happ := congrArg (fun (T : End ℂ (Vacuum D k)) => T x) this
+  simpa only [LinearMap.sub_apply, Module.End.mul_apply] using happ
+
+/-! ## The finite collapse of `∑ᶠ_p Hbr` and the main theorem -/
+
+/-- `Hbr` in the gated `sugTermJ` form (the reverse of `swap_sum`). -/
+theorem Hbr_eq_sugTermJ_bracket (k : ℂ) (c : ι) (μ p : ℤ) :
+    Hbr D k c μ p
+      = ∑ aa, ∑ bb, kappaInv D aa bb •
+          (sugTermJ D k aa bb p * J D k c μ - J D k c μ * sugTermJ D k aa bb p) := by
+  rw [Hbr, swap_sum]
+
+/-- The per-pair bracket `[sugTermJ aa bb p, J^c_μ]` acting on `x`, finitely supported in `p`
+(the gate keeps both bilinear pieces lower-truncated). -/
+theorem pair_bracket_support_finite (k : ℂ) (aa bb c : ι) (μ : ℤ) (x : Vacuum D k) :
+    (Function.support (fun p : ℤ =>
+      sugTermJ D k aa bb p (J D k c μ x) - J D k c μ (sugTermJ D k aa bb p x))).Finite := by
+  apply Set.Finite.subset
+    ((sugTermJ_support_finite D k aa bb (J D k c μ x)).union (sugTermJ_support_finite D k aa bb x))
+  intro p hp; rw [Function.mem_support] at hp
+  simp only [Set.mem_union, Function.mem_support]
+  by_contra hcon; push_neg at hcon
+  obtain ⟨h1, h2⟩ := hcon
+  exact hp (by rw [h1, h2, map_zero, sub_zero])
+
+
+/-! ## Ported per-pair split machinery (the `sugTermJ`-ordered `structOp`/`centralOp` route)
+
+The `close1` ordered form (`Hbr`) is convenient for the algebra, but for the per-half finiteness
+of `∑ᶠ_p` we keep the *normal-ordered* (`if 0 ≤ p`) split, exactly the structure of the sibling
+development: each per-pair bracket body `sugTermJ p (J^c x) − J^c (sugTermJ p x)` splits as
+`−(structPart + centralPart)`, both finitely supported in `p`. -/
+
+/-- Leibniz for `[J^c_μ, (J^a_r · J^b_s)]` (single current vs ordered product). -/
+theorem leibniz_bracket_S (k : ℂ) (c a b : ι) (μ r s : ℤ) :
+    J D k c μ * (J D k a r * J D k b s) - (J D k a r * J D k b s) * J D k c μ
+      = (J D k c μ * J D k a r - J D k a r * J D k c μ) * J D k b s
+        + J D k a r * (J D k c μ * J D k b s - J D k b s * J D k c μ) := by
+  rw [sub_mul, mul_sub, ← mul_assoc, ← mul_assoc]; abel
+
+/-- The per-pair operator bracket `[J^c_μ, J^a_r J^b_s]` with both `current_comm`'s substituted. -/
+theorem pair_bracket_S (k : ℂ) (c a b : ι) (μ r s : ℤ) :
+    J D k c μ * (J D k a r * J D k b s) - (J D k a r * J D k b s) * J D k c μ
+      = ((∑ d, structureConstant D c a d • J D k d (μ + r))
+            + (if μ + r = 0 then ((μ : ℂ) * k * formTable D c a) • LinearMap.id else 0)) * J D k b s
+        + J D k a r * ((∑ d, structureConstant D c b d • J D k d (μ + s))
+            + (if μ + s = 0 then ((μ : ℂ) * k * formTable D c b) • LinearMap.id else 0)) := by
+  rw [leibniz_bracket_S, current_comm, current_comm]
+
+/-- Bracket of `J^c_μ` with the OTHER ordering `J^b_p · J^a_{-p-1}` (used for `p < 0`). -/
+theorem pair_bracket_S' (k : ℂ) (c a b : ι) (μ p : ℤ) :
+    J D k c μ * (J D k b p * J D k a (-p - 1)) - (J D k b p * J D k a (-p - 1)) * J D k c μ
+      = ((∑ d, structureConstant D c b d • J D k d (μ + p))
+            + (if μ + p = 0 then ((μ : ℂ) * k * formTable D c b) • LinearMap.id else 0)) * J D k a (-p - 1)
+        + J D k b p * ((∑ d, structureConstant D c a d • J D k d (μ + (-p - 1)))
+            + (if μ + (-p - 1) = 0 then ((μ : ℂ) * k * formTable D c a) • LinearMap.id else 0)) := by
+  rw [leibniz_bracket_S, current_comm, current_comm]
+
+/-- Casimir / central contraction: `Σ_a κ(c,a) κ⁻¹(a,b) = δ_{c,b}`. -/
+theorem kappa_kappaInv_S (c b : ι) :
+    (∑ a, formTable D c a * kappaInv D a b) = if c = b then 1 else 0 := by
+  exact kappaInv_kappa D c b
+
+/-- Adjoint Casimir / dual Coxeter: `Σ_{a,b,d} κ⁻¹(a,b) f^{ca}_d f^{db}_e = 6 δ_{c,e}`. -/
+theorem adjoint_casimir_S (c e : ι) :
+    (∑ a, ∑ b, ∑ d, kappaInv D a b * (structureConstant D c a d * structureConstant D d b e))
+      = if c = e then 2 * D.h else 0 := by
+  rw [← casimir_adjoint D c e]
+  apply Finset.sum_congr rfl
+  intro a _
+  apply Finset.sum_congr rfl
+  intro b _
+  apply Finset.sum_congr rfl
+  intro d _
+  rw [structureConstant_antisymm D c a d,structureConstant_antisymm D d b e]
+  ring
+
+/-- The inner body equals `-[J^c_μ, sugTermJ aa bb p] x` in the fixed `sugTermJ` ordering. -/
+theorem inner_body_eq_S (k : ℂ) (c aa bb : ι) (μ p : ℤ) (x : Vacuum D k) :
+    sugTermJ D k aa bb p (J D k c μ x) - J D k c μ (sugTermJ D k aa bb p x)
+      = - ((if 0 ≤ p
+            then (J D k c μ * (J D k aa (-p-1) * J D k bb p) - (J D k aa (-p-1) * J D k bb p) * J D k c μ)
+            else (J D k c μ * (J D k bb p * J D k aa (-p-1)) - (J D k bb p * J D k aa (-p-1)) * J D k c μ)) x) := by
+  rw [sugTermJ]
+  by_cases hp : 0 ≤ p
+  · rw [if_pos hp, if_pos hp]
+    have happ := congrArg (fun (R : End ℂ (Vacuum D k)) => R x)
+      (show (J D k aa (-p-1) * J D k bb p) * J D k c μ - J D k c μ * (J D k aa (-p-1) * J D k bb p)
+        = -(J D k c μ * (J D k aa (-p-1) * J D k bb p) - (J D k aa (-p-1) * J D k bb p) * J D k c μ) from by abel)
+    simpa only [LinearMap.sub_apply, LinearMap.neg_apply, Module.End.mul_apply] using happ
+  · rw [if_neg hp, if_neg hp]
+    have happ := congrArg (fun (R : End ℂ (Vacuum D k)) => R x)
+      (show (J D k bb p * J D k aa (-p-1)) * J D k c μ - J D k c μ * (J D k bb p * J D k aa (-p-1))
+        = -(J D k c μ * (J D k bb p * J D k aa (-p-1)) - (J D k bb p * J D k aa (-p-1)) * J D k c μ) from by abel)
+    simpa only [LinearMap.sub_apply, LinearMap.neg_apply, Module.End.mul_apply] using happ
+
+/-- The structure-constant operator-part of `[J^c_μ, sugTermJ aa bb p]`. -/
+noncomputable def structOp (k : ℂ) (c aa bb : ι) (μ p : ℤ) : End ℂ (Vacuum D k) :=
+  if 0 ≤ p
+    then (∑ d, structureConstant D c aa d • J D k d (μ + (-p - 1))) * J D k bb p
+            + J D k aa (-p - 1) * (∑ d, structureConstant D c bb d • J D k d (μ + p))
+    else (∑ d, structureConstant D c bb d • J D k d (μ + p)) * J D k aa (-p - 1)
+            + J D k bb p * (∑ d, structureConstant D c aa d • J D k d (μ + (-p - 1)))
+
+/-- The central operator-part of `[J^c_μ, sugTermJ aa bb p]`. -/
+noncomputable def centralOp (k : ℂ) (c aa bb : ι) (μ p : ℤ) : End ℂ (Vacuum D k) :=
+  if 0 ≤ p
+    then (if μ + (-p-1) = 0 then ((μ : ℂ) * k * formTable D c aa) • LinearMap.id else 0) * J D k bb p
+            + J D k aa (-p-1) * (if μ + p = 0 then ((μ : ℂ) * k * formTable D c bb) • LinearMap.id else 0)
+    else (if μ + p = 0 then ((μ : ℂ) * k * formTable D c bb) • LinearMap.id else 0) * J D k aa (-p-1)
+            + J D k bb p * (if μ + (-p-1) = 0 then ((μ : ℂ) * k * formTable D c aa) • LinearMap.id else 0)
+
+/-- Structure-constant part applied to `x`. -/
+noncomputable def structPart (k : ℂ) (c aa bb : ι) (μ p : ℤ) (x : Vacuum D k) : Vacuum D k :=
+  structOp D k c aa bb μ p x
+
+/-- Central part applied to `x`. -/
+noncomputable def centralPart (k : ℂ) (c aa bb : ι) (μ p : ℤ) (x : Vacuum D k) : Vacuum D k :=
+  centralOp D k c aa bb μ p x
+
+/-- The inner body splits as `-(structPart + centralPart)`. -/
+theorem inner_body_split (k : ℂ) (c aa bb : ι) (μ p : ℤ) (x : Vacuum D k) :
+    sugTermJ D k aa bb p (J D k c μ x) - J D k c μ (sugTermJ D k aa bb p x)
+      = - (structPart D k c aa bb μ p x + centralPart D k c aa bb μ p x) := by
+  rw [inner_body_eq_S, structPart, centralPart, structOp, centralOp]
+  congr 1
+  by_cases hp : 0 ≤ p
+  · rw [if_pos hp, if_pos hp, if_pos hp, pair_bracket_S]
+    rw [add_mul, mul_add]
+    simp only [LinearMap.add_apply]
+    abel
+  · rw [if_neg hp, if_neg hp, if_neg hp, pair_bracket_S']
+    rw [add_mul, mul_add]
+    simp only [LinearMap.add_apply]
+    abel
+
+/-- `centralPart` away from `{μ-1, -μ}` vanishes. -/
+theorem centralPart_off (k : ℂ) (c aa bb : ι) (μ p : ℤ) (x : Vacuum D k)
+    (h1 : p ≠ μ - 1) (h2 : p ≠ -μ) : centralPart D k c aa bb μ p x = 0 := by
+  rw [centralPart, centralOp]
+  by_cases hp0 : 0 ≤ p
+  · rw [if_pos hp0, if_neg (by omega : ¬ μ + (-p-1) = 0), if_neg (by omega : ¬ μ + p = 0)]
+    simp
+  · rw [if_neg hp0, if_neg (by omega : ¬ μ + p = 0), if_neg (by omega : ¬ μ + (-p-1) = 0)]
+    simp
+
+/-- `centralPart` at `p = μ-1`. -/
+theorem centralPart_at_mu1 (k : ℂ) (c aa bb : ι) (μ : ℤ) (x : Vacuum D k) :
+    centralPart D k c aa bb μ (μ - 1) x = ((μ : ℂ) * k * formTable D c aa) • (J D k bb (μ - 1) x) := by
+  rw [centralPart, centralOp]
+  by_cases hp0 : 0 ≤ μ - 1
+  · rw [if_pos hp0, if_pos (by omega : μ + (-(μ-1)-1) = 0),
+        if_neg (by omega : ¬ μ + (μ-1) = 0)]
+    simp only [mul_zero, add_zero, LinearMap.add_apply, Module.End.mul_apply,
+      LinearMap.zero_apply, LinearMap.smul_apply, LinearMap.id_apply, map_zero]
+  · rw [if_neg hp0, if_neg (by omega : ¬ μ + (μ-1) = 0),
+        if_pos (by omega : μ + (-(μ-1)-1) = 0)]
+    rw [show (-(μ-1)-1 : ℤ) = -μ from by ring]
+    simp only [zero_mul, zero_add, LinearMap.add_apply, Module.End.mul_apply,
+      LinearMap.zero_apply, LinearMap.smul_apply, LinearMap.id_apply, map_smul]
+
+/-- `centralPart` at `p = -μ`. -/
+theorem centralPart_at_negmu (k : ℂ) (c aa bb : ι) (μ : ℤ) (x : Vacuum D k) :
+    centralPart D k c aa bb μ (-μ) x = ((μ : ℂ) * k * formTable D c bb) • (J D k aa (μ - 1) x) := by
+  rw [centralPart, centralOp]
+  by_cases hp0 : 0 ≤ -μ
+  · rw [if_pos hp0, if_neg (by omega : ¬ μ + (-(-μ)-1) = 0), if_pos (by omega : μ + (-μ) = 0)]
+    rw [show (-(-μ)-1 : ℤ) = μ - 1 from by ring]
+    simp only [zero_mul, zero_add, LinearMap.add_apply, Module.End.mul_apply,
+      LinearMap.zero_apply, LinearMap.smul_apply, LinearMap.id_apply, map_smul]
+  · rw [if_neg hp0, if_pos (by omega : μ + (-μ) = 0), if_neg (by omega : ¬ μ + (-(-μ)-1) = 0)]
+    rw [show (-(-μ)-1 : ℤ) = μ - 1 from by ring]
+    simp only [mul_zero, add_zero, LinearMap.add_apply, Module.End.mul_apply,
+      LinearMap.zero_apply, LinearMap.smul_apply, LinearMap.id_apply, map_zero]
+
+/-- The central contribution is supported at the finitely many mode indices where the affine cocycle can be nonzero. -/
+theorem centralPart_support_finite (k : ℂ) (c aa bb : ι) (μ : ℤ) (x : Vacuum D k) :
+    (Function.support (fun p : ℤ => centralPart D k c aa bb μ p x)).Finite := by
+  apply Set.Finite.subset (Set.toFinite ({μ - 1, -μ} : Finset ℤ))
+  intro p hp
+  rw [Function.mem_support] at hp
+  by_contra hpc
+  apply hp
+  simp only [Finset.coe_insert, Finset.coe_singleton, Set.mem_insert_iff,
+    Set.mem_singleton_iff, not_or] at hpc
+  exact centralPart_off D k c aa bb μ p x hpc.1 hpc.2
+
+/-- The central finsum collapses (δ-gate) to the two-point central residue body. -/
+theorem centralPart_finsum_collapse (k : ℂ) (c aa bb : ι) (μ : ℤ) (x : Vacuum D k) :
+    (∑ᶠ p : ℤ, centralPart D k c aa bb μ p x)
+      = ((μ : ℂ) * k * formTable D c aa) • (J D k bb (μ - 1) x)
+        + ((μ : ℂ) * k * formTable D c bb) • (J D k aa (μ - 1) x) := by
+  classical
+  rw [finsum_eq_finsetSum_of_support_subset _ (s := ({μ - 1, -μ} : Finset ℤ)) (by
+    intro p hp
+    rw [Function.mem_support] at hp
+    simp only [Finset.coe_insert, Finset.coe_singleton, Set.mem_insert_iff, Set.mem_singleton_iff]
+    by_contra hpc
+    rw [not_or] at hpc
+    exact hp (centralPart_off D k c aa bb μ p x hpc.1 hpc.2))]
+  rw [Finset.sum_insert (by simp only [Finset.mem_singleton]; omega),
+      Finset.sum_singleton, centralPart_at_mu1, centralPart_at_negmu]
+
+/-- Raw central residue (no `c0`): `Σ_{aa,bb} κ⁻¹ Σᶠ_p centralPart = 2μk • J^c_{μ-1} x`. -/
+theorem central_residue_raw (k : ℂ) (c : ι) (μ : ℤ) (x : Vacuum D k) :
+    (∑ aa : ι, ∑ bb : ι, kappaInv D aa bb • ∑ᶠ p : ℤ, centralPart D k c aa bb μ p x)
+      = (2 * μ * k : ℂ) • J D k c (μ - 1) x := by
+  rw [show (∑ aa : ι, ∑ bb : ι, kappaInv D aa bb • ∑ᶠ p : ℤ, centralPart D k c aa bb μ p x)
+        = ∑ aa : ι, ∑ bb : ι, kappaInv D aa bb •
+            (((μ : ℂ) * k * formTable D c aa) • (J D k bb (μ - 1) x)
+              + ((μ : ℂ) * k * formTable D c bb) • (J D k aa (μ - 1) x))
+      from Finset.sum_congr rfl fun aa _ => Finset.sum_congr rfl fun bb _ => by
+        rw [centralPart_finsum_collapse]]
+  have hbody : ∀ aa bb : ι,
+      kappaInv D aa bb • (((μ : ℂ) * k * formTable D c aa) • (J D k bb (μ - 1) x)
+          + ((μ : ℂ) * k * formTable D c bb) • (J D k aa (μ - 1) x))
+        = (kappaInv D aa bb * ((μ : ℂ) * k * formTable D c aa)) • (J D k bb (μ - 1) x)
+          + (kappaInv D aa bb * ((μ : ℂ) * k * formTable D c bb)) • (J D k aa (μ - 1) x) :=
+    fun aa bb => by rw [smul_add, smul_smul, smul_smul]
+  simp only [hbody]
+  rw [show (∑ aa : ι, ∑ bb : ι,
+        ((kappaInv D aa bb * ((μ : ℂ) * k * formTable D c aa)) • (J D k bb (μ - 1) x)
+          + (kappaInv D aa bb * ((μ : ℂ) * k * formTable D c bb)) • (J D k aa (μ - 1) x)))
+      = (∑ aa : ι, ∑ bb : ι, (kappaInv D aa bb * ((μ : ℂ) * k * formTable D c aa)) • (J D k bb (μ - 1) x))
+        + (∑ aa : ι, ∑ bb : ι, (kappaInv D aa bb * ((μ : ℂ) * k * formTable D c bb)) • (J D k aa (μ - 1) x))
+      from by rw [← Finset.sum_add_distrib]; refine Finset.sum_congr rfl fun aa _ => ?_;
+              rw [← Finset.sum_add_distrib]]
+  have hT1 : (∑ aa : ι, ∑ bb : ι,
+        (kappaInv D aa bb * ((μ : ℂ) * k * formTable D c aa)) • (J D k bb (μ - 1) x))
+      = ((μ : ℂ) * k) • J D k c (μ - 1) x := by
+    rw [Finset.sum_comm]
+    rw [show (∑ bb : ι, ∑ aa : ι,
+          (kappaInv D aa bb * ((μ : ℂ) * k * formTable D c aa)) • (J D k bb (μ - 1) x))
+        = ∑ bb : ι, ((∑ aa : ι, formTable D c aa * kappaInv D aa bb) * ((μ : ℂ) * k))
+              • (J D k bb (μ - 1) x)
+        from Finset.sum_congr rfl fun bb _ => by
+          rw [← Finset.sum_smul, Finset.sum_mul]; congr 1;
+          refine Finset.sum_congr rfl fun aa _ => ?_; ring]
+    rw [show (∑ bb : ι, ((∑ aa : ι, formTable D c aa * kappaInv D aa bb) * ((μ : ℂ) * k))
+              • (J D k bb (μ - 1) x))
+        = ∑ bb : ι, ((if c = bb then (1:ℂ) else 0) * ((μ : ℂ) * k)) • (J D k bb (μ - 1) x)
+        from Finset.sum_congr rfl fun bb _ => by rw [kappa_kappaInv_S]]
+    rw [Finset.sum_eq_single c (fun bb _ hbb => by rw [if_neg (Ne.symm hbb), zero_mul, zero_smul])
+        (fun h => absurd (Finset.mem_univ c) h), if_pos rfl, one_mul]
+  have hT2 : (∑ aa : ι, ∑ bb : ι,
+        (kappaInv D aa bb * ((μ : ℂ) * k * formTable D c bb)) • (J D k aa (μ - 1) x))
+      = ((μ : ℂ) * k) • J D k c (μ - 1) x := by
+    rw [show (∑ aa : ι, ∑ bb : ι,
+          (kappaInv D aa bb * ((μ : ℂ) * k * formTable D c bb)) • (J D k aa (μ - 1) x))
+        = ∑ aa : ι, ((∑ bb : ι, formTable D c bb * kappaInv D bb aa) * ((μ : ℂ) * k))
+              • (J D k aa (μ - 1) x)
+        from Finset.sum_congr rfl fun aa _ => by
+          rw [← Finset.sum_smul, Finset.sum_mul]; congr 1;
+          refine Finset.sum_congr rfl fun bb _ => ?_; rw [kappaInv_symm D aa bb]; ring]
+    rw [show (∑ aa : ι, ((∑ bb : ι, formTable D c bb * kappaInv D bb aa) * ((μ : ℂ) * k))
+              • (J D k aa (μ - 1) x))
+        = ∑ aa : ι, ((if c = aa then (1:ℂ) else 0) * ((μ : ℂ) * k)) • (J D k aa (μ - 1) x)
+        from Finset.sum_congr rfl fun aa _ => by rw [kappa_kappaInv_S]]
+    rw [Finset.sum_eq_single c (fun aa _ haa => by rw [if_neg (Ne.symm haa), zero_mul, zero_smul])
+        (fun h => absurd (Finset.mem_univ c) h), if_pos rfl, one_mul]
+  rw [hT1, hT2, ← smul_add, ← two_smul ℂ (J D k c (μ - 1) x), smul_smul]
+  congr 1
+  ring
+
+/-- Finite support of `structPart` in `p` (the normal-ordering gate truncates both factors). -/
+theorem structPart_support_finite (k : ℂ) (c aa bb : ι) (μ : ℤ) (x : Vacuum D k) :
+    (Function.support (fun p : ℤ => structPart D k c aa bb μ p x)).Finite := by
+  have hbody : (Function.support (fun p : ℤ =>
+      sugTermJ D k aa bb p (J D k c μ x) - J D k c μ (sugTermJ D k aa bb p x))).Finite :=
+    pair_bracket_support_finite D k aa bb c μ x
+  have hcen := centralPart_support_finite D k c aa bb μ x
+  apply Set.Finite.subset (hbody.union hcen)
+  intro p hp
+  rw [Function.mem_support] at hp
+  by_contra hc
+  rw [Set.mem_union] at hc
+  push_neg at hc
+  rw [Function.notMem_support, Function.notMem_support] at hc
+  apply hp
+  have hs := inner_body_split D k c aa bb μ p x
+  rw [hc.1, hc.2, add_zero, eq_comm, neg_eq_zero] at hs
+  exact hs
+
+/-- The finsum of the inner body splits as `−(Σᶠ struct + Σᶠ central)` (both finite). -/
+theorem inner_finsum_split (k : ℂ) (c aa bb : ι) (μ : ℤ) (x : Vacuum D k) :
+    (∑ᶠ p : ℤ, (sugTermJ D k aa bb p (J D k c μ x) - J D k c μ (sugTermJ D k aa bb p x)))
+      = - ((∑ᶠ p : ℤ, structPart D k c aa bb μ p x) + (∑ᶠ p : ℤ, centralPart D k c aa bb μ p x)) := by
+  have hcen := centralPart_support_finite D k c aa bb μ x
+  have hstr := structPart_support_finite D k c aa bb μ x
+  rw [finsum_congr (fun p => inner_body_split D k c aa bb μ p x)]
+  rw [finsum_congr (fun p => (neg_add _ _) : ∀ p,
+        -(structPart D k c aa bb μ p x + centralPart D k c aa bb μ p x)
+          = -(structPart D k c aa bb μ p x) + -(centralPart D k c aa bb μ p x))]
+  rw [finsum_add_distrib (hstr.subset (fun p hp => by
+        rw [Function.mem_support] at hp ⊢; exact fun h => hp (by rw [h, neg_zero])))
+      (hcen.subset (fun p hp => by
+        rw [Function.mem_support] at hp ⊢; exact fun h => hp (by rw [h, neg_zero])))]
+  rw [finsum_neg_distrib, finsum_neg_distrib, ← neg_add]
+
+/-! ## The structure-constant (dual-Coxeter) residue — the single genuine obligation. -/
+
+/-- **The residue kernel** (`sl₃` dual Coxeter `2h^∨ = 6`): the structure-constant double
+contraction `∑_{a,d} (∑_b κ⁻¹(a,b) f(b,c,d)) f(a,d,e) = 6 δ_{c,e}` that produces the dual-Coxeter
+coefficient when one struct-current is re-normal-ordered past the other (the second commutator).
+This is the coordinate form of the actual matrix adjoint Casimir. -/
+theorem struct_casimir_contract (c e : ι) :
+    (∑ a, ∑ d, (∑ b, kappaInv D a b * structureConstant D b c d) * structureConstant D a d e) = if c = e then 2 * D.h else 0 := by
+  exact LieData.struct_casimir_contract D c e
+
+end VOA.AffineGeneral.SugawaraCov

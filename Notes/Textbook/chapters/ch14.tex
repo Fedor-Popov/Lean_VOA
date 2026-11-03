@@ -1,0 +1,3038 @@
+\chapter{The key identity and the completion of the proof}\label{ch:14}
+
+\providecommand{\chXIVsig}{\sigma^{\natural}}
+\providecommand{\chXIVA}{V_0^{+}}
+\providecommand{\chXIVB}{V_3^{+}}
+
+This chapter documents the release of the library named in the front matter; every Lean quotation is checked by \texttt{scripts/textbook/sync.py} to occur verbatim (up to whitespace and comments) in the source files of that release. Checks that were run at an earlier state of the library and not re-run for this edition are marked as such.  It is the last mathematical chapter of the Moonshine part of the book, and it is the one in which the construction
+of the Moonshine module is finished.  When it ends, the reader will have seen every step of the
+proof of the Lean theorem
+\begin{leancode}
+theorem moonshine :
+    ∃ V : VertexOperatorAlgebra Vnat,
+      V.Y = Ynat VnatAxioms.wbarL ∧ V.vacuum = vacNat ∧ V.conformalVector = omegaNat ∧
+      V.centralCharge = 24 ∧
+      V.grading 1 = ⊥ ∧
+      Module.finrank ℂ (V.grading 2) = 196884 ∧
+      (∀ n : ℕ, (Module.finrank ℂ (V.grading (n : ℤ)) : ℂ) = PowerSeries.coeff n JShift) ∧
+      V.IsSimple
+\end{leancode}
+(\leanpath{VOA/Moonshine/TopPairs.lean}, full name \lean{VOA.Moonshine.moonshine}), which has
+\emph{no hypotheses at all}, and whose \texttt{\#print axioms} output is the three standard axioms
+of Lean's foundations, \lean{propext}, \lean{Classical.choice} and \lean{Quot.sound}.  The last
+section before the referee's checklist (\S\ref{ch14:sec:decode}) is a long, clause-by-clause
+fidelity check of this statement — the most careful one in the book, because it is the statement
+the whole library exists to prove.  Everything before it explains, on paper, why it is true, and
+presents each intermediate statement with its own fidelity check.
+
+\paragraph{The result in one sentence.}  In the wording recommended by the release audit of
+2026-10-27 (\texttt{Notes/Textbook/referee/RELEASE\_AUDIT\_MOONSHINE.md}): \emph{we have formalized
+in Lean~4 / Mathlib, with no hypotheses and only Lean's standard axioms, the Moonshine module
+$\Vnat$: a simple vertex operator algebra structure on the Frenkel--Lepowsky--Meurman space
+$V_\Leech^+\oplus(V_\Leech^T)^+$ built from the Leech lattice, with central charge $24$,
+$\Vnat_1=0$, $\dim\Vnat_2=196884$, and graded dimension equal, in every degree, to
+$J(q)=j(q)-744=q^{-1}+196884\,q+21493760\,q^2+\cdots$; the Monster symmetry $\Aut(\Vnat)=\mathbb M$ is
+not part of the formalization.}  Three readings of this sentence are fixed once and for all.
+(a) Although \lean{moonshine} is written as an existential, it is a \emph{construction}: the vertex
+map, vacuum, conformal vector and central charge are pinned to explicit definitions, the grading is
+then forced, and the witness is unique (\S\ref{ch14:sec:decode}).  (b) $J$ is the \emph{formal}
+$q$-expansion \lean{JShift} $=E_4^3/(\Delta/q)-744q$; its identification with the analytic function
+$j(\tau)-744$ on the upper half plane is classical but is not part of the Lean statement; it is proved separately in Lean
+(\lean{qExpansion_qJ}, \lean{hasSum_JShift}, in \leanpath{VOA/Moonshine/JAnalyticQExpansion.lean}).
+(c) ``The FLM space'' refers to the carrier; the twisted$\times$twisted block of the vertex
+operator is the form-adjoint of the skew intertwiner (the Huang / Dolan--Goddard--Montague
+presentation), not FLM's own explicit formula, and the isomorphism with FLM's $\Vnat$ is a paper
+argument (uniqueness of simple-current extensions, Dong--Mason, Prop.~5.3), not a Lean theorem.
+
+As everywhere in this book, our concern is the \emph{meaning} of the Lean statements.  Proofs are
+explained mathematically; we do not describe how the Lean proof scripts are organised.
+
+\section{Where we stand, and what remains}\label{ch14:sec:intro}
+
+\subsection{The state of the construction at the start of this chapter}
+
+Let us recall what the previous chapters have built.  The carrier of the Moonshine module is
+\begin{equation*}
+  \Vnat \;=\; V_{\Leech}^{+}\;\oplus\;(V_{\Leech}^{T})^{+},
+\end{equation*}
+where $V_\Leech^+$ is the fixed-point subalgebra of the Leech lattice vertex operator algebra under
+the lift $\theta$ of $-1$ (Chapter~\ref{ch:04}) and $(V_\Leech^T)^+$ is the $\theta$-fixed part of
+the twisted module $V_\Leech^T=S[\theta]\otimes T$ (Chapters~\ref{ch:06}--\ref{ch:08}).  In Lean,
+$V_\Leech^+$ is the type \lean{SkewVP} (equivalently \lean{VPlus}; both are abbreviations of the
+same subtype of the lattice VOA), $(V_\Leech^T)^+$ is the submodule \lean{TP} of
+\lean{Tw := FockT 24 ⊗[ℂ] leechT}, and $\Vnat$ is the product type \lean{Vnat := SkewVP × TP}.
+
+Chapter~\ref{ch:09} constructed the two ``off-diagonal'' fields: the skew intertwiner $W(t,z)$,
+which sends $V_\Leech^+$ to $(V_\Leech^T)^+$ and is defined by skew-symmetry,
+\begin{equation*}
+  W(t,z)\varphi \;=\; e^{zL_{-1}}\,Y^{T}(\varphi,-z)\,t,
+\end{equation*}
+and its adjoint $\overline W(t,z)$, which goes the other way and is defined by transposition
+through the two invariant bilinear forms $B_V$ (\lean{leechBV}) on $V_\Leech^+$ and
+\lean{TPForm} on $(V_\Leech^T)^+$.  Chapter~\ref{ch:10} assembled the block vertex operator
+\begin{equation}\label{ch14:eq:block}
+  Y^{\natural}\bigl((u,t),z\bigr) \;=\;
+  \begin{pmatrix} Y(u,z) & \overline W(t,z)\\ W(t,z) & Y^{T}(u,z)\end{pmatrix}
+\end{equation}
+(DGM (4.17); Lean \lean{Ynat wbarL}) and proved that it defines a vertex operator algebra with
+central charge $24$ \emph{provided} one family of locality relations holds, the
+``twisted$\times$twisted'' relation that Dolan--Goddard--Montague call (4.23):
+\begin{equation}\label{ch14:eq:423}
+  W(t_1,z_1)\,\overline W(t_2,z_2)\;\sim\;W(t_2,z_2)\,\overline W(t_1,z_1)
+  \qquad\text{on }(V_\Leech^{T})^{+},
+\end{equation}
+where $\sim$ means equality after multiplication by a sufficiently high power of $(z_1-z_2)$.
+In Lean this is the proposition \lean{TPBlockLocal leechWbar t₁ t₂}.  The companion relation
+(4.22), the analogous statement on $V_\Leech^+$, was proved unconditionally
+(\lean{leechWbar_VPBlockLocal}); simplicity was proved too, via nondegeneracy of an invariant form
+(\lean{SimpleNat.vnatVOA_isSimple}).  The result was \lean{moonshine_of_frameLocality}: \emph{all}
+targets, conditional on (4.23) for four explicit pairs of twisted vectors.
+
+Chapters~\ref{ch:11}--\ref{ch:13} then built the tool with which FLM prove (4.23): the
+\emph{triality}.  The Leech lattice contains a sublattice $\Leech_0$ of index two (the Golay frame
+sublattice), and accordingly
+\begin{equation*}
+  V_\Leech^+ = \chXIVA\oplus\chXIVB,\qquad
+  (V_\Leech^T)^+ = T_0^+\oplus T_1^+ ,
+\end{equation*}
+four $\chXIVA$-modules (Lean: \lean{frameSector 0}, \lean{frameSector 1}, \lean{TPframe 0},
+\lean{TPframe 1}).  FLM's key insight is that there is an automorphism $\sigma$ of the subalgebra
+$\chXIVA$ that does not extend to $V_\Leech^+$, but which permutes the three nontrivial sectors:
+twisting $\chXIVB$ by $\sigma$ gives one twisted sector, and the other twisted sector is
+$\sigma$-stable.  Chapter~\ref{ch:11} constructed $\sigma$ on $\chXIVA$ (\lean{v0Sigma});
+Chapters~\ref{ch:12}--\ref{ch:13} constructed the twisted halves, the $\sigma$-twisted
+$\chXIVA$-intertwiners
+\begin{equation*}
+  \Phi:\chXIVB\to T_s^+,\qquad \Theta:T_{s+1}^+\to T_{s+1}^+,
+\end{equation*}
+unconditionally (\lean{SigmaTop.topSigma_both}), using Zhu-algebra generation
+(\lean{zhuGenerated_weightTwo}) to reduce their existence to finite top-level data.
+
+\subsection{What this chapter does}
+
+The idea of FLM is to \emph{conjugate}.  Assemble the sector maps into one linear involution
+$\chXIVsig$ of $\Vnat$.  If $\chXIVsig$ were an automorphism of the (would-be) vertex algebra,
+then for $v\in\chXIVB$,
+\begin{equation*}
+  \chXIVsig\,Y^\natural(v,z)\,\chXIVsig \;=\; Y^\natural(\chXIVsig v,z),
+\end{equation*}
+and the right-hand side is a twisted field $Y^\natural((0,\Phi v),z)$.  The left-hand side is local
+with itself because the untwisted field $Y^\natural(v,z)$ is (proved in Chapter~\ref{ch:10}).  So
+the twisted field $Y^\natural((0,x),z)$, $x=\Phi v$, would be local with itself, which contains
+(4.23) for the pair $(x,x)$; and one generating twisted vector suffices.
+
+Of course, we cannot assume that $\chXIVsig$ is an automorphism; that is what is to be proved.
+The honest content is an \emph{identification of two fields}: the conjugated field
+$L_v=\chXIVsig Y^\natural(v,z)\chXIVsig$ and the block field $R_v=Y^\natural(\chXIVsig v,z)$.
+The chapter proceeds as follows.
+
+\begin{enumerate}[label=(\arabic*)]
+\item \S\ref{ch14:sec:conj}: the conjugation set-up.  Both $L_v$ and $R_v$ are local with all
+  $\chXIVA$-fields and create the same state from the vacuum, so their difference is determined by
+  its values on the cyclic vectors of the four sectors.  The remaining agreements are three
+  ``three-point identities'' (\lean{SigmaKey}); if they hold, then (4.23) holds for all pairs and
+  $\Vnat$ is constructed (\lean{moonshine_of_sigma}).
+\item \S\ref{ch14:sec:sigmakey}: adjunction against the invariant forms reduces the three
+  identities to two \emph{isometry} statements and one \emph{self-coupling} identity
+  \lean{KeySkew}; the isometries reduce further to finite top-level statements
+  (\lean{moonshine_of_top}).
+\item \S\ref{ch14:sec:assemble}: the explicit triality data of Chapter~\ref{ch:13} are assembled into
+  \lean{mkData c ε}, the isometries are proved (with the normalisation $\mu=+1$ \emph{proved}), and
+  the only remaining hypothesis is \lean{KeySkew0 ε} for one sign $\varepsilon$
+  (\lean{moonshine_of_keySkew0}).
+\item \S\ref{ch14:sec:keyskew}: a lemma of Li type shows that \lean{KeySkew} is controlled by the
+  top-output components of a ``block defect'' (\lean{keySkew_of_keyTopV}); that residual is still
+  infinite.
+\item \S\ref{ch14:sec:fz}: Frenkel--Zhu bimodule theory makes it finite.  The bimodule
+  $A(\chXIVB)$ is generated by its top level (\lean{bimodGen_V3}), and the transposed top-level
+  identities need only the commutator formula, so the intertwining Jacobi identity of $W$ — which
+  the library does not have — is never needed (\lean{keySkew_of_FZ}).
+\item \S\ref{ch14:sec:toppairs}: the last finite identity, $\Theta\,o(v)\Phi b=o(b)\Phi v$ on the
+  $49152$-dimensional top level, is proved by an explicit sign computation in Leech coordinates
+  (\lean{topPairs_one}, with $\varepsilon=+1$).  This yields \lean{moonshine}.
+\item \S\ref{ch14:sec:decode}: the final theorem, read clause by clause; then the referee's
+  checklist.
+\end{enumerate}
+
+\begin{remark}[The chain of reductions at a glance]\label{ch14:rem:chain}
+Each implication below is a Lean theorem presented in this chapter; the top line is the goal, the
+bottom lines are what is finally established by direct argument.
+\begin{align*}
+  \text{(4.23) for all pairs}
+  &\;\Longleftarrow\; \lean{SigmaKey}
+   && (\lean{tpBlockLocal_of_sigma})\\
+  \lean{SigmaKey}
+  &\;\Longleftarrow\; \lean{PhiTop}\wedge\lean{ThetaTop}\wedge\lean{KeySkew}
+   && (\lean{sigmaKey_of_top})\\
+  \lean{PhiTop}\wedge\lean{ThetaTop}
+  &\;\Longleftarrow\; \text{explicit data }\lean{mkData}
+   && (\lean{phiIso_mkData},\ \lean{thetaTop_mkData})\\
+  \lean{KeySkew}
+  &\;\Longleftarrow\; \lean{KeyTopV}
+   && (\lean{keySkew_of_keyTopV})\\
+  \lean{KeyTopV}
+  &\;\Longleftarrow\; \lean{BimodGenV3}\wedge\lean{TopPairs}
+   && (\lean{keyTopV_of_FZ})\\
+  \lean{BimodGenV3}
+  &\;\Longleftarrow\; \text{lattice combinatorics}
+   && (\lean{fzGenerated_MV3})\\
+  \lean{TopPairs}
+  &\;\Longleftarrow\; \text{sign arithmetic in }\Leech
+   && (\lean{topPairs_one}).
+\end{align*}
+\end{remark}
+
+\subsection{Notation used throughout the chapter}\label{ch14:sec:notation}
+
+We fix the following abbreviations, which match the Lean files and the route notes
+\leanpath{Notes/SigmaKey.md}, \leanpath{Notes/KeySkew.md}.
+\begin{itemize}
+\item $A=\chXIVA$ (Lean \lean{V0Sub.carrier}, equal to \lean{frameSector 0}); as a VOA in its own
+  right it is \lean{V0P}.  $B=\chXIVB$ (\lean{frameSector 1}).  $C=T_s^+$ and $D'=T_{s+1}^+$
+  (\lean{TPframe s}, \lean{TPframe (s+1)}), where $s\in\Z/2$ labels the twisted sector that the
+  triality pairs with $\chXIVB$.  The label is part of the data because the library's definitions do
+  not single out which of the two twisted frame sectors is FLM's $T_0^+$
+  (\lean{golayE_not_determined}, Chapter~\ref{ch:12}).
+\item For $u\in A$ and $n\in\Z$, \lean{actV u n} and \lean{actT u n} are the modes $u_{(n)}$ of $u$
+  acting on $V_\Leech^+$ and on \lean{TP}.  Recall the library convention
+  \lean{mode f n = f (-n - 1)} (Definition~\ref{l01:def:mode}): \lean{mode (Y u) n} is the mathematician's
+  $u_{(n)}$, whereas the raw coefficient \lean{Y u k} is the coefficient of $z^{k}$ in
+  $Y(u,z)=\sum_n u_{(n)}z^{-n-1}$, i.e.\ $u_{(-k-1)}$.  The library records this as
+  \lean{Y_eq_actV}: \lean{leechVOAPlus.Y u k x = actV u (-k - 1) x}.  \emph{Every} statement of the
+  form \lean{∀ p, … Y v p …} below is therefore a statement about all coefficients of a series, and
+  the reindexing $p\leftrightarrow -p-1$ never changes its content.
+\item $\sigma=$ \lean{v0Sigma} $\in\Aut(\chXIVA)$; \lean{sig u} is its value on $u$.
+\item The cyclic vectors: $x_\beta=e^\beta+e^{-\beta}\in\chXIVB$ for $\beta\in\Leech\setminus\Leech_0$
+  (\lean{frameX0P β}); $x_0(t)=h_0(-\tfrac12)\mathbb 1\otimes t\in T^+$ for $t\in T$
+  (\lean{x0T t}), which lies in $T_s^+$ when $t\in T_s$ (\lean{x0T_mem}) and has weight $2$.
+\item $o(v)$ is the zero mode $v_{(\wt v-1)}$ of a homogeneous $v$; it preserves weight.
+\item The weight-$2$ ``tops'': $\Omega_{V_3}=(\chXIVB)_2$ (\lean{OmegaV3}, of dimension $49152$) and
+  $\Omega_T(s)=(T_s^+)_2$ (\lean{OmegaT s}).  Both $\chXIVB$ and $T^+$ have \emph{no} states of weight
+  below $2$.
+\end{itemize}
+
+\section{\texorpdfstring{The would-be triality $\chXIVsig$ and conjugation of fields}{The would-be triality sigma-natural and conjugation of fields}}\label{ch14:sec:conj}
+
+\subsection{The physical picture}
+
+In the language of two-dimensional conformal field theory, $\Vnat$ is the chiral algebra of a
+$\Z/2$-orbifold of 24 free bosons compactified on the Leech torus.  The untwisted sector
+$V_\Leech^+$ contains the $\theta$-invariant operators of the original theory; the twisted sector
+$(V_\Leech^T)^+$ contains the $\theta$-invariant \emph{twist fields}, created by inserting a branch
+cut around which the bosons change sign.  The operator product of two twist fields lands back in
+the untwisted sector, and the content of (4.23) is that these operator products are mutually local:
+the twist fields of $\Vnat$ behave like ordinary, single-valued local operators.  In general an
+orbifold of a lattice theory by $-1$ produces a consistent chiral algebra only after a
+subtle sign analysis; FLM's triality makes this analysis unnecessary by exhibiting a
+\emph{symmetry} of the would-be theory that turns twist fields into untwisted fields, for which
+locality is already known.  The physicist's slogan is: ``the twisted sector is not special; there is
+a hidden symmetry that rotates it into the untwisted sector.''  This section turns the slogan into
+a precise reduction.
+
+\subsection{One twisted vector generates the twisted sector}
+
+The first ingredient is a cyclicity statement: a single twisted vector of the simplest kind
+generates all of $(V_\Leech^T)^+$ under the modes of $V_\Leech^+$.
+
+\begin{definition}[Mode span]\label{ch14:def:modespan}
+Let $g=(g_i)_{i\in\kappa}$ be a family of vectors of $T^+=(V_\Leech^T)^+$.  We say that $g$
+\emph{mode-spans} $T^+$ if
+\begin{equation*}
+  T^{+}=\operatorname{span}_\C\{\,u_{(n)}g_i\;:\;u\in V_\Leech^+,\ n\in\Z,\ i\in\kappa\,\}.
+\end{equation*}
+\end{definition}
+
+\begin{leancode}
+def ModeSpan : Prop :=
+  Submodule.span ℂ {x : TP | ∃ (u : SkewVP) (n : ℤ) (i : κ), x = mode (plusModule.YM u) n (g i)} = ⊤
+\end{leancode}
+(\leanpath{VOA/Moonshine/M8h0Gap.lean}, \lean{VOA.Moonshine.M8h0.ModeSpan}, with $g:\kappa\to$
+\lean{TP} a section variable.)
+
+\begin{dictionary}
+\textbf{Decoding.} \lean{plusModule} is the $V_\Leech^+$-module structure on \lean{TP} constructed in
+Chapter~\ref{ch:08}; \lean{plusModule.YM u} is the formal series $Y^T(u,z)$ acting on \lean{TP}, and
+\lean{mode (plusModule.YM u) n} is its $n$-th mode $u_{(n)}$ by the convention
+\lean{mode f n = f (-n-1)}.  \lean{Submodule.span ℂ S} is the smallest complex subspace containing
+$S$, and \lean{= ⊤} says it is the whole space \lean{TP}.
+
+\textbf{Same statement.}  The Lean set is exactly the set of vectors $u_{(n)}g_i$.  No hypothesis.
+\end{dictionary}
+\begin{physics}
+A family of twist fields generates the twisted sector if all twisted states arise from them by OPE with untwisted operators: the twisted sector is an irreducible ``module'' in the CFT sense, built over a few ground states.
+\end{physics}
+
+
+\begin{theorem}[One vector generates $T^+$]\label{ch14:thm:modespan}
+For every nonzero $t_0\in T$, the single vector $x_0(t_0)=h_0(-\tfrac12)\mathbb 1\otimes t_0$
+mode-spans $(V_\Leech^T)^+$.
+\end{theorem}
+
+\begin{leancode}
+theorem modeSpan_x0T {t₀ : TLeechT} (h0 : t₀ ≠ 0) : ModeSpan (fun _ : Unit => x0T t₀)
+\end{leancode}
+(\leanpath{VOA/Moonshine/M8hKeySpan.lean}, \lean{VOA.Moonshine.M8hKey.modeSpan_x0T}.)
+
+\begin{dictionary}
+\textbf{Decoding.}  \lean{TLeechT} is the $2^{12}$-dimensional irreducible module $T$ of the
+twisted group algebra of $\Leech$ (Chapter~\ref{ch:08}, \lean{finrank_leechT = 4096}).
+\lean{x0T t₀} is the vector $h_0(-\tfrac12)\mathbb 1\otimes t_0$ regarded as an element of
+\lean{TP}; here $h_0$ is the first orthonormal coordinate direction of $\C\otimes\Leech$ and
+$h_0(-\tfrac12)$ the corresponding half-integral twisted Heisenberg creation operator.  The family
+is indexed by the one-point type \lean{Unit}, so ``mode-spans'' means: the $u_{(n)}x_0(t_0)$ span.
+
+\textbf{Hypothesis.}  Only $t_0\ne0$, which is obviously necessary.  Note that $t_0$ is \emph{not}
+required to lie in a frame sector $T_s$: the theorem uses all of $V_\Leech^+$, not only $\chXIVA$.
+
+\textbf{Same statement.}  Yes.
+
+\textbf{Could it be vacuous?}  No: $T\ne0$, and the conclusion is a genuine spanning statement
+about a nonzero space.
+\end{dictionary}
+\begin{physics}
+One twist field suffices: inserting untwisted operators (oscillators $\partial X$ and vertex operators $e^{i\alpha\cdot X}$) next to a single ground-state twist field produces every twisted state. Physically the $e^\alpha$ act on the $2^{12}$ ground states as the Clifford-type algebra of the zero modes, which acts irreducibly.
+\end{physics}
+
+
+\paragraph{Proof on paper.}  Let $Z\subseteq V_\Leech^T$ be the span of all $Y^T(u)_{(k/2)}x_0$,
+with $u$ running over the whole lattice VOA $V_\Leech$ (twisted modes are half-integral).  $Z$ is
+stable under every twisted mode.  First, the annihilation operator $h_0(\tfrac12)$ removes the
+oscillator: $h_0(\tfrac12)x_0=\tfrac12\,\mathbb 1\otimes t_0$, so $\mathbb 1\otimes t_0\in Z$.  Next,
+the twisted vertex operator of $e^\alpha$ acts on $\mathbb 1\otimes t$ with a lowest coefficient
+proportional to $\mathbb 1\otimes e_\alpha t$, so $\mathbb 1\otimes e_\alpha t_0\in Z$ for all
+$\alpha\in\Leech$.  Since $T$ is a \emph{simple} module for the twisted group algebra
+(Chapter~\ref{ch:08}), the $e_\alpha t_0$ span $T$; hence $\mathbb 1\otimes T\subseteq Z$.  The
+Heisenberg creation operators then produce $S[\theta]\otimes T$, so $Z=V_\Leech^T$.  Finally,
+project to the $\theta$-invariant parts: the $\theta$-fixed part of a mode $u_{(n)}x_0$ is the mode
+of the $\theta$-fixed part of $u$ applied to the $\theta$-fixed $x_0$, so $T^+$ is spanned by modes of
+$V_\Leech^+$ applied to $x_0$. \qed
+
+\begin{status}
+Unconditional.  \texttt{\#print axioms}: \lean{[propext, Classical.choice, Quot.sound]} (the file is
+imported by \lean{VOA.Moonshine.moonshine}, whose axiom list is this).
+\end{status}
+
+\subsection{Conjugating a field by an involution}
+
+\begin{definition}[Conjugate field]\label{ch14:def:conjF}
+Let $V$ be a complex vector space, $\sigma\in\End V$ and $A(z)=\sum_k A_k z^k$ a formal
+distribution with coefficients in $\End V$.  The \emph{conjugate} of $A$ by $\sigma$ is
+$(\sigma A\sigma)(z)=\sum_k \sigma A_k\sigma\, z^k$.
+\end{definition}
+\begin{leancode}
+def conjF (σ : End ℂ V) (A : FormalDist (End ℂ V)) : FormalDist (End ℂ V) :=
+  fun k => σ * A k * σ
+\end{leancode}
+(\leanpath{VOA/Moonshine/M8hKeySigma.lean}, \lean{VOA.Moonshine.M8hKey.conjF}.)
+
+\begin{dictionary}
+\lean{FormalDist X} is the type of functions $\Z\to X$, read as formal series
+$\sum_{k\in\Z}A_kz^k$ (Definition~\ref{l01:def:formaldist}); \lean{A k} is the coefficient of $z^k$.  The product
+\lean{σ * A k * σ} is composition in the algebra \lean{End ℂ V}.  Exactly the textbook definition.
+\end{dictionary}
+\begin{physics}
+Conjugating an operator by a symmetry, $\mathcal O\mapsto g\,\mathcal O\,g^{-1}$: the transformed field. For a genuine symmetry of the CFT, the transformed field of $\phi(z)$ is the field of the transformed state.
+\end{physics}
+
+
+\begin{proposition}\label{ch14:prop:conj}
+Let $\sigma^2=1$.  (a) If $A$ and $B$ are mutually local, so are $\sigma A\sigma$ and $\sigma B\sigma$.
+(b) If $\sigma$ commutes with an operator $T$ and $A$ is $T$-covariant, $[T,A(z)]=\partial_zA(z)$,
+then so is $\sigma A\sigma$.
+\end{proposition}
+\begin{leancode}
+theorem local_conjF {σ : End ℂ V} (hσ : σ * σ = 1) {A B : FormalDist (End ℂ V)}
+    (h : Local A B) : Local (conjF σ A) (conjF σ B)
+
+theorem dCovariant_conjF {σ T : End ℂ V} (hT : σ * T = T * σ)
+    {A : FormalDist (End ℂ V)} (h : DCovariant T A) : DCovariant T (conjF σ A)
+\end{leancode}
+(\leanpath{VOA/Moonshine/M8hKeySigma.lean}.)
+
+\begin{dictionary}
+\textbf{Decoding.}  \lean{Local A B} (Definition~\ref{l01:def:bracket}) means: there is $N\in\N$ with
+$(z_1-z_2)^N[A(z_1),B(z_2)]=0$ coefficientwise.  \lean{DCovariant T A} means
+$[T,A_k]=$ the coefficient of $z^k$ in $\partial_z A$, i.e.\ translation covariance with respect to
+$T$ (which will be $L_{-1}$).
+
+\textbf{Hypotheses.}  $\sigma^2=1$ in (a); in (b), $\sigma T=T\sigma$.  Note (b) does not need
+$\sigma^2=1$.  Both are the textbook hypotheses.
+\end{dictionary}
+\begin{physics}
+Locality and translation covariance are preserved by any operator that commutes with them in the obvious sense: a change of basis on the Hilbert space does not create new singularities in OPEs.
+\end{physics}
+
+
+\paragraph{Proof on paper.}  (a) $[\sigma A_m\sigma,\sigma B_n\sigma]=\sigma[A_m,B_n]\sigma$ because
+$\sigma\sigma=1$ in the middle; multiplying by $(z_1-z_2)^N$ commutes with the linear map
+$X\mapsto\sigma X\sigma$.  (b) $[T,\sigma A_k\sigma]=\sigma[T,A_k]\sigma$ since $\sigma$ commutes
+with $T$. \qed
+
+\begin{status}Unconditional; standard axioms only.\end{status}
+
+\subsection{The sector decomposition and the triality data}
+
+The splittings $V_\Leech^+=\chXIVA\oplus\chXIVB$ and $T^+=T_0^+\oplus T_1^+$ were established in
+Chapter~\ref{ch:11} (\lean{frameSector_isCompl}, \lean{TPframe_isCompl}).  Consequently a linear map
+out of $\Vnat$ is determined by its four restrictions (\lean{vnat_ext}); this ``four-sector
+extensionality'' is used constantly below.
+
+\begin{definition}[$\sigma$-twisted intertwiners]\label{ch14:def:twint}
+Let $M,N$ be $\chXIVA$-modules (here: subspaces of $V_\Leech^+$ or $T^+$ with the restricted mode
+action) and $X\subseteq M$ a subspace.  A linear map $\Phi:M\to N$ is a \emph{$\sigma$-twisted
+intertwiner on $X$} if
+\begin{equation*}
+  \Phi(u_{(n)}x)=(\sigma u)_{(n)}\Phi(x)\qquad\text{for all }u\in\chXIVA,\ n\in\Z,\ x\in X.
+\end{equation*}
+\end{definition}
+\begin{leancode}
+def IsTwInt (ρ : A → ℤ → M →ₗ[ℂ] M) (τ : A → ℤ → N →ₗ[ℂ] N) (g : A → A) (S : Set A)
+    (X : Submodule ℂ M) (Φ : M →ₗ[ℂ] N) : Prop :=
+  ∀ u ∈ S, ∀ (n : ℤ), ∀ x ∈ X, Φ (ρ u n x) = τ (g u) n (Φ x)
+
+def IsSigmaV3T (Φ : VPlus →ₗ[ℂ] TP) : Prop :=
+  IsTwInt actV actT sig Set.univ (frameSector 1) Φ
+def IsSigmaTT (s : ZMod 2) (Φ : TP →ₗ[ℂ] TP) : Prop :=
+  IsTwInt actT actT sig Set.univ (TPframe s) Φ
+def IsSigmaTV (s : ZMod 2) (Φ : TP →ₗ[ℂ] VPlus) : Prop :=
+  IsTwInt actT actV sig Set.univ (TPframe s) Φ
+\end{leancode}
+(\leanpath{VOA/Moonshine/TrialityTwGeneric.lean}, \leanpath{VOA/Moonshine/TrialityTwSigma.lean}.)
+
+\begin{dictionary}
+\textbf{Decoding.}  \lean{ρ u n}, \lean{τ u n} are the $n$-th modes of $u$ on source and target;
+\lean{g = sig} is $\sigma$; \lean{S = Set.univ} means ``all $u\in\chXIVA$''.  The map $\Phi$ is defined
+on the whole ambient space ($V_\Leech^+$ or \lean{TP}), but the intertwining condition is only
+imposed for $x$ in the indicated sector $X$; this is harmless because only the restriction to $X$
+matters later.  \lean{M →ₗ[ℂ] N} is the type of $\C$-linear maps.
+
+\textbf{Same statement.}  Yes.  Note the twist is on the \emph{target} side:
+$\Phi\circ u_{(n)}=(\sigma u)_{(n)}\circ\Phi$; with $\sigma^2=1$ this is equivalent to the other
+convention.
+\end{dictionary}
+\begin{physics}
+A map between sectors that commutes with the chiral algebra $\chXIVA$ up to the outer automorphism $\sigma$: in CFT terms, $\Phi$ realises the action of a symmetry of the subtheory $\chXIVA$ that permutes its superselection sectors.
+\end{physics}
+
+
+\begin{definition}[Triality data]\label{ch14:def:sigmadata}
+\emph{Triality data} consist of a label $s\in\Z/2$ and three linear maps
+\begin{equation*}
+  \Phi:V_\Leech^+\to T^+,\qquad \Psi:T^+\to V_\Leech^+,\qquad \Theta:T^+\to T^+
+\end{equation*}
+such that $\Phi$ is a $\sigma$-twisted intertwiner on $\chXIVB$, $\Psi$ on $T_s^+$, $\Theta$ on
+$T_{s+1}^+$; $\Phi(\chXIVB)\subseteq T_s^+$, $\Psi(T_s^+)\subseteq\chXIVB$,
+$\Theta(T_{s+1}^+)\subseteq T_{s+1}^+$; and $\Psi\Phi=\mathrm{id}$ on $\chXIVB$, $\Phi\Psi=\mathrm{id}$
+on $T_s^+$, $\Theta^2=\mathrm{id}$ on $T_{s+1}^+$.
+\end{definition}
+\begin{leancode}
+structure SigmaData where
+  /-- FLM's `T₀`-label: `σ(V₃⁺) = TPframe s`. -/
+  s : ZMod 2
+  /-- `σ : V₃⁺ → T_s⁺`. -/
+  Φ : VPlus →ₗ[ℂ] TP
+  /-- `σ : T_s⁺ → V₃⁺`. -/
+  Ψ : TP →ₗ[ℂ] VPlus
+  /-- `σ : T_{s+1}⁺ → T_{s+1}⁺`. -/
+  Θ : TP →ₗ[ℂ] TP
+  isSigma_Φ : IsSigmaV3T Φ
+  isSigma_Ψ : IsSigmaTV s Ψ
+  isSigma_Θ : IsSigmaTT (s + 1) Θ
+  Φ_mem : ∀ x ∈ frameSector 1, Φ x ∈ TPframe s
+  Ψ_mem : ∀ t ∈ TPframe s, Ψ t ∈ frameSector 1
+  Θ_mem : ∀ t ∈ TPframe (s + 1), Θ t ∈ TPframe (s + 1)
+  ΨΦ : ∀ x ∈ frameSector 1, Ψ (Φ x) = x
+  ΦΨ : ∀ t ∈ TPframe s, Φ (Ψ t) = t
+  ΘΘ : ∀ t ∈ TPframe (s + 1), Θ (Θ t) = t
+\end{leancode}
+(\leanpath{VOA/Moonshine/M8hKeySigma.lean}, \lean{VOA.Moonshine.M8hKey.SigmaData}.)
+
+\begin{dictionary}
+\textbf{Decoding.}  A Lean \lean{structure} is a record: a term of type \lean{SigmaData} is a tuple
+of the data fields (\lean{s}, \lean{Φ}, \lean{Ψ}, \lean{Θ}) together with proofs of the listed
+properties.  \lean{ZMod 2} is $\Z/2$.  Every field corresponds to one clause of
+Definition~\ref{ch14:def:sigmadata}; nothing more is required.
+
+\textbf{What is \emph{not} required.}  \lean{SigmaData} does not ask that $\Phi$, $\Theta$ preserve
+the invariant forms, nor any compatibility with the fields $W$, $\overline W$.  It is thus a
+\emph{weak} notion: the free normalisations $\Phi\mapsto c\Phi$, $\Psi\mapsto c^{-1}\Psi$ ($c\ne0$) and
+$\Theta\mapsto-\Theta$ preserve it.  These freedoms are pinned later.
+
+\textbf{Could it be vacuous?}  A structure whose fields are contradictory would make every theorem
+``for all $D$: \ldots'' empty.  This one is inhabited: \S\ref{ch14:sec:assemble} constructs an
+explicit term \lean{mkData c ε}.
+\end{dictionary}
+\begin{physics}
+The candidate symmetry of the full orbifold theory, defined sector by sector: it is FLM's triality, which mixes the untwisted odd sector with a twisted sector. The physicist's expectation (to be proved) is that it is a symmetry of all OPEs, not only of those of $\chXIVA$.
+\end{physics}
+
+
+\begin{definition}[The would-be triality $\chXIVsig$]\label{ch14:def:signat}
+Given triality data $D$, let $\chXIVsig=\chXIVsig_D\in\End\Vnat$ be the operator acting by
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+sector & action of $\chXIVsig$ & lands in \\ \midrule
+$\chXIVA$ & $\sigma$ & $\chXIVA$\\
+$\chXIVB$ & $\Phi$ & $T_s^+$\\
+$T_s^+$ & $\Psi$ & $\chXIVB$\\
+$T_{s+1}^+$ & $\Theta$ & $T_{s+1}^+$\\ \bottomrule
+\end{tabular}
+\end{center}
+extended linearly using the four-sector decomposition.
+\end{definition}
+\begin{leancode}
+noncomputable def sig0 : VPlus →ₗ[ℂ] VPlus :=
+  V0Sub.carrier.subtype ∘ₗ v0Sigma.toLinearEquiv.toLinearMap ∘ₗ
+    V0Sub.carrier.projectionOnto (frameSector 1) V0_isCompl
+
+noncomputable def sigNat : End ℂ Vnat :=
+  blockOp sig0
+    (D.Ψ ∘ₗ (TPframe D.s).projection (TPframe (D.s + 1)) (TPframe_isCompl' D.s))
+    (D.Φ ∘ₗ (frameSector 1).projection V0Sub.carrier V0_isCompl.symm)
+    (D.Θ ∘ₗ (TPframe (D.s + 1)).projection (TPframe D.s) (TPframe_isCompl' D.s).symm)
+\end{leancode}
+(\leanpath{VOA/Moonshine/M8hKeySigma.lean}, \lean{VOA.Moonshine.M8hKey.sigNat}.)
+
+\begin{dictionary}
+\textbf{Decoding.}  \lean{blockOp a c d b} is the $2\times2$ block operator
+$\begin{pmatrix}a&c\\d&b\end{pmatrix}$ on $V_\Leech^+\times T^+$ (Chapter~\ref{ch:10}).
+\lean{sig0} projects onto $\chXIVA$ along $\chXIVB$, applies $\sigma$, and includes back; it is $\sigma$ on
+$\chXIVA$ and $0$ on $\chXIVB$.  The top-right block is $\Psi$ composed with the projection of $T^+$ onto
+$T_s^+$ along $T_{s+1}^+$; the bottom-left block is $\Phi$ after projecting $V_\Leech^+$ onto $\chXIVB$;
+the bottom-right is $\Theta$ after projecting onto $T_{s+1}^+$.  The Lean theorems
+\lean{sigNat_V0}, \lean{sigNat_V3}, \lean{sigNat_Ts}, \lean{sigNat_Ts1} state exactly the four rows of the
+table.  Same definition as the table.
+\end{dictionary}
+\begin{physics}
+$\chXIVsig$ is the would-be symmetry operator on the full Hilbert space $\Vnat$; in the Moonshine CFT it is the involution that, together with the obvious symmetries, generates the Monster (heuristic; not stated in Lean).
+\end{physics}
+
+
+\begin{theorem}[$\chXIVsig$ is an involution compatible with $\chXIVA$]\label{ch14:thm:signat}
+For triality data $D$:
+\begin{enumerate}[label=(\alph*)]
+\item $(\chXIVsig)^2=1$;
+\item for every $u\in\chXIVA$ and $k\in\Z$: $\chXIVsig\,Y^\natural(u)_k=Y^\natural(\sigma u)_k\,\chXIVsig$,
+  where $Y^\natural(u)$ is the diagonal field $\operatorname{diag}(Y(u,z),Y^T(u,z))$;
+  consequently $\chXIVsig Y^\natural(u)\chXIVsig=Y^\natural(\sigma u)$;
+\item $\chXIVsig$ commutes with the translation operator $L_{-1}$ of $\Vnat$, and fixes the vacuum.
+\end{enumerate}
+\end{theorem}
+\begin{leancode}
+theorem sigNat_sq : sigNat D * sigNat D = 1
+
+theorem sigNat_YnatU_V0 (u : V0Sub.carrier) (k : ℤ) :
+    sigNat D * YnatU (u : VPlus) k = YnatU ((sig u : V0Sub.carrier) : VPlus) k * sigNat D
+
+theorem conjF_YnatU_V0 (u : V0Sub.carrier) :
+    conjF (sigNat D) (YnatU (u : VPlus)) = YnatU ((sig u : V0Sub.carrier) : VPlus)
+
+theorem sigNat_Tnat : sigNat D * Tnat = Tnat * sigNat D
+
+theorem sigNat_vac : sigNat D vacNat = vacNat
+\end{leancode}
+(\leanpath{VOA/Moonshine/M8hKeySigma.lean}.)
+
+\begin{dictionary}
+\textbf{Decoding.}  \lean{YnatU u} is the field $Y^\natural((u,0),z)$, the diagonal block
+$\operatorname{diag}(Y(u,z),Y^T(u,z))$ (Chapter~\ref{ch:10}, \lean{YnatU_apply}).  \lean{YnatU u k}
+is its coefficient of $z^k$.  \lean{Tnat} is the translation operator $L_{-1}\oplus L_{-1}^T$ of $\Vnat$;
+\lean{vacNat} is $(\mathbb 1,0)$.  The coercion \lean{(u : VPlus)} views $u\in\chXIVA$ as an element of
+$V_\Leech^+$.
+
+\textbf{Hypotheses.}  Only the triality data $D$ (a section variable).  The statements are exactly
+(a)--(c).
+\end{dictionary}
+\begin{physics}
+The candidate symmetry is an involution, preserves the vacuum and the stress tensor, and is a symmetry of the subalgebra $\chXIVA$. What remains is to show it respects the OPEs involving the other three sectors.
+\end{physics}
+
+
+\paragraph{Proof on paper.}  Check each identity on each of the four sectors.  (a) On $\chXIVA$,
+$\sigma^2=1$ (Chapter~\ref{ch:11}); on $\chXIVB$, $\chXIVsig$ goes to $T_s^+$ by $\Phi$ and back by $\Psi$,
+and $\Psi\Phi=\mathrm{id}$; on $T_s^+$, $\Phi\Psi=\mathrm{id}$; on $T_{s+1}^+$, $\Theta^2=\mathrm{id}$.
+(b) The modes of $u\in\chXIVA$ preserve each of the four sectors.  On $\chXIVA$ the identity is
+$\sigma(u_{(n)}a)=(\sigma u)_{(n)}\sigma a$, i.e.\ $\sigma\in\Aut\chXIVA$; on the other three it is the
+twisted-intertwiner property of $\Phi$, $\Psi$, $\Theta$.  The conjugation form follows from (a).
+(c) Take $u=\omega$: $\sigma\omega=\omega$, and $L_{-1}$ is the coefficient of $Y^\natural(\omega)$ that
+gives $\omega_{(0)}$.  The vacuum lies in $\chXIVA$ and $\sigma\mathbb 1=\mathbb 1$. \qed
+
+\begin{status}Unconditional given $D$; standard axioms only.\end{status}
+
+\subsection{\texorpdfstring{Uniqueness using $\chXIVA$-locality only}{Uniqueness using V0+-locality only}}
+
+The heart of the conjugation argument is a uniqueness lemma.  The library already had a
+``Goddard uniqueness'' theorem from Chapter~\ref{ch:10}, which we now quote because it is the wrong
+tool here, and it is instructive to see why.
+
+\begin{leancode}
+theorem YnatT_eq_of_creates (hspan : ModeSpan g) (x : TP) (Ψ : FormalDist (End ℂ Vnat))
+    (hcov : DCovariant Tnat Ψ) (h0 : Ψ 0 vacNat = ((0 : SkewVP), x))
+    (hneg : ∀ q : ℤ, q < 0 → Ψ q vacNat = 0) (hU : ∀ v : SkewVP, Local Ψ (YnatU v))
+    (hT : ∀ j, Local Ψ (YnatT leechWbar (g j))) : YnatT leechWbar x = Ψ
+\end{leancode}
+(\leanpath{VOA/Moonshine/M8h0Gap.lean}.)  It says: a translation-covariant field $\Psi$ that creates
+$(0,x)$ from the vacuum and is local with \emph{every} untwisted field $Y^\natural(v)$,
+$v\in V_\Leech^+$, and with the twisted generators, is the block field $Y^\natural((0,x))$.
+
+\begin{warning}[title={Trap / dead end: The circularity of \lean{YnatT_eq_of_creates} in this context}]
+We want to identify $L_v=\chXIVsig Y^\natural(v)\chXIVsig$, for $v\in\chXIVB$, with
+$Y^\natural(\chXIVsig v)$.  To apply \lean{YnatT_eq_of_creates} with $\Psi=L_v$ we would need $L_v$ to be
+local with $Y^\natural(b)$ for $b\in\chXIVB$.  Conjugating by $\chXIVsig$, this is the statement that
+$Y^\natural(v)$ is local with $\chXIVsig Y^\natural(b)\chXIVsig=L_b$ — which is (part of) the very
+identity $L_b=Y^\natural(\chXIVsig b)$ to be proved, now for $b$.  Using the theorem would be circular.
+The same circularity reappears if one tries to use $\chXIVB$-locality of the difference field
+(recorded in \leanpath{Notes/SigmaKey.md} \S7).  The remedy is a uniqueness lemma that asks for
+locality with $\chXIVA$-fields only, because $\chXIVsig$ transports those for free
+(Theorem~\ref{ch14:thm:signat}(b)).
+\end{warning}
+
+\begin{theorem}[Circularity-free uniqueness]\label{ch14:thm:V0local}
+Let $F$ be a formal distribution with coefficients in $\End\Vnat$ that is local with
+$Y^\natural(u)$ for every $u\in\chXIVA$.  Fix $\beta\in\Leech\setminus\Leech_0$ and nonzero
+$t_0\in T_0$, $t_1\in T_1$.  If every coefficient of $F$ kills the four vectors
+\begin{equation*}
+  \mathbb 1,\qquad (x_\beta,0),\qquad (0,x_0(t_0)),\qquad (0,x_0(t_1)),
+\end{equation*}
+then $F=0$.
+\end{theorem}
+\begin{leancode}
+theorem eq_zero_of_V0local (F : FormalDist (End ℂ Vnat))
+    (hloc : ∀ u : V0Sub.carrier, Local F (YnatU (u : VPlus)))
+    {β : leech.carrier} (hβ : β ∉ lambda0) (t : ZMod 2 → TLeechT)
+    (ht : ∀ s, t s ∈ leechFrameT s) (ht0 : ∀ s, t s ≠ 0)
+    (hvac : ∀ p, F p vacNat = 0) (h3 : ∀ p, F p (frameX0P β, 0) = 0)
+    (hT : ∀ s p, F p (0, x0T (t s)) = 0) : F = 0
+\end{leancode}
+(\leanpath{VOA/Moonshine/M8hKeySigma.lean}, \lean{VOA.Moonshine.M8hKey.eq_zero_of_V0local}.)
+
+\begin{dictionary}
+\textbf{Decoding.}  \lean{leech.carrier} is the Leech lattice $\Leech$, \lean{lambda0} its
+frame sublattice $\Leech_0$ (Chapter~\ref{ch:11}); \lean{leechFrameT s} is the frame eigenspace
+$T_s\subseteq T$; the two vectors $t_0,t_1$ are packaged as a function \lean{t : ZMod 2 → TLeechT}.
+\lean{F p v = 0} for all $p$ says every coefficient of $F$ kills $v$.
+
+\textbf{Hypotheses.}  (i) $\chXIVA$-locality of $F$ — only $\chXIVA$, which is the point; (ii)
+$\beta\notin\Leech_0$, so that $x_\beta$ lies in $\chXIVB$ and is $\chXIVA$-cyclic there (Chapter~\ref{ch:11},
+\lean{cyc_V3}); (iii) $t_s\in T_s$ nonzero, so that $x_0(t_s)$ is $\chXIVA$-cyclic in $T_s^+$
+(\lean{cyc_T}); (iv) the four annihilation hypotheses.  No translation covariance is needed.
+
+\textbf{Same as textbook.}  This is the familiar ``a field local with a generating set and
+annihilating the cyclic vectors is zero'', in its four-sector form.
+\end{dictionary}
+\begin{physics}
+A field that is local with a chiral algebra and annihilates the lowest state of each superselection sector vanishes: the Reeh--Schlieder-type principle that states generated by local operators from a cyclic vector exhaust the sector.
+\end{physics}
+
+
+\paragraph{Proof on paper.}  Let $K=\bigcap_p\ker F_p$.  Locality plus annihilation give the
+key fact: if $F$ is local with $Y^\natural(u)$ and all $F_p$ kill $y$, then all $F_p$ kill every
+$u_{(q)}y$.  (Write $(z_1-z_2)^N[F(z_1),Y(u,z_2)]=0$ and apply to $y$; since $F(z_1)y=0$ one gets
+$(z_1-z_2)^NF(z_1)Y(u,z_2)y=0$; the series $Y(u,z_2)y$ has only finitely many negative powers of
+$z_2$, so the factor $(z_1-z_2)^N$ can be cancelled, giving $F(z_1)Y(u,z_2)y=0$.)  Thus $K$ is
+$\chXIVA$-stable.  It contains $\mathbb 1$, hence $u_{(-1)}\mathbb 1=u$ for all $u\in\chXIVA$; it
+contains the $\chXIVA$-cyclic vectors of the other three sectors, hence the three sectors.  So
+$K=\Vnat$. \qed
+
+\begin{status}Unconditional; standard axioms only.  Uses no form of (4.23).\end{status}
+
+\subsection{\texorpdfstring{The identification of $L_v$ with $R_v$, and the key identities}{The identification of L_v with R_v, and the key identities}}
+
+\begin{theorem}[Agreement on cyclic vectors suffices]\label{ch14:thm:conjV3}
+Let $D$ be triality data, $v\in\chXIVB$, and $\beta,t$ as in Theorem~\ref{ch14:thm:V0local}.  If
+$L_v=\chXIVsig Y^\natural(v)\chXIVsig$ and $R_v=Y^\natural((0,\Phi v))$ agree on $(x_\beta,0)$ and on
+$(0,x_0(t_s))$ for both $s$, then $L_v=R_v$.
+\end{theorem}
+\begin{leancode}
+theorem conjF_V3_eq {v : VPlus} (hv : v ∈ frameSector 1) {β : leech.carrier} (hβ : β ∉ lambda0)
+    (t : ZMod 2 → TLeechT) (ht : ∀ s, t s ∈ leechFrameT s) (ht0 : ∀ s, t s ≠ 0)
+    (h3 : ∀ p, conjF (sigNat D) (YnatU v) p (frameX0P β, 0) = YnatT leechWbar (D.Φ v) p (frameX0P β, 0))
+    (hT : ∀ s p, conjF (sigNat D) (YnatU v) p (0, x0T (t s)) = YnatT leechWbar (D.Φ v) p (0, x0T (t s))) :
+    conjF (sigNat D) (YnatU v) = YnatT leechWbar (D.Φ v)
+\end{leancode}
+(\leanpath{VOA/Moonshine/M8hKey.lean}.)
+
+\begin{dictionary}
+\textbf{Decoding.}  \lean{YnatT leechWbar x} is the purely twisted block field
+$Y^\natural((0,x),z)=\begin{pmatrix}0&\overline W(x,z)\\W(x,z)&0\end{pmatrix}$ built with the genuine
+adjoint \lean{leechWbar} (Chapter~\ref{ch:09}).  \lean{YnatU v} for $v\in\chXIVB$ is the untwisted block
+field of $(v,0)$.  Note that $R_v=Y^\natural(\chXIVsig(v,0))$ since $\chXIVsig(v,0)=(0,\Phi v)$.
+
+\textbf{Hypotheses.}  The two agreement hypotheses are for all coefficients $p$; there is no
+hypothesis on the vacuum — that agreement is \emph{proved}.
+\end{dictionary}
+\begin{physics}
+Two fields with the same OPEs with the even chiral algebra $\chXIVA$ and the same action on the
+lowest state of every sector are the same field.  This is how a physicist identifies the transform
+of an operator under a symmetry: compare its Ward identities and its matrix elements on primaries.
+\end{physics}
+
+
+\paragraph{Proof on paper.}  Apply Theorem~\ref{ch14:thm:V0local} to $F=L_v-R_v$.  Locality with
+$\chXIVA$: $R_v$ is local with $Y^\natural(u)$ by the module/intertwiner relations (4.20)--(4.21)
+proved in Chapter~\ref{ch:10}; $L_v$ is, because $Y^\natural(v)$ is local with $Y^\natural(\sigma u)$
+(Chapter~\ref{ch:10}) and conjugation preserves locality and turns $Y^\natural(\sigma u)$ into
+$Y^\natural(u)$ (Theorem~\ref{ch14:thm:signat}).  The vacuum: both fields are $L_{-1}$-covariant
+(conjugation preserves covariance since $\chXIVsig L_{-1}=L_{-1}\chXIVsig$), both have vanishing
+coefficients of $z^{q}$, $q<0$, on $\mathbb 1$, and both create $(0,\Phi v)$ at $z^0$ ($L_v$ because $\chXIVsig$ fixes $\mathbb 1$ and maps $(v,0)$ to $(0,\Phi v)$).
+A covariant field is determined on $\mathbb 1$ by these data: $F(z)\mathbb 1=e^{zL_{-1}}F_0\mathbb 1$.
+So $F$ kills $\mathbb 1$, and the remaining three vectors are the hypotheses. \qed
+
+\begin{definition}[The FLM three-point identities on cyclic vectors]\label{ch14:def:sigmakey}
+Let $D$ be triality data, $\beta\in\Leech\setminus\Leech_0$, and nonzero $t_s\in T_s$.  Write
+$x=x_0(t_s)\in T_s^+$ (with $s=D.s$), $v=\Psi x\in\chXIVB$, $x_3=x_\beta$, $x'=x_0(t_{s+1})$.
+\lean{SigmaKey D β t} is the conjunction of
+\begin{align*}
+ &\text{(key\_V3)} & \Theta\bigl(Y^T(v,z)\,\Phi x_3\bigr)&=W(x,z)\,x_3 &&\text{in }T_{s+1}^+,\\
+ &\text{(key\_Ts)} & \sigma\bigl(Y(v,z)\,v\bigr)&=\overline W(x,z)\,x &&\text{in }\chXIVA,\\
+ &\text{(key\_Ts1)} & \Psi\bigl(Y^T(v,z)\,\Theta x'\bigr)&=\overline W(x,z)\,x' &&\text{in }\chXIVB,
+\end{align*}
+coefficientwise, together with the side conditions on $\beta$ and $t$.
+\end{definition}
+\begin{leancode}
+structure SigmaKey (β : leech.carrier) (t : ZMod 2 → TLeechT) : Prop where
+  hβ : β ∉ lambda0
+  ht : ∀ s, t s ∈ leechFrameT s
+  ht0 : ∀ s, t s ≠ 0
+  key_V3 : ∀ p, D.Θ (plusModule.YM (D.Ψ (x0T (t D.s))) p (D.Φ (frameX0P β)))
+    = leechWsk (x0T (t D.s)) p (frameX0P β)
+  key_Ts : ∀ p, sig0 (leechVOAPlus.Y (D.Ψ (x0T (t D.s))) p (D.Ψ (x0T (t D.s))))
+    = leechWbar (x0T (t D.s)) p (x0T (t D.s))
+  key_Ts1 : ∀ p, D.Ψ (plusModule.YM (D.Ψ (x0T (t D.s))) p (D.Θ (x0T (t (D.s + 1)))))
+    = leechWbar (x0T (t D.s)) p (x0T (t (D.s + 1)))
+\end{leancode}
+(\leanpath{VOA/Moonshine/M8hKey.lean}, \lean{VOA.Moonshine.M8hKey.SigmaKey}.)
+
+\begin{dictionary}
+\textbf{Decoding.}  \lean{leechWsk x p φ} is the coefficient of $z^p$ in $W(x,z)\varphi$;
+\lean{leechWbar x p y} that of $\overline W(x,z)y$.  \lean{sig0} is $\sigma$ on $\chXIVA$ (and $0$ on $\chXIVB$);
+the product $Y(v,z)v$ of two elements of $\chXIVB$ lies in $\chXIVA$ by the fusion rules of the frame
+grading, so \lean{sig0} acts as $\sigma$ there.
+
+\textbf{Why these three, and why they are the agreements.}  The Lean theorems
+\begin{leancode}
+theorem key_V3_iff {v a : VPlus} (hv : v ∈ frameSector 1) (ha : a ∈ frameSector 1) (p : ℤ) :
+    conjF (sigNat D) (YnatU v) p (a, 0) = YnatT leechWbar (D.Φ v) p (a, 0)
+      ↔ D.Θ (plusModule.YM v p (D.Φ a)) = leechWsk (D.Φ v) p a
+theorem key_Ts_iff {v : VPlus} (hv : v ∈ frameSector 1) {y : TP} (hy : y ∈ TPframe D.s) (p : ℤ) :
+    conjF (sigNat D) (YnatU v) p (0, y) = YnatT leechWbar (D.Φ v) p (0, y)
+      ↔ sig0 (leechVOAPlus.Y v p (D.Ψ y)) = leechWbar (D.Φ v) p y
+theorem key_Ts1_iff {v : VPlus} (hv : v ∈ frameSector 1) {y : TP} (hy : y ∈ TPframe (D.s + 1)) (p : ℤ) :
+    conjF (sigNat D) (YnatU v) p (0, y) = YnatT leechWbar (D.Φ v) p (0, y)
+      ↔ D.Ψ (plusModule.YM v p (D.Θ y)) = leechWbar (D.Φ v) p y
+\end{leancode}
+show that, at $v=\Psi x$ (so $\Phi v=x$) and on the cyclic vectors, the three clauses are
+\emph{exactly} the three agreement hypotheses of Theorem~\ref{ch14:thm:conjV3}.  To see it on
+paper: $\chXIVsig$ sends $(a,0)$, $a\in\chXIVB$, to $(0,\Phi a)$; $Y^\natural(v)$ maps it to $(0,Y^T(v)\Phi a)$
+with $Y^T(v)\Phi a\in T_{s+1}^+$; $\chXIVsig$ applies $\Theta$.  The block field $R_v$ sends $(a,0)$ to
+$(0,W(\Phi v)a)$.  The other two rows are similar.
+
+\textbf{Hypothesis status.}  \lean{SigmaKey} is a \emph{genuine open input} at this stage: each clause
+compares two different intertwining operators and does not follow from the intertwining property of
+$\Phi,\Psi,\Theta$ alone.  It also pins the normalisations that \lean{SigmaData} leaves free.
+\end{dictionary}
+\begin{physics}
+Three specific three-point functions (OPE coefficients) must agree in the original and the triality-rotated pictures. If $\chXIVsig$ is a symmetry they do; these are FLM's ``key identities''.
+\end{physics}
+
+
+\begin{theorem}[(4.23) from the key identities]\label{ch14:thm:tpblock}
+If \lean{SigmaKey D β t} holds, then (i) $\chXIVsig Y^\natural(\Psi x)\chXIVsig=Y^\natural((0,x))$ for
+$x=x_0(t_s)$; (ii) (4.23) holds for \emph{all} pairs $t_1,t_2\in T^+$; (iii) $\Vnat$ carries all the
+structure listed in the final theorem.
+\end{theorem}
+\begin{leancode}
+theorem SigmaKey.conj_eq {β : leech.carrier} {t : ZMod 2 → TLeechT} (h : SigmaKey D β t) :
+    conjF (sigNat D) (YnatU (D.Ψ (x0T (t D.s)))) = YnatT leechWbar (x0T (t D.s))
+
+theorem tpBlockLocal_of_sigma {β : leech.carrier} {t : ZMod 2 → TLeechT} (h : SigmaKey D β t)
+    (t₁ t₂ : TP) : TPBlockLocal leechWbar t₁ t₂
+
+theorem moonshine_of_sigma {β : leech.carrier} {t : ZMod 2 → TLeechT} (h : SigmaKey D β t) :
+    ∃ V : VertexOperatorAlgebra Vnat,
+      V.Y = Ynat VnatAxioms.wbarL ∧ V.vacuum = vacNat ∧ V.conformalVector = omegaNat ∧
+      V.centralCharge = 24 ∧
+      V.grading 1 = ⊥ ∧
+      Module.finrank ℂ (V.grading 2) = 196884 ∧
+      (∀ n : ℕ, (Module.finrank ℂ (V.grading (n : ℤ)) : ℂ) = PowerSeries.coeff n JShift) ∧
+      V.IsSimple
+\end{leancode}
+(\leanpath{VOA/Moonshine/M8hKey.lean}.)
+
+\begin{dictionary}
+\textbf{Decoding.}  \lean{TPBlockLocal leechWbar t₁ t₂} is (4.23):
+\noindent File \leanpath{VOA/Moonshine/TTBlock.lean}.
+\begin{leancode}
+def TPBlockLocal (Wbar : TP → FormalDist (TP →ₗ[ℂ] SkewVP)) (t₁ t₂ : TP) : Prop :=
+  ∃ N : ℕ, mulBySubPow N
+    ((fun m n => leechWsk t₁ m ∘ₗ Wbar t₂ n - leechWsk t₂ n ∘ₗ Wbar t₁ m) :
+      FormalDist₂ (End ℂ TP)) = 0
+\end{leancode}
+i.e.\ $(z_1-z_2)^N\bigl(W(t_1,z_1)\overline W(t_2,z_2)-W(t_2,z_2)\overline W(t_1,z_1)\bigr)=0$, with
+\lean{mulBySubPow N} multiplication by $(z_1-z_2)^N$ on two-variable formal series.  The conclusion of
+\lean{moonshine_of_sigma} is literally the conclusion of the final theorem, decoded in
+\S\ref{ch14:sec:decode}.
+
+\textbf{Hypotheses.}  Only $D$ (implicit section variable) and $h$.  Since \lean{SigmaKey} contains the side
+conditions on $\beta$ and $t$, nothing else is assumed.
+\end{dictionary}
+\begin{physics}
+If the candidate symmetry maps one untwisted field to the corresponding twist field, mutual locality of twist fields (single-valuedness of their OPEs, the delicate point of any orbifold) is inherited from the untwisted sector. Once one twist field is local with itself, Dong's lemma propagates locality to all.
+\end{physics}
+
+
+\paragraph{Proof on paper.}  (i) By Theorem~\ref{ch14:thm:conjV3} with $v=\Psi x$, whose hypotheses are
+the clauses of \lean{SigmaKey} (by the three \lean{iff} theorems), and $\Phi\Psi x=x$.  (ii) The untwisted
+field $Y^\natural(\Psi x)$ is local with itself (Chapter~\ref{ch:10}); conjugating, by (i),
+$Y^\natural((0,x))$ is local with itself.  Self-locality of a twisted block field is the conjunction of
+(4.22) and (4.23) for the pair $(x,x)$ (\lean{YnatT_local_iff}), so (4.23) holds for $(x,x)$.  By
+Theorem~\ref{ch14:thm:modespan}, $x$ mode-spans $T^+$, and the propagation theorem of
+Chapter~\ref{ch:10} (\lean{TPBlockLocal_all_of_gen}: (4.23) on a mode-spanning family implies (4.23)
+for all pairs; its proof is Dong's lemma plus the Goddard uniqueness theorem, now used legitimately,
+because the twisted generator's locality is supplied) gives (4.23) for all pairs.  (iii) Feed (ii)
+into \lean{moonshine_of_frameLocality} (Chapter~\ref{ch:10}). \qed
+
+\begin{status}
+Conditional on \lean{SigmaKey D β t} (and on the data $D$).  \texttt{\#print axioms} \lean{VOA.Moonshine.M8hKey.moonshine_of_sigma}, re-run for this chapter with
+\lean{lake env lean -DmaxSynthPendingDepth=3}: \lean{[propext, Classical.choice, Quot.sound]}.
+No step assumes (4.23) for any pair.
+\end{status}
+
+\section{Reducing the key identities: isometries and one self-coupling}\label{ch14:sec:sigmakey}
+
+The three clauses of \lean{SigmaKey} are not independent.  The difference field
+$F_v=L_v-R_v$ (for $v\in\chXIVB$) has four off-diagonal blocks between the four sectors, and the
+invariant bilinear forms pair them up:
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+block of $F_v$ & content & how it is handled \\ \midrule
+$A\to C$ & creation & automatic (vacuum + $\chXIVA$-locality)\\
+$C\to A$ & \lean{key_Ts} & adjoint of $A\to C$, given that $\Phi$ is an isometry\\
+$B\to D'$ & \lean{key_V3} & the genuine content: \lean{KeySkew}\\
+$D'\to B$ & \lean{key_Ts1} & adjoint of $B\to D'$, given that $\Phi,\Theta$ are isometries\\
+\bottomrule
+\end{tabular}
+\end{center}
+This section makes this table precise.
+
+\subsection{Automorphisms preserve invariant forms}
+
+Recall from Definition~\ref{l04:def:invform} that an \emph{invariant bilinear form} on a VOA $W$ is a bilinear
+form $(\cdot|\cdot)$ with $(L_na|b)=(a|L_{-n}b)$, and that it is \emph{fully invariant} if for every
+homogeneous $u$ of weight $k$
+\begin{equation}\label{ch14:eq:fhl}
+  (u_{(n)}a\,|\,b)=(-1)^k\sum_{j\ge0}\frac{1}{j!}\,\bigl(a\,\big|\,(L_1^ju)_{(2k-n-2-j)}b\bigr)
+\end{equation}
+(FHL's invariance, the adjoint of $Y(u,z)$ being $Y(e^{zL_1}(-z^{-2})^{L_0}u,z^{-1})$).  It is
+\emph{normalised} if $(\mathbb 1|\mathbb 1)=1$.  For a VOA of CFT type with $L_1V_1=0$ there is
+exactly one normalised fully invariant form (\lean{invariantForm_unique_FHL}, Theorem~\ref{l04:thm:canonical}).
+
+\begin{theorem}[Automorphisms are isometries]\label{ch14:thm:autiso}
+Let $W$ be a VOA with $\mathbb 1\ne0$ and $L_1W_1=0$, $B$ a fully invariant normalised form, and
+$\alpha\in\Aut W$.  Then $B(\alpha a,\alpha b)=B(a,b)$ for all $a,b$.
+\end{theorem}
+\begin{leancode}
+theorem aut_isometry {W : VertexOperatorAlgebra 𝒱} (hne : W.vacuum ≠ 0)
+    (hqp : ∀ v, v ∈ W.grading 1 → W.L 1 v = 0) {B : InvariantForm W}
+    (hB : B.IsFullyInvariant) (hn : B.Normalized) (α : Aut W) (a b : 𝒱) :
+    B.form (α a) (α b) = B.form a b
+\end{leancode}
+(\leanpath{VOA/Moonshine/SigmaKeyForm.lean}, \lean{VOA.Moonshine.SigmaKey.aut_isometry}.)
+
+\begin{dictionary}
+\textbf{Decoding.}  \lean{InvariantForm W} bundles a bilinear form \lean{B.form} with the Virasoro
+adjointness; \lean{IsFullyInvariant} is \eqref{ch14:eq:fhl}; \lean{Normalized} is
+$(\mathbb 1|\mathbb 1)=1$.  \lean{Aut W} is the group of VOA automorphisms (linear bijections
+fixing $\mathbb 1$, $\omega$ and intertwining all modes).  Hypotheses \lean{hne}, \lean{hqp} are exactly
+those of the uniqueness theorem; \lean{hqp} is ``$L_1$ kills $W_1$''.  Note that CFT type is part
+of the library's definition of a VOA (Definition~\ref{l03:def:VOA}: $W_0=\C\mathbb 1$, $W_n=0$ for $n<0$).
+Same statement as the textbook one.
+\end{dictionary}
+\begin{physics}
+A symmetry preserves the two-point function: $\langle g a|g b\rangle=\langle a|b\rangle$. Here this follows from uniqueness of the vacuum-normalised two-point function in a CFT with no currents annihilated by $L_1$.
+\end{physics}
+
+
+\paragraph{Proof on paper.}  The pull-back $(a,b)\mapsto B(\alpha a,\alpha b)$ is again fully
+invariant (since $\alpha$ commutes with every $L_n$ and every mode) and normalised (since
+$\alpha\mathbb 1=\mathbb 1$); by uniqueness it equals $B$. \qed
+
+\begin{corollary}\label{ch14:cor:orth}
+(a) For the canonical form $B_V$ on $V_\Leech^+$: $B_V(\chXIVA,\chXIVB)=0$.
+(b) $\sigma$ is an isometry of $B_V$ restricted to $\chXIVA$.
+\end{corollary}
+\begin{leancode}
+theorem leechBV_frame_orth {a b : VPlus} (ha : a ∈ frameSector 0) (hb : b ∈ frameSector 1) :
+    leechBV a b = 0
+
+theorem leechBV_sig (a b : V0Sub.carrier) :
+    leechBV ((sig a : V0Sub.carrier) : VPlus) (sig b : V0Sub.carrier) = leechBV (a : VPlus) b
+\end{leancode}
+(\leanpath{VOA/Moonshine/SigmaKeyForm.lean}.)
+
+\begin{dictionary}
+\lean{leechBV} is the canonical (Li/FHL) normalised invariant form of $V_\Leech^+$ (Chapter~\ref{ch:09},
+\lean{leechBVForm}).  The frame sectors are the $\pm1$ eigenspaces of the frame automorphism
+$\pi$ (\lean{plusFrameAut}), which acts by $+1$ on $\chXIVA$ and $-1$ on $\chXIVB$.  (b) is stated for
+elements of $\chXIVA$, coerced into $V_\Leech^+$.  Both exactly the intended statements.
+\end{dictionary}
+\begin{physics}
+States in different eigenspaces of a $\Z/2$ symmetry have vanishing two-point functions (charge conservation); and the triality restricted to $\chXIVA$ is unitary for its two-point function.
+\end{physics}
+
+
+\paragraph{Proof on paper.}  (a) Apply Theorem~\ref{ch14:thm:autiso} to $\pi$:
+$B_V(a,b)=B_V(\pi a,\pi b)=-B_V(a,b)$.  (b) Apply it to the VOA $\chXIVA$, whose restricted form is
+fully invariant and normalised, and to $\sigma$.  ($(\chXIVA)_1=0$, so $L_1$ kills it trivially.) \qed
+
+\begin{status}Unconditional; standard axioms only.\end{status}
+
+\subsection{The three named conditions}
+
+\begin{definition}[Isometry conditions and the self-coupling identity]\label{ch14:def:iso}
+For triality data $D$ and $t$ as before, with $x=x_0(t_s)$:
+\begin{itemize}
+\item \lean{PhiIso D}: $\langle\Phi a,\Phi b\rangle_T=B_V(a,b)$ for all $a,b\in\chXIVB$;
+\item \lean{ThetaIso D}: $\langle\Theta y,\Theta y'\rangle_T=\langle y,y'\rangle_T$ for all $y,y'\in T_{s+1}^+$;
+\item \lean{KeySkew D t}: $\Theta\bigl(Y^T(\Psi x,z)x\bigr)=W(x,z)\Psi x$, coefficientwise;
+\end{itemize}
+here $\langle\cdot,\cdot\rangle_T$ is \lean{TPForm}.
+\end{definition}
+\begin{leancode}
+def PhiIso : Prop :=
+  ∀ a ∈ frameSector 1, ∀ b ∈ frameSector 1, TPForm (D.Φ a) (D.Φ b) = leechBV a b
+
+def ThetaIso : Prop :=
+  ∀ y ∈ TPframe (D.s + 1), ∀ y' ∈ TPframe (D.s + 1), TPForm (D.Θ y) (D.Θ y') = TPForm y y'
+
+def KeySkew (t : ZMod 2 → TLeechT) : Prop :=
+  ∀ p, D.Θ (plusModule.YM (D.Ψ (x0T (t D.s))) p (x0T (t D.s)))
+    = leechWsk (x0T (t D.s)) p (D.Ψ (x0T (t D.s)))
+\end{leancode}
+(\leanpath{VOA/Moonshine/SigmaKeyAdj.lean}.)
+
+\begin{dictionary}
+\textbf{Decoding.}  \lean{TPForm} is the symmetric nondegenerate invariant form on $T^+$ of
+Chapter~\ref{ch:09}.  In \lean{KeySkew}, $v=\Psi x$, the left side is $\Theta(Y^T(v,z)x)$ and the right
+side $W(x,z)v$; by the definition of $W$ this is $e^{zL_{-1}}Y^T(v,-z)x$.  So \lean{KeySkew} says: the
+series $J(z)=Y^T(v,z)x$ is mapped by $\Theta$ to its ``skew-symmetric partner''
+$e^{zL_{-1}}J(-z)$.  It is a statement about one vector-valued series.
+
+\textbf{Status as hypotheses.}  These are \emph{named Props}, i.e.\ statements to be proved; they are
+not assumed anywhere in the final theorem.  Note \lean{PhiIso} is not a normalisation that can always be
+arranged: it requires $\Phi$ to be a similitude in the first place.
+\end{dictionary}
+\begin{physics}
+\lean{PhiIso}, \lean{ThetaIso}: the candidate symmetry preserves two-point functions between sectors. \lean{KeySkew}: the OPE of one odd untwisted operator with one twist field is symmetric under exchange after applying the symmetry — a single crossing-type relation.
+\end{physics}
+
+
+\subsection{The creation block and the adjunction chains}
+
+\begin{proposition}[Creation block]\label{ch14:prop:create}
+For triality data $D$, $v\in\chXIVB$, $a\in\chXIVA$ and $m\in\Z$:
+$\Phi\bigl(v_{(m)}\sigma a\bigr)=W(\Phi v)_{(m)}a$.
+\end{proposition}
+\begin{leancode}
+theorem phi_create {v : VPlus} (hv : v ∈ frameSector 1) (a : V0Sub.carrier) (m : ℤ) :
+    D.Φ (leechVOAPlus.smul v m ((sig a : V0Sub.carrier) : VPlus))
+      = mode (leechWsk (D.Φ v)) m (a : VPlus)
+\end{leancode}
+(\leanpath{VOA/Moonshine/SigmaKeyAdj.lean}.)
+
+\begin{dictionary}
+\lean{leechVOAPlus.smul v m w} is the $m$-th product $v_{(m)}w$ in $V_\Leech^+$ (Definition~\ref{l03:def:smulT}:
+\lean{smul} is the mode action, already in mode indexing).  \lean{mode (leechWsk x) m} is
+$W(x)_{(m)}$.  Unconditional given $D$; this is \emph{not} an assumption.
+\end{dictionary}
+\begin{physics}
+The state-operator map intertwines the rotated and unrotated pictures on the even sector: creating a state with the rotated odd operator equals creating it with the twist field. This is automatic because both are fixed by their action on the vacuum.
+\end{physics}
+
+
+\paragraph{Proof on paper.}  The difference field $F_v$ is local with all $\chXIVA$-fields and
+kills the vacuum (proof of Theorem~\ref{ch14:thm:conjV3}); by the locality argument in the proof of
+Theorem~\ref{ch14:thm:V0local} it kills $u_{(-1)}\mathbb 1=u$ for every $u\in\chXIVA$.  Now compute
+both fields on $(a,0)$: $\chXIVsig(a,0)=(\sigma a,0)$; the untwisted field of $v$ maps it to
+$(v_{(m)}\sigma a,0)$ with $v_{(m)}\sigma a\in\chXIVB$ (frame grading: $B\cdot A\subseteq B$); the second
+$\chXIVsig$ maps this to $(0,\Phi(v_{(m)}\sigma a))$.  On the other side $R_v(a,0)=(0,W(\Phi v)_{(m)}a)$.
+Equality of the second components is the claim. \qed
+
+\begin{theorem}[\lean{key\_Ts} and \lean{key\_Ts1} by adjunction]\label{ch14:thm:keyTs}
+Let $D$ be triality data, $x\in T_s^+$ of weight $2$, $v=\Psi x$.
+\begin{enumerate}[label=(\alph*)]
+\item If \lean{PhiIso D}, then $\sigma\bigl(v_{(n)}\Psi y\bigr)=\overline W(x)_{(n)}y$ for all
+  $y\in T_s^+$, $n\in\Z$.
+\item If \lean{PhiIso D}, \lean{ThetaIso D}, and the whole block $B\to D'$ vanishes, i.e.\
+  $\Theta\bigl(v_{(m)}\Phi b\bigr)=W(x)_{(m)}b$ for all $b\in\chXIVB$, $m$, then
+  $\Psi\bigl(v_{(n)}\Theta y\bigr)=\overline W(x)_{(n)}y$ for all $y\in T_{s+1}^+$.
+\end{enumerate}
+\end{theorem}
+\begin{leancode}
+theorem keyTs_gen (hΦ : PhiIso D) {x : TP} (hx : x ∈ TPframe D.s)
+    (hx2 : x ∈ plusModule.weight ((2 : ℤ) : ℂ)) {y : TP} (hy : y ∈ TPframe D.s) (n : ℤ) :
+    sig0 (leechVOAPlus.smul (D.Ψ x) n (D.Ψ y)) = leechWbarMode n x y
+
+theorem keyTs1_gen (hΦ : PhiIso D) (hΘ : ThetaIso D) {x : TP} (hx : x ∈ TPframe D.s)
+    (hx2 : x ∈ plusModule.weight ((2 : ℤ) : ℂ))
+    (hV3 : ∀ b ∈ frameSector 1, ∀ m : ℤ,
+      D.Θ (mode (plusModule.YM (D.Ψ x)) m (D.Φ b)) = mode (leechWsk x) m b)
+    {y : TP} (hy : y ∈ TPframe (D.s + 1)) (n : ℤ) :
+    D.Ψ (mode (plusModule.YM (D.Ψ x)) n (D.Θ y)) = leechWbarMode n x y
+\end{leancode}
+(\leanpath{VOA/Moonshine/SigmaKeyAdj.lean}.)
+
+\begin{dictionary}
+\textbf{Decoding.}  \lean{plusModule.weight w} is the $L_0$-eigenspace of eigenvalue $w$ in $T^+$
+(weights of an ordinary module are complex numbers in the library, hence the cast
+\lean{((2 : ℤ) : ℂ)}).  \lean{leechWbarMode n x} is $\overline W(x)_{(n)}$.  The hypothesis \lean{hV3}
+in (b) is exactly ``the $B\to D'$ block vanishes for all $b$''.  Weight $2$ for $x$ is needed: it makes
+$x$ and $v$ quasi-primary, which collapses the FHL sum \eqref{ch14:eq:fhl} to one term.
+\end{dictionary}
+\begin{physics}
+Three-point functions $\langle a|\phi_1(z)|b\rangle$ can be read with any leg as the outgoing state; if the symmetry preserves two-point functions, OPE coefficients in one channel determine those in the adjoint channel.
+\end{physics}
+
+
+\paragraph{Proof on paper.}  (a) Both sides lie in $\chXIVA$, and $B_V$ is nondegenerate on $V_\Leech^+$
+with $\chXIVA\perp\chXIVB$; so it suffices to pair with $a\in\chXIVA$:
+\begin{align*}
+B_V\bigl(\overline W(x)_{(n)}y,\,a\bigr)
+ &=\langle y,\,W(x)_{(2-n)}a\rangle_T &&\text{(definition of }\overline W\text{, }L_1x=0)\\
+ &=\langle y,\,\Phi(v_{(2-n)}\sigma a)\rangle_T &&\text{(creation block)}\\
+ &=B_V\bigl(\Psi y,\,v_{(2-n)}\sigma a\bigr) &&\text{(\lean{PhiIso}, }y=\Phi\Psi y)\\
+ &=B_V\bigl(v_{(n)}\Psi y,\,\sigma a\bigr) &&\text{(invariance, }v\text{ quasi-primary of weight 2)}\\
+ &=B_V\bigl(\sigma(v_{(n)}\Psi y),\,a\bigr) &&(\sigma\text{ isometry and involution of }\chXIVA).
+\end{align*}
+(b) Similarly, pairing with $b\in\chXIVB$ and using \lean{ThetaIso}, invariance of \lean{TPForm} and
+\lean{PhiIso}:
+$B_V(\overline W(x)_{(n)}y,b)=\langle y,\Theta(v_{(2-n)}\Phi b)\rangle_T=\langle\Theta y,v_{(2-n)}\Phi b\rangle_T
+=\langle v_{(n)}\Theta y,\Phi b\rangle_T=B_V(\Psi(v_{(n)}\Theta y),b)$; pairing with $\chXIVA$ gives zero on both
+sides by sector orthogonality. \qed
+
+\begin{theorem}[\lean{SigmaKey} from the isometries and \lean{KeySkew}]\label{ch14:thm:skew}
+If \lean{PhiIso D}, \lean{ThetaIso D} and \lean{KeySkew D t} hold (with $\beta\notin\Leech_0$, $t_s\in T_s$
+nonzero), then \lean{SigmaKey D β t}; consequently all targets of the final theorem hold.
+\end{theorem}
+\begin{leancode}
+theorem sigmaKey_of_skew {β : leech.carrier} (hβ : β ∉ lambda0) {t : ZMod 2 → TLeechT}
+    (ht : ∀ s, t s ∈ leechFrameT s) (ht0 : ∀ s, t s ≠ 0)
+    (hΦ : PhiIso D) (hΘ : ThetaIso D) (hk : KeySkew D t) : SigmaKey D β t
+\end{leancode}
+(\leanpath{VOA/Moonshine/SigmaKeyAdj.lean}; the corollary is \lean{moonshine_of_skew}.)
+
+\begin{dictionary}
+All hypotheses are visible: the side conditions on $\beta,t$ and the three named Props.  The conclusion
+is the structure of Definition~\ref{ch14:def:sigmakey}.
+\end{dictionary}
+\begin{physics}
+All three key identities follow from unitarity of the symmetry on two sectors and one self-coupling OPE; this is the reduction a physicist would make by using conjugation and crossing.
+\end{physics}
+
+
+\paragraph{Proof on paper.}  The key extra observation is that $v=\Psi x$ is itself a
+$\chXIVA$-cyclic vector of $\chXIVB$: $\Psi$ is a bijection $T_s^+\to\chXIVB$ intertwining up to $\sigma$,
+and $x$ is cyclic in $T_s^+$.  \lean{KeySkew} says precisely that $F_v$ kills $(v,0)$ (by
+\lean{key_V3_iff} with $a=v$, $\Phi v=x$).  By the locality argument, $F_v$ then kills all of $\chXIVB$:
+the block $B\to D'$ vanishes identically.  This gives \lean{key_V3} (at $x_\beta$), and through
+Theorem~\ref{ch14:thm:keyTs} also \lean{key_Ts} and \lean{key_Ts1}. \qed
+
+\subsection{The isometries are top-level statements}
+
+\begin{theorem}[Top-level reduction of the isometry conditions]\label{ch14:thm:isotop}
+Let $z_0\in\chXIVB$ be $\chXIVA$-cyclic and homogeneous of weight $w$.  If
+$\langle\Phi z_0,\Phi b\rangle_T=B_V(z_0,b)$ for all $b\in(\chXIVB)_w$, then \lean{PhiIso D}.  Likewise,
+if $x'\in T_{s+1}^+$ is cyclic of weight $w$ and $\langle\Theta x',\Theta y\rangle_T=\langle x',y\rangle_T$
+for all $y\in(T_{s+1}^+)_w$, then \lean{ThetaIso D}.
+\end{theorem}
+\begin{leancode}
+theorem phiIso_of_top {z₀ : VPlus} (hz₀ : z₀ ∈ frameSector 1) {w : ℤ}
+    (hzw : z₀ ∈ leechVOAPlus.grading w)
+    (hcyc : Submodule.span ℂ {y | ∃ u ∈ (Set.univ : Set V0Sub.carrier), ∃ n : ℤ, y = actV u n z₀}
+      = frameSector 1)
+    (htop : ∀ b ∈ frameSector 1, b ∈ leechVOAPlus.grading w →
+      TPForm (D.Φ z₀) (D.Φ b) = leechBV z₀ b) : PhiIso D
+
+theorem thetaIso_of_top {x' : TP} (hx' : x' ∈ TPframe (D.s + 1)) {w : ℂ}
+    (hxw : x' ∈ plusModule.weight w)
+    (hcyc : Submodule.span ℂ {y | ∃ u ∈ (Set.univ : Set V0Sub.carrier), ∃ n : ℤ, y = actT u n x'}
+      = TPframe (D.s + 1))
+    (htop : ∀ y ∈ TPframe (D.s + 1), y ∈ plusModule.weight w →
+      TPForm (D.Θ x') (D.Θ y) = TPForm x' y) : ThetaIso D
+\end{leancode}
+(\leanpath{VOA/Moonshine/SigmaKeyTop.lean}.)
+
+\begin{dictionary}
+\textbf{Decoding.}  \lean{hcyc} says $z_0$ is $\chXIVA$-cyclic: the modes of all $u\in\chXIVA$ applied to
+$z_0$ span $\chXIVB$.  \lean{leechVOAPlus.grading w} is the weight-$w$ subspace.  \lean{htop} is one ``row''
+of the Gram matrices, on a single finite-dimensional weight space.  Same as the mathematical statement.
+\end{dictionary}
+\begin{physics}
+A two-point function of a sector generated by its lowest state is determined by the two-point function of that lowest state with other lowest states (Ward identities move all modes to one side).
+\end{physics}
+
+
+\paragraph{Proof on paper.}  The defect $F(a,b)=\langle\Phi a,\Phi b\rangle_T-B_V(a,b)$ is a symmetric
+bilinear form on $\chXIVB$ satisfying the same FHL invariance \eqref{ch14:eq:fhl} for $u\in\chXIVA$ (both
+forms do; for the first one transports $u$ through $\Phi$ as $\sigma u$, and $\sigma$ commutes with
+$L_1$).  Invariance moves every mode from the left slot to the right, so by cyclicity $F=0$ as soon as
+$F(z_0,\cdot)=0$; by symmetry and cyclicity again it suffices that $F(z_0,c)=0$ for homogeneous $c$;
+both forms vanish between different weights; so only $c$ of weight $w$ matter. \qed
+
+\begin{definition}[The finite isometry residuals]\label{ch14:def:phitop}
+\lean{PhiTop D t}: $\langle x,\Phi b\rangle_T=B_V(\Psi x,b)$ for all $b\in(\chXIVB)_2$, with $x=x_0(t_s)$.
+\lean{ThetaTop D t}: $\langle\Theta x',\Theta y\rangle_T=\langle x',y\rangle_T$ for all $y\in(T_{s+1}^+)_2$, with
+$x'=x_0(t_{s+1})$.
+\end{definition}
+\begin{leancode}
+def PhiTop (t : ZMod 2 → TLeechT) : Prop :=
+  ∀ b ∈ frameSector 1, b ∈ leechVOAPlus.grading 2 →
+    TPForm (x0T (t D.s)) (D.Φ b) = leechBV (D.Ψ (x0T (t D.s))) b
+
+def ThetaTop (t : ZMod 2 → TLeechT) : Prop :=
+  ∀ y ∈ TPframe (D.s + 1), y ∈ plusModule.weight (2 : ℂ) →
+    TPForm (D.Θ (x0T (t (D.s + 1)))) (D.Θ y) = TPForm (x0T (t (D.s + 1))) y
+\end{leancode}
+\begin{physics}
+Normalisations of the lowest states: the norms of the $49152$ lowest odd untwisted states and twisted states must match under the symmetry.
+\end{physics}
+
+
+\begin{theorem}[$\Vnat$ from two finite isometries and \lean{KeySkew}]\label{ch14:thm:top}
+\begin{leancode}
+theorem sigmaKey_of_top {β : leech.carrier} (hβ : β ∉ lambda0) {t : ZMod 2 → TLeechT}
+    (ht : ∀ s, t s ∈ leechFrameT s) (ht0 : ∀ s, t s ≠ 0)
+    (hΦ : PhiTop D t) (hΘ : ThetaTop D t) (hk : KeySkew D t) : SigmaKey D β t
+
+theorem moonshine_of_top {β : leech.carrier} (hβ : β ∉ lambda0) {t : ZMod 2 → TLeechT}
+    (ht : ∀ s, t s ∈ leechFrameT s) (ht0 : ∀ s, t s ≠ 0)
+    (hΦ : PhiTop D t) (hΘ : ThetaTop D t) (hk : KeySkew D t) :
+    ∃ V : VertexOperatorAlgebra Vnat,
+      V.Y = Ynat VnatAxioms.wbarL ∧ V.vacuum = vacNat ∧ V.conformalVector = omegaNat ∧
+      V.centralCharge = 24 ∧
+      V.grading 1 = ⊥ ∧
+      Module.finrank ℂ (V.grading 2) = 196884 ∧
+      (∀ n : ℕ, (Module.finrank ℂ (V.grading (n : ℤ)) : ℂ) = PowerSeries.coeff n JShift) ∧
+      V.IsSimple
+\end{leancode}
+\end{theorem}
+(\leanpath{VOA/Moonshine/SigmaKeyTop.lean}.)
+
+\begin{dictionary}
+In \lean{PhiTop} the cyclic vector is $z_0=\Psi x$, which has weight $2$ and satisfies $\Phi z_0=x$;
+thus \lean{PhiTop} is the \lean{htop} of Theorem~\ref{ch14:thm:isotop} for this $z_0$.  \lean{PhiTop} and
+\lean{ThetaTop} are \emph{finite}: they involve only the $49152$-dimensional weight-$2$ spaces.  The
+hypotheses of \lean{moonshine_of_top} are listed in full; nothing else enters.
+\end{dictionary}
+\begin{physics}
+The consistency of the orbifold now rests on finitely many normalisations and one OPE identity.
+\end{physics}
+
+
+\paragraph{Proof on paper.}  Theorem~\ref{ch14:thm:isotop} turns \lean{PhiTop}, \lean{ThetaTop} into
+\lean{PhiIso}, \lean{ThetaIso}; then Theorem~\ref{ch14:thm:skew} and Theorem~\ref{ch14:thm:tpblock}. \qed
+
+\begin{status}
+Conditional on $D$, \lean{PhiTop D t}, \lean{ThetaTop D t}, \lean{KeySkew D t}; standard axioms only.
+\end{status}
+
+\subsection{Normalisation: what is forced and what is free}\label{ch14:sec:norm}
+
+\lean{SigmaData} leaves free $\Phi\mapsto c\Phi$, $\Psi\mapsto c^{-1}\Psi$ ($c\ne0$) and $\Theta\mapsto-\Theta$.
+How do the residuals react?
+\begin{itemize}
+\item \lean{PhiTop} scales as $c$ on the left and $c^{-1}$ on the right.  If $\Phi$ is a
+  \emph{similitude}, $\langle\Phi a,\Phi b\rangle_T=\kappa_0B_V(a,b)$, then \lean{PhiTop} holds iff
+  $c^2\kappa_0=1$: the scalar is determined up to sign.  The remaining sign is a genuine symmetry:
+  $(\Phi,\Psi,\Theta)\mapsto(-\Phi,-\Psi,\Theta)$ is $\chXIVsig$ composed with the automorphism $-1$ on
+  $\chXIVB\oplus T_s^+$, and changes none of the clauses.
+\item \lean{ThetaTop} is insensitive to the sign of $\Theta$.  Since $\Theta^2=1$ and the invariant form on
+  $T_{s+1}^+$ is unique up to a scalar, $\langle\Theta\cdot,\Theta\cdot\rangle_T=\mu\langle\cdot,\cdot\rangle_T$
+  with $\mu=\pm1$.  \lean{ThetaTop} asserts $\mu=+1$, which is a \emph{condition}, not a normalisation.
+  If $\mu=-1$, both eigenspaces of $\Theta$ would be isotropic and \lean{SigmaKey} unsatisfiable.
+\item \lean{KeySkew} flips under $\Theta\mapsto-\Theta$; at most one sign can work.
+\end{itemize}
+
+\begin{warning}[title={Evidence: Numerical de-risking of the normalisation, and its limits}]
+Before any of this was formalised, the project tested the conditions numerically in an independent
+model of the weight-$2$ spaces built from the Niemeier lattice $N(A_1^{24})$ (route notes
+\leanpath{Notes/SigmaKey.md} \S6, scripts in \leanpath{scripts/moonshine/numerics/sigmakey/}).  Findings,
+\emph{evidence only}:
+(N1) $\Theta_J^2\propto1$, and after normalisation $\mu=1.000000000000$ ($|\mu-1|<4\cdot10^{-12}$);
+independently $\operatorname{tr}\Theta_J=-112\ne0$ excludes $\mu=-1$.
+(N2) $\Phi$ is a similitude: the ratio $\langle\Phi v,\Phi v\rangle/B_V(v,v)$ is constant to spread
+$6.7\cdot10^{-12}$, off-diagonal entries $<3.8\cdot10^{-12}$.
+(N3) The top level of \lean{key_V3}, $\Theta\,o(v)\Phi b=\varepsilon\,o(b)\Phi v$, holds on $170$ pairs with one
+global $\varepsilon$.  \emph{Caveat}: with $\Theta$ replaced by the identity the vectors were also
+proportional (they all lay in one eigenspace), so this test fixes the sign but discriminates weakly.
+The model's sector identifications and cocycle were not checked against the library's.
+In the Lean development, $\mu=+1$ was eventually \emph{proved} (\S\ref{ch14:sec:assemble}), and the
+sign was proved to be $\varepsilon=+1$ for the library's $\Theta_0$ (\S\ref{ch14:sec:toppairs}).
+\end{warning}
+
+\begin{warning}[title={Trap / dead end: Dead ends recorded at this stage}]
+(1) ``An intertwiner is determined by its top component'' is false without the full $A(M)$-bimodule
+theory: the top-level part of \lean{KeySkew} is necessary but \emph{not} sufficient; the iterate
+formula moves descendants of the input into non-top outputs.  Do not formalise ``top-level
+\lean{key_V3} $\Rightarrow$ \lean{key_V3}''.
+(2) Using $\chXIVB$-locality of $L_v$ is circular (see the warning before
+Theorem~\ref{ch14:thm:V0local}).
+(3) (4.22) gives no new information: it constrains only products of already matched blocks or the
+$B\to D'\to B$ composite, which is symmetric under the unknown scalar.
+(4) Skew-symmetry alone does not decide \lean{KeySkew}: it says that
+$J(v,z)b=\Theta Y^T(v,z)\Phi b$ is a fixed point of the involution $J\mapsto\Theta e^{zL_{-1}}J(\cdot,-z)$
+(swapping $v,b$); without a one-dimensional space of intertwiners, $J$ could have components in both
+eigenspaces.
+\end{warning}
+
+\section{The assembled triality data}\label{ch14:sec:assemble}
+
+We now produce a concrete term of type \lean{SigmaData} and prove \lean{PhiTop} and \lean{ThetaTop} for
+it.  The raw material is Chapter~\ref{ch:13}: a seed vector, explicit top-level maps, and their unique
+twisted extensions.
+
+\subsection{The seed and the explicit top maps}
+
+Recall (Chapter~\ref{ch:13}) the operators on $T$: for $j\ne k$ there are lattice vectors
+$\gamma^\pm_{jk}\in\Leech_0$ of norm $4$ (Lean \lean{gP j k}, \lean{gM j k}), with the corresponding
+normalised operators $A^\pm_{jk}=\kappa^\pm_{jk}e_{\gamma^\pm_{jk}}$ on $T$ (\lean{AP}, \lean{AM}), and
+$Z_{0k}=2A^-_{0k}$ (\lean{ZZ 0 k}).  These $Z_{0k}$, $k\ne0$, commute and square to $1$.
+
+\begin{definition}[Seed]\label{ch14:def:seed}
+A vector $t\in T$ is a \emph{seed} if $A^+_{jk}t=-\tfrac12t$ and $A^-_{jk}t=\tfrac12t$ for all $j\ne k$.
+\end{definition}
+\begin{leancode}
+def IsSeed (t : TLeechT) : Prop :=
+  ∀ j k : Fin 24, j ≠ k → AP j k t = -(1 / 2 : ℂ) • t ∧ AM j k t = (1 / 2 : ℂ) • t
+\end{leancode}
+\begin{physics}
+A seed is a twisted ground state with prescribed eigenvalues under certain lattice-shift symmetries of the ground-state space: a ``highest-weight'' reference state for the finite Heisenberg group $2^{1+24}$ acting on the $2^{12}$ ground states.
+\end{physics}
+
+(\leanpath{VOA/Moonshine/SigmaTop2Eigen.lean}.)  Chapter~\ref{ch:13} proved that a nonzero seed exists,
+and lies in a frame sector (\lean{seed_in_frame seedExists}).  We fix one: $t_0\in T_{s_0}$
+(Lean \lean{t0}, \lean{s0}, chosen by \lean{Classical.choice}; the theorems below hold for every such
+choice).
+
+The two explicit weight-$2$ maps of Chapter~\ref{ch:13} are:
+\begin{itemize}
+\item $\varphi_\star:(\chXIVB)_2\to(T^+)_2$, $\varphi_\star(x_n)=c_\star(n)\,h_{w_{j(n)}}(-\tfrac12)\otimes e_nt_0$
+  on the basis $x_n=e^n+e^{-n}$, $n\in S_1$ (a fixed half of the norm-$4$ vectors of
+  $\Leech\setminus\Leech_0$), where $j(n)$ is the coordinate of the entry $\pm3$ of $n$, $w_j$ the $j$-th frame
+  vector, and $c_\star(n)=i^{n_0}\cdot n_{j(n)}/3$, a fourth root of unity times $\pm1$; here
+  $n_0,\dots,n_{23}$ are the integer coordinates of $n$ in the scaling where
+  $\langle\mu,\nu\rangle=\tfrac18\sum_k\mu_k\nu_k$ (Lean \lean{lv}), in which a norm-$4$ vector of
+  $\Leech\setminus\Leech_0$ has shape $(\mp3,(\pm1)^{23})$ (Lean \lean{phiV = phiV3 (tauStar t0)},
+  \lean{cStar});
+\item $\varphi_B:(T_{s_0}^+)_2\to(T_{s_0}^+)_2$, $\varphi_B(h_{w_m}(-\tfrac12)\otimes t)=h_{w_m}(-\tfrac12)\otimes\psi_mt$,
+  where $\psi_0=B=\prod_{k\ne0}(a+bZ_{0k})$ (restricted to $T_{s_0}$), $\psi_m=Z_{0m}B$, with
+  $a=\tfrac12(1+\omega)$, $b=\tfrac12(1-\omega)$, $\omega=e^{i\pi/4}$ (Lean \lean{phiB = phiTT (psiOf (Bop s0))}).
+\end{itemize}
+On a joint eigenvector $z$ of the $Z_{0k}$ with eigenvalues $u_k=\pm1$, $B$ acts by $\omega^{|N|}$ with
+$N=\{k:u_k=-1\}$, because $a+b=1$ and $a-b=\omega$.
+
+\begin{definition}[The unnormalised intertwiners]\label{ch14:def:Phi0}
+$\Phi_0:\chXIVB\to T_{s_0+1}^+$ and $\Theta_0:T_{s_0}^+\to T_{s_0}^+$ are the unique $\sigma$-twisted
+intertwiners extending $\varphi_\star$ and $\varphi_B$ (Chapter~\ref{ch:13}, \lean{sigmaV3T_exists_of_top},
+\lean{sigmaTT_exists_of_top}).
+\end{definition}
+\begin{leancode}
+noncomputable def Φ0 : VPlus →ₗ[ℂ] TP := (sigmaV3T_exists_of_top topV).choose
+theorem Φ0_isSigma : IsSigmaV3T Φ0
+theorem Φ0_top : ∀ x ∈ OmegaV3, Φ0 x = phiV x
+
+noncomputable def Θ0 : TP →ₗ[ℂ] TP := (sigmaTT_exists_of_top topB t0_mem t0_ne).choose
+theorem Θ0_isSigma : IsSigmaTT s0 Θ0
+theorem Θ0_top : ∀ x ∈ OmegaT s0, Θ0 x = phiB x
+\end{leancode}
+(\leanpath{VOA/Moonshine/SigmaAssemble.lean}.)
+
+\begin{dictionary}
+\textbf{Decoding.}  \lean{.choose} picks a witness of an existence theorem; the accompanying theorems
+record its properties.  Because the extension is \emph{unique} (an intertwiner is determined on a
+cyclic vector, \lean{IsSigmaV3T.eqOn}), the choice is immaterial.  \lean{topV : TopSigmaV3 (s0 + 1) phiV} and
+\lean{topB : TopSigmaTT s0 s0 phiB} are the top-level existence certificates of Chapter~\ref{ch:13}.
+
+\textbf{Sector bookkeeping.}  $\Phi_0$ lands in $T_{s_0+1}^+$, so the triality label is $s=s_0+1$ and the
+$\Theta$-sector is $T_{s+1}^+=T_{s_0}^+$, which is where $\Theta_0$ acts (the Lean identity
+\lean{s0_add_one_add_one : s0 + 1 + 1 = s0}).
+\end{dictionary}
+\begin{physics}
+$\Phi_0,\Theta_0$ are the triality maps defined by their action on the lowest states and extended by the chiral algebra $\chXIVA$ — exactly how one constructs a symmetry operator in CFT from its action on primaries.
+\end{physics}
+
+
+\subsection{\texorpdfstring{Properties of $\Theta_0$: involution and isometry, with no rescaling}{Properties of Theta0: involution and isometry, with no rescaling}}
+
+\begin{theorem}\label{ch14:thm:psi}
+(a) For a seed $t\in T_s$ and every $m$, $\psi_m^2=1$ on $T_s$, and $\psi_m$ is an isometry of the
+invariant form $\langle\cdot,\cdot\rangle$ on $T$.  (b) Hence $\varphi_B$ is an isometric involution of
+$(T_{s_0}^+)_2$, and (c) $\Theta_0^2=1$ on $T_{s_0}^+$ and $\Theta_0$ preserves \lean{TPForm} on the top.
+\end{theorem}
+\begin{leancode}
+theorem psi_psi {s : ZMod 2} {t : TLeechT} (hts : t ∈ leechFrameT s) (ht0 : t ≠ 0) (ht : IsSeed t)
+    (m : Fin 24) {x : TLeechT} (hx : x ∈ leechFrameT s) :
+    psiOf (Bop s) m (psiOf (Bop s) m x) = x
+
+theorem TForm_psi_psi {s : ZMod 2} {t : TLeechT} (hts : t ∈ leechFrameT s) (ht0 : t ≠ 0)
+    (ht : IsSeed t) (m : Fin 24) {x y : TLeechT} (hx : x ∈ leechFrameT s) (hy : y ∈ leechFrameT s) :
+    TForm (psiOf (Bop s) m x) (psiOf (Bop s) m y) = TForm x y
+
+theorem Θ0_Θ0 : ∀ y ∈ TPframe s0, Θ0 (Θ0 y) = y
+
+theorem Θ0_isom {x y : TP} (hx : x ∈ OmegaT s0) (hy : y ∈ OmegaT s0) :
+    TPForm (Θ0 x) (Θ0 y) = TPForm x y
+\end{leancode}
+(\leanpath{VOA/Moonshine/SigmaAssembleTop.lean}, \leanpath{VOA/Moonshine/SigmaAssemble.lean}.)
+
+\begin{dictionary}
+\lean{TForm} is the symmetric invariant form on $T$ of Chapter~\ref{ch:08} (it satisfies
+$\langle e_\alpha t,t'\rangle=(-1)^{|\alpha|^2/2}\langle t,e_\alpha t'\rangle$, \lean{TForm_eT}).
+\lean{Fin 24} indexes the 24 coordinates.  The seed hypothesis is genuinely needed in (a): it is what makes
+every joint eigenvector character satisfy the Golay constraint below.  Statements identical to (a)--(c).
+\end{dictionary}
+\begin{physics}
+The triality acts on twisted ground states by a discrete Fourier-type transform whose eigenvalues are eighth roots of unity; on the physical (Golay-constrained) states it squares to one and is unitary.
+\end{physics}
+
+
+\paragraph{Proof on paper.}  Decompose $T_s$ into joint eigenvectors $z$ of the $Z_{0k}$.  On $z$ with
+character $N$, $\psi_m$ acts by $u_m\omega^{|N|}$, so $\psi_m^2$ acts by $\omega^{2|N|}$.  The Golay constraint
+of Chapter~\ref{ch:13} (\lean{golay_constraint}, \lean{four_dvd_card_of_orth}) says that the characters that
+occur in $T_s$ — given the seed — satisfy $4\mid|N|$; then $\omega^{2|N|}=\omega^{8q}=1$.  Isometry: each $Z_{0k}$
+is symmetric for the form (since $|\gamma^-|^2=4$), joint eigenvectors of different characters are
+orthogonal, hence $\psi_m$ is symmetric; symmetric and involutive means isometric.  (b) The blocks
+$h_{w_m}(-\tfrac12)\otimes T$ are mutually orthogonal for \lean{TPForm} with form $-4\langle\cdot,\cdot\rangle$
+on the diagonal, and $\varphi_B$ acts blockwise by $\psi_m$.  (c) $\Theta_0^2$ is a ($\sigma^2=1$)-twisted,
+i.e.\ honest, intertwiner which is the identity on the cyclic vector $x_0(t_0)$, hence the identity. \qed
+
+\begin{status}
+Unconditional; standard axioms only.  This \emph{proves} $\mu=+1$ (cf.\ \S\ref{ch14:sec:norm}): no
+rescaling of $\Theta_0$ was needed, consistent with the numerics.
+\end{status}
+
+\subsection{\texorpdfstring{$\Phi_0$ is a nonzero similitude}{Phi0 is a nonzero similitude}}
+
+\begin{theorem}[Similitude]\label{ch14:thm:simil}
+Let $z_0=x_{n_0}$ for a fixed $n_0\in S_1$.  Then $B_V(z_0,z_0)\ne0$, and with
+$\kappa_0=\langle\Phi_0z_0,\Phi_0z_0\rangle_T/B_V(z_0,z_0)$,
+\begin{equation*}
+  \langle\Phi_0a,\Phi_0b\rangle_T=\kappa_0\,B_V(a,b)\qquad\text{for all }a,b\in\chXIVB,
+\end{equation*}
+and $\kappa_0\ne0$.  Consequently $\Phi_0:\chXIVB\to T_{s_0+1}^+$ is bijective, and its inverse $\Psi_0$ (extended
+linearly to $T^+$) is a $\sigma$-twisted intertwiner on $T_{s_0+1}^+$.
+\end{theorem}
+\begin{leancode}
+noncomputable def κ0 : ℂ := TPForm (Φ0 z0) (Φ0 z0) / leechBV z0 z0
+
+theorem Φ0_simil : ∀ a ∈ frameSector 1, ∀ b ∈ frameSector 1,
+    TPForm (Φ0 a) (Φ0 b) = κ0 * leechBV a b
+
+theorem κ0_ne : κ0 ≠ 0
+
+theorem Φ0_inj {a b : VPlus} (ha : a ∈ frameSector 1) (hb : b ∈ frameSector 1)
+    (h : Φ0 a = Φ0 b) : a = b
+theorem Φ0_surj : ∀ y ∈ TPframe (s0 + 1), ∃ b ∈ frameSector 1, Φ0 b = y
+
+noncomputable def Ψ0 : TP →ₗ[ℂ] VPlus := exists_Ψ0.choose
+theorem Φ0_Ψ0 {y : TP} (hy : y ∈ TPframe (s0 + 1)) : Φ0 (Ψ0 y) = y
+theorem Ψ0_Φ0 {x : VPlus} (hx : x ∈ frameSector 1) : Ψ0 (Φ0 x) = x
+theorem Ψ0_isSigma : IsSigmaTV (s0 + 1) Ψ0
+\end{leancode}
+(\leanpath{VOA/Moonshine/SigmaAssemble.lean}.)
+
+\begin{dictionary}
+\textbf{Decoding.}  \lean{z0 := frameX0P (nvec 0)}.  Division in \lean{κ0} is honest field division in $\C$;
+the theorem \lean{bv_z0 : leechBV z0 z0 ≠ 0} guarantees the denominator is nonzero, so \lean{κ0} is not
+a junk value (in Lean, $x/0=0$, which would have made \lean{Φ0_simil} suspicious had the denominator
+vanished).  \lean{Ψ0} is obtained by extending the inverse of the linear bijection
+$\chXIVB\to T_{s_0+1}^+$ arbitrarily to a complement; only its values on $T_{s_0+1}^+$ ever matter.
+\end{dictionary}
+\begin{physics}
+The triality map from odd untwisted states to twisted states preserves two-point functions up to one overall constant, which can be absorbed in the normalisation of the twisted sector.
+\end{physics}
+
+
+\paragraph{Proof on paper.}  Both $(a,b)\mapsto\langle\Phi_0a,\Phi_0b\rangle_T$ and $B_V$ are invariant
+symmetric forms on $\chXIVB$ for which the zero mode $o(n(-1)^2\mathbb 1)$ ($n\in S_1$) is symmetric.  On the
+top basis $x_m$ this zero mode has eigenvalue $\langle n,m\rangle^2$, and $\langle n,n\rangle^2=16\ne\langle n,m\rangle^2$
+for $m\ne n$ in $S_1$ (since $\langle n,m\rangle=\pm4$ would force $n\mp m$ to have norm $0$).  Hence the basis is
+orthogonal for both forms and each Gram matrix is determined by its row at $z_0$ restricted to the
+top; by the top-level reduction (Theorem~\ref{ch14:thm:isotop}, scaled by $\kappa_0$), proportionality on
+one row propagates to all of $\chXIVB$.  $B_V(z_0,z_0)\ne0$ because otherwise $z_0$ would be in the radical
+of $B_V$ (by the same propagation with $\Phi=0$), contradicting nondegeneracy.  If $\kappa_0=0$, then
+\lean{TPForm} would vanish on $\Phi_0(\chXIVB)=T_{s_0+1}^+$ (surjectivity: $\Phi_0$ hits a cyclic vector), where it
+is nondegenerate.  Injectivity follows from $\kappa_0\ne0$ and nondegeneracy of $B_V$. \qed
+
+\begin{status}Unconditional; standard axioms only.\end{status}
+
+\subsection{\texorpdfstring{The triality data $D(c,\varepsilon)$}{The triality data D(c,epsilon)}}
+
+\begin{definition}[$D(c,\varepsilon)$]\label{ch14:def:mkData}
+For $c\in\C^\times$ and $\varepsilon$ with $\varepsilon^2=1$, the triality data
+$D(c,\varepsilon)$ have $s=s_0+1$, $\Phi=c\Phi_0$, $\Psi=c^{-1}\Psi_0$, $\Theta=\varepsilon\Theta_0$.
+\end{definition}
+\begin{leancode}
+noncomputable def mkData (c ε : ℂ) (hc : c ≠ 0) (hε : ε * ε = 1) : SigmaData where
+  s := s0 + 1
+  Φ := c • Φ0
+  Ψ := c⁻¹ • Ψ0
+  Θ := ε • Θ0
+\end{leancode}
+(\leanpath{VOA/Moonshine/SigmaAssemble.lean}; the proof fields are omitted — they are the properties
+established above, rescaled.)
+
+\begin{dictionary}
+This is the whole normalisation freedom of \S\ref{ch14:sec:norm} made explicit.  The hypothesis
+$\varepsilon\varepsilon=1$ allows exactly $\varepsilon=\pm1$.  Its existence shows that \lean{SigmaData}
+is inhabited, so none of the earlier universally quantified results over $D$ is vacuous.
+\end{dictionary}
+\begin{physics}
+The ambiguity in normalising a symmetry operator on sectors: an overall rescaling of a sector and a sign on a self-paired sector.
+\end{physics}
+
+
+\begin{theorem}[Isometries for the normalised data]\label{ch14:thm:isomk}
+(a) There is $c$ with $c^2\kappa_0=1$.  (b) For such $c$ and either $\varepsilon$, \lean{PhiIso} holds for
+$D(c,\varepsilon)$.  (c) For every $c\ne0$ and $\varepsilon$, \lean{ThetaTop} holds for $D(c,\varepsilon)$ with the
+frame vectors $t_{s_0}=t_0$, $t_{s_0+1}=e_{m_0}t_0$.
+\end{theorem}
+\begin{leancode}
+theorem exists_norm : ∃ c : ℂ, c * c * κ0 = 1
+
+theorem phiIso_mkData {c ε : ℂ} (hc : c * c * κ0 = 1) (hε : ε * ε = 1) :
+    PhiIso (mkData c ε (c_ne_of_norm hc) hε)
+
+noncomputable def tF (s' : ZMod 2) : TLeechT := if s' = s0 then t0 else eL (mvec 0) t0
+
+theorem thetaTop_mkData (c ε : ℂ) (hc : c ≠ 0) (hε : ε * ε = 1) :
+    ThetaTop (mkData c ε hc hε) tF
+\end{leancode}
+(\leanpath{VOA/Moonshine/SigmaAssemble.lean}.)
+
+\begin{dictionary}
+\lean{eL (mvec 0)} is the operator $e_{m_0}$ for a fixed $m_0\in\Leech\setminus\Leech_0$, which swaps the frame
+sectors of $T$ (\lean{tF_mem}); \lean{tF_ne} records $t_{s}\ne0$.  The theorem \lean{phiTop_of_phiIso}
+converts \lean{PhiIso} into \lean{PhiTop} for any $D$.  These are exactly the needed residuals, now
+\emph{proved}.
+\end{dictionary}
+\begin{physics}
+With the right normalisation the triality is unitary on the relevant sectors; the possible obstruction $\mu=-1$ (an anti-unitary-like sign) does not occur.
+\end{physics}
+
+
+\paragraph{Proof on paper.}  (a) $\C$ is algebraically closed and $\kappa_0\ne0$.  (b)
+$\langle c\Phi_0a,c\Phi_0b\rangle=c^2\kappa_0B_V(a,b)$.  (c) The rescaling by $\varepsilon$ squares away,
+and $\Theta_0$ is an isometry on the top (Theorem~\ref{ch14:thm:psi}). \qed
+
+\subsection{The one remaining hypothesis}
+
+\begin{definition}[$c$-free self-coupling]\label{ch14:def:keyskew0}
+With $x_K=x_0(t_{s_0+1})\in T_{s_0+1}^+$:
+\lean{KeySkew0 ε} $:\iff$ $\varepsilon\,\Theta_0\bigl(Y^T(\Psi_0x_K,z)x_K\bigr)=W(x_K,z)\Psi_0x_K$.
+\end{definition}
+\begin{leancode}
+noncomputable def xK : TP := x0T (tF (s0 + 1))
+
+def KeySkew0 (ε : ℂ) : Prop :=
+  ∀ p, ε • Θ0 (plusModule.YM (Ψ0 xK) p xK) = leechWsk xK p (Ψ0 xK)
+
+theorem keySkew_mkData_iff (c ε : ℂ) (hc : c ≠ 0) (hε : ε * ε = 1) :
+    KeySkew (mkData c ε hc hε) tF ↔ KeySkew0 ε
+
+theorem moonshine_of_keySkew0 (h : KeySkew0 1 ∨ KeySkew0 (-1)) :
+    ∃ V : VertexOperatorAlgebra Vnat,
+      V.Y = Ynat VnatAxioms.wbarL ∧ V.vacuum = vacNat ∧ V.conformalVector = omegaNat ∧
+      V.centralCharge = 24 ∧
+      V.grading 1 = ⊥ ∧
+      Module.finrank ℂ (V.grading 2) = 196884 ∧
+      (∀ n : ℕ, (Module.finrank ℂ (V.grading (n : ℤ)) : ℂ) = PowerSeries.coeff n JShift) ∧
+      V.IsSimple
+\end{leancode}
+(\leanpath{VOA/Moonshine/SigmaAssemble.lean}.)
+
+\begin{dictionary}
+\textbf{Why $c$ drops out.}  With $\Psi=c^{-1}\Psi_0$, both sides of \lean{KeySkew} are linear in
+$\Psi x$, hence scale by $c^{-1}$; \lean{keySkew_mkData_iff} cancels it.  The disjunction in
+\lean{moonshine_of_keySkew0} is honest: at this stage the sign was not determined in Lean.
+
+\textbf{Hypotheses.}  Only \lean{h}.  The conclusion is the final theorem's.
+\end{dictionary}
+\begin{physics}
+The single remaining OPE identity, now free of normalisation ambiguity except for one sign.
+\end{physics}
+
+
+\begin{status}
+\lean{moonshine_of_keySkew0}: conditional on \lean{KeySkew0 1 ∨ KeySkew0 (-1)}; \texttt{\#print axioms}
+(re-run): \lean{[propext, Classical.choice, Quot.sound]}.  \lean{mkData}, \lean{phiIso_mkData},
+\lean{thetaTop_mkData}: unconditional.
+\end{status}
+
+\section{The self-coupling identity reduced to top-level output data}\label{ch14:sec:keyskew}
+
+\subsection{The block defect}
+
+\lean{KeySkew} is one entry of a larger object.  For $v,b\in\chXIVB$ the two candidate $B\to D'$ blocks
+are $b\mapsto\Theta(Y^T(v,z)\Phi b)$ (from $\chXIVsig Y^\natural(v)\chXIVsig$) and
+$b\mapsto W(\Phi v,z)b$ (from $Y^\natural(\chXIVsig v)$).
+
+\begin{definition}[Block defect]\label{ch14:def:Dq}
+For triality data $D$, $v,b\in V_\Leech^+$ and $q\in\Z$,
+\begin{equation*}
+  D_q(v,b)=\Theta\bigl(v_{(q)}\Phi b\bigr)-W(\Phi v)_{(q)}b\in T^+,
+  \qquad
+  W(t)_{(q)}\varphi=\sum_{i\ge0}\frac{(-1)^{q+i+1}}{i!}L_{-1}^i\bigl(\varphi_{(q+i)}t\bigr).
+\end{equation*}
+\end{definition}
+\begin{leancode}
+noncomputable def Dq (v b : VPlus) (q : ℤ) : TP :=
+  D.Θ (mode (plusModule.YM v) q (D.Φ b)) - mode (leechWsk (D.Φ v)) q b
+\end{leancode}
+File \leanpath{VOA/Moonshine/KeySkewBlock.lean}.
+
+\begin{dictionary}
+\lean{mode (plusModule.YM v) q} is $v_{(q)}$ on $T^+$; \lean{mode (leechWsk x) q} is $W(x)_{(q)}$, whose
+expansion in the display is the library theorem \lean{mode_leechWsk} (Chapter~\ref{ch:09}).  The
+definition is made for all $v,b\in V_\Leech^+$ but used only for $v,b\in\chXIVB$, where
+$D_q(v,b)\in T_{s+1}^+$ (\lean{Dq_mem}).  \lean{KeySkew D t} is exactly $D_q(\Psi x,\Psi x)=0$ for all $q$
+(since $\Phi\Psi x=x$).
+\end{dictionary}
+
+\begin{physics}
+$D_q(v,b)$ measures the failure of the triality to be a symmetry of one particular operator product:
+the OPE of the untwisted operator $v$ with the untwisted operator $b$, both in the ``odd'' frame
+sector $\chXIVB$, \emph{after} rotating by $\chXIVsig$, compared with the OPE of the twist field
+$\Phi v$ with $b$.  In a genuine CFT with a symmetry $\chXIVsig$ these OPE coefficients agree, so
+the defect is a quantity that a physicist expects to vanish identically; proving that it does is
+the content of the rest of the chapter.
+\end{physics}
+
+Coefficient by coefficient, writing $v=\Psi x$, the output weight is $w=3-q$, and \lean{KeySkew} reads
+\begin{align*}
+ w=2:&\quad \Theta(o(v)x)=o(v)x,\\
+ w=3:&\quad \Theta(v_{(0)}x)=L_{-1}(v_{(1)}x)-v_{(0)}x,\\
+ w=4:&\quad \Theta(v_{(-1)}x)=v_{(-1)}x-L_{-1}v_{(0)}x+\tfrac12L_{-1}^2v_{(1)}x .
+\end{align*}
+Equivalently, with $K(z)=e^{-zL_{-1}/2}Y^T(v,z)x$, \lean{KeySkew} says $\Theta K_w=(-1)^wK_w$ on each weight
+component (an analysis remark from \leanpath{Notes/KeySkew.md}, not formalised).
+
+\begin{warning}[title={Evidence: Numerical evidence at weights 3 and 4}]
+In the $N(A_1^{24})$ model (\leanpath{Notes/KeySkew.md} \S1, \leanpath{scripts/moonshine/numerics/keyskew/}),
+the general block identity $\Theta Y^T(v,z)\Phi b=e^{zL_{-1}}Y^T(b,-z)\Phi v$ was tested through
+lowering modes: at weight 3 on about $5300$ nonzero identities (residual $1.1\cdot10^{-11}$) and at
+weight 4 on about $3300$ ($1.1\cdot10^{-11}$).  Controls fail decisively: $-\Theta$ gives residual $2.0$,
+$\Theta\to\mathrm{Id}$ at least $0.32$, dropping $L_{-1}$ at least $0.75$.  This is evidence, not proof;
+the tests see a $323$-dimensional slice per fibre, not the whole weight space.
+\end{warning}
+
+\subsection{The commutator formula and Li's lemma}
+
+\begin{proposition}[Commutator formula for the defect]\label{ch14:prop:Dqcomm}
+For $v,b\in\chXIVB$, $u\in\chXIVA$, $m,q\in\Z$ there is $J\in\N$ with
+\begin{equation*}
+  u_{(m)}D_q(v,b)=D_q(v,u_{(m)}b)+\sum_{r<J}\binom{m}{r}\,D_{m+q-r}\bigl((\sigma u)_{(r)}v,\,b\bigr).
+\end{equation*}
+\end{proposition}
+\begin{leancode}
+theorem Dq_comm {v b : VPlus} (hv : v ∈ frameSector 1) (hb : b ∈ frameSector 1)
+    (u : V0Sub.carrier) (m q : ℤ) :
+    ∃ J : ℕ, actT u m (Dq D v b q) = Dq D v (actV u m b) q
+      + ∑ r ∈ Finset.range J, gBinom m r • Dq D (actV (sig u) r v) b (m + q - r)
+\end{leancode}
+File \leanpath{VOA/Moonshine/KeySkewBlock.lean}.
+
+\begin{dictionary}
+\lean{gBinom m r} is the generalised binomial coefficient $\binom mr=m(m-1)\cdots(m-r+1)/r!$, valid for
+negative $m$.  The existential $J$ is any bound beyond which $(\sigma u)_{(r)}v=0$ (truncation).  This is
+the textbook intertwining commutator formula, applied to both terms of the defect.
+\end{dictionary}
+
+\begin{physics}
+This is the Ward identity for the $\chXIVA$-symmetry: moving a mode of a symmetry current past an
+OPE coefficient produces the OPE coefficients of the transformed operators.  Both candidate blocks
+satisfy the same Ward identity (one because $\Phi,\Theta$ intertwine up to $\sigma$, the other because
+$W$ is built from the module vertex operator), hence so does their difference.
+\end{physics}
+
+\paragraph{Proof on paper.}  For the first term: $u_{(m)}\Theta=\Theta(\sigma u)_{(m)}$, then the module
+commutator formula $[(\sigma u)_{(m)},v_{(q)}]=\sum_r\binom mr((\sigma u)_{(r)}v)_{(m+q-r)}$ on $T^+$, and
+$(\sigma u)_{(m)}\Phi b=\Phi(u_{(m)}b)$.  For the second term: the commutator formula for the skew
+intertwiner $W$, proved in Chapter~\ref{ch:09} (\lean{leechWsk_comm}), together with
+$u_{(r)}\Phi v=\Phi((\sigma u)_{(r)}v)$.  Subtract. \qed
+
+\begin{lemma}[Only the $i=0$ term of $W$ survives against weight 2]\label{ch14:lem:Wtop}
+For $y\in(T^+)_2$, $t\in T^+$, $\varphi\in V_\Leech^+$:
+$\langle y,W(t)_{(q)}\varphi\rangle_T=(-1)^{q+1}\langle y,\varphi_{(q)}t\rangle_T$.
+\end{lemma}
+\begin{leancode}
+theorem TPForm_W_top {y : TP} (hy : y ∈ plusModule.weight (2 : ℂ)) (t : TP) (q : ℤ) (φ : VPlus) :
+    TPForm y (mode (leechWsk t) q φ) = negOnePow (q + 1) * TPForm y (mode (plusModule.YM φ) q t)
+\end{leancode}
+File \leanpath{VOA/Moonshine/KeySkewBlock.lean}.
+
+\begin{dictionary}
+\lean{negOnePow k} is $(-1)^k$ for $k\in\Z$.  No hypothesis on $t$ or $\varphi$.
+\end{dictionary}
+
+\begin{physics}
+The terms $L_{-1}^i(\cdots)$, $i\ge1$, are derivatives (descendants); they pair to zero with a
+primary state of lowest weight, since $L_1$ annihilates $y$.  In CFT language: a two-point function
+with a lowest-weight state only sees the primary part of the OPE.
+\end{physics}
+
+\paragraph{Proof.}  $\langle y,L_{-1}^iX\rangle=\langle L_1^iy,X\rangle=0$ for $i\ge1$, since $L_1y$ has weight $1$
+and $T^+$ has nothing below weight $2$. \qed
+
+\begin{theorem}[Li's lemma for the block defect]\label{ch14:thm:li}
+Let $x'$ be a $\chXIVA$-cyclic vector of $T_{s+1}^+$.  If $\langle x',D_q(v,b)\rangle_T=0$ for all
+$v,b\in\chXIVB$ and all $q$, then $D_q(v,b)=0$ for all $v,b\in\chXIVB$, $q\in\Z$.
+\end{theorem}
+\begin{leancode}
+theorem Dq_eq_zero_of_pair {x' : TP}
+    (hcyc : Submodule.span ℂ {y | ∃ u ∈ (Set.univ : Set V0Sub.carrier), ∃ n : ℤ, y = actT u n x'}
+      = TPframe (D.s + 1))
+    (hpair : ∀ v ∈ frameSector 1, ∀ b ∈ frameSector 1, ∀ q : ℤ, TPForm x' (Dq D v b q) = 0)
+    {v b : VPlus} (hv : v ∈ frameSector 1) (hb : b ∈ frameSector 1) (q : ℤ) : Dq D v b q = 0
+\end{leancode}
+File \leanpath{VOA/Moonshine/KeySkewBlock.lean}.
+
+\begin{dictionary}
+The conclusion is a vector equation; the hypothesis is a family of scalar equations against one
+vector.  \lean{hcyc} is cyclicity of $x'$.  Same as stated.
+\end{dictionary}
+
+\begin{physics}
+A correlation function $\langle x'|\,\mathcal O\,\rangle$ with all possible insertions of symmetry
+currents determines the state $\mathcal O$ when $x'$ generates the sector: the
+``state--operator'' principle that states are determined by their overlaps with a complete set of
+descendants of one cyclic state.  This is the mechanism of Li's uniqueness theorem for
+intertwining operators.
+\end{physics}
+
+\paragraph{Proof on paper.}  The set of $y\in T_{s+1}^+$ with $\langle y,D_q(v,b)\rangle=0$ for all $v,b,q$
+contains $x'$ and is stable under the modes of $\chXIVA$: by FHL invariance \eqref{ch14:eq:fhl},
+$\langle u_{(n)}x',D\rangle$ is a combination of $\langle x',(L_1^ju)_{(\cdot)}D\rangle$, and by
+Proposition~\ref{ch14:prop:Dqcomm} each $u'_{(m)}D_q(v,b)$ is a combination of defects, which pair to zero
+with $x'$.  By cyclicity it is all of $T_{s+1}^+$.  The defect also pairs to zero with $T_s^+$ (the two
+frame sectors are orthogonal), so it lies in the radical of the nondegenerate \lean{TPForm}. \qed
+
+\begin{theorem}[Input reduction]\label{ch14:thm:pairb0}
+Let $b_0\in(\chXIVB)_2$ be $\chXIVA$-cyclic.  If $\langle y,D_q(v,b_0)\rangle_T=0$ for all $v\in\chXIVB$, all
+$q$ and all $y\in(T_{s+1}^+)_2$, then the same holds with $b_0$ replaced by any $b\in\chXIVB$.
+\end{theorem}
+\begin{leancode}
+theorem pair_of_b0 {b₀ : VPlus} (hb₀ : b₀ ∈ frameSector 1) (hb₀2 : b₀ ∈ leechVOAPlus.grading 2)
+    (hcyc : Submodule.span ℂ {y | ∃ u ∈ (Set.univ : Set V0Sub.carrier), ∃ n : ℤ, y = actV u n b₀}
+      = frameSector 1)
+    (h0 : ∀ v ∈ frameSector 1, ∀ q : ℤ, ∀ y ∈ TPframe (D.s + 1), y ∈ plusModule.weight (2 : ℂ) →
+      TPForm y (Dq D v b₀ q) = 0)
+    {b : VPlus} (hb : b ∈ frameSector 1) :
+    ∀ v ∈ frameSector 1, ∀ q : ℤ, ∀ y ∈ TPframe (D.s + 1), y ∈ plusModule.weight (2 : ℂ) →
+      TPForm y (Dq D v b q) = 0
+\end{leancode}
+File \leanpath{VOA/Moonshine/KeySkewBlock.lean}.
+
+\begin{dictionary}
+The only pairings tested are against \emph{top} vectors $y$ (weight $2$).  Hypotheses: cyclicity and
+weight $2$ of $b_0$.  Same as stated.
+\end{dictionary}
+
+\begin{physics}
+Inputs can be moved off the primary $b_0$ by symmetry Ward identities: every state of $\chXIVB$ is a
+descendant of $b_0$ under the $\chXIVA$-algebra, and the top-level three-point functions of
+descendants are fixed by those of the primary.
+\end{physics}
+
+\paragraph{Proof on paper.}  Write $b=u_{(n)}b_0$ for homogeneous $u$ (cyclicity).  By
+Proposition~\ref{ch14:prop:Dqcomm}, $D_q(v,u_{(n)}b_0)=u_{(n)}D_q(v,b_0)-\sum_r\binom nr D_{n+q-r}((\sigma u)_{(r)}v,b_0)$;
+the sum pairs to zero with $y$ by hypothesis (it is a defect with input $b_0$).  For the first term,
+FHL invariance moves $u_{(n)}$ onto $y$, producing vectors of weight $n-\wt u+3$: if this is $2$, they are
+top vectors and the hypothesis applies; if it is below $2$, they vanish.  If $u_{(n)}b_0$ itself has weight
+below $2$ it is zero.  (The two lowest-weight facts used: $\chXIVB$ and $T^+$ start in weight $2$.) \qed
+
+\begin{definition}[Top-output residual]\label{ch14:def:keytopv}
+\lean{KeyTopV D t}: for every $k$ and every $v\in(\chXIVB)_k$,
+$\Theta\bigl(o(v)x\bigr)=(-1)^k(\Psi x)_{(k-1)}\Phi(v)$ with $x=x_0(t_s)$.  Its $k=2$ slice
+\lean{KeyTopTwo} is $\Theta(o(v)x)=o(\Psi x)\Phi(v)$.
+\end{definition}
+\begin{leancode}
+def KeyTopV (t : ZMod 2 → TLeechT) : Prop :=
+  ∀ (k : ℤ), ∀ v ∈ frameSector 1, v ∈ leechVOAPlus.grading k →
+    D.Θ (mode (plusModule.YM v) (k - 1) (x0T (t D.s)))
+      = negOnePow k • mode (plusModule.YM (D.Ψ (x0T (t D.s)))) (k - 1) (D.Φ v)
+
+def KeyTopTwo (t : ZMod 2 → TLeechT) : Prop :=
+  ∀ v ∈ frameSector 1, v ∈ leechVOAPlus.grading 2 →
+    D.Θ (mode (plusModule.YM v) 1 (x0T (t D.s)))
+      = mode (plusModule.YM (D.Ψ (x0T (t D.s)))) 1 (D.Φ v)
+\end{leancode}
+File \leanpath{VOA/Moonshine/KeySkewBlock.lean}.
+
+\begin{dictionary}
+\lean{mode (plusModule.YM v) (k - 1)} for $v$ of weight $k$ is the zero mode $o(v)$; applied to the weight-2
+vector $x$ it gives a weight-2 vector.  The right side is the weight-2 output of $W(x)$ applied to $v$,
+rewritten via Lemma~\ref{ch14:lem:Wtop}.  \lean{KeyTopV} is \emph{not finite}: $k$ is unbounded.
+\end{dictionary}
+
+\begin{physics}
+\lean{KeyTopV} compares, for every operator $v$ of the sector $\chXIVB$, the \emph{primary-to-primary}
+three-point coefficient $\langle\text{top}|\,v\,|x\rangle$ computed in the two pictures.  It is the
+collection of all three-point functions with two legs on the lowest twisted states.
+\end{physics}
+
+\begin{theorem}[\lean{KeySkew} from top-level output data]\label{ch14:thm:keytopv}
+If \lean{KeyTopV D t} holds (with $t_s\in T_s$ nonzero), then \lean{KeySkew D t}; consequently, together with
+\lean{PhiTop} and \lean{ThetaTop}, all targets of the final theorem hold.
+\end{theorem}
+\begin{leancode}
+theorem keySkew_of_keyTopV {t : ZMod 2 → TLeechT} (ht : ∀ s, t s ∈ leechFrameT s)
+    (ht0 : ∀ s, t s ≠ 0) (hk : KeyTopV D t) : KeySkew D t
+\end{leancode}
+File \leanpath{VOA/Moonshine/KeySkewBlock.lean}; the corollary is \lean{moonshine_of_keyTopV}.
+
+\begin{dictionary}
+Hypotheses: frame membership and non-vanishing of $t_s$ (needed for cyclicity), and \lean{KeyTopV}.
+\end{dictionary}
+
+\begin{physics}
+A ``bootstrap'' statement: all OPE coefficients of the defect are determined by its primary
+three-point functions, so it vanishes once those do.
+\end{physics}
+
+\paragraph{Proof on paper.}  \lean{KeyTopV} gives, by linearity and a weight count,
+$\langle y,D_q(v,\Psi x)\rangle=0$ for all top $y$, all $v$, $q$ (only $q=\wt v-1$ is nontrivial; the other
+components have the wrong weight).  Theorem~\ref{ch14:thm:pairb0} with $b_0=\Psi x$ extends this to all
+inputs $b$; in particular to $\langle x',D_q(v,b)\rangle=0$ for the cyclic $x'=x_0(t_{s+1})$; Li's lemma
+gives $D\equiv0$, and in particular $D_q(\Psi x,\Psi x)=0$. \qed
+
+\begin{status}
+\lean{Dq_comm}, \lean{TPForm_W_top}, \lean{Dq_eq_zero_of_pair}, \lean{pair_of_b0}: unconditional given $D$.
+\lean{keySkew_of_keyTopV}: conditional on \lean{KeyTopV}.  \texttt{\#print axioms} of \lean{Dq_eq_zero_of_pair}
+(re-run): \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\begin{warning}[title={Trap / dead end: Dead ends on the way to finiteness}]
+(1) Reducing the \emph{state} slot $v$ by the same trick would need the iterate (associativity)
+formula for both blocks; for $W$ that is the intertwining Jacobi identity, which the library does not
+have, and even with it the recursion does not close on the top level.  (2) Induction on total weight
+$\wt v+\wt b$ using skew-symmetry and \lean{Dq_comm} does not close: zero-mode reductions raise the
+state weight.  (3) \lean{Modules.Fusion.Intertwiner} is commutator-only (no $L_{-1}$ or associativity
+axiom), so its \lean{fusionCoeff} is \emph{not} the classical fusion rule; do not route uniqueness
+through it.
+\end{warning}
+
+\section{The Frenkel--Zhu bimodule route}\label{ch14:sec:fz}
+
+\subsection{Why bimodules}
+
+Zhu's algebra $A(V)=V/O(V)$ (Chapter~\ref{ch:12}) captures the action of zero modes on lowest-weight
+spaces.  Frenkel and Zhu (1992) extended this to a $V$-module $M$: there is an $A(V)$-\emph{bimodule}
+$A(M)=M/O(M)$, and an intertwining operator of type $\binom{M_3}{M\ M_1}$ induces, on lowest-weight
+spaces, a map $A(M)\otimes_{A(V)}M_1^{\mathrm{top}}\to M_3^{\mathrm{top}}$.  Li showed that the
+intertwiner is \emph{determined} by this top-level map.  For us: \lean{KeyTopV} compares two such
+top-level maps $\varphi_1,\varphi_2:\chXIVB\to(T_{s+1}^+)_2$.  If both factor through $A(\chXIVB)$ and are
+compatible with the left and right $A(\chXIVA)$-actions, and if $A(\chXIVB)$ is generated as a bimodule by
+its top level $(\chXIVB)_2$, then $\varphi_1=\varphi_2$ follows from equality on the top: a \emph{finite}
+statement.
+
+\subsection{The Frenkel--Zhu operations}
+
+\begin{definition}[Frenkel--Zhu operations]\label{ch14:def:fz}
+Let $W$ be a VOA, $M$ a weak $W$-module, $a\in W_p$ homogeneous, $m\in M$.
+\begin{align*}
+ a*m&=\Res_z z^{-1}(1+z)^pY(a,z)m=\sum_{i=0}^p\binom pi a_{(i-1)}m,\\
+ m*a&=\Res_z z^{-1}(1+z)^{p-1}Y(a,z)m=\sum_{i=0}^p\binom{p-1}{i}a_{(i-1)}m,\\
+ \operatorname{Res}_k(a,m)&=\Res_z z^{-2-k}(1+z)^{p+k}Y(a,z)m=\sum_{i=0}^{p+k}\binom{p+k}{i}a_{(i-2-k)}m\quad(k\ge0),
+\end{align*}
+and $O(M)$ is the span of all $\operatorname{Res}_k(a,m)$, $a$ homogeneous.
+\end{definition}
+\begin{leancode}
+noncomputable def fzLeft (N : WeakModule W M) (p : ℕ) (a : 𝒱) (m : M) : M :=
+  ∑ i ∈ Finset.range (p + 1), cbz (p : ℤ) (i : ℤ) • mode (N.YM a) ((i : ℤ) - 1) m
+
+noncomputable def fzRight (N : WeakModule W M) (p : ℕ) (a : 𝒱) (m : M) : M :=
+  ∑ i ∈ Finset.range (p + 1), cbz ((p : ℤ) - 1) (i : ℤ) • mode (N.YM a) ((i : ℤ) - 1) m
+
+noncomputable def fzRes (N : WeakModule W M) (p k : ℕ) (a : 𝒱) (m : M) : M :=
+  ∑ i ∈ Finset.range (p + k + 1), cbz ((p : ℤ) + k) (i : ℤ) • mode (N.YM a) ((i : ℤ) - 2 - k) m
+
+def fzOgen (N : WeakModule W M) : Set M :=
+  {x | ∃ (p k : ℕ) (a : 𝒱), a ∈ W.grading (p : ℤ) ∧ ∃ m : M, x = fzRes N p k a m}
+
+def fzO (N : WeakModule W M) : Submodule ℂ M := Submodule.span ℂ (fzOgen N)
+\end{leancode}
+File \leanpath{VOA/Modules/FZBimodule.lean}.
+
+\begin{dictionary}
+\textbf{Decoding.}  \lean{cbz n i} is the binomial coefficient $\binom ni$ extended by $0$ for $i<0$
+(\lean{cbz_apply_neg}); \lean{Finset.range (p+1)} is $\{0,\dots,p\}$.  The weight $p$ is passed as an
+explicit natural number, and the formulas are meant for $a\in W_p$; \lean{fzOgen} imposes $a\in W_p$.
+For $p=0$, \lean{fzRight} truncates $(1+z)^{-1}$ at $i=0$; since $W_0=\C\mathbb 1$ and
+$\mathbb 1_{(i-1)}=\delta_{i0}$, this is the exact value.
+
+\textbf{Difference from Frenkel--Zhu.}  FZ's $O(M)$ is spanned by the $k=0$ residues $a\circ m$ only.
+The library spans by all $k\ge0$.  FZ's Lemma 2.1.2 says the spans agree; this is \emph{not} formalised in
+\lean{FZBimodule.lean}, but the larger spanning set only makes the generation hypothesis below
+\emph{weaker} (it quantifies over subspaces containing a \emph{bigger} $O(M)$), and the module form of
+Lemma 2.1.2 is in fact proved in \lean{FZGenFiltration.lean} (\lean{PresM_mem}, below).  The bimodule
+structure on $M/O(M)$ itself ($O(W)*M\subseteq O(M)$ etc.) is \emph{not} formalised and \emph{not
+needed}: only closure of subspaces under $a*\cdot$, $\cdot*a$ is used.
+\end{dictionary}
+
+\begin{physics}
+$a*m$ and $m*a$ are the zero-mode actions ``from the left and from the right'': on a correlation
+function $\langle\text{top}_3|\,\mathcal Y(m,z)\,|\text{top}_1\rangle$, inserting $a$ near the outgoing
+state or near the incoming state.  The bimodule $A(M)$ is the space of ``primary fields up to
+descendants'', the algebraic shadow of the fusion rule $M\times M_1\to M_3$.
+\end{physics}
+
+\begin{proposition}[Exact commutator]\label{ch14:prop:fzcomm}
+$a*m-m*a=\sum_{i=0}^{p-1}\binom{p-1}{i}a_{(i)}m$ exactly (no $O(M)$ correction).
+\end{proposition}
+\begin{leancode}
+theorem fzLeft_sub_fzRight (N : WeakModule W M) (p : ℕ) (a : 𝒱) (m : M) :
+    fzLeft N p a m - fzRight N p a m
+      = ∑ i ∈ Finset.range p, cbz ((p : ℤ) - 1) (i : ℤ) • mode (N.YM a) (i : ℤ) m
+\end{leancode}
+File \leanpath{VOA/Modules/FZBimodule.lean}.
+
+\begin{dictionary}
+Holds for every $a$ (the identity is pure Pascal arithmetic, $\binom pi-\binom{p-1}i=\binom{p-1}{i-1}$).
+For $a=\omega$ it is $\omega*m-m*\omega=(L_{-1}+L_0)m$.
+\end{dictionary}
+
+\begin{physics}
+The left and right actions differ by the ``non-negative modes'' of $a$, i.e.\ by the singular part of the
+OPE of $a$ with $m$; for the stress tensor this is translation plus scaling of the field $m$.
+\end{physics}
+
+\begin{definition}[Bimodule generation]\label{ch14:def:fzgen}
+An ordinary $W$-module $M$ is \emph{FZ-generated by its weight-$h$ space} if every subspace
+$S\subseteq M$ that contains $O(M)$ and $M_h$, and is closed under $a*\cdot$ and $\cdot*a$ for all
+homogeneous $a\in W$, is all of $M$.
+\end{definition}
+\begin{leancode}
+def FZGenerated (N : OrdVModule W M) (h : ℂ) : Prop :=
+  ∀ S : Submodule ℂ M, fzO N.toWeakModule ≤ S → N.weight h ≤ S →
+    (∀ (p : ℕ) (a : 𝒱), a ∈ W.grading (p : ℤ) → ∀ m ∈ S,
+      fzLeft N.toWeakModule p a m ∈ S ∧ fzRight N.toWeakModule p a m ∈ S) → S = ⊤
+\end{leancode}
+File \leanpath{VOA/Modules/FZBimodule.lean}.
+
+\begin{dictionary}
+\lean{OrdVModule} is an ordinary (graded, $L_0$-semisimple) module (Definition~\ref{l12:def:ordmodule});
+\lean{N.weight h} is its weight-$h$ space.  The property says $A(M)$ is generated by the image of $M_h$
+as an $A(W)$-bimodule, phrased without forming the quotient.  It is a property of the pair
+$(W,M)$ only.  It could be trivially true only if $M=M_h+O(M)$, which is not the case here (but
+nothing is lost if it were: it is a hypothesis to be \emph{proved}).
+\end{dictionary}
+
+\begin{physics}
+``Every field of the sector $M$ is, modulo descendants, obtained from the lowest-weight fields by
+fusing with chiral-algebra fields on either side.''  This is what makes the fusion rule detectable on
+the lowest states.
+\end{physics}
+
+\subsection{Transposed top-level identities from the commutator formula alone}
+
+\begin{definition}[Commutator data]\label{ch14:def:commdata}
+Operators $A_1(r)$ on $M_1$, $A_3(r)$ on $M_3$, $B(n):M_1\to M_3$ and $C_j(n):M_1\to M_3$ form
+\emph{commutator data with bound $J$} if
+$A_3(r)B(n)-B(n)A_1(r)=\sum_{j<J}\binom rj C_j(r+n-j)$ for all $r,n$.
+\end{definition}
+\begin{leancode}
+def CommData : Prop :=
+  ∀ (r n : ℤ) (m : M₁), A₃ r (B n m) - B n (A₁ r m)
+    = ∑ j ∈ Finset.range J, gBinom r j • C j (r + n - j) m
+\end{leancode}
+File \leanpath{VOA/Modules/FZBimodule.lean}.
+
+\begin{dictionary}
+Section variables: $A_1,A_3,B,C,J$.  This is the commutator formula of an intertwining operator
+$B(n)=\mathcal Y(b)_{(n)}$ with $C_j=\mathcal Y(a_{(j)}b)$, with \emph{no} associativity or
+$L_{-1}$-derivative axiom.
+\end{dictionary}
+
+\begin{physics}
+Only the singular part of the OPE of a current with a field is assumed (the Borcherds commutator
+formula); the full OPE associativity is not.
+\end{physics}
+
+\begin{theorem}[Skew top-level identities]\label{ch14:thm:skew3}
+Let the data satisfy \lean{CommData} with bound $J=p$, and let $B(r)m=0$ for $r>n$.  Then
+\begin{align*}
+\sum_{i=0}^{p}(-1)^{p-i}\tbinom pi\,B(n+p-i)A_1(i-1)m&=A_3(p-1)B(n)m,\\
+\sum_{i=0}^{p-1}(-1)^{p-1-i}\tbinom{p-1}{i}\,B(n+p-1-i)A_1(i)m&=A_3(p-1)B(n)m-C_{p-1}(n)m\quad(p\ge1),\\
+\sum_{i=0}^{p+k}(-1)^{p+k-i}\tbinom{p+k}{i}\,B(n+1+p+k-i)A_1(i-2-k)m&=0 .
+\end{align*}
+\end{theorem}
+\begin{leancode}
+theorem skew_left (p : ℕ) (hc : CommData A₁ A₃ B C p) (n : ℤ) (m : M₁)
+    (hlow : ∀ r : ℤ, n < r → B r m = 0) :
+    ∑ i ∈ Finset.range (p + 1), (asgn p i : ℂ) • B (n + p - i) (A₁ ((i : ℤ) - 1) m)
+      = A₃ ((p : ℤ) - 1) (B n m)
+
+theorem skew_comm (p : ℕ) (hp : 1 ≤ p) (hc : CommData A₁ A₃ B C p) (n : ℤ) (m : M₁)
+    (hlow : ∀ r : ℤ, n < r → B r m = 0) :
+    ∑ i ∈ Finset.range p, (asgn (p - 1) i : ℂ) • B (n + (p - 1 : ℕ) - i) (A₁ (i : ℤ) m)
+      = A₃ ((p : ℤ) - 1) (B n m) - C (p - 1) n m
+
+theorem skew_res (p k : ℕ) (hc : CommData A₁ A₃ B C p) (n : ℤ) (m : M₁)
+    (hlow : ∀ r : ℤ, n < r → B r m = 0) :
+    ∑ i ∈ Finset.range (p + k + 1), (asgn (p + k) i : ℂ)
+      • B (n + 1 + (p + k : ℕ) - i) (A₁ ((i : ℤ) - 2 - k) m) = 0
+\end{leancode}
+File \leanpath{VOA/Modules/FZBimodule.lean}.
+
+\begin{dictionary}
+\lean{asgn N i} is the signed binomial $(-1)^{N-i}\binom Ni$.  \lean{hlow} says $B(n)m$ is the top
+(highest-index nonzero) component.  These are the FZ identities $o(a*m)=o(a)o(m)$,
+$o(m*a)=o(m)o(a)$, $o(O(M))=0$ for the \emph{transposed} operator $m\mapsto e^{zL_{-1}}Y(\cdot,-z)m$, read on
+the top level.
+\end{dictionary}
+
+\begin{physics}
+Skew-symmetry $\mathcal Y(m,z)m_1=e^{zL_{-1}}\mathcal Y(m_1,-z)m$ exchanges the roles of the two
+inputs.  These identities say that, at the level of primary three-point functions, the transposed
+operator still respects the bimodule structure — and this only needs Ward identities.
+\end{physics}
+
+\paragraph{Proof on paper.}  Sum the commutator formula with the weights $(-1)^{N-i}\binom Ni$; the
+$C$-terms combine by the finite-difference identity $\sum_i(-1)^{N-i}\binom Ni\binom{s+i}j=\binom{s}{j-N}$,
+leaving one $C$-term or none according to the residue taken; the $A_3B$-terms collapse to the single
+top one by \lean{hlow}. \qed
+
+\subsection{\texorpdfstring{The reduction of \lean{KeyTopV} to bimodule generation and top pairs}{The reduction of KeyTopV to bimodule generation and top pairs}}
+
+For a top input $y\in(T_s^+)_2$ define two maps $\chXIVB\to T^+$ on homogeneous $v\in(\chXIVB)_k$:
+\begin{equation*}
+\varphi_1^y(v)=\Theta\bigl(o(v)y\bigr),\qquad \varphi_2^y(v)=(-1)^k(\Psi y)_{(k-1)}\Phi(v),\qquad F_y=\varphi_1^y-\varphi_2^y .
+\end{equation*}
+\begin{definition}\label{ch14:def:Fy}
+\begin{leancode}
+noncomputable def phi2Fam (y : TP) (k : ℤ) : VPlus →ₗ[ℂ] TP :=
+  negOnePow k • ((mode (plusModule.YM (D.Ψ y)) (k - 1)) ∘ₗ D.Φ)
+
+noncomputable def phi2 (y : TP) : VPlus →ₗ[ℂ] TP := gradedExt leechVOAPlus (phi2Fam D y)
+
+noncomputable def phi1 (y : TP) : VPlus →ₗ[ℂ] TP := D.Θ ∘ₗ (oMod plusModule).flip y
+
+noncomputable def Fy (y : TP) : VPlus →ₗ[ℂ] TP := phi1 D y - phi2 D y
+\end{leancode}
+File \leanpath{VOA/Moonshine/FZBimoduleKey.lean}.
+\end{definition}
+
+\begin{dictionary}
+\lean{oMod plusModule v y} is the zero mode $o(v)y$, extended linearly over the grading of $v$.
+\lean{gradedExt} extends a family of maps, one per weight, linearly over the direct-sum decomposition
+of $V_\Leech^+$ (\lean{gradedExt_of_mem}: on $V_k$ it is the $k$-th map).  So these are exactly
+$\varphi_1^y,\varphi_2^y,F_y$.
+\end{dictionary}
+
+\begin{physics}
+$\varphi_1^y(v)$ is the top-level matrix element of $v$ between twisted lowest states, rotated by the
+triality; $\varphi_2^y(v)$ is the matrix element of the twist field $\Phi v$ seen through skew-symmetry.
+$F_y$ is their difference — the candidate violation of the triality symmetry at the level of primary
+three-point couplings.
+\end{physics}
+
+\begin{theorem}[Bimodule compatibility of $F_y$]\label{ch14:thm:Fy}
+For $a\in(\chXIVA)_p$, $y\in(T_s^+)_2$, $v\in(\chXIVB)_k$:
+\begin{enumerate}[label=(\alph*)]
+\item $F_y(a*v)=o(\sigma a)F_y(v)$;
+\item for $p=q+1$: $F_y\bigl(\sum_{i\le q}\binom qi a_{(i)}v\bigr)=(\sigma a)_{(q)}F_y(v)-F_{a_{(q)}y}(v)$, hence
+  $F_y(v*a)=F_{o(a)y}(v)$;
+\item $F_y$ kills $O(\chXIVB)$.
+\end{enumerate}
+\end{theorem}
+\begin{leancode}
+theorem Fy_lV {p : ℕ} {a : V0Sub.carrier} (ha : (a : VPlus) ∈ leechVOAPlus.grading (p : ℤ))
+    {y : TP} (hy : y ∈ OmegaT D.s) {v : VPlus} (hv : v ∈ frameSector 1) {k : ℤ}
+    (hk : v ∈ leechVOAPlus.grading k) :
+    Fy D y (lV p a v) = actT (sig a) ((p : ℤ) - 1) (Fy D y v)
+
+theorem Fy_cV {q : ℕ} {a : V0Sub.carrier} (ha : (a : VPlus) ∈ leechVOAPlus.grading ((q + 1 : ℕ) : ℤ))
+    {y : TP} (hy : y ∈ OmegaT D.s) {v : VPlus} (hv : v ∈ frameSector 1) {k : ℤ}
+    (hk : v ∈ leechVOAPlus.grading k) :
+    Fy D y (cV (q + 1) a v) = actT (sig a) (q : ℤ) (Fy D y v) - Fy D (actT a (q : ℤ) y) v
+
+theorem Fy_resV {p k' : ℕ} {a : V0Sub.carrier} (ha : (a : VPlus) ∈ leechVOAPlus.grading (p : ℤ))
+    {y : TP} (hy : y ∈ OmegaT D.s) {v : VPlus} (hv : v ∈ frameSector 1) {k : ℤ}
+    (hk : v ∈ leechVOAPlus.grading k) : Fy D y (resV p k' a v) = 0
+\end{leancode}
+File \leanpath{VOA/Moonshine/FZBimoduleKey.lean}.
+
+\begin{dictionary}
+\lean{lV p a}, \lean{cV p a}, \lean{resV p k a} are $v\mapsto a*v$, $v\mapsto\sum_{i<p}\binom{p-1}ia_{(i)}v$ and
+$v\mapsto\operatorname{Res}_k(a,v)$ computed inside $V_\Leech^+$; they agree with \lean{fzLeft}, \lean{fzLeft - fzRight},
+\lean{fzRes} for the module \lean{MV3} ($\chXIVB$ as a $\chXIVA$-module), by \lean{coe_fzLeft} etc.
+\lean{actT (sig a) (p - 1)} is $o(\sigma a)$ on $T^+$ (weight $p$).  Note in (b) that $a_{(q)}y=o(a)y$ is again top.
+\end{dictionary}
+
+\begin{physics}
+These are the Ward identities for the primary three-point couplings: inserting a chiral-algebra
+field on the left of $v$ acts on the outgoing state, on the right acts on the incoming state.
+\end{physics}
+
+\paragraph{Proof on paper.}  For $\varphi_1$: $a*v$, $\operatorname{Res}_k(a,v)$ are computed inside the VOA
+$V_\Leech^+$, and on the lowest-weight space of the $V_\Leech^+$-module $T^+$ Zhu's theorem gives
+$o(a*v)=o(a)o(v)$ and $o(O(V_\Leech^+))=0$ (Chapter~\ref{ch:12}); then $\Theta o(a)=o(\sigma a)\Theta$.
+(b) is the module commutator formula.  For $\varphi_2$: $\Phi$ turns $a_{(i)}v$ into $(\sigma a)_{(i)}\Phi v$, and
+then Theorem~\ref{ch14:thm:skew3} applies to the operators $B(n)=(\Psi y)_{(n)}$ on $T^+$, with
+$A_1=A_3=(\sigma a)_{(\cdot)}$ and bound $J=p$: the commutator sum stops at $p$ because
+$(\sigma a)_{(j)}\Psi y$ has weight $p+2-j-1<2$ for $j\ge p$, and $(\Psi y)_{(r)}\Phi v=0$ above the top mode
+for the same reason.  The sign $(-1)^k$ in $\varphi_2$ matches the signs \lean{asgn}. \qed
+
+\begin{definition}[The three named Props]\label{ch14:def:toppairs}
+\lean{KeyTopAll D}: $F_y=0$ for every $y\in(T_s^+)_2$ (i.e.\ \lean{KeyTopV} for every top input).
+\lean{BimodGenV3}: $\chXIVB$ is FZ-generated by $(\chXIVB)_2$ as a $\chXIVA$-module.
+\lean{TopPairs D}: $\Theta\bigl(o(v)\Phi b\bigr)=o(b)\Phi v$ for all $v,b\in(\chXIVB)_2$.
+\end{definition}
+\begin{leancode}
+def KeyTopAll : Prop :=
+  ∀ y ∈ OmegaT D.s, ∀ (k : ℤ), ∀ v ∈ frameSector 1, v ∈ leechVOAPlus.grading k →
+    D.Θ (mode (plusModule.YM v) (k - 1) y)
+      = negOnePow k • mode (plusModule.YM (D.Ψ y)) (k - 1) (D.Φ v)
+
+def BimodGenV3 : Prop := FZGenerated MV3 (2 : ℂ)
+
+def TopPairs : Prop :=
+  ∀ v ∈ OmegaV3, ∀ b ∈ OmegaV3,
+    D.Θ (mode (plusModule.YM v) 1 (D.Φ b)) = mode (plusModule.YM b) 1 (D.Φ v)
+\end{leancode}
+File \leanpath{VOA/Moonshine/FZBimoduleKey.lean}.
+
+\begin{dictionary}
+\lean{MV3} is $\chXIVB$ as an ordinary \lean{V0P}-module (Chapter~\ref{ch:12}).  \lean{OmegaV3} $=(\chXIVB)_2$.
+In \lean{TopPairs}, \lean{mode (plusModule.YM v) 1} is $o(v)$ for weight-2 $v$.  \lean{TopPairs} is a finite
+identity on a $49152$-dimensional space (bilinear in $v,b$).
+\end{dictionary}
+
+\begin{physics}
+\lean{TopPairs} is the statement that the primary couplings of two weight-2 operators of $\chXIVB$ to
+the lowest twisted states are symmetric under exchange of the two operators, once the triality is
+applied: a finite ``crossing symmetry'' of OPE coefficients.
+\end{physics}
+
+\begin{theorem}[The Frenkel--Zhu reduction and its converse]\label{ch14:thm:fzred}
+\begin{enumerate}[label=(\alph*)]
+\item \lean{BimodGenV3} and \lean{TopPairs D} imply \lean{KeyTopAll D}.
+\item \lean{KeyTopAll D} implies \lean{TopPairs D} (so \lean{TopPairs} is also necessary).
+\item Hence \lean{BimodGenV3} and \lean{TopPairs D} imply \lean{KeySkew D t}, and with \lean{PhiTop},
+  \lean{ThetaTop}, all targets.
+\end{enumerate}
+\end{theorem}
+\begin{leancode}
+theorem keyTopAll_of_FZ (hgen : BimodGenV3) (htop : TopPairs D) : KeyTopAll D
+
+theorem topPairs_of_keyTopAll (h : KeyTopAll D) : TopPairs D
+
+theorem keySkew_of_FZ {t : ZMod 2 → TLeechT} (ht : ∀ s, t s ∈ leechFrameT s) (ht0 : ∀ s, t s ≠ 0)
+    (hgen : BimodGenV3) (htop : TopPairs D) : KeySkew D t
+
+theorem moonshine_of_FZ {β : leech.carrier} (hβ : β ∉ lambda0) {t : ZMod 2 → TLeechT}
+    (ht : ∀ s, t s ∈ leechFrameT s) (ht0 : ∀ s, t s ≠ 0)
+    (hΦ : PhiTop D t) (hΘ : ThetaTop D t) (hgen : BimodGenV3) (htop : TopPairs D) :
+    ∃ V : VertexOperatorAlgebra Vnat,
+      V.Y = Ynat VnatAxioms.wbarL ∧ V.vacuum = vacNat ∧ V.conformalVector = omegaNat ∧
+      V.centralCharge = 24 ∧
+      V.grading 1 = ⊥ ∧
+      Module.finrank ℂ (V.grading 2) = 196884 ∧
+      (∀ n : ℕ, (Module.finrank ℂ (V.grading (n : ℤ)) : ℂ) = PowerSeries.coeff n JShift) ∧
+      V.IsSimple
+\end{leancode}
+File \leanpath{VOA/Moonshine/FZBimoduleKey.lean}.
+
+\begin{dictionary}
+All hypotheses appear explicitly.  (b) guarantees that the reduction did not replace the goal by a
+\emph{stronger} unprovable statement: \lean{TopPairs} is exactly what must be true.
+\end{dictionary}
+
+\begin{physics}
+Fusion-rule logic: the space of intertwiners $\chXIVB\times T_s^+\to T_{s+1}^+$ injects into top-level
+data, which is generated by the lowest states; so two intertwiners agree once their lowest couplings
+do.  In CFT one would say the fusion coefficient $N=1$ makes the coupling unique up to scale; here
+uniqueness is replaced by the more economical statement that the \emph{difference} vanishes.
+\end{physics}
+
+\paragraph{Proof on paper.}  (a) Let $S=\{v\in\chXIVB:F_y(v)=0\ \forall y\in(T_s^+)_2\}$.  By
+Theorem~\ref{ch14:thm:Fy}, $S$ contains $O(\chXIVB)$ and is closed under $a*\cdot$ and $\cdot*a$ (for the right
+action use $v*a=a*v-(a*v-v*a)$, and $F_y(v*a)=F_{o(a)y}(v)$ with $o(a)y$ top).  On the top, $v\in(\chXIVB)_2$:
+$F_y(v)=\Theta o(v)y-o(\Psi y)\Phi v$, which is \lean{TopPairs} at $(v,\Psi y)$ since $\Phi\Psi y=y$.  So $S$
+contains $(\chXIVB)_2$, and \lean{BimodGenV3} gives $S=\chXIVB$.  (b) Take $y=\Phi b$, $k=2$.  (c) Specialise
+$y=x$ and apply Theorem~\ref{ch14:thm:keytopv}. \qed
+
+\begin{warning}[title={Trap / dead end: How the intertwining Jacobi identity of $W$ was avoided}]
+The obvious route needed the three FZ top-level identities for the intertwiner $W$, i.e.\ its full
+intertwining Jacobi identity, which the library lacks (\leanpath{Notes/KeySkew.md} \S3; this was the
+recorded main risk).  The trick: $\varphi_2$ is the top component of $W(\Phi v,z)\Psi y$, but it is
+\emph{written} through the module modes $(\Psi y)_{(n)}$ acting on $\Phi v$, and $\Phi$ turns $a*v$ into an
+expression in modes of $\sigma a$.  The needed identities are then the transposed ones
+(Theorem~\ref{ch14:thm:skew3}), which require only the commutator formula of $Y^T$ and the lowest
+weights.  Neither the Jacobi identity of $W$, nor a transpose through \lean{TPForm}, nor
+\lean{Fusion.Intertwiner} is used.
+\end{warning}
+
+\begin{status}
+\lean{Fy_lV}, \lean{Fy_cV}, \lean{Fy_resV}, \lean{topPairs_of_keyTopAll}: unconditional given $D$.
+\lean{keyTopAll_of_FZ}, \lean{keySkew_of_FZ}: conditional on \lean{BimodGenV3} and \lean{TopPairs D}.
+\texttt{\#print axioms} \lean{VOA.Moonshine.FZKey.keySkew_of_FZ} (re-run): \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\subsection{\texorpdfstring{Bimodule generation of $A(\chXIVB)$}{Bimodule generation of A(V3+)}}
+
+\begin{warning}[title={Evidence: Numerical de-risking before formalisation}]
+\lean{BimodGenV3} was the recorded ``real risk'': the analogous strong-generation statement had
+\emph{failed} for $\chXIVA$ itself.  It was first tested (\leanpath{Notes/BimoduleGenTest.md},
+\leanpath{scripts/moonshine/numerics/bimodule/}) by the filtered criterion below at weights 3, 4, 5, exact
+arithmetic mod $2^{31}-1$: full rank in every excited sector; in the ground sector every coset vector
+$\nu$ has a partner with $f=-1$ (counts at weight 3: $276$; weight 4: $2048$; weight 5: $11178$); the pair
+lemma checked on $3937$ patterns up to weight $30$.  \emph{Control}: using only the left action
+(no $0$-modes) gives rank $0$ of $24$ at weight $3$ — the right action is essential.  This is evidence;
+the Lean proof below is the proof.
+\end{warning}
+
+\begin{definition}[Weight-raising products]\label{ch14:def:lowerprod}
+For an ordinary $W$-module $M$ and $n\in\Z$, \lean{lowerProdM N n} is the set of $a_{(j)}x$ with $a\in W_p$,
+$x\in M_q$, $q<n$, $j\le0$, $p+q-j-1=n$.
+\end{definition}
+\begin{leancode}
+def lowerProdM (N : OrdVModule W M) (n : ℤ) : Set M :=
+  {y | ∃ p q j : ℤ, q < n ∧ j ≤ 0 ∧ p + q - j - 1 = n ∧
+    ∃ a ∈ W.grading p, ∃ x ∈ N.weight (q : ℂ), y = N.act a j x}
+\end{leancode}
+File \leanpath{VOA/Moonshine/FZGenFiltration.lean}.
+
+\begin{dictionary}
+\lean{N.act a j x} is $a_{(j)}x$.  $p+q-j-1$ is the weight of $a_{(j)}x$.  So these are products landing in
+weight $n$ built from strictly lower-weight module states using non-positive modes.
+\end{dictionary}
+
+\begin{physics}
+States obtained by acting with creation-type modes ($j\le0$) of chiral fields on lower states:
+``descendants and composites'' of lower-weight fields.
+\end{physics}
+
+\begin{theorem}[Filtered generation criterion]\label{ch14:thm:crit}
+Let $M$ be an ordinary $W$-module with integer weights bounded below by $n_0$, and $G\subseteq M$ with
+$M_n\subseteq\operatorname{span}(G\cup\lean{lowerProdM}\,n)$ for all $n$.  Then every subspace $S\supseteq G$
+containing all $\operatorname{Res}_0(a,x)$ and closed under $a*\cdot$, $\cdot*a$ ($p\ge1$) is $M$.  Along the way:
+(module FZ Lemma 2.1.2) if a subspace contains all $\operatorname{Res}_0(a,x)$ for fixed $x$, it contains all
+$\operatorname{Res}_k(a,x)$.
+\end{theorem}
+\begin{leancode}
+theorem PresM_mem (N : OrdVModule W M) (x : M) (X : Submodule ℂ M)
+    (hbase : ∀ (p : ℕ) (a : 𝒱), a ∈ W.grading (p : ℤ) → fzCirc N p a x ∈ X) (k : ℕ) :
+    ∀ (p : ℕ) (a : 𝒱), a ∈ W.grading (p : ℤ) → PresM N p a x k ∈ X
+
+theorem eq_top_of_lowerSpanM (N : OrdVModule W M) (G : Set M) (n₀ : ℤ)
+    (hint : ∀ α : ℂ, N.weight α ≠ ⊥ → ∃ k : ℤ, α = k)
+    (hbot : ∀ k : ℤ, k < n₀ → N.weight (k : ℂ) = ⊥)
+    (hG : ∀ n : ℤ, N.weight (n : ℂ) ≤ span ℂ (G ∪ lowerProdM N n))
+    (S : Submodule ℂ M)
+    (hO : ∀ (p : ℕ) (a : 𝒱), a ∈ W.grading (p : ℤ) → ∀ x : M, fzCirc N p a x ∈ S)
+    (hL : ∀ (p : ℕ) (a : 𝒱), a ∈ W.grading (p : ℤ) → ∀ x ∈ S, fzLeft N p a x ∈ S)
+    (hR : ∀ (p : ℕ) (a : 𝒱), 1 ≤ p → a ∈ W.grading (p : ℤ) → ∀ x ∈ S, fzRight N p a x ∈ S)
+    (hGS : G ⊆ S) : S = ⊤
+\end{leancode}
+File \leanpath{VOA/Moonshine/FZGenFiltration.lean}.
+
+\begin{dictionary}
+\lean{fzCirc N p a x} $=\operatorname{Res}_0(a,x)=a\circ x$ and \lean{PresM N p a x k} $=\operatorname{Res}_k(a,x)$;
+here these are local copies in namespace \lean{FZGen}, with \lean{fzRight} summing $i<p$ (it agrees with
+\lean{FZ.fzRight} for $p\ge1$, \lean{fzRight_eq}).  \lean{hint}: all weights are integers; \lean{hbot}: nothing
+below $n_0$.  Hypothesis \lean{hO} uses only FZ's original $O(M)$ generators — strictly fewer than
+\lean{fzO}.
+\end{dictionary}
+
+\begin{physics}
+Induction on conformal weight: if every field of weight $n$ is primary-generated or a composite of
+lower fields, and composites are reachable by left/right fusion and descendants, then everything is.
+\end{physics}
+
+\paragraph{Proof on paper.}  Lemma 2.1.2 by induction on $k$, using
+$Y(L_{-1}a,z)=\partial_zY(a,z)$ and a Pascal identity for the coefficients.  Then induction on $n$: if
+$M_{<n}\subseteq S$, each $a_{(j)}x\in\lean{lowerProdM}\,n$ lies in $S$ — for $j=-1$ because $a*x-a_{(-1)}x$
+has lower weight; for $j\le-2$ because $a_{(j)}x-\operatorname{Res}_{-2-j}(a,x)$ has lower weight; for $j=0$
+because $a*x-x*a-a_{(0)}x$ has lower weight (the exact commutator). \qed
+
+\begin{theorem}[Charged excited spanning, generic form]\label{ch14:thm:excited}
+For $\gamma\in\Leech\setminus\{0\}$ and any family $T(n)$ of subspaces of the Fock space with the closure
+property \lean{QuadClosed γ T}, every Fock state of weight $w\ge1$ lies in $T(w+\tfrac12|\gamma|^2)$.
+\end{theorem}
+\begin{leancode}
+def QuadClosed (γ : leech.carrier) (T : ℤ → Submodule ℂ Fk) : Prop :=
+  ∀ (i j : ℕ) (a b : Fin (rank leech)) (n m : ℤ), m ≤ 0 → ∀ (w : ℕ) (p : Fk),
+    p ∈ gradingWN (rank leech) w → (i : ℤ) + j + 2 < n → (w : ℤ) + LatGen.halfNorm leech γ < n →
+    ((i : ℤ) + j + 2) + ((w : ℤ) + LatGen.halfNorm leech γ) - m - 1 = n →
+    quadF γ a i b j (-m - 1) p ∈ T n
+
+theorem gradingWN_le_of_quadClosed (hT : QuadClosed γ T) (hγ0 : γ ≠ 0) {w : ℕ} (hw : 1 ≤ w) :
+    gradingWN (rank leech) w ≤ T ((w : ℤ) + LatGen.halfNorm leech γ)
+\end{leancode}
+File \leanpath{VOA/Moonshine/FZGenExcited.lean}.
+
+\begin{dictionary}
+\lean{Fk} is the 24-boson Fock space, \lean{gradingWN _ w} its weight-$w$ part; \lean{halfNorm γ} is
+$\tfrac12|\gamma|^2$; \lean{quadF γ a i b j k p} is the Fock part of the action of the quadratic state
+$h_a(-i-1)h_b(-j-1)\mathbb 1$ on $p\otimes e^\gamma$.  \lean{QuadClosed} says: weight-raising modes ($m\le0$) of
+quadratic Heisenberg states on lower charge-$\gamma$ states lie in the target.  The charge is arbitrary,
+in particular in the coset $\Leech\setminus\Leech_0$ of $\chXIVB$.
+\end{dictionary}
+
+\begin{physics}
+Every oscillator excitation of a charged state can be produced by bilinear currents $\partial X\partial X$
+acting on lower excitations — the free-boson statement that the $\theta$-even Heisenberg fields generate
+all excited states of a charged sector of nonzero momentum.
+\end{physics}
+
+\paragraph{Proof on paper.}  The argument of Chapter~\ref{ch:12} for $\chXIVA$ (excited spanning), which used
+its target only through this closure and the charge only through $|\gamma|^2\ge4$ even: induction on the
+number of oscillators, with a degree-one base case solved by a small linear-algebra system in the
+charge coordinates. \qed
+
+\begin{theorem}[The pair lemma]\label{ch14:thm:pair}
+(a) If $x\in\Z^{24}$ has all entries odd, $x\cdot x\ge48$ and $16\mid x\cdot x$, there are $i\ne k$ with
+$|x_i|+|x_k|=6$ or $\ge10$.  (b) For $\nu\in\Leech\setminus\Leech_0$ with $|\nu|^2\ge6$ there is $\gamma\in\Leech_0$
+of norm $4$ with $\langle\gamma,\nu\rangle=3$ or $\ge5$.
+\end{theorem}
+\begin{leancode}
+theorem exists_good_pair (x : Fin 24 → ℤ) (hodd : ∀ i, Odd (x i)) (h48 : 48 ≤ x ⬝ᵥ x)
+    (h16 : (16 : ℤ) ∣ x ⬝ᵥ x) :
+    ∃ i k : Fin 24, i ≠ k ∧ (|x i| + |x k| = 6 ∨ 10 ≤ |x i| + |x k|)
+
+theorem exists_pair_gamma {ν : leech.carrier} (hν : ν ∉ lambda0) (h6 : 6 ≤ leech.form ν ν) :
+    ∃ γ ∈ lambda0, leech.form γ γ = 4 ∧ (leech.form γ ν = 3 ∨ 5 ≤ leech.form γ ν)
+\end{leancode}
+File \leanpath{VOA/Moonshine/FZGenV3.lean}.
+
+\begin{dictionary}
+\lean{x ⬝ᵥ x} is the dot product; \lean{leech.form} the Leech inner product.  In (b), $x=$ \lean{lv ν}
+(coordinates with $\langle\mu,\nu\rangle=\mu\cdot\nu/8$, all entries odd for $\nu\notin\Leech_0$), and
+$\gamma=4(\pm e_i\pm e_k)$; then $\langle\gamma,\nu\rangle=(|x_i|+|x_k|)/2$.  Pure arithmetic; no Golay facts.
+\end{dictionary}
+
+\begin{physics}
+A momentum-space statement: every high-momentum state of the odd sector can be split as the
+product of a norm-4 momentum of the even sector and a lower one, with an OPE singularity of the right
+order to produce it (the exponent $\langle\gamma,\nu-\gamma\rangle$ governs $e^\gamma(z)e^{\delta}(w)\sim(z-w)^{\langle\gamma,\delta\rangle}$).
+\end{physics}
+
+\paragraph{Proof on paper.}  (a) Suppose every pair has $|x_i|+|x_k|\in\{2,4,8\}$.  If two entries
+had magnitude $\ge3$, the pair sum $\in\{6,\ge10\}$ unless they are $\{3,5\}$, and no third value is then
+compatible; so at most one entry exceeds $1$: $x=(m,(\pm1)^{23})$ with $m$ odd, $x\cdot x=m^2+23$.  Now $m^2+23\ge48$ forces $|m|\ge5$; $|m|=5$ has the
+good pair $5+1=6$, and $|m|\ge9$ has $|m|+1\ge10$; the only remaining value $|m|=7$ gives $x\cdot x=72$,
+not divisible by $16$.  Contradiction.  (b) Choose signs $s_i=\operatorname{sgn}x_i$. \qed
+
+\begin{theorem}[$A(\chXIVB)$ is generated by its top]\label{ch14:thm:bimodgen}
+(a) For $\nu\in\Leech\setminus\Leech_0$, $|\nu|^2\ge6$, the ground state $x_\nu=e^\nu+e^{-\nu}$ is in the span of
+weight-raising products of lower states.  (b) For $n\ge3$, $(\chXIVB)_n\subseteq\operatorname{span}\lean{lowerProdM}\,n$.
+(c) Every subspace of $\chXIVB$ containing $O(\chXIVB)$ and $(\chXIVB)_2$ and closed under the left and right
+actions of homogeneous $a\in\chXIVA$ is $\chXIVB$; i.e.\ \lean{BimodGenV3} holds.
+\end{theorem}
+\begin{leancode}
+theorem ground_mem_span {ν : leech.carrier} (hν : ν ∉ lambda0) (h6 : 6 ≤ leech.form ν ν) :
+    frameX0P ν ∈ span ℂ (Lv (LatGen.halfNorm leech ν))
+
+theorem V3_lowerSpanned (n : ℤ) (hn : 3 ≤ n) :
+    MV3.weight (n : ℂ) ≤ span ℂ (lowerProdM MV3 n)
+
+theorem bimodGen_V3 (S : Submodule ℂ (frameSector 1))
+    (hO : ∀ (p : ℕ) (a : V0Sub.carrier), a ∈ V0P.grading (p : ℤ) → ∀ x, fzCirc MV3 p a x ∈ S)
+    (hL : ∀ (p : ℕ) (a : V0Sub.carrier), a ∈ V0P.grading (p : ℤ) → ∀ x ∈ S, fzLeft MV3 p a x ∈ S)
+    (hR : ∀ (p : ℕ) (a : V0Sub.carrier), 1 ≤ p → a ∈ V0P.grading (p : ℤ) → ∀ x ∈ S,
+      fzRight MV3 p a x ∈ S)
+    (htop : ∀ x : frameSector 1, x ∈ MV3.weight (2 : ℂ) → x ∈ S) : S = ⊤
+\end{leancode}
+File \leanpath{VOA/Moonshine/FZGenV3.lean}.
+\begin{leancode}
+theorem fzGenerated_MV3 : FZ.FZGenerated MV3 (2 : ℂ)
+\end{leancode}
+File \leanpath{VOA/Moonshine/FZGenBridge.lean}.
+
+\begin{dictionary}
+\lean{Lv n} is \lean{lowerProdM MV3 n} viewed inside $V_\Leech^+$.  \lean{bimodGen_V3} is stated with the local
+operations; \lean{fzGenerated_MV3} transfers it to the vocabulary of \lean{FZBimodule.lean} (the operations agree
+on homogeneous $a$, and \lean{fzO} contains the $\operatorname{Res}_0$), so it is literally \lean{BimodGenV3}.
+No hypotheses: unconditional.
+\end{dictionary}
+
+\begin{physics}
+Every field of the odd frame sector $\chXIVB$ is, modulo descendants, generated from its
+$49152$ lowest-weight fields by fusion with the even chiral algebra $\chXIVA$ from both sides.
+\end{physics}
+
+\paragraph{Proof on paper.}  $(\chXIVB)_n$ is spanned by projected word states $P(p\otimes e^\nu)$,
+$\nu\in\Leech\setminus\Leech_0$.  Excited ones ($p$ of positive Fock weight) are handled by
+Theorem~\ref{ch14:thm:excited}, with the target ``Fock states whose projection is a combination of
+weight-raising products''.  Ground ones: pick $\gamma$ by the pair lemma, $\delta=\nu-\gamma$,
+$f=\langle\gamma,\delta\rangle=\langle\gamma,\nu\rangle-4$.  If $f=-1$, $(x_\gamma)_{(0)}x_\delta=\pm x_\nu$.  If $f=k\ge1$,
+$(x_\gamma)_{(-k-1)}x_\delta=\pm(x_\nu+2P(S_{2k}(\gamma)e^{\gamma-\delta}))$, the second term excited.  Both are
+weight-raising products of lower states.  Then the criterion (Theorem~\ref{ch14:thm:crit}) with $G=(\chXIVB)_2$,
+$n_0=2$. \qed
+
+\begin{status}
+\lean{bimodGen_V3}, \lean{fzGenerated_MV3}: unconditional.  \texttt{\#print axioms} \lean{VOA.Moonshine.FZGen.fzGenerated_MV3} (re-run): \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\section{The final finite identity}\label{ch14:sec:toppairs}
+
+\subsection{\texorpdfstring{Everything reduced to \lean{TopPairs}}{Everything reduced to TopPairs}}
+
+\begin{theorem}[$\Vnat$ from one finite identity]\label{ch14:thm:maintop}
+For $\varepsilon^2=1$: if \lean{TopPairs} holds for $D(c_\star,\varepsilon)$, where $c_\star^2\kappa_0=1$ is the
+fixed normalisation, then all targets of the final theorem hold.
+\end{theorem}
+\begin{leancode}
+theorem moonshine_of_topPairs {ε : ℂ} (hε : ε * ε = 1)
+    (htop : FZKey.TopPairs (mkData cStar0 ε (c_ne_of_norm cStar0_norm) hε)) :
+    ∃ V : VertexOperatorAlgebra Vnat,
+      V.Y = Ynat VnatAxioms.wbarL ∧ V.vacuum = vacNat ∧ V.conformalVector = omegaNat ∧
+      V.centralCharge = 24 ∧
+      V.grading 1 = ⊥ ∧
+      Module.finrank ℂ (V.grading 2) = 196884 ∧
+      (∀ n : ℕ, (Module.finrank ℂ (V.grading (n : ℤ)) : ℂ) = PowerSeries.coeff n JShift) ∧
+      V.IsSimple
+\end{leancode}
+File \leanpath{VOA/Moonshine/MainTopPairs.lean}.
+
+\begin{dictionary}
+\lean{cStar0} is a fixed choice of $c$ with \lean{cStar0 * cStar0 * κ0 = 1} (\lean{cStar0_norm}).  The proof
+term is a one-line composition: \lean{moonshine_of_keySkew cStar0_norm hε (FZKey.keySkew_of_FZ _ tF_mem tF_ne
+FZGen.fzGenerated_MV3 htop)} — i.e.\ Theorems~\ref{ch14:thm:isomk}, \ref{ch14:thm:fzred},
+\ref{ch14:thm:bimodgen}.  The only hypotheses are \lean{hε} and \lean{htop}.
+\end{dictionary}
+
+\begin{physics}
+The entire consistency of the Moonshine orbifold — that twist fields are mutually local — has been
+reduced to one finite table of OPE coefficients among the $49152$ lowest states of the odd frame sector
+and the lowest twisted states.  In the bootstrap language: crossing symmetry of the full theory follows
+from a finite set of primary couplings, given the symmetry structure.
+\end{physics}
+
+\begin{status}
+Conditional on \lean{htop}; \texttt{\#print axioms} (re-run): \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\subsection{Sign arithmetic of two odd norm-4 Leech vectors}
+
+Work in the integer coordinates $n=(n_0,\dots,n_{23})$ (\lean{lv n}) with $\langle\mu,\nu\rangle=\tfrac18\mu\cdot\nu$.
+A norm-4 vector $n\in\Leech\setminus\Leech_0$ has one entry $\pm3$, at position $i=j(n)$ (\lean{blk n}), and
+twenty-three entries $\pm1$.  Define for odd $x$: $\chi(x)=1$ if $x\equiv1\pmod4$, else $-1$; and
+$s(x)=\operatorname{sgn}x$.
+
+\begin{definition}[Characters and the set $N$]\label{ch14:def:NS}
+For $n,m\in\Leech$, $N(n,m)=\{k:\ \langle\gamma^-_{0k},n\rangle+\langle\gamma^-_{0k},m\rangle\text{ odd}\}$.
+\end{definition}
+\begin{leancode}
+def chiZ (x : ℤ) : ℂ := if x % 4 = 1 then 1 else -1
+
+def sgnZ (x : ℤ) : ℂ := if 0 < x then 1 else -1
+
+noncomputable def NS (n m : leech.carrier) : Finset (Fin 24) :=
+  Finset.univ.filter fun k => ¬ Even (leech.form (gM 0 k) n + leech.form (gM 0 k) m)
+\end{leancode}
+File \leanpath{VOA/Moonshine/TopPairsArith.lean}.
+
+\begin{dictionary}
+\texttt{x \% 4} is Lean's integer remainder, in $\{0,1,2,3\}$ for the modulus $4$ (Euclidean for positive
+modulus), so for odd $x$ it is $1$ or $3$; \lean{chiZ} is $\chi$.  \lean{sgnZ} is used only on nonzero
+arguments.  \lean{Finset.univ.filter} is $\{k\in\{0..23\}:\ldots\}$.  The theorem \lean{uN_NS} identifies
+$N$ as the character of the joint $Z_{0k}$-eigenvector $e_ne_mt_0$.
+\end{dictionary}
+
+\begin{physics}
+$N$ records which of the commuting $\Z/2$ ``frame'' symmetries $Z_{0k}$ of the twisted ground states act by
+$-1$ on the state $e_ne_mt_0$: it is the charge vector of a ground state of the twisted sector under a
+maximal abelian subgroup of the extraspecial group $2^{1+24}$.
+\end{physics}
+
+\begin{theorem}[The $B$-eigenvalue]\label{ch14:thm:betaN}
+For $n,m\in\Leech\setminus\Leech_0$ of norm $4$, with $i=j(n)$, $j=j(m)$,
+\begin{equation*}
+  \omega^{|N(n,m)|}=(-1)^{\langle m,n\rangle}\,s(n_im_i)\,s(n_jm_j).
+\end{equation*}
+\end{theorem}
+\begin{leancode}
+theorem betaN_NS {n m : leech.carrier} (hn : n ∉ lambda0) (hn4 : leech.form n n = 4)
+    (hm : m ∉ lambda0) (hm4 : leech.form m m = 4) :
+    betaN (NS n m) = (-1 : ℂ) ^ (leech.form m n)
+      * (sgnZ (lv n (blk n) * lv m (blk n)) * sgnZ (lv n (blk m) * lv m (blk m)))
+\end{leancode}
+File \leanpath{VOA/Moonshine/TopPairsArith.lean}.
+
+\begin{dictionary}
+\lean{betaN N} $=\prod_i(\omega\text{ if }i\in N\text{ else }1)=\omega^{|N|}$ (\lean{betaN_eq}), $\omega=e^{i\pi/4}$
+(\lean{ωB}).  \lean{(-1 : ℂ) ^ (leech.form m n)} is an integer power.  Hypotheses: odd coset and norm 4
+for both vectors — exactly the top basis vectors.
+\end{dictionary}
+
+\begin{physics}
+The operator $B$ is the twisted-sector part of the triality, a ``discrete Fourier transform'' on the
+$2^{12}$ ground states; its eigenvalue on a ground state is an eighth root of unity determined by the
+charges.  The theorem says this phase is in fact a sign, computable from the momenta $n,m$.
+\end{physics}
+
+\paragraph{Proof on paper (counting $|N|$).}  Since $\langle\gamma^-_{0k},n\rangle=(n_0-n_k)/2$ and
+$(-1)^{(x-y)/2}=\chi(x)\chi(y)$ for odd $x,y$,
+\begin{equation*}
+ 2|N|=\sum_{k}\bigl(1-\chi(n_0)\chi(m_0)\,\chi(n_k)\chi(m_k)\bigr)=24-\chi(n_0)\chi(m_0)\sum_k\chi(n_k)\chi(m_k).
+\end{equation*}
+On the four possible values $\pm1,\pm3$ one has the polynomial identity $6\chi(x)=x(7-x^2)$:
+$x=1\mapsto6$, $x=-1\mapsto-6$, $x=3\mapsto-6$, $x=-3\mapsto6$, matching $\chi(1)=1,\chi(-1)=-1,\chi(3)=-1,\chi(-3)=1$.
+Substituting and using $n_k^2,m_k^2\in\{1,9\}$,
+\begin{equation*}
+ 36\sum_k\chi(n_k)\chi(m_k)=36\,n\cdot m-48(n_im_i+n_jm_j)+64[i=j]\,n_im_i,
+\end{equation*}
+with $n\cdot m=8\langle n,m\rangle$.  Hence $|N|\equiv0\pmod4$ and $|N|/4$ has the parity of $\langle m,n\rangle$
+corrected by the block signs; $\omega^{|N|}=(-1)^{|N|/4}$.  A finite case split over the signs finishes.
+No Golay-code fact is needed beyond $\langle n,m\rangle\in\Z$. \qed
+
+\begin{example}
+Take $n=m$.  Then $N=\emptyset$ (each $\langle\gamma^-_{0k},n\rangle$ is counted twice), $\omega^0=1$; on the right,
+$(-1)^{4}s(9)s(9)=1$. \qed
+\end{example}
+
+\begin{theorem}[The coefficient identity]\label{ch14:thm:coef}
+For $n,m$ as above and every $l$:
+\begin{equation*}
+ c_\star(m)\Bigl(\delta_{jl}-\tfrac{n_jn_l}{4}\Bigr)u_l\,\omega^{|N|}
+ =c_\star(n)(-1)^{\langle m,n\rangle}\Bigl(\delta_{il}-\tfrac{m_im_l}{4}\Bigr),
+\end{equation*}
+where $u_l=(-1)^{[l\in N]}$.
+\end{theorem}
+\begin{leancode}
+theorem coef_identity {n m : leech.carrier} (hn : n ∉ lambda0) (hn4 : leech.form n n = 4)
+    (hm : m ∉ lambda0) (hm4 : leech.form m m = 4) (l : Fin 24) :
+    cStar m * ((if blk m = l then 1 else 0) - ((2 * lv n (blk m) * lv n l : ℤ) : ℂ) / 8)
+        * (uN (NS n m) l * betaN (NS n m))
+      = cStar n * (-1 : ℂ) ^ (leech.form m n)
+        * ((if blk n = l then 1 else 0) - ((2 * lv m (blk n) * lv m l : ℤ) : ℂ) / 8)
+\end{leancode}
+File \leanpath{VOA/Moonshine/TopPairsArith.lean}.
+
+\begin{dictionary}
+$\tfrac{2n_jn_l}{8}=\tfrac{n_jn_l}4$; \lean{uN N l} $=-1$ if $l\in N$ else $1$; \lean{cStar n}
+$=i^{n_0}\cdot n_{j(n)}/3$.  Note $\delta_{jl}-n_jn_l/4$ are the coordinates of $w_j-2\langle w_j,n\rangle n$ in the frame basis.
+\end{dictionary}
+
+\begin{physics}
+The equality of two explicit OPE coefficients: the coupling of $(x_n,x_m)$ to the twisted state
+$h_{w_l}(-\tfrac12)\otimes e_ne_mt_0$ in the two orders.  It is the place where the phases of the cocycle,
+of the triality on ground states, and of the oscillator part must conspire.
+\end{physics}
+
+\paragraph{Proof on paper.}  Insert Theorem~\ref{ch14:thm:betaN}, $u_l=\chi(n_0)\chi(n_l)\chi(m_0)\chi(m_l)$, and
+$i^{m_0}\chi(n_0)\chi(m_0)=i^{n_0}$; what remains is a local identity in the coordinates $i,j,l$, checked by
+cases on $n_i,m_j\in\{\pm3\}$ and the remaining entries $\pm1$. \qed
+
+\subsection{Both sides on the top basis}
+
+\begin{theorem}[The top-pair identity]\label{ch14:thm:toppairs0}
+(a) For $|n|^2=4$: $o(x_n)\bigl(h_v(-\tfrac12)\otimes t\bigr)=2^{-3}h_{v-2\langle v,n\rangle n}(-\tfrac12)\otimes e_nt$.
+(b) $e_ne_mt_0$ is a joint $Z_{0k}$-eigenvector with character $N(n,m)$.
+(c) For all $v,b\in(\chXIVB)_2$: $\Theta_0\bigl(o(v)\Phi_0b\bigr)=o(b)\Phi_0v$.
+\end{theorem}
+\begin{leancode}
+theorem oX_hP {n : leech.carrier} (hn4 : leech.form n n = 4) (v : Fin (rank leech) → ℂ)
+    (t : TLeechT) :
+    mode (plusModule.YM (frameX0P n)) 1 (hP v t)
+      = ((2 : ℂ) ^ (-(3 : ℤ))) • hP (latL n v) (eT leech leech_even leech_isUnit_det_gramMat n t)
+
+theorem isEig_z (n m : leech.carrier) : IsEigN (NS n m) (zz n m)
+
+theorem top_pairs0 {v b : VPlus} (hv : v ∈ OmegaV3) (hb : b ∈ OmegaV3) :
+    Θ0 (mode (plusModule.YM v) 1 (Φ0 b)) = mode (plusModule.YM b) 1 (Φ0 v)
+\end{leancode}
+File \leanpath{VOA/Moonshine/TopPairsCore.lean}.
+
+\begin{dictionary}
+\lean{hP v t} is $h_v(-\tfrac12)\otimes t$ for $v\in\C^{24}$ (orthonormal coordinates); \lean{latL n v} is
+$v-2\langle v,n\rangle n$; \lean{eT … n} is $e_n$ on $T$; \lean{zz n m := eL n (eL m t0)}; \lean{IsEigN N z} means
+$Z_{0k}z=u_kz$ for $k\ne0$.  (c) is for the \emph{unnormalised} data.
+\end{dictionary}
+
+\begin{physics}
+(a) is the twisted vertex operator of $e^n+e^{-n}$ acting on the lowest twisted states: it shifts the
+ground state by $e_n$ and rotates the oscillator polarisation.  (c) is the finite crossing symmetry
+of \lean{TopPairs} for the explicit triality.
+\end{physics}
+
+\paragraph{Proof on paper.}  (a) from the explicit twisted operator $Y^T(e^\alpha,z)$ of Chapter~\ref{ch:08} at its
+top coefficient.  (b) $Z_{0k}$ commutes with $e_n$ up to the sign $(-1)^{\langle\gamma^-_{0k},n\rangle}$ and fixes
+$t_0$ (seed).  (c) On the basis: $\Phi_0x_m=c_\star(m)h_{w_j}\otimes e_mt_0$; by (a), $o(x_n)$ of it is
+$2^{-3}c_\star(m)\sum_l(\delta_{jl}-n_jn_l/4)h_{w_l}\otimes e_ne_mt_0$; $\Theta_0$ acts on block $l$ by $\psi_l$, i.e.\ by
+$u_l\omega^{|N|}$ (by (b)).  The other side gives $2^{-3}c_\star(n)\sum_l(\delta_{il}-m_im_l/4)h_{w_l}\otimes e_me_nt_0$ and
+$e_me_n=(-1)^{\langle m,n\rangle}e_ne_m$.  Coefficients agree by Theorem~\ref{ch14:thm:coef}.  Extend
+bilinearly. \qed
+
+\begin{theorem}[\lean{TopPairs} with $\varepsilon=+1$]\label{ch14:thm:topone}
+\begin{leancode}
+theorem topPairs_one :
+    FZKey.TopPairs (mkData cStar0 1 (c_ne_of_norm cStar0_norm) (by norm_num))
+\end{leancode}
+File \leanpath{VOA/Moonshine/TopPairs.lean}.
+\end{theorem}
+
+\begin{dictionary}
+\lean{(by norm_num)} is the proof of $1\cdot1=1$.  For $D(c_\star,1)$ both sides of \lean{TopPairs} are $c_\star$
+times the two sides of Theorem~\ref{ch14:thm:toppairs0}(c).  Unconditional.
+\end{dictionary}
+
+\begin{physics}
+The correct ``orientation'' of the triality on the self-paired twisted sector is $\Theta_0$ itself,
+with no extra sign.
+\end{physics}
+
+\begin{warning}[title={Trap / dead end: The sign $\varepsilon$ and the earlier numerics}]
+For $\varepsilon=-1$, \lean{TopPairs} would force $\Theta_0(o(x_n)\Phi_0x_n)=0$, which is false; this is
+\emph{analysis only}, not machine-proved — and not needed.  Before the proof, the identity was tested
+numerically with the library's own symbolic formulas on all $98304$ odd norm-4 vectors (via the Golay
+code): $200{,}000$ random pairs and $64$ full rows, $0$ failures.  The earlier $N(A_1^{24})$ model
+had prescribed ``$-\Theta_J$''; the relation of $\Theta_J$ to $\Theta_0$ was never computed, and the Lean proof
+does not depend on it.
+\end{warning}
+
+\begin{theorem}[The Moonshine module]\label{ch14:thm:moonshine}
+There is a vertex operator algebra structure on $\Vnat$ whose vertex operator is the block operator
+\eqref{ch14:eq:block}, with vacuum $(\mathbb 1,0)$, conformal vector $(\omega,0)$, central charge $24$,
+$\Vnat_1=0$, $\dim\Vnat_n=$ the coefficient of $q^n$ in the formal $q$-expansion $q\,J(q)$ for all $n\ge0$
+(so $\dim\Vnat_2=196884$), and which is simple.  These data determine the structure uniquely, so the
+theorem constructs a specific object.  The Lean statement and its full fidelity check are in
+\S\ref{ch14:sec:decode}.
+\end{theorem}
+\begin{leancode}
+theorem moonshine :
+    ∃ V : VertexOperatorAlgebra Vnat,
+      V.Y = Ynat VnatAxioms.wbarL ∧ V.vacuum = vacNat ∧ V.conformalVector = omegaNat ∧
+      V.centralCharge = 24 ∧
+      V.grading 1 = ⊥ ∧
+      Module.finrank ℂ (V.grading 2) = 196884 ∧
+      (∀ n : ℕ, (Module.finrank ℂ (V.grading (n : ℤ)) : ℂ) = PowerSeries.coeff n JShift) ∧
+      V.IsSimple :=
+  moonshine_of_topPairs (by norm_num) topPairs_one
+\end{leancode}
+File \leanpath{VOA/Moonshine/TopPairs.lean}.
+
+\begin{physics}
+The chiral algebra of the $c=24$ conformal field theory of Frenkel--Lepowsky--Meurman: a
+chiral CFT with a unique vacuum, no currents (no continuous symmetry), $196884$ weight-two states
+(by FLM's theorem, the stress tensor plus $196883$ primaries forming the smallest faithful
+representation of the Monster), and torus partition function $J(\tau)$.  As a string
+compactification it is the internal CFT of the ``Monster string''.  This is the physical picture,
+not the content of the Lean statement: the Monster symmetry, the holomorphy of the theory (a single
+irreducible module) and the analytic modular invariance of $J(\tau)$ are \emph{not} part of this
+theorem.
+\end{physics}
+
+\section{The final theorem, read clause by clause}\label{ch14:sec:decode}
+
+This section is the fidelity check of the headline result of the book.  We restate the theorem,
+unfold \emph{every} defined term that occurs in it down to standard mathematics, examine each conjunct,
+and ask how the statement could have been weaker than intended — vacuous, satisfied by an impostor, or
+silently using a different convention — and why it is not.
+
+\subsection{The statement and the objects it mentions}
+
+\begin{leancode}
+theorem moonshine :
+    ∃ V : VertexOperatorAlgebra Vnat,
+      V.Y = Ynat VnatAxioms.wbarL ∧ V.vacuum = vacNat ∧ V.conformalVector = omegaNat ∧
+      V.centralCharge = 24 ∧
+      V.grading 1 = ⊥ ∧
+      Module.finrank ℂ (V.grading 2) = 196884 ∧
+      (∀ n : ℕ, (Module.finrank ℂ (V.grading (n : ℤ)) : ℂ) = PowerSeries.coeff n JShift) ∧
+      V.IsSimple
+\end{leancode}
+File \leanpath{VOA/Moonshine/TopPairs.lean} (namespace \lean{VOA.Moonshine}).
+
+\paragraph{Shape.}  The statement is an existential: \emph{there is} a term \lean{V} of type
+\lean{VertexOperatorAlgebra Vnat} — a VOA structure on the fixed vector space $\Vnat$ — satisfying eight
+conjuncts joined by \lean{∧}.  There are no hypotheses, no section variables, no implicit arguments.
+The space $\Vnat$ is fixed in advance; what is asserted to exist is the \emph{structure}, and the first
+four conjuncts then pin that structure down completely.  So the existential is not a
+loophole: it is the standard way of saying ``the following explicit data form a VOA''.
+
+\paragraph{A construction with a unique witness.}  Every datum of a \lean{VertexOperatorAlgebra} on
+$\Vnat$ is fixed by the statement: \lean{Y}, \lean{vacuum} and \lean{conformalVector} by conjuncts
+(1)--(3), \lean{centralCharge} by (4); the \lean{grading} is forced, because \lean{isInternal} and
+\lean{L0_grading} make \lean{V.grading n} exactly the $n$-eigenspace of the pinned operator
+$L_0=\omega_{(1)}$ (argued under (2)--(3) below); and all remaining fields are propositions (the field
+\lean{finrank} is the \lean{Prop} \lean{FiniteDimensional}), so two witnesses with the same data are
+equal.  Hence any two witnesses of the existential coincide: the theorem cannot be satisfied by ``an
+unrelated VOA structure on the same space''.  It is a \emph{construction} of one specific object,
+stated in the form ``these explicit data satisfy the VOA axioms and the listed properties''.  (The
+release audit suggests, as a cosmetic improvement, exposing the witness as a named definition
+\lean{Classical.choose moonshine}; the mathematical content is the same.)  This uniqueness is also what
+excludes the recorded trap, the square-zero extension with $\overline W=0$: it is not a witness,
+because conjunct (1) pins the twisted$\times$twisted block to $\overline W$, which is proved nonzero
+(\lean{leechWbar_ne_zero}), and independently because it is not simple (conjunct (8)); see the
+discussion under (8).
+
+\paragraph{The type \lean{VertexOperatorAlgebra}.}  This is the library's definition
+(Definitions~\ref{l03:def:VA} and~\ref{l03:def:VOA}), which we reproduce so that the referee need not turn back:
+\begin{leancode}
+structure PreVertexAlgebra (𝒱 : Type u) [AddCommGroup 𝒱] [Module ℂ 𝒱] where
+  /-- The internal `ℤ`-grading `𝒱 = ⊕ₙ 𝒱ₙ`, as a family of submodules of `𝒱`. -/
+  grading : ℤ → Submodule ℂ 𝒱
+  /-- The grading is a genuine internal direct-sum decomposition of `𝒱`. -/
+  isInternal : DirectSum.IsInternal grading
+  /-- Each homogeneous piece `𝒱ₙ` is finite-dimensional (Gannon Def. 5.1.3(a)). -/
+  finrank : ∀ n, FiniteDimensional ℂ (grading n)
+  /-- The state–field correspondence `Y(u,z) = ∑ₙ u₍ₙ₎ z^{-n-1}`, `ℂ`-linear in `u`. -/
+  Y : 𝒱 →ₗ[ℂ] (End ℂ 𝒱)⟦z^±⟧
+  /-- The vacuum vector `𝟙`. -/
+  vacuum : 𝒱
+  /-- The vacuum lies in degree `0`: `𝟙 ∈ 𝒱₀`. -/
+  vacuum_mem : vacuum ∈ grading 0
+  /-- **VA1 (grading).** For `u ∈ 𝒱ₖ` and `v ∈ 𝒱ₗ`, `u₍ₙ₎ v ∈ 𝒱_{k+ℓ-n-1}`. -/
+  grading_mode : ∀ {k ℓ : ℤ} (u : 𝒱), u ∈ grading k → ∀ (v : 𝒱), v ∈ grading ℓ →
+    ∀ (n : ℤ), mode (Y u) n v ∈ grading (k + ℓ - n - 1)
+  /-- **VA2 (vacuum).** `Y(𝟙, z) = id`, the unit field. -/
+  vacuum_Y : Y vacuum = (1 : (End ℂ 𝒱)⟦z^±⟧)
+  /-- **VA3 (state–field correspondence).** `u₍₋₁₎ 𝟙 = u` and `u₍ₙ₎ 𝟙 = 0` for `n ≥ 0`. -/
+  creation : ∀ u : 𝒱, mode (Y u) (-1) vacuum = u ∧ ∀ n : ℤ, 0 ≤ n → mode (Y u) n vacuum = 0
+  /-- **VA4 (locality).** `Y(u,z₁)` and `Y(v,z₂)` are mutually local:
+  `(z₁ - z₂)ᴹ [Y(u,z₁), Y(v,z₂)] = 0` for some `M = M(u,v)`. -/
+  locality : ∀ u v : 𝒱, Local (Y u) (Y v)
+  /-- **VA5 (regularity).** For each `u, v` there is `N` with `u₍ₙ₎ v = 0` for `n ≥ N`. -/
+  regularity : ∀ u v : 𝒱, ∃ N : ℤ, ∀ n : ℤ, N ≤ n → mode (Y u) n v = 0
+\end{leancode}
+File \leanpath{VOA/Core/VertexAlgebra.lean}.
+\begin{leancode}
+structure GradedVertexOperatorAlgebra (𝒱 : Type u) [AddCommGroup 𝒱] [Module ℂ 𝒱]
+    extends PreVertexAlgebra 𝒱 where
+  /-- The conformal vector `ω`. -/
+  conformalVector : 𝒱
+  /-- The conformal vector lies in degree `2`: `ω ∈ 𝒱₂`. -/
+  conformal_mem : conformalVector ∈ grading 2
+  /-- The central charge / rank `c ∈ ℂ`. -/
+  centralCharge : ℂ
+  /-- **VOA1 (conformal symmetry).** Writing `Lₙ = ω₍ₙ₊₁₎ = mode (Y ω) (n+1)`, the modes
+  obey the Virasoro relation `[Lₘ,Lₙ] = (m-n)L_{m+n} + (c/12)(m³-m)δ_{m+n,0}`. -/
+  virasoro : ∀ m n : ℤ,
+      ⁅mode (Y conformalVector) (m + 1), mode (Y conformalVector) (n + 1)⁆
+        = ((m : ℂ) - n) • mode (Y conformalVector) (m + n + 1)
+          + (if m + n = 0 then (((m : ℂ) ^ 3 - m) / 12 * centralCharge) • (1 : End ℂ 𝒱)
+             else 0)
+  /-- **VOA2 (conformal weight).** `L₀ = mode (Y ω) 1` acts on `𝒱ₙ` as multiplication by
+  `n`: `L₀ v = n • v` for `v ∈ 𝒱ₙ`. -/
+  L0_grading : ∀ {n : ℤ} (v : 𝒱), v ∈ grading n → mode (Y conformalVector) 1 v = (n : ℂ) • v
+  /-- **VOA3 (translation generator).** `Y(L₋₁ v, z) = ∂_z Y(v,z)`, where
+  `L₋₁ = mode (Y ω) 0`. -/
+  translation : ∀ v : 𝒱, Y (mode (Y conformalVector) 0 v) = deriv (Y v)
+  /-- **Grading truncation** (FLM/LL): `𝒱ₙ = 0` for all sufficiently negative `n`. -/
+  grading_bounded_below : ∃ N : ℤ, ∀ n : ℤ, n < N → grading n = ⊥
+
+structure VertexOperatorAlgebra (𝒱 : Type u) [AddCommGroup 𝒱] [Module ℂ 𝒱]
+    extends GradedVertexOperatorAlgebra 𝒱 where
+  /-- **VOA4 (CFT type), part 1.** `𝒱₀ = ℂ𝟙`. -/
+  vacuum_grade : grading 0 = ℂ ∙ vacuum
+  /-- **VOA4 (CFT type), part 2.** `𝒱ₙ = 0` for `n < 0`. -/
+  positivity : ∀ n : ℤ, n < 0 → grading n = ⊥
+  grading_bounded_below := ⟨0, positivity⟩
+\end{leancode}
+File \leanpath{VOA/Core/VertexOperatorAlgebra.lean}.
+
+\begin{dictionary}
+\textbf{The definition is the textbook one, of CFT type} (Frenkel--Lepowsky--Meurman, Gannon Def.~5.1.3): an internal
+$\Z$-graded space with finite-dimensional pieces (\lean{DirectSum.IsInternal grading}: the canonical map
+$\bigoplus_n\mathcal V_n\to\mathcal V$ is an isomorphism), a linear state--field map
+$Y:\mathcal V\to\End(\mathcal V)[[z^{\pm1}]]$, a vacuum, grading compatibility, vacuum and creation axioms,
+locality, truncation, a conformal vector of weight $2$ whose modes $L_n=\omega_{(n+1)}$ satisfy Virasoro with
+central charge $c$, $L_0$ acting by the grading, $L_{-1}$-translation, and CFT type
+($\mathcal V_0=\C\mathbb 1$, $\mathcal V_{n<0}=0$).  The two blocks above are the library's two layers:
+\lean{GradedVertexOperatorAlgebra} is the general FLM/Lepowsky--Li notion (grading truncated from below), and
+\lean{VertexOperatorAlgebra} adds CFT type, its truncation field being filled automatically by $N=0$; a
+\lean{VertexOperatorAlgebra} is CFT type by definition.  Locality plus the other axioms imply the Jacobi
+identity (Chapter~\ref{ch:L03}).  It is a demanding definition: the library has a recorded trap where an
+over-quantified axiom made a related structure (\lean{TwistedModule}) unsatisfiable
+(Chapter~\ref{ch:06}); the \emph{existence} of the concrete VOAs of Chapters~\ref{ch:03}--\ref{ch:04}, and
+here of $\Vnat$, shows this definition is satisfiable and non-degenerate.  Note that CFT type and
+finite-dimensionality are \emph{part of} the definition, so they are asserted for $\Vnat$ too.
+\end{dictionary}
+
+\begin{physics}
+These are the axioms of the chiral algebra of a 2d CFT: states $\leftrightarrow$ fields, a unique
+$SL_2$-invariant vacuum, mutually local fields, a stress tensor $T(z)=Y(\omega,z)=\sum L_nz^{-n-2}$ with
+central charge $c$, and $L_0$ = energy.  CFT type means a unique vacuum and positive energies.
+\end{physics}
+
+\subsection{Conjunct by conjunct}
+
+\paragraph{(1) \lean{V.Y = Ynat VnatAxioms.wbarL}: the vertex map is the genuine block operator.}
+\begin{leancode}
+abbrev Vnat : Type := SkewVP × TP
+\end{leancode}
+File \leanpath{VOA/Moonshine/VnatCarrier.lean}.
+\begin{leancode}
+noncomputable def Ynat (Wbar : TP →ₗ[ℂ] FormalDist (TP →ₗ[ℂ] SkewVP)) :
+    Vnat →ₗ[ℂ] FormalDist (End ℂ Vnat) where
+  toFun x := blockF (leechVOAPlus.Y x.1) (Wbar x.2) (leechWskLin x.2) (plusModule.YM x.1)
+\end{leancode}
+File \leanpath{VOA/Moonshine/VnatFields.lean}.
+\begin{leancode}
+noncomputable def wbarL : TP →ₗ[ℂ] FormalDist (TP →ₗ[ℂ] SkewVP) where
+  toFun := leechWbar
+\end{leancode}
+File \leanpath{VOA/Moonshine/VnatAxioms.lean}.
+\begin{leancode}
+noncomputable def leechWbar (t : TP) : FormalDist (TP →ₗ[ℂ] SkewVP) :=
+  Wbar leechBV plusModule TPForm TPForm_weightOrth t
+\end{leancode}
+File \leanpath{VOA/Moonshine/WbarLeech.lean}.
+\begin{leancode}
+noncomputable def leechWsk (t : TP) : FormalDist (SkewVP →ₗ[ℂ] TP) :=
+  Wsk plusModule.toWeakModule t
+\end{leancode}
+File \leanpath{VOA/Moonshine/SkewLeech.lean}.
+
+\begin{dictionary}
+\textbf{Decoding.}  For $x=(u,t)\in\Vnat$, \lean{Ynat wbarL x} is the $2\times2$ block field
+\eqref{ch14:eq:block}: top-left $Y(u,z)$, the vertex operator of the VOA $V_\Leech^+$ (\lean{leechVOAPlus},
+Chapter~\ref{ch:04}); bottom-right $Y^T(u,z)$, the module vertex operator of $V_\Leech^+$ on
+$(V_\Leech^T)^+$ (\lean{plusModule}, Chapter~\ref{ch:08}); bottom-left $W(t,z)$, the skew intertwiner
+$W(t,z)\varphi=e^{zL_{-1}}Y^T(\varphi,-z)t$ (\lean{Wsk}, Chapter~\ref{ch:09}); top-right $\overline W(t,z)$, the
+adjoint of $W$ through the canonical forms \lean{leechBV} and \lean{TPForm} (\lean{Wbar}, Chapter~\ref{ch:09}).
+\lean{wbarL} is merely \lean{leechWbar} packaged as a linear map.
+
+\textbf{Why this conjunct is essential.}  Without it, the theorem would assert the existence of
+\emph{some} VOA on the vector space $\Vnat$ with the listed numerical properties, and the space
+$\Vnat$ would be playing no role beyond its graded dimension.  With it, the vertex operator is
+\emph{the} FLM/DGM vertex operator on $V_\Leech^+\oplus(V_\Leech^T)^+$: every field is the explicit
+untwisted, twisted, or intertwining field built in Chapters~\ref{ch:03}--\ref{ch:09}.
+
+\textbf{The adjoint is not zero.}  The theorem
+\begin{leancode}
+theorem leechWbar_ne_zero : leechWbar ≠ 0
+\end{leancode}
+File \leanpath{VOA/Moonshine/VnatGenuine.lean}.
+shows that the top-right block is genuinely present: for a nonzero weight-2 twisted $t$ there is $t'$ with
+$\overline W(t)_{(3)}t'=c\,\mathbb 1$, $c\ne0$.
+\end{dictionary}
+
+\begin{physics}
+The OPE of two twist fields contains the identity operator: $\sigma_t(z)\sigma_{t'}(w)\sim
+\langle t,t'\rangle(z-w)^{-4}\mathbb 1+\cdots$ for weight-2 twist fields.  This is what
+$\overline W\neq0$ expresses, and it is what makes the twisted sector part of one theory rather than a module
+glued on with no interaction.
+\end{physics}
+
+\paragraph{(2)--(3) \lean{V.vacuum = vacNat}, \lean{V.conformalVector = omegaNat}.}
+\begin{leancode}
+noncomputable def vacNat : Vnat := (leechVOAPlus.vacuum, 0)
+
+noncomputable def omegaNat : Vnat := (leechVOAPlus.conformalVector, 0)
+\end{leancode}
+File \leanpath{VOA/Moonshine/VnatCarrier.lean}.
+
+\begin{dictionary}
+Vacuum and conformal vector are those of $V_\Leech^+$, i.e.\ of the Leech lattice VOA: $\mathbb 1=e^0$ and
+$\omega=\tfrac12\sum_{a=1}^{24}h_a(-1)^2\mathbb 1$ (Chapter~\ref{ch:03}).
+
+\textbf{The grading is determined by (1)--(3).}  The theorem does not say \lean{V.grading = gradingNat}, but
+it need not: by \lean{L0_grading} each \lean{V.grading n} is contained in the $n$-eigenspace of
+$L_0=\omega_{(1)}$, and because the grading is an internal direct sum, it \emph{equals} that eigenspace
+(decompose an eigenvector into homogeneous components; each component is an eigenvector of its own
+weight, so only the weight-$n$ component survives).  Since $Y$ and $\omega$ are pinned, $L_0$ is the explicit
+operator $L_0\oplus L_0^T$, and \lean{V.grading n} is the explicit space $(V_\Leech^+)_n\times(T^+)_n$
+(the library's \lean{gradingNat n}).  Thus the dimension statements (5)--(7) refer to the intended spaces,
+not to an arbitrary regrading.  Likewise \lean{V.L n} are the explicit Virasoro operators.
+\end{dictionary}
+
+\begin{physics}
+The stress tensor of the orbifold is the stress tensor of the 24 free bosons, $T=-\tfrac12\sum:\partial X^a\partial X^a:$,
+which is $\theta$-invariant; the orbifold does not change the conformal structure.
+\end{physics}
+
+\paragraph{(4) \lean{V.centralCharge = 24}.}  With $\omega$ pinned, $c$ is determined by
+$[L_2,L_{-2}]=4L_0+\tfrac c2$; a wrong value would be refutable.  It is the rank of the Leech lattice.
+
+\begin{physics}
+$c=24$: 24 free bosons; the critical dimension of the bosonic string after light-cone gauge.
+Holomorphic $c=24$ CFTs are exactly those whose characters are (essentially) modular functions,
+$Z(\tau)=J(\tau)+\text{const}$.
+\end{physics}
+
+\paragraph{(5) \lean{V.grading 1 = ⊥}.}  $\Vnat_1=0$: \lean{⊥} is the zero subspace.  This holds because
+$(V_\Leech^+)_1=0$ ($\theta$ kills the 24 currents $h_a(-1)\mathbb 1$, and $\Leech$ has no roots) and $T^+$ starts in
+weight $2$.
+
+\begin{physics}
+No weight-one states means no conserved currents: the Moonshine CFT has no continuous symmetry —
+its symmetry group is finite (by FLM's theorem it is the Monster; $\Aut\Vnat=\mathbb M$ is not formalized).  This distinguishes it from the Leech lattice theory, whose 24
+currents generate a $U(1)^{24}$.
+\end{physics}
+
+\paragraph{(6) \lean{Module.finrank ℂ (V.grading 2) = 196884}.}  \lean{Module.finrank ℂ S} is the dimension
+of the subspace $S$ (a natural number; it would be $0$ for an infinite-dimensional space, but every
+\lean{V.grading n} is finite-dimensional by the axiom \lean{finrank}).  $196884=98580+98304$
+($(V_\Leech^+)_2$ plus $(T^+)_2=24\cdot4096$).
+
+\begin{physics}
+$196884=1+196883$: the stress tensor and the smallest nontrivial representation of the Monster
+(a fact from the literature; no Monster action is formalized);
+McKay's observation that started Monstrous Moonshine.  The weight-two space carries the
+commutative non-associative Griess algebra via $a\cdot b=a_{(1)}b$.
+\end{physics}
+
+\paragraph{(7) the full graded dimension.}
+\begin{leancode}
+noncomputable def jShift : PowerSeries ℂ :=
+  E4Series ^ 3 * ((deltaOverQUnit⁻¹ : (PowerSeries ℂ)ˣ) : PowerSeries ℂ)
+
+noncomputable def JShift : PowerSeries ℂ := jShift - (744 : ℂ) • PowerSeries.X
+\end{leancode}
+File \leanpath{VOA/Modularity/JFunction.lean}.
+
+\begin{dictionary}
+\lean{E4Series} is the $q$-expansion $1+240\sum\sigma_3(n)q^n$ of $E_4$; \lean{deltaOverQUnit} is $\Delta/q=\prod(1-q^n)^{24}$,
+invertible as a power series (constant term $1$).  So \lean{jShift} $=E_4^3q/\Delta$ is the formal
+$q$-expansion of $q\,j$, and \lean{JShift} $=q(j-744)=q\,J$ is the formal $q$-expansion of $qJ$:
+\begin{equation*}
+ \lean{JShift}=1+0\cdot q+196884\,q^2+21493760\,q^3+\cdots .
+\end{equation*}
+\lean{PowerSeries.coeff n} is the coefficient of $q^n$; the cast to $\C$ compares a natural-number dimension with
+a complex coefficient.  The conjunct says $\sum_n\dim\Vnat_n\,q^n=qJ(q)$, i.e.\ $\operatorname{ch}\Vnat=q^{-1}\sum\dim\Vnat_nq^n=J$.
+It is \emph{independent} of (5) and (6) in principle, consistent with them ($[q^1]=0$, $[q^2]=196884$),
+and was proved in Chapter~\ref{ch:05} from $\Theta_\Leech=E_4^3-720\Delta$ and the twisted-sector character.
+The quantifier is over all $n\in\N$; negative $n$ are covered by \lean{positivity}.
+
+\textbf{Formal, not analytic.}  \lean{JShift} is a formal power series, defined from divisor sums; it is
+not a function on the upper half plane.  That it is the $q$-expansion of Klein's analytic
+$j(\tau)-744$ is classical (and follows on paper from Mathlib's $q$-expansions of $E_4$ and $\Delta$,
+Chapter~\ref{ch:05}), but no Lean theorem identifies \lean{JShift} with the analytic function, and no
+modular-invariance statement about the character of $\Vnat$ is formalized.  The conjunct is therefore
+``graded dimension $=J$'' in the standard sense of formal $q$-series, which is how the statement of
+FLM is usually read.
+\end{dictionary}
+
+\begin{physics}
+The torus partition function of the chiral CFT, $Z(\tau)=\tr_{\Vnat}q^{L_0-c/24}$, equals $J(\tau)$: it is
+modular invariant, as a holomorphic $c=24$ theory must be, with no constant term (no currents).
+(Heuristic: the Lean conjunct equates formal $q$-series coefficients; neither the analytic modular
+invariance nor holomorphy of $\Vnat$ is formalized.)
+\end{physics}
+
+\paragraph{(8) \lean{V.IsSimple}.}
+\begin{leancode}
+def IsIdeal (W : VertexOperatorAlgebra 𝒱) (I : Submodule ℂ 𝒱) : Prop :=
+  ∀ (u v : 𝒱) (n : ℤ), v ∈ I → W.smul u n v ∈ I
+
+def IsSimple (W : VertexOperatorAlgebra 𝒱) : Prop :=
+  (⊤ : Submodule ℂ 𝒱) ≠ ⊥ ∧ ∀ I : Submodule ℂ 𝒱, W.IsIdeal I → I = ⊥ ∨ I = ⊤
+\end{leancode}
+File \leanpath{VOA/Core/BilinearForm.lean}.
+
+\begin{dictionary}
+An ideal is a subspace stable under all modes $u_{(n)}$ (a left ideal; for VOAs $L_{-1}$-stable left ideals
+are two-sided by skew-symmetry, and $L_{-1}=\omega_{(0)}$ is among the modes).  Simple: nonzero
+(\lean{⊤ ≠ ⊥}), and the only ideals are $0$ and everything.  Since \emph{all} left ideals are excluded, not
+only two-sided ones, this notion is at least as strong as the textbook notion of a simple VOA.
+
+\textbf{Why this conjunct cannot be dropped — the square-zero impostor.}  Recorded trap (Section~\ref{ch15:sec:trap-sqzero},
+Chapter~\ref{ch:10}): replacing $\overline W$ by $0$ in \eqref{ch14:eq:block} gives the square-zero
+extension $V_\Leech^+\ltimes(V_\Leech^T)^+$.  It \emph{is} a VOA, with the same vacuum, conformal vector,
+$c=24$, $V_1=0$, $\dim V_2=196884$ and graded dimension $J$ — it satisfies conjuncts (2)--(7).  It is
+\emph{not} $\Vnat$, and it is excluded twice: (i) by conjunct (1), since \lean{leechWbar ≠ 0}; (ii) by simplicity,
+since $0\oplus(V_\Leech^T)^+$ is a proper nonzero ideal there (untwisted fields preserve it, twisted fields
+send untwisted states into it and kill it).  Either exclusion alone suffices; the theorem has both.
+In the library simplicity was proved via nondegeneracy of an invariant form on $\Vnat$ that pairs the twisted
+sector with itself through $\overline W$ — exactly what fails for the impostor.
+\end{dictionary}
+
+\begin{physics}
+Simplicity is the algebraic form of ``a unique vacuum and a non-degenerate two-point function'': no
+decoupled sector, every state has a nonzero overlap with some other state.  A unitary CFT with a
+unique vacuum has a simple chiral algebra.
+\end{physics}
+
+\subsection{\texorpdfstring{How the constructed object relates to FLM's $\Vnat$}{How the constructed object relates to FLM's V-natural}}
+
+Conjuncts (1)--(4) fix the data $(\Vnat,Y,\mathbb 1,\omega,c)$ completely: the carrier is FLM's space
+$V_\Leech^+\oplus(V_\Leech^T)^+$, and the vertex operator is the explicit block operator
+\eqref{ch14:eq:block}.  Given those, (5)--(8) are \emph{properties} of a fixed object, not choices; they are
+what the literature states about $\Vnat$.  What the Lean theorem does \emph{not} contain is a comparison
+with FLM's own vertex operator algebra, and the reader should be clear about where the two presentations
+differ.
+\begin{itemize}
+\item The carrier, the untwisted block $Y$, the twisted-module block $Y^T$ and the intertwiner block $W$
+  are FLM's (up to the conventions recorded in Chapters~\ref{ch:03}--\ref{ch:09}).
+\item The twisted$\times$twisted block $\overline W$ is \emph{defined} as the adjoint of the skew intertwiner
+  $W$ through the invariant forms \lean{leechBV} and \lean{TPForm} (Chapter~\ref{ch:09}).  This is the
+  presentation of Huang and of Dolan--Goddard--Montague, \emph{not} FLM's explicit formula for the twisted
+  vertex operators on $T\times T$; likewise the locality relation (4.23) is proved here by the
+  Frenkel--Zhu / triality reduction of this chapter, not by FLM's own route.
+\item No Lean theorem states that the constructed VOA is isomorphic to FLM's $\Vnat$.  On paper the
+  identification is standard: $(V_\Leech^T)^+$ is a simple current of $V_\Leech^+$, and a simple-current
+  extension of $V_\Leech^+$ by it carries at most one VOA structure up to isomorphism (Dong--Mason, Prop.~5.3; see the
+  notes), so any two such structures — FLM's and the one constructed here — are isomorphic.  That
+  uniqueness theorem is not formalized.
+\end{itemize}
+One normalisation subtlety remains: the library's $\overline W$ is fixed by the canonical forms
+(\lean{leechBV} normalised by $(\mathbb 1|\mathbb 1)=1$, and \lean{TPForm}).  Rescaling the twisted sector by
+$\lambda$ rescales the twisted$\times$twisted block by a nonzero scalar and gives an isomorphic VOA, so
+normalisations of this kind do not affect the isomorphism class.  It is therefore fair to call the
+constructed object ``the Moonshine module $\Vnat$ (the FLM Leech-lattice orbifold)''; it is \emph{not} fair
+to say that FLM's construction is formalized verbatim, or that the isomorphism with FLM's $\Vnat$ is proved.
+
+\subsection{What the theorem does not say}
+
+\begin{itemize}
+\item \textbf{No uniqueness.}  It does not say that $\Vnat$ is the unique holomorphic $c=24$ VOA with
+  $V_1=0$ (the FLM uniqueness conjecture; proved under additional hypotheses, e.g.\ by
+  Dong--Griess--Lam, see the notes).  It does not say any VOA with these numerical properties is
+  isomorphic to $\Vnat$ — the square-zero impostor shows the numerical properties alone do not suffice.
+\item \textbf{No Monster.}  It does not construct $\Aut\Vnat$ or identify it with the Monster group; the
+  Lean library contains no Monster group.  The triality $\chXIVsig$ used in the proof is
+  \emph{not} asserted to be an automorphism in the final statement (it is one, by the proof, but no Lean
+  theorem states it).
+\item \textbf{No McKay--Thompson series}, no Borcherds' Monstrous Moonshine theorem, no modular
+  invariance of trace functions (only the graded dimension), no rationality or $C_2$-cofiniteness of $\Vnat$.
+\item \textbf{No module category}: holomorphicity (that $\Vnat$ is its only irreducible module) is not
+  stated.
+\item \textbf{No analytic $j$ in the statement.}  The headline's $J$ is the formal $q$-series \lean{JShift}; that it is
+  the $q$-expansion of the analytic $j(\tau)-744$ on the upper half plane is a separate Lean theorem
+  (\lean{Moonshine.qExpansion_qJ}, \lean{Moonshine.hasSum_JShift}), not a clause of \lean{moonshine}.
+\item \textbf{No isomorphism with FLM's explicit $\Vnat$.}  See the previous subsection: the
+  twisted$\times$twisted block is the form-adjoint $\overline W$, and the identification with FLM's own
+  vertex operators rests on the (unformalized) uniqueness of simple-current extensions.
+\end{itemize}
+Accordingly, none of the following may be said on the strength of this theorem: ``$\Vnat$ is characterised
+/ unique'', ``$\Aut(\Vnat)=\mathbb M$'', ``$\Vnat$ is holomorphic'', or ``FLM's construction is formalized
+verbatim''.
+
+\subsection{Axioms and the trust model}
+
+\begin{plaincode}
+'VOA.Moonshine.moonshine' depends on axioms: [propext, Classical.choice, Quot.sound]
+\end{plaincode}
+This was run for this chapter at an earlier commit (when the chapter was first written; not re-run for this edition) with
+\lean{lake env lean -DmaxSynthPendingDepth=3} on a file importing \lean{VOA.Moonshine.TopPairs}
+(the flag is required: a bare \lean{lake env lean} can silently drop it).  The three axioms are Lean's
+standard ones (propositional extensionality, choice, quotient soundness).  \lean{VOA.pbw} (the PBW theorem of
+Chapter~\ref{ch:L02}; formerly the library's only project axiom, now a theorem) does \emph{not} appear: the Moonshine construction does not use it.
+\texttt{\#print axioms} does not report hypotheses — but \lean{moonshine} has none.  So the theorem is
+\emph{unconditional}.  The project's build record for that earlier commit reports an aggregate
+\lean{lake build} of $10343$ jobs with exit $0$ and \lean{scripts/check_repository.py} passing; the full
+build was not re-run for this chapter.  One upstream definition was changed during the Moonshine work:
+the repair of \lean{TwistedModule.jacobi} (Chapter~\ref{ch:06}); the core definitions of
+VOA, module, $J$ used in this statement are otherwise unchanged in content.  (For the release the vertex-algebra
+structures were renamed and layered --- \lean{PreVertexAlgebra}, and \lean{VertexOperatorAlgebra} extending
+\lean{GradedVertexOperatorAlgebra} --- without changing the fields a VOA must supply; the truncation field of the new
+middle layer is filled automatically from \lean{positivity}.)
+
+\paragraph{Release audit 2026-10-27: \texttt{RELEASE\_AUDIT\_MOONSHINE.md}.}  An independent release audit
+(\texttt{Notes/Textbook/referee/RELEASE\_AUDIT\_MOONSHINE.md}, at an earlier commit, not re-run for this edition) re-ran
+\texttt{\#print axioms} for \lean{VOA.Moonshine.moonshine} and \lean{moonshine_of_topPairs}
+(result: the three standard axioms), confirmed \lean{leechWbar_ne_zero} and two non-vacuity examples
+(the witness's grading pieces are $L_0$-eigenspaces of the pinned vertex map; the twisted$\times$twisted
+block of the pinned map is nonzero), and scanned the $619$ modules of the import closure for
+\lean{axiom}, \lean{sorry}, \lean{native_decide} and similar escape hatches (none outside comments; the
+closure does not contain \leanpath{VOA/Foundations/AffineLie.lean}, where \lean{VOA.pbw} lives).  Its
+verdict is ``announceable with caveats'': no mathematical or formal defect, and caveats on wording only
+— the unique-witness reading of the existential, $J$ as a formal $q$-series, the informal identification
+with FLM's explicit $\Vnat$, and the absence of the Monster, holomorphy and uniqueness.  This chapter has
+been worded accordingly.  The audit did not re-run the aggregate \lean{lake build}; the release commit
+still requires one.
+
+\subsection{The dependency chain through the book}
+
+\begin{center}
+\begin{tabular}{p{0.35\textwidth}p{0.55\textwidth}}
+\toprule
+ingredient & where \\ \midrule
+VOA axioms, locality, forms & Chapters~\ref{ch:L03}--\ref{ch:L04}\\
+Leech lattice, Golay code & Chapter~\ref{ch:02}\\
+$V_\Leech$ (\lean{leechVOA}), $c=24$ & Chapter~\ref{ch:03}\\
+$\theta$, $V_\Leech^+$, $(V_\Leech^+)_1=0$, \lean{leechBV} & Chapter~\ref{ch:04}\\
+graded dimension $=J$ & Chapter~\ref{ch:05}\\
+twisted modules (repair), $T$ & Chapters~\ref{ch:06}--\ref{ch:07}\\
+$V_\Leech^T$, $(V_\Leech^T)^+$ (\lean{plusModule}) & Chapter~\ref{ch:08}\\
+$W$, $\overline W$, \lean{TPForm} & Chapter~\ref{ch:09}\\
+block VOA modulo (4.23); simplicity & Chapter~\ref{ch:10}\\
+frame, $\sigma$ on $\chXIVA$ & Chapter~\ref{ch:11}\\
+twisted triality: Zhu generation, existence & Chapters~\ref{ch:12}--\ref{ch:13}\\
+(4.23) via conjugation, FZ, \lean{TopPairs} & this chapter\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{status}
+\lean{VOA.Moonshine.moonshine}: \textbf{unconditional} (no hypotheses); a construction with a unique
+witness; \texttt{\#print axioms} $=$
+\lean{[propext, Classical.choice, Quot.sound]} (re-run for this chapter, and again by the release audit of
+2026-10-27).  Not formalized: $\Aut\Vnat=\mathbb M$, holomorphy, uniqueness of $\Vnat$, the analytic $j$, and
+the isomorphism with FLM's explicit $\Vnat$.
+\end{status}
+
+\section{Referee's checklist}\label{ch14:sec:checklist}
+
+\begin{longtable}{p{0.27\textwidth}p{0.33\textwidth}p{0.2\textwidth}p{0.1\textwidth}}
+\toprule
+declaration & intended meaning & hypotheses & check \\ \midrule
+\endhead
+\lean{modeSpan_x0T} & one twisted vector generates $T^+$ over $V_\Leech^+$ & $t_0\ne0$ & Thm~\ref{ch14:thm:modespan}\\
+\lean{SigmaData} & triality data $\Phi,\Psi,\Theta$ & — (structure) & Def~\ref{ch14:def:sigmadata}\\
+\lean{sigNat_sq}, \lean{conjF_YnatU_V0} & $\chXIVsig$ involution, $\chXIVA$-compatible & $D$ & Thm~\ref{ch14:thm:signat}\\
+\lean{eq_zero_of_V0local} & uniqueness with $\chXIVA$-locality only & cyclic data & Thm~\ref{ch14:thm:V0local}\\
+\lean{moonshine_of_sigma} & $\Vnat$ from \lean{SigmaKey} & \lean{SigmaKey} & Thm~\ref{ch14:thm:tpblock}\\
+\lean{aut_isometry} & automorphisms preserve the invariant form & CFT type, $L_1V_1=0$ & Thm~\ref{ch14:thm:autiso}\\
+\lean{sigmaKey_of_top} & \lean{SigmaKey} from finite isometries and \lean{KeySkew} & three Props & Thm~\ref{ch14:thm:top}\\
+\lean{mkData} & explicit triality data & $c\ne0$, $\varepsilon^2=1$ & Def~\ref{ch14:def:mkData}\\
+\lean{Φ0_simil}, \lean{κ0_ne} & $\Phi_0$ nonzero similitude & none & Thm~\ref{ch14:thm:simil}\\
+\lean{Θ0_Θ0}, \lean{Θ0_isom} & $\Theta_0$ involutive isometry ($\mu=+1$) & none & Thm~\ref{ch14:thm:psi}\\
+\lean{moonshine_of_keySkew0} & $\Vnat$ from \lean{KeySkew0} for one sign & \lean{KeySkew0} & Def~\ref{ch14:def:keyskew0}\\
+\lean{Dq_eq_zero_of_pair} & Li's lemma for the defect & cyclic $x'$ & Thm~\ref{ch14:thm:li}\\
+\lean{keySkew_of_keyTopV} & \lean{KeySkew} from top outputs & \lean{KeyTopV} & Thm~\ref{ch14:thm:keytopv}\\
+\lean{keyTopAll_of_FZ} & FZ reduction & \lean{BimodGenV3}, \lean{TopPairs} & Thm~\ref{ch14:thm:fzred}\\
+\lean{topPairs_of_keyTopAll} & \lean{TopPairs} necessary & \lean{KeyTopAll} & Thm~\ref{ch14:thm:fzred}\\
+\lean{fzGenerated_MV3} & $A(\chXIVB)$ generated by top & none & Thm~\ref{ch14:thm:bimodgen}\\
+\lean{betaN_NS}, \lean{coef_identity} & sign arithmetic & odd norm-4 & Thms~\ref{ch14:thm:betaN}, \ref{ch14:thm:coef}\\
+\lean{top_pairs0} & top-pair identity for $\Theta_0,\Phi_0$ & none & Thm~\ref{ch14:thm:toppairs0}\\
+\lean{topPairs_one} & \lean{TopPairs} with $\varepsilon=+1$ & none & Thm~\ref{ch14:thm:topone}\\
+\lean{moonshine_of_topPairs} & $\Vnat$ from \lean{TopPairs} & \lean{TopPairs} & Thm~\ref{ch14:thm:maintop}\\
+\lean{moonshine} & construction: the block VOA on the FLM Leech orbifold space is a simple VOA with $c=24$, $V_1=0$, formal character $J$ (unique witness) & \textbf{none} & \S\ref{ch14:sec:decode}\\
+\bottomrule
+\end{longtable}
+
+All rows except the conditional reductions are unconditional; every conditional hypothesis listed is
+discharged further down the table, ending in \lean{moonshine}, which has none.
+
+\section{Notes and references}\label{ch14:sec:notes}
+
+The triality argument is that of I.~Frenkel, J.~Lepowsky and A.~Meurman, \emph{Vertex Operator
+Algebras and the Monster}, Pure and Applied Mathematics 134, Academic Press, 1988, Chapters~12--13
+(the moonshine module, the triality $\sigma$, and the proof that the twisted vertex operators satisfy
+the Jacobi identity); their announcement is \emph{A natural representation of the Fischer--Griess
+Monster with the modular function $J$ as character}, Proc.\ Natl.\ Acad.\ Sci.\ USA 81 (1984),
+3256--3260.  The block presentation (4.17), (4.22), (4.23) is from L.~Dolan, P.~Goddard and P.~Montague,
+\emph{Conformal field theory of twisted vertex operators}, Nucl.\ Phys.\ B 338 (1990) 529--601, and
+\emph{Conformal field theories, representations and lattice constructions}, Comm.\ Math.\ Phys.\ 179
+(1996) 61--120 (arXiv:hep-th/9410029).  The bimodule $A(M)$ is due to I.~B.~Frenkel and Y.~Zhu,
+\emph{Vertex operator algebras associated to representations of affine and Virasoro algebras}, Duke
+Math.\ J.\ 66 (1992) 123--168 (Lemma 2.1.2 and Theorem 1.5.3 are the facts used here); Zhu's algebra is
+from Y.~Zhu, \emph{Modular invariance of characters of vertex operator algebras}, J.\ Amer.\ Math.\ Soc.\
+9 (1996) 237--302.  Uniqueness of intertwining operators from top-level data, and the correction of
+the Frenkel--Zhu fusion theorem, are due to H.~Li, \emph{Determining fusion rules by $A(V)$-modules and
+bimodules}, J.\ Algebra 212 (1999) 515--556 (arXiv:q-alg/9706012).  Intertwining operators and their
+skew-symmetry: I.~B.~Frenkel, Y.-Z.~Huang and J.~Lepowsky, \emph{On axiomatic approaches to vertex
+operator algebras and modules}, Mem.\ Amer.\ Math.\ Soc.\ 104 (1993), no.\ 494; Y.-Z.~Huang, \emph{A
+nonmeromorphic extension of the Moonshine module vertex operator algebra}, Contemp.\ Math.\ 193 (1996)
+123--148 (arXiv:hep-th/9406190), which gives an alternative proof of the $\Vnat$ construction via
+intertwining operator algebras.  Fusion rules for $V_L^+$: T.~Abe, C.~Dong and H.~Li, \emph{Fusion rules
+for the vertex operator algebras $M(1)^+$ and $V_L^+$}, Comm.\ Math.\ Phys.\ 253 (2005) 171--219.  The
+uniqueness results mentioned in \S\ref{ch14:sec:decode}: C.~Dong, R.~L.~Griess Jr.\ and C.~H.~Lam,
+\emph{Uniqueness results for the moonshine vertex operator algebra}, Amer.\ J.\ Math.\ 129 (2007)
+583--609.  Uniqueness of the vertex operator algebra structure on a simple-current extension, which
+identifies the object constructed here with FLM's $\Vnat$ on paper: C.~Dong and G.~Mason,
+\emph{Rational vertex operator algebras and the effective central charge}, Int.\ Math.\ Res.\ Not.\ 2004,
+no.~56, 2989--3008 (arXiv:math/0201318), Proposition~5.3, applied with $G=\mathbb Z/2$, $V^0=V_\Leech^+$,
+$V^1=(V_\Leech^T)^+$ and the simple-current fusion rules of Abe--Dong--Li; see also C.~Dong, H.~Li and G.~Mason, \emph{Simple currents and extensions of vertex operator
+algebras}, Comm.\ Math.\ Phys.\ 180 (1996) 671--707.  For physics background on orbifolds and twist fields, L.~Dixon, D.~Friedan, E.~Martinec and
+S.~Shenker, \emph{The conformal field theory of orbifolds}, Nucl.\ Phys.\ B 282 (1987) 13--73.  The
+project's own route notes are \leanpath{Notes/M8GluingPlan.md}, \leanpath{Notes/SigmaKey.md},
+\leanpath{Notes/KeySkew.md} and \leanpath{Notes/BimoduleGenTest.md}.

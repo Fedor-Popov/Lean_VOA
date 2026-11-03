@@ -1,0 +1,142 @@
+% Vertex Operator Algebras in Lean -- release v1.0 of the book.
+% Build from this folder (three passes settle the table of contents and the index):
+%   lualatex book.tex && lualatex book.tex && lualatex book.tex
+%
+\documentclass[11pt,openany]{book}
+\usepackage{fontspec}
+\usepackage{amsmath,amsthm,amssymb,mathtools}
+\usepackage[math-style=TeX,bold-style=TeX]{unicode-math}
+\setmainfont{STIX Two Text}
+\setmathfont{STIX Two Math}
+% Monospace font for Lean source: JuliaMono (SIL OFL, distributed with TeX Live),
+% chosen because it covers the Unicode used in Lean/Mathlib (subscripts, script letters, ⟦⟧, ⨆, …).
+\setmonofont{JuliaMono}[Extension=.ttf, UprightFont=*-Regular, BoldFont=*-Bold, Scale=0.80]
+\usepackage{fvextra}
+\usepackage[most]{tcolorbox}
+\usepackage{xcolor}
+\usepackage{microtype}
+\usepackage[a4paper,margin=2.6cm]{geometry}
+\usepackage{enumitem}
+\usepackage{booktabs,longtable,array}
+\usepackage[colorlinks=true,linkcolor=blue!55!black,citecolor=green!35!black,urlcolor=blue!65!black,
+  bookmarksnumbered=true,bookmarksopen=true,bookmarksopenlevel=1]{hyperref}
+\usepackage{cleveref}
+\usepackage{multicol}% index of Lean declarations
+
+\definecolor{leanbg}{RGB}{247,247,250}
+\definecolor{leanframe}{RGB}{140,140,170}
+\definecolor{notebg}{RGB}{250,248,240}
+
+% Lean source: \begin{leancode} ... \end{leancode}  (verbatim, Unicode-safe, breaks long lines)
+\DefineVerbatimEnvironment{leancode}{Verbatim}{breaklines=true,breakanywhere=true,
+  fontsize=\small,frame=leftline,framerule=1.2pt,rulecolor=\color{leanframe},
+  framesep=6pt,xleftmargin=4pt}
+% Non-Lean verbatim text (shell commands, tool output, config files): \begin{plaincode}...\end{plaincode}
+\DefineVerbatimEnvironment{plaincode}{Verbatim}{breaklines=true,breakanywhere=true,
+  fontsize=\small,frame=leftline,framerule=0.6pt,rulecolor=\color{black!40},framesep=6pt,xleftmargin=4pt}
+% inline Lean identifier: \lean{VOA.Moonshine.moonshine}
+\newcommand{\lean}[1]{\texttt{\detokenize{#1}}}
+\newcommand{\leanpath}[1]{\texttt{\small #1}}
+
+% Explanatory boxes
+\newtcolorbox{dictionary}[1][]{enhanced,breakable,colback=notebg,colframe=black!45,
+  title={From the mathematics to the Lean statement},fonttitle=\bfseries\small,boxrule=0.4pt,arc=2pt,#1}
+\newtcolorbox{warning}[1][]{enhanced,breakable,colback=red!3,colframe=red!50!black,
+  title={Trap / dead end},fonttitle=\bfseries\small,boxrule=0.4pt,arc=2pt,#1}
+\newtcolorbox{status}[1][]{enhanced,breakable,colback=green!3,colframe=green!35!black,
+  title={What the machine verified},fonttitle=\bfseries\small,boxrule=0.4pt,arc=2pt,#1}
+\newtcolorbox{physics}[1][]{enhanced,breakable,colback=blue!3,colframe=blue!45!black,
+  title={Physical meaning},fonttitle=\bfseries\small,boxrule=0.4pt,arc=2pt,#1}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[chapter]
+\newtheorem{example}[definition]{Example}
+\newtheorem{remark}[definition]{Remark}
+\theoremstyle{plain}
+\newtheorem{theorem}[definition]{Theorem}
+\newtheorem{proposition}[definition]{Proposition}
+\newtheorem{lemma}[definition]{Lemma}
+\newtheorem{corollary}[definition]{Corollary}
+
+\newcommand{\C}{{\mathbb{C}}}
+\newcommand{\Z}{{\mathbb{Z}}}
+\newcommand{\Q}{{\mathbb{Q}}}
+\newcommand{\N}{{\mathbb{N}}}
+\newcommand{\Vnat}{{V^{\natural}}}
+\newcommand{\Leech}{{\Lambda}}
+\newcommand{\End}{\operatorname{End}}
+\newcommand{\Aut}{\operatorname{Aut}}
+\newcommand{\Res}{\operatorname{Res}}
+\newcommand{\wt}{\operatorname{wt}}
+\newcommand{\tr}{\operatorname{tr}}
+
+% Edition
+\newcommand{\bookrelease}{release v1.0}
+\newcommand{\bookcommit}{(recorded at release)}
+\newcommand{\bookdate}{2026-11-03}
+%
+\title{\Huge Vertex Operator Algebras in Lean\\[0.6em]
+  \Large The LeanVOA library and the construction of the Moonshine module}
+\author{Fedor Popov and Leonardo Rastelli\\[0.3em]\small with Claude (Anthropic)}
+\date{Documents \bookrelease{} of the library, commit \texttt{\bookcommit}\\ \small(built \bookdate)}
+\begin{document}
+\frontmatter
+\maketitle
+\tableofcontents
+\input{chapters/frontmatter}
+\mainmatter
+\part{Foundations}
+\input{chapters/ch01}% Reading Lean, and a map of the book
+\input{chapters/L01}% Formal calculus and locality
+\input{chapters/L02}% Lie-theoretic inputs and the trust base
+\input{chapters/L03}% The vertex algebra axioms, the Borcherds identity and reconstruction
+\input{chapters/L04}% Structure theory and invariant forms
+\part{Examples, deformations and rigidity}
+\input{chapters/L05}% Free fields: Heisenberg and lattice vertex algebras
+\input{chapters/L06}% The Virasoro vertex algebra: Verma modules, the Kac determinant and screenings
+\input{chapters/L07}% First-order deformations and the rigidity of Virasoro minimal models
+\input{chapters/L08}% Affine sl(2): construction, Verma modules, Wakimoto realization and non-simplicity
+\input{chapters/L09}% Rigidity of affine sl(2): Linshaw--Qi and admissible levels
+\input{chapters/L11}% Filtrations, the C2 algebra and presentations
+\part{Representation theory}
+\input{chapters/L12}% Modules, Zhu's algebra and the rationality hierarchy
+\input{chapters/L13}% Zhu's bijection via the Frenkel--Zhu tower
+\part{Modularity}
+\input{chapters/L14}% Modular forms and the analytic toolkit
+\input{chapters/L15}% Zhu's modularity theorem
+\input{chapters/L16}% Quasi-lisse vertex algebras and the Arakawa--Kawasetsu theorem
+\part{Super, logarithmic and unitary theories}
+\input{chapters/L17}% The super generalization
+\input{chapters/L18}% Logarithmic vertex algebras: the triplet and doublet algebras
+\input{chapters/L19}% Graded unitarity, Lee--Yang and inverse Drinfeld--Sokolov reduction
+\part{Two recent theorems, formalized}
+\input{chapters/L20}% Classical freeness at the boundary admissible level: the Arakawa--Dai theorems
+\input{chapters/L21}% Huang's modular tensor category and the congruence property
+\input{chapters/L22}% The classification of nice central-charge-one vertex operator algebras (Gannon--Rayhaun)
+\input{chapters/L23}% Affine vertex algebras for every simple Lie algebra, and the exceptional Lie algebras
+\input{chapters/L24}% The Deligne series I: presentations, carriers and the divisor comparison
+\input{chapters/L25}% The Deligne series II: characters, the Arakawa--Kawasetsu MLDE and q-series identities
+\input{chapters/L26}% The Deligne series III: fusion modules, Demazure modules and Ravinder's kernel
+\input{chapters/L27}% The Deligne series IV: the final theorems, the named inputs and the open cores
+\input{chapters/L28}% Graded unitarity through the BRST coset
+\input{chapters/L29}% The (2,2n+3) series: coset transfer of graded unitarity at every boundary level
+\part{The Moonshine module}
+\input{chapters/ch02}% Lattices, codes and the Leech lattice
+\input{chapters/ch03}% Heisenberg and lattice vertex algebras
+\input{chapters/ch04}% The involution theta and the fixed-point algebra
+\input{chapters/ch05}% Graded dimensions and the modular function J
+\input{chapters/ch06}% Twisted modules, the twisted Fock space and the module T
+\input{chapters/ch07}% The twisted Heisenberg module
+\input{chapters/ch08}% The twisted Leech lattice module and the twisted plus part
+\input{chapters/ch09}% Intertwiners and invariant forms: the operators W and Wbar
+\input{chapters/ch10}% The vertex algebra on V natural modulo one relation
+\input{chapters/ch11}% The Golay frame and the untwisted triality
+\input{chapters/ch12}% Existence of the twisted triality I: reduction to Zhu generation
+\input{chapters/ch13}% Existence of the twisted triality II: the explicit construction
+\input{chapters/ch14}% The key identity and the completion of the proof
+\part{Verification}
+\input{chapters/ch15}% Verification, dead ends, numerics and open problems
+\appendix
+\input{chapters/provenance}
+\input{chapters/index}% index of the Lean declarations quoted in this edition
+\end{document}

@@ -1,0 +1,2639 @@
+\chapter{The vertex algebra on \texorpdfstring{$V^\natural$}{V natural} modulo one relation}\label{ch:10}
+
+\providecommand{\chtenWb}{\overline{W}}
+\providecommand{\chtenTP}{T^{+}}
+\providecommand{\chtenVP}{V_{\Lambda}^{+}}
+\providecommand{\chtenB}{B^{\natural}}
+
+\section{Where we are, and what this chapter does}\label{ch10:sec:intro}
+
+This chapter documents the release of the library named in the front matter. Quotations from the
+repository are printed in \texttt{leancode} boxes, which are checked by \texttt{scripts/textbook/sync.py} to occur verbatim
+(up to whitespace and comments) in the source of that release; tool output is printed in plain boxes. Checks that were run at an earlier state of the library and not re-run for this edition are marked as such.
+
+The preceding chapters of this Part have produced, one at a time, all the raw materials of the
+Frenkel--Lepowsky--Meurman construction of the Moonshine module.  It is worth listing them,
+because this chapter does nothing but glue them together, and the referee should know exactly
+which pieces are taken as given here.
+
+\begin{enumerate}[label=(\roman*)]
+\item The \emph{untwisted half}: the fixed-point vertex operator algebra
+  $\chtenVP=V_\Lambda^{\theta}$ of the Leech lattice vertex operator algebra under the lift
+  $\theta$ of $-1$ (Lean: \lean{leechVOAPlus}, carrier type \lean{SkewVP}).  It has central
+  charge $24$, no states of weight $1$, and $\dim(\chtenVP)_2=98580$.
+\item The \emph{twisted half}: the $\theta$-fixed part $\chtenTP=(V_\Lambda^T)^+$ of the
+  $\theta$-twisted Leech module $V_\Lambda^T=S[\theta]\otimes T$ (Lean: \lean{TP}), viewed as an
+  ordinary $\chtenVP$-module (Lean: \lean{plusModule}).  Its weights are the integers $\ge 2$
+  and $\dim\chtenTP_2=98304=24\cdot 4096$.
+\item The \emph{skew intertwiner} $W$: for $t\in\chtenTP$ the field
+  $W(t,z)\varphi=e^{zL_{-1}}Y^T(\varphi,-z)t$, a formal series of linear maps
+  $\chtenVP\to\chtenTP$ (Lean: \lean{leechWsk}).
+\item The two invariant bilinear forms: $B_V$ on $\chtenVP$ (Lean: \lean{leechBV}) and the form
+  $(\cdot,\cdot)_T$ on $\chtenTP$ (Lean: \lean{TPForm}); both symmetric, both nondegenerate on
+  every weight space, both invariant under the action of $\chtenVP$.
+\item The \emph{adjoint} $\chtenWb$ of $W$ with respect to these two forms: for $t\in\chtenTP$ a
+  formal series $\chtenWb(t,z)$ of linear maps $\chtenTP\to\chtenVP$ (Lean: \lean{leechWbar}).
+\end{enumerate}
+
+With these, Frenkel, Lepowsky and Meurman --- and, in the streamlined form we follow,
+Dolan, Goddard and Montague (DGM) --- define a single vertex operator on
+\begin{equation*}
+  \Vnat=\chtenVP\oplus\chtenTP
+\end{equation*}
+by the $2\times2$ block matrix
+\begin{equation}\label{ch10:eq:block}
+  Y^\natural\bigl((u,t),z\bigr)=
+  \begin{pmatrix} Y(u,z) & \chtenWb(t,z)\\ W(t,z) & Y^T(u,z)\end{pmatrix},
+  \qquad u\in\chtenVP,\ t\in\chtenTP ,
+\end{equation}
+acting on column vectors $\binom{\varphi}{s}$ with $\varphi\in\chtenVP$, $s\in\chtenTP$.  This is
+DGM's equation (4.17).  The diagonal blocks are the vertex operators of $\chtenVP$ on itself and
+on its module $\chtenTP$; the off-diagonal blocks are the two intertwiners.
+
+\paragraph{The physical picture.}
+In conformal field theory language, $\Vnat$ is the space of states of a chiral CFT obtained by
+\emph{orbifolding} the 24 chiral bosons compactified on the Leech torus $\mathbb R^{24}/\Lambda$
+by the reflection $X\mapsto -X$.  The untwisted sector $\chtenVP$ consists of the
+reflection-invariant states of the original theory; the twisted sector $\chtenTP$ consists of the
+states created by \emph{twist fields} sitting at the $2^{24}$ fixed points of the reflection,
+projected again onto invariant states.  The block form \eqref{ch10:eq:block} is the statement of
+\emph{charge conservation for the $\mathbb Z/2$ grading} by sectors: an untwisted field maps each
+sector to itself; a twisted field exchanges the sectors.  The operator product of two twisted
+fields lands in the untwisted sector, and its consistency --- the locality of two twisted fields
+--- is the one place where the geometry of the lattice enters non-trivially.  Physicists call this
+the statement that the orbifold is \emph{modular invariant}; DGM call it ``almost a modular
+invariance condition''.
+
+\paragraph{What the chapter proves.}
+We check, for the explicit block map \eqref{ch10:eq:block}, \emph{every} axiom of a vertex
+operator algebra except one: the mutual locality of two twisted fields.  We split that remaining
+condition into two halves, DGM's relations (4.22) and (4.23); we prove (4.22) unconditionally;
+we reduce (4.23) to finitely many explicit pairs of vectors; and we prove that, whenever the
+structure exists, it is \emph{simple}.  The relation (4.23) itself is proved in the final
+chapters of this Part, by the triality method; at the end of this chapter we state the theorem
+that collects every target conditional on (4.23), which those chapters then discharge.
+
+\paragraph{The trap.}
+There is a subtlety that governs the whole chapter, and the referee must keep it in mind from the
+first page.  If one replaces $\chtenWb$ by the \emph{zero} map in \eqref{ch10:eq:block}, every
+hypothesis we place on $\chtenWb$ is still satisfied, twisted--twisted locality becomes trivially
+true, and the result is a perfectly good vertex operator algebra with the same underlying graded
+vector space --- hence central charge $24$, no weight-one states, $\dim V_2=196884$ and graded
+dimension $J$.  It is \emph{not} the Moonshine module: it is the \emph{square-zero extension}
+$\chtenVP\ltimes\chtenTP$, which is not simple.  Consequently none of the numerical facts about
+$\Vnat$ can certify that the right object has been built.  What does certify it is simplicity,
+and the simplicity proof uses, in an essential way, that $\chtenWb$ is the \emph{adjoint} of $W$.
+Section~\ref{ch10:sec:trap} treats this in detail.
+
+\paragraph{Plan.}
+Section~\ref{ch10:sec:recall} recalls, with their Lean sources, the library notions that occur in
+the statements of this chapter.  Section~\ref{ch10:sec:block} develops the algebra of block
+fields on a direct sum.  Section~\ref{ch10:sec:modloc} proves that the fields of any module are
+mutually local --- a fact the library did not have.  Section~\ref{ch10:sec:carrier} defines the
+carrier $\Vnat$ and its grading and proves the numerical targets.
+Section~\ref{ch10:sec:fields} defines the generator fields and the reconstruction interface.
+Section~\ref{ch10:sec:axioms} verifies all the axioms of a vertex operator algebra modulo
+twisted--twisted locality and packages the result.  Section~\ref{ch10:sec:split} splits
+twisted--twisted locality into (4.22) and (4.23).  Section~\ref{ch10:sec:422} proves (4.22).
+Section~\ref{ch10:sec:gap} reduces (4.23) to a generating family and then to four explicit pairs.
+Section~\ref{ch10:sec:trap} is the trap.  Section~\ref{ch10:sec:simple} proves simplicity.
+Section~\ref{ch10:sec:assembly} assembles the conditional main theorem.
+Section~\ref{ch10:sec:deadends} collects the dead ends, Section~\ref{ch10:sec:checklist} is the
+referee's checklist, and the chapter ends with notes and references.
+
+\begin{status}
+Every declaration presented in this chapter was \lean{#print axioms}-checked in the session that
+wrote the chapter (2026-10-07), on the already-built library, with
+\lean{lake env lean -DmaxSynthPendingDepth=3} on a file importing \lean{VOA.Moonshine.Main}.
+For each of the 22 headline declarations named in Section~\ref{ch10:sec:checklist} the output was
+\begin{plaincode}
+depends on axioms: [propext, Classical.choice, Quot.sound]
+\end{plaincode}
+These are Lean's three standard axioms; \lean{VOA.pbw} (the PBW theorem of Chapter~\ref{ch:L02}; formerly a project axiom, now a theorem) does \emph{not}
+occur.  The project's build record for the earlier commit at which this chapter was first written
+reports the aggregate build green (10343 jobs; not re-run for this chapter).  Being axiom-clean does not make a theorem unconditional: several results
+below carry an explicit hypothesis (the twisted--twisted locality), and we always say so.
+\end{status}
+
+%==========================================================================================
+\section{Recollections: the notions that occur in the statements}\label{ch10:sec:recall}
+
+The Constitution of this book requires that every term in a stated theorem be defined in the
+book.  The terms below are defined in the Foundations and Core chapters.  The formal-calculus notions
+and weak modules are quoted verbatim and decoded in Chapters~\ref{ch:L01}, \ref{ch:L03}
+and~\ref{ch:L12}, and are recalled here with pointers; the structures whose exact fields this
+chapter's fidelity checks use (vertex algebras, vertex operator algebras, ideals and simplicity,
+invariant forms) are repeated verbatim so that those checks can be read without turning back.
+
+\subsection{Formal distributions and modes}
+
+\begin{definition}[Formal distributions]\label{ch10:def:formaldist}
+For a complex vector space $X$, a \emph{formal distribution} with values in $X$ is a doubly
+infinite formal series $f(z)=\sum_{k\in\Z}f_k z^k$ with $f_k\in X$, with no convergence or
+truncation condition.  Equivalently it is an arbitrary function $\Z\to X$.  A two-variable
+formal distribution is a function $\Z\times\Z\to X$, read as $\sum_{m,n}f_{m,n}z_1^m z_2^n$.
+\end{definition}
+
+In Lean, \lean{FormalDist 𝒲} $=$ \lean{ℤ → 𝒲} and \lean{FormalDist₂ 𝒲} $=$ \lean{ℤ → ℤ → 𝒲}
+(Definitions~\ref{l01:def:formaldist} and~\ref{l01:def:formaldist2},
+\leanpath{VOA/Foundations/FormalSeries.lean}).  The notation \lean{(End ℂ 𝒱)⟦z^±⟧} in the
+structure of a vertex algebra below is notation for \lean{FormalDist (End ℂ 𝒱)}.
+
+\begin{physics}
+A formal distribution is the mode expansion of a quantum field before any state is fed in: the operator-valued Laurent series $\sum_k f_kz^k$ that a physicist writes for $\phi(z)$ on the plane, with no assumption yet that it acts sensibly on states. The truncation condition that makes it a genuine local operator is imposed separately, as the notion of field. The two-variable version is the expansion of a correlator or of a product $\phi_1(z_1)\phi_2(z_2)$ in both positions. This is bookkeeping heuristics for the OPE; the formal definition is what the proofs use.
+\end{physics}
+
+\begin{definition}[Modes]\label{ch10:def:mode}
+For $f(z)=\sum_k f_kz^k$ the \emph{$n$-th mode} is $f_{(n)}:=f_{-n-1}$, so that
+$f(z)=\sum_n f_{(n)}z^{-n-1}$.  For a vertex operator $Y(u,z)$ one writes $u_{(n)}$ for the
+$n$-th mode.
+\end{definition}
+
+In Lean, \lean{mode f m = f (-m - 1)} (Definition~\ref{l01:def:mode},
+\leanpath{VOA/Foundations/FormalCalculus.lean}).
+
+\begin{dictionary}
+There are two indexings in play and the reader must keep them apart.  The raw coefficient
+\lean{f k} is the coefficient of $z^k$; the mode \lean{mode f n} is $f_{(n)}$, the coefficient of
+$z^{-n-1}$.  Thus \lean{mode (Y u) n} is the operator $u_{(n)}$ of the textbooks, \lean{mode (Y u) (-1)}
+is $u_{(-1)}$ (creation), and \lean{Y u 0} --- the raw coefficient of $z^0$ --- is also
+$u_{(-1)}$.  Definitions about \emph{fields} in the library (truncation, translation covariance,
+locality) are written in the raw $z$-power indexing; definitions about \emph{products} of states
+are written with \lean{mode}.  Every fidelity check below says which is in use.
+\end{dictionary}
+
+\begin{physics}
+Modes are the Fourier coefficients of a chiral field around the origin: $u_{(n)}$ is the contour integral of $z^nY(u,z)$, so the modes of the stress tensor are the Virasoro generators and those of a current are its Kac--Moody charges. The shift $-n-1$ is the usual bookkeeping that a weight-$h$ field has $\phi(z)=\sum\phi_nz^{-n-h}$ with $n$ shifted by $h-1$. In $V^\natural$ the modes of all states generate the whole symmetry algebra of the orbifold CFT.
+\end{physics}
+
+\subsection{Multiplication by \texorpdfstring{$z_1-z_2$}{z1-z2}, commutators, locality, fields}
+
+\begin{definition}\label{ch10:def:mulbysub}
+For a two-variable distribution $F$, $(z_1-z_2)F$ has coefficients
+$((z_1-z_2)F)_{m,n}=F_{m-1,n}-F_{m,n-1}$, and $(z_1-z_2)^NF$ is the $N$-fold iterate.
+\end{definition}
+
+In Lean these are \lean{mulBySub} $=$ \lean{shiftZ₁ - shiftZ₂} and its $N$-fold iterate
+\lean{mulBySubPow N} (Definition~\ref{l01:def:formaldist2},
+\leanpath{VOA/Foundations/FormalSeries.lean}); the library proves
+\lean{mulBySub_apply : mulBySub f m n = f (m - 1) n - f m (n - 1)}.
+
+\begin{physics}
+Multiplying by $z_1-z_2$ is the formal counterpart of multiplying a two-point function by the separation of the insertion points; killing a distribution by a power of $z_1-z_2$ says it is supported on the diagonal $z_1=z_2$, i.e.\ it is a contact term. This is exactly the mechanism by which singular OPE terms (poles in $z_1-z_2$) are encoded without functions.
+\end{physics}
+
+\begin{definition}[Commutator and locality]\label{ch10:def:local}
+For two $\End(V)$-valued distributions $a(z),b(z)$ the commutator is the two-variable distribution
+$[a(z_1),b(z_2)]$ with coefficients $a_mb_n-b_na_m$.  The pair is \emph{mutually local} if
+$(z_1-z_2)^N[a(z_1),b(z_2)]=0$ for some $N\in\N$.
+\end{definition}
+
+In Lean, \lean{bracketDist a b} is \lean{fun m n => a m * b n - b n * a m} and \lean{Local a b}
+is \lean{∃ N : ℕ, mulBySubPow N (bracketDist a b) = 0} (Definition~\ref{l01:def:bracket},
+\leanpath{VOA/Foundations/Locality.lean}).  Here \lean{a m * b n} is composition of
+endomorphisms, $a_m\circ b_n$.
+
+\begin{physics}
+Mutual locality is the CFT statement that the commutator of two chiral fields vanishes at separated points and is a finite sum of contact terms: $\phi_1(z_1)\phi_2(z_2)$ and $\phi_2(z_2)\phi_1(z_1)$ are the same analytic function continued around the other order of the two insertions, up to a pole of finite order. It is the formal version of crossing symmetry (braiding of two operators is trivial for bosonic chiral fields) and the axiom whose verification between two twisted fields is the open relation in this chapter.
+\end{physics}
+
+\begin{definition}[Field]\label{ch10:def:field}
+An $\End(V)$-valued distribution $a(z)$ is a \emph{field} if for every $x\in V$ the coefficients
+$a_n x$ vanish for all sufficiently negative $n$; equivalently, in modes, $a_{(n)}x=0$ for $n\gg0$.
+\end{definition}
+
+In Lean, \lean{IsField a} is \lean{∀ x : V, ∃ B : ℤ, ∀ n : ℤ, n < B → a n x = 0}
+(Definition~\ref{l01:def:field}, \leanpath{VOA/Core/Dong.lean}).
+
+\begin{physics}
+The truncation condition says that a field applied to a fixed state produces only finitely many negative powers of $z$: in CFT language the operator--state correspondence, where $\phi(z)|\psi\rangle$ has at worst a pole at $z=0$ and no essential singularity. It is the formal form of the energy bounded below, so that the OPE of $\phi$ with any state has finitely many singular terms.
+\end{physics}
+
+\begin{definition}[Translation covariance]\label{ch10:def:dcov}
+Given $T\in\End(V)$, a field $a(z)$ is \emph{$T$-covariant} if $[T,a(z)]=\partial_z a(z)$,
+i.e.\ $Ta_m-a_mT=(m+1)a_{m+1}$ for every $m\in\Z$.
+\end{definition}
+
+In Lean, \lean{DCovariant T a} is \lean{∀ m : ℤ, T * a m - a m * T = ((m + 1 : ℤ)) • a (m + 1)}
+(Definition~\ref{l03:def:dcov}, \leanpath{VOA/Core/ReconstructionExistence.lean}).  The coefficient of $z^m$ in
+$\partial_z\sum_k a_kz^k$ is $(m+1)a_{m+1}$, which is what the right-hand side says.  The library
+also has the operator \lean{deriv} on formal distributions, $(\partial f)_k=(k+1)f_{k+1}$.
+
+\begin{physics}
+Translation covariance $[L_{-1},\phi(z)]=\partial_z\phi(z)$ is the Ward identity for translations: $L_{-1}$ generates $z\mapsto z+\epsilon$ on a chiral field. In $V^\natural$ it is required of every block of the combined field, so that moving an operator and acting by the global translation generator agree in both the untwisted and twisted sector.
+\end{physics}
+
+\begin{definition}[Generalized binomial coefficient]
+For $n\in\Z$ and $k\in\N$, $\binom nk=n(n-1)\cdots(n-k+1)/k!$.
+\end{definition}
+In Lean this is \lean{gBinom n k}, quoted verbatim in Definition~\ref{l01:def:gbinom}
+(\leanpath{VOA/Foundations/FormalCalculus.lean}).
+
+\begin{physics}
+The generalised binomial coefficients $\binom nk$ with $n\in\Z$ are the Taylor coefficients of $(1+x)^n$ and appear in the OPE and Jacobi identities when one expands $(z_1-z_2)^n$ in one of the two regions $|z_1|>|z_2|$ or $|z_2|>|z_1|$. They are pure combinatorics with no independent physical content.
+\end{physics}
+
+\subsection{Vertex algebras and vertex operator algebras}
+
+The library's basic structure is \lean{PreVertexAlgebra}: Gannon's \emph{locality} axioms (§5.1.3(a)), with an
+internal $\Z$-grading by finite-dimensional pieces. It has no translation-covariance axiom and is therefore not a vertex
+algebra in the standard sense (Chapter~\ref{ch:L03}); the library's \lean{VertexAlgebra} adds that axiom. For this
+chapter only the VOA level matters, where covariance follows from the translation axiom (VOA3).
+
+\begin{leancode}
+structure PreVertexAlgebra (𝒱 : Type u) [AddCommGroup 𝒱] [Module ℂ 𝒱] where
+  /-- The internal `ℤ`-grading `𝒱 = ⊕ₙ 𝒱ₙ`, as a family of submodules of `𝒱`. -/
+  grading : ℤ → Submodule ℂ 𝒱
+  /-- The grading is a genuine internal direct-sum decomposition of `𝒱`. -/
+  isInternal : DirectSum.IsInternal grading
+  /-- Each homogeneous piece `𝒱ₙ` is finite-dimensional (Gannon Def. 5.1.3(a)). -/
+  finrank : ∀ n, FiniteDimensional ℂ (grading n)
+  /-- The state–field correspondence `Y(u,z) = ∑ₙ u₍ₙ₎ z^{-n-1}`, `ℂ`-linear in `u`. -/
+  Y : 𝒱 →ₗ[ℂ] (End ℂ 𝒱)⟦z^±⟧
+  /-- The vacuum vector `𝟙`. -/
+  vacuum : 𝒱
+  /-- The vacuum lies in degree `0`: `𝟙 ∈ 𝒱₀`. -/
+  vacuum_mem : vacuum ∈ grading 0
+  /-- **VA1 (grading).** For `u ∈ 𝒱ₖ` and `v ∈ 𝒱ₗ`, `u₍ₙ₎ v ∈ 𝒱_{k+ℓ-n-1}`. -/
+  grading_mode : ∀ {k ℓ : ℤ} (u : 𝒱), u ∈ grading k → ∀ (v : 𝒱), v ∈ grading ℓ →
+    ∀ (n : ℤ), mode (Y u) n v ∈ grading (k + ℓ - n - 1)
+  /-- **VA2 (vacuum).** `Y(𝟙, z) = id`, the unit field. -/
+  vacuum_Y : Y vacuum = (1 : (End ℂ 𝒱)⟦z^±⟧)
+  /-- **VA3 (state–field correspondence).** `u₍₋₁₎ 𝟙 = u` and `u₍ₙ₎ 𝟙 = 0` for `n ≥ 0`. -/
+  creation : ∀ u : 𝒱, mode (Y u) (-1) vacuum = u ∧ ∀ n : ℤ, 0 ≤ n → mode (Y u) n vacuum = 0
+  /-- **VA4 (locality).** `Y(u,z₁)` and `Y(v,z₂)` are mutually local:
+  `(z₁ - z₂)ᴹ [Y(u,z₁), Y(v,z₂)] = 0` for some `M = M(u,v)`. -/
+  locality : ∀ u v : 𝒱, Local (Y u) (Y v)
+  /-- **VA5 (regularity).** For each `u, v` there is `N` with `u₍ₙ₎ v = 0` for `n ≥ N`. -/
+  regularity : ∀ u v : 𝒱, ∃ N : ℤ, ∀ n : ℤ, N ≤ n → mode (Y u) n v = 0
+\end{leancode}
+(\leanpath{VOA/Core/VertexAlgebra.lean}.)  \lean{DirectSum.IsInternal grading} is Mathlib's
+statement that the natural map $\bigoplus_n V_n\to V$ is an isomorphism, i.e.\ $V=\bigoplus_nV_n$.
+The product $u_{(n)}v$ is written \lean{V.smul u n v := mode (V.Y u) n v}.
+
+A vertex operator algebra adds a conformal vector, in two layers: \lean{GradedVertexOperatorAlgebra} is the
+Frenkel--Lepowsky--Meurman / Lepowsky--Li notion (Virasoro, $L_0$-grading, $L_{-1}$-derivative, grading truncated from
+below), and \lean{VertexOperatorAlgebra} adds the CFT-type condition (VOA4).  Every statement of this chapter is about
+\lean{VertexOperatorAlgebra}, so CFT type is part of it.
+
+\begin{leancode}
+structure GradedVertexOperatorAlgebra (𝒱 : Type u) [AddCommGroup 𝒱] [Module ℂ 𝒱]
+    extends PreVertexAlgebra 𝒱 where
+  /-- The conformal vector `ω`. -/
+  conformalVector : 𝒱
+  /-- The conformal vector lies in degree `2`: `ω ∈ 𝒱₂`. -/
+  conformal_mem : conformalVector ∈ grading 2
+  /-- The central charge / rank `c ∈ ℂ`. -/
+  centralCharge : ℂ
+  /-- **VOA1 (conformal symmetry).** Writing `Lₙ = ω₍ₙ₊₁₎ = mode (Y ω) (n+1)`, the modes
+  obey the Virasoro relation `[Lₘ,Lₙ] = (m-n)L_{m+n} + (c/12)(m³-m)δ_{m+n,0}`. -/
+  virasoro : ∀ m n : ℤ,
+      ⁅mode (Y conformalVector) (m + 1), mode (Y conformalVector) (n + 1)⁆
+        = ((m : ℂ) - n) • mode (Y conformalVector) (m + n + 1)
+          + (if m + n = 0 then (((m : ℂ) ^ 3 - m) / 12 * centralCharge) • (1 : End ℂ 𝒱)
+             else 0)
+  /-- **VOA2 (conformal weight).** `L₀ = mode (Y ω) 1` acts on `𝒱ₙ` as multiplication by
+  `n`: `L₀ v = n • v` for `v ∈ 𝒱ₙ`. -/
+  L0_grading : ∀ {n : ℤ} (v : 𝒱), v ∈ grading n → mode (Y conformalVector) 1 v = (n : ℂ) • v
+\end{leancode}
+followed by the translation axiom and the truncation field,
+\begin{leancode}
+  /-- **VOA3 (translation generator).** `Y(L₋₁ v, z) = ∂_z Y(v,z)`, where
+  `L₋₁ = mode (Y ω) 0`. -/
+  translation : ∀ v : 𝒱, Y (mode (Y conformalVector) 0 v) = deriv (Y v)
+  /-- **Grading truncation** (FLM/LL): `𝒱ₙ = 0` for all sufficiently negative `n`. -/
+  grading_bounded_below : ∃ N : ℤ, ∀ n : ℤ, n < N → grading n = ⊥
+\end{leancode}
+and the CFT-type layer, whose truncation field is filled automatically from \lean{positivity},
+\begin{leancode}
+structure VertexOperatorAlgebra (𝒱 : Type u) [AddCommGroup 𝒱] [Module ℂ 𝒱]
+    extends GradedVertexOperatorAlgebra 𝒱 where
+  /-- **VOA4 (CFT type), part 1.** `𝒱₀ = ℂ𝟙`. -/
+  vacuum_grade : grading 0 = ℂ ∙ vacuum
+  /-- **VOA4 (CFT type), part 2.** `𝒱ₙ = 0` for `n < 0`. -/
+  positivity : ∀ n : ℤ, n < 0 → grading n = ⊥
+  grading_bounded_below := ⟨0, positivity⟩
+\end{leancode}
+(\leanpath{VOA/Core/VertexOperatorAlgebra.lean}).  The library writes $L_n$ for \lean{mode (Y ω) (n+1)}.
+
+\begin{definition}[Ideals, simplicity]\label{ch10:def:simple}
+An \emph{ideal} of a vertex operator algebra $V$ is a subspace $I$ with $u_{(n)}v\in I$ for all
+$u\in V$, $v\in I$, $n\in\Z$.  $V$ is \emph{simple} if $V\neq0$ and its only ideals are $0$ and $V$.
+\end{definition}
+\begin{leancode}
+def IsIdeal (W : VertexOperatorAlgebra 𝒱) (I : Submodule ℂ 𝒱) : Prop :=
+  ∀ (u v : 𝒱) (n : ℤ), v ∈ I → W.smul u n v ∈ I
+
+def IsSimple (W : VertexOperatorAlgebra 𝒱) : Prop :=
+  (⊤ : Submodule ℂ 𝒱) ≠ ⊥ ∧ ∀ I : Submodule ℂ 𝒱, W.IsIdeal I → I = ⊥ ∨ I = ⊤
+\end{leancode}
+(\leanpath{VOA/Core/BilinearForm.lean}.  A deprecated duplicate \lean{IsSimple} in
+\leanpath{VOA/Modules/Rationality.lean} is \emph{not} the one used here; every statement of this
+chapter refers to \lean{VertexOperatorAlgebra.IsSimple} above.)
+
+\begin{dictionary}
+Only left ideals appear in \lean{IsIdeal}: closure under $u_{(n)}$ acting from the left.  For a
+vertex algebra with translation operator, skew-symmetry $Y(v,z)u=e^{zL_{-1}}Y(u,-z)v$ makes a left
+ideal that is $L_{-1}$-stable automatically two-sided; for the purposes of simplicity, demanding
+only left ideals makes ``simple'' a \emph{stronger} requirement (more subspaces are tested), so
+the Lean notion is at least as strong as any textbook notion.
+\end{dictionary}
+
+\begin{physics}
+An ideal is a sector of operators that, once present in the spectrum, can only produce more of itself under OPE with anything; a proper ideal is therefore a decoupled subsector with a vacuum-orthogonal state that never talks back to the vacuum. Simplicity says there is no such decoupled sector: the vacuum is the only state that is cyclic for the whole operator algebra, the physical uniqueness of the vacuum and the absence of a spurious superselection sector. Simplicity in this sense is the property that separates the Moonshine module from its square-zero impostor in Section~\ref{ch10:sec:trap}.
+\end{physics}
+
+\subsection{Invariant bilinear forms}
+
+\begin{definition}[Invariant forms]\label{ch10:def:invform}
+A bilinear form $(\cdot|\cdot)$ on a vertex operator algebra $V$ is \emph{fully invariant} (in the
+sense of Frenkel--Huang--Lepowsky) if
+$(Y(u,z)a\,|\,b)=(a\,|\,Y(e^{zL_1}(-z^{-2})^{L_0}u,z^{-1})b)$ for all $u,a,b$.  For $u$ of weight
+$\mathrm{wt}$ this is, in modes,
+\begin{equation}\label{ch10:eq:fhl}
+  (u_{(n)}a\,|\,b)=(-1)^{\mathrm{wt}}\sum_{j\ge0}\frac1{j!}\,
+  \bigl(a\,\big|\,(L_1^ju)_{(2\mathrm{wt}-n-2-j)}b\bigr).
+\end{equation}
+It is \emph{normalised} if $(\mathbf1|\mathbf1)=1$.  Its \emph{(left) radical} is
+$\{x:(x|b)=0\ \forall b\}$.
+\end{definition}
+
+To derive \eqref{ch10:eq:fhl}: $(-z^{-2})^{L_0}u=(-1)^{\mathrm{wt}}z^{-2\mathrm{wt}}u$,
+$e^{zL_1}$ contributes $\sum_j z^jL_1^j/j!$, and $Y(v,z^{-1})=\sum_k v_{(k)}z^{k+1}$; the total power
+of $z$ is $-2\mathrm{wt}+j+k+1$, which equals $-n-1$ exactly when $k=2\mathrm{wt}-n-2-j$.  Since
+$L_1$ lowers weight and weights are bounded below, the sum over $j$ stops at $j=\mathrm{wt}$.
+
+\begin{leancode}
+structure InvariantForm (W : VertexOperatorAlgebra 𝒱) where
+  /-- The underlying `ℂ`-bilinear form `(·|·) : 𝒱 × 𝒱 → ℂ`. -/
+  form : LinearMap.BilinForm ℂ 𝒱
+  /-- **Invariance (Virasoro-adjointness).** `(Lₙ u | v) = (u | L₋ₙ v)` for every `n`
+  (Gannon 5.1.11a, mode content): each `Lₙ` is adjoint to `L₋ₙ`. -/
+  virasoro_adj : ∀ (n : ℤ) (a b : 𝒱), form (W.L n a) b = form a (W.L (-n) b)
+
+abbrev IsFullyInvariant (B : InvariantForm W) : Prop :=
+  ∀ (wt : ℤ) (u : 𝒱), u ∈ W.grading wt → ∀ (n : ℤ) (a b : 𝒱),
+    B.form (W.smul u n a) b
+      = (-1 : ℂ) ^ wt • ∑ j ∈ Finset.range (wt.toNat + 1), ((j.factorial : ℂ)⁻¹) •
+          B.form a (W.smul (((W.L 1) ^ j) u) (2 * wt - n - 2 - (j : ℤ)) b)
+
+def Normalized (B : InvariantForm W) : Prop := B.NormalizedAt 1
+-- where  NormalizedAt B κ :  B.form W.vacuum W.vacuum = κ
+
+def leftRadical (B : InvariantForm W) : Submodule ℂ 𝒱 := LinearMap.ker B.form
+\end{leancode}
+(\leanpath{VOA/Core/BilinearForm.lean}.)  \lean{LinearMap.BilinForm ℂ 𝒱} is Mathlib's type of
+bilinear forms $V\times V\to\C$, curried as $V\to(V\to\C)$; its kernel is the set of $x$ with
+$x\mapsto(x|\cdot)$ zero, i.e.\ the left radical.
+
+The module analogue of \eqref{ch10:eq:fhl}, for a form $B$ on a $V$-module $M$ and a fixed
+homogeneous $u$ of weight $\mathrm{wt}$, is the predicate
+\begin{leancode}
+def FHLInv (N : OrdVModule W M) (B : LinearMap.BilinForm ℂ M) (wt : ℤ) (u : 𝒱) : Prop :=
+  ∀ (n : ℤ) (a b : M), B (mode (N.YM u) n a) b
+    = (-1 : ℂ) ^ wt • ∑ j ∈ Finset.range (wt.toNat + 1), ((j.factorial : ℂ)⁻¹) •
+        B a (mode (N.YM (((W.L 1) ^ j) u)) (2 * wt - n - 2 - (j : ℤ)) b)
+\end{leancode}
+(\leanpath{VOA/Moonshine/InvFormClosure.lean}.)
+
+\begin{physics}
+A fully invariant form is the Zamolodchikov (BPZ) metric of the CFT: the two-point pairing $\langle\phi|\psi\rangle$ under which the Virasoro generators are adjoint, $L_n^\dagger=L_{-n}$, and a quasi-primary field of weight $\mathrm{wt}$ is mapped under inversion $z\mapsto1/z$ to its conjugate with the factor $(-z^{-2})^{L_0}$. Nondegeneracy of the form is the statement that the two-point function of each operator is nonzero with some partner, which is the CFT form of unitarity-like nondegeneracy (reflection positivity is a further, stronger property not asserted here). The module analogue is the Zamolodchikov metric of the twisted sector.
+\end{physics}
+
+\subsection{Weak modules}
+
+A weak module \lean{WeakModule W M} (\leanpath{VOA/Modules/WeakModule.lean}; quoted verbatim and
+decoded in Definition~\ref{l12:def:weakmodule}) is a field map \lean{YM : 𝒱 →ₗ[ℂ] (End ℂ M)⟦z^±⟧}
+with fields \lean{vacuum_YM} ($Y_M(\mathbf 1,z)=\mathrm{id}_M$), \lean{truncation} (lower
+truncation) and \lean{jacobi}.  The \lean{jacobi} field is the Borcherds (Jacobi)
+identity in modes, where \lean{cbz n i} is $\binom ni$ for $i\ge0$ and $0$ for $i<0$, and
+\lean{negOnePow i} is $(-1)^i$.  We write \lean{A.act u n x} for \lean{mode (A.YM u) n x}, i.e.\
+$u_{(n)}x$, and $L^M_{-1}:=\omega_{(0)}$ on $M$ (Lean: \lean{Lm1 A}).  An \lean{OrdVModule} (an
+ordinary module, with a $\C$-grading \lean{weight} by finite-dimensional $L_0$-eigenspaces) has an
+underlying weak module \lean{toWeakModule}; $L_1^M:=\omega_{(2)}$ is \lean{Lp1}.
+
+\subsection{The objects of the earlier Moonshine chapters}
+
+We record the Lean names and a precise mathematical description of the five ingredients
+(i)--(v) of Section~\ref{ch10:sec:intro}.  Their construction and properties are the subject of
+the preceding chapters of this Part; here we use only the properties stated.
+
+\begin{leancode}
+abbrev SkewVP : Type := ↥(orbifold (Subgroup.zpowers leechTheta)).carrier
+noncomputable abbrev TP : Submodule ℂ Tw := plusSub leechThetaLift
+noncomputable def plusModule : OrdVModule leechVOAPlus TP :=
+  TwistedPlus.plusModule leechThetaLift
+noncomputable abbrev leechLTP : Module.End ℂ TP := Lm1 plusModule.toWeakModule
+noncomputable def leechWsk (t : TP) : FormalDist (SkewVP →ₗ[ℂ] TP) :=
+  Wsk plusModule.toWeakModule t
+noncomputable def leechBVForm : InvariantForm leechVOAPlus :=
+  canonicalInvariantForm leechVOAPlus_vacuum_ne_zero leechVOAPlus_L1_one
+noncomputable abbrev leechBV : LinearMap.BilinForm ℂ SkewVP := leechBVForm.form
+noncomputable def TPForm : LinearMap.BilinForm ℂ TP :=
+  leechTwForm.compl₁₂ TP.subtype TP.subtype
+noncomputable def leechWbar (t : TP) : FormalDist (TP →ₗ[ℂ] SkewVP) :=
+  Wbar leechBV plusModule TPForm TPForm_weightOrth t
+\end{leancode}
+(Files: \leanpath{SkewLeech.lean}, \leanpath{TwistedPlus.lean}, \leanpath{WbarLeech.lean},
+\leanpath{InvFormTP.lean}, all under \leanpath{VOA/Moonshine/}.)
+
+In words:
+\begin{itemize}
+\item \lean{SkewVP} is the carrier of $\chtenVP$: the subspace of $V_\Lambda$ fixed by the group
+  generated by $\theta$ (the coercion \lean{↥} turns a subspace into a type).
+\item \lean{TP} is the subspace $\chtenTP\subseteq V_\Lambda^T=S[\theta]\otimes T$ (the type
+  \lean{Tw}) of fixed points of the lift of $\theta$ to the twisted module.  It is used as a type
+  through the same coercion.
+\item \lean{plusModule} is $\chtenTP$ as an ordinary $\chtenVP$-module: $u_{(n)}x$ is the twisted
+  vertex operator's mode at the integer $n$ (for $u\in\chtenVP$ only integral modes survive).
+\item \lean{leechLTP} is $L_{-1}$ on $\chtenTP$.
+\item \lean{leechWsk t} is the field $W(t,z)$ with coefficient of $z^k$ equal to
+  $W(t)_{(-k-1)}$, where
+  \begin{equation}\label{ch10:eq:Wmode}
+    W(t)_{(n)}\varphi=\sum_{i\ge0}\frac{(-1)^{n+i+1}}{i!}\,L_{-1}^i\bigl(\varphi_{(n+i)}t\bigr),
+  \end{equation}
+  the $z^{-n-1}$ coefficient of $e^{zL_{-1}}Y^T(\varphi,-z)t$.  On the vacuum,
+  $W(t,z)\mathbf 1=e^{zL_{-1}}t$; in Lean,
+\begin{leancode}
+theorem leechWsk_vacuum (t : TP) (k : ℤ) :
+    leechWsk t k leechVOAPlus.vacuum
+      = if 0 ≤ k then ((k.toNat.factorial : ℂ)⁻¹) • (leechLTP ^ k.toNat) t else 0
+\end{leancode}
+\item \lean{leechBV} is the canonical invariant form $B_V$ of $\chtenVP$, normalised
+  $B_V(\mathbf1,\mathbf1)=1$; it is symmetric, fully invariant, and nondegenerate on every weight
+  space (\lean{leechBV_gradedNondeg}).
+\item \lean{TPForm} is the restriction to $\chtenTP$ of an explicit form on $V^T_\Lambda$; it is
+  symmetric (\lean{TPForm_symm}), the weight spaces are mutually orthogonal
+  (\lean{TPForm_weightOrth}), it is nondegenerate on every weight space:
+\begin{leancode}
+theorem TPForm_nondegenerate (α : ℂ) (x : TP) (hx : x ∈ plusModule.weight α) (hx0 : x ≠ 0) :
+    ∃ y ∈ plusModule.weight α, TPForm x y ≠ 0
+\end{leancode}
+  and it is FHL-invariant for every homogeneous $u\in\chtenVP$ (\lean{TPForm_fhlInv}, with
+  conclusion \lean{InvForm.FHLInv plusModule InvForm.TPForm wt u}).
+\item \lean{leechWbar t} is the field $\chtenWb(t,z)$ whose mode $\chtenWb(t)_{(n)}$
+  (\lean{leechWbarMode n t}) is defined, by the Riesz representation on each weight space of
+  $\chtenVP$, as the unique linear map $\chtenTP\to\chtenVP$ satisfying DGM's adjunction (4.3):
+  for $t\in\chtenTP_w$,
+  \begin{equation}\label{ch10:eq:adj}
+    B_V\bigl(\chtenWb(t)_{(n)}a,\varphi\bigr)=(-1)^w\sum_{j\ge0}\frac1{j!}\,
+    \bigl(a,\ W(L_1^jt)_{(2w-n-2-j)}\varphi\bigr)_T .
+  \end{equation}
+  In Lean (\leanpath{VOA/Moonshine/NondegLeech.lean}):
+\begin{leancode}
+theorem leechWbar_adj' (n : ℤ) {w : ℤ} {t : TP} (ht : t ∈ plusModule.weight (w : ℂ)) (R : ℕ)
+    (hR : ∀ j : ℕ, R ≤ j → (Lp1 plusModule ^ j) t = 0) (a : TP) (φ : SkewVP) :
+    leechBV (leechWbarMode n t a) φ = (-1 : ℂ) ^ w • ∑ j ∈ Finset.range R,
+      ((j.factorial : ℂ)⁻¹) • TPForm a (mode (leechWsk ((Lp1 plusModule ^ j) t))
+        (2 * w - n - 2 - j) φ)
+\end{leancode}
+  The bound $R$ is any number past which $L_1^jt=0$; the sum is then the full sum.  Equation
+  \eqref{ch10:eq:adj} is exactly \eqref{ch10:eq:fhl} for the off-diagonal entries of the form
+  $B_V\oplus(\cdot,\cdot)_T$ that we shall put on $\Vnat$: it says that $\chtenWb(t,z)$ is the
+  ``FHL adjoint'' of $W(t,z)$.
+\end{itemize}
+
+Besides \eqref{ch10:eq:adj}, the earlier chapters prove, unconditionally, three further properties
+of $\chtenWb$ that we shall use: it is graded, $\chtenWb(t)_{(n)}\chtenTP_b\subseteq
+(\chtenVP)_{b+w-n-1}$ for $t\in\chtenTP_w$ (\lean{leechWbar_mem}); it is lower-truncated
+(\lean{leechWbar_trunc}); it satisfies $\chtenWb(L_{-1}t,z)=\partial_z\chtenWb(t,z)$
+(\lean{leechWbar_deriv}); and it satisfies the intertwining commutator formula
+\begin{equation}\label{ch10:eq:wbarcomm}
+  u_{(m)}\chtenWb(t)_{(n)}a-\chtenWb(t)_{(n)}u_{(m)}a
+  =\sum_{r\ge0}\binom mr\,\chtenWb(u_{(r)}t)_{(m+n-r)}a
+  \qquad(u\in\chtenVP),
+\end{equation}
+(\lean{leechWbar_comm'}), the mirror image of the commutator formula for $W$.
+
+Finally, the generating function of the final targets:
+\begin{leancode}
+noncomputable def jShift : PowerSeries ℂ :=
+  E4Series ^ 3 * ((deltaOverQUnit⁻¹ : (PowerSeries ℂ)ˣ) : PowerSeries ℂ)
+noncomputable def JShift : PowerSeries ℂ := jShift - (744 : ℂ) • PowerSeries.X
+\end{leancode}
+(\leanpath{VOA/Modularity/JFunction.lean}.)  Here $E_4^3\cdot(\Delta/q)^{-1}$ is the power series
+$q\,j(q)=1+744q+196884q^2+\cdots$, and subtracting $744q$ gives
+\begin{equation*}
+  \mathtt{JShift}=q\,J(q)=q\bigl(j(q)-744\bigr)=1+0\cdot q+196884\,q^2+21493760\,q^3+\cdots .
+\end{equation*}
+The coefficient of $q^n$ in \lean{JShift} is therefore the coefficient of $q^{n-1}$ in $J$; with the
+usual $L_0-c/24=L_0-1$ shift, it is the expected dimension of the weight-$n$ space of $\Vnat$.
+
+%==========================================================================================
+\section{Block fields on a direct sum}\label{ch10:sec:block}
+
+Everything in this section is linear algebra on an arbitrary direct sum $V\oplus M$ of complex
+vector spaces; nothing about the Leech lattice is used.  The point is to translate the
+four-block description \eqref{ch10:eq:block} into the language of $\End(V\oplus M)$-valued fields
+that the definition of a vertex algebra uses, and to see which of the vertex-algebra conditions
+can be checked block by block.
+
+\subsection{Block operators}
+
+\begin{definition}[Block operator]\label{ch10:def:blockop}
+For linear maps $a:V\to V$, $c:M\to V$, $d:V\to M$, $b:M\to M$, the \emph{block operator}
+$\begin{psmallmatrix}a&c\\d&b\end{psmallmatrix}\in\End(V\oplus M)$ is
+$(x,y)\mapsto(ax+cy,\ dx+by)$.
+\end{definition}
+
+\begin{leancode}
+def blockOp (a : End ℂ V) (c : M →ₗ[ℂ] V) (d : V →ₗ[ℂ] M) (b : End ℂ M) : End ℂ (V × M) :=
+  (a.coprod c).prod (d.coprod b)
+
+@[simp] theorem blockOp_apply (a : End ℂ V) (c : M →ₗ[ℂ] V) (d : V →ₗ[ℂ] M) (b : End ℂ M)
+    (x : V × M) : blockOp a c d b x = (a x.1 + c x.2, d x.1 + b x.2) := rfl
+\end{leancode}
+(\lean{VOA.Moonshine.VnatBlock.blockOp}, \leanpath{VOA/Moonshine/VnatBlock.lean}.)
+
+\begin{dictionary}
+\lean{V × M} is the product type; as a vector space it is the direct sum $V\oplus M$, with
+\lean{x.1}, \lean{x.2} the two components.  \lean{a.coprod c : V × M →ₗ V} is $(x,y)\mapsto ax+cy$,
+and \lean{f.prod g} pairs two maps into a product.  The argument order \lean{a c d b} --- top-left,
+top-right, bottom-left, bottom-right --- is fixed throughout the chapter; note in particular that
+the off-diagonal block from $M$ to $V$ comes \emph{second}.  The \lean{rfl} proof of
+\lean{blockOp_apply} shows that the definition is literally the matrix action.
+\end{dictionary}
+
+\begin{physics}
+A block operator is a $2\times2$ operator matrix on untwisted $\oplus$ twisted states: the diagonal entries are the sector-preserving parts of a vertex operator and the off-diagonal ones change sector. It is the formal expression of the $\Z/2$ charge grading of the orbifold, where an untwisted operator preserves twist and a twist field flips it.
+\end{physics}
+
+\begin{proposition}[Matrix multiplication]\label{ch10:prop:blockmul}
+$\begin{psmallmatrix}a&c\\d&b\end{psmallmatrix}\begin{psmallmatrix}a'&c'\\d'&b'\end{psmallmatrix}
+=\begin{psmallmatrix}aa'+cd'&ac'+cb'\\da'+bd'&dc'+bb'\end{psmallmatrix}$.
+\end{proposition}
+\begin{leancode}
+theorem blockOp_mul (a : End ℂ V) (c : M →ₗ[ℂ] V) (d : V →ₗ[ℂ] M) (b : End ℂ M)
+    (a' : End ℂ V) (c' : M →ₗ[ℂ] V) (d' : V →ₗ[ℂ] M) (b' : End ℂ M) :
+    blockOp a c d b * blockOp a' c' d' b'
+      = blockOp (a * a' + c ∘ₗ d') (a ∘ₗ c' + c ∘ₗ b') (d ∘ₗ a' + b ∘ₗ d')
+          (d ∘ₗ c' + b * b') := by
+\end{leancode}
+\begin{dictionary}
+\lean{*} on \lean{End} is composition and \lean{∘ₗ} is composition of linear maps between
+different spaces; so the statement is exactly the $2\times2$ matrix product.  The library also
+proves additivity, scalar multiplication and \lean{blockOp_zero} (the zero matrix is $0$).
+\end{dictionary}
+
+\begin{physics}
+Matrix multiplication of block operators is the rule for composing operators in the orbifold theory sector by sector: the untwisted$\to$untwisted amplitude of a product is the untwisted-through-untwisted channel plus the channel with an intermediate twisted state. It is the origin of the sum over intermediate sectors in the orbifold OPE; it is linear algebra, with no physics input.
+\end{physics}
+
+\emph{Proof.} Apply both sides to $(x,y)$ and expand. \qed
+
+\subsection{Block fields}
+
+\begin{definition}[Block field; diagonal and off-diagonal fields]\label{ch10:def:blockF}
+Given distributions $a(z)\in\End(V)[[z^{\pm}]]$, $c(z)\in\operatorname{Hom}(M,V)[[z^{\pm}]]$,
+$d(z)\in\operatorname{Hom}(V,M)[[z^{\pm}]]$, $b(z)\in\End(M)[[z^{\pm}]]$, the \emph{block field}
+is the $\End(V\oplus M)$-valued distribution whose $z^k$-coefficient is the block operator of the
+four $z^k$-coefficients.  The \emph{diagonal field} is $\operatorname{diag}(a,b)$ (with $c=d=0$)
+and the \emph{off-diagonal field} is $\operatorname{offdiag}(c,d)$ (with $a=b=0$).
+\end{definition}
+\begin{leancode}
+def blockF (a : FormalDist (End ℂ V)) (c : FormalDist (M →ₗ[ℂ] V)) (d : FormalDist (V →ₗ[ℂ] M))
+    (b : FormalDist (End ℂ M)) : FormalDist (End ℂ (V × M)) :=
+  fun n => blockOp (a n) (c n) (d n) (b n)
+
+def diagF (a : FormalDist (End ℂ V)) (b : FormalDist (End ℂ M)) : FormalDist (End ℂ (V × M)) :=
+  blockF a 0 0 b
+
+def offF (c : FormalDist (M →ₗ[ℂ] V)) (d : FormalDist (V →ₗ[ℂ] M)) :
+    FormalDist (End ℂ (V × M)) :=
+  blockF 0 c d 0
+\end{leancode}
+\begin{dictionary}
+Since modes are just reindexed coefficients, the block field of the modes is the block operator
+of the modes: $\bigl(\text{block field}\bigr)_{(n)}=\begin{psmallmatrix}a_{(n)}&c_{(n)}\\
+d_{(n)}&b_{(n)}\end{psmallmatrix}$.  In \eqref{ch10:eq:block}, an untwisted state $u$ gives
+\lean{diagF (Y u) (Y^T u)}, a twisted state $t$ gives \lean{offF (W̄ t) (W t)} --- again with the
+$\chtenTP\to\chtenVP$ block $\chtenWb$ first.
+\end{dictionary}
+
+\begin{physics}
+A block field is the full chiral vertex operator of the orbifold theory: its diagonal part is the OPE of an untwisted operator with states of each sector (untwisted$\times$untwisted$\to$untwisted, untwisted$\times$twisted$\to$twisted) and its off-diagonal part is the OPE of a twist field (twisted$\times$untwisted$\to$twisted via $W$, twisted$\times$twisted$\to$untwisted via $\overline W$). Assembling all four channels into one field is what makes the two sectors into a single CFT with one vertex operator per state.
+\end{physics}
+
+\subsection{Truncation and translation covariance blockwise}
+
+For $\operatorname{Hom}$-valued distributions the library uses the obvious generalisations of
+Definitions~\ref{ch10:def:field} and~\ref{ch10:def:dcov}.
+
+\begin{definition}\label{ch10:def:trunc}
+A distribution $f(z)$ with values in $\operatorname{Hom}(X,Y)$ is \emph{lower-truncated} if for
+every $x\in X$ the coefficients $f_n x$ vanish for $n\ll0$.  Given $T_X\in\End X$, $T_Y\in\End Y$,
+it is \emph{$(T_X,T_Y)$-covariant} if $T_Y f_m-f_mT_X=(m+1)f_{m+1}$ for all $m$, i.e.\
+$T_Yf(z)-f(z)T_X=\partial_zf(z)$.
+\end{definition}
+\begin{leancode}
+def Trunc {X : Type*} {Y : Type*} [AddCommGroup X] [Module ℂ X] [AddCommGroup Y] [Module ℂ Y]
+    (f : FormalDist (X →ₗ[ℂ] Y)) : Prop :=
+  ∀ x : X, ∃ B : ℤ, ∀ n : ℤ, n < B → f n x = 0
+
+def HomCov {X : Type*} {Y : Type*} [AddCommGroup X] [Module ℂ X] [AddCommGroup Y] [Module ℂ Y]
+    (TX : End ℂ X) (TY : End ℂ Y) (f : FormalDist (X →ₗ[ℂ] Y)) : Prop :=
+  ∀ m : ℤ, TY ∘ₗ f m - f m ∘ₗ TX = (m + 1 : ℤ) • f (m + 1)
+\end{leancode}
+
+\begin{physics}
+Lower truncation of a Hom-valued distribution is the requirement that each channel of the OPE (e.g.\ twisted$\times$untwisted$\to$twisted) has a pole of bounded order at coincident points, and covariance is the Ward identity for translations with possibly different generators on source and target sector. Both are the standard consistency conditions on the OPE channels, imposed blockwise.
+\end{physics}
+
+\begin{proposition}\label{ch10:prop:blockfield}
+\begin{enumerate}[label=(\alph*)]
+\item If the four blocks are lower-truncated, the block field is a field.
+\item If $a$ is $T_V$-covariant, $b$ is $T_M$-covariant, $c$ is $(T_M,T_V)$-covariant and $d$ is
+  $(T_V,T_M)$-covariant, then the block field is covariant for $\operatorname{diag}(T_V,T_M)$.
+\end{enumerate}
+\end{proposition}
+\noindent File \leanpath{VOA/Moonshine/VnatBlock.lean}.
+\begin{leancode}
+theorem isField_blockF {a : FormalDist (End ℂ V)} {c : FormalDist (M →ₗ[ℂ] V)}
+    {d : FormalDist (V →ₗ[ℂ] M)} {b : FormalDist (End ℂ M)}
+    (ha : Trunc a) (hc : Trunc c) (hd : Trunc d) (hb : Trunc b) :
+    IsField (blockF a c d b) := by
+
+theorem dCovariant_blockF {TV : End ℂ V} {TM : End ℂ M} {a : FormalDist (End ℂ V)}
+    {c : FormalDist (M →ₗ[ℂ] V)} {d : FormalDist (V →ₗ[ℂ] M)} {b : FormalDist (End ℂ M)}
+    (ha : Reconstruction.DCovariant TV a) (hc : HomCov TM TV c) (hd : HomCov TV TM d)
+    (hb : Reconstruction.DCovariant TM b) :
+    Reconstruction.DCovariant (blockOp TV 0 0 TM) (blockF a c d b) := by
+\end{leancode}
+\begin{dictionary}
+Hypotheses in (a): the four truncations, one for each block; for $c$ and $d$ the relevant input
+vector lives in $M$ resp.\ $V$.  In (b) the order of the two translation operators in
+\lean{HomCov} is (source, target): $c:M\to V$ is $(T_M,T_V)$-covariant, $d:V\to M$ is
+$(T_V,T_M)$-covariant.  The conclusion uses the diagonal operator \lean{blockOp TV 0 0 TM}.  Both
+statements are the textbook ones; they are implications, so they cannot be vacuous unless their
+hypotheses are unsatisfiable, and the hypotheses are verified later for the actual blocks.
+\end{dictionary}
+
+\begin{physics}
+Physically: if each of the four OPE channels has bounded-order singularities and obeys the translation Ward identity separately, the combined orbifold vertex operator does too. This is the statement that translation invariance and finiteness of the OPE are sector-by-sector conditions and need no cross-sector checking. It is bookkeeping, not dynamics.
+\end{physics}
+
+\emph{Proof.} (a) For $(x,y)$ take the minimum of the four truncation bounds (for $a,d$ at $x$,
+for $c,b$ at $y$).  (b) $[\operatorname{diag}(T_V,T_M),X]$ for a block matrix $X$ is the block
+matrix with entries $T_Va-aT_V$, $T_Vc-cT_M$, $T_Md-dT_V$, $T_Mb-bT_M$; apply the four hypotheses.
+\qed
+
+\subsection{Locality blockwise}
+
+Here is the real content.  Locality of two block fields is not, in general, a blockwise
+condition, because the product of two block matrices mixes the blocks.  But in two important
+special cases it reduces to conditions on the blocks.
+
+\begin{theorem}[Diagonal--diagonal locality]\label{ch10:thm:diagdiag}
+If $a\sim a'$ on $V$ and $b\sim b'$ on $M$ (mutually local), then $\operatorname{diag}(a,b)$ and
+$\operatorname{diag}(a',b')$ are mutually local.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/VnatBlock.lean}.
+\begin{leancode}
+theorem local_diag_diag {a a' : FormalDist (End ℂ V)} {b b' : FormalDist (End ℂ M)}
+    (ha : Local a a') (hb : Local b b') : Local (diagF a b) (diagF a' b') := by
+\end{leancode}
+
+\begin{physics}
+Two untwisted-type operators, acting on the untwisted and twisted sectors simultaneously, have trivial braiding on the orbifold space as soon as they do so on each sector. Here the untwisted$\times$untwisted$\to$untwisted locality is crossing symmetry in the parent CFT, and the module version is locality of the induced action on the twisted sector; both are established earlier in the book. The result is the easy half of the orbifold's mutual-locality consistency.
+\end{physics}
+
+\begin{theorem}[Diagonal--off-diagonal locality]\label{ch10:thm:diagoff}
+$\operatorname{diag}(a(z_1),b(z_1))$ and $\operatorname{offdiag}(c'(z_2),d'(z_2))$ are mutually
+local provided that, for some $N$,
+\begin{equation*}
+  (z_1-z_2)^N\bigl(a(z_1)c'(z_2)-c'(z_2)b(z_1)\bigr)=0
+  \quad\text{and}\quad
+  (z_1-z_2)^N\bigl(b(z_1)d'(z_2)-d'(z_2)a(z_1)\bigr)=0 .
+\end{equation*}
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/VnatBlock.lean}.
+\begin{leancode}
+theorem local_diag_off {a : FormalDist (End ℂ V)} {b : FormalDist (End ℂ M)}
+    {c' : FormalDist (M →ₗ[ℂ] V)} {d' : FormalDist (V →ₗ[ℂ] M)}
+    (hc : ∃ N : ℕ, mulBySubPow N
+      ((fun m n => a m ∘ₗ c' n - c' n ∘ₗ b m) : FormalDist₂ (M →ₗ[ℂ] V)) = 0)
+    (hd : ∃ N : ℕ, mulBySubPow N
+      ((fun m n => b m ∘ₗ d' n - d' n ∘ₗ a m) : FormalDist₂ (V →ₗ[ℂ] M)) = 0) :
+    Local (diagF a b) (offF c' d') := by
+\end{leancode}
+\begin{dictionary}
+The two hypotheses are $\operatorname{Hom}$-valued: \lean{fun m n => a m ∘ₗ c' n - c' n ∘ₗ b m}
+is the two-variable distribution with coefficients $a_m c'_n-c'_nb_m\in\operatorname{Hom}(M,V)$,
+the ``intertwining commutator''.  For our application, $a=Y(u)$, $b=Y^T(u)$ and $c'=\chtenWb(t)$,
+$d'=W(t)$: the hypotheses say that $\chtenWb(t)$ intertwines $Y^T(u)$ with $Y(u)$ and that $W(t)$
+intertwines $Y(u)$ with $Y^T(u)$, up to a power of $(z_1-z_2)$ --- the usual locality condition
+for an intertwining operator.  The two \lean{N}'s may differ (the proof takes the maximum), which
+matches the textbook.  The theorem is an implication, not an equivalence; only the direction
+needed is claimed.
+\end{dictionary}
+
+\begin{physics}
+This is the crossing condition between an untwisted operator and a twist field: moving an untwisted operator around a twist field is controlled by the intertwining (fusion) relations of $W$ and $\overline W$, and the theorem says that the two intertwining relations in the hypothesis suffice. Heuristically this is the statement that the twisted sector is a consistent representation of the untwisted chiral algebra. The hypotheses are verified for $W$ in the earlier chapters and for $\overline W$ via the commutator formula.
+\end{physics}
+
+\emph{Proof of both theorems.}  Write $X=\begin{psmallmatrix}a&c\\d&b\end{psmallmatrix}$,
+$X'=\begin{psmallmatrix}a'&c'\\d'&b'\end{psmallmatrix}$.  By
+Proposition~\ref{ch10:prop:blockmul}, the commutator $[X(z_1),X'(z_2)]$ is the block matrix
+\begin{equation*}
+\begin{pmatrix}
+ [a,a']+cd'-c'd & ac'+cb'-a'c-c'b\\
+ da'+bd'-d'a-b'd & [b,b']+dc'-d'c
+\end{pmatrix},
+\end{equation*}
+all entries evaluated at $(z_1,z_2)$ in the obvious way.  Since $(z_1-z_2)^N$ acts entrywise,
+the commutator is killed by $(z_1-z_2)^N$ iff each entry is.  For two diagonal fields,
+$c=d=c'=d'=0$, and the entries reduce to $[a,a']$, $0$, $0$, $[b,b']$.  For a diagonal field
+against an off-diagonal one, $c=d=a'=b'=0$, and the entries reduce to $0$, $ac'-c'b$,
+$bd'-d'a$, $0$.  In both cases the hypotheses kill each entry for $N$ the maximum of the given
+orders (a larger power of $(z_1-z_2)$ still kills).  \qed
+
+\begin{remark}\label{ch10:rem:offoff}
+For two off-diagonal fields ($a=b=a'=b'=0$) the same computation gives a \emph{diagonal}
+commutator, with entries $cd'-c'd$ on $V$ and $dc'-d'c$ on $M$.  This is the twisted--twisted
+case, treated in Section~\ref{ch10:sec:split}: there locality is \emph{equivalent} to two
+$\End$-valued relations, which for $\Vnat$ are DGM's (4.22) and (4.23).
+\end{remark}
+
+\begin{status}
+\lean{blockOp}, \lean{blockF}, \lean{diagF}, \lean{offF}, \lean{isField_blockF},
+\lean{dCovariant_blockF}, \lean{local_diag_diag}, \lean{local_diag_off}: generic, unconditional,
+\lean{#print axioms} $=$ \lean{[propext, Classical.choice, Quot.sound]} (checked for
+\lean{local_diag_off}; the others are dependencies of checked theorems).
+\end{status}
+
+%==========================================================================================
+\section{Locality of the fields of a module}\label{ch10:sec:modloc}
+
+For the diagonal blocks of \eqref{ch10:eq:block} we need that the fields $Y^T(u,z)$, $Y^T(v,z)$ of
+the $\chtenVP$-module $\chtenTP$ are mutually local.  For the vertex algebra itself locality is an
+axiom; for a module defined by the Jacobi identity it is a theorem --- but one the library did
+not have when this part of the construction was written.  It is proved here for an arbitrary
+weak module, and it is worth explaining because it shows the mechanism by which all localities in
+this chapter are proved: a \emph{commutator formula} with finitely many terms.
+
+\begin{theorem}[Module commutator formula]\label{ch10:thm:actcomm}
+Let $M$ be a weak module over a vertex operator algebra $W$, $u,v\in W$, and suppose $J\in\N$ is
+such that $u_{(j)}v=0$ for all $j\ge J$.  Then for all $m,n\in\Z$ and $x\in M$,
+\begin{equation*}
+  u_{(m)}v_{(n)}x-v_{(n)}u_{(m)}x=\sum_{r=0}^{J-1}\binom mr\,(u_{(r)}v)_{(m+n-r)}x .
+\end{equation*}
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/VnatBlock.lean}.
+\begin{leancode}
+theorem act_comm (A : WeakModule W M) (u v : 𝒱) (m n : ℤ) (x : M) (J : ℕ)
+    (hJ : ∀ j : ℕ, J ≤ j → W.smul u j v = 0) :
+    A.act u m (A.act v n x) - A.act v n (A.act u m x)
+      = ∑ r ∈ Finset.range J, gBinom m r • A.act (W.smul u r v) (m + n - r) x := by
+\end{leancode}
+\begin{dictionary}
+\lean{A.act u m x} is $u_{(m)}x$ in $M$; \lean{W.smul u r v} is $u_{(r)}v$ in $W$;
+\lean{Finset.range J} is $\{0,\dots,J-1\}$; \lean{gBinom m r} is $\binom mr$.  The hypothesis
+\lean{hJ} says $J$ is past the truncation of $u_{(\cdot)}v$; by VA5 such $J$ exists.  This is
+exactly the textbook commutator formula; since the sum is finite, no convergence issue arises.
+\end{dictionary}
+
+\begin{physics}
+This is the operator-algebra form of the Jacobi identity: the commutator of two modes of a chiral algebra is a finite sum of modes of the OPE coefficients, $[u_{(m)},v_{(n)}]=\sum_r\binom mr(u_{(r)}v)_{(m+n-r)}$. Applied to modules it says that the commutator algebra of the vertex operators of any sector of the CFT closes in the way dictated by the OPE in the vacuum sector. It is the formal origin of the algebra of Noether charges and currents.
+\end{physics}
+
+\emph{Proof.}  Take $\ell=0$ in the module Jacobi identity (the \lean{jacobi} field of
+\lean{WeakModule}).  On the left only $i=0$ survives, because $\binom0i=0$ for $i\ne0$, leaving
+$u_{(m)}v_{(n)}x-v_{(n)}u_{(m)}x$.  On the right, $\binom mi$ vanishes for $i<0$ and
+$u_{(i)}v=0$ for $i\ge J$, leaving the displayed finite sum. \qed
+
+\begin{theorem}[Locality of module fields]\label{ch10:thm:localYM}
+For every weak module $M$ of $W$ and all $u,v\in W$, the fields $Y_M(u,z)$ and $Y_M(v,z)$ are
+mutually local.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/VnatBlock.lean}.
+\begin{leancode}
+theorem local_YM (A : WeakModule W M) (u v : 𝒱) : Local (A.YM u) (A.YM v) := by
+\end{leancode}
+(\lean{VOA.Moonshine.VnatBlock.local_YM}.)
+\begin{dictionary}
+No hypotheses beyond $A$ being a weak module.  \lean{Local} is Definition~\ref{ch10:def:local}
+for the $\End(M)$-valued fields \lean{A.YM u}, \lean{A.YM v}.  Same as the textbook statement
+(e.g.\ Lepowsky--Li, Prop.~4.2.1 in the module setting).  It could be vacuous only if
+\lean{WeakModule} were unsatisfiable; the adjoint module of any VOA is a weak module, and the
+library's \lean{plusModule} is one.
+\end{dictionary}
+
+\begin{physics}
+Every sector of a chiral CFT (every module) carries mutually local fields: braiding of two untwisted operators acting on any representation is trivial up to contact terms, because the same OPE holds in every sector. This is why the twisted sector of the orbifold, viewed only as a representation of the untwisted algebra, causes no locality trouble; the difficulty sits entirely in twist$\times$twist.
+\end{physics}
+
+\emph{Proof.}  Let $N$ be the truncation order of $u_{(\cdot)}v$.  By
+Theorem~\ref{ch10:thm:actcomm}, rewritten as an identity of two-variable distributions,
+\begin{equation*}
+  [Y_M(u,z_1),Y_M(v,z_2)]=\sum_{r=0}^{N-1}Y_M(u_{(r)}v,z_2)\,
+  \frac1{r!}\partial_{z_2}^{\,r}\delta(z_1-z_2),
+\end{equation*}
+where $\delta(z_1-z_2)=\sum_kz_1^{-k-1}z_2^k$ is the formal delta function (the coefficient
+pattern $\binom{-a-1}{r}$ of the $r$-th derivative is what the library calls a ``jump
+distribution'').  Since $(z_1-z_2)^{r+1}\partial^r_{z_2}\delta(z_1-z_2)=0$, the power $(z_1-z_2)^N$
+kills every term.  \qed
+
+\begin{remark}
+The physical meaning: the operator product expansion
+$Y(u,z_1)Y(v,z_2)\sim\sum_r\frac{Y(u_{(r)}v,z_2)}{(z_1-z_2)^{r+1}}$ has a pole of finite order,
+and the same OPE governs the action on any module.  Locality is the statement that the two
+orderings of the product are boundary values of one rational function with poles only on the
+diagonal.
+\end{remark}
+
+Two consequences of the same commutator formula, used for translation covariance:
+
+\begin{proposition}\label{ch10:prop:covYM}
+(a) The fields of a weak module are $L^M_{-1}$-covariant:
+$[L^M_{-1},Y_M(u,z)]=\partial_zY_M(u,z)$.
+(b) For a weak module $M$ and $t\in M$, the skew field $W(t,z)\varphi=e^{zL_{-1}}Y_M(\varphi,-z)t$
+is $(L_{-1},L^M_{-1})$-covariant.
+\end{proposition}
+\noindent File \leanpath{VOA/Moonshine/VnatBlock.lean}.
+\begin{leancode}
+theorem dCovariant_YM (A : WeakModule W M) (u : 𝒱) :
+    Reconstruction.DCovariant (Lm1 A) (A.YM u) := by
+
+theorem homCov_Wsk (A : WeakModule W M) (t : M) : HomCov (W.L (-1)) (Lm1 A) (Wsk A t) := by
+\end{leancode}
+\begin{dictionary}
+\lean{Lm1 A} is $\omega_{(0)}$ on $M$; \lean{W.L (-1)} is $L_{-1}$ on $W$; \lean{Wsk A t} is the
+field whose $z^k$-coefficient is the map $\varphi\mapsto W(t)_{(-k-1)}\varphi$ of
+\eqref{ch10:eq:Wmode}.  In \lean{homCov_Wsk} the source of $W(t,z)$ is $W$ (the VOA) and the target
+is $M$, so the order \lean{(W.L (-1)) (Lm1 A)} is (source, target), as in
+Definition~\ref{ch10:def:trunc}.
+\end{dictionary}
+
+\begin{physics}
+Part (a) is the Ward identity for translations in every sector. Part (b) says that the skew field $W(t,z)$, i.e.\ the twisted operator $t$ acting on untwisted states by reading the OPE backwards, $\phi_t(z)\varphi=e^{zL_{-1}}Y(\varphi,-z)t$, also translates correctly. This is the skew-symmetry of the OPE: exchanging two operators is the same as moving one by $e^{zL_{-1}}$ and flipping the sign of the coordinate.
+\end{physics}
+
+\emph{Proof.} (a) Apply Theorem~\ref{ch10:thm:actcomm} with $u$ replaced by $\omega$ and $m=0$:
+$[\omega_{(0)},u_{(n)}]=(\omega_{(0)}u)_{(n)}=(L_{-1}u)_{(n)}=-n\,u_{(n-1)}$, the last step
+being the module translation property $Y_M(L_{-1}u,z)=\partial_zY_M(u,z)$.  Re-indexed by
+powers of $z$ (the coefficient of $z^m$ is $u_{(-m-1)}$), this is $[L^M_{-1},Y_M(u)_m]=(m+1)Y_M(u)_{m+1}$.  (b) The commutator formula for the skew operator $W$ at $u=\omega$, $m=0$ gives
+$L^M_{-1}W(t)_{(n)}\varphi-W(t)_{(n)}L_{-1}\varphi=W(L^M_{-1}t)_{(n)}\varphi$, and
+$W(L_{-1}^Mt,z)=\partial_zW(t,z)$ (both proved for $W$ in the chapter on intertwiners). \qed
+
+\begin{status}
+\lean{act_comm}, \lean{local_YM}, \lean{dCovariant_YM}, \lean{homCov_Wsk}: general (any VOA, any
+weak module), unconditional, axiom-clean (\lean{local_YM} checked directly).
+\end{status}
+
+%==========================================================================================
+\section{The carrier \texorpdfstring{$V^\natural$}{V natural} and its grading}\label{ch10:sec:carrier}
+
+\begin{definition}[The carrier, its grading, vacuum and conformal vector]\label{ch10:def:vnat}
+$\Vnat:=\chtenVP\oplus\chtenTP$, graded by $\Vnat_n:=(\chtenVP)_n\oplus\chtenTP_n$ for $n\in\Z$,
+where $\chtenTP_n$ is the $L_0$-eigenspace of eigenvalue $n$.  The vacuum is
+$\mathbf1^\natural=(\mathbf1,0)$ and the conformal vector is $\omega^\natural=(\omega,0)$.
+\end{definition}
+\begin{leancode}
+abbrev Vnat : Type := SkewVP × TP
+
+noncomputable def gradingNat (n : ℤ) : Submodule ℂ Vnat :=
+  (leechVOAPlus.grading n).prod (plusModule.weight (n : ℂ))
+
+noncomputable def vacNat : Vnat := (leechVOAPlus.vacuum, 0)
+
+noncomputable def omegaNat : Vnat := (leechVOAPlus.conformalVector, 0)
+\end{leancode}
+(\leanpath{VOA/Moonshine/VnatCarrier.lean}.)
+\begin{dictionary}
+\lean{p.prod q} for submodules $p\le V$, $q\le M$ is $p\oplus q\le V\oplus M$.  The module
+$\chtenTP$ carries a $\C$-indexed grading \lean{plusModule.weight α} by $L_0$-eigenvalue; it is read
+here at the integer $n$ (the cast \lean{(n : ℂ)}).  This loses nothing: the earlier chapter proves
+that every nonzero weight space of $\chtenTP$ has an integral weight $\ge2$
+(\lean{plusModule_weight_ne_bot}).  The conformal vector is $(\omega,0)$, not $\omega$ plus a
+twisted correction: in the orbifold the Virasoro field is untwisted.  \textbf{Important for the
+trap:} none of these four definitions involves $W$ or $\chtenWb$.  They describe a graded vector
+space, not a vertex algebra.
+\end{dictionary}
+
+\begin{physics}
+The carrier $V^\natural$ is the state space of the orbifold CFT: untwisted sector (the reflection-invariant states of the Leech-torus theory) plus twisted sector (the invariant states of the twist-field Hilbert space at the $2^{24}$ fixed points). The vacuum is the untwisted vacuum and the conformal vector is the untwisted stress tensor $T(z)$, so the total theory has $c=24$. Weight spaces are the $L_0$ eigenspaces, which is how the graded dimensions become the coefficients of the partition function.
+\end{physics}
+
+\begin{theorem}[$\Vnat=\bigoplus_n\Vnat_n$]\label{ch10:thm:internal}
+The subspaces $\Vnat_n$, $n\in\Z$, form an internal direct sum decomposition of $\Vnat$, and each
+$\Vnat_n$ is finite-dimensional with $\dim\Vnat_n=\dim(\chtenVP)_n+\dim\chtenTP_n$.
+\end{theorem}
+\begin{leancode}
+theorem gradingNat_isInternal : DirectSum.IsInternal gradingNat :=
+
+instance finiteDimensional_gradingNat (n : ℤ) : FiniteDimensional ℂ (gradingNat n) := by
+
+theorem finrank_gradingNat (n : ℤ) :
+    finrank ℂ (gradingNat n)
+      = finrank ℂ (leechVOAPlus.grading n) + finrank ℂ (plusModule.weight (n : ℂ)) := by
+\end{leancode}
+\begin{dictionary}
+\lean{finrank ℂ X} is Mathlib's dimension of a $\C$-vector space $X$ (as a natural number; it is
+$0$ for infinite-dimensional $X$, which is why finite-dimensionality is stated separately, as an
+instance).  The coercion turns the submodule \lean{gradingNat n} into a vector space.
+\end{dictionary}
+
+\begin{physics}
+The state space is a graded sum of finite-dimensional $L_0$-eigenspaces: the energy spectrum is discrete with finite degeneracies, so the partition function $\mathrm{Tr}\,q^{L_0-c/24}$ exists as a formal power series. This is the minimal input needed to speak of a modular-invariant partition function.
+\end{physics}
+
+\emph{Proof.}  Independence: if $x\in\Vnat_n$ also lies in the sum of the other $\Vnat_k$, project
+to the two components; the first lies in $(\chtenVP)_n$ and in the sum of the other
+$(\chtenVP)_k$, hence is $0$; the second likewise, using the $\C$-grading of $\chtenTP$ and that
+$k\ne n$ implies $(k:\C)\ne(n:\C)$.  Spanning: $(\chtenVP)$ is spanned by its graded pieces, and
+$\chtenTP$ is spanned by its \emph{integral} weight spaces because the others are zero.  The
+dimension is that of a direct sum. \qed
+
+\begin{theorem}[Low weights]\label{ch10:thm:lowweights}
+$\Vnat_n=0$ for $n<0$; $\Vnat_0=\C\mathbf1^\natural$; $\Vnat_1=0$.
+\end{theorem}
+\begin{leancode}
+theorem gradingNat_neg {n : ℤ} (hn : n < 0) : gradingNat n = ⊥ := by
+
+theorem gradingNat_zero : gradingNat 0 = ℂ ∙ vacNat := by
+
+theorem gradingNat_one : gradingNat 1 = ⊥ := by
+\end{leancode}
+\begin{dictionary}
+\lean{⊥} is the zero subspace; \lean{ℂ ∙ vacNat} is the line spanned by $\mathbf1^\natural$.
+\end{dictionary}
+
+\begin{physics}
+No negative-energy states, a unique vacuum, and in particular no weight-one states: the theory has no conserved currents. In 2d CFT terms $V^\natural_1=0$ means there is no continuous global symmetry, so the symmetry group is a finite group, which by FLM's theorem is the Monster (not formalized in the library). Such a theory has no free parameters in its Hilbert space and no marginal-looking Lie-algebra structure at weight one. The absence of a weight-one sector holds for the genuine theory and also for the impostor, so this does not distinguish them.
+\end{physics}
+
+\emph{Proof.} $\chtenTP_n=0$ for $n<2$ (its weights are $\ge2$), so in weights $\le1$ only the
+untwisted part contributes.  $\chtenVP$ has CFT type ($V_0=\C\mathbf 1$, $V_n=0$ for $n<0$), and
+$(\chtenVP)_1=0$: the weight-one space of $V_\Lambda$ is $\mathfrak h=\C\otimes\Lambda$ (the Leech
+lattice has no roots), on which $\theta$ acts by $-1$. \qed
+
+\begin{theorem}[Griess dimension]\label{ch10:thm:griess}
+$\dim\Vnat_2=196884$.
+\end{theorem}
+\begin{leancode}
+theorem finrank_gradingNat_two : finrank ℂ (gradingNat 2) = 196884 := by
+\end{leancode}
+
+\begin{physics}
+The first nontrivial energy level has $196884=196883+1$ states: the 196883-dimensional irreducible representation of the Monster plus the trivial one (the stress tensor); the Monster action is a fact of the literature, not formalized here. The weight-two space is the Griess algebra; in the orbifold it splits as $98580$ untwisted states ($300+98280$: the symmetric square of the oscillators and the pairs $e^\alpha+e^{-\alpha}$, $\alpha^2=4$) plus $98304=24\cdot4096$ twist-field states. The total matches the first Moonshine coincidence $1+196883$ in the $j$-function.
+\end{physics}
+
+\emph{Proof.} $\dim(\chtenVP)_2=98580$ and $\dim\chtenTP_2=98304$, proved in the chapters on graded
+dimensions and on the twisted module; $98580+98304=196884$.  For the reader's orientation:
+$(V_\Lambda)_2$ has dimension $\binom{24+1}{2}+24+196560=300+24+196560=196884$ ($\mathrm{Sym}^2\mathfrak h$,
+$\mathfrak h(-2)$, and the $e^\alpha$ with $\alpha^2=4$); $\theta$ fixes $\mathrm{Sym}^2\mathfrak h$ ($300$),
+negates $\mathfrak h(-2)$, and fixes exactly one combination $e^\alpha+\theta e^\alpha$ per pair
+$\pm\alpha$ ($98280$), giving $300+98280=98580$; and $\chtenTP_2=\mathfrak h(-\tfrac12)\mathbf
+1\otimes T$ has dimension $24\cdot4096=98304$. \qed
+
+\begin{theorem}[Graded dimension $=J$]\label{ch10:thm:J}
+For every $n\in\N$, $\dim\Vnat_n$ equals the coefficient of $q^n$ in $qJ(q)$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/VnatCarrier.lean}.
+\begin{leancode}
+theorem finrank_gradingNat_eq_coeff_JShift (n : ℕ) :
+    (finrank ℂ (gradingNat (n : ℤ)) : ℂ) = PowerSeries.coeff n JShift := by
+\end{leancode}
+\begin{dictionary}
+The dimension is cast to $\C$ because \lean{JShift} is a power series over $\C$; since the
+dimension is a natural number, equality in $\C$ is equality of integers.  \lean{PowerSeries.coeff n}
+extracts the coefficient of $q^n$.  \lean{JShift} $=qJ$ was defined in
+Section~\ref{ch10:sec:recall}; it is the \emph{pre-existing} library definition
+$E_4^3/(\Delta/q)-744q$, not a series reverse-engineered from the dimensions.  The statement
+covers every $n\ge0$; for $n<0$ both sides would be zero (Theorem~\ref{ch10:thm:lowweights}).
+\end{dictionary}
+
+\begin{physics}
+The partition function of the orbifold equals $J(\tau)=j(\tau)-744$ (holomorphic, $c=24$, modular invariant up to the usual $q^{-1}$ prefactor). This is the analytic reading on paper; the Lean theorem is an identity of formal $q$-series, and neither modular invariance nor holomorphy of $V^\natural$ is formalized. This is the Moonshine statement: the graded dimension of $V^\natural$ is the unique modular function with the right pole and no constant term. It is the numerical check that the untwisted and twisted sectors together produce a modular-invariant theory; it does not detect whether the OPE is correct, as the trap section shows.
+\end{physics}
+
+\emph{Proof.} The weight-$n$ dimension is a sum of two sector dimensions; the identity
+$\sum_n(\dim(\chtenVP)_n+\dim\chtenTP_n)q^n=qJ(q)$ is the main theorem of the chapter on graded
+dimensions (Leech theta series $\Theta_\Lambda=E_4^3-720\Delta$, Jacobi's product for $\Delta$, and a
+level-two identity for the twisted sector). \qed
+
+\begin{warning}
+\textbf{These four numerical theorems do not depend on any vertex operator.}  The grading
+\lean{gradingNat} is defined from the two sectors alone.  Therefore any vertex operator algebra
+structure on \lean{Vnat} with grading \lean{gradingNat} --- the genuine one, or the square-zero
+extension of Section~\ref{ch10:sec:trap} --- has $V_1=0$, $\dim V_2=196884$ and graded dimension
+$J$.  The theorems of this section are necessary for the final result but cannot distinguish
+$\Vnat$ from an impostor.
+\end{warning}
+
+\begin{status}
+\lean{Vnat}, \lean{gradingNat}, \lean{gradingNat_isInternal}, \lean{gradingNat_zero},
+\lean{gradingNat_one}, \lean{finrank_gradingNat_two}, \lean{finrank_gradingNat_eq_coeff_JShift}:
+unconditional; \lean{#print axioms} $=$ \lean{[propext, Classical.choice, Quot.sound]} for the last
+two (checked).
+\end{status}
+
+%==========================================================================================
+\section{The generator fields and the reconstruction interface}\label{ch10:sec:fields}
+
+\subsection{Translation, and the untwisted fields}
+
+\begin{definition}\label{ch10:def:Tnat}
+$T^\natural:=\operatorname{diag}(L_{-1},L_{-1}^{T})\in\End\Vnat$, where $L^T_{-1}$ is $L_{-1}$ on
+$\chtenTP$.  For $u\in\chtenVP$, $Y^\natural_U(u,z):=\operatorname{diag}(Y(u,z),Y^T(u,z))$.
+\end{definition}
+\begin{leancode}
+noncomputable def Tnat : End ℂ Vnat := blockOp (leechVOAPlus.L (-1)) 0 0 leechLTP
+
+noncomputable def YnatU (u : SkewVP) : FormalDist (End ℂ Vnat) :=
+  diagF (leechVOAPlus.Y u) (plusModule.YM u)
+\end{leancode}
+(\leanpath{VOA/Moonshine/VnatFields.lean}.)
+
+\begin{physics}
+$T^\natural$ is the global translation generator $L_{-1}$ acting simultaneously on both sectors, and $Y^\natural_U(u)$ is the vertex operator of an untwisted state, acting on both sectors by the parent vertex operator and its action on the twisted module: the diagonal part of the orbifold OPE. The twist field has no diagonal part.
+\end{physics}
+
+\begin{proposition}\label{ch10:prop:YnatU}
+For all $u,u'\in\chtenVP$:
+(a) $Y^\natural_U(u,z)$ is a field;
+(b) its $z^0$-coefficient sends $\mathbf1^\natural$ to $(u,0)$ and its $z^q$-coefficients for $q<0$
+kill $\mathbf1^\natural$;
+(c) it is $T^\natural$-covariant;
+(d) $Y^\natural_U(u,z)$ and $Y^\natural_U(u',z)$ are mutually local.
+\end{proposition}
+\begin{leancode}
+theorem YnatU_isField (u : SkewVP) : IsField (YnatU u) :=
+theorem YnatU_vac_zero (u : SkewVP) : YnatU u 0 vacNat = (u, 0) := by
+theorem YnatU_vac_neg (u : SkewVP) (q : ℤ) (hq : q < 0) : YnatU u q vacNat = 0 := by
+theorem YnatU_DCovariant (u : SkewVP) : DCovariant Tnat (YnatU u) :=
+theorem YnatU_local (u u' : SkewVP) : Local (YnatU u) (YnatU u') :=
+  local_diag_diag (leechVOAPlus.locality u u') (local_YM plusModule.toWeakModule u u')
+\end{leancode}
+\begin{dictionary}
+(b) is stated in the raw indexing: \lean{YnatU u 0} is the $z^0$-coefficient, i.e.\ the mode
+$u_{(-1)}$, and \lean{q < 0} means modes $u_{(n)}$ with $n=-q-1\ge0$.  So (b) is the creation
+axiom VA3 for untwisted states.  The proof term of (d), displayed, shows the logic: locality of
+the $\chtenVP$-block is the VOA axiom, locality of the $\chtenTP$-block is
+Theorem~\ref{ch10:thm:localYM}, and they combine by Theorem~\ref{ch10:thm:diagdiag}.  These are
+DGM's relations (4.18)--(4.19).
+\end{dictionary}
+
+\begin{physics}
+Untwisted operators, acting on the whole orbifold space, are bona fide quantum fields: finite OPE singularities, creation of $u$ from the vacuum, the translation Ward identity, and mutual locality among themselves. These are the axioms of a chiral algebra restricted to the untwisted subalgebra $V_\Lambda^+$, which is a CFT in its own right.
+\end{physics}
+
+\emph{Proof.} (a) from VA5 for $\chtenVP$ and module truncation, through
+Proposition~\ref{ch10:prop:blockfield}(a); (b) from VA3 of $\chtenVP$ (the $\chtenTP$-component of
+$\mathbf1^\natural$ is $0$); (c) from Proposition~\ref{ch10:prop:covYM}(a) and its VOA case,
+through Proposition~\ref{ch10:prop:blockfield}(b); (d) as displayed. \qed
+
+\subsection{The twisted fields, with \texorpdfstring{$\overline W$}{W-bar} as a parameter}
+
+To see clearly which properties of $\chtenWb$ are used where, the library first defines the
+twisted field with $\chtenWb$ an \emph{arbitrary} parameter.
+
+\begin{definition}\label{ch10:def:YnatT}
+For any family $\overline{W}'$ assigning to each $t\in\chtenTP$ a distribution
+$\overline{W}'(t,z)\in\operatorname{Hom}(\chtenTP,\chtenVP)[[z^\pm]]$, put
+$Y^\natural_T[\overline W'](t,z):=\operatorname{offdiag}(\overline W'(t,z),W(t,z))$.
+\end{definition}
+\begin{leancode}
+noncomputable def YnatT (Wbar : TP → FormalDist (TP →ₗ[ℂ] SkewVP)) (t : TP) :
+    FormalDist (End ℂ Vnat) :=
+  offF (Wbar t) (leechWsk t)
+\end{leancode}
+
+\begin{physics}
+A twist-field operator acts on the orbifold space by the two intertwining channels: twisted$\to$untwisted via $\overline W'$ and untwisted$\to$twisted via $W$. Leaving $\overline W'$ as a parameter separates what holds for any choice of the twisted$\times$twisted OPE from what depends on its actual value, which is the key to the trap: the choice $\overline W'=0$ is the theory in which twist fields annihilate twisted states.
+\end{physics}
+
+\begin{proposition}[Creation for twisted states, for every $\overline W'$]\label{ch10:prop:YnatTvac}
+For every $\overline W'$ and $t\in\chtenTP$: the $z^0$-coefficient of $Y^\natural_T[\overline W'](t,z)$
+sends $\mathbf1^\natural$ to $(0,t)$, and the $z^q$-coefficients with $q<0$ kill $\mathbf1^\natural$.
+\end{proposition}
+\begin{leancode}
+theorem YnatT_vac_zero (Wbar : TP → FormalDist (TP →ₗ[ℂ] SkewVP)) (t : TP) :
+    YnatT Wbar t 0 vacNat = (0, t) := by
+
+theorem YnatT_vac_neg (Wbar : TP → FormalDist (TP →ₗ[ℂ] SkewVP)) (t : TP) (q : ℤ) (hq : q < 0) :
+    YnatT Wbar t q vacNat = 0 := by
+\end{leancode}
+
+\begin{physics}
+Acting on the vacuum, the operator of a twisted state creates that state, whatever the OPE twisted$\times$twisted$\to$untwisted is. This is the state--operator correspondence: it fixes only the $W$ block, since the vacuum has no twisted component. Hence creation cannot detect whether $\overline W'$ is the correct OPE.
+\end{physics}
+
+\emph{Proof.}  $\mathbf1^\natural=(\mathbf1,0)$ has zero twisted component, so $\overline W'$ never
+acts on it; the untwisted component is fed to $W(t,z)$, and $W(t,z)\mathbf1=e^{zL_{-1}}t$, whose
+$z^0$-coefficient is $t$ and which has no negative powers. \qed
+
+\begin{warning}
+Creation does not see $\overline W'$ at all.  This is the first sign of the trap: anything proved
+from the vacuum alone cannot detect whether $\overline W'$ is the genuine $\chtenWb$ or zero.
+\end{warning}
+
+The intertwining commutator formula for the parameter is singled out as a named property:
+
+\begin{definition}[$\overline W'$-commutator formula]\label{ch10:def:WbarComm}
+$\overline W'$ satisfies \emph{the commutator formula} if for all $u\in\chtenVP$, $t\in\chtenTP$,
+$m,n\in\Z$ and every $J$ past the truncation of $u_{(\cdot)}t$,
+\begin{equation*}
+ u_{(m)}\circ\overline W'(t)_{(n)}-\overline W'(t)_{(n)}\circ u_{(m)}
+ =\sum_{r<J}\binom mr\,\overline W'(u_{(r)}t)_{(m+n-r)} ,
+\end{equation*}
+an equality of linear maps $\chtenTP\to\chtenVP$ (on the left, the first $u_{(m)}$ acts on
+$\chtenVP$, the second on $\chtenTP$).
+\end{definition}
+\noindent File \leanpath{VOA/Moonshine/VnatFields.lean}.
+\begin{leancode}
+def WbarComm (Wbar : TP → FormalDist (TP →ₗ[ℂ] SkewVP)) : Prop :=
+  ∀ (u : SkewVP) (m : ℤ) (t : TP) (n : ℤ) (J : ℕ),
+    (∀ j : ℕ, J ≤ j → mode (plusModule.YM u) j t = 0) →
+    mode (leechVOAPlus.Y u) m ∘ₗ mode (Wbar t) n - mode (Wbar t) n ∘ₗ mode (plusModule.YM u) m
+      = ∑ r ∈ Finset.range J, gBinom m r • mode (Wbar (mode (plusModule.YM u) r t)) (m + n - r)
+\end{leancode}
+
+\begin{physics}
+The commutator formula for $\overline W'$ is the Ward identity of the untwisted chiral algebra on the twisted$\to$untwisted OPE channel: the algebra acts on twist fields by the same rule as on any intertwining operator, so that the charges of untwisted fields rotate $\overline W'$ into $\overline W'$ of the transformed twisted state. It is the property that makes $\overline W'$ an intertwiner rather than an arbitrary map.
+\end{physics}
+
+\begin{theorem}[Untwisted--twisted locality]\label{ch10:thm:pt}
+If $\overline W'$ satisfies the commutator formula, then for all $u\in\chtenVP$, $t\in\chtenTP$ the
+fields $Y^\natural_U(u,z)$ and $Y^\natural_T[\overline W'](t,z)$ are mutually local (in both
+orders).
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/VnatFields.lean}.
+\begin{leancode}
+theorem YnatU_YnatT_local {Wbar : TP → FormalDist (TP →ₗ[ℂ] SkewVP)} (hcomm : WbarComm Wbar)
+    (u : SkewVP) (t : TP) : Local (YnatU u) (YnatT Wbar t) :=
+  local_diag_off (local_Wbar_of_comm hcomm u t) (leechWsk_local u t)
+
+theorem YnatT_YnatU_local {Wbar : TP → FormalDist (TP →ₗ[ℂ] SkewVP)} (hcomm : WbarComm Wbar)
+    (t : TP) (u : SkewVP) : Local (YnatT Wbar t) (YnatU u) :=
+\end{leancode}
+\begin{dictionary}
+The single hypothesis \lean{hcomm} is Definition~\ref{ch10:def:WbarComm}.  The proof term shows
+the two inputs to Theorem~\ref{ch10:thm:diagoff}: locality of $Y(u)$ with $\overline W'(t)$, which
+is derived from \lean{hcomm} exactly as Theorem~\ref{ch10:thm:localYM} is derived from the module
+commutator formula, and locality of $Y(u)$ with $W(t)$ (\lean{leechWsk_local}), proved in the
+chapter on intertwiners from the commutator formula for $W$.  These are DGM (4.20)--(4.21).
+\end{dictionary}
+
+\begin{physics}
+Untwisted operators and twist fields are mutually local when $\overline W'$ is an intertwiner. This is the consistency of the orbifold with respect to moving an ordinary operator around a twist field: the monodromy is trivial up to the sector change, as is needed for the fields of one theory. It follows from the commutator formula for $W$ (established) and for $\overline W'$ (a hypothesis here, true for the genuine $\overline W$).
+\end{physics}
+
+\begin{proposition}\label{ch10:prop:YnatTcov}
+If $\overline W'$ is lower-truncated, it yields fields; if it satisfies the commutator formula and
+$\overline W'(L_{-1}t,z)=\partial_z\overline W'(t,z)$, then $Y^\natural_T[\overline W'](t,z)$ is
+$T^\natural$-covariant.
+\end{proposition}
+\noindent File \leanpath{VOA/Moonshine/VnatFields.lean}.
+\begin{leancode}
+theorem YnatT_isField {Wbar : TP → FormalDist (TP →ₗ[ℂ] SkewVP)} (hWbar : ∀ t, Trunc (Wbar t))
+    (t : TP) : IsField (YnatT Wbar t) :=
+
+theorem YnatT_DCovariant {Wbar : TP → FormalDist (TP →ₗ[ℂ] SkewVP)} (hcomm : WbarComm Wbar)
+    (hderiv : ∀ t, Wbar (leechLTP t) = deriv (Wbar t)) (t : TP) :
+    DCovariant Tnat (YnatT Wbar t) :=
+\end{leancode}
+
+\begin{physics}
+Twist-field operators obey the translation Ward identity and have finite OPE singularities provided the channel $\overline W'$ does. The derivative property $\overline W'(L_{-1}t,z)=\partial_z\overline W'(t,z)$ says that the field of the descendant $L_{-1}t$ is the derivative of the field of $t$, a basic property of any CFT.
+\end{physics}
+
+\emph{Proof.}  Covariance of the $W$-block is Proposition~\ref{ch10:prop:covYM}(b).  For the
+$\overline W'$-block, the commutator formula at $u=\omega$, $m=0$ gives
+$L_{-1}\overline W'(t)_{(n)}-\overline W'(t)_{(n)}L^T_{-1}=\overline W'(L_{-1}^Tt)_{(n)}$, and
+\lean{hderiv} converts the right side into $\partial_z\overline W'(t,z)$. \qed
+
+\subsection{The block vertex map and the reconstruction interface}
+
+\begin{definition}\label{ch10:def:Ynat}
+For a \emph{linear} $\overline W':\chtenTP\to\operatorname{Hom}(\chtenTP,\chtenVP)[[z^\pm]]$, the
+\emph{block vertex map} is
+$Y^\natural[\overline W'](u,t)=\begin{psmallmatrix}Y(u)&\overline W'(t)\\W(t)&Y^T(u)\end{psmallmatrix}$.
+\end{definition}
+\noindent File \leanpath{VOA/Moonshine/VnatFields.lean}.
+\begin{leancode}
+noncomputable def Ynat (Wbar : TP →ₗ[ℂ] FormalDist (TP →ₗ[ℂ] SkewVP)) :
+    Vnat →ₗ[ℂ] FormalDist (End ℂ Vnat) where
+  toFun x := blockF (leechVOAPlus.Y x.1) (Wbar x.2) (leechWskLin x.2) (plusModule.YM x.1)
+\end{leancode}
+(\lean{leechWskLin} is $t\mapsto W(t,z)$ as a linear map; the omitted fields prove additivity and
+homogeneity.)  One has $Y^\natural[\overline W'](u,0)=Y^\natural_U(u)$ and
+$Y^\natural[\overline W'](0,t)=Y^\natural_T[\overline W'](t)$ (\lean{Ynat_inl}, \lean{Ynat_inr}).
+
+The library's general reconstruction theorem (proved in the Core chapters) says: given a vector
+space with a vacuum and a translation operator, and a family of pairwise local, translation
+covariant, creating fields whose iterated products applied to the vacuum span the space, there
+is a unique linear state--field map extending them that satisfies VA3--VA5.  Its specialisation:
+
+\begin{physics}
+This is the vertex operator of the whole orbifold theory: a single operator $Y^\natural(u,t)$ whose four channels are untwisted$\times$untwisted ($Y$), untwisted$\times$twisted ($Y^T$), twisted$\times$untwisted ($W$) and twisted$\times$twisted ($\overline W'$). It is the OPE of the orbifold CFT as a $2\times2$ operator matrix, with the twisted$\times$twisted channel left as a parameter.
+\end{physics}
+
+\begin{theorem}[Reconstruction interface for $\Vnat$]\label{ch10:thm:reconstructnat}
+Let $g:\kappa\to\chtenTP$ be any family.  Assume of $\overline W'$: lower truncation, the
+commutator formula, and the derivative property; assume twisted--twisted locality
+$Y^\natural_T[\overline W'](g_i)\sim Y^\natural_T[\overline W'](g_j)$ for all $i,j$; and assume the
+word states built from the fields $Y^\natural_U(u)$, $Y^\natural_T[\overline W'](g_i)$ span
+$\Vnat$.  Then there is a linear map $Y_A:\Vnat\to\End(\Vnat)[[z^\pm]]$ whose values are fields,
+pairwise local, creating, $T^\natural$-covariant, and agreeing with $Y^\natural_U$ on $(u,0)$ and
+with $Y^\natural_T[\overline W']$ on $(0,g_i)$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/VnatFields.lean}.
+\begin{leancode}
+theorem reconstruct_nat {κ : Type*} {Wbar : TP → FormalDist (TP →ₗ[ℂ] SkewVP)} (g : κ → TP)
+    (hWbar : ∀ t, Trunc (Wbar t)) (hcomm : WbarComm Wbar)
+    (hderiv : ∀ t, Wbar (leechLTP t) = deriv (Wbar t))
+    (htt : ∀ i j, Local (YnatT Wbar (g i)) (YnatT Wbar (g j)))
+    (hspan : Submodule.span ℂ (Set.range (NonlinearConformal.wordSt (genNat Wbar g) vacNat))
+      = ⊤) :
+    ∃ YA : Vnat →ₗ[ℂ] FormalDist (End ℂ Vnat),
+      (∀ u : Vnat, IsField (YA u)) ∧
+      (∀ u v : Vnat, Local (YA u) (YA v)) ∧
+      (∀ u : Vnat, (YA u) 0 vacNat = u) ∧
+      (∀ u : Vnat, ∀ q : ℤ, q < 0 → (YA u) q vacNat = 0) ∧
+      (∀ u : Vnat, DCovariant Tnat (YA u)) ∧
+      (∀ u : SkewVP, YA (u, 0) = YnatU u) ∧
+      (∀ i, YA (0, g i) = YnatT Wbar (g i)) := by
+\end{leancode}
+\begin{dictionary}
+Hypotheses: \lean{hWbar}, \lean{hcomm}, \lean{hderiv} are the three properties of the parameter;
+\lean{htt} is the twisted--twisted locality on the chosen family (DGM (4.23) together with
+(4.22), see Section~\ref{ch10:sec:split}); \lean{hspan} says that the vectors
+$a^1_{(n_1)}\cdots a^k_{(n_k)}\mathbf1^\natural$ obtained by applying modes of the generator fields
+\lean{genNat Wbar g} (the family $\{Y^\natural_U(u)\}_u\cup\{Y^\natural_T(g_i)\}_i$) to the vacuum
+span $\Vnat$ (\lean{wordSt} lists these word states, \lean{Set.range} is the set of them,
+\lean{Submodule.span ℂ} their linear span, \lean{⊤} all of $\Vnat$).  The conclusion lists VA3,
+VA4, VA5 in the raw indexing.  The theorem is weaker than ``$\Vnat$ is a VOA'': it says nothing
+about grading or Virasoro, which are dealt with in Section~\ref{ch10:sec:axioms}.
+\end{dictionary}
+
+\begin{warning}
+\textbf{The trap, first appearance.}
+Take $\overline W'=0$.  Then \lean{hWbar}, \lean{hcomm}, \lean{hderiv} hold trivially (every term
+is $0$; $\partial_z0=0$).  And \lean{htt} holds trivially: the product of two off-diagonal fields
+with zero top-right blocks is $\operatorname{diag}(0\cdot W,\ W\cdot0)=0$
+(Remark~\ref{ch10:rem:offoff}), so the commutator is $0$.  With $g=\mathrm{id}$ the spanning
+hypothesis also holds (one-letter words already give every $(u,0)$ and $(0,t)$).  Hence
+\lean{reconstruct_nat} \emph{does} produce a vertex algebra for $\overline W'=0$: the
+square-zero extension.  The theorem is correct and useful, but its hypotheses are consistent
+with the wrong answer.  This observation was made by the agent writing this file, and is recorded
+as the TRAP in \leanpath{Notes/MonsterRoadmap.md}.
+\end{warning}
+
+\begin{physics}
+A chiral algebra is determined by the fields of a generating set: the OPE of the generators (untwisted fields and a few twist fields) fixes all other fields, and locality of the generators implies locality of the rest. This is the CFT statement that one needs to check crossing symmetry only for a generating set of operators, here reduced to twist$\times$twist, the only pairs not already controlled.
+\end{physics}
+
+\begin{status}
+\lean{YnatU_local}, \lean{YnatU_YnatT_local}, \lean{YnatT_DCovariant}, \lean{reconstruct_nat}:
+unconditional as implications (their hypotheses are displayed); \lean{reconstruct_nat}
+\lean{#print axioms}-checked: \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+%==========================================================================================
+\section{All vertex-operator-algebra axioms but one}\label{ch10:sec:axioms}
+
+From now on the parameter is the genuine adjoint, packaged as a linear map:
+\begin{leancode}
+noncomputable def wbarL : TP →ₗ[ℂ] FormalDist (TP →ₗ[ℂ] SkewVP) where
+  toFun := leechWbar
+
+noncomputable def YN : Vnat →ₗ[ℂ] FormalDist (End ℂ Vnat) := Ynat wbarL
+
+theorem mode_YN (x y : Vnat) (n : ℤ) :
+    mode (YN x) n y = (mode (leechVOAPlus.Y x.1) n y.1 + mode (leechWbar x.2) n y.2,
+      mode (leechWsk x.2) n y.1 + mode (plusModule.YM x.1) n y.2) := rfl
+\end{leancode}
+(\leanpath{VOA/Moonshine/VnatAxioms.lean}.)  So for $x=(u,t)$, $y=(\varphi,s)$,
+\begin{equation}\label{ch10:eq:modeYN}
+  x_{(n)}y=\bigl(u_{(n)}\varphi+\chtenWb(t)_{(n)}s,\ \ W(t)_{(n)}\varphi+u_{(n)}s\bigr),
+\end{equation}
+which is \eqref{ch10:eq:block} in modes, and the \lean{rfl} proof confirms it is the definition.
+The genuine $\chtenWb$ satisfies the commutator formula of Definition~\ref{ch10:def:WbarComm}
+(\lean{wbar_WbarComm}, a restatement of \eqref{ch10:eq:wbarcomm}).
+
+\subsection{The Virasoro algebra on any module}
+
+\begin{proposition}[Conformal self-products]\label{ch10:prop:omega}
+In any vertex operator algebra of central charge $c$:
+$\omega_{(0)}\omega=L_{-1}\omega$, $\omega_{(1)}\omega=2\omega$, $\omega_{(2)}\omega=0$,
+$\omega_{(3)}\omega=\frac c2\mathbf1$, $\omega_{(j)}\omega=0$ for $j\ge4$.
+\end{proposition}
+\begin{leancode}
+theorem omega_smul_three :
+    W.smul W.conformalVector 3 W.conformalVector = (W.centralCharge / 2) • W.vacuum := by
+theorem omega_smul_ge_four (j : ℤ) (hj : 4 ≤ j) :
+    W.smul W.conformalVector j W.conformalVector = 0 := by
+\end{leancode}
+(\leanpath{VOA/Moonshine/VnatAxiomsVir.lean}; the first three are analogous.)
+
+\begin{physics}
+These are the standard OPE of the stress tensor with itself, $T(z)T(0)\sim\frac{c/2}{z^4}+\frac{2T}{z^2}+\frac{\partial T}{z}$: the central term $\tfrac c2\mathbf1$ in $\omega_{(3)}\omega$ is the Virasoro anomaly, with $c=24$ for $V^\natural$. They hold in every vertex operator algebra and fix the conformal structure of the orbifold.
+\end{physics}
+
+\emph{Proof.} $\omega_{(j+1)}\omega=L_j\omega=L_jL_{-2}\mathbf1$.  Use $[L_j,L_{-2}]=(j+2)L_{j-2}+
+\delta_{j,2}\frac{j^3-j}{12}c$ and $L_k\mathbf1=0$ for $k\ge-1$: for $j=1$ one gets
+$3L_{-1}\mathbf1=0$, for $j=2$ one gets $4L_0\mathbf1+\frac c2\mathbf1=\frac c2\mathbf1$; for
+$j\ge3$ the weight $3-j<0$ is empty.  $L_0\omega=2\omega$ is VOA2. \qed
+
+\begin{theorem}[Virasoro relations on every weak module]\label{ch10:thm:modvir}
+Let $M$ be a weak module over a VOA $W$ of central charge $c$, and $L^M_n:=\omega_{(n+1)}$ on $M$.
+Then $[L^M_m,L^M_n]=(m-n)L^M_{m+n}+\delta_{m+n,0}\frac{m^3-m}{12}c$.
+\end{theorem}
+\begin{leancode}
+theorem module_virasoro (A : WeakModule W M) (m n : ℤ) :
+    ⁅mode (A.YM W.conformalVector) (m + 1), mode (A.YM W.conformalVector) (n + 1)⁆
+      = ((m : ℂ) - n) • mode (A.YM W.conformalVector) (m + n + 1)
+        + (if m + n = 0 then (((m : ℂ) ^ 3 - m) / 12 * W.centralCharge) • (1 : End ℂ M)
+           else 0) := by
+\end{leancode}
+\begin{dictionary}
+\lean{⁅X, Y⁆} is the commutator $XY-YX$ of endomorphisms; the central charge on the right is
+\lean{W.centralCharge}, the one of the \emph{algebra}.  This is the textbook statement; it is a
+genuine theorem because the library's \lean{OrdVModule} does not carry the Virasoro relations as
+an axiom.
+\end{dictionary}
+
+\begin{physics}
+Every representation of the chiral algebra, in particular the twisted sector, carries a Virasoro algebra with the same central charge $c$. For $V^\natural$ this is why both sectors have $c=24$ and why the full theory is a single conformal field theory rather than a sum of two with different central charges.
+\end{physics}
+
+\emph{Proof.} The commutator formula (Theorem~\ref{ch10:thm:actcomm}) with $u=v=\omega$, $J=4$,
+and the self-products of Proposition~\ref{ch10:prop:omega}:
+$[\omega_{(m+1)},\omega_{(n+1)}]=(L_{-1}\omega)_{(m+n+2)}+(m+1)\,2\omega_{(m+n+1)}
++\binom{m+1}3\frac c2\mathbf1_{(m+n-1)}$.  Module translation gives
+$(L_{-1}\omega)_{(k)}=-k\,\omega_{(k-1)}$, and $\mathbf1_{(k)}=\delta_{k,-1}$.  Collecting,
+$-(m+n+2)+2(m+1)=m-n$, and $\binom{m+1}{3}\frac c2=\frac{m^3-m}{12}c$ at $m+n=0$. \qed
+
+\begin{proposition}\label{ch10:prop:YMLm1}
+$Y_M(L_{-1}a,z)=\partial_zY_M(a,z)$ for every weak module.
+\end{proposition}
+\begin{leancode}
+theorem module_YM_Lm1 (A : WeakModule W M) (a : 𝒱) :
+    A.YM (W.L (-1) a) = deriv (A.YM a) := by
+\end{leancode}
+(The field form of the module translation property, which in turn is the $\ell=0$, $v=\mathbf 1$
+case of the Jacobi identity combined with $L_{-1}a=a_{(-2)}\mathbf 1$.)
+
+\begin{physics}
+The field of $L_{-1}a$ is the derivative of the field of $a$ in every sector: descendants under $L_{-1}$ are space derivatives of the field, $\phi_{L_{-1}a}=\partial\phi_a$. This is the formal version of the state--operator map commuting with translation.
+\end{physics}
+
+\subsection{The axioms for the block map}
+
+\begin{theorem}\label{ch10:thm:axioms}
+For the block map $Y^\natural:=Y^\natural[\chtenWb]$ on $\Vnat$, with no hypotheses:
+\begin{enumerate}[label=(\arabic*)]
+\item (VA1) $x\in\Vnat_k$, $y\in\Vnat_l$ $\Rightarrow$ $x_{(n)}y\in\Vnat_{k+l-n-1}$;
+\item (VA2) $Y^\natural(\mathbf1^\natural,z)=\mathrm{id}$;
+\item (VA3) $x_{(-1)}\mathbf1^\natural=x$ and $x_{(n)}\mathbf1^\natural=0$ for $n\ge0$;
+\item (VA5) for all $x,y$ there is $N$ with $x_{(n)}y=0$ for $n\ge N$;
+\item (VOA1) $L^\natural_n:=\omega^\natural_{(n+1)}$ satisfy the Virasoro relations with $c=24$;
+\item (VOA2) $L^\natural_0=n$ on $\Vnat_n$;
+\item (VOA3) $Y^\natural(L^\natural_{-1}v,z)=\partial_zY^\natural(v,z)$ for all $v$.
+\end{enumerate}
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/VnatAxioms.lean}.
+\begin{leancode}
+theorem YN_grading_mode {k l : ℤ} (x : Vnat) (hx : x ∈ gradingNat k) (y : Vnat)
+    (hy : y ∈ gradingNat l) (n : ℤ) : mode (YN x) n y ∈ gradingNat (k + l - n - 1) := by
+theorem YN_vacuum : YN vacNat = 1 := by
+theorem YN_creation (x : Vnat) :
+    mode (YN x) (-1) vacNat = x ∧ ∀ n : ℤ, 0 ≤ n → mode (YN x) n vacNat = 0 := by
+theorem YN_regularity (x y : Vnat) : ∃ N : ℤ, ∀ n : ℤ, N ≤ n → mode (YN x) n y = 0 := by
+theorem YN_virasoro (m n : ℤ) :
+    ⁅mode (YN omegaNat) (m + 1), mode (YN omegaNat) (n + 1)⁆
+      = ((m : ℂ) - n) • mode (YN omegaNat) (m + n + 1)
+        + (if m + n = 0 then (((m : ℂ) ^ 3 - m) / 12 * 24) • (1 : End ℂ Vnat) else 0) := by
+theorem YN_L0_grading {n : ℤ} (v : Vnat) (hv : v ∈ gradingNat n) :
+    mode (YN omegaNat) 1 v = (n : ℂ) • v := by
+theorem YN_translation (v : Vnat) : YN (mode (YN omegaNat) 0 v) = deriv (YN v) := by
+\end{leancode}
+\begin{dictionary}
+Each statement is literally the corresponding field of the structures of
+Section~\ref{ch10:sec:recall}, with \lean{Y := YN}, \lean{grading := gradingNat},
+\lean{vacuum := vacNat}, \lean{conformalVector := omegaNat}, \lean{centralCharge := 24}; this is
+why they can be plugged into the structure below without change.  In (5) the number $24$ is
+written explicitly; it arises as the central charge of $\chtenVP$.  In (7), \lean{mode (YN omegaNat) 0}
+is $\omega^\natural_{(0)}=L^\natural_{-1}=T^\natural$.  The \lean{1} in \lean{YN_vacuum} is the
+identity field ($z^0$-coefficient $\mathrm{id}$, all others $0$).
+\end{dictionary}
+
+\begin{physics}
+All axioms of a chiral CFT for the orbifold hold at once except the final crossing relation: grading by conformal weight, vacuum, creation, regularity (finite OPE), Virasoro with $c=24$, $L_0$ giving the weight and translation covariance. The remaining axiom, mutual locality of two twist fields, is the hardest consistency condition in the orbifold construction. That the other axioms need no input from the twisted OPE channel $\overline W$ is exactly why they cannot detect the trap: the impostor satisfies them as well.
+\end{physics}
+
+\emph{Proof.}  Each axiom is checked on the four blocks of \eqref{ch10:eq:modeYN}.
+\begin{enumerate}[label=(\arabic*)]
+\item $u_{(n)}$ on $\chtenVP$ and on $\chtenTP$ respects weights by VA1 and by the module grading;
+  $W(t)_{(n)}$ maps $(\chtenVP)_l$ to $\chtenTP_{k+l-n-1}$ for $t\in\chtenTP_k$, read off
+  \eqref{ch10:eq:Wmode} ($L_{-1}^i$ raises by $i$, $\varphi_{(n+i)}$ shifts by $l-n-i-1$);
+  $\chtenWb(t)_{(n)}$ maps $\chtenTP_l$ to $(\chtenVP)_{l+k-n-1}$ (\lean{leechWbar_mem}).
+\item $\mathbf 1^\natural=(\mathbf1,0)$: the twisted component is $0$, so only
+  $\operatorname{diag}(Y(\mathbf1),Y^T(\mathbf1))=\operatorname{diag}(\mathrm{id},\mathrm{id})$ remains.
+\item $Y^\natural(x)=Y^\natural_U(x_1)+Y^\natural_T(x_2)$; apply Propositions~\ref{ch10:prop:YnatU}(b)
+  and~\ref{ch10:prop:YnatTvac}.
+\item The block field is a field (Proposition~\ref{ch10:prop:blockfield}(a)) since all four
+  blocks are truncated.
+\item $\omega^\natural=(\omega,0)$, so $Y^\natural(\omega^\natural)=\operatorname{diag}(Y(\omega),Y^T(\omega))$
+  and the commutator of two diagonal operators is diagonal.  The $\chtenVP$-block satisfies
+  Virasoro with $c=24$ (central charge of $\chtenVP$), the $\chtenTP$-block by
+  Theorem~\ref{ch10:thm:modvir} with the same $c$.
+\item $L_0$ acts by $n$ on $(\chtenVP)_n$ and on $\chtenTP_n$ (the latter by definition of the weight
+  spaces of an ordinary module).
+\item $L^\natural_{-1}(u,t)=(L_{-1}u,L_{-1}^Tt)$; the four blocks of $Y^\natural(L^\natural_{-1}(u,t))$ are
+  $Y(L_{-1}u)=\partial Y(u)$ (VOA3), $Y^T(L_{-1}u)=\partial Y^T(u)$
+  (Proposition~\ref{ch10:prop:YMLm1}), $W(L^T_{-1}t)=\partial W(t)$ and
+  $\chtenWb(L_{-1}^Tt)=\partial\chtenWb(t)$ (\lean{leechWsk_deriv}, \lean{leechWbar_deriv}). \qed
+\end{enumerate}
+
+\begin{theorem}[Locality modulo the twisted--twisted block]\label{ch10:thm:localhtt}
+If $Y^\natural_T(t)$ and $Y^\natural_T(t')$ are mutually local for all $t,t'\in\chtenTP$, then
+$Y^\natural(x)$ and $Y^\natural(y)$ are mutually local for all $x,y\in\Vnat$.  Moreover the hypothesis
+need only be checked on a family whose linear span is $\chtenTP$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/VnatAxioms.lean}.
+\begin{leancode}
+theorem YN_local_of_htt (htt : ∀ t t' : TP, Local (YnatT leechWbar t) (YnatT leechWbar t'))
+    (x y : Vnat) : Local (YN x) (YN y) := by
+
+theorem htt_of_span {κ : Type*} (g : κ → TP) (hg : Submodule.span ℂ (Set.range g) = ⊤)
+    (htt : ∀ i j, Local (YnatT leechWbar (g i)) (YnatT leechWbar (g j))) :
+    ∀ t t' : TP, Local (YnatT leechWbar t) (YnatT leechWbar t') := by
+\end{leancode}
+
+\begin{physics}
+Crossing symmetry of the full orbifold theory reduces to twist$\times$twist crossing, since all other pairs of channels are already local. Physically, the consistency of the orbifold (the locality of all fields) is the single constraint on the four-point function of twist fields, the one that involves the geometry of the lattice and the fixed-point structure. It can be checked on a generating family of twist fields.
+\end{physics}
+
+\emph{Proof.} Write $Y^\natural(x)=Y^\natural_U(x_1)+Y^\natural_T(x_2)$.  Locality is bilinear (a sum of
+local pairs is local, with the maximum order), and the three mixed cases are
+Propositions~\ref{ch10:prop:YnatU}(d) and Theorem~\ref{ch10:thm:pt}.  For the span reduction,
+$t\mapsto Y^\natural_T(t)$ is linear, so locality extends from a spanning family to all pairs by
+bilinearity. \qed
+
+\subsection{The packaged structure}
+
+\begin{theorem}[The VOA $\Vnat$, conditional on twisted--twisted locality]\label{ch10:thm:vnatVOA}
+Assume $Y^\natural_T(t)\sim Y^\natural_T(t')$ for all $t,t'\in\chtenTP$.  Then
+$(\Vnat,\ (\Vnat_n)_n,\ Y^\natural,\ \mathbf1^\natural,\ \omega^\natural,\ c=24)$ is a vertex
+operator algebra in the sense of the library.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/VnatAxioms.lean}.
+\begin{leancode}
+noncomputable def vnatVOA (htt : ∀ t t' : TP, Local (YnatT leechWbar t) (YnatT leechWbar t')) :
+    VertexOperatorAlgebra Vnat where
+  grading := gradingNat
+  isInternal := gradingNat_isInternal
+  finrank := finiteDimensional_gradingNat
+  Y := YN
+  vacuum := vacNat
+  vacuum_mem := vacNat_mem
+  grading_mode := fun x hx y hy n => YN_grading_mode x hx y hy n
+  vacuum_Y := YN_vacuum
+  creation := YN_creation
+  locality := YN_local_of_htt htt
+  regularity := YN_regularity
+  conformalVector := omegaNat
+  conformal_mem := omegaNat_mem
+  centralCharge := 24
+  virasoro := YN_virasoro
+  L0_grading := fun v hv => YN_L0_grading v hv
+  translation := YN_translation
+  vacuum_grade := gradingNat_zero
+  positivity := fun _ hn => gradingNat_neg hn
+
+theorem vnat_VOA_of_htt (htt : ∀ t t' : TP, Local (YnatT leechWbar t) (YnatT leechWbar t')) :
+    ∃ V : VertexOperatorAlgebra Vnat,
+      V.Y = Ynat wbarL ∧ V.vacuum = vacNat ∧ V.conformalVector = omegaNat ∧
+        V.centralCharge = 24 ∧ V.grading = gradingNat :=
+  ⟨vnatVOA htt, rfl, rfl, rfl, rfl, rfl⟩
+\end{leancode}
+\begin{dictionary}
+\textbf{The definition is printed in full} because here the definition \emph{is} the statement:
+every field of \lean{VertexOperatorAlgebra} is filled by a theorem of this section, and the only
+input that is not a proved theorem is the argument \lean{htt}, used in exactly one place, the
+\lean{locality} field.  \lean{htt} is a proposition; \lean{vnatVOA} is a family of structures
+indexed by proofs of it, but since any two proofs of a proposition are equal in Lean (proof
+irrelevance), \lean{vnatVOA} does not depend on \emph{which} proof is supplied.  The theorem
+\lean{vnat_VOA_of_htt} records that the vertex map of this VOA \emph{is} the block map
+\lean{Ynat wbarL} (with the genuine $\chtenWb$), and that its vacuum, conformal vector, central
+charge and grading are the intended ones.  This matters: without \lean{V.Y = Ynat wbarL}, the
+existence statement would be satisfied by any VOA structure on the same space, including the
+square-zero one.
+
+Compared with the textbook: the textbook theorem is unconditional; this one is conditional on
+twisted--twisted locality, which is DGM's (4.22) together with (4.23).  It is the only input.
+\end{dictionary}
+
+\begin{warning}
+\lean{vnat_VOA_of_htt} \emph{does not by itself identify} $V$ with the Moonshine module.  The
+same statement with \lean{wbarL} replaced by $0$ would be true (with a trivially satisfied
+hypothesis) and would give the square-zero extension with the same $c$, grading and graded
+dimension.  What singles out $\Vnat$ is (a) that \lean{wbarL} is the genuine, nondegenerate adjoint,
+certified by \lean{leechWbar_ne_zero} (Section~\ref{ch10:sec:trap}), and (b) the simplicity theorem
+of Section~\ref{ch10:sec:simple}.
+\end{warning}
+
+\begin{physics}
+Conditional on twist$\times$twist locality, the assembled orbifold data form a bona fide chiral CFT with $c=24$ and a finite-dimensional space of states at every energy: the Moonshine module as a vertex operator algebra. The conditional status is real: until that crossing relation is proved the object is not shown to be a CFT, and the numerical coincidences with $J$ do not remedy that.
+\end{physics}
+
+\begin{status}
+All seven axioms of Theorem~\ref{ch10:thm:axioms}: unconditional.  \lean{vnatVOA},
+\lean{vnat_VOA_of_htt}: conditional on \lean{htt} only; \lean{#print axioms} $=$
+\lean{[propext, Classical.choice, Quot.sound]} (checked).  \lean{module_virasoro}: general,
+unconditional, checked.
+\end{status}
+
+%==========================================================================================
+\section{Twisted--twisted locality splits into DGM (4.22) and (4.23)}\label{ch10:sec:split}
+
+By Remark~\ref{ch10:rem:offoff}, the commutator of two off-diagonal fields is diagonal.  For
+two twisted fields
+$Y^\natural_T(t_i)=\begin{psmallmatrix}0&\chtenWb(t_i)\\W(t_i)&0\end{psmallmatrix}$ this reads
+\begin{equation}\label{ch10:eq:ttbracket}
+ [Y^\natural_T(t_1,z_1),Y^\natural_T(t_2,z_2)]=
+ \begin{pmatrix}
+ \chtenWb(t_1,z_1)W(t_2,z_2)-\chtenWb(t_2,z_2)W(t_1,z_1) & 0\\
+ 0 & W(t_1,z_1)\chtenWb(t_2,z_2)-W(t_2,z_2)\chtenWb(t_1,z_1)
+ \end{pmatrix}.
+\end{equation}
+The top-left entry is an operator on the untwisted sector built by passing through the twisted
+sector; the bottom-right entry is an operator on the twisted sector built by passing through the
+untwisted sector.
+
+\begin{theorem}[Off-diagonal locality is two diagonal relations]\label{ch10:thm:offoff}
+For any $c,c'\in\operatorname{Hom}(M,V)[[z^\pm]]$, $d,d'\in\operatorname{Hom}(V,M)[[z^\pm]]$:
+$\operatorname{offdiag}(c,d)\sim\operatorname{offdiag}(c',d')$ if and only if
+$(z_1-z_2)^{N_1}\bigl(c(z_1)d'(z_2)-c'(z_2)d(z_1)\bigr)=0$ on $V$ for some $N_1$ and
+$(z_1-z_2)^{N_2}\bigl(d(z_1)c'(z_2)-d'(z_2)c(z_1)\bigr)=0$ on $M$ for some $N_2$.
+\end{theorem}
+\begin{leancode}
+theorem local_off_off_iff (c c' : FormalDist (M →ₗ[ℂ] V)) (d d' : FormalDist (V →ₗ[ℂ] M)) :
+    Local (offF c d) (offF c' d') ↔
+      (∃ N : ℕ, mulBySubPow N
+        ((fun m n => c m ∘ₗ d' n - c' n ∘ₗ d m) : FormalDist₂ (End ℂ V)) = 0) ∧
+      (∃ N : ℕ, mulBySubPow N
+        ((fun m n => d m ∘ₗ c' n - d' n ∘ₗ c m) : FormalDist₂ (End ℂ M)) = 0) := by
+\end{leancode}
+(\leanpath{VOA/Moonshine/TTBlock.lean}.)
+
+\begin{physics}
+The OPE of two twist fields, which exchange sectors, is local if and only if two separate crossing relations hold: one for the amplitude untwisted$\to$twisted$\to$untwisted (relation (4.22)) and one for twisted$\to$untwisted$\to$twisted (relation (4.23)). Physically these are the two channels of four-point functions of twist fields on the plane, restricted to the untwisted or the twisted external states.
+\end{physics}
+
+\emph{Proof.} By \eqref{ch10:eq:ttbracket} and the entrywise action of $(z_1-z_2)^N$; a block
+matrix is $0$ iff each block is; for the converse take $N=\max(N_1,N_2)$. \qed
+
+\begin{definition}[DGM (4.22) and (4.23)]\label{ch10:def:blocklocal}
+For $t_1,t_2\in\chtenTP$ and a parameter $\overline W'$:
+\begin{itemize}
+\item $\mathrm{VP}(t_1,t_2)$, DGM (4.22): for some $N$,
+  $(z_1-z_2)^N\bigl(\overline W'(t_1,z_1)W(t_2,z_2)-\overline W'(t_2,z_2)W(t_1,z_1)\bigr)=0$ in
+  $\End(\chtenVP)[[z_1^\pm,z_2^\pm]]$;
+\item $\mathrm{TP}(t_1,t_2)$, DGM (4.23): for some $N$,
+  $(z_1-z_2)^N\bigl(W(t_1,z_1)\overline W'(t_2,z_2)-W(t_2,z_2)\overline W'(t_1,z_1)\bigr)=0$ in
+  $\End(\chtenTP)[[z_1^\pm,z_2^\pm]]$.
+\end{itemize}
+\end{definition}
+\begin{leancode}
+def VPBlockLocal (Wbar : TP → FormalDist (TP →ₗ[ℂ] SkewVP)) (t₁ t₂ : TP) : Prop :=
+  ∃ N : ℕ, mulBySubPow N
+    ((fun m n => Wbar t₁ m ∘ₗ leechWsk t₂ n - Wbar t₂ n ∘ₗ leechWsk t₁ m) :
+      FormalDist₂ (End ℂ SkewVP)) = 0
+
+def TPBlockLocal (Wbar : TP → FormalDist (TP →ₗ[ℂ] SkewVP)) (t₁ t₂ : TP) : Prop :=
+  ∃ N : ℕ, mulBySubPow N
+    ((fun m n => leechWsk t₁ m ∘ₗ Wbar t₂ n - leechWsk t₂ n ∘ₗ Wbar t₁ m) :
+      FormalDist₂ (End ℂ TP)) = 0
+\end{leancode}
+\begin{dictionary}
+In \lean{fun m n => Wbar t₁ m ∘ₗ leechWsk t₂ n - …}, the first index \lean{m} belongs to $z_1$
+and the second \lean{n} to $z_2$, in the raw $z$-power indexing; so the first term is
+$\chtenWb(t_1)_m\circ W(t_2)_n$, coefficient of $z_1^mz_2^n$ in $\chtenWb(t_1,z_1)W(t_2,z_2)$, and the
+second is $\chtenWb(t_2)_n\circ W(t_1)_m$, coefficient of $z_1^mz_2^n$ in
+$\chtenWb(t_2,z_2)W(t_1,z_1)$ --- exactly Definition~\ref{ch10:def:blocklocal}.  \lean{SkewVP}
+and \lean{TP} are $\chtenVP$ and $\chtenTP$.  These are the relations (4.22) and (4.23) of
+Dolan--Goddard--Montague, Commun.\ Math.\ Phys.\ 179 (1996); the referee may compare: DGM write
+them as ``$\overline W(t_1,z_1)W(t_2,z_2)\sim\overline W(t_2,z_2)W(t_1,z_1)$'' with $\sim$ meaning
+equality after multiplication by a power of $(z_1-z_2)$, which is what \lean{mulBySubPow} encodes.
+\end{dictionary}
+
+\begin{physics}
+The two relations are the two crossing conditions for twist fields: (4.22) is crossing with untwisted external states, (4.23) with twisted external states. The first is accessible from skew-symmetry and invariance of the form; the second needs real input about the twisted sector, the geometry of the $2^{24}$ fixed points, and is the hardest crossing condition in the orbifold. These are heuristic labels; the precise statements are the displayed equations.
+\end{physics}
+
+\begin{theorem}\label{ch10:thm:ttiff}
+$Y^\natural_T[\overline W'](t_1)\sim Y^\natural_T[\overline W'](t_2)$ if and only if
+$\mathrm{VP}(t_1,t_2)$ and $\mathrm{TP}(t_1,t_2)$ hold.
+\end{theorem}
+\begin{leancode}
+theorem YnatT_local_iff (Wbar : TP → FormalDist (TP →ₗ[ℂ] SkewVP)) (t₁ t₂ : TP) :
+    Local (YnatT Wbar t₁) (YnatT Wbar t₂) ↔
+      VPBlockLocal Wbar t₁ t₂ ∧ TPBlockLocal Wbar t₁ t₂ :=
+  local_off_off_iff _ _ _ _
+\end{leancode}
+\begin{dictionary}
+An equivalence, valid for every parameter.  The one-line proof term shows it is
+Theorem~\ref{ch10:thm:offoff} with $c=\overline W'(t_1)$, $d=W(t_1)$, $c'=\overline W'(t_2)$,
+$d'=W(t_2)$.  Combining with \lean{reconstruct_nat}, the library also records
+\lean{reconstruct_nat_of_blocks}, in which \lean{htt} is replaced by the two block relations for
+the genuine $\chtenWb$ on a generating family.
+\end{dictionary}
+
+\begin{physics}
+Locality of two twist fields is exactly the pair of crossing relations in the two channels: the four-point function of two twist fields and two external states is single-valued and symmetric in both the untwisted and twisted external sectors. There is no further condition.
+\end{physics}
+
+\paragraph{Which half is hard.}  (4.22) is a statement about operators on the \emph{untwisted}
+sector built from twisted intermediate states.  On the vacuum it reduces, by the explicit vacuum
+behaviour of $W$, to a statement about $\chtenWb$ alone --- its skew-symmetry --- and this can be
+derived from the definition of $\chtenWb$ as an adjoint.  So (4.22) is lattice-free; we prove it
+in the next section.  (4.23) is a statement about operators on the \emph{twisted} sector built from
+untwisted intermediate states; its matrix elements between twisted ground states are four-point
+functions of twist fields, given by sums over the whole Leech lattice (theta functions of cosets
+of $2\Lambda$).  Their consistency is ``almost a modular invariance condition'' (DGM §5.3) and
+genuinely uses the lattice: DGM show it holds only when $\sqrt2\Lambda^*$ is even.  This is the
+relation the triality method of the following chapters is designed to prove.
+
+\begin{status}
+\lean{local_off_off_iff}, \lean{YnatT_local_iff}: unconditional, generic (any parameter);
+\lean{YnatT_local_iff} \lean{#print axioms}-checked clean.
+\end{status}
+
+%==========================================================================================
+\section{DGM (4.22) holds unconditionally}\label{ch10:sec:422}
+
+\subsection{Three tools}
+
+\paragraph{A two-variable Goddard lemma.}
+Goddard's uniqueness lemma for vertex algebras says that a field that is local with all the
+fields and kills the vacuum is zero, because the states $a_{(n)}\mathbf1$ span.  We need its
+analogue for a \emph{two-variable} distribution $B(z_1,z_2)$, with locality in a third variable.
+
+\begin{theorem}[Two-variable Goddard lemma]\label{ch10:thm:goddard2}
+Let $V$ be a vector space, $\mathrm{vac}\in V$, $A(w)\in\End(V)[[w^\pm]]$ with $A_p\,\mathrm{vac}=0$ for
+$p<0$ (raw indexing: no negative powers of $w$ on the vacuum), and
+$B(z_1,z_2)\in\End(V)[[z_1^\pm,z_2^\pm]]$ with $B_{m,n}\mathrm{vac}=0$ for all $m,n$.  If
+$(w-z_1)^{M_1}(w-z_2)^{M_2}[A(w),B(z_1,z_2)]=0$, then $B_{m,n}(A_p\,\mathrm{vac})=0$ for all $p,m,n$.
+\end{theorem}
+\begin{leancode}
+theorem goddard₂ (vac : V) (A : FormalDist (End ℂ V)) (B : FormalDist₂ (End ℂ V)) (M₁ M₂ : ℕ)
+    (hloc : mulBySub₁₂Pow M₁ (mulBySub₁₃Pow M₂ (brk3 A B)) = 0)
+    (hneg : ∀ p : ℤ, p < 0 → A p vac = 0) (hvac : ∀ m n, B m n vac = 0) (p m n : ℤ) :
+    B m n (A p vac) = 0 := by
+\end{leancode}
+(\leanpath{VOA/Moonshine/M8h0Goddard.lean}.)
+\begin{dictionary}
+\lean{brk3 A B} is the three-variable distribution $[A(w),B(z_1,z_2)]$ with coefficients
+$A_pB_{m,n}-B_{m,n}A_p$ ($w$ first).  \lean{mulBySub₁₂Pow M} and \lean{mulBySub₁₃Pow M}
+multiply by $(w-z_1)^M$ and $(w-z_2)^M$ respectively (the same shift formula as
+Definition~\ref{ch10:def:mulbysub} in the indicated pair of variables).  The conclusion is
+coefficientwise.  Same as the textbook argument; nothing hidden.
+\end{dictionary}
+
+\begin{physics}
+This is the vertex-algebra form of the statement that a locality relation checked on the vacuum extends to all states: a field commuting (locally) with $A(w)$ and annihilating the vacuum vanishes on all states created by $A$. It is the formal version of the state--operator argument that a correlator is determined by its vacuum expectation value together with the Ward identities, and is the main tool of Goddard-type uniqueness theorems in CFT.
+\end{physics}
+
+\emph{Proof.} Apply the locality relation to $\mathrm{vac}$.  Since $B$ kills $\mathrm{vac}$, it
+becomes $(w-z_1)^{M_1}(w-z_2)^{M_2}G=0$ for $G(w,z_1,z_2):=-B(z_1,z_2)A(w)\mathrm{vac}$.  By the
+hypothesis on $A$, $G$ has only non-negative powers of $w$.  On such distributions, multiplication
+by $w-z$ is injective: if $(w-z)G=0$ and $p_0$ is the lowest $w$-power present, the coefficient of
+$w^{p_0}$ in $(w-z)G$ is $-z\,G_{p_0}$, forcing $G_{p_0}=0$.  So $G=0$. \qed
+
+The hypothesis of Theorem~\ref{ch10:thm:goddard2} holds for $B=(z_1-z_2)^N[a(z_1),b(z_2)]$
+whenever $A$ is local with both $a$ and $b$: by the Leibniz rule
+$[A,ab]=[A,a]b+a[A,b]$, each term is killed by the appropriate $(w-z_i)$-power
+(\lean{loc3_mulBySubPow_bracketDist}).
+
+\paragraph{The translation equation.}
+\begin{definition}\label{ch10:def:TEq}
+Given $L\in\End V$, a two-variable distribution $D$ with values in $V$ satisfies the
+\emph{translation equation} if $LD=(\partial_{z_1}+\partial_{z_2})D$, i.e.\
+$L\,D_{m,n}=(m+1)D_{m+1,n}+(n+1)D_{m,n+1}$.
+\end{definition}
+\begin{leancode}
+def TEq (D : FormalDist₂ V) : Prop :=
+  ∀ m n : ℤ, L (D m n) = ((m + 1 : ℤ) : ℂ) • D (m + 1) n + ((n + 1 : ℤ) : ℂ) • D m (n + 1)
+\end{leancode}
+
+\begin{physics}
+The translation equation is the Ward identity for a two-point object: translating both insertion points together gives $L_{-1}D=(\partial_{z_1}+\partial_{z_2})D$, so a two-variable correlation function depends on the difference $z_1-z_2$ up to the action of the translation operator.
+\end{physics}
+
+\begin{theorem}[Closed form]\label{ch10:thm:closedform}
+If $D$ satisfies the translation equation, then for all $m,n\in\N$,
+$D_{m,n}=\sum_{s+r=n}\binom{m+r}{r}\frac{(-1)^r}{s!}L^sD_{m+r,0}$; that is,
+$D(z_1,z_2)=e^{z_2L}D(z_1-z_2,0)$ on the quadrant $m,n\ge0$.
+\end{theorem}
+\begin{leancode}
+noncomputable def tcoef (m s r : ℕ) : ℂ :=
+  ((m + r).choose r : ℂ) * (-1 : ℂ) ^ r * ((s.factorial : ℂ))⁻¹
+
+theorem TEq.closed_form {D : FormalDist₂ V} (h : TEq L D) :
+    ∀ n m : ℕ, D m n = ∑ p ∈ Finset.antidiagonal n,
+      tcoef m p.1 p.2 • (L ^ p.1) (D ((m + p.2 : ℕ) : ℤ) 0) := by
+\end{leancode}
+(\leanpath{VOA/Moonshine/M8h0Translate.lean}.)
+\begin{dictionary}
+\lean{Finset.antidiagonal n} is the set of pairs $(s,r)$ with $s+r=n$; \lean{p.1}$=s$,
+\lean{p.2}$=r$.  The coefficient \lean{tcoef m s r} is $\binom{m+r}r(-1)^r/s!$.  The statement
+covers only $m,n\ge0$ (natural numbers), which is exactly the quadrant where the closed form is
+meant.  Note that no support hypothesis is needed for the identity itself.
+\end{dictionary}
+
+\begin{physics}
+The solution of the translation equation is $D(z_1,z_2)=e^{z_2L_{-1}}D(z_1-z_2,0)$: a two-point correlation is a function of the separation, dressed by the translation of the base point. It is the formal version of translation invariance of the vacuum correlators.
+\end{physics}
+
+\emph{Proof.} Induction on $n$: the equation solves for $(n+1)D_{m,n+1}=LD_{m,n}-(m+1)D_{m+1,n}$,
+and Pascal-type identities for the coefficients close the induction.  Conceptually: $D(z_1,z_2)$
+with $(\partial_1+\partial_2-L)D=0$ is determined by its restriction to $z_2=0$, transported along
+$z_1\mapsto z_1-z_2$ and twisted by $e^{z_2L}$. \qed
+
+\paragraph{Skew-symmetry of $\chtenWb$.}
+\begin{theorem}[DGM (4.9)]\label{ch10:thm:skew}
+For $t_1\in\chtenTP_a$, $t_2\in\chtenTP_b$ and every $n\in\Z$,
+\begin{equation*}
+ \chtenWb(t_1)_{(n)}t_2=\sum_{i\ge0}\frac{(-1)^{n+i+1}}{i!}\,L_{-1}^{\,i}\,\chtenWb(t_2)_{(n+i)}t_1,
+ \qquad\text{i.e.}\qquad \chtenWb(t_1,z)t_2=e^{zL_{-1}}\chtenWb(t_2,-z)t_1 .
+\end{equation*}
+\end{theorem}
+\begin{leancode}
+theorem leechWbar_skew {a b : ℤ} {t₁ t₂ : TP} (ht₁ : t₁ ∈ plusModule.weight (a : ℂ))
+    (ht₂ : t₂ ∈ plusModule.weight (b : ℂ)) (n : ℤ) :
+    leechWbarMode n t₁ t₂ = ∑ᶠ i : ℕ, (((i.factorial : ℂ)⁻¹) * negOnePow (n + i + 1)) •
+      ((leechVOAPlus.L (-1)) ^ i) (leechWbarMode (n + i) t₂ t₁) := by
+\end{leancode}
+(\leanpath{VOA/Moonshine/M8h0Skew.lean}.)
+\begin{dictionary}
+\lean{leechWbarMode n t₁ t₂} is $\chtenWb(t_1)_{(n)}t_2$ (mode indexing).  \lean{∑ᶠ} is a sum
+with finite support (only finitely many terms are nonzero because $\chtenWb(t_2)_{(n+i)}t_1=0$ for
+$i$ large).  \lean{negOnePow k} is $(-1)^k$.  The hypotheses \lean{ht₁}, \lean{ht₂} require
+homogeneity.  This is \emph{weaker} than the textbook statement for all $t_1,t_2$, but only
+formally: both sides are bilinear in $(t_1,t_2)$ and $\chtenTP$ is the direct sum of its weight
+spaces, so the general case follows by linearity (and is not needed).  The sign is the
+\emph{even} skew-symmetry $Y(a,z)b=e^{zL_{-1}}Y(b,-z)a$, with no extra $-1$: the extension is a
+VOA, not a super VOA.  (Numerical evidence on the $E_8$ model shows the super version of (4.23)
+fails; see Section~\ref{ch10:sec:deadends}.)
+\end{dictionary}
+
+\begin{physics}
+Skew-symmetry of the twisted$\times$twisted$\to$untwisted OPE: exchanging two twist fields is the same as translating by $e^{zL_{-1}}$ and sending $z\to-z$, $\overline W(t_1,z)t_2=e^{zL_{-1}}\overline W(t_2,-z)t_1$. This is the exchange symmetry of the OPE of two bosonic fields, and its proof uses nondegeneracy of the Zamolodchikov metric on the untwisted sector.
+\end{physics}
+
+\emph{Proof.} Since $B_V$ is nondegenerate on each weight space, it suffices to pair both sides
+with an arbitrary $\varphi\in(\chtenVP)_k$, $k=a+b-n-1$.  The left side, by the adjunction
+\eqref{ch10:eq:adj}, becomes $(-1)^a\sum_j\frac1{j!}(t_2,W(L_1^jt_1)_{(2a-n-2-j)}\varphi)_T$; expand
+$W$ by \eqref{ch10:eq:Wmode}.  The right side: move $L_{-1}^i$ across $B_V$ as $L_1^i$ (Virasoro
+adjointness of $B_V$), apply \eqref{ch10:eq:adj} to $\chtenWb(t_2)_{(n+i)}$, and expand $W$.  Both
+sides become triple sums of the matrix elements $(L_1^jt_1,(L_1^r\varphi)_{(\gamma)}L_1^lt_2)_T$
+--- on the left after using $L_{-1}\dashv L_1$ and FHL-invariance of $(\cdot,\cdot)_T$ to move the
+$L_{-1}$'s and the $\varphi$-mode onto the other argument, together with symmetry of
+$(\cdot,\cdot)_T$.  The two triple sums agree term by term after the relabelling
+$(j,l,r)\mapsto(r,l,j)$: the factorials match, the mode indices agree because $n=a+b-k-1$, and
+the signs differ by an even power of $-1$. \qed
+
+\begin{remark}
+Physically, skew-symmetry is the statement that the OPE of two twist fields is symmetric:
+$\sigma_{t_1}(z)\sigma_{t_2}(0)$ and $\sigma_{t_2}(-z)\sigma_{t_1}(0)$ differ by translation.  Here
+it is a consequence of the \emph{definition} of $\chtenWb$ as the adjoint of $W$ and of the
+symmetry of the twisted form; for the fake $\overline W'=0$ it holds trivially.
+\end{remark}
+
+\subsection{The theorem}
+
+\begin{theorem}[DGM (4.22)]\label{ch10:thm:422}
+For all $t_1,t_2\in\chtenTP$, $\mathrm{VP}(t_1,t_2)$ holds for the genuine $\chtenWb$.  More
+precisely, for $t_1\in\chtenTP_a$, $t_2\in\chtenTP_b$ the order $N=a+b$ suffices.
+\end{theorem}
+\begin{leancode}
+theorem leechWbar_VPBlockLocal (t₁ t₂ : TP) : VPBlockLocal leechWbar t₁ t₂ := by
+
+theorem VPBlockLocal_homog {a b : ℤ} {t₁ t₂ : TP} (ht₁ : t₁ ∈ plusModule.weight (a : ℂ))
+    (ht₂ : t₂ ∈ plusModule.weight (b : ℂ)) :
+    mulBySubPow (a + b).toNat (VPfun t₁ t₂) = 0 := by
+\end{leancode}
+(\leanpath{VOA/Moonshine/M8h0VPBlock.lean}; \lean{VPfun t₁ t₂} is the two-variable distribution
+inside \lean{VPBlockLocal leechWbar t₁ t₂}.)
+\begin{dictionary}
+No hypotheses: \lean{t₁ t₂ : TP} are arbitrary.  The parameter is the genuine \lean{leechWbar}.
+Same as DGM's (4.22).  Could it be vacuous?  \lean{VPBlockLocal} is an existential over $N$ of an
+equation of distributions; it would be trivial if $\chtenWb$ were $0$, but $\chtenWb\ne0$
+(Section~\ref{ch10:sec:trap}), and the proof below uses the defining adjunction, not triviality.
+\end{dictionary}
+
+\begin{physics}
+The untwisted-external crossing of two twist fields holds unconditionally, with pole order at most $a+b$, the sum of the weights. Physically the four-point function of two twist fields with two untwisted external states is consistent, a consequence of skew-symmetry and invariance rather than of any lattice computation. It is the first half of twist$\times$twist crossing.
+\end{physics}
+
+\emph{Proof.}
+\emph{Step 1 (vacuum).}  Let $t_1\in\chtenTP_a$, $t_2\in\chtenTP_b$ and $P\ge a+b$.  Put
+$f(z_1,z_2)=\chtenWb(t_1,z_1)W(t_2,z_2)\mathbf1$ and $g(z_1,z_2)=\chtenWb(t_2,z_2)W(t_1,z_1)\mathbf1$,
+$\chtenVP$-valued.  Both satisfy the translation equation with $L=L_{-1}$, because $\chtenWb$ and
+$W$ are translation covariant and $L_{-1}\mathbf 1=0$; so do $H=(z_1-z_2)^Pf$ and
+$H'=(z_1-z_2)^Pg$, since $\partial_1+\partial_2$ kills $z_1-z_2$.  By $W(t,z)\mathbf1=e^{zL_{-1}}t$,
+$f$ has only non-negative powers of $z_2$, and $g$ only non-negative powers of $z_1$; the grading
+($\chtenWb(t_1)_{(n)}t_2$ has weight $a+b-n-1$, which is negative for $n\ge a+b$) shows that the
+factor $(z_1-z_2)^P$ removes all negative powers, so $H$ and $H'$ are supported on the quadrant
+$m,n\ge0$.  Now compare the two on the edge $m=0$, in the raw $z$-power indexing (so $\chtenWb(t)_k$ is the
+coefficient of $z^k$).  Because $f$ has only non-negative powers of $z_2$, the $z_2^0$-part of
+$H=(z_1-z_2)^Pf$ is $z_1^Pf(z_1,0)$, so $H_{r,0}=\chtenWb(t_1)_{r-P}\,t_2$ (using
+$W(t_2)_0\mathbf 1=t_2$).  The closed form (Theorem~\ref{ch10:thm:closedform}, $m=0$) then gives
+\begin{equation*}
+ H_{0,n}=\sum_{s+r=n}\frac{(-1)^r}{s!}\,L_{-1}^{\,s}\,\chtenWb(t_1)_{r-P}\,t_2 .
+\end{equation*}
+Because $g$ has only non-negative powers of $z_1$, the $z_1^0$-part of $H'=(z_1-z_2)^Pg$ is
+$(-z_2)^Pg(0,z_2)$, so $H'_{0,n}=(-1)^P\,\chtenWb(t_2)_{n-P}\,t_1$.  Skew-symmetry (Theorem~\ref{ch10:thm:skew}) says precisely that these two edges
+coincide.  Finally, a solution of the translation equation supported on the quadrant and
+vanishing on the edge $m=0$ is identically zero (solve the equation for $D_{m+1,n}$ and induct on
+$m$).  So $H-H'$ is a quadrant solution vanishing on $m=0$, hence $H=H'$:
+\begin{equation*}
+ (z_1-z_2)^P\bigl(\chtenWb(t_1,z_1)W(t_2,z_2)-\chtenWb(t_2,z_2)W(t_1,z_1)\bigr)\mathbf1=0 .
+\end{equation*}
+\emph{Step 2 (Goddard).}  Let $B=(z_1-z_2)^P[Y^\natural_T(t_1,z_1),Y^\natural_T(t_2,z_2)]$ on $\Vnat$.
+By \eqref{ch10:eq:ttbracket}, $B$ applied to $\mathbf1^\natural=(\mathbf 1,0)$ is (top-left entry
+applied to $\mathbf 1$, $0$), which vanishes by Step 1.  Each $Y^\natural_U(u)$ is local with both
+twisted fields (Theorem~\ref{ch10:thm:pt}), so $B$ satisfies the three-variable locality with
+$A=Y^\natural_U(u)$.  Theorem~\ref{ch10:thm:goddard2} with $p=0$ gives $B_{m,n}(u,0)=0$ for every
+$u\in\chtenVP$ --- this is (4.22) on $u$, for order $P$.
+\emph{Step 3 (linearity).}  (4.22) is bilinear in $(t_1,t_2)$ and $\chtenTP$ is spanned by its
+homogeneous vectors. \qed
+
+Step 1 deserves a cleaner statement, since it is where the lattice-freeness lies:
+\begin{proposition}[Vacuum step]\label{ch10:prop:vacstep}
+For $t_1\in\chtenTP_a$, $t_2\in\chtenTP_b$ and $P\ge a+b$,
+$(z_1-z_2)^P\chtenWb(t_1,z_1)W(t_2,z_2)\mathbf1=(z_1-z_2)^P\chtenWb(t_2,z_2)W(t_1,z_1)\mathbf1$.
+\end{proposition}
+\begin{leancode}
+theorem vac_step {a b : ℤ} {t₁ t₂ : TP} (ht₁ : t₁ ∈ plusModule.weight (a : ℂ))
+    (ht₂ : t₂ ∈ plusModule.weight (b : ℂ)) (P : ℕ) (hP : a + b ≤ P) :
+    mulBySubPow P (fF t₁ t₂) = mulBySubPow P (fun m n => fF t₂ t₁ n m) := by
+\end{leancode}
+\begin{dictionary}
+\lean{fF t s} is the $\chtenVP$-valued distribution with coefficients
+$\chtenWb(t)_m\,W(s)_n\,\mathbf 1$, i.e.\ $\chtenWb(t,z_1)W(s,z_2)\mathbf 1$.  The right side swaps the
+roles of the indices, giving $\chtenWb(t_2,z_2)W(t_1,z_1)\mathbf 1$.
+\end{dictionary}
+
+\begin{physics}
+This is the vacuum case of (4.22): the two orderings of two twist fields, evaluated on the vacuum, agree up to the pole of order $a+b$. In CFT terms the three-point amplitude of the vacuum with two twist fields is symmetric, which is the starting point of the Goddard argument to extend the relation to all untwisted states.
+\end{physics}
+
+\begin{status}
+\lean{goddard₂}, \lean{TEq.closed_form}: generic, unconditional.  \lean{leechWbar_skew}:
+unconditional (homogeneous arguments).  \lean{leechWbar_VPBlockLocal}: \textbf{unconditional},
+all $t_1,t_2$.  All four \lean{#print axioms}-checked: \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+%==========================================================================================
+\section{Reducing (4.23) to a generating family and to four pairs}\label{ch10:sec:gap}
+
+After Section~\ref{ch10:sec:422}, Theorem~\ref{ch10:thm:vnatVOA} needs only (4.23) for
+\emph{all} pairs.  The linear-span reduction (Theorem~\ref{ch10:thm:localhtt}) would require
+checking a basis of $\chtenTP$, which is infinite-dimensional.  The point of this section is that
+(4.23) on a family which generates $\chtenTP$ under the \emph{modes} of $\chtenVP$ suffices.
+
+\begin{definition}[Mode-generating family]\label{ch10:def:modespan}
+A family $g:\kappa\to\chtenTP$ is \emph{mode-generating} if the vectors $u_{(n)}g_i$
+($u\in\chtenVP$, $n\in\Z$, $i\in\kappa$) span $\chtenTP$.
+\end{definition}
+\begin{leancode}
+def ModeSpan : Prop :=
+  Submodule.span ℂ {x : TP | ∃ (u : SkewVP) (n : ℤ) (i : κ), x = mode (plusModule.YM u) n (g i)} = ⊤
+\end{leancode}
+(\leanpath{VOA/Moonshine/M8h0Gap.lean}.)
+
+\begin{physics}
+A mode-generating family is a set of twisted states from which the whole twisted sector is built by acting with untwisted operators: the twisted sector is generated from a few twist fields (here two frame sectors, one for each parity) by the untwisted chiral algebra. This is the CFT notion of a set of primary states generating a representation.
+\end{physics}
+
+\begin{theorem}[Goddard identification of twisted fields]\label{ch10:thm:creates}
+Let $g$ be mode-generating and $x\in\chtenTP$.  Let $\Psi$ be a $T^\natural$-covariant field on
+$\Vnat$ with $\Psi_0\mathbf1^\natural=(0,x)$, $\Psi_q\mathbf1^\natural=0$ for $q<0$, local with every
+$Y^\natural_U(v)$ and with every $Y^\natural_T(g_j)$.  Then $\Psi=Y^\natural_T(x)$.
+\end{theorem}
+\begin{leancode}
+theorem YnatT_eq_of_creates (hspan : ModeSpan g) (x : TP) (Ψ : FormalDist (End ℂ Vnat))
+    (hcov : DCovariant Tnat Ψ) (h0 : Ψ 0 vacNat = ((0 : SkewVP), x))
+    (hneg : ∀ q : ℤ, q < 0 → Ψ q vacNat = 0) (hU : ∀ v : SkewVP, Local Ψ (YnatU v))
+    (hT : ∀ j, Local Ψ (YnatT leechWbar (g j))) : YnatT leechWbar x = Ψ := by
+\end{leancode}
+\begin{dictionary}
+Hypotheses, in order: the mode-span condition; covariance; creation of $(0,x)$ (raw $z^0$
+coefficient, i.e.\ mode $(-1)$); no negative powers on the vacuum; locality with all untwisted
+fields; locality with the twisted generators.  Note what is \emph{not} assumed: that
+$Y^\natural_T(x)$ is local with $Y^\natural_T(g_j)$ --- that would be circular.
+\end{dictionary}
+
+\begin{physics}
+A field that creates a given twisted state from the vacuum, is translation covariant and is local with respect to the generators is the twist-field operator of that state. This is the uniqueness of the operator corresponding to a state, the Goddard identification: once crossing with a generating family is known, the operator--state map pins down the rest.
+\end{physics}
+
+\emph{Proof.}  Let $F=Y^\natural_T(x)-\Psi$.  Both are translation covariant and agree on the vacuum
+in degree $0$; covariant fields with the same creation data agree on the vacuum in all degrees
+(the vacuum vector $F(z)\mathbf1^\natural$ solves $T\,v(z)=\partial v(z)$ with $v(0)=0$).  So $F$ kills
+$\mathbf1^\natural$.  The set of vectors killed by all coefficients of $F$ is stable under the
+modes of every field local with $F$ (one-variable Goddard argument, as in the proof of
+Theorem~\ref{ch10:thm:goddard2}); $F$ is local with all $Y^\natural_U(v)$.  So it suffices to show
+$F$ kills each $(0,g_j)$ and then use the mode-span hypothesis and $\chtenVP\times0$.  Now
+$(0,g_j)=Y^\natural_T(g_j)_0\mathbf1^\natural$, and $(z-w)^MF(z)Y^\natural_T(g_j,w)\mathbf1^\natural
+=(z-w)^M[F(z),Y^\natural_T(g_j,w)]\mathbf1^\natural$.  The $\Psi$-part of the commutator is killed by
+hypothesis.  The $Y^\natural_T(x)$-part is killed on the vacuum because, on $(\mathbf 1,0)$, only
+the top-left entry of \eqref{ch10:eq:ttbracket} acts --- and that is \emph{(4.22)}, proved
+unconditionally.  So $(z-w)^MF(z)Y^\natural_T(g_j,w)\mathbf1^\natural=0$, and injectivity of
+multiplication by $z-w$ on distributions with no negative powers of $w$ gives
+$F(z)(0,g_j)=0$. \qed
+
+\begin{theorem}[(4.23) for all pairs from a generating family]\label{ch10:thm:allofgen}
+If $g$ is mode-generating and $\mathrm{TP}(g_i,g_j)$ holds for all $i,j$, then
+$\mathrm{TP}(t,t')$ holds for all $t,t'\in\chtenTP$.  Consequently $\Vnat$ carries the
+vertex operator algebra structure of Theorem~\ref{ch10:thm:vnatVOA}.
+\end{theorem}
+\begin{leancode}
+theorem TPBlockLocal_all_of_gen {κ : Type*} (g : κ → TP) (hspan : ModeSpan g)
+    (h423 : ∀ i j, TPBlockLocal leechWbar (g i) (g j)) (t t' : TP) :
+    TPBlockLocal leechWbar t t' := by
+
+theorem vnat_VOA_of_TPBlockLocal_gen {κ : Type*} (g : κ → TP) (hspan : ModeSpan g)
+    (h423 : ∀ i j, TPBlockLocal leechWbar (g i) (g j)) :
+    ∃ V : VertexOperatorAlgebra Vnat,
+      V.Y = Ynat VnatAxioms.wbarL ∧ V.vacuum = vacNat ∧ V.conformalVector = omegaNat ∧
+        V.centralCharge = 24 ∧ V.grading = gradingNat := by
+\end{leancode}
+\begin{dictionary}
+Hypotheses: \lean{hspan} (Definition~\ref{ch10:def:modespan}) and \lean{h423} ((4.23) on the
+pairs of $g$, for the genuine $\chtenWb$).  (4.22) is not a hypothesis.  The conclusion of the
+second theorem is that of \lean{vnat_VOA_of_htt}, with the same five identifications, so the
+same warning about the trap applies.
+\end{dictionary}
+
+\begin{physics}
+The twist$\times$twist crossing with twisted external states, checked on pairs from a generating family of twist fields, extends to all pairs of twisted states by the structure of the chiral algebra. The reduction shrinks the infinite set of crossing conditions on twisted fields to finitely many four-point conditions.
+\end{physics}
+
+\emph{Proof.}  From (4.22) and (4.23) on $g$, the fields $Y^\natural_T(g_i)$ are pairwise local
+(Theorem~\ref{ch10:thm:ttiff}).  For $u\in\chtenVP$ and $k\ge0$ the field
+$\Psi=Y^\natural_U(u)_{(k)}Y^\natural_T(g_i)$ (the $k$-th field product
+$\mathrm{Res}_{z_1}(z_1-z_2)^k[\,\cdot,\cdot\,]$), and for $k=-1$ the normally ordered product
+${:}Y^\natural_U(u)Y^\natural_T(g_i){:}$, are translation covariant, create $(0,u_{(k)}g_i)$, and by
+Dong's lemma are local with every $Y^\natural_U(v)$ and every $Y^\natural_T(g_j)$.  By
+Theorem~\ref{ch10:thm:creates}, $Y^\natural_T(u_{(k)}g_i)=\Psi$ (the \emph{iterate formula}), and by
+Dong's lemma again these fields are pairwise local.  Modes $u_{(-1-k)}$ with $k>0$ reduce to
+$k=-1$ via $u_{(-1-k)}x=\frac1{k!}(L_{-1}^ku)_{(-1)}x$.  So the twisted fields of the linearly
+spanning family $\{u_{(n)}g_i\}$ are pairwise local, and Theorem~\ref{ch10:thm:localhtt} extends to
+all pairs; Theorem~\ref{ch10:thm:ttiff} extracts (4.23). \qed
+
+\begin{theorem}[Four explicit pairs]\label{ch10:thm:frame}
+There exist $x_0\in T^+_0$, $x_1\in T^+_1$ (the two frame sectors of $\chtenTP$) such that (4.23)
+on the four pairs $(x_i,x_j)$ implies the conclusion of Theorem~\ref{ch10:thm:vnatVOA}.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/M8h0Gap.lean}.
+\begin{leancode}
+theorem vnat_VOA_of_TPBlockLocal_frame :
+    ∃ x : ZMod 2 → TP, (∀ s, x s ∈ TPframe s) ∧
+      ((∀ i j, TPBlockLocal leechWbar (x i) (x j)) →
+        ∃ V : VertexOperatorAlgebra Vnat,
+          V.Y = Ynat VnatAxioms.wbarL ∧ V.vacuum = vacNat ∧ V.conformalVector = omegaNat ∧
+            V.centralCharge = 24 ∧ V.grading = gradingNat) := by
+\end{leancode}
+\begin{dictionary}
+\lean{TPframe s} for $s\in\Z/2$ is the frame sector $T^+_s=\chtenTP\cap(S[\theta]\otimes T_s)$,
+where $T=T_0\oplus T_1$ is the eigenspace decomposition of $T$ under a central element of the
+extraspecial group attached to the Golay frame (defined in Chapter~\ref{ch:11}); the earlier
+chapter proves each $T_s^+$ is a cyclic module over the frame subalgebra $V_0^+$ with an explicit
+weight-two cyclic vector (\lean{cyclic_TPframe}), and $\chtenTP=T_0^+\oplus T_1^+$.
+
+\textbf{Quantifier order.}  The statement is $\exists x,\ (\dots)\wedge(\text{(4.23) on }x\Rightarrow
+\text{VOA})$.  The witness $x$ is produced by a choice inside the proof; a user of this theorem
+does not get to pick it.  Hence, to apply it, one must prove (4.23) for \emph{whatever} cyclic
+vectors were chosen --- in practice for all pairs, or at least for all vectors of the frame
+sectors.  The consumers in Chapter~\ref{ch:14} do exactly that: they prove (4.23) for all pairs
+from a different generating family and then specialise.  So the theorem is a correct but
+slightly awkward interface; it is not vacuous (an $x$ with the stated membership exists), and it
+is not weaker than intended because it is never used with a specific $x$ in mind.
+\end{dictionary}
+
+\begin{physics}
+The remaining crossing condition is reduced to four explicit pairs of twisted states, built from the two frame sectors of the twist-field Hilbert space. Physically the whole consistency of the Moonshine orbifold is encoded in four four-point functions of twist fields; the proof of these is the content of the later chapters on triality.
+\end{physics}
+
+\emph{Proof.}  Take $x_s$ the cyclic vector of $T_s^+$; then $\{x_0,x_1\}$ is mode-generating
+(modes of $V_0^+\subseteq\chtenVP$ already suffice, and the two sectors span $\chtenTP$); apply
+Theorem~\ref{ch10:thm:allofgen}. \qed
+
+\begin{status}
+\lean{YnatT_eq_of_creates}, \lean{TPBlockLocal_all_of_gen}: unconditional as implications;
+\lean{vnat_VOA_of_TPBlockLocal_frame}: conditional on (4.23) on the four pairs (inside the
+statement).  All \lean{#print axioms}-checked clean.
+\end{status}
+
+%==========================================================================================
+\section{The trap: the square-zero extension}\label{ch10:sec:trap}
+
+This section is the heart of the referee's task for this Part.  Its content was discovered
+during the project (it is recorded as ``TRAP'' in \leanpath{Notes/MonsterRoadmap.md}, ``Definition
+of done'') and it changed what the project had to prove.
+
+\subsection{The construction}
+
+\begin{definition}[Square-zero extension]\label{ch10:def:sqzero}
+Let $V$ be a vertex operator algebra and $M$ an ordinary $V$-module with integral weights $\ge
+1$.  On $V\oplus M$ put
+\begin{equation*}
+ Y^{\mathrm{sq}}\bigl((u,t),z\bigr)=\begin{pmatrix}Y(u,z)&0\\ W_M(t,z)&Y_M(u,z)\end{pmatrix},
+ \qquad W_M(t,z)\varphi=e^{zL_{-1}}Y_M(\varphi,-z)t .
+\end{equation*}
+That is, $(u,t)_{(n)}(\varphi,s)=\bigl(u_{(n)}\varphi,\ u_{(n)}s+W_M(t)_{(n)}\varphi\bigr)$: the product of
+two elements of $M$ is zero.
+\end{definition}
+
+For $V=\chtenVP$, $M=\chtenTP$ this is the block map $Y^\natural[0]$ of
+Definition~\ref{ch10:def:Ynat}, i.e.\ \eqref{ch10:eq:block} with $\chtenWb$ replaced by $0$.
+
+\begin{physics}
+The square-zero extension is a theory in which the twisted sector does not interact: the OPE twisted$\times$twisted$\to$untwisted is zero, and the twist fields still act on untwisted states through $W$. It is a consistent chiral algebra, but the twisted sector is a decoupled module sitting inside it, like a free sector that never talks back to the vacuum.
+\end{physics}
+
+\begin{proposition}[The impostor is a VOA with the same numbers]\label{ch10:prop:sqzero}
+$(\chtenVP\oplus\chtenTP,\ \Vnat_\bullet,\ Y^\natural[0],\ \mathbf1^\natural,\ \omega^\natural)$ is a vertex
+operator algebra of central charge $24$ with $V_1=0$, $\dim V_2=196884$ and graded dimension $qJ$.
+\end{proposition}
+
+\begin{physics}
+The impostor has the right central charge $c=24$, no currents, $196884$ states at weight two and partition function $J$: numerically indistinguishable from the Moonshine CFT. It satisfies the axioms because setting every twist$\times$twist OPE to zero trivially makes the twisted--twisted crossing relation true. A partition function, or any count of states, cannot tell a genuine CFT from this degenerate theory.
+\end{physics}
+
+\emph{Proof (on paper).}  Go through Theorem~\ref{ch10:thm:axioms} and
+Theorem~\ref{ch10:thm:localhtt} with $\overline W'=0$.  Every block statement that involved
+$\chtenWb$ becomes $0=0$: grading (a zero map has any degree), truncation, translation
+($\partial0=0$), the commutator formula (both sides $0$).  The vacuum, creation and Virasoro
+statements never involved $\chtenWb$.  Untwisted--untwisted and untwisted--twisted locality are
+Theorems~\ref{ch10:thm:diagdiag} and~\ref{ch10:thm:diagoff} (the second hypothesis there for the
+$0$ block is trivial).  Twisted--twisted locality is trivial by \eqref{ch10:eq:ttbracket}: both
+entries are products with a zero factor.  The numbers are those of
+Section~\ref{ch10:sec:carrier}, which depend only on the graded space. \qed
+
+\begin{status}
+\textbf{Argued on paper only.}  The square-zero extension has \emph{not} been constructed in Lean;
+no declaration named for it exists in the library (the phrase occurs only in docstrings of
+\leanpath{VnatFields.lean}, \leanpath{VnatAxioms.lean}, \leanpath{VnatGenuine.lean},
+\leanpath{SimpleVnat.lean}, \leanpath{Main.lean}).  A Lean proof would be a line-by-line copy of
+\leanpath{VnatAxioms.lean} with \lean{leechWbar} replaced by $0$; the point of this section is
+that such a copy \emph{would} type-check, and hence that the final theorem must contain something
+it does not satisfy.
+\end{status}
+
+\begin{proposition}[The impostor is not simple]\label{ch10:prop:sqnotsimple}
+In $(\chtenVP\oplus\chtenTP,Y^\natural[0])$ the subspace $0\oplus\chtenTP$ is a nonzero proper ideal,
+with $(0\oplus\chtenTP)_{(n)}(0\oplus\chtenTP)=0$.  In particular it is not simple and not
+isomorphic to the genuine $\Vnat$ once the latter is known to be simple.
+\end{proposition}
+
+\begin{physics}
+In the impostor the twisted sector is a decoupled subtheory: any correlator with only twisted insertions and no untwisted ones vanishes, the twisted two-point function in the vacuum channel is degenerate (the Zamolodchikov metric on twisted states cannot be reached from the vacuum) and the vacuum is not the unique cyclic state. This is not the unitary-looking, single-vacuum CFT of the Monster; it fails simplicity.
+\end{physics}
+
+\emph{Proof.}  For $x=(u,t)$ and $(0,s)$: $x_{(n)}(0,s)=(0\cdot s,\ u_{(n)}s+W(t)_{(n)}0)=(0,u_{(n)}s)$.
+It is proper because $\mathbf1^\natural\notin0\oplus\chtenTP$, nonzero because
+$\dim\chtenTP_2=98304$.  Products of two twisted vectors vanish by definition. \qed
+
+\subsection{Why the numbers cannot see the difference}
+
+A vertex operator algebra and its square-zero deformation have the same graded vector space, the
+same Virasoro action, the same central charge, the same characters.  More generally, for any
+module $M$ the square-zero extension $V\ltimes M$ exists; it is the degenerate end of a one-parameter family.  Conjugating the block form by
+$\operatorname{diag}(1,\lambda)$ leaves $W$ unchanged and multiplies $\chtenWb$ by $\lambda^{-2}$
+(Chapter~\ref{ch:09}), and every locality relation is homogeneous in $\chtenWb$; so if
+$\chtenWb$ works, so does $c\chtenWb$ for every $c\in\C$, all $c\ne0$ give isomorphic (simple)
+algebras, and $c=0$ gives the impostor.  Physically, the square-zero extension is a ``theory''
+in which the operator product of two twist fields has no component in the untwisted sector ---
+the two-point function of a twist field with itself vanishes --- which is incompatible with a
+nondegenerate state space pairing.
+
+Consequently:
+\begin{itemize}
+\item the five ``numerical'' targets (VOA structure, $c=24$, $V_1=0$, $\dim V_2=196884$, $\chi=J$)
+  are satisfied by the impostor and do \emph{not} characterise $\Vnat$;
+\item every hypothesis of \lean{reconstruct_nat} is satisfied by the impostor;
+\item the statement ``$\exists V$, a VOA on \lean{Vnat} with \lean{V.grading = gradingNat} and
+  $c=24$'' is satisfied by the impostor.
+\end{itemize}
+
+\subsection{What excludes it}
+
+Two things, one cheap and one decisive.
+
+\paragraph{The cheap certificate: $\chtenWb\ne0$.}
+\begin{theorem}\label{ch10:thm:wbarne}
+For $t,t'\in\chtenTP_2$, $\chtenWb(t)_{(3)}t'=(t',t)_T\cdot\mathbf1$.  Consequently, for every nonzero
+$t\in\chtenTP_2$ there are $t'\in\chtenTP_2$ and $c\ne0$ with $\chtenWb(t)_{(3)}t'=c\mathbf 1$; and
+$\chtenWb\neq0$.
+\end{theorem}
+\begin{leancode}
+theorem leechWbarMode_three_weight_two {t t' : TP} (ht : t ∈ plusModule.weight ((2 : ℤ) : ℂ))
+    (ht' : t' ∈ plusModule.weight ((2 : ℤ) : ℂ)) :
+    leechWbarMode 3 t t' = TPForm t' t • leechVOAPlus.vacuum := by
+
+theorem leechWbar_vacuum_pairing_ne_zero {t : TP} (ht : t ∈ plusModule.weight ((2 : ℤ) : ℂ))
+    (ht0 : t ≠ 0) :
+    ∃ t' ∈ plusModule.weight ((2 : ℤ) : ℂ), ∃ c : ℂ, c ≠ 0 ∧
+      leechWbarMode 3 t t' = c • leechVOAPlus.vacuum := by
+
+theorem leechWbar_ne_zero : leechWbar ≠ 0 := by
+\end{leancode}
+(\leanpath{VOA/Moonshine/VnatGenuine.lean}, documented in Chapter~\ref{ch:09}.)
+\begin{dictionary}
+\lean{leechWbar ≠ 0} is inequality of functions $\chtenTP\to\operatorname{Hom}(\chtenTP,\chtenVP)[[z^\pm]]$:
+some $t$ and some coefficient give a nonzero map.  The first theorem is the physically expected
+OPE $\sigma_t(z)\sigma_{t'}(0)\sim(t,t')_T\,z^{-4}\mathbf 1+\cdots$ of two weight-two twisted fields:
+the mode $(3)$ multiplies $z^{-4}$, and $2+2-3-1=0$ is the vacuum weight.
+\end{dictionary}
+
+\begin{physics}
+For weight-two twist fields the twisted$\times$twisted OPE contains the identity with coefficient equal to the Zamolodchikov two-point function, $\overline W(t)_{(3)}t'=(t',t)_T\mathbf1$ (the analogue of $\phi(z)\phi(0)\sim\langle\phi\phi\rangle/z^{2h}$ with $2h=4$). Since the metric on twisted states is nondegenerate, the twist fields have nonzero two-point functions; so $\overline W\neq0$ and the genuine orbifold is not the impostor. This is the nontrivial dynamical input that the numbers cannot supply.
+\end{physics}
+
+\emph{Proof.}  $\chtenWb(t)_{(3)}t'$ has weight $0$, so equals $c\mathbf1$; pair with $\mathbf1$ under
+$B_V$ ($B_V(\mathbf 1,\mathbf 1)=1$) and use the adjunction \eqref{ch10:eq:adj} with $w=2$, $n=3$,
+$\varphi=\mathbf 1$: $2w-n-2-j=-1-j$, and $L_1t=0$ since $\chtenTP_1=0$, so only $j=0$ survives and
+$c=(t',W(t)_{(-1)}\mathbf1)_T=(t',t)_T$.  Nondegeneracy of $(\cdot,\cdot)_T$ on $\chtenTP_2\ne0$ gives
+$t'$ with $c\ne0$. \qed
+
+This certificate shows the library's $\chtenWb$ is not the impostor's zero map.  It does not
+by itself prove that the resulting VOA is $\Vnat$: a nonzero $\overline W'$ that is not the adjoint
+could still give a non-simple algebra.  The decisive argument is the next one.
+
+\paragraph{The decisive argument: an invariant form that is nondegenerate.}
+The genuine construction carries the block-diagonal form $\chtenB=B_V\oplus(\cdot,\cdot)_T$, which
+is FHL-invariant precisely because $\chtenWb$ is the adjoint of $W$, and is nondegenerate.  Li's
+theorem (simple $\iff$ the radical of a normalised fully invariant form is zero) then gives
+simplicity.  For the impostor, consider the same form.  Invariance \eqref{ch10:eq:fhl} for
+$x=(0,t)$ with $t\in\chtenTP_2$, $n=3$, $a=(0,t')$, $b=(\mathbf 1,0)$ reads
+\begin{equation*}
+ \underbrace{B_V\bigl(\overline W'(t)_{(3)}t',\mathbf 1\bigr)}_{=0\text{ for }\overline W'=0}
+ \;=\;(-1)^2\bigl(t',W(t)_{(-1)}\mathbf1\bigr)_T=(t',t)_T ,
+\end{equation*}
+(only $j=0$ survives since $L_1t=0$).  So invariance for the impostor would force $(t',t)_T=0$ for
+all $t,t'\in\chtenTP_2$, contradicting nondegeneracy of $(\cdot,\cdot)_T$ on the $98304$-dimensional
+space $\chtenTP_2$.  Hence \emph{the form $\chtenB$ is not invariant for the impostor}; and more
+strongly, by Li's theorem, every normalised fully invariant form on the impostor has the ideal
+$0\oplus\chtenTP$ in its radical, i.e.\ is degenerate.  The simplicity proof of
+Section~\ref{ch10:sec:simple} therefore fails for the impostor at exactly one step: the
+invariance of $\chtenB$ in the off-diagonal blocks, which is the adjunction \eqref{ch10:eq:adj}.
+
+\begin{warning}
+\textbf{The rule that follows.}
+A claim ``$\Vnat$ constructed'' must include simplicity (or an equivalent: nondegeneracy of the
+invariant form of the VOA, or that $\chtenWb$ is the nondegenerate adjoint of $W$ \emph{and} the
+form is invariant).  The project's roadmap forbids marking the construction done without the
+simplicity theorem, and the final theorem of the Part, \lean{VOA.Moonshine.moonshine}, contains
+\lean{V.IsSimple} as a conjunct, together with \lean{V.Y = Ynat VnatAxioms.wbarL}.
+\end{warning}
+
+%==========================================================================================
+\section{The invariant form of \texorpdfstring{$V^\natural$}{V natural} and simplicity}\label{ch10:sec:simple}
+
+Throughout this section $\mathrm{htt}$ denotes the hypothesis of Theorem~\ref{ch10:thm:vnatVOA}
+(twisted--twisted locality for all pairs) and $V=\mathtt{vnatVOA}(\mathrm{htt})$.  All results
+are therefore conditional on htt --- the same hypothesis under which $V$ exists at all.
+
+\subsection{The form}
+
+\begin{definition}\label{ch10:def:natForm}
+$\chtenB\bigl((u,t),(u',t')\bigr)=B_V(u,u')+(t,t')_T$.
+\end{definition}
+\begin{leancode}
+noncomputable def natForm : LinearMap.BilinForm ℂ Vnat :=
+  leechBV.compl₁₂ (LinearMap.fst ℂ SkewVP TP) (LinearMap.fst ℂ SkewVP TP)
+    + TPForm.compl₁₂ (LinearMap.snd ℂ SkewVP TP) (LinearMap.snd ℂ SkewVP TP)
+
+@[simp] theorem natForm_apply (x y : Vnat) : natForm x y = leechBV x.1 y.1 + TPForm x.2 y.2 := rfl
+
+theorem natForm_symm (x y : Vnat) : natForm x y = natForm y x := by
+\end{leancode}
+(\leanpath{VOA/Moonshine/SimpleForm.lean}.)  \lean{B.compl₁₂ f g} is $(x,y)\mapsto B(fx,gy)$;
+\lean{fst}, \lean{snd} are the two projections.  The \lean{rfl} proof of \lean{natForm_apply}
+confirms the formula.
+
+\begin{physics}
+The form $\chtenB$ is the Zamolodchikov metric of the whole orbifold theory: the two-point pairing of untwisted states and of twisted states, with the two sectors orthogonal, as required by the $\Z/2$ charge conservation of the orbifold. Its invariance under the vertex operators is the statement that the two-point function is consistent with the OPE.
+\end{physics}
+
+\subsection{A combinatorial identity}
+
+\begin{lemma}\label{ch10:lem:doublesum}
+(a) $\sum_{i+j=k}\frac{(-1)^i}{i!\,j!}=\delta_{k,0}$.
+(b) If $f:\N\to\C$ vanishes on $[R,\infty)$, then
+$\sum_{j<R}\sum_{i<R}\frac{(-1)^j}{j!\,i!}f(i+j)=f(0)$.
+\end{lemma}
+\begin{leancode}
+theorem alt_antidiag (k : ℕ) :
+    ∑ p ∈ Finset.antidiagonal k,
+      (-1 : ℂ) ^ p.1 * (((p.1.factorial : ℂ))⁻¹ * ((p.2.factorial : ℂ))⁻¹)
+      = if k = 0 then 1 else 0 := by
+
+theorem double_sum_cancel (R : ℕ) (f : ℕ → ℂ) (hf : ∀ k, R ≤ k → f k = 0) :
+    ∑ j ∈ Finset.range R, ∑ i ∈ Finset.range R,
+      (-1 : ℂ) ^ j * (((j.factorial : ℂ))⁻¹ * ((i.factorial : ℂ))⁻¹) * f (j + i) = f 0 := by
+\end{leancode}
+
+\begin{physics}
+A pure combinatorial identity (an alternating sum of inverse factorials) that implements the cancellation of the translation factors $e^{zL_{-1}}e^{-zL_{-1}}=1$ in the proof of invariance. No physics content.
+\end{physics}
+
+\emph{Proof.} (a) is $\frac1{k!}(1-1)^k$.  (b) Group by $k=i+j$; terms with $k\ge R$ vanish, the
+others are (a) times $f(k)$. \qed
+
+Meaning: the FHL transpose $u\mapsto e^{zL_1}(-z^{-2})^{L_0}u$, $z\mapsto z^{-1}$ is an involution;
+applying it twice produces exactly this alternating double sum, which collapses.
+
+\subsection{Invariance block by block}
+
+\begin{lemma}[The $W$-block: the adjunction read backwards]\label{ch10:lem:pieceD}
+For $t\in\chtenTP_w$, $n\in\Z$, $a\in\chtenVP$, $b\in\chtenTP$:
+\begin{equation*}
+ \bigl(W(t)_{(n)}a,\ b\bigr)_T=(-1)^w\sum_{j=0}^{w}\frac1{j!}\,
+ B_V\bigl(a,\ \chtenWb(L_1^jt)_{(2w-n-2-j)}b\bigr).
+\end{equation*}
+\end{lemma}
+\begin{leancode}
+theorem pieceD {wt : ℤ} {t : TP} (ht : t ∈ plusModule.weight (wt : ℂ)) (n : ℤ) (a : SkewVP)
+    (b : TP) :
+    TPForm (mode (leechWsk t) n a) b = (-1 : ℂ) ^ wt • ∑ j ∈ Finset.range (wt.toNat + 1),
+      ((j.factorial : ℂ)⁻¹) • leechBV a (leechWbarMode (2 * wt - n - 2 - j)
+        ((Lp1 plusModule ^ j) t) b) := by
+\end{leancode}
+\begin{dictionary}
+\lean{Finset.range (wt.toNat + 1)} is $j=0,\dots,w$ (\lean{toNat} of a negative integer is $0$;
+here $w\ge2$ anyway).  \lean{Lp1 plusModule} is $L_1$ on $\chtenTP$.  This is \eqref{ch10:eq:fhl} for
+the $W$-block of $\chtenB$; \eqref{ch10:eq:adj} is \eqref{ch10:eq:fhl} for the $\chtenWb$-block.  Note
+that \eqref{ch10:eq:adj} gives $B_V(\chtenWb(\cdot)\cdot,\cdot)$ in terms of $(\cdot,W(\cdot)\cdot)_T$;
+the lemma is the converse direction, which is not a restatement.
+\end{dictionary}
+
+\begin{physics}
+This is the twisted-to-untwisted block of the invariance of the Zamolodchikov metric: the amplitude of the twist field $W(t)$ between an untwisted and a twisted state equals the amplitude of its conjugate $\overline W$ the other way, with the inversion $z\to1/z$ factor. It says $\overline W$ is the BPZ conjugate of $W$, which is how $\overline W$ was defined.
+\end{physics}
+
+\emph{Proof.}  Start from the right side.  For each $j$, use symmetry of $B_V$ and apply
+\eqref{ch10:eq:adj} to $\chtenWb(L_1^jt)_{(2w-n-2-j)}$ (weight $w-j$): it becomes
+$(-1)^{w-j}\sum_i\frac1{i!}(b,W(L_1^{i+j}t)_{(n-i-j)}a)_T$, since
+$2(w-j)-(2w-n-2-j)-2-i=n-i-j$.  The signs combine to $(-1)^w(-1)^{w-j}=(-1)^j$, and with
+$f(k)=(b,W(L_1^kt)_{(n-k)}a)_T$ the right side is the double sum of
+Lemma~\ref{ch10:lem:doublesum}(b), equal to $f(0)=(b,W(t)_{(n)}a)_T$; symmetry of $(\cdot,\cdot)_T$
+finishes. \qed
+
+\begin{theorem}[Full FHL invariance of $\chtenB$]\label{ch10:thm:natfhl}
+Assume htt.  For every $\mathrm{wt}\in\Z$, $x\in\Vnat_{\mathrm{wt}}$, $n\in\Z$, $a,b\in\Vnat$,
+\begin{equation*}
+ \chtenB(x_{(n)}a,b)=(-1)^{\mathrm{wt}}\sum_{j=0}^{\mathrm{wt}}\frac1{j!}\,
+ \chtenB\bigl(a,(L_1^jx)_{(2\mathrm{wt}-n-2-j)}b\bigr),
+\end{equation*}
+products and $L_1$ being those of $V=\mathtt{vnatVOA}(\mathrm{htt})$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/SimpleForm.lean}.
+\begin{leancode}
+theorem natForm_fhl (wt : ℤ) (x : Vnat) (hx : x ∈ gradingNat wt) (n : ℤ) (a b : Vnat) :
+    natForm ((vnatVOA htt).smul x n a) b
+      = (-1 : ℂ) ^ wt • ∑ j ∈ Finset.range (wt.toNat + 1), ((j.factorial : ℂ)⁻¹) •
+          natForm a ((vnatVOA htt).smul ((((vnatVOA htt).L 1) ^ j) x) (2 * wt - n - 2 - (j : ℤ)) b) := by
+\end{leancode}
+\begin{dictionary}
+\lean{htt} is a section variable (the twisted--twisted locality hypothesis); it enters only to
+make \lean{vnatVOA htt} a VOA.  The products \lean{(vnatVOA htt).smul x n a} are, by definition,
+the block products \eqref{ch10:eq:modeYN}, and they do not depend on \lean{htt}.  So the identity
+is really a statement about the explicit block map, and its truth does not use htt at all; htt
+appears only because the statement is phrased with the VOA's own \lean{smul} and \lean{L}.  The
+statement is literally the field \lean{IsFullyInvariant} of Section~\ref{ch10:sec:recall} for the
+form \lean{natForm}.
+\end{dictionary}
+
+\begin{physics}
+Invariance of the Zamolodchikov metric under the full operator algebra, including twist fields: the two-point function of $\langle x_{(n)}a,b\rangle$ equals the inverted amplitude $\langle a,(\ldots)b\rangle$. This is the BPZ conjugation property in the orbifold theory. It is conditional on twist$\times$twist locality, because the proof uses the vertex algebra structure on the whole of $V^\natural$.
+\end{physics}
+
+\emph{Proof.}  Write $x=(u,t)$, $a=(a_1,a_2)$, $b=(b_1,b_2)$.  By \eqref{ch10:eq:modeYN} and
+Definition~\ref{ch10:def:natForm},
+\begin{equation*}
+\chtenB(x_{(n)}a,b)=B_V(u_{(n)}a_1,b_1)+B_V(\chtenWb(t)_{(n)}a_2,b_1)+(W(t)_{(n)}a_1,b_2)_T+(u_{(n)}a_2,b_2)_T .
+\end{equation*}
+Since $L_1$ is block-diagonal, $L_1^jx=(L_1^ju,L_1^jt)$, and the right side of the claim splits
+into the same four blocks.  The four identities are: FHL invariance of $B_V$ on $\chtenVP$; the
+adjunction \eqref{ch10:eq:adj}; Lemma~\ref{ch10:lem:pieceD}; FHL invariance of $(\cdot,\cdot)_T$ under
+$\chtenVP$.  Add them. \qed
+
+\begin{theorem}[The invariant form of $V$]\label{ch10:thm:natInvForm}
+Assume htt.  $\chtenB$ is an invariant form of $V$ (Virasoro-adjoint: $\chtenB(L_na,b)=\chtenB(a,L_{-n}b)$),
+fully invariant, normalised, and its left radical is zero.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/SimpleForm.lean}.
+\begin{leancode}
+noncomputable def natInvForm : InvariantForm (vnatVOA htt) where
+  form := natForm
+  virasoro_adj := natForm_virasoro_adj htt
+
+theorem natInvForm_isFullyInvariant : (natInvForm htt).IsFullyInvariant :=
+
+theorem natInvForm_normalized : (natInvForm htt).Normalized := by
+
+theorem natInvForm_leftRadical : InvariantForm.leftRadical (natInvForm htt) = ⊥ := by
+\end{leancode}
+
+\begin{physics}
+The orbifold has a nondegenerate invariant two-point function, normalised so that $\langle\mathbf1|\mathbf1\rangle=1$ and with $L_n^\dagger=L_{-n}$. In CFT terms: a well-defined Zamolodchikov metric on the whole space of states, nondegenerate on every energy level. Nondegeneracy is what forces uniqueness of the vacuum and, by Li's theorem, simplicity.
+\end{physics}
+
+\emph{Proof.}  Virasoro adjointness is the case $x=\omega^\natural$ ($\mathrm{wt}=2$) of
+Theorem~\ref{ch10:thm:natfhl}: $L_1\omega=0$ (as $V_1=0$), so only $j=0$ survives and the index
+$2\cdot2-(n+1)-2=-n+1$ gives $L_{-n}$.  Normalisation: $B_V(\mathbf1,\mathbf1)=1$ and the twisted part
+of $\mathbf1^\natural$ is $0$.  Radical: if $\chtenB(x,\cdot)=0$, testing against $(y,0)$ gives
+$B_V(x_1,\cdot)=0$, so $x_1=0$ by nondegeneracy of $B_V$; testing against $(0,y)$ gives
+$(x_2,\cdot)_T=0$; since the weight spaces of $\chtenTP$ are mutually orthogonal and
+$(\cdot,\cdot)_T$ is nondegenerate on each, every homogeneous component of $x_2$ is $0$, so
+$x_2=0$. \qed
+
+\subsection{Simplicity}
+
+\begin{theorem}[Li]\label{ch10:thm:li}
+Let $W$ be a VOA and $B$ a normalised fully invariant form on $W$.  Then $W$ is simple if and only
+if the left radical of $B$ is zero.
+\end{theorem}
+\begin{leancode}
+theorem isSimple_iff_leftRadical_eq_bot {B : InvariantForm W} (hB : B.IsFullyInvariant)
+    (hn : B.Normalized) :
+    W.IsSimple ↔ InvariantForm.leftRadical B = ⊥ := by
+\end{leancode}
+(\leanpath{VOA/Core/InvariantFormRadical.lean}; proved in the Core part of the book.)  The idea:
+the radical of a normalised invariant form is an ideal (invariance moves modes across), it does
+not contain $\mathbf1$ (normalisation), and it equals the maximal proper graded ideal (every proper
+graded ideal pairs trivially with $\mathbf 1$ in weight $0$ and hence, by invariance, with
+everything).
+
+\begin{physics}
+A vertex operator algebra is simple (the vacuum is the only cyclic state; no decoupled sector) if and only if its Zamolodchikov metric is nondegenerate: a state in the radical is orthogonal to everything, so it generates a proper ideal that cannot be reached from the vacuum, a decoupled sector. This is the algebraic form of the folk statement that a CFT with a nondegenerate two-point function has a unique vacuum.
+\end{physics}
+
+\begin{theorem}[$\Vnat$ is simple]\label{ch10:thm:simple}
+Assume htt.  Then $\mathtt{vnatVOA}(\mathrm{htt})$ is simple, and the canonical invariant form of the
+library on it coincides with $\chtenB$ and is nondegenerate on every weight space.
+\end{theorem}
+\begin{leancode}
+theorem vnatVOA_isSimple : (vnatVOA htt).IsSimple :=
+  (LiRadical.isSimple_iff_leftRadical_eq_bot (natInvForm_isFullyInvariant htt)
+    (natInvForm_normalized htt)).2 (natInvForm_leftRadical htt)
+
+theorem vnatVOA_invariantForm_nondegenerate :
+    (natInvForm htt).IsFullyInvariant ∧ (natInvForm htt).Normalized ∧
+      InvariantForm.leftRadical (natInvForm htt) = ⊥ ∧
+        GradedNondeg (vnatVOA htt) (natInvForm htt).form :=
+
+theorem vnatVOA_canonicalForm_eq :
+    (canonicalInvariantForm (vnatVOA_vacuum_ne_zero htt) (vnatVOA_L1_one htt)).form = natForm :=
+\end{leancode}
+(\leanpath{VOA/Moonshine/SimpleVnat.lean}.)
+\begin{dictionary}
+\lean{IsSimple} is Definition~\ref{ch10:def:simple} (the \lean{Core/BilinearForm} notion: $V\ne0$
+and every ideal is $0$ or $V$).  \lean{GradedNondeg V B} says $B$ is nondegenerate on each
+$V_n$.  \lean{canonicalInvariantForm} is the library's canonical (Li/FHL) normalised invariant
+form, which exists whenever $\mathbf 1\ne0$ and $L_1V_1=0$; by uniqueness of fully invariant
+normalised forms it equals $\chtenB$.  \textbf{Vacuity check.}  The statement could have been
+weak in two ways, and is not.  (i) It could have been about some VOA other than the block one;
+but \lean{vnatVOA htt} has \lean{Y := YN} by definition.  (ii) \lean{IsSimple} could have been a
+weak notion; it quantifies over all subspaces closed under left multiplication, which is at least
+as strong as the textbook notion.  And the theorem is false for the impostor
+(Proposition~\ref{ch10:prop:sqnotsimple}), so it does distinguish.
+\end{dictionary}
+
+\begin{physics}
+The Moonshine module has a unique vacuum and no decoupled sector: every state is reachable from the vacuum by the operator algebra. This is what separates the genuine orbifold CFT from the square-zero impostor, whose twisted sector is a decoupled ideal. It uses in an essential way that the twist$\times$twist OPE $\overline W$ is the conjugate of $W$, because that is what makes the Zamolodchikov metric nondegenerate on the twisted sector as seen from the vacuum.
+\end{physics}
+
+\emph{Proof.} Theorem~\ref{ch10:thm:li} applied to $\chtenB$ and Theorem~\ref{ch10:thm:natInvForm}. \qed
+
+\begin{theorem}[Simplicity through the four-pair hypothesis]\label{ch10:thm:simpleframe}
+There are $x_s\in T_s^+$ ($s\in\Z/2$) such that (4.23) on the four pairs $(x_i,x_j)$ yields a
+\emph{simple} VOA structure on $\Vnat$ with vertex map $Y^\natural[\chtenWb]$, vacuum
+$\mathbf 1^\natural$, conformal vector $\omega^\natural$, $c=24$ and grading $\Vnat_\bullet$.
+\end{theorem}
+\begin{leancode}
+theorem vnat_isSimple_of_TPBlockLocal_frame :
+    ∃ x : ZMod 2 → TP, (∀ s, x s ∈ TPframe s) ∧
+      ((∀ i j, TPBlockLocal leechWbar (x i) (x j)) →
+        ∃ V : VertexOperatorAlgebra Vnat,
+          V.Y = Ynat wbarL ∧ V.vacuum = vacNat ∧ V.conformalVector = omegaNat ∧
+            V.centralCharge = 24 ∧ V.grading = gradingNat ∧ V.IsSimple) := by
+\end{leancode}
+
+\begin{physics}
+Conditional on four crossing relations for twist fields, the Moonshine orbifold is a CFT with $c=24$, no currents and a unique vacuum. The statement packages the simple-VOA conclusion with the four-pair reduction; the physics content is that the only missing input is four explicit four-point functions of twist fields.
+\end{physics}
+
+\emph{Proof.} Theorems~\ref{ch10:thm:frame} (with its proof, which produces htt) and
+\ref{ch10:thm:simple}.  The quantifier caveat of Theorem~\ref{ch10:thm:frame} applies. \qed
+
+\begin{status}
+\lean{natForm_fhl}, \lean{natInvForm_leftRadical}, \lean{vnatVOA_isSimple},
+\lean{vnatVOA_invariantForm_nondegenerate}: conditional on htt only.
+\lean{vnat_isSimple_of_TPBlockLocal_frame}: conditional on (4.23) on four pairs (inside the
+statement).  All \lean{#print axioms}-checked: \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+%==========================================================================================
+\section{The assembled conditional theorem}\label{ch10:sec:assembly}
+
+\begin{theorem}[$\Vnat$ modulo (4.23) on four pairs]\label{ch10:thm:main}
+There exist $x_0\in T^+_0$, $x_1\in T^+_1$ such that, if DGM (4.23) holds on the four pairs
+$(x_i,x_j)$, then there is a simple vertex operator algebra $V$ on $\Vnat$ whose vertex map is the
+block map $Y^\natural[\chtenWb]$ of \eqref{ch10:eq:block}, with vacuum $(\mathbf 1,0)$, conformal
+vector $(\omega,0)$, central charge $24$, $V_1=0$, $\dim V_2=196884$, and $\dim V_n=[q^n]\,qJ(q)$
+for all $n\ge0$.
+\end{theorem}
+\begin{leancode}
+theorem moonshine_of_frameLocality :
+    ∃ x : ZMod 2 → TP, (∀ s, x s ∈ TPframe s) ∧
+      ((∀ i j, TPBlockLocal leechWbar (x i) (x j)) →
+        ∃ V : VertexOperatorAlgebra Vnat,
+          V.Y = Ynat wbarL ∧ V.vacuum = vacNat ∧ V.conformalVector = omegaNat ∧
+          V.centralCharge = 24 ∧
+          V.grading 1 = ⊥ ∧
+          finrank ℂ (V.grading 2) = 196884 ∧
+          (∀ n : ℕ, (finrank ℂ (V.grading (n : ℤ)) : ℂ) = PowerSeries.coeff n JShift) ∧
+          V.IsSimple) := by
+\end{leancode}
+(\lean{VOA.Moonshine.moonshine_of_frameLocality}, \leanpath{VOA/Moonshine/Main.lean}.)
+\begin{dictionary}
+Every conjunct, decoded:
+\lean{V.Y = Ynat wbarL} --- the vertex map is the genuine block map (Definition~\ref{ch10:def:Ynat}
+with $\chtenWb$); \lean{V.vacuum = vacNat}, \lean{V.conformalVector = omegaNat} ---
+Definition~\ref{ch10:def:vnat}; \lean{V.centralCharge = 24}; \lean{V.grading 1 = ⊥} --- $V_1=0$;
+\lean{finrank ℂ (V.grading 2) = 196884}; the graded dimension identity with \lean{JShift} $=qJ$;
+\lean{V.IsSimple} (Definition~\ref{ch10:def:simple}).  The grading of $V$ is not mentioned as a
+separate conjunct, but the three dimension statements are about \lean{V.grading}, the grading of
+the VOA itself, and the proof sets it to \lean{gradingNat}.
+
+Hypotheses: none outside the existential; inside, (4.23) on four pairs.  Compared with the
+textbook theorem (FLM: $\Vnat$ is a simple VOA of central charge $24$ with character $J$) this is
+\emph{weaker}, being conditional on (4.23).  Its vacuity analysis: without \lean{V.IsSimple} the
+conclusion would be satisfied by the square-zero extension; without \lean{V.Y = Ynat wbarL} it
+could be satisfied by any VOA on the same graded space; with both, the impostor is excluded
+(Section~\ref{ch10:sec:trap}).  The quantifier caveat of Theorem~\ref{ch10:thm:frame} applies:
+the four pairs are chosen by the proof.
+
+The file \leanpath{Main.lean} states in its docstring that this theorem is \emph{superseded}: the
+unconditional theorem is \lean{VOA.Moonshine.moonshine}, in which the hypothesis has been
+discharged.
+\end{dictionary}
+
+\begin{physics}
+This is the assembled statement of the construction: modulo four twist-field four-point crossing conditions, $V^\natural$ is a simple chiral CFT with $c=24$, no weight-one states (hence a finite symmetry group, by FLM's theorem the Monster, which is not formalized), $196884$ states at weight two and partition function $J$. Every physical feature of the Moonshine orbifold is present; what is not yet shown is the single twist$\times$twist crossing condition, to be discharged by the triality method.
+\end{physics}
+
+\emph{Proof.}  Theorem~\ref{ch10:thm:simpleframe}, together with
+Theorems~\ref{ch10:thm:lowweights}, \ref{ch10:thm:griess} and~\ref{ch10:thm:J} transported along
+\lean{V.grading = gradingNat}. \qed
+
+\begin{status}
+Conditional on (4.23) on four (chosen) pairs; \lean{#print axioms} $=$
+\lean{[propext, Classical.choice, Quot.sound]} (checked).  The hypothesis is discharged in
+Chapters~\ref{ch:11}--\ref{ch:14}: the triality automorphism $\sigma$ conjugates the untwisted
+locality into twisted locality (\lean{tpBlockLocal_frame_of_sigma},
+\lean{moonshine_of_sigma} in \leanpath{M8hKey.lean}), and the remaining finite identity is
+\lean{topPairs_one}.  The final, unconditional statement is
+\begin{leancode}
+theorem moonshine :
+    ∃ V : VertexOperatorAlgebra Vnat,
+      V.Y = Ynat VnatAxioms.wbarL ∧ V.vacuum = vacNat ∧ V.conformalVector = omegaNat ∧
+      V.centralCharge = 24 ∧
+      V.grading 1 = ⊥ ∧
+      Module.finrank ℂ (V.grading 2) = 196884 ∧
+      (∀ n : ℕ, (Module.finrank ℂ (V.grading (n : ℤ)) : ℂ) = PowerSeries.coeff n JShift) ∧
+      V.IsSimple :=
+  moonshine_of_topPairs (by norm_num) topPairs_one
+\end{leancode}
+(\leanpath{VOA/Moonshine/TopPairs.lean}, documented in Chapter~\ref{ch:14}); it has exactly the
+conclusion of Theorem~\ref{ch10:thm:main}, now with no hypothesis.
+\end{status}
+
+%==========================================================================================
+\section{Dead ends and corrected mistakes}\label{ch10:sec:deadends}
+
+\begin{warning}
+\textbf{1. The square-zero extension.}
+Recorded in \leanpath{Notes/MonsterRoadmap.md} (``Definition of done'', TRAP) and in Section~\ref{ch15:sec:trap-sqzero}.  $\overline W'=0$ satisfies every hypothesis of \lean{reconstruct_nat}
+and gives a VOA with $c=24$, $V_1=0$, $\dim V_2=196884$, character $J$, not simple.  Remedy:
+simplicity is a conjunct of the final theorem.  See Section~\ref{ch10:sec:trap}.
+\end{warning}
+
+\begin{warning}
+\textbf{2. The generator gap.}
+An earlier version of \leanpath{VnatAxioms.lean} could reduce htt only to a family whose
+\emph{linear} span is $\chtenTP$ (\lean{htt_of_span}); a mode-generating family was not enough,
+because the iterate formula $Y^\natural(u_{(n)}t)=Y^\natural(u)_{(n)}Y^\natural(t)$ for the
+off-diagonal blocks was unavailable.  It was closed by Theorem~\ref{ch10:thm:creates}, whose key
+input is the unconditional (4.22).  Recorded in \leanpath{Notes/M8GluingPlan.md}, ``M8h-0 DONE''.
+\end{warning}
+
+\begin{warning}
+\textbf{3. (4.23) is not a finite check.}
+One might hope to verify (4.23) on finitely many matrix coefficients.  This is impossible without
+a closed form or an a priori differential equation: the ground-state matrix element
+$\langle x_0',W(t_0,z_1)\chtenWb(t_0,z_2)x_0\rangle=z_2^af(z_2/z_1)$ is an infinite power series whose
+coefficients are sums over $(\chtenVP)_k$, and locality is the statement that $f$ is rational of a
+prescribed shape (\leanpath{Notes/M8hRoute.md}, §5).  This is why the triality route was chosen.
+\end{warning}
+
+\begin{warning}
+\textbf{4. Sign conventions are each necessary.}
+Numerical tests on an $E_8$ model of the library's construction (\leanpath{Notes/M8hRoute.md},
+§1a; evidence, not proof) confirmed (4.23) to relative residual $3.7\cdot10^{-14}$ on 64
+identities, and showed that each of the following ``simplifications'' breaks it (residual
+$1.7$--$2.0$): replacing the $T$-form sign $(-1)^{\langle\alpha,\alpha\rangle/2}$ by
+$\varepsilon(\alpha,\alpha)$; setting the charge sign $c(\alpha)=1$ in the lattice form; dropping
+$(-1)^w$ in the definition of $\chtenWb$.  The anticommutator (super) version fails (residual
+$\approx2$): the extension is a VOA, not a super VOA.
+\end{warning}
+
+\begin{warning}
+\textbf{5. The library's Intertwiner is weaker than FHL's.}
+The library notion \lean{Intertwiner} (Chapter~\ref{ch:09}) consists of truncation and the
+intertwining commutator formula only, without the full Jacobi identity.  Nothing in this chapter
+needs more: every locality is derived from commutator formulas (Theorem~\ref{ch10:thm:actcomm})
+and the Goddard lemmas.
+\end{warning}
+
+%==========================================================================================
+\section{Referee's checklist}\label{ch10:sec:checklist}
+
+All entries: \lean{#print axioms} $=$ \lean{[propext, Classical.choice, Quot.sound]}, checked
+2026-10-07 at an earlier commit (not re-run for this edition).  ``htt'' $=$ twisted--twisted locality for all pairs.
+
+\begin{longtable}{p{4.2cm}p{5.2cm}p{2.6cm}p{2.2cm}}
+\toprule
+Lean declaration & Intended meaning & Hypotheses & Status / check\\
+\midrule
+\endhead
+\lean{VnatBlock.local_diag_off} & diag/off-diag block fields local if both intertwining localities hold & two block localities & uncond.; Thm.~\ref{ch10:thm:diagoff}\\
+\lean{VnatBlock.local_YM} & fields of any weak module are mutually local & none & uncond.; Thm.~\ref{ch10:thm:localYM}\\
+\lean{finrank_gradingNat_two} & $\dim\Vnat_2=196884$ (graded space) & none & uncond.; Thm.~\ref{ch10:thm:griess}\\
+\lean{finrank_gradingNat_eq_coeff_JShift} & $\dim\Vnat_n=[q^n]qJ$, all $n\ge0$ & none & uncond.; Thm.~\ref{ch10:thm:J}\\
+\lean{reconstruct_nat} & reconstruction for $\Vnat$ with parameter $\overline W'$ & $\overline W'$ props, htt on $g$, span & uncond. implication; Thm.~\ref{ch10:thm:reconstructnat} (TRAP)\\
+\lean{VnatAxioms.module_virasoro} & Virasoro on any weak module, same $c$ & none & uncond.; Thm.~\ref{ch10:thm:modvir}\\
+\lean{VnatAxioms.vnatVOA} & the VOA on $\Vnat$, block map, $c=24$ & htt & cond.; Thm.~\ref{ch10:thm:vnatVOA}\\
+\lean{VnatAxioms.vnat_VOA_of_htt} & same, with identifications & htt & cond.; Thm.~\ref{ch10:thm:vnatVOA}\\
+\lean{YnatT_local_iff} & tt-locality $\iff$ (4.22) $\wedge$ (4.23) & none & uncond.; Thm.~\ref{ch10:thm:ttiff}\\
+\lean{M8h0.goddard₂} & two-variable Goddard lemma & displayed & uncond.; Thm.~\ref{ch10:thm:goddard2}\\
+\lean{M8h0.TEq.closed_form} & $D=e^{z_2L}D(z_1-z_2,0)$ & TEq & uncond.; Thm.~\ref{ch10:thm:closedform}\\
+\lean{M8h0.leechWbar_skew} & $\chtenWb(t_1,z)t_2=e^{zL_{-1}}\chtenWb(t_2,-z)t_1$ (DGM 4.9) & homogeneity & uncond.; Thm.~\ref{ch10:thm:skew}\\
+\lean{M8h0.leechWbar_VPBlockLocal} & DGM (4.22) for all pairs & none & \textbf{uncond.}; Thm.~\ref{ch10:thm:422}\\
+\lean{M8h0.YnatT_eq_of_creates} & Goddard identification of twisted fields & mode span, displayed & uncond.; Thm.~\ref{ch10:thm:creates}\\
+\lean{M8h0.TPBlockLocal_all_of_gen} & (4.23) on generators $\Rightarrow$ all pairs & mode span, (4.23) on $g$ & uncond. implication; Thm.~\ref{ch10:thm:allofgen}\\
+\lean{M8h0.vnat_VOA_of_TPBlockLocal_frame} & VOA from (4.23) on four pairs & (4.23) on 4 chosen pairs & cond.; Thm.~\ref{ch10:thm:frame}\\
+\lean{SimpleNat.natForm_fhl} & $B_V\oplus(\cdot,\cdot)_T$ fully FHL-invariant & htt & cond.; Thm.~\ref{ch10:thm:natfhl}\\
+\lean{SimpleNat.vnatVOA_isSimple} & $\Vnat$ is simple & htt & cond.; Thm.~\ref{ch10:thm:simple}\\
+\lean{SimpleNat.vnatVOA_invariantForm_nondegenerate} & form invariant, normalised, nondegenerate & htt & cond.; Thm.~\ref{ch10:thm:simple}\\
+\lean{SimpleNat.vnat_isSimple_of_TPBlockLocal_frame} & simple VOA from four pairs & (4.23) on 4 chosen pairs & cond.; Thm.~\ref{ch10:thm:simpleframe}\\
+\lean{moonshine_of_frameLocality} & all targets incl.\ simplicity, mod (4.23) & (4.23) on 4 chosen pairs & cond. (superseded by \lean{moonshine}); Thm.~\ref{ch10:thm:main}\\
+\lean{leechWbar_ne_zero} & $\chtenWb\ne0$ (anti-trap certificate) & none & uncond.; Thm.~\ref{ch10:thm:wbarne}\\
+\bottomrule
+\end{longtable}
+
+Square-zero extension (Proposition~\ref{ch10:prop:sqzero}): \textbf{argued on paper only}, not
+formalised; its role is to show why \lean{V.IsSimple} and \lean{V.Y = Ynat wbarL} must appear in
+the final statement.
+
+%==========================================================================================
+\section{Notes and references}\label{ch10:sec:notes}
+
+The block form \eqref{ch10:eq:block}, the reduction of locality to the six relations
+(4.18)--(4.23), the skew-symmetry (4.9) and the adjunction (4.3) defining $\overline W$ follow
+L.~Dolan, P.~Goddard and P.~Montague, \emph{Conformal field theory of twisted vertex operators},
+Nuclear Phys.\ B 338 (1990) 529--601, and especially their \emph{Conformal field theories,
+representations and lattice constructions}, Comm.\ Math.\ Phys.\ 179 (1996) 61--120,
+arXiv:hep-th/9410029, §§3--5 (the remark that (4.23) is ``almost a modular invariance condition''
+is in §5.3; triality is in §§6--7).
+
+The construction of the Moonshine module, including the triality used in the later chapters, is
+I.~Frenkel, J.~Lepowsky and A.~Meurman, \emph{Vertex Operator Algebras and the Monster}, Pure and
+Applied Mathematics 134, Academic Press, 1988 (chapters 9--12), announced in Proc.\ Natl.\ Acad.\
+Sci.\ USA 81 (1984) 3256--3260.
+
+Invariant bilinear forms on VOAs and modules, and the FHL transpose $e^{zL_1}(-z^{-2})^{L_0}$, are
+from I.~Frenkel, Y.-Z.~Huang and J.~Lepowsky, \emph{On axiomatic approaches to vertex operator
+algebras and modules}, Mem.\ Amer.\ Math.\ Soc.\ 104 (1993), no.~494.  The equivalence between
+simplicity and nondegeneracy of the invariant form is H.~Li, \emph{Symmetric invariant bilinear
+forms on vertex operator algebras}, J.\ Pure Appl.\ Algebra 96 (1994) 279--297.  Local systems of
+vertex operators and the reconstruction theorem in the locality formulation are H.~Li, \emph{Local
+systems of vertex operators, vertex superalgebras and modules}, J.\ Pure Appl.\ Algebra 109 (1996)
+143--195, arXiv:hep-th/9406185, and V.~Kac, \emph{Vertex Algebras for Beginners}, 2nd ed.,
+University Lecture Series 10, AMS, 1998 (Dong's lemma, Goddard's uniqueness theorem, the
+existence theorem).  The textbook treatment of modules, commutator formulas and skew-symmetry
+used throughout is J.~Lepowsky and H.~Li, \emph{Introduction to Vertex Operator Algebras and Their
+Representations}, Progress in Mathematics 227, Birkhäuser, 2004.  The library's conventions follow
+T.~Gannon, \emph{Moonshine beyond the Monster}, Cambridge University Press, 2006, §5.1.
+
+The project-internal record --- the TRAP, the generator gap, the numerical evidence and the
+route decision --- is in \leanpath{Notes/MonsterRoadmap.md}, \leanpath{Notes/M8GluingPlan.md}
+(``Status'' sections through ``M8h-0 DONE'') and \leanpath{Notes/M8hRoute.md}.

@@ -1,0 +1,36 @@
+import VOA.Examples.VirasoroLengthTwoNorm
+import VOA.Examples.VirasoroLengthTwoSpanning
+import VOA.Examples.VirasoroLengthTwoBoundary
+import VOA.Examples.VirasoroLengthTwoBoundarySemantic
+import VOA.Examples.VirasoroLengthTwoLayerPositive
+
+-- Axiom probe for the direct, PBW-free length-two Virasoro development.
+#print axioms VOA.VirGradedUnitarity.Lop_lengthTwoQ_top
+#print axioms VOA.VirGradedUnitarity.canB_lengthTwoQ_mixed
+#print axioms VOA.VirGradedUnitarity.canB_lengthTwoQ_pairing_closed
+#print axioms VOA.VirGradedUnitarity.canB_lengthTwoQ_self
+#print axioms VOA.VirGradedUnitarity.lengthTwoQ_ne_zero
+#print axioms VOA.VirGradedUnitarity.lengthLETwoTowerAt_linearIndependent
+#print axioms VOA.VirGradedUnitarity.virFil_two_eq_span_towers
+#print axioms VOA.VirGradedUnitarity.virFilTwoTowerBasis
+#print axioms VOA.VirGradedUnitarity.boundaryLengthTwoBaseNorm_pos
+#print axioms VOA.VirGradedUnitarity.boundaryLengthLETwoTowerAt_linearIndependent
+#print axioms VOA.VirGradedUnitarity.goodFil_two_eq_span_boundaryTowers
+#print axioms VOA.VirGradedUnitarity.boundaryGoodFilTwoTowerBasis
+#print axioms VOA.VirGradedUnitarity.Bsimp_boundaryLengthLETwoTowerAt_orthogonal
+#print axioms VOA.VirGradedUnitarity.Bsimp_boundaryLengthLETwoTowerAt_self_sign
+#print axioms VOA.VirGradedUnitarity.rho_mkQ_negWordVir
+#print axioms VOA.VirGradedUnitarity.rho_lengthTwoQSimple
+#print axioms VOA.VirGradedUnitarity.rho_boundaryLengthLETwoTowerAt
+#print axioms VOA.VirGradedUnitarity.rho_mem_goodFil
+#print axioms VOA.VirGradedUnitarity.rhoStableOn_vir_pieceIn
+#print axioms VOA.virBasisConj_virYA
+#print axioms VOA.virasoroSimpleRealStructure
+#print axioms VOA.VirGradedUnitarity.boundaryBackgroundCharge_spec
+#print axioms VOA.VirGradedUnitarity.boundaryVirasoroRealStructure
+#print axioms VOA.VirGradedUnitarity.isPosOn_span_of_orthogonal_family
+#print axioms VOA.VirGradedUnitarity.layer_one_eq_span_stress
+#print axioms VOA.VirGradedUnitarity.layer_two_eq_lengthTwoSpan
+#print axioms VOA.VirGradedUnitarity.boundary_layer_two_positive
+#print axioms VOA.VirGradedUnitarity.boundary_gradedUnitaryThroughTwoAt
+#print axioms VOA.VirGradedUnitarity.boundary_gradedUnitaryThroughTwo

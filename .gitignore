@@ -1,0 +1,42 @@
+# Lean / Lake build artifacts
+/.lake
+*.olean
+
+# Local proof experiments and generated research probes
+/scratch*.lean
+/scratch/
+/scratch_mathematica/
+
+# Python tooling caches
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
+
+# LaTeX intermediates
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+# personal shell config, swept in accidentally
+.zshrc
+
+# Textbook build byproducts (sources, published/, book.pdf and brief.pdf are tracked)
+/Notes/Textbook/ch[0-9][0-9].pdf
+/Notes/Textbook/L[0-9][0-9].pdf
+/Notes/Textbook/main.pdf
+/Notes/Textbook/test.*
+/scripts/textbook/extnames.json
+
+# Claude Code personal settings
+.claude/settings.local.json
+# Local proof-map website (generated; see website/build_data.py)
+/website/
+
+# Local build of the release note
+/Notes/arxiv.pdf

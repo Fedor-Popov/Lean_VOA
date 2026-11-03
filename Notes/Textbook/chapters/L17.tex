@@ -1,0 +1,2921 @@
+\chapter{The super generalization}\label{ch:L17}
+\begingroup\setlength{\emergencystretch}{8em}
+
+\providecommand{\lseventeenvac}{\mathbf{1}}
+\providecommand{\lseventeenV}{\mathcal{V}}
+\providecommand{\lseventeeneps}{\varepsilon}
+\providecommand{\lseventeenpar}[1]{|#1|}
+\providecommand{\lseventeenGt}{\Gamma_\theta}
+\providecommand{\lseventeenstr}{\operatorname{str}}
+
+This chapter documents the release of the LeanVOA library named in the front matter; it was first written against an earlier state of the library, and checks that were run
+there and not re-run for this edition are marked as such. Every Lean quotation below is taken from the files of the release (docstrings
+and comments inside a quotation are omitted; the remaining text is machine-checked by
+\texttt{scripts/textbook/sync.py} to occur verbatim, up to whitespace, in the source; a line
+\texttt{...} marks an elision). The chapter covers the files assigned to it in
+\texttt{Notes/Textbook/assignment.txt}: in \leanpath{VOA/\allowbreak Core/} the files
+\leanpath{Super*.lean} and \leanpath{DongSuper*.lean}; in \leanpath{VOA/\allowbreak Examples/} the files
+\leanpath{FreeFermion.lean}, \leanpath{GhostSystem.lean}, \leanpath{BCGhosts.lean},
+\leanpath{BetaGamma*.lean}, \leanpath{SymplecticFermion*.lean}, \leanpath{SympFerm*.lean} and
+\leanpath{LatticeSuperAmbient*.lean}; in \leanpath{VOA/\allowbreak Modules/} the files
+\leanpath{Super*.lean}; and in \leanpath{VOA/\allowbreak Modularity/} the files \leanpath{Super*.lean},
+\leanpath{TwistedSuperSymmetricFunctionals.lean}, \leanpath{ThetaHalfAutFactor.lean},
+\leanpath{HalfIntegralGridFoundations.lean}, \leanpath{QueerOddTrace.lean} and
+\leanpath{ThetaGroup.lean}. Together these are about one hundred and ten files and forty-five
+thousand lines. They are not a single theory with a single headline; they are a foundation (super
+vertex algebras, their Borcherds identity, their modules), four model examples (free fermion, $bc$
+ghosts, $\beta\gamma$ symplectic bosons, symplectic fermions), a super Zhu theory, and a large,
+explicitly incomplete programme for super and half-integral modularity. The chapter presents all of
+these, at the level of the statements on which the headlines rest. (The release audit of 2026-10-27 re-elaborated the
+headline statements at a later pre-release commit on branch \texttt{deligne-lean}, and re-verified the quotations below
+against the source at that commit; see Section~\ref{l17:sec:status}.)
+
+Some results of this chapter were checked in Lean by short checks written against the library;
+these checks are not part of the library or of this release.
+
+%======================================================================
+\section{What this chapter is about, and what it found}\label{l17:sec:intro}
+%======================================================================
+
+Ordinary vertex operator algebras (Chapters~\ref{ch:01}, \ref{ch:L03}, \ref{ch:L12}) describe the
+chiral algebra of a two-dimensional conformal field theory whose fields all \emph{commute} at
+space-like separation and whose states all have \emph{integer} conformal weight. Physics needs two
+generalisations at once. Fermions anticommute, so the locality axiom must carry a sign; and the
+energy-momentum tensor of a theory with fermions typically has half-integer eigenvalues on some
+states. The library generalises the axioms along two \emph{independent} axes:
+
+\begin{itemize}
+\item \textbf{Axis A (weights).} The conformal-weight grading is indexed by $\C$ instead of $\Z$, so
+  that weights $\tfrac12$, $\tfrac32$, $\dots$ (and, for the lattice examples, arbitrary rational
+  weights) are allowed. The mode index is \emph{not} changed: a field is still
+  $Y(u,z)=\sum_{n\in\Z}u_{(n)}z^{-n-1}$.
+\item \textbf{Axis B (parity).} A second grading by $\Z/2$ (even/odd, bosonic/fermionic) enters the
+  locality axiom through the Koszul sign $(-1)^{\lseventeenpar u\lseventeenpar v}$.
+\end{itemize}
+
+The relation ``integer weight $\Leftrightarrow$ even'' (spin--statistics) is deliberately \emph{not}
+an axiom; it is a separate predicate. The four model examples are chosen to separate the axes: the
+$\beta\gamma$ system is half-integrally graded and purely even; the $bc$ system is integrally graded
+and odd; symplectic fermions are integrally graded and odd; the free fermion is both half-integral
+and odd.
+
+\textbf{What is solidly proved.} The Koszul-signed formal calculus, Dong's lemma and Goddard
+uniqueness (§\ref{l17:sec:goddard}); the full super Borcherds (Jacobi) identity in all three indices
+for a super near-VOA, and from it super skew-symmetry (§\ref{l17:sec:borcherds}); the canonical
+parity automorphism and the even part as an ordinary VOA (§\ref{l17:sec:aut}); the adjoint super
+module; two super VOA instances: symplectic fermions ($c=-2$), the \emph{only} instance with genuinely odd states (so the
+only one in which the Koszul sign rule is exercised), and $\beta\gamma$ ($c=-1$), which is half-integrally graded but
+\emph{purely even} (its parity is \lean{ParityGrading.even}, so it never exercises the sign rule); and a super vertex algebra
+for the $bc$ system in the library's weak sense, without translation covariance (§\ref{l17:sec:examples}); super
+$C_2$-cofiniteness and a \emph{non-semisimple} super Zhu algebra of dimension \emph{at most} $4$ (and at least $1$; exact
+dimension not proved) for symplectic fermions; failure of super
+$C_2$-cofiniteness together with super Etingof-finiteness for $\beta\gamma$; the honest associative
+super Zhu ring of every integrally graded super VOA; finite-dimensionality of twisted super Zhu
+quotients under $C_2$ (§\ref{l17:sec:zhu}); the theta group $\Gamma_\theta=\langle S,T^2\rangle$ of
+index $3$, a half-integral automorphy factor on it, the theta-characteristic $S$-law, the $(+,+)$
+spin-sector $S$-cells, and a super Arike--Nagatomo upper bound (§\ref{l17:sec:modularity}).
+
+\textbf{What is not proved.} The project organises super modularity as a ``four-by-three grid''
+(defined precisely in §\ref{l17:sec:grid}): four \emph{columns}, one for each combination of
+integral or half-integral weights with purely even or genuinely super parity, and three \emph{rows},
+one for each known route to modular invariance (Zhu's rational route, the Arike--Nagatomo
+$C_2$-cofinite route, and the Arakawa--Kawasetsu quasi-lisse route). A cell is \emph{complete} when
+the modular-invariance theorem of that route is proved for that class and instantiated by a model.
+The first column (integral, purely even) is the bosonic theory of earlier chapters; the other three
+are ``new''. No modular-invariance theorem exists in any of the three new columns of the grid; the free fermion exists only as a pair of
+anticommuting operator families; the $bc$ Virasoro relation is stated and unproved; ``symplectic
+fermions are not super-rational'' is proved only \emph{from a hypothesis that is itself the missing
+module}. Neither the free fermion nor ``symplectic fermions are not super-rational'' may be announced as a result.
+
+\textbf{Findings of this chapter} (each is detailed in a \texttt{warning} box where it arises):
+\begin{enumerate}[label=(F\arabic*)]
+\item \textbf{\lean{SuperTwistedModule} is uninhabitable for $N\ge 2$} (confirmed by a Lean
+  check, Theorem~\ref{l17:thm:twistvacuous}). Its \lean{jacobi} field has the same
+  over-quantification as the pre-repair \lean{TwistedModule.jacobi} of Chapter~\ref{ch:06}. Hence
+  every parity-twisted (Ramond) carrier, every denominator-two half-integral trace carrier, the
+  sector-rationality realization and the relative Etingof layer for twisted modules are statements
+  about the zero vector space. \textbf{When this chapter was first written, and still in the released source (the \lean{jacobi} field is
+  unchanged), the only \lean{SuperTwistedModule} with $N\ge2$ is the zero module $M=0$} (checked in Lean against the library;
+  the check is not part of this release).
+  Throughout this chapter, no statement about a \lean{SuperTwistedModule} with $N\ge2$ is presented
+  as having mathematical content; wherever such a statement is mentioned, it is marked ``(F1)'' and
+  called vacuous.
+\item \textbf{\lean{SuperVertexAlgebra} has no translation-covariance axiom}, exactly like the bosonic
+  \lean{PreVertexAlgebra} of Chapter~\ref{ch:L03}: a Lean check (not part of this release) exhibits a super vertex algebra in
+  the library's sense violating the super Jacobi identity (Theorem~\ref{l17:thm:nocov}). The library
+  is consistent with this: \lean{superJacobi} is stated for \lean{SuperNearVOA}, which has the axiom.
+\item \textbf{Orientation defect} in \lean{FreeFermion.psi}, \lean{BCGhosts.bfield},
+  \lean{BCGhosts.cfield}, \lean{BetaGamma.beta}, \lean{BetaGamma.gamma}: these are indexed by mode
+  number while \lean{FormalDist} is indexed by $z$-exponent, so they are not fields (not
+  lower-truncated). Certificate for $\psi$ (Theorem~\ref{l17:thm:psinotfield}). Their locality
+  statements remain true. The later files \leanpath{GhostSystem.lean} and
+  \leanpath{BetaGammaField.lean} redo $bc$ and $\beta\gamma$ correctly; nothing redoes the free
+  fermion.
+\item \textbf{\lean{SympFerm.sympFermSVOA_not_isSuperRational} is conditional on
+  \lean{NonSplitSuperModule sympFermSVOA}, which is never constructed} and is essentially the
+  conclusion. The status docstring of \leanpath{SympFermIrrational.lean} is stale (it says the
+  library has no super Jacobi identity).
+\item \textbf{Super skew-symmetry exists twice}: gated (\lean{skew_modeε}, conditional on
+  \lean{WeakAssocLocε}) in \leanpath{Core/\allowbreak SuperSkew.lean}, and unconditional
+  (\lean{superSmul_eq_skew_Lpow}) in \leanpath{Modularity/\allowbreak SuperZhuCommutator.lean}. The
+  ``gated'' remarks in \leanpath{Core/\allowbreak SuperSkew.lean},
+  \leanpath{Core/\allowbreak ScreeningKernel.lean}, \leanpath{Modules/\allowbreak SuperAdjointModule.lean}
+  are stale.
+\item \textbf{$bc$ system}: \lean{IsGhostVirasoro} is a \lean{Prop}, not a theorem; the string value
+  $c=-26$ is the arithmetic identity \lean{ghostCentralCharge_two}; the grading and the super vertex
+  algebra exist only at $\lambda=1$.
+\item \textbf{Twist conventions differ} between the bosonic \lean{TwistedModule} (support
+  $k\equiv -j$) and \lean{SuperTwistedModule} (support $k\equiv j$) for the same eigenvalue
+  $e^{-2\pi i j/N}$; harmless but undocumented.
+\item \lean{IsSuperRational} quantifies over \lean{SympFermSuperOrdVModule}, a second copy of
+  \lean{SuperOrdVModule} that \emph{lacks} the mode-weight axiom \lean{weight_mode}; the library
+  itself flags the name as non-standard.
+\end{enumerate}
+
+\begin{warning}[title={Read first: \texttt{SuperTwistedModule} can only be the zero module for $N\ge2$}]\label{l17:warn:twistzero}
+\textbf{The library structure \lean{SuperTwistedModule W g N M}, for every super VOA $W$, every even automorphism $g$ and every
+twist order $N\ge2$, is inhabited only by the zero space $M=0$.} The cause is the over-quantified \lean{jacobi} field
+(finding (F1)); the proof takes the \lean{jacobi} field at $u=w=\lseventeenvac$, $\ell=-1$, $k=1$, $m=-N-1$ and is checked
+by Lean (Theorem~\ref{l17:thm:twistvacuous}; the check is not part of this release). The release audit of 2026-10-27 re-ran the check at a later pre-release commit and confirmed that \textbf{the
+defect was still present there}; at that commit the docstrings of \leanpath{VOA/\allowbreak Modules/\allowbreak
+SuperTwistedModule.lean} carried no warning. In the released source the \lean{jacobi} field is still over-quantified, and the
+docstrings of the file and of the structure now flag the defect. Twelve library files use
+the structure. Consequently \textbf{every claim about twisted or Ramond super modules is vacuous}: every parity-twisted
+(Ramond) carrier \lean{ParityTwistedModule}, every half-integral (denominator-two) trace or supertrace carrier, the
+sector-rationality realization, irreducible twisted modules (\lean{SuperTwistedModule.IsIrreducible}), the twisted zero-mode
+bridge to the twisted Zhu quotient, and the relative Etingof statements for twisted super modules are statements about the zero
+vector space. Throughout this chapter such statements are marked ``(F1)'' and \emph{vacuous}; none of them may be announced.
+Only the identity-twist case $N=1$ carries content. Twisted \emph{Zhu quotients} $A_g(W)$ (an algebra-level construction,
+Theorem~\ref{l17:thm:twistedzhufinite}) do not involve the structure and are unaffected; only their intended link to twisted
+modules is.
+\end{warning}
+
+\textbf{How to read the chapter.} Section~\ref{l17:sec:conv} recalls conventions.
+Sections~\ref{l17:sec:sva}--\ref{l17:sec:aut} are the foundations. Section~\ref{l17:sec:modules}
+treats modules, including the defect (F1). Section~\ref{l17:sec:examples} treats the examples,
+Section~\ref{l17:sec:zhu} Zhu algebras, Section~\ref{l17:sec:modularity} the modular toolkit, and
+Section~\ref{l17:sec:grid} states precisely what each cell of the grid contains.
+
+%======================================================================
+\section{Conventions recalled}\label{l17:sec:conv}
+%======================================================================
+
+\textbf{Modes and $z$-exponents.} As everywhere in the library (Chapter~\ref{ch:01},
+Example~\ref{ch01:ex:mode}; Chapter~\ref{ch:L01}), a formal distribution $f$ with values in $W$ is a
+function $\Z\to W$, $f(k)$ being the coefficient of $z^k$; the mode is
+\lean{mode f n = f (-n - 1)}. For a field $Y(u,z)=\sum_nu_{(n)}z^{-n-1}$ one has
+\lean{mode (Y u) n} $=u_{(n)}$, while \lean{Y u k} $=u_{(-k-1)}$. The $n$-th product is
+\lean{V.smul u n v} $=u_{(n)}v$. A distribution is a \emph{field}
+(\lean{IsField}, \leanpath{Core/\allowbreak Dong.lean}) when for every vector $x$ the coefficients
+$f(k)x$ vanish for $k\ll0$; that is $f(z)x\in W((z))$. We shall see (F3) that getting the
+direction of this indexing wrong is the commonest mistake in the early free-field files.
+
+\textbf{Physics modes.} A field of conformal weight $h$ is written by physicists as
+$\phi(z)=\sum_r\phi_rz^{-r-h}$, so $\phi_r=\phi_{(r+h-1)}$. For $h=\tfrac12$ the physics modes are
+$r\in\Z+\tfrac12$ while the vertex-algebra modes $n=r-\tfrac12$ are integers. This is why Axis A
+does not touch the mode index.
+
+\textbf{Parity, the Koszul sign and the parity involution.} The file
+\leanpath{Foundations/\allowbreak Parity.lean} (Chapter~\ref{ch:L01}) defines the following.
+
+\begin{definition}[Parity sign, Koszul sign]\label{l17:def:koszul}
+For $p\in\Z/2$ let $\operatorname{parSign}(p)=(-1)^p$, and for $p,q\in\Z/2$ let
+$\operatorname{koszul}(p,q)=(-1)^{pq}$, which is $-1$ exactly when $p=q=1$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak Parity.lean}.
+\begin{leancode}
+def parSign (p : ZMod 2) : ℂ := if p = 0 then 1 else -1
+...
+def koszul (p q : ZMod 2) : ℂ := parSign (p * q)
+\end{leancode}
+\begin{dictionary}
+\lean{ZMod 2} is $\Z/2$, with elements \lean{0} (even) and \lean{1} (odd); the product $p*q$ is
+computed in $\Z/2$, so $\operatorname{koszul}(1,1)=\operatorname{parSign}(1)=-1$ and all other values
+are $1$ (\lean{koszul_one_one}, \lean{koszul_zero_left}). The sign is a complex number, so it can
+multiply operators. This is the standard Koszul rule of Kac, \emph{Vertex algebras for beginners}
+§1.3, $p(a,b)=(-1)^{p(a)p(b)}$.
+\end{dictionary}
+\begin{physics}
+Exchanging two fermionic operators costs a minus sign; exchanging a boson with anything costs
+nothing. The Koszul sign is that rule, and it is the only place statistics enters the axioms.
+\end{physics}
+\noindent\textbf{Where the Koszul sign is used.} The Koszul sign enters every super axiom and
+identity of this chapter in one way only: whenever two homogeneous objects of parities $p,q$ are
+exchanged, a factor $\operatorname{koszul}(p,q)$ appears. Concretely: in the locality axiom VA4
+(Definition~\ref{l17:def:sva}) it is the scalar $\varepsilon$ of $\varepsilon$-locality
+(Definition~\ref{l17:def:localeps} below); in the super Jacobi identity
+(Theorem~\ref{l17:thm:superjacobi}) it multiplies the term in which $v$ acts before $u$; in
+skew-symmetry (Theorem~\ref{l17:thm:skew}) it is the overall sign; and in the supertrace it is the
+sign of cyclicity, $\operatorname{str}(fg)=\operatorname{koszul}(p,q)\operatorname{str}(gf)$.
+\begin{status}
+Definitions; standard axioms only (they appear in every \texttt{\#print axioms} below).
+\end{status}
+
+A \lean{ParityGrading} on a complex vector space $M$ is a pair of subspaces $M_{\bar0},M_{\bar1}$
+forming an internal direct sum (Mathlib's \lean{DirectSum.IsInternal}: every vector is uniquely a
+sum of an even and an odd vector). From it the library builds, without choosing a basis, the
+\emph{parity involution} $(-1)^F$ (\lean{parityInvol}, $+1$ on $M_{\bar0}$ and $-1$ on $M_{\bar1}$,
+defined as $2\pi_0-\mathrm{id}$ with $\pi_0$ the projection onto $M_{\bar0}$ along $M_{\bar1}$). In a
+formula: for a homogeneous vector $u\in M_{\bar p}$,
+\begin{equation*}
+(-1)^F u=(-1)^{p}\,u=\operatorname{parSign}(p)\,u ,
+\end{equation*}
+and a general vector $u=u_{\bar0}+u_{\bar1}$ is sent to $u_{\bar0}-u_{\bar1}$. The library also builds
+the Koszul operator \lean{koszulOp P p} $=((-1)^F)^p$. The purely even grading
+\lean{ParityGrading.even M} has $M_{\bar0}=M$ and $M_{\bar1}=0$.
+
+\textbf{Super-locality.} Chapter~\ref{ch:L01}, Definition~\ref{l01:def:bracketeps}, defines for a
+scalar $\varepsilon$ the twisted commutator and $\varepsilon$-locality.
+
+\begin{definition}[$\varepsilon$-twisted commutator, $\varepsilon$-locality]\label{l17:def:localeps}
+For operator-valued distributions $a,b$ and $\varepsilon\in\C$,
+$[a,b]_\varepsilon(z_1,z_2)=a(z_1)b(z_2)-\varepsilon\,b(z_2)a(z_1)$ (coefficientwise), and $a,b$ are
+$\varepsilon$-local if $(z_1-z_2)^N[a,b]_\varepsilon=0$ for some $N\in\N$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak Locality.lean}.
+\begin{leancode}
+def bracketDistε (ε : ℂ) (a b : FormalDist (Module.End ℂ V)) : FormalDist₂ (Module.End ℂ V) :=
+  fun m n => a m * b n - ε • (b n * a m)
+...
+def Localε (ε : ℂ) (a b : FormalDist (Module.End ℂ V)) : Prop :=
+  ∃ N : ℕ, mulBySubPow N (bracketDistε ε a b) = 0
+\end{leancode}
+\begin{dictionary}
+\lean{a m * b n} is composition of the $z_1^m$-coefficient of $a$ with the $z_2^n$-coefficient of $b$
+(exponent indexing). \lean{mulBySubPow N} is multiplication by $(z_1-z_2)^N$. The sign $\varepsilon$ is
+a bare scalar: $\varepsilon=1$ is ordinary locality (\lean{localε_one_iff}) and the super case uses
+$\varepsilon=\operatorname{koszul}(p,q)$. Chapter~\ref{ch:L01}, Theorem~\ref{l01:thm:car}, proves the
+free-field criterion: if $[a_m,b_n]_\varepsilon=\delta_{m+n+1,0}S$ then $a,b$ are $\varepsilon$-local
+with $N=1$ (\lean{localε_of_car}, \lean{localε_neg_one_of_anticomm}). Note that this criterion is
+symmetric under reindexing $m\mapsto-m-1$ in both slots, which is why locality cannot detect an
+orientation error (F3).
+\end{dictionary}
+\begin{physics}
+$(z-w)^N[a(z),b(w)]_\varepsilon=0$ says that the (anti)commutator is supported at $z=w$: fields
+(anti)commute at space-like separation, and their operator product has a pole of order at most $N$.
+For two fermions $\psi(z)\psi(w)\sim 1/(z-w)$ the anticommutator is a delta function and $N=1$.
+\end{physics}
+\begin{status}
+Definitions (Chapter~\ref{ch:L01}).
+\end{status}
+
+%======================================================================
+\section{Super vertex algebras}\label{l17:sec:sva}
+%======================================================================
+
+\subsection{The axioms}
+
+The library's definition of a super vertex algebra was quoted verbatim, field by field, in
+Chapter~\ref{ch:01}, §\ref{ch01:sec:super}, from \leanpath{VOA/\allowbreak Core/\allowbreak
+SuperVertexAlgebra.lean}. We restate it mathematically and compare it with the literature.
+
+\begin{definition}[Super vertex algebra, library sense]\label{l17:def:sva}
+A \emph{super vertex algebra} (\lean{SuperVertexAlgebra 𝒱}) on a complex vector space $\lseventeenV$
+consists of
+\begin{itemize}
+\item a grading $\lseventeenV=\bigoplus_{h\in\C}\lseventeenV_h$ (internal direct sum) with every
+  $\lseventeenV_h$ finite-dimensional (\lean{grading}, \lean{isInternal}, \lean{finrank});
+\item a second grading $\lseventeenV=\lseventeenV_{\bar0}\oplus\lseventeenV_{\bar1}$ (\lean{parity},
+  \lean{parity_isInternal});
+\item a linear map $Y:\lseventeenV\to\End(\lseventeenV)[[z^{\pm1}]]$ and a vector $\lseventeenvac$;
+\end{itemize}
+such that: $\lseventeenvac\in\lseventeenV_0\cap\lseventeenV_{\bar0}$; (VA1) $u\in\lseventeenV_h$,
+$v\in\lseventeenV_k$ imply $u_{(n)}v\in\lseventeenV_{h+k-n-1}$; (VA1$'$) $u\in\lseventeenV_{\bar p}$,
+$v\in\lseventeenV_{\bar q}$ imply $u_{(n)}v\in\lseventeenV_{\overline{p+q}}$; (VA2)
+$Y(\lseventeenvac,z)=\mathrm{id}$; (VA3) $u_{(-1)}\lseventeenvac=u$ and $u_{(n)}\lseventeenvac=0$ for
+$n\ge0$; (VA4) for parity-homogeneous $u,v$ of parities $p,q$, $Y(u,z)$ and $Y(v,z)$ are
+$\operatorname{koszul}(p,q)$-local; (VA5) for all $u,v$ there is $N$ with $u_{(n)}v=0$ for $n\ge N$.
+There is \emph{no} translation operator and \emph{no} translation-covariance axiom; because of this the
+super Borcherds identity can fail for such an object (finding (F2), Theorem~\ref{l17:thm:nocov}), so
+this is weaker than (and incomparable with) a vertex superalgebra in Kac's sense. Translation
+covariance is added in Definition~\ref{l17:def:snvoa}.
+\end{definition}
+\begin{dictionary}
+\textbf{Decoding.} Each clause of the definition is one field of the structure quoted in
+§\ref{ch01:sec:super}; \lean{finrank} is a proposition (finite-dimensionality), not a number. Locality
+is demanded only for homogeneous pairs, which is the standard formulation (it cannot be demanded for
+inhomogeneous pairs, since the sign would not be defined).
+
+\textbf{Comparison with Kac.} Kac (\emph{Vertex algebras for beginners}, Definition~1.3 and §4.1)
+defines a vertex superalgebra as $(V,\lseventeenvac,T,Y)$ with $V=V_{\bar0}\oplus V_{\bar1}$, $Y(a,z)$ a
+field of parity $p(a)$, $T\lseventeenvac=0$, $[T,Y(a,z)]=\partial_zY(a,z)$ (translation covariance),
+$Y(\lseventeenvac,z)=\mathrm{id}$, $Y(a,z)\lseventeenvac|_{z=0}=a$, and super-locality. The library's
+definition differs in three ways. (i) It \emph{adds} a $\C$-grading with finite-dimensional pieces
+compatible with the modes (VA1); Kac has no grading in a vertex superalgebra. (ii) It \emph{adds}
+VA1$'$ (``$Y(a,z)$ has parity $p(a)$''), which in Kac is part of the data. (iii) It \emph{omits} the
+translation operator and translation covariance. Exactly as for the bosonic \lean{PreVertexAlgebra}
+(Chapter~\ref{ch:L03}, §\ref{l03:sec:counter}), omission (iii) is not harmless: the Borcherds identity
+does not follow (Theorem~\ref{l17:thm:nocov}). So the library's \lean{SuperVertexAlgebra} is
+\emph{incomparable} with Kac's vertex superalgebra. With the conformal layer added
+(\lean{SuperNearVOA}, Definition~\ref{l17:def:snvoa}), translation covariance comes back through
+VOA3, and the notion becomes Kac's vertex superalgebra with a compatible $\C$-grading and conformal
+vector.
+
+\textbf{No spin--statistics.} Nothing relates the two gradings. This is intended
+(Definition~\ref{l17:def:spinstat}).
+
+\textbf{How it could have been wrong.} An unsatisfiable axiom system is excluded by the instances of
+§\ref{l17:sec:examples} (symplectic fermions, $\beta\gamma$, $bc$ are genuine inhabitants with
+nonzero odd or half-integral parts) and by \lean{PreVertexAlgebra.toSuper} below.
+\end{dictionary}
+\begin{physics}
+States $\leftrightarrow$ fields: $Y(u,z)$ is the local field creating the state $u$ from the vacuum.
+Odd states create fermionic fields; the super-locality axiom says their operator products are
+radially ordered with the fermionic sign. The $\C$-grading is the spectrum of the dilatation operator
+$L_0$ (once a conformal vector is present); allowing $h\in\frac12+\Z$ is needed for any theory with
+free fermions in the Neveu--Schwarz sector.
+\end{physics}
+\begin{status}
+A definition. \texttt{\#print axioms VOA.SuperVertexAlgebra}: \lean{[propext, Classical.choice,
+Quot.sound]} (run for this chapter).
+\end{status}
+
+\begin{theorem}[No translation covariance]\label{l17:thm:nocov}
+There is a three-dimensional super vertex algebra in the library's sense (purely even, weights $0$
+and $2$) on which the super Jacobi identity fails at $(u,v,x,\ell,m,n)=(x_1,\lseventeenvac,\lseventeenvac,-2,0,-2)$
+and on which $Y(Tu,z)\neq\partial_zY(u,z)$.
+\end{theorem}
+\begin{dictionary}
+The example is the counterexample of Chapter~\ref{ch:L03}, Theorem~\ref{l03:thm:counter}:
+$V=\operatorname{span}\{\lseventeenvac,x_1,y\}$, $Y(u,z)$ = multiplication by
+$\varphi_z(u)$ with $\varphi_z(x_1)=x_1+z^2y$, read as a super vertex algebra
+(\lean{PreVertexAlgebra.toSuper}, Proposition~\ref{l17:prop:tosuper}). The failing
+identity is \emph{exactly} the conclusion of \lean{superJacobi} (Theorem~\ref{l17:thm:superjacobi})
+at parities $p=q=0$.
+\end{dictionary}
+\begin{physics}
+A ``vertex algebra'' without a momentum operator is not a chiral algebra: nothing ties the
+$z$-dependence of a field to the action of translations on states, and operator product
+associativity fails. Physically every chiral algebra has $L_{-1}$; the library adds it in
+\lean{SuperNearVOA}.
+\end{physics}
+\begin{proof}[Proof on paper]
+Since $\varphi_z(x_1)\lseventeenvac$ has no $z^1$ term, $Tx_1=x_{1(-2)}\lseventeenvac=0$, but
+$\partial_zY(x_1,z)=2zy\neq0$. In the Jacobi identity at the stated indices the right side is
+$(x_{1(-2)}\lseventeenvac)_{(-2)}\lseventeenvac=0$ while the left side is
+$2\,x_{1(-3)}\lseventeenvac=2y\neq0$ (Chapter~\ref{ch:L03}).
+\end{proof}
+\begin{status}
+Checked in Lean against the library (the check is not part of this release); not a library theorem.
+\texttt{\#print axioms} of both statements: \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\begin{warning}[title={Finding (F2): the bare super vertex algebra has the L03 defect}]
+\lean{SuperVertexAlgebra} omits translation covariance, so a theorem about a bare
+\lean{SuperVertexAlgebra} cannot use the Borcherds identity. The library is consistent: Goddard
+uniqueness and Dong's lemma (which do not need it) are stated for \lean{SuperVertexAlgebra}; the
+Borcherds/Jacobi identity, skew-symmetry and everything downstream are stated for \lean{SuperNearVOA}
+or \lean{SuperVertexOperatorAlgebra}. The danger is only in the name. The bosonic structure with the same omission was
+renamed \lean{VOA.PreVertexAlgebra} for exactly this reason, the name \lean{VertexAlgebra} now denoting the
+translation-covariant structure (Chapter~\ref{ch:L03}); the super structure still carries the name
+\lean{SuperVertexAlgebra} in the released source. Severity: moderate (the remedy is the one applied on the bosonic side).
+\end{warning}
+
+\begin{definition}[Spin--statistics]\label{l17:def:spinstat}
+A super vertex algebra satisfies \emph{spin--statistics} if every nonzero homogeneous vector $u$ of
+weight $h$ and parity $p$ satisfies: $h\in\Z$ if and only if $p=\bar0$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak SuperVertexAlgebra.lean}.
+\begin{leancode}
+def SpinStatistics {𝒱 : Type u} [AddCommGroup 𝒱] [Module ℂ 𝒱]
+    (W : SuperVertexAlgebra 𝒱) : Prop :=
+  ∀ (h : ℂ) (p : ZMod 2) (u : 𝒱), u ≠ 0 → u ∈ W.grading h → u ∈ W.parity p →
+    ((∃ m : ℤ, (m : ℂ) = h) ↔ p = 0)
+\end{leancode}
+\begin{dictionary}
+``$h\in\Z$'' is written $\exists m:\Z,\ (m:\C)=h$. The quantification is over homogeneous nonzero $u$
+(an inhomogeneous vector has no single weight). It is a predicate, never a field; theorems needing
+it must say so. Kac's §4.1 notion ``$V_{\bar0}=\bigoplus_{n\in\Z}V_n$, $V_{\bar1}=\bigoplus_{n\in\frac12+\Z}V_n$''
+is this predicate together with half-integrality of all weights.
+\end{dictionary}
+\begin{physics}
+The spin--statistics theorem of relativistic quantum field theory: integer spin $\Leftrightarrow$
+Bose statistics. In a chiral algebra the spin of a field is its conformal weight. Ghost systems
+($bc$, $\beta\gamma$) and symplectic fermions violate it, because they are not unitary theories; the
+library must admit them, hence the predicate.
+\end{physics}
+\begin{status}
+A definition; standard axioms. It is satisfiable (Theorem~\ref{l17:thm:tosuperspin}) and fails for
+$\beta\gamma$ (\lean{bgSVA_not_spinStatistics}, §\ref{l17:sec:bg}). For symplectic fermions its
+failure is noted in a docstring but not formalised.
+\end{status}
+
+\begin{proposition}[Every vertex algebra is a super vertex algebra]\label{l17:prop:tosuper}
+Every ordinary vertex algebra $V$ (Chapter~\ref{ch:L03}, Definition~\ref{l03:def:VA}) defines a super
+vertex algebra with the same $Y$ and vacuum, the $\Z$-grading pushed forward along $\Z\hookrightarrow\C$
+(zero off the integers), and purely even parity.
+\end{proposition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak SuperVertexAlgebra.lean}.
+\begin{leancode}
+noncomputable def toSuper (V : PreVertexAlgebra 𝒱) : SuperVertexAlgebra 𝒱 where
+  grading := V.gradingC
+...
+  parity := (ParityGrading.even 𝒱).parity
+  parity_isInternal := (ParityGrading.even 𝒱).isInternal
+  Y := V.Y
+  vacuum := V.vacuum
+\end{leancode}
+\begin{dictionary}
+\lean{V.gradingC} is \lean{extendGrading (fun n : ℤ => (n : ℂ)) V.grading}: equal to $V_n$ at
+$h=n\in\Z$ and $0$ elsewhere. The remaining fields are proved: locality at Koszul sign
+$\operatorname{koszul}(0,0)=1$ is ordinary locality; pairs with an odd member are zero. The
+analogous \lean{VertexOperatorAlgebra.toSuper} exists in \leanpath{Core/\allowbreak
+SuperVertexOperatorAlgebra.lean}. So the super theory is a generalisation, not a parallel hierarchy.
+\end{dictionary}
+\begin{physics}
+A bosonic chiral algebra is a fermionic one with no fermions. This embedding is what lets the
+super modularity statements specialise to the ordinary ones (the ``integral non-super'' column of
+§\ref{l17:sec:grid}).
+\end{physics}
+\begin{proof}[Proof on paper]
+Internality of the pushed-forward grading is \lean{isInternal_extend} (an internal decomposition
+reindexed along an injection, with zero pieces added, is still internal). Every other axiom is the
+bosonic one, the Koszul signs being $1$.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms}: standard (checked for the dependent theorem below).
+\end{status}
+
+\begin{theorem}[Spin--statistics is satisfiable]\label{l17:thm:tosuperspin}
+For every ordinary VOA $W$, the super VOA \lean{W.toSuper} satisfies spin--statistics.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak SuperVertexOperatorAlgebra.lean}.
+\begin{leancode}
+theorem toSuper_spinStatistics (W : VertexOperatorAlgebra 𝒱) :
+    SpinStatistics W.toSuper.toSuperVertexAlgebra := by
+\end{leancode}
+\begin{dictionary}
+Unconditional. Its role is a non-vacuity check: the predicate is not malformed.
+\end{dictionary}
+\begin{physics}
+A purely bosonic theory with integer weights trivially obeys spin--statistics.
+\end{physics}
+\begin{proof}[Proof on paper]
+Every nonzero vector is even and has integer weight, so both sides of the equivalence hold.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms VOA.VertexOperatorAlgebra.toSuper\_spinStatistics}: \lean{[propext,
+Classical.choice, Quot.sound]}.
+\end{status}
+
+\subsection{The conformal layer}
+
+\begin{definition}[Super near-VOA]\label{l17:def:snvoa}
+A \emph{super near-VOA} is a super vertex algebra with an even vector $\omega\in\lseventeenV_2$ and
+$c\in\C$ such that $L_n:=\omega_{(n+1)}$ satisfy the Virasoro relations with central charge $c$
+(VOA1), $L_0v=hv$ for $v\in\lseventeenV_h$ (VOA2), and $Y(L_{-1}v,z)=\partial_zY(v,z)$ for all $v$
+(VOA3).
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak SuperNearVOA.lean}.
+\begin{leancode}
+structure SuperNearVOA (𝒱 : Type u) [AddCommGroup 𝒱] [Module ℂ 𝒱]
+    extends SuperVertexAlgebra 𝒱 where
+  conformalVector : 𝒱
+  conformal_mem : conformalVector ∈ grading 2
+  conformal_parity : conformalVector ∈ parity 0
+  centralCharge : ℂ
+  virasoro : ∀ m n : ℤ,
+      ⁅mode (Y conformalVector) (m + 1), mode (Y conformalVector) (n + 1)⁆
+        = ((m : ℂ) - n) • mode (Y conformalVector) (m + n + 1)
+          + (if m + n = 0 then (((m : ℂ) ^ 3 - m) / 12 * centralCharge) • (1 : End ℂ 𝒱)
+             else 0)
+  L0_grading : ∀ {h : ℂ} (v : 𝒱), v ∈ grading h → mode (Y conformalVector) 1 v = h • v
+  translation : ∀ v : 𝒱, Y (mode (Y conformalVector) 0 v) = deriv (Y v)
+\end{leancode}
+\begin{dictionary}
+\lean{mode (Y conformalVector) (m + 1)} is $\omega_{(m+1)}=L_m$; \lean{⁅·,·⁆} is the commutator of
+endomorphisms; VOA1 reads $[L_m,L_n]=(m-n)L_{m+n}+\delta_{m+n,0}\frac{m^3-m}{12}c$. VOA2 has no cast
+because the grading index is the eigenvalue itself. VOA3 uses \lean{mode (Y ω) 0} $=L_{-1}$, and
+\lean{deriv} is coefficientwise $\partial_z$. The evenness of $\omega$ is an axiom (it does not follow,
+since spin--statistics is not assumed). Missing, by design: $\lseventeenV_0=\C\lseventeenvac$ and
+``no weights of negative real part'' (the CFT-type conditions), because ambient lattice algebras with
+background charge (§\ref{l17:sec:lattice}) violate positivity. The weaker \lean{BoundedBelow}
+($\exists B\in\mathbb{R}$, $\lseventeenV_h=0$ whenever $\operatorname{Re}h<B$) is a separate predicate. This is
+the super analogue of the bosonic \lean{NearVOA} of Chapter~\ref{ch:L03}.
+\end{dictionary}
+\begin{physics}
+$\omega$ is the stress tensor $T(z)=\sum L_nz^{-n-2}$; $c$ the central charge (conformal anomaly);
+$L_0$ the energy; $L_{-1}$ the momentum $\partial_z$. The stress tensor is a bosonic field even in a
+fermionic theory, hence even.
+\end{physics}
+\begin{status}
+A definition; standard axioms.
+\end{status}
+
+\begin{definition}[Super VOA]\label{l17:def:svoa}
+A \emph{super vertex operator algebra} (\lean{SuperVertexOperatorAlgebra}) has the same data and
+axioms as a super near-VOA, plus (VOA4) $\lseventeenV_0=\C\lseventeenvac$ and $\lseventeenV_h=0$ whenever
+$\operatorname{Re}h<0$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak SuperVertexOperatorAlgebra.lean}.
+\begin{leancode}
+structure SuperVertexOperatorAlgebra (𝒱 : Type u) [AddCommGroup 𝒱] [Module ℂ 𝒱]
+    extends SuperVertexAlgebra 𝒱 where
+...
+  vacuum_grade : grading 0 = ℂ ∙ vacuum
+  positivity : ∀ h : ℂ, h.re < 0 → grading h = ⊥
+\end{leancode}
+\begin{dictionary}
+The elided fields are verbatim those of \lean{SuperNearVOA} (\lean{conformalVector} through
+\lean{translation}). \lean{ℂ ∙ vacuum} is the line spanned by $\lseventeenvac$; \lean{⊥} the zero
+subspace. Conversions: \lean{SuperVertexOperatorAlgebra.toSuperNearVOA} (forget VOA4) and
+\lean{SuperNearVOA.toSVOA W hvac hpos} (supply VOA4). Compared with Kac §4.1 and with Dong--Zhao's
+``vertex operator superalgebra'', the library allows complex weights (they require
+$\frac12\Z$) and does not require $\dim\lseventeenV_h<\infty$ to come from a $\frac12\Z_{\ge0}$-grading;
+these are generalisations, and every theorem below states the integrality it needs:
+\lean{IntegralWeights} says $\lseventeenV_h=0$ unless $h\in\Z$, and \lean{IsHalfIntegerGraded} says
+$\lseventeenV_h=0$ unless $h\in\frac12\Z$ (both are predicates on the weight grading, defined in
+\leanpath{Core/\allowbreak SuperEvenPart.lean} and \leanpath{Modularity/\allowbreak
+GammaThetaStatement.lean} respectively, and recalled where they are used).
+\end{dictionary}
+\begin{physics}
+CFT type: a unique vacuum and energy bounded below by zero, as in a unitary theory. Symplectic
+fermions and $\beta\gamma$ at $\lambda=\frac12$ are CFT type though non-unitary.
+\end{physics}
+\begin{status}
+A definition; standard axioms.
+\end{status}
+
+\begin{theorem}[Dong's lemma for super vertex algebras]\label{l17:thm:dong}
+If $u,v,w$ are homogeneous of parities $p,q,r$, then for every $k\ge0$ the field
+$Y(u,z)_{(k)}Y(v,z)$ (the $k$-th OPE coefficient of the $\operatorname{koszul}(p,q)$-twisted
+commutator) is $\operatorname{koszul}(p+q,r)$-local with $Y(w,z)$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak SuperVertexAlgebra.lean}.
+\begin{leancode}
+theorem dong_fields (V : SuperVertexAlgebra 𝒱) {p q r : ZMod 2} {u v w : 𝒱}
+    (hu : u ∈ V.parity p) (hv : v ∈ V.parity q) (hw : w ∈ V.parity r) (k : ℕ) :
+    Localε (koszul (p + q) r)
+      (cCoeff k (bracketDistε (koszul p q) (V.Y u) (V.Y v))) (V.Y w)
+\end{leancode}
+\begin{dictionary}
+\lean{cCoeff k F} is $\Res_{z_1}(z_1-z_2)^kF(z_1,z_2)$, the $k$-th OPE coefficient (Chapter~\ref{ch:L03},
+§\ref{l03:sec:conventions}); for $k\ge0$ it is the field $Y(u_{(k)}v,z)$ once Borcherds is known.
+The sign of the product field is $\operatorname{koszul}(p+q,r)$, exactly the Koszul sign of a state
+of parity $p+q$, as VA1$'$ predicts. The general $\varepsilon$-generic Dong lemma
+(\lean{dong_nonnegε}, \leanpath{Core/\allowbreak DongSuper.lean}) needs only
+$\varepsilon_{ab}^2=1$, which for Koszul signs is \lean{koszul_mul_self}; negative products are in
+\leanpath{Core/\allowbreak DongSuperNeg.lean} (\lean{dong_negε}). Kac, Lemma 3.2 (super version).
+\end{dictionary}
+\begin{physics}
+The OPE of two local fields produces local fields, with the statistics of the product: two
+fermions make a boson. This is what makes the operator algebra close.
+\end{physics}
+\begin{proof}[Proof on paper]
+The bosonic proof (Chapter~\ref{ch:L03}, Theorem~\ref{l03:thm:dong}) multiplies the three-variable
+Jacobi identity of commutators by a large power of $(z_1-z_3)$ and $(z_2-z_3)$. With signs, the
+twisted Jacobi identity $[[a,b]_{ab},c]_{ac\,bc}=[a,[b,c]_{bc}]_{ab\,ac}-\varepsilon_{ab}[b,[a,c]_{ac}]$
+holds provided $\varepsilon_{ab}^2=1$ (the residual otherwise is $(1-\varepsilon_{ab}^2)$ times a
+nonzero expression), and the sign of the composite is
+$\varepsilon_{(ab)c}=\varepsilon_{ac}\varepsilon_{bc}$, i.e.\ \lean{koszul_add_left}.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms VOA.SuperVertexAlgebra.dong\_fields}: \lean{[propext, Classical.choice,
+Quot.sound]}. Unconditional.
+\end{status}
+
+%======================================================================
+\section{Goddard uniqueness with signs}\label{l17:sec:goddard}
+%======================================================================
+
+\begin{theorem}[Goddard uniqueness, $\varepsilon$-generic core]\label{l17:thm:goddardpt}
+Let $A$ be an operator-valued distribution, $a,b\in\lseventeenV$ and $\varepsilon\in\C$ arbitrary. If
+$A$ and $Y(a,z)$ are both $\varepsilon$-local with $Y(b,z)$, and $A(z)\lseventeenvac=Y(a,z)\lseventeenvac$
+coefficientwise, then $A(z)b=Y(a,z)b$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak SuperGoddard.lean}.
+\begin{leancode}
+theorem goddard_pointwiseε (V : SuperVertexAlgebra 𝒱) (A : FormalDist (End ℂ 𝒱)) (a : 𝒱)
+    (ε : ℂ) (b : 𝒱) (hAloc : Localε ε A (V.Y b)) (hVloc : Localε ε (V.Y a) (V.Y b))
+    (hAvac : ∀ m : ℤ, A m V.vacuum = (V.Y a) m V.vacuum) (m : ℤ) :
+    A m b = (V.Y a) m b
+\end{leancode}
+\begin{dictionary}
+\lean{A m} is the $z^m$-coefficient. The conclusion is for every $m$, i.e.\ $A(z)b=Y(a,z)b$. No
+parity hypothesis: $\varepsilon$ is any scalar, the \emph{same} for both locality hypotheses. No
+translation operator is used, so the statement is correctly placed at the bare level.
+\end{dictionary}
+\begin{physics}
+A local field is determined by the state it creates: there is one field per state. This is the
+uniqueness half of the state--field correspondence, and it does not care about statistics.
+\end{physics}
+\begin{proof}[Proof on paper]
+Let $D(z,w)=A(z)Y(b,w)\lseventeenvac-Y(a,z)Y(b,w)\lseventeenvac$. Using the creation hypothesis,
+$D$ is the difference of the two twisted brackets applied to $\lseventeenvac$ (the $\varepsilon$-terms
+$\varepsilon Y(b,w)A(z)\lseventeenvac$ and $\varepsilon Y(b,w)Y(a,z)\lseventeenvac$ coincide and
+cancel). Hence $(z-w)^ND=0$ for large $N$. But $D$ has no negative powers of $w$ (VA3), and in
+$\lseventeenV((z))[[w]]$ the element $z-w$ is not a zero divisor, so $D=0$; setting $w=0$ gives
+$A(z)b=Y(a,z)b$.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms VOA.SuperVertexAlgebra.goddard\_pointwiseε}: \lean{[propext, Classical.choice,
+Quot.sound]}. Unconditional.
+\end{status}
+
+\begin{theorem}[Goddard uniqueness for super vertex algebras]\label{l17:thm:goddard}
+Let $a\in\lseventeenV_{\bar p}$ and let $A$ be a distribution that is $\operatorname{koszul}(p,q)$-local
+with $Y(b,z)$ for every $q$ and every $b\in\lseventeenV_{\bar q}$, and creates the same vacuum tower as
+$Y(a,z)$. Then $A=Y(a,z)$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak SuperGoddard.lean}.
+\begin{leancode}
+theorem goddard_uniquenessε (V : SuperVertexAlgebra 𝒱) (A : FormalDist (End ℂ 𝒱)) (a : 𝒱)
+    {p : ZMod 2} (_ha : a ∈ V.parity p)
+    (hAloc : ∀ (q : ZMod 2) (b : 𝒱), b ∈ V.parity q → Localε (koszul p q) A (V.Y b))
+    (hAvac : ∀ m : ℤ, A m V.vacuum = (V.Y a) m V.vacuum) :
+    A = V.Y a
+\end{leancode}
+\begin{dictionary}
+The hypothesis \lean{_ha} is used (the underscore is only a naming style): it supplies
+\lean{V.locality a _ha b₀ hb₀}. The conclusion is equality of distributions. Inhomogeneous $b$ are
+handled by splitting $b=b_0+b_1$; the conclusion is linear in $b$ although locality is not. Matches
+Kac, Theorem 4.4 (super case) and Frenkel--Ben-Zvi §3.1.
+\end{dictionary}
+\begin{physics}
+Same as above: uniqueness of the field attached to a state, for bosons and fermions alike.
+\end{physics}
+\begin{proof}[Proof on paper]
+Apply Theorem~\ref{l17:thm:goddardpt} to the even and odd parts of $b$, with
+$\varepsilon=\operatorname{koszul}(p,0)$ and $\operatorname{koszul}(p,1)$ respectively, using VA4 for
+$Y(a,z)$.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms VOA.SuperVertexAlgebra.goddard\_uniquenessε}: \lean{[propext,
+Classical.choice, Quot.sound]}. Unconditional.
+\end{status}
+
+The super reconstruction theorem \lean{reconstructε} (\leanpath{Core/\allowbreak
+SuperReconstruction.lean}) is the existence counterpart: from a spanning family of states with
+$T$-covariant, mutually Koszul-local generating fields and the vacuum conditions, it produces a
+linear $Y$ with the creation, locality and covariance properties. It is the super analogue of the
+operator-first reconstruction of Chapter~\ref{ch:L03}, Theorem~\ref{l03:thm:reconstruct}, and it is
+how every example of §\ref{l17:sec:examples} obtains its vertex operator. Its proof uses
+Theorem~\ref{l17:thm:goddardpt} and the super Dong lemma; translation covariance of normal-ordered
+products is \lean{DCovariant.nprodε} in \leanpath{Core/\allowbreak SuperCovariant.lean}, whose key
+observation is that the twisted normal-ordered product differs from the bosonic one by a scalar
+depending only on the first mode index.
+
+%======================================================================
+\section{The super Borcherds identity and skew-symmetry}\label{l17:sec:borcherds}
+%======================================================================
+
+\begin{definition}[The two sides of the super Borcherds identity]\label{l17:def:BLBR}
+For a super near-VOA $V$, vectors $u,v,x$, a scalar $\varepsilon$ and $\ell,m,n\in\Z$ put
+\begin{align*}
+B_R(u,v,x;\ell,m,n)&=\sum_{i\ge0}\binom{m}{i}\,(u_{(\ell+i)}v)_{(m+n-i)}x,\\
+B_L^\varepsilon(u,v,x;\ell,m,n)&=\sum_{i\ge0}(-1)^i\binom{\ell}{i}\Bigl(u_{(\ell+m-i)}v_{(n+i)}x
+  -\varepsilon(-1)^\ell\,v_{(\ell+n-i)}u_{(m+i)}x\Bigr).
+\end{align*}
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak SuperBorcherds.lean}.
+\begin{leancode}
+noncomputable def BRs (V : SuperNearVOA 𝒱) (u v x : 𝒱) (ℓ m n : ℤ) : 𝒱 :=
+  ∑ᶠ i : ℤ, cbz m i • V.smul (V.smul u (ℓ + i) v) (m + n - i) x
+noncomputable def Puvs (V : SuperNearVOA 𝒱) (u v x : 𝒱) (ℓ m n : ℤ) : 𝒱 :=
+  ∑ᶠ i : ℤ, (negOnePow i * cbz ℓ i) • V.smul u (ℓ + m - i) (V.smul v (n + i) x)
+noncomputable def Pvus (V : SuperNearVOA 𝒱) (u v x : 𝒱) (ℓ m n : ℤ) : 𝒱 :=
+  ∑ᶠ i : ℤ, (negOnePow i * cbz ℓ i) • V.smul v (ℓ + n - i) (V.smul u (m + i) x)
+noncomputable def BLε (V : SuperNearVOA 𝒱) (ε : ℂ) (u v x : 𝒱) (ℓ m n : ℤ) : 𝒱 :=
+  Puvs V u v x ℓ m n - (ε * negOnePow ℓ) • Pvus V u v x ℓ m n
+\end{leancode}
+\begin{dictionary}
+\lean{cbz m i} is the generalised binomial coefficient $\binom mi$ for $m\in\Z$, $i\in\Z$, equal to
+$0$ for $i<0$ (Chapter~\ref{ch:L03}, Definition~\ref{l03:def:BLBR}); so the $\Z$-indexed
+\lean{finsum} $\sum^{\mathrm f}$ is really over $i\ge0$, and it has finite support by VA5 even when
+$m<0$. \lean{negOnePow i} is $(-1)^i$. The exchanged term carries the single scalar
+$\varepsilon(-1)^\ell$; all sign-free parts are literally the bosonic ones of Chapter~\ref{ch:L03}.
+\end{dictionary}
+\begin{physics}
+$B_L$ is the contour-deformation side of the OPE (the difference of the two radial orderings of
+$u(z)v(w)$, with the fermionic sign on the reversed ordering); $B_R$ is the OPE side (the fields
+appearing in $u\times v$). Their equality is operator-product associativity.
+\end{physics}
+\begin{status}
+Definitions; standard axioms.
+\end{status}
+
+\begin{theorem}[Super Borcherds / Jacobi identity]\label{l17:thm:superjacobi}
+Let $V$ be a super near-VOA, $u\in V_{\bar p}$, $v\in V_{\bar q}$, $x\in V$. For all $\ell,m,n\in\Z$,
+\begin{equation*}
+\sum_{i\ge0}(-1)^i\binom{\ell}{i}\Bigl(u_{(\ell+m-i)}v_{(n+i)}x
+-(-1)^{pq}(-1)^\ell\,v_{(\ell+n-i)}u_{(m+i)}x\Bigr)
+=\sum_{i\ge0}\binom mi\,(u_{(\ell+i)}v)_{(m+n-i)}x .
+\end{equation*}
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak SuperBorcherds.lean}.
+\begin{leancode}
+theorem superBorcherds (V : SuperNearVOA 𝒱) {p q : ZMod 2} {u v : 𝒱} (hu : u ∈ V.parity p)
+    (hv : v ∈ V.parity q) (x : 𝒱) (ℓ m n : ℤ) :
+    BLε V (koszul p q) u v x ℓ m n = BRs V u v x ℓ m n := by
+...
+theorem superJacobi (V : SuperNearVOA 𝒱) {p q : ZMod 2} {u v : 𝒱} (hu : u ∈ V.parity p)
+    (hv : v ∈ V.parity q) (x : 𝒱) (ℓ m n : ℤ) :
+    (∑ᶠ i : ℤ, (negOnePow i * cbz ℓ i) •
+        (V.smul u (ℓ + m - i) (V.smul v (n + i) x)
+          - (koszul p q * negOnePow ℓ) • V.smul v (ℓ + n - i) (V.smul u (m + i) x)))
+      = ∑ᶠ i : ℤ, cbz m i • V.smul (V.smul u (ℓ + i) v) (m + n - i) x := by
+\end{leancode}
+\begin{dictionary}
+\textbf{Index dictionary with Kac.} Kac's (4.8.3) (super case, \emph{Vertex algebras for
+beginners}) reads
+$\sum_j\binom mj(a_{(n+j)}b)_{(m+k-j)}c=\sum_j(-1)^j\binom nj\bigl(a_{(m+n-j)}b_{(k+j)}c-p(a,b)(-1)^nb_{(n+k-j)}a_{(m+j)}c\bigr)$.
+Renaming Kac's $(n,m,k)$ as the library's $(\ell,m,n)$ gives the library statement character for
+character, including the position of the sign. The quantifiers are ``for all homogeneous $u,v$, all
+$x$, all $\ell,m,n\in\Z$'': the full identity, not a slice. Inhomogeneous $u,v$ are not covered,
+since the sign is undefined; by linearity nothing is lost.
+
+\textbf{Hypotheses.} Only the structure \lean{SuperNearVOA} (no CFT type, no spin--statistics, no
+integrality of weights) and parity homogeneity. The second form is the first unfolded
+(\lean{BL_as_finsumε}).
+
+\textbf{Why it is not vacuous.} It is consumed definitionally as the \lean{jacobi} field of the adjoint
+super module (Proposition~\ref{l17:prop:adjoint}), and it is the input to the super Zhu ring
+(Theorem~\ref{l17:thm:superzhuring}); at $p=0$ it reduces to the bosonic Jacobi identity
+(\lean{superJacobi_even_left}).
+\end{dictionary}
+\begin{physics}
+This is the full OPE associativity of a fermionic chiral algebra: for every choice of three contour
+exponents, the reordered product of $u(z)$ and $v(w)$, with the minus sign for two fermions, equals
+the field of the OPE coefficients. All the usual consequences (the commutator formula
+$[u_{(m)},v_{(n)}]_\pm=\sum\binom mi(u_{(i)}v)_{(m+n-i)}$, the associativity/normal-ordering formula)
+are special cases ($\ell=0$, resp.\ $m=0$).
+\end{physics}
+\begin{proof}[Proof on paper]
+Exactly as in the bosonic case (Chapter~\ref{ch:L03}, Theorem~\ref{l03:thm:borcherds}). Both sides
+satisfy the Pascal recursion $B(\ell,m+1,n)=B(\ell,m,n+1)+B(\ell+1,m,n)$; the sign
+$\varepsilon(-1)^\ell$ is constant in $m,n$ and changes by $-1$ under $\ell\mapsto\ell+1$, exactly as
+$(-1)^\ell$ does in the bosonic recursion. So it suffices to know two boundary lines. At $m=0$ the
+identity is the iterate (associativity) formula
+$(u_{(\ell)}v)_{(n)}=\sum_i(-1)^i\binom\ell i(u_{(\ell-i)}v_{(n+i)}-\varepsilon(-1)^\ell v_{(\ell+n-i)}u_{(i)})$
+(\lean{mode_iterateε}), proved for $\ell\ge0$ from the $n$-th product theorem (Dong's lemma plus
+Goddard uniqueness plus translation covariance) and for $\ell<0$ from the twisted normal-ordered
+product, where the Koszul factor sits precisely on the reordered branch. At $\ell=0$ it is the
+commutator formula $[u_{(m)},v_{(n)}]_\varepsilon=\sum_i\binom mi(u_{(i)}v)_{(m+n-i)}$
+(\lean{commBoundε}), which follows from the $\varepsilon$-generic OPE decomposition
+(Chapter~\ref{ch:L01}, Theorem~\ref{l01:thm:epsdeltasum}). Induction on $m$ in both directions, with
+the anti-diagonal pin of Chapter~\ref{ch:L03}, closes the argument. Translation covariance enters
+through the $n$-th product theorem, which is why the statement needs \lean{SuperNearVOA}.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms VOA.SuperNearVOA.superBorcherds} and \lean{VOA.SuperNearVOA.superJacobi}:
+\lean{[propext, Classical.choice, Quot.sound]}. Unconditional.
+\end{status}
+
+\subsection{Skew-symmetry}
+
+Skew-symmetry $Y(u,z)v=(-1)^{\lseventeenpar u\lseventeenpar v}e^{zT}Y(v,-z)u$ exists twice in the
+library.
+
+\begin{theorem}[Super skew-symmetry, unconditional]\label{l17:thm:skew}
+Let $V$ be a super near-VOA, $a\in V_{\bar p}$, $b\in V_{\bar q}$. For every $t\in\Z$,
+\begin{equation*}
+b_{(t)}a=(-1)^{pq}\sum_{j\ge0}\frac{(-1)^{t+j+1}}{j!}\,L_{-1}^{\,j}\bigl(a_{(t+j)}b\bigr).
+\end{equation*}
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SuperZhuCommutator.lean}.
+\begin{leancode}
+theorem superSmul_eq_skew_Lpow {p q : ZMod 2} {a b : 𝒱}
+    (ha : a ∈ V.parity p) (hb : b ∈ V.parity q) (t : ℤ) :
+    V.smul b t a
+      = koszul p q • ∑ᶠ j : ℕ, ((j.factorial : ℂ)⁻¹) •
+          (sgn (-t - 1 - (j : ℤ))) •
+            ((V.L (-1) ^ j) (V.smul a (t + (j : ℤ)) b))
+\end{leancode}
+\begin{dictionary}
+\lean{V} is a \lean{SuperNearVOA} (file variable). \lean{sgn k} $=(-1)^k$ (\leanpath{Core/\allowbreak
+Skew.lean}), so \lean{sgn (-t-1-j)} $=(-1)^{t+j+1}$. \lean{V.L (-1) ^ j} is $L_{-1}^j$; the sum is
+finite by VA5. This is Kac's (4.2.1)/(4.8.6) in modes: $b_{(n)}a=p(a,b)\sum_j(-1)^{n+j+1}T^{(j)}(a_{(n+j)}b)$
+with $T^{(j)}=T^j/j!$ and $T=L_{-1}$; it is the coefficient form of
+$Y(b,z)a=p(a,b)e^{zT}Y(a,-z)b$.
+\end{dictionary}
+\begin{physics}
+Exchanging the two operators in an OPE: $b(z)a(0)=\pm e^{zL_{-1}}a(-z)b(0)$, the translation
+moving the insertion point from $0$ to $z$. For two fermions the sign is $-1$; e.g.\ for a free
+fermion $\psi_{(0)}\psi=\lseventeenvac$ is symmetric under the exchange only because of the sign.
+\end{physics}
+\begin{proof}[Proof on paper]
+Take the Jacobi identity with $x=\lseventeenvac$, $u=a$, $v=b$, $\ell=t$, $m=-1$, $n=0$. On the left
+only the $i=0$ term of the first sum survives and gives $a_{(t-1)}b_{(0)}\lseventeenvac=0$, while the
+second sum gives $-\varepsilon(-1)^t\sum_i(-1)^i\binom ti b_{(t-i)}a_{(-1+i)}\lseventeenvac$, in which
+only $i=0$ survives: $-\varepsilon(-1)^tb_{(t)}a$. The right side is
+$\sum_i\binom{-1}{i}(a_{(t+i)}b)_{(-1-i)}\lseventeenvac=\sum_i(-1)^iL_{-1}^i(a_{(t+i)}b)/i!$ by the
+creation formula $w_{(-1-i)}\lseventeenvac=L_{-1}^iw/i!$. Solve for $b_{(t)}a$.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms VOA.SuperNearVOA.superSmul\_eq\_skew\_Lpow}: \lean{[propext,
+Classical.choice, Quot.sound]}. Unconditional.
+\end{status}
+
+\begin{proposition}[Super skew-symmetry, gated version]\label{l17:prop:skewgated}
+In a super VOA $W$, for $u\in W_{\bar p}$, $v\in W_{\bar q}$, if the skew candidate field
+$v\mapsto(-1)^{pq}e^{zT}Y(v,-z)u$ is Koszul-local with every $Y(b,z)$ (the ``gate''
+\lean{WeakAssocLocε W u p}), then the mode form of skew-symmetry holds.
+\end{proposition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak SuperSkew.lean}.
+\begin{leancode}
+def WeakAssocLocε (W : SuperVertexOperatorAlgebra 𝒱) (u : 𝒱) (p : ZMod 2) : Prop :=
+  ∀ (q : ZMod 2) (b : 𝒱), b ∈ W.parity q → Localε (koszul p q) (skewDistε W u p) (W.Y b)
+...
+theorem skew_modeε (W : SuperVertexOperatorAlgebra 𝒱) (u v : 𝒱) {p q : ZMod 2}
+    (hu : u ∈ W.parity p) (hv : v ∈ W.parity q) (hloc : WeakAssocLocε W u p) (n : ℤ) :
+    W.smul u n v
+      = koszul p q • ∑ᶠ j : ℕ, ((j.factorial : ℂ)⁻¹) • (sgn (-n - 1 - j)) •
+          ((W.L (-1) ^ j) ((W.Y v) (-n - 1 - j) u))
+\end{leancode}
+\begin{dictionary}
+\lean{(W.Y v) (-n - 1 - j) u} is the $z^{-n-1-j}$-coefficient, i.e.\ $v_{(n+j)}u$; so this is
+Theorem~\ref{l17:thm:skew} with the roles of the two vectors named differently. The gate
+\lean{WeakAssocLocε} is never discharged in \leanpath{Core/}: the file reduces it to the sign-free
+\lean{SkewVacLocal₀} (\leanpath{Core/\allowbreak SuperWeakAssoc.lean},
+\lean{skew_modeε_of_signFree}) and stops. The conclusion is nevertheless true for every super VOA,
+by Theorem~\ref{l17:thm:skew} applied to \lean{W.toSuperNearVOA}.
+\end{dictionary}
+\begin{physics}
+Same content as Theorem~\ref{l17:thm:skew}; the gated route follows the bosonic history in which
+skew-symmetry was proved from Goddard uniqueness before Borcherds was available.
+\end{physics}
+\begin{status}
+\texttt{\#print axioms VOA.SuperVertexOperatorAlgebra.skew\_modeε}: \lean{[propext,
+Classical.choice, Quot.sound]}; conditional on \lean{hloc : WeakAssocLocε W u p}, which is never
+proved.
+\end{status}
+
+\begin{warning}[title={Finding (F5): a superseded gate and stale documentation}]
+The conditional \lean{skew_modeε} is superseded by the unconditional \lean{superSmul_eq_skew_Lpow},
+which is derived from \lean{superJacobi}. The remarks ``super skew-symmetry is still gated on
+\lean{WeakAssocLocε}'' in \leanpath{Core/\allowbreak ScreeningKernel.lean},
+\leanpath{Examples/\allowbreak DSReductionSl2.lean} and \leanpath{Modules/\allowbreak
+SuperAdjointModule.lean} (``the \lean{conformal} hypothesis \dots still waits on the super skew gate'')
+are stale. Severity: documentation only. Remedy: derive \lean{WeakAssocLocε} (or delete the gated route) from
+\lean{superSmul_eq_skew_Lpow}.
+\end{warning}
+
+%======================================================================
+\section{Automorphisms and the even part}\label{l17:sec:aut}
+%======================================================================
+
+\begin{definition}[Even automorphism]\label{l17:def:superaut}
+An (even) automorphism of a super VOA $W$ is a linear bijection $g$ with
+$g(u_{(n)}v)=(gu)_{(n)}(gv)$ for all $u,v,n$, $g\lseventeenvac=\lseventeenvac$, $g\omega=\omega$, and
+$gW_{\bar p}=W_{\bar p}$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak SuperAutomorphism.lean}.
+\begin{leancode}
+structure SuperAut (W : SuperVertexOperatorAlgebra 𝒱) where
+  toLinearEquiv : 𝒱 ≃ₗ[ℂ] 𝒱
+  map_smul' : ∀ (u : 𝒱) (n : ℤ) (v : 𝒱),
+    toLinearEquiv (W.smul u n v) = W.smul (toLinearEquiv u) n (toLinearEquiv v)
+  map_vacuum : toLinearEquiv W.vacuum = W.vacuum
+  map_omega : toLinearEquiv W.conformalVector = W.conformalVector
+  map_parity' : ∀ (p : ZMod 2) (u : 𝒱),
+    toLinearEquiv u ∈ W.parity p ↔ u ∈ W.parity p
+\end{leancode}
+\begin{dictionary}
+\lean{𝒱 ≃ₗ[ℂ] 𝒱} is a $\C$-linear bijection. Preservation of the conformal weights is a theorem
+(\lean{map_mem_grading}: $g$ commutes with $L_0=\omega_{(1)}$). Only parity-preserving automorphisms
+are considered; this is the standard notion for twisted modules of super VOAs (Dong--Zhao). The
+automorphisms form a group (\lean{instance : Group (SuperAut W)}).
+\end{dictionary}
+\begin{physics}
+Global internal symmetries of the chiral algebra that commute with the stress tensor and with
+fermion number. Twisting by such a symmetry gives the twisted sectors (orbifold theory). (In the
+library the twisted-sector structure \lean{SuperTwistedModule} is, for every twist of order $N\ge2$,
+inhabited only by the zero space; see the warning before Definition~\ref{l17:def:supertwisted}.)
+\end{physics}
+\begin{status}
+A definition; standard axioms.
+\end{status}
+
+\begin{theorem}[The parity automorphism]\label{l17:thm:parityaut}
+For every super VOA $W$ the fermion-number involution $\sigma=(-1)^F$ is an even automorphism,
+$\sigma u=(-1)^pu$ on $W_{\bar p}$, $\sigma^2=1$, and $\sigma$ has order exactly $2$ when
+$W_{\bar1}\neq0$ (and is the identity when $W_{\bar1}=0$).
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak SuperAutomorphism.lean}.
+\begin{leancode}
+noncomputable def parityAut (W : SuperVertexOperatorAlgebra 𝒱) : SuperAut W where
+  toLinearEquiv := W.parityGrading.parityLinearEquiv
+...
+theorem parityAut_homog (W : SuperVertexOperatorAlgebra 𝒱) {p : ZMod 2} {v : 𝒱}
+    (hv : v ∈ W.parity p) : W.parityAut v = parSign p • v :=
+...
+theorem orderOf_parityAut_eq_two (W : SuperVertexOperatorAlgebra 𝒱)
+    (hodd : W.parity 1 ≠ ⊥) : orderOf W.parityAut = 2 :=
+\end{leancode}
+\begin{dictionary}
+The hypothesis \lean{hodd} is necessary (without odd vectors $\sigma=1$, \lean{parityAut_eq_one_of_odd_eq_bot}).
+The mode law $\sigma(u_{(n)}v)=(\sigma u)_{(n)}(\sigma v)$ is VA1$'$ plus
+$\operatorname{parSign}(p+q)=\operatorname{parSign}(p)\operatorname{parSign}(q)$.
+\end{dictionary}
+\begin{physics}
+$(-1)^F$ is a symmetry of every fermionic theory. Twisting by it changes the boundary condition of
+fermions around the spatial circle from Neveu--Schwarz to Ramond; inserting it in a trace changes
+the temporal boundary condition (the supertrace). The four combinations are the four spin
+structures on the torus (§\ref{l17:sec:modularity}). Caution: the automorphism $\sigma$ itself is
+genuine, but the library's Ramond-sector carrier \lean{W.ParityTwistedModule M}, i.e.\
+\lean{SuperTwistedModule W W.parityAut 2 M}, is inhabited only by $M=0$ (F1,
+Theorem~\ref{l17:thm:twistvacuous}); so only the temporal (supertrace) half of this picture has
+content in Lean.
+\end{physics}
+\begin{status}
+\texttt{\#print axioms VOA.SuperVertexOperatorAlgebra.orderOf\_parityAut\_eq\_two}: \lean{[propext,
+Classical.choice, Quot.sound]}. Unconditional.
+\end{status}
+
+\begin{theorem}[The even part is an ordinary VOA]\label{l17:thm:evenpart}
+Let $W$ be a super VOA whose even part has only integer weights. Then $W_{\bar0}$, with the restricted
+vertex operators, vacuum and conformal vector, is a \lean{VertexOperatorAlgebra} of the same central
+charge, with weight spaces $(W_{\bar0})_n=W_n\cap W_{\bar0}$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak SuperEvenPart.lean}.
+\begin{leancode}
+noncomputable def evenPartVOA (W : SuperVertexOperatorAlgebra 𝒱)
+    (hint : ∀ h : ℂ, (¬ ∃ n : ℤ, (n : ℂ) = h) → ∀ x ∈ W.parity 0, x ∈ W.grading h → x = 0) :
+    VertexOperatorAlgebra (W.parity 0) :=
+\end{leancode}
+\begin{dictionary}
+The carrier is the subtype \lean{W.parity 0}. \lean{hint} is the integrality of the even part, a
+genuine hypothesis (it fails for ambient algebras with weight-$\frac52$ states). The identifications
+of $Y$, $\lseventeenvac$, $\omega$, $c$ and the grading with the ambient ones are \lean{rfl}-lemmas
+(\lean{evenPartVOA_Y_coe}, \lean{evenPartVOA_grading}, \dots), so this is the even part and not some
+other VOA structure on the same space.
+\end{dictionary}
+\begin{physics}
+The bosonic subalgebra of a fermionic theory is the $\Z/2$-orbifold by $(-1)^F$; e.g.\ the even
+part of symplectic fermions is the triplet algebra $W(2)$ at $c=-2$ (Chapter~\ref{ch:L18}).
+\end{physics}
+\begin{status}
+\texttt{\#print axioms VOA.SuperVertexOperatorAlgebra.evenPartVOA}: \lean{[propext,
+Classical.choice, Quot.sound]}. Conditional only on \lean{hint}.
+\end{status}
+
+%======================================================================
+\section{Super modules, twisted super modules, and the defect}\label{l17:sec:modules}
+%======================================================================
+
+\begin{definition}[Super weak module]\label{l17:def:superweak}
+A super weak module over a super vertex algebra $W$ is a vector space $M=M_{\bar0}\oplus M_{\bar1}$
+with a linear $Y_M:W\to\End(M)[[z^{\pm1}]]$ such that modes add parities, $Y_M(\lseventeenvac,z)=\mathrm{id}$,
+$Y_M(u,z)x\in M((z))$, and the super Jacobi identity of Theorem~\ref{l17:thm:superjacobi} holds with
+$Y_M$ in place of $Y$, for all homogeneous $u,v$, all $x\in M$ and all $\ell,m,n\in\Z$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak SuperWeakModule.lean}.
+\begin{leancode}
+structure SuperWeakModule (W : SuperVertexAlgebra 𝒱) (M : Type v)
+    [AddCommGroup M] [Module ℂ M] where
+  YM : 𝒱 →ₗ[ℂ] (End ℂ M)⟦z^±⟧
+  parity : ZMod 2 → Submodule ℂ M
+  parity_isInternal : DirectSum.IsInternal parity
+  parity_mode : ∀ {p q : ZMod 2} (u : 𝒱), u ∈ W.parity p → ∀ (x : M), x ∈ parity q →
+    ∀ (n : ℤ), mode (YM u) n x ∈ parity (p + q)
+  vacuum_YM : YM W.vacuum = 1
+  truncation : ∀ (u : 𝒱) (x : M), ∃ N : ℤ, ∀ n : ℤ, N ≤ n → mode (YM u) n x = 0
+  jacobi : ∀ {p q : ZMod 2} (u : 𝒱), u ∈ W.parity p → ∀ (v : 𝒱), v ∈ W.parity q →
+    ∀ (x : M) (ℓ m n : ℤ),
+    (∑ᶠ i : ℤ, (negOnePow i * cbz ℓ i) •
+        (mode (YM u) (ℓ + m - i) (mode (YM v) (n + i) x)
+          - (koszul p q * negOnePow ℓ) • mode (YM v) (ℓ + n - i) (mode (YM u) (m + i) x)))
+      = ∑ᶠ i : ℤ, cbz m i • mode (YM (W.smul u (ℓ + i) v)) (m + n - i) x
+\end{leancode}
+\begin{dictionary}
+This is the super version of Chapter~\ref{ch:L12}, Definition~\ref{l12:def:weakmodule}, and of Kac's
+definition of a module over a vertex superalgebra (Kac §4.1, with the Borcherds identity as the
+axiom, as in Li and in Dong--Zhao). Untwisted modules have integer modes, so quantification over all
+$\ell,m,n$ is correct here (contrast Definition~\ref{l17:def:supertwisted}). No grading is part of a
+weak module.
+\end{dictionary}
+\begin{physics}
+A representation of the fermionic chiral algebra on the state space of a sector; the parity of
+$M$ is fermion number in that sector.
+\end{physics}
+\begin{status}
+A definition; standard axioms.
+\end{status}
+
+\begin{proposition}[The adjoint super module]\label{l17:prop:adjoint}
+Every super near-VOA is a super weak module over itself, with $Y_M=Y$ and its own parity.
+\end{proposition}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak SuperAdjointModule.lean}.
+\begin{leancode}
+def SuperNearVOA.adjointSuperWeakModule (V : SuperNearVOA 𝒱) :
+    SuperWeakModule V.toSuperVertexAlgebra 𝒱 where
+  YM := V.Y
+\end{leancode}
+\begin{dictionary}
+The \lean{jacobi} field is discharged by \lean{superJacobi} with no rewriting, which certifies that
+Theorem~\ref{l17:thm:superjacobi} is exactly the module axiom. First inhabitant with genuinely odd
+states.
+\end{dictionary}
+\begin{physics}
+The vacuum sector: the chiral algebra acting on itself.
+\end{physics}
+\begin{proof}[Proof on paper]
+Each field is the corresponding axiom or theorem of $V$.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms VOA.SuperNearVOA.adjointSuperWeakModule}: \lean{[propext, Classical.choice,
+Quot.sound]}.
+\end{status}
+
+\begin{definition}[Graded super module]\label{l17:def:superord}
+A \lean{SuperOrdVModule} over a super VOA $W$ is a super weak module with an internal grading
+$M=\bigoplus_{\alpha\in\C}M_\alpha$ by finite-dimensional $L_0$-eigenspaces, real parts of weights
+bounded below, and $u_{(n)}M_\alpha\subseteq M_{\alpha+h-n-1}$ for $u\in W_h$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak SuperOrdVModule.lean}.
+\begin{leancode}
+structure SuperOrdVModule (W : SuperVertexOperatorAlgebra 𝒱) (M : Type v)
+    [AddCommGroup M] [Module ℂ M]
+    extends SuperWeakModule W.toSuperVertexAlgebra M where
+  weight : ℂ → Submodule ℂ M
+  weight_isInternal : DirectSum.IsInternal weight
+  L0_weight : ∀ (α : ℂ) (x : M), x ∈ weight α →
+    mode (YM W.conformalVector) 1 x = α • x
+  weight_finite : ∀ α, FiniteDimensional ℂ (weight α)
+  boundedBelow : ∃ B : ℝ, ∀ α : ℂ, weight α ≠ ⊥ → B ≤ α.re
+  weight_mode : ∀ {h α : ℂ} (u : 𝒱), u ∈ W.grading h →
+    ∀ (x : M), x ∈ weight α → ∀ (n : ℤ),
+      mode (YM u) n x ∈ weight (α + h - n - 1)
+\end{leancode}
+\begin{dictionary}
+The super analogue of \lean{OrdVModule} (Chapter~\ref{ch:L12}, Definition~\ref{l12:def:ordmodule}).
+Since $\omega$ is even, $L_0$ preserves parity and each $M_\alpha$ inherits a parity grading
+(\lean{weightParityGrading}), on which the basis-free supertrace
+$\operatorname{str}f=\tr((-1)^Ff)$ (\lean{supertrace}, \leanpath{Modularity/\allowbreak SuperTrace.lean})
+is defined. The only instances constructed in the library are \lean{OrdVModule.toSuper} of bosonic
+modules; no \lean{SuperOrdVModule} with a nonzero odd part is built.
+\end{dictionary}
+\begin{physics}
+A sector with finite degeneracies and energy bounded below: the kind of module whose (super)character
+$\operatorname{str}_Mq^{L_0-c/24}$ makes sense.
+\end{physics}
+\begin{status}
+A definition; standard axioms.
+\end{status}
+
+\subsection{Twisted super modules}
+
+Recall from Chapter~\ref{ch:06} the twisted Jacobi identity in mode form: for $g$ of order dividing
+$N$ and $u$ in the eigenspace $V^j$, the field $Y_M(u,z)$ has modes $u_{(r)}$ with $r$ in one coset of
+$\Z$ in $\frac1N\Z$, and the identity is required \emph{only} for $r$ on that coset.
+
+\begin{warning}[title={Read this before the definition: for $N\ge2$ the only twisted super module is $M=0$}]
+\textbf{At the earlier state of the library against which this chapter was first written, and still in the
+released source (its \lean{jacobi} field is unchanged), the structure \lean{SuperTwistedModule W g N M}
+defined below is uninhabited for every twist order $N\ge2$ except by the zero space $M=0$.} This
+holds for every super VOA $W$ and every even automorphism $g$ (including $g=1$ and the parity
+automorphism $g=(-1)^F$, i.e.\ the Ramond sector). It is a theorem, checked by Lean
+(Theorem~\ref{l17:thm:twistvacuous} below; the check is not part of this release). The cause is that the \lean{jacobi} field is imposed for
+\emph{all} integer labels $k$, not only for those with $k\equiv j\pmod N$ (finding (F1)).
+Consequently every library theorem whose hypotheses contain a \lean{SuperTwistedModule} with
+$N\ge2$ is a statement about the zero vector space, and \emph{this book does not present any such
+theorem as having mathematical content}. Only the case $N=1$ (the untwisted sector, reached through
+\lean{SuperOrdVModule.toIdentityTwist}) carries content.
+\end{warning}
+
+\begin{definition}[Twisted super module, library sense]\label{l17:def:supertwisted}
+For an even automorphism $g$ of a super VOA $W$ and $N>0$ with $g^N=1$, a \lean{SuperTwistedModule W g N M}
+is: a linear map $u\mapsto(k\mapsto Y_M(u)_k)$, the integer label $k$ standing for the fractional
+mode $u_{(k/N)}$; a parity grading of $M$ with modes adding parities; $\lseventeenvac_{(k/N)}=\delta_{k,-N}$;
+lower truncation; support $u_{(k/N)}=0$ unless $k\equiv j\pmod N$ for $u\in W^j$; the Koszul-signed
+twisted Jacobi identity \emph{for all integers $\ell,k,m$}; translation covariance; and a
+$\C$-grading by finite-dimensional $L_0$-eigenspaces, bounded below, with the fractional weight shift.
+\textbf{For $N\ge2$ these axioms force $M=0$} (Theorem~\ref{l17:thm:twistvacuous}); so, at this
+commit, this is \emph{not} a definition of a twisted module in the sense of Dong--Li--Mason or
+Dong--Zhao except when $N=1$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak SuperTwistedModule.lean}.
+\begin{leancode}
+noncomputable def SuperAut.twistedEigenspace {W : SuperVertexOperatorAlgebra 𝒱}
+    (g : SuperAut W) (N : ℕ) (j : ℕ) : Submodule ℂ 𝒱 :=
+  Module.End.eigenspace (g.toLinearEquiv : End ℂ 𝒱)
+    (Complex.exp (-(2 * (Real.pi : ℂ) * Complex.I * j) / N))
+...
+structure SuperTwistedModule (W : SuperVertexOperatorAlgebra 𝒱) (g : SuperAut W)
+    (N : ℕ) (M : Type v) [AddCommGroup M] [Module ℂ M] where
+  order_pos : 0 < N
+  order_pow : g ^ N = 1
+  YM : 𝒱 →ₗ[ℂ] (ℤ → End ℂ M)
+  parity : ZMod 2 → Submodule ℂ M
+  parity_isInternal : DirectSum.IsInternal parity
+  parity_mode : ∀ {p q : ZMod 2} (u : 𝒱), u ∈ W.parity p →
+    ∀ (x : M), x ∈ parity q → ∀ (k : ℤ), YM u k x ∈ parity (p + q)
+  vacuum_YM : ∀ k : ℤ, YM W.vacuum k = if k = -(N : ℤ) then 1 else 0
+  truncation : ∀ (u : 𝒱) (x : M), ∃ K : ℤ, ∀ k : ℤ, K ≤ k → YM u k x = 0
+  support : ∀ (j : ℕ) (u : 𝒱), u ∈ g.twistedEigenspace N j →
+    ∀ k : ℤ, (k - j) % (N : ℤ) ≠ 0 → YM u k = 0
+  jacobi : ∀ {p q : ZMod 2} (j : ℕ) (u : 𝒱),
+    u ∈ g.twistedEigenspace N j → u ∈ W.parity p →
+    ∀ (w : 𝒱), w ∈ W.parity q → ∀ (x : M) (ℓ k m : ℤ),
+    (∑ᶠ i : ℤ, (negOnePow i * cbz ℓ i) •
+        (YM u (ℓ * N + k - i * N) (YM w (m + i * N) x)
+          - (koszul p q * negOnePow ℓ) •
+            YM w (ℓ * N + m - i * N) (YM u (k + i * N) x))) =
+      ∑ᶠ i : ℕ, fractionalBinom ((k : ℂ) / N) i •
+        YM (W.smul u (ℓ + i) w) (k + m - i * N) x
+\end{leancode}
+\begin{dictionary}
+The remaining fields (\lean{translation}, \lean{weight}, \lean{weight_isInternal}, \lean{L0_weight},
+\lean{weight_finite}, \lean{boundedBelow}, \lean{weight_mode}) are the graded data and are not needed
+below. \lean{fractionalBinom x i} $=\binom xi=\prod_{k<i}(x-k)/i!$ for complex $x$. In the
+\lean{jacobi} field the label \lean{ℓ * N + k - i * N} is the fractional mode $\ell+r-i$ with
+$r=k/N$, and \lean{m + i * N} is $s+i$ with $s=m/N$: the identity reads, for $r=k/N$, $s=m/N$,
+\begin{equation*}
+\sum_i(-1)^i\binom\ell i\bigl(u_{(\ell+r-i)}w_{(s+i)}-\varepsilon(-1)^\ell w_{(\ell+s-i)}u_{(r+i)}\bigr)
+=\sum_{i\ge0}\binom ri(u_{(\ell+i)}w)_{(r+s-i)} ,
+\end{equation*}
+which is Dong--Li--Mason's mode identity with the Koszul sign (Chapter~\ref{ch:06},
+\eqref{ch06:eq:jacobi-mode}). \textbf{But it is required for every $k\in\Z$}, with no hypothesis
+$k\equiv j\pmod N$: the restriction that Chapter~\ref{ch:06} added to the bosonic
+\lean{TwistedModule.jacobi} is absent. The \lean{support} field uses $k\equiv j$, the bosonic
+\lean{TwistedModule} uses $k\equiv-j$ for the same eigenvalue $e^{-2\pi ij/N}$; so a super twisted
+module for $g$ corresponds to a bosonic one for $g^{-1}$ (finding (F7), harmless, undocumented).
+\end{dictionary}
+\begin{physics}
+The \emph{intended} meaning is a $g$-twisted sector: fields acquire the monodromy $g$ when transported
+around the origin, so their modes are fractional. For $g=(-1)^F$ and $N=2$ odd fields get
+half-integral vertex-algebra modes; for a weight-$\frac12$ fermion that means integral physics modes
+$\psi_n$, $n\in\Z$, i.e.\ the Ramond sector with its zero mode $\psi_0$. \textbf{The Lean structure
+does not model this at the documented commit}: for $N\ge2$, and in particular for the Ramond sector,
+its only inhabitant is the zero space (F1), so no Ramond sector, and no twisted sector of any kind,
+exists in the library.
+\end{physics}
+\begin{status}
+A definition; standard axioms. \textbf{Uninhabited except by $M=0$ for every $N\ge2$}
+(Theorem~\ref{l17:thm:twistvacuous});
+meaningful only for $N=1$.
+\end{status}
+
+\begin{theorem}[Twisted super modules with $N\ge2$ are zero]\label{l17:thm:twistvacuous}
+Let $W$ be any super VOA, $g$ any even automorphism, $N\ge2$, and $T$ any
+\lean{SuperTwistedModule W g N M}. Then every $x\in M$ is $0$. In particular $M$ is a
+subsingleton, every weight space of $T$ is zero, and every parity-twisted (Ramond) carrier
+\lean{W.ParityTwistedModule M} is zero.
+\end{theorem}
+\begin{dictionary}
+\lean{W.ParityTwistedModule M} is the library's abbreviation
+\lean{SuperTwistedModule W W.parityAut 2 M}. No hypothesis beyond $N\ge2$ is used; in particular the
+statement holds for $g=1$ as well (an identity automorphism with a chosen $N\ge 2$).
+\end{dictionary}
+\begin{physics}
+This is a statement about a mis-specified axiom system, not about conformal field theory. Physically,
+the twisted Jacobi identity is the mode expansion of a generating identity in which a field of
+monodromy $e^{-2\pi ij/N}$ only has modes on the coset $k\equiv j\pmod N$; the instance used in the
+proof below (the vacuum field, which has trivial monodromy, at the label $k=1$) is not part of any
+genuine twisted sector when $N\ge2$, because that coefficient of the generating identity is simply
+absent. The Lean axiom nevertheless demands it, and the demand kills every vector. In plain words:
+the library's ``Ramond sector'' and every other twisted sector of order $N\ge2$ is empty.
+\end{physics}
+\begin{proof}[Proof on paper]
+The identical computation as Chapter~\ref{ch:06}, Theorem~\ref{ch06:thm:defect}. Take
+$u=w=\lseventeenvac$ (even, in $W^0$ since $g\lseventeenvac=\lseventeenvac$), $p=q=0$ (Koszul sign
+$1$), $\ell=-1$, $k=1$, $m=-N-1$. Left side: each term contains $\lseventeenvac$ at a label
+$-N+1-iN$ or $1+iN$; $\lseventeenvac_{(k'/N)}\neq0$ only for $k'=-N$, which would force $N\mid1$.
+So the left side is $0$. Right side: $\lseventeenvac_{(-1+i)}\lseventeenvac=\delta_{i,0}\lseventeenvac$,
+$\binom{1/N}0=1$, and the label is $1-N-1=-N$, so the right side is $x$. Hence $x=0$.
+\end{proof}
+\begin{status}
+Checked in Lean against the library (the check is not part of this release); not a library theorem. \texttt{\#print axioms} of
+the three statements: \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\begin{warning}[title={Finding (F1): every twisted super theorem with $N\ge2$ is vacuous}]
+This confirms with a machine check a defect recorded earlier in the project: the \lean{jacobi} field of
+\lean{SuperTwistedModule} quantifies over all mode indices instead of the coset allowed by \lean{support}
+(Section~\ref{ch15:sec:super}). Consequences
+inside this chapter's files: the Ramond support theorems \lean{parityTwist_even_support},
+\lean{parityTwist_odd_support} and the order-three support checks are true of the zero module only;
+\leanpath{Modularity/\allowbreak SuperTwistedTrace.lean} (twisted supertraces for $N\ge2$),
+\leanpath{SuperHalfTwistedTrace.lean} (every \lean{SuperTwistedModule W g 2 M}, i.e.\ the whole
+``genuine half-integral trace carrier''), \leanpath{SuperHalfSpinRecursionBridge.lean},
+\leanpath{SuperSectorRationality.lean} (the \lean{twisted\-Module} field of its realization data) and
+\leanpath{Modules/\allowbreak SuperRelativeEtingofFinite.lean} (twisted-module carriers), and the
+twisted zero-mode action of \leanpath{Modules/\allowbreak SuperTwistedZhu.lean}
+(\lean{SuperTwistedModule.twistedZeroModeBlock}, \lean{twistedZeroModeAction}: the bridge from
+twisted modules to the twisted Zhu quotient of Definition~\ref{l17:def:twistedzhu}) are about the
+zero space whenever $N\ge2$. In particular every half-integral trace and supertrace is identically
+zero, and \lean{SuperTwistedModule.IsIrreducible} for $N\ge2$ is satisfied only by zero modules
+(§\ref{l17:sec:status}). The identity-twist case $N=1$ (\lean{SuperOrdVModule.toIdentityTwist}, used
+for instance by the torus recursion of \leanpath{Modularity/\allowbreak SuperTorusRecursionClose.lean})
+is unaffected. Severity: serious. Remedy: add the hypothesis \texttt{(k - j) \% (N : ℤ) = 0 →} to
+\lean{jacobi}. Note the sign: the super \lean{support} field uses $k\equiv j$, so the restriction is
+$(k-j)\bmod N=0$; the bosonic \lean{TwistedModule.jacobi} of Chapter~\ref{ch:06} uses
+\texttt{(k + j) \% (N : ℤ) = 0} because its support is $k\equiv-j$ (F7). Copying the bosonic
+hypothesis verbatim would be wrong here.
+\end{warning}
+
+%======================================================================
+\section{The four free-field examples}\label{l17:sec:examples}
+%======================================================================
+
+All four examples are built on infinite-dimensional Fock spaces, and this is forced: locality makes
+the twisted commutator a finite sum of derivatives of the delta function, which has infinite support
+along the diagonal, so \emph{no finite-dimensional space carries a genuinely fermionic local pair}
+(the project's internal records note this negative result, found when finite-dimensional
+fermionic examples were attempted). The fermionic Fock spaces are exterior algebras, realised in Mathlib as Clifford algebras of
+the zero quadratic form; creation is left multiplication by a generator and annihilation is
+contraction against a coordinate functional, and Mathlib's \lean{CliffordAlgebra.contractLeft_ι_mul}
+\emph{is} the canonical anticommutation relation. The bosonic Fock space of $\beta\gamma$ is a
+polynomial ring, with multiplication and partial derivatives.
+
+\subsection{The free fermion}\label{l17:sec:ff}
+
+\begin{definition}[The Neveu--Schwarz free fermion]\label{l17:def:psi}
+Let $\mathcal F=\Lambda(\bigoplus_{k\in\N}\C e_k)$. Let $c_k$ be exterior multiplication by $e_k$ and
+$a_k$ contraction with the $k$-th coordinate. The library defines $\psi:\Z\to\End\mathcal F$ by
+$\psi(n)=a_n$ for $n\ge0$ and $\psi(n)=c_{-n-1}$ for $n<0$. \textbf{Caution (F3):} the library
+reads $\psi(n)$ as the coefficient of $z^{n}$, not as the mode $\psi_{(n)}$; with that reading $\psi$ is
+\emph{not} a field (Theorem~\ref{l17:thm:psinotfield}), and the library contains no super vertex
+algebra of the free fermion.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak FreeFermion.lean}.
+\begin{leancode}
+noncomputable abbrev Fock := CliffordAlgebra Qzero
+noncomputable def cre (k : ℕ) : Module.End ℂ Fock :=
+  LinearMap.mulLeft ℂ (ι Qzero (Finsupp.single k (1 : ℂ)))
+noncomputable def ann (k : ℕ) : Module.End ℂ Fock := contractLeft (Finsupp.lapply k)
+...
+noncomputable def psi : FormalDist (Module.End ℂ Fock) :=
+  fun n => if 0 ≤ n then ann n.toNat else cre (-n - 1).toNat
+\end{leancode}
+\begin{dictionary}
+\lean{Qzero} is the zero quadratic form on \lean{ModeSpace = ℕ →₀ ℂ} (finitely supported sequences),
+so \lean{Fock} is the exterior algebra. The docstring says ``$\psi(z)=\sum_{n\in\Z}\psi_{(n)}z^{-n-1}$,
+creation modes for $n\le-1$'', i.e.\ it reads the argument of \lean{psi} as a \emph{mode} index. But
+\lean{psi} has type \lean{FormalDist}, whose argument is the \emph{$z$-exponent}
+(§\ref{l17:sec:conv}). Read as the library reads it, $\psi(z)=\sum_k\psi(k)z^k$ has creation
+operators at all negative powers of $z$, so $\psi(z)x\notin\mathcal F((z))$: it is not a field
+(Theorem~\ref{l17:thm:psinotfield}).
+\end{dictionary}
+\begin{physics}
+The Majorana fermion of weight $\frac12$, $\psi(z)\psi(w)\sim\frac1{z-w}$, central charge
+$c=\frac12$ (the chiral half of the critical Ising model). In the Neveu--Schwarz sector its modes are
+$\psi_r$, $r\in\Z+\frac12$; here $c_k=\psi_{-k-1/2}$ and $a_k=\psi_{k+1/2}$.
+\end{physics}
+\begin{status}
+A definition; standard axioms.
+\end{status}
+
+\begin{theorem}[Canonical anticommutation relations and locality]\label{l17:thm:psicar}
+$\psi(m)\psi(n)+\psi(n)\psi(m)=\delta_{m+n+1,0}$ for all $m,n\in\Z$, and $\psi$ is $(-1)$-local with
+itself.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak FreeFermion.lean}.
+\begin{leancode}
+theorem psi_anticomm (m n : ℤ) :
+    psi m * psi n + psi n * psi m = if m + n + 1 = 0 then 1 else 0 := by
+...
+theorem psi_localε : Localε (-1) psi psi :=
+  localε_neg_one_of_anticomm 1 psi_anticomm
+\end{leancode}
+\begin{dictionary}
+Both statements are invariant under $n\mapsto-n-1$, so they are true whichever indexing one has in
+mind. \lean{psi_localε} is the first inhabitant of \lean{Localε} at a sign other than $1$; it checks
+that the sign conventions are right. It does \emph{not} make $\psi$ a field.
+\end{dictionary}
+\begin{physics}
+$\{\psi_r,\psi_s\}=\delta_{r+s,0}$: the Clifford algebra of the free Majorana fermion, whose
+anticommutator is $\delta(z-w)$, a simple pole in the OPE.
+\end{physics}
+\begin{proof}[Proof on paper]
+Case analysis on the signs of $m,n$, using $c_jc_k+c_kc_j=0$, $a_ja_k+a_ka_j=0$, $a_jc_k+c_ka_j=\delta_{jk}$;
+locality follows from the free-field criterion with $S=\mathrm{id}$.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms} of \lean{VOA.FreeFermion.psi\_anticomm}, \lean{VOA.FreeFermion.psi\_localε}:
+\lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\begin{theorem}[$\psi$ is not a field]\label{l17:thm:psinotfield}
+$\neg\,\mathrm{IsField}(\psi)$: there is no $B$ with $\psi(n)\lseventeenvac=0$ for all $n<B$.
+\end{theorem}
+\begin{dictionary}
+\lean{IsField a} $:\Leftrightarrow\forall x\,\exists B\,\forall n<B,\ a(n)x=0$ (\leanpath{Core/\allowbreak
+Dong.lean}). The witness is $x=1\in\mathcal F$.
+\end{dictionary}
+\begin{physics}
+A field must annihilate any given state after finitely many negative powers of $z$ (finitely many
+singular terms in an OPE with a fixed state). An operator family that keeps creating new particles at
+ever more singular orders is not a field.
+\end{physics}
+\begin{proof}[Proof on paper]
+For $n<0$, $\psi(n)1=c_{-n-1}1=e_{-n-1}\neq0$, because $a_k(c_k1)=1-c_k(a_k1)=1$.
+\end{proof}
+\begin{status}
+Checked in Lean against the library (the check is not part of this release); not a library theorem. \texttt{\#print axioms}: \lean{[propext, Classical.choice, Quot.sound]}. Consequently \textbf{the free
+fermion is not announceable}: the library has only anticommuting operator families that are not fields, and no vertex
+superalgebra of the free fermion.
+\end{status}
+
+\begin{warning}[title={Findings (F3): the free fermion is not a vertex superalgebra in Lean}]
+The same inverted orientation occurs in \lean{BCGhosts.bfield}, \lean{BCGhosts.cfield}
+(\leanpath{Examples/\allowbreak BCGhosts.lean}) and in \lean{BetaGamma.beta}, \lean{BetaGamma.gamma}
+(\leanpath{Examples/\allowbreak BetaGamma.lean}); the later files \leanpath{GhostSystem.lean} and
+\leanpath{BetaGammaField.lean} say so in their docstrings and rebuild $bc$ and $\beta\gamma$ in the
+correct orientation. The free fermion has no such rebuild: \textbf{the library contains no
+\lean{SuperVertexAlgebra} or \lean{SuperVertexOperatorAlgebra} for the free fermion}, only the
+operators of Definition~\ref{l17:def:psi}. The docstrings of \leanpath{FreeFermion.lean}
+(``creation modes for $n\le-1$''), \leanpath{BetaGamma.lean} and \leanpath{BetaGammaVirasoro.lean}
+(which says \lean{BetaGamma} ``indexes fields by the $z$-exponent'', contradicting
+\leanpath{BetaGammaField.lean}) are misleading. Severity: moderate (definitions do not mean what their
+docstrings say; no downstream theorem is affected because the only consumers are locality
+statements). Remedy: reindex $n\mapsto -n-1$ or delete the three early files.
+\end{warning}
+
+\subsection{The bc ghost system}\label{l17:sec:bc}
+
+\begin{definition}[$bc$ fields]\label{l17:def:bc}
+On the exterior algebra $\Lambda\bigl(\bigoplus_{k\in\N,\,a\in\{0,1\}}\C e_{k,a}\bigr)$ (species $0=b$,
+$1=c$) define, for $a\in\{0,1\}$, the distribution $\mathrm{gh}_a$ with $z^j$-coefficient equal to
+creation of $e_{j,a}$ for $j\ge0$ and to annihilation against the \emph{conjugate} species $e_{-j-1,a+1}$
+for $j<0$; $b=\mathrm{gh}_0$, $c=\mathrm{gh}_1$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak GhostSystem.lean}.
+\begin{leancode}
+noncomputable def ghField (a : Fin 2) : FormalDist (End ℂ FockSF) :=
+  fun j => if 0 ≤ j then creGh a j.toNat else annGh a (-j - 1).toNat
+noncomputable def bfield : FormalDist (End ℂ FockSF) := ghField 0
+noncomputable def cfield : FormalDist (End ℂ FockSF) := ghField 1
+\end{leancode}
+\begin{dictionary}
+Here the $z$-exponent indexing is respected: creation at $j\ge0$. The carrier \lean{FockSF} is reused
+from the symplectic-fermion files (it is the same exterior algebra). \lean{creGh a k} $=b$- or
+$c$-creation $a_{(-k-1)}$; \lean{annGh a k} contracts against species $a+1$, which is what makes $b$
+and $c$ conjugate to each other.
+\end{dictionary}
+\begin{physics}
+The reparametrisation ghosts of the bosonic string are a $bc$ system of weights $(\lambda,1-\lambda)$
+with $\lambda=2$; the modes $c_n$ of the weight $-1$ ghost and $b_n$ of the weight-$2$ antighost
+generate the ghost Fock space of BRST quantisation. At $\lambda=1$ ($b$ of weight $1$, $c$ of
+weight $0$) the system appears in the Drinfeld--Sokolov reduction of $\widehat{\mathfrak{sl}}_2$.
+\end{physics}
+\begin{status}
+Definitions; standard axioms.
+\end{status}
+
+\begin{theorem}[$bc$ anticommutators, locality, and the super vertex algebra]\label{l17:thm:bc}
+$\{\mathrm{gh}_a(j),\mathrm{gh}_b(k)\}=\delta_{j+k+1,0}\,\omega^{ab}$ with $\omega^{ab}=1$ for $a\neq b$
+and $0$ for $a=b$; all ghost fields are mutually $(-1)$-local fields; and there is a super vertex algebra
+\lean{bcGhostSVA} on the Fock space, graded by $\operatorname{wt}(b_{(-k-1)})=k+1$,
+$\operatorname{wt}(c_{(-k-1)})=k$ (i.e.\ $\lambda=1$), with Clifford parity, whose vertex operator is
+produced by super reconstruction.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak GhostSystem.lean}.
+\begin{leancode}
+theorem ghField_anticomm (a b : Fin 2) (j k : ℤ) :
+    ghField a j * ghField b k + ghField b k * ghField a j
+      = (if j + k + 1 = 0 then ghPair a b else 0) • (1 : End ℂ FockSF) := by
+...
+theorem ghField_localε (a b : Fin 2) : Localε (-1) (ghField a) (ghField b) := by
+...
+theorem ghField_isField (a : Fin 2) : IsField (ghField a) := by
+...
+noncomputable def bcGhostSVA : SuperVertexAlgebra FockSF where
+  grading := gradingGh
+  isInternal := gradingGh_isInternal
+  finrank := gradingGh_finrank
+  parity := evenOdd QSF
+\end{leancode}
+\begin{dictionary}
+\lean{ghPair a b} is $1$ when $b=a+1$ in \lean{Fin 2} (species differ) and $0$ otherwise.
+\lean{evenOdd QSF} is Mathlib's $\Z/2$-grading of the Clifford algebra by word length mod $2$.
+Finite-dimensionality of the weight spaces at $\lambda=1$ is not automatic (the weight-$0$ mode $c_{(-1)}$
+can be repeated) and uses that a creation monomial with a repeated mode vanishes. Spin--statistics
+fails ($b_{(-1)}\lseventeenvac$ is odd of weight $1$). There is no conformal vector: \lean{bcGhostSVA}
+is not a \lean{SuperNearVOA}.
+\end{dictionary}
+\begin{physics}
+$b(z)c(w)\sim\frac1{z-w}$: a first-order pole between two fermionic fields of conjugate weights. The
+additional $\Z$-grading by ghost number (\lean{ghostGrading}, $b$ has $-1$, $c$ has $+1$) reduces mod $2$
+to the parity.
+\end{physics}
+\begin{proof}[Proof on paper]
+The anticommutators are the Clifford relations; locality is the free-field criterion; lower
+truncation holds because at negative exponent the operators are annihilations of increasing level,
+which kill any fixed monomial. The super vertex algebra comes from super reconstruction applied to
+the word fields (iterated twisted normal-ordered products of derivatives of $b$ and $c$); the two
+compatibility axioms VA1, VA1$'$ are checked word by word.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms} of \lean{VOA.Ghost.ghField\_anticomm}, \lean{VOA.Ghost.bcGhostSVA}:
+\lean{[propext, Classical.choice, Quot.sound]}. Unconditional, \textbf{in the library's weak sense}: \lean{SuperVertexAlgebra}
+has no translation-covariance axiom (finding (F2), Theorem~\ref{l17:thm:nocov}), so \lean{bcGhostSVA} is a weaker statement
+than ``the $bc$ system is a vertex superalgebra'' in the standard sense; no super Jacobi identity is proved for it, and its
+Virasoro relation is open.
+\end{status}
+
+\begin{definition}[Ghost central charge and the ghost Virasoro statement]\label{l17:def:ghostvir}
+For $\lambda\in\C$ let $c(\lambda)=-2(6\lambda^2-6\lambda+1)$ and
+$L(z)=-\lambda{:}b\,\partial c{:}+(1-\lambda){:}(\partial b)c{:}$. \lean{IsGhostVirasoro λ} is the
+proposition that the modes of $L(z)$ satisfy the Virasoro relations with central charge $c(\lambda)$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak GhostSystem.lean}.
+\begin{leancode}
+def ghostCentralCharge (lam : ℂ) : ℂ := -2 * (6 * lam ^ 2 - 6 * lam + 1)
+...
+theorem ghostCentralCharge_two : ghostCentralCharge 2 = -26 := by
+...
+def IsGhostVirasoro (lam : ℂ) : Prop :=
+  ∀ m n : ℤ, Lgh lam m * Lgh lam n - Lgh lam n * Lgh lam m
+    = ((m : ℂ) - (n : ℂ)) • Lgh lam (m + n)
+      + (if m + n = 0 then ((m : ℂ) ^ 3 - (m : ℂ)) / 12 * ghostCentralCharge lam else 0)
+          • (1 : End ℂ FockSF)
+\end{leancode}
+\begin{dictionary}
+\lean{Lgh lam n} is the $z^{-n-2}$-coefficient of \lean{LghField lam}, the stated normal-ordered
+bilinear at Koszul sign $-1$ (so $L_n$ for a weight-$2$ field). \lean{IsGhostVirasoro} is a
+\emph{definition of a proposition}; it is \textbf{not proved for any $\lambda$}.
+\lean{ghostCentralCharge_two} is the arithmetic fact $-2(24-12+1)=-26$; it says nothing about the
+ghost system.
+\end{dictionary}
+\begin{physics}
+$c(\lambda)=-3(2\lambda-1)^2+1$. At $\lambda=2$, $c=-26$: the ghost anomaly cancels the $c=26$ of the
+matter in the critical bosonic string (Friedan--Martinec--Shenker). At $\lambda=1$, $c=-2$; at
+$\lambda=\frac12$ the $bc$ system is a complex (Dirac) fermion, $c=+1$.
+\end{physics}
+\begin{status}
+\texttt{\#print axioms VOA.Ghost.ghostCentralCharge\_two}: \lean{[propext, Classical.choice,
+Quot.sound]}. The Virasoro relation for the $bc$ system is \textbf{open} in the library.
+\end{status}
+
+\begin{warning}[title={Finding (F6): what the bc files do not contain}]
+The $bc$ files contain no stress tensor theorem, no \lean{SuperNearVOA}, no grading for $\lambda\neq1$,
+and in particular nothing about the $\lambda=2$ string ghosts beyond the polynomial identity
+$c(2)=-26$. The docstring of \leanpath{GhostSystem.lean} is honest about this. Severity: open gap (an
+advertised physical value is only arithmetic), in the same family as the other places in the library where a physically named
+value is checked only as arithmetic.
+\end{warning}
+
+\subsection{The beta-gamma system}\label{l17:sec:bg}
+
+\begin{definition}[$\beta\gamma$ fields]\label{l17:def:bg}
+On $\C[x_k,y_k:k\in\N]$ let $\beta(z)=\sum_j\beta_jz^j$ with $\beta_j$ = multiplication by $x_j$ for
+$j\ge0$ and $\partial/\partial y_{-j-1}$ for $j<0$, and $\gamma_j$ = multiplication by $y_j$ for $j\ge0$
+and $-\partial/\partial x_{-j-1}$ for $j<0$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak BetaGammaField.lean}.
+\begin{leancode}
+noncomputable def betaZ : FormalDist (Module.End ℂ Fock) :=
+  fun j => if 0 ≤ j then mulX (Sum.inl j.toNat) else der (Sum.inr (-j - 1).toNat)
+...
+noncomputable def gammaZ : FormalDist (Module.End ℂ Fock) :=
+  fun j => if 0 ≤ j then mulX (Sum.inr j.toNat) else -der (Sum.inl (-j - 1).toNat)
+\end{leancode}
+\begin{dictionary}
+\lean{Fock = MvPolynomial (ℕ ⊕ ℕ) ℂ}; \lean{Sum.inl k} is $x_k$ ($\beta$-creation $\beta_{(-k-1)}$),
+\lean{Sum.inr k} is $y_k$. These are the correctly oriented fields; \lean{betaZ j = BetaGamma.beta (-j-1)}
+(\lean{betaZ_eq}). The relation is $[\beta_{(m)},\gamma_{(n)}]=\delta_{m+n+1,0}$ (bosonic commutator,
+$\varepsilon=1$).
+\end{dictionary}
+\begin{physics}
+Symplectic bosons: commuting fields of weights $(\lambda,1-\lambda)$, $\beta(z)\gamma(w)\sim\frac{1}{z-w}$.
+At $\lambda=\frac32$ they are the superconformal ghosts of the RNS superstring ($c=+11$); at
+$\lambda=1$, $c=+2$; at $\lambda=\frac12$ (the library's choice), $c=-1$. In general
+$c_{\beta\gamma}(\lambda)=-c_{bc}(\lambda)$.
+\end{physics}
+\begin{status}
+Definitions; standard axioms.
+\end{status}
+
+\begin{theorem}[The $\beta\gamma$ super VOA]\label{l17:thm:bgsvoa}
+There is a purely even super VOA \lean{bgSVOA} on $\C[x_k,y_k]$ with $x_k,y_k$ of weight $k+\frac12$,
+$Y(x_0,z)=\beta(z)$, $Y(y_0,z)=\gamma(z)$, conformal vector
+$\omega=\frac12(x_0y_1-x_1y_0)$ and central charge $-1$. It has a nonzero weight space at the
+non-integer weight $\frac12$ and violates spin--statistics.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak BetaGammaInstance.lean}.
+\begin{leancode}
+noncomputable def bgSVA : SuperVertexAlgebra Fock where
+  grading := gradingBG
+  isInternal := gradingBG_isInternal
+  finrank := gradingBG_finiteDimensional
+  parity := (ParityGrading.even Fock).parity
+...
+theorem bgSVA_Y_beta : bgSVA.Y (X (Sum.inl 0) : Fock) = betaZ := by
+...
+theorem bgSVA_grading_notMem_intCast :
+    ∃ c : ℂ, bgSVA.grading c ≠ ⊥ ∧ ∀ n : ℤ, (n : ℂ) ≠ c :=
+...
+theorem bgSVA_not_spinStatistics : ¬ SpinStatistics bgSVA := by
+...
+noncomputable def bgOmega : Fock :=
+  (1 / 2 : ℂ) • stWordBG [Sum.inl 0, Sum.inr 1]
+    - (1 / 2 : ℂ) • stWordBG [Sum.inl 1, Sum.inr 0]
+...
+noncomputable def bgSVOA : SuperVertexOperatorAlgebra Fock :=
+  bgSNVOA.toSVOA (by simpa only using gradingBG_zero) (fun h hh => gradingBG_eq_bot_of_re_neg hh)
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak BetaGammaVirasoro.lean}.
+\begin{leancode}
+theorem Lbg_virasoro_id (m n : ℤ) :
+    Lbg m * Lbg n - Lbg n * Lbg m
+      = ((m : ℂ) - (n : ℂ)) • Lbg (m + n)
+        + (if m + n = 0 then ((m : ℂ) ^ 3 - (m : ℂ)) / 12 * (-1) else 0)
+            • (LinearMap.id : Module.End ℂ Fock)
+\end{leancode}
+\begin{dictionary}
+\lean{gradingBG c} is the space of weighted-homogeneous polynomials of weight $c$ for the weight
+function $x_k,y_k\mapsto k+\frac12$ (\lean{bgWt}). \lean{stWordBG [i, j]} is the monomial $X_iX_j$, so
+\lean{bgOmega} $=\frac12x_0y_1-\frac12x_1y_0$ (\lean{bgOmega_eq}). \lean{bgSNVOA} is the super near-VOA
+whose \lean{virasoro} field is \lean{Lbg_virasoro} transported (\lean{bgOmega_eq_BGVir}: this $\omega$
+is the state whose modes are the \lean{Lbg n}), and \lean{toSVOA} adds $\lseventeenV_0=\C1$ and
+positivity. \lean{bgSVA_grading_notMem_intCast} is the non-vacuity of Axis A: the grading cannot be
+reindexed by $\Z$. The weights $h_\beta=h_\gamma=\frac12$ are derived in \leanpath{BetaGammaVirasoro.lean}
+from primarity (\lean{weights_sum_one}: $h_\beta+h_\gamma=1$ is forced, symmetry gives $\frac12$).
+\end{dictionary}
+\begin{physics}
+$T(z)=\frac12{:}\beta\partial\gamma{:}-\frac12{:}\partial\beta\gamma{:}$, the stress tensor at
+$\lambda=\frac12$, $c=-1$. The state $\beta_{-1/2}|0\rangle$ is a boson of spin $\frac12$: the
+theory is non-unitary and violates spin--statistics in the opposite direction to symplectic fermions.
+\end{physics}
+\begin{proof}[Proof on paper]
+Reconstruction from the monomial words (the word fields are normal-ordered products of derivatives
+of $\beta,\gamma$, all bosonic). The Virasoro relation is a direct computation with normally ordered
+bilinears $L_n=\sum_jA_j{:}\beta\gamma{:}$; the coefficient family $A_j$ is forced by requiring
+$\beta,\gamma$ to be primary of weight $\frac12$, and the central term is the usual double
+contraction, here $-1$ because the fields are bosonic.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms} of \lean{VOA.BGInst.bgSVOA}, \lean{VOA.BGInst.bgSVA\_not\_spinStatistics}:
+\lean{[propext, Classical.choice, Quot.sound]}. Unconditional. \textbf{Purely even}: the parity is \lean{ParityGrading.even},
+so this instance never exercises the Koszul sign rule; it tests the half-integral weight axis only.
+\end{status}
+
+\begin{definition}[Super $C_2$, Poisson relation span, Etingof finiteness]\label{l17:def:c2}
+For a super VOA $W$: $C_2(W)=\operatorname{span}\{u_{(-2)}v\}$; $W$ is \emph{super $C_2$-cofinite}
+if $W/C_2(W)$ is finite-dimensional; $R=C_2(W)+\operatorname{span}\{a_{(0)}b\}$, and $W$ is
+\emph{super Etingof-finite} if $W/R$ is finite-dimensional.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak GammaThetaStatement.lean}.
+\begin{leancode}
+def superO₂ (W : SuperVertexOperatorAlgebra 𝒱) : Submodule ℂ 𝒱 :=
+  Submodule.span ℂ {x | ∃ u v : 𝒱, x = W.toSuperVertexAlgebra.smul u (-2) v}
+def SuperC2Cofinite (W : SuperVertexOperatorAlgebra 𝒱) : Prop :=
+  FiniteDimensional ℂ (𝒱 ⧸ superO₂ W)
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SuperPoissonTrace.lean}.
+\begin{leancode}
+def superZeroModeSpan (W : SuperVertexOperatorAlgebra 𝒱) : Submodule ℂ 𝒱 :=
+  Submodule.span ℂ {x : 𝒱 | ∃ a b : 𝒱, x = W.toSuperNearVOA.smul a 0 b}
+...
+def superPoissonRelSpan (W : SuperVertexOperatorAlgebra 𝒱) : Submodule ℂ 𝒱 :=
+  superO₂ W ⊔ superZeroModeSpan W
+...
+def SuperEtingofFinite (W : SuperVertexOperatorAlgebra 𝒱) : Prop :=
+  FiniteDimensional ℂ (SuperPoissonHP₀ W)
+\end{leancode}
+\begin{dictionary}
+\lean{SuperPoissonHP₀ W} is the quotient $\lseventeenV/R$ (\lean{SuperEtingofFinite_iff}). On a bosonic
+VOA these are literally the bosonic notions of Chapter~\ref{ch:L12}, Definitions~\ref{l12:def:c2}
+and~\ref{l12:def:etingof} (\lean{superC2Cofinite_toSuper_iff} is \lean{Iff.rfl}). $W/C_2(W)$ is
+Zhu's Poisson superalgebra $R_W$ and $W/R$ is its zeroth Poisson homology $R_W/\{R_W,R_W\}$; the
+library does not construct the Poisson structure on the quotient, only the vector space. Super
+Etingof-finiteness is the hypothesis of Arakawa--Kawasetsu (finitely many symplectic leaves implies it,
+by Etingof--Schedler).
+\end{dictionary}
+\begin{physics}
+$C_2$-cofinite (``lisse'') theories have finitely many sectors and modular characters; quasi-lisse
+theories (finitely many symplectic leaves in the associated variety) still have characters satisfying
+modular differential equations. Higgs-branch chiral algebras of 4d $\mathcal N=2$ theories are
+quasi-lisse; free $\beta\gamma$ is the simplest (associated variety $\C^2$, one leaf).
+\end{physics}
+\begin{status}
+Definitions; standard axioms.
+\end{status}
+
+\begin{theorem}[$\beta\gamma$ is quasi-lisse but not lisse]\label{l17:thm:bgquasi}
+\lean{bgSVOA} is not super $C_2$-cofinite, and it is super Etingof-finite (indeed $R$ is everything).
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak BetaGammaC2LowerBound.lean}.
+\begin{leancode}
+theorem not_SuperC2Cofinite_bgSVOA : ¬ SuperC2Cofinite bgSVOA := by
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak BetaGammaQuasiLisse.lean}.
+\begin{leancode}
+theorem superPoissonRelSpan_eq_top : superPoissonRelSpan bgSVOA = ⊤ :=
+...
+theorem bgSVOA_strict_halfIntegral_quasiLisse :
+    ¬ SuperC2Cofinite bgSVOA ∧ SuperEtingofFinite bgSVOA :=
+\end{leancode}
+\begin{dictionary}
+Both halves are unconditional. ``$R=\top$'' means $W/R=0$, which is finite-dimensional; this is not
+a degenerate trick: for the Weyl-type Poisson algebra $\C[\beta,\gamma]$ with $\{\beta,\gamma\}=1$ every
+polynomial is a bracket, $f=\{\beta,\int f\,d\gamma\}$, so $HP_0=0$.
+\end{dictionary}
+\begin{physics}
+The associated variety of $\beta\gamma$ is the symplectic plane $\C^2$: positive-dimensional
+(not lisse) but a single symplectic leaf (quasi-lisse). Its vacuum character
+$q^{1/24}\prod_{n}(1-q^{n-1/2})^{-2}$ is modular only for $\Gamma_\theta$-type subgroups and only up
+to the subtleties of non-$C_2$ theories.
+\end{physics}
+\begin{proof}[Proof on paper]
+Not $C_2$: the powers $x_0^n$ survive in $W/C_2$; a linear detector (the coefficient of $x_0^n$) kills
+every $u_{(-2)}v$ by a weight and $\beta$-minus-$\gamma$ charge count, and the detectors separate the
+classes $[x_0^n]$, which are therefore linearly independent. Etingof-finite: the zero mode of $x_0$
+acts as $\partial/\partial y_0$ and that of $y_0$ as $-\partial/\partial x_0$, so every derivative
+image lies in $R$; partial differentiation is surjective on polynomials over $\C$.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms} of \lean{VOA.BGNonC2.not\_SuperC2Cofinite\_bgSVOA} and
+\lean{VOA.BGInst.bgSVOA\_strict\_halfIntegral\_quasiLisse}: \lean{[propext, Classical.choice,
+Quot.sound]}. Unconditional.
+\end{status}
+
+\subsection{Symplectic fermions}\label{l17:sec:sf}
+
+\begin{definition}[Symplectic fermion fields]\label{l17:def:chi}
+On the exterior algebra $\mathrm{Fock}_{SF}$ on generators $e_{k,a}$ ($k\in\N$, $a\in\{0,1\}$), the
+fields $\chi^a(z)$ have $z^j$-coefficient creation of $e_{j,a}$ for $j\ge0$ and a contraction weighted by
+the symplectic form for $j<0$, with
+$\{\chi^a(j),\chi^b(k)\}=(-j-1)\,\delta_{j+k+2,0}\,\omega^{ab}$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak SymplecticFermion.lean}.
+\begin{leancode}
+noncomputable def chi (a : Fin 2) : FormalDist (Module.End ℂ FockSF) :=
+  fun j => if 0 ≤ j then creSF a j.toNat else annSF a (-j - 1).toNat
+...
+theorem chi_anticomm (a b : Fin 2) (j k : ℤ) :
+    chi a j * chi b k + chi b k * chi a j
+      = (if j + k + 2 = 0 then (((-j - 1 : ℤ) : ℂ) * sfOmega a b) else 0)
+        • (1 : Module.End ℂ FockSF) := by
+...
+theorem chi_localε (a b : Fin 2) : Localε (-1) (chi a) (chi b) := by
+\end{leancode}
+\begin{dictionary}
+In modes $\chi^a_m:=\chi^a(-m-1)$ (\lean{chiM}) the relation reads $\{\chi^a_m,\chi^b_n\}=m\,\delta_{m+n,0}\,\omega^{ab}$,
+with $\omega^{ab}$ the antisymmetric form \lean{sfOmega} ($\omega^{01}=-\omega^{10}$). The factor $m$
+makes the anticommutator a derivative of the delta function, so the locality order is $2$, not $1$
+(proved through \lean{deltaDeriv 1}, not the first-order free-field criterion). Weight of $\chi^a$: $1$.
+\end{dictionary}
+\begin{physics}
+Kausch's symplectic fermions: a pair of weight-$1$ fermions with $\chi^a(z)\chi^b(w)\sim\frac{\omega^{ab}}{(z-w)^2}$,
+central charge $c=-2$; equivalently the $\eta\xi$ system with $\xi$ replaced by $\partial\xi$. The
+prototypical logarithmic CFT: its even part is the triplet algebra $W(2)$, and its zero modes
+$\chi^a_0$ generate a Grassmann algebra on non-vacuum modules, responsible for Jordan blocks of $L_0$.
+\end{physics}
+\begin{status}
+\texttt{\#print axioms VOA.SympFerm.chi\_anticomm}: \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\begin{theorem}[The symplectic-fermion super VOA]\label{l17:thm:sfsvoa}
+There is a super VOA \lean{sympFermSVOA} on $\mathrm{Fock}_{SF}$, with $Y(\chi^a_{-1}\lseventeenvac,z)=\chi^a(z)$,
+integer weights in both parities, conformal vector $\omega_{SF}=-\chi^0_{-1}\chi^1_{-1}\lseventeenvac$, and
+central charge $-2$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak SymplecticFermionVOA.lean}.
+\begin{leancode}
+noncomputable def sympFermSNVOA : SuperNearVOA FockSF where
+  __ := sympFermSVA
+  conformalVector := ωSF
+...
+noncomputable def sympFermSVOA : SuperVertexOperatorAlgebra FockSF :=
+  sympFermSNVOA.toSVOA sympFermSNVOA_vacuum_grade sympFermSNVOA_positivity
+...
+@[simp] theorem sympFermSVOA_centralCharge : sympFermSVOA.centralCharge = -2 := rfl
+\end{leancode}
+\begin{dictionary}
+\lean{sympFermSVA} is the \lean{SuperVertexAlgebra} of \leanpath{SymplecticFermionInstance.lean}
+(grading by word weight, parity \lean{evenOdd QSF}, $Y$ from super reconstruction). The Virasoro field
+is \lean{YSF_omega_virasoro}, proved in \leanpath{SymplecticFermionVirasoroA.lean} by an explicit mode
+computation; VOA3 is \lean{YSF_translation}. The central charge being $-2$ by \lean{rfl} means it is the
+\lean{centralCharge} field, set to $-2$ and \emph{justified} by the Virasoro field, not merely asserted.
+\end{dictionary}
+\begin{physics}
+$T(z)=\omega_{ab}{:}\chi^a\chi^b{:}/2$ up to normalisation; $c=-2$. Spin--statistics fails (odd
+states of integer weight), as it must in a non-unitary logarithmic theory.
+\end{physics}
+\begin{proof}[Proof on paper]
+Reconstruction from the creation words; the Virasoro relation is the standard bilinear computation
+with a double-contraction anomaly $\frac{m^3-m}{12}\cdot(-2)$, the sign coming from the fermionic
+loop.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms VOA.SympFerm.sympFermSVOA}: \lean{[propext, Classical.choice, Quot.sound]}.
+Unconditional. It has genuinely odd states (the release audit elaborated \lean{sfCre 0 0 ∈ sympFermSVOA.parity 1}), so the Koszul
+sign is exercised; it is the library's only super VOA instance of which this is true.
+\end{status}
+
+\begin{theorem}[Symplectic fermions are super $C_2$-cofinite]\label{l17:thm:sfc2}
+$\dim\mathrm{Fock}_{SF}/C_2\le4$, spanned by the classes of $\lseventeenvac,\chi^0_{-1}\lseventeenvac,
+\chi^1_{-1}\lseventeenvac,\chi^0_{-1}\chi^1_{-1}\lseventeenvac$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak SympFermSuperC2.lean}.
+\begin{leancode}
+theorem sympFerm_superC2Cofinite : SuperC2Cofinite sympFermSVOA := by
+...
+theorem finrank_superC2Quotient_le_four :
+    Module.finrank ℂ (FockSF ⧸ superO₂ sympFermSVOA) ≤ 4 := by
+\end{leancode}
+\begin{dictionary}
+\lean{superO₂} is Definition~\ref{l17:def:c2}; the hand-built \lean{O₂SF} of
+\leanpath{SympFermC2.lean} is \emph{definitionally} the same span (\lean{O₂SF_eq_superO₂ : ... := rfl}).
+This is ambient $C_2$-cofiniteness; it does \emph{not} give $C_2$-cofiniteness of the even part
+$W(2)$ (whose $C_2$ uses only even vertex operators), as the file warns.
+\end{dictionary}
+\begin{physics}
+$R_{SF}=\Lambda(\chi^0,\chi^1)$: the associated scheme is a fat point with odd directions, so the
+theory is lisse, as expected of a $C_2$-cofinite logarithmic CFT.
+\end{physics}
+\begin{proof}[Proof on paper]
+$(\chi^a_{-1}\lseventeenvac)_{(-2)}v=\chi^a_{-2}v$ for every $v$, so every state with a level-$1$ creation
+operator in front is in $C_2$; levels $\ge2$ follow by translation, $T$ being an even derivation and
+$Tv=v_{(-2)}\lseventeenvac\in C_2$. A word whose leading operator is at level $0$ is handled by
+anticommuting it past; level-$0$ generators square to zero, leaving four survivors. (Using
+$T\lseventeenV\subseteq C_2$ alone would not terminate: $\lseventeenV/T\lseventeenV$ is
+infinite-dimensional here.)
+\end{proof}
+\begin{status}
+\texttt{\#print axioms VOA.SympFerm.sympFerm\_superC2Cofinite}: \lean{[propext, Classical.choice,
+Quot.sound]}. Unconditional.
+\end{status}
+
+\begin{theorem}[The super Zhu ring of symplectic fermions is not semisimple]\label{l17:thm:sfzhu}
+The super Zhu algebra $A(SF)$ (Definition~\ref{l17:def:superzhu}) is an associative ring of dimension
+at most $4$, $[\chi^a]\neq0$, and the two-sided ideal generated by $[\chi^0]$ is nonzero and
+square-zero; hence $A(SF)$ is not a semisimple ring.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak SympFermSuperZhu.lean}.
+\begin{leancode}
+theorem finrank_ASF_le_four : Module.finrank ℂ ASF ≤ 4 := by
+...
+theorem chiClass_ne_zero (a : Fin 2) : sfN.superMk hSF (chiStateSF a) ≠ 0 :=
+...
+theorem ASF_not_isSemisimpleRing :
+    letI := instRingASF
+    ¬ IsSemisimpleRing ASF :=
+\end{leancode}
+\begin{dictionary}
+\lean{sfN} is \lean{sympFermSVOA.toSuperNearVOA}, \lean{hSF} its integrality proof, \lean{ASF} the
+quotient \lean{sfN.superA hSF}, \lean{superMk} the class map. The ring structure \lean{instRingASF}
+comes from the discharged \lean{SuperZhuRingData} (Theorem~\ref{l17:thm:superzhuring}).
+\lean{IsSemisimpleRing} is Mathlib's notion (every module semisimple). The obstruction used is the
+correct one: a nonzero square-zero two-sided ideal; a nonzero nilpotent element would not suffice
+($M_2(\C)$ is semisimple). The bundled form is \lean{sympFerm_integralSuperC2FiniteZhuBenchmark}
+(\leanpath{SympFermSuperFiniteBenchmark.lean}): super $C_2$, ring data, and the ideal; it is
+deliberately not called ``strongly finite'', since simplicity and self-contragredience are not
+formalised on the super side.
+\end{dictionary}
+\begin{physics}
+For a rational theory Zhu's algebra is semisimple (its simple modules are the ground states of the
+sectors). Non-semisimplicity is the algebraic shadow of the logarithmic, non-split sectors of
+symplectic fermions; here $A(SF)\twoheadleftarrow\Lambda(\chi^0,\chi^1)$, the zero-mode Grassmann
+algebra.
+\end{physics}
+\begin{proof}[Proof on paper]
+$\dim\le4$: modulo $O(SF)$ one has $\chi^a_{-k-2}v\equiv-\chi^a_{-k-1}v$ (from $(L_{-1}+L_0)\chi^a\ast v\in O$),
+which reduces every word to the four bottom words. $[\chi^a]\neq0$: an evaluation homomorphism
+$\mathrm{Fock}_{SF}\to\C[\varepsilon]/(\varepsilon^2)$, $\chi^a_{-k-1}\mapsto(-1)^k\delta_{a,c}\varepsilon$,
+kills every generator of $O(SF)$ but not $\chi^c$. In the ring, $[\chi^a]^2=0$ and
+$[\chi^0][\chi^1]=-[\omega]=-[\chi^1][\chi^0]$, so the ideal generated by $[\chi^0]$ is spanned by
+$[\chi^0]$ and $[\chi^0][\chi^1]$ and squares to zero. In a semisimple ring a square-zero two-sided
+ideal is zero.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms VOA.SympFerm.ASF\_not\_isSemisimpleRing} and
+\lean{VOA.SympFerm.sympFerm\_integralSuperC2FiniteZhuBenchmark}: \lean{[propext, Classical.choice,
+Quot.sound]}. Unconditional. The dimension is proved only to be \emph{at most} $4$ (\lean{finrank_ASF_le_four}; also
+$\ge1$, \lean{one_le_finrank_ASF}); that $A(SF)$ is four-dimensional is not proved.
+\end{status}
+
+\begin{definition}[Super-rationality, library sense]\label{l17:def:superrat}
+$W$ is \lean{IsSuperRational} if every \lean{SympFermSuperOrdVModule} of $W$ (a super weak module with
+a $\C$-grading by finite-dimensional $L_0$-eigenspaces bounded below) is completely reducible: every
+submodule closed under all modes has a complement closed under all modes.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak SympFermIrrational.lean}.
+\begin{leancode}
+structure SympFermSuperOrdVModule (W : SuperVertexOperatorAlgebra 𝒱) (M : Type v)
+    [AddCommGroup M] [Module ℂ M] extends SuperWeakModule W.toSuperVertexAlgebra M where
+  weight : ℂ → Submodule ℂ M
+  isInternal : DirectSum.IsInternal weight
+  L0_weight : ∀ (α : ℂ) (x : M), x ∈ weight α → mode (YM W.conformalVector) 1 x = α • x
+  finrank : ∀ α, FiniteDimensional ℂ (weight α)
+  boundedBelow : ∃ B : ℝ, ∀ α : ℂ, weight α ≠ ⊥ → B ≤ α.re
+...
+def IsSuperRational (W : SuperVertexOperatorAlgebra 𝒱) : Prop :=
+  ∀ {M : Type u} [AddCommGroup M] [Module ℂ M] (A : SympFermSuperOrdVModule W M),
+    SuperWeakModule.IsCompletelyReducible A.toSuperWeakModule
+\end{leancode}
+\begin{dictionary}
+\lean{IsCompletelyReducible A} $:=\forall P\,\exists Q,\ \mathrm{IsCompl}\,P\,Q$ over mode-stable
+submodules. Compared with Dong--Li--Mason rationality (complete reducibility of \emph{admissible},
+$\N$-gradable modules) the class is different: graded by $L_0$-eigenvalues, so logarithmic modules
+are excluded from the start. The structure is a second copy of \lean{SuperOrdVModule} that
+\textbf{omits} the mode-weight axiom \lean{weight_mode}, so it is a \emph{larger} class than
+\lean{SuperOrdVModule}; the modules are quantified in universe \lean{u}, the universe of $\lseventeenV$.
+The library's own docstring flags that the name should carry the category (\lean{GradedSuperRational}).
+\end{dictionary}
+\begin{physics}
+Rationality = finitely many sectors, all completely reducible = no logarithmic partners. Symplectic
+fermions are the textbook irrational $C_2$-cofinite theory: their module with free zero modes is an
+indecomposable, non-simple extension.
+\end{physics}
+\begin{status}
+Definitions; standard axioms.
+\end{status}
+
+\begin{theorem}[``Symplectic fermions are not super-rational'' --- conditional]\label{l17:thm:sfirrat}
+If $N$ is a graded super module of $W$ with a proper nonzero submodule contained in every nonzero
+submodule, then $W$ is not super-rational. In particular, given such an $N$ for
+\lean{sympFermSVOA}, symplectic fermions are not super-rational. \textbf{This is a socle lemma, not
+a proof that symplectic fermions are irrational}: no such $N$ for \lean{sympFermSVOA} is constructed
+in the library (F4), and the hypothesis is precisely the missing mathematical content.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak SympFermIrrational.lean}.
+\begin{leancode}
+structure NonSplitSuperModule (W : SuperVertexOperatorAlgebra 𝒱) where
+  carrier : Type u
+  [addCommGroup : AddCommGroup carrier]
+  [module : Module ℂ carrier]
+  isMod : SympFermSuperOrdVModule W carrier
+  minimal : SuperWeakModule.Submodule' isMod.toSuperWeakModule
+  minimal_ne_bot : minimal.carrier ≠ ⊥
+  minimal_ne_top : minimal.carrier ≠ ⊤
+  minimal_le : ∀ Q : SuperWeakModule.Submodule' isMod.toSuperWeakModule,
+    Q.carrier = ⊥ ∨ minimal.carrier ≤ Q.carrier
+...
+theorem SympFerm.sympFermSVOA_not_isSuperRational
+    (N : NonSplitSuperModule SympFerm.sympFermSVOA) : ¬ IsSuperRational SympFerm.sympFermSVOA :=
+  not_isSuperRational_of_nonSplit N
+\end{leancode}
+\begin{dictionary}
+The hypothesis \lean{N} is the entire mathematical content: a non-split module. No term of type
+\lean{NonSplitSuperModule sympFermSVOA} exists in the library. The library proves, conversely, that the
+adjoint module cannot serve (\lean{not_hasFreeZeroModes_of_adjoint}: on $\mathrm{Fock}_{SF}$ the zero
+modes $\chi^a_0$ are the zero operator, \lean{zeroMode_adjoin_eq_bot}). So the theorem is a correct
+socle lemma (if a module has a minimal proper submodule, it is not completely reducible) and
+\emph{not} an irrationality theorem.
+\end{dictionary}
+\begin{physics}
+The missing object is the ``free zero-mode'' module $\Lambda(\chi^+_0,\chi^-_0)\otimes(\text{oscillators})$
+of Kausch and Gaberdiel--Kausch, whose socle $\C\chi^+_0\chi^-_0x$ has no complement; on it $L_0$
+is diagonalisable but the representation is non-split.
+\end{physics}
+\begin{proof}[Proof on paper]
+If $Q$ complemented the minimal submodule $P$, then either $Q=0$, forcing $P=\top$, or $P\le Q$,
+forcing $P=P\cap Q=0$.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms VOA.SympFerm.sympFermSVOA\_not\_isSuperRational}: \lean{[propext,
+Classical.choice, Quot.sound]}. \textbf{Conditional} on \lean{N : NonSplitSuperModule sympFermSVOA},
+never constructed (and essentially the conclusion; moreover \lean{IsSuperRational} quantifies over
+\lean{SympFermSuperOrdVModule}, which lacks \lean{weight_mode}). Irrationality of symplectic fermions is \textbf{open} in Lean and
+\textbf{not announceable}. What \emph{is}
+unconditional is the algebraic obstruction of Theorem~\ref{l17:thm:sfzhu}; no theorem in the library
+converts it into non-rationality.
+\end{status}
+
+\begin{warning}[title={Finding (F4): a conditional that assumes its conclusion; stale status block}]
+The name \lean{sympFermSVOA_not_isSuperRational} suggests a theorem about symplectic fermions; its
+only hypothesis is the non-split module, which is the whole content. In addition the ``Status'' block
+of \leanpath{SympFermIrrational.lean} says ``no super module of any kind exists, because
+\lean{SuperWeakModule} requires the super Jacobi identity and the library has no super
+Borcherds/Jacobi theorem''; this is false at the documented commit (Theorem~\ref{l17:thm:superjacobi},
+Proposition~\ref{l17:prop:adjoint}). And \lean{SympFermSuperOrdVModule} duplicates
+\lean{SuperOrdVModule} without \lean{weight_mode} (F8). Severities: open gap (conditional presented near an
+unconditional name), documentation only (docstring), moderate (duplicate, weaker structure).
+\end{warning}
+
+\subsection{The lattice super ambient}\label{l17:sec:lattice}
+
+The doublet and triplet constructions of Chapter~\ref{ch:L18} need an ambient lattice algebra whose
+conformal vector is deformed by a background charge, which produces rational (in particular
+half-integer) and \emph{negative} weights. \leanpath{LatticeSuperAmbientA.lean} and
+\leanpath{LatticeSuperAmbientB.lean} build it as a purely even \lean{SuperNearVOA}.
+
+\begin{theorem}[Lattice super near-VOA with background charge]\label{l17:thm:lattice}
+For an even positive-definite lattice $L$, a $\Q$-valued quadratic refinement $q$ with finite level
+sets, and a background charge $\lambda$ with $\langle\lambda,\beta\rangle=\frac12\langle\beta,\beta\rangle-q(\beta)$
+for all $\beta\in L$, the lattice vertex algebra with grading by $q$-refined weight and conformal vector
+$\omega_\lambda=\omega_L+\lambda_{(-2)}\lseventeenvac$ is a super near-VOA, bounded below, in general not
+positive.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak LatticeSuperAmbientB.lean}.
+\begin{leancode}
+def BgCompat (qr : QuadRefine L) (lam : Fin (rank L) → ℂ) : Prop :=
+  ∀ β : L.carrier, BgB.bgPair L lam β = ((halfNorm L β : ℤ) : ℂ) - ((qr.q β : ℚ) : ℂ)
+...
+noncomputable def latSNVOA (hEven : L.Even) (hPos : L.PosDef) (qr : QuadRefine L)
+    (hqf : QFinite L qr) (lam : Fin (rank L) → ℂ) (hcompat : BgCompat L qr lam) :
+    SuperNearVOA (LatModuleGen L) where
+\end{leancode}
+\begin{dictionary}
+The vertex operators, vacuum, creation, locality and regularity are the bosonic lattice ones of
+Chapter~\ref{ch:03}; only the grading (by $q$) and the conformal vector change. Parity is trivial.
+The new obligation VA1 for the refined grading holds because the refinement differs from the
+undeformed weight by $-\langle\lambda,\text{charge}\rangle$, additive in the charge.
+\lean{deformedAmbient_not_positivity} shows positivity genuinely fails in the doublet case.
+\end{dictionary}
+\begin{physics}
+A Coulomb gas: a free boson with background charge, $c=\operatorname{rank}L-12\langle\lambda,\lambda\rangle$;
+vertex operators $e^{\beta}$ acquire weights $\frac12\beta^2-\langle\lambda,\beta\rangle$, which can be
+fractional or negative. Screening operators inside it cut out the triplet and doublet algebras.
+\end{physics}
+\begin{status}
+\texttt{\#print axioms VOA.LatGen.SAmbB.latSNVOA}: \lean{[propext, Classical.choice, Quot.sound]}. Conditional on the displayed
+lattice data, which are instantiated in the files (\lean{tripletSNVOA}, \lean{Half.halfSuperNearVOA}).
+\end{status}
+
+%======================================================================
+\section{Super Zhu algebras, untwisted and twisted}\label{l17:sec:zhu}
+%======================================================================
+
+\begin{definition}[Super Zhu algebra]\label{l17:def:superzhu}
+Let $V$ be a super near-VOA with integer weights. For $u\in V_k$ put
+$u\ast v=\sum_{m=0}^{k}\binom km u_{(m-1)}v$, extended linearly; $O(V)=\operatorname{span}\{(L_{-1}u+L_0u)\ast v\}$;
+$A(V)=V/O(V)$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak SuperZhuRing.lean}.
+\begin{leancode}
+noncomputable def superZhuFamily (v : 𝒱) (k : ℤ) : (V.gradingZ k) →ₗ[ℂ] 𝒱 where
+  toFun uk := ∑ m ∈ Finset.range (k.toNat + 1), cbz k m • V.smul (uk : 𝒱) ((m : ℤ) - 1) v
+...
+def superO (hV : V.IntegralWeights) : Submodule ℂ 𝒱 :=
+  Submodule.span ℂ {x | ∃ u v : 𝒱, x = V.superZhuMul hV (V.L (-1) u + V.L 0 u) v}
+...
+abbrev superA (hV : V.IntegralWeights) : Type u := 𝒱 ⧸ V.superO hV
+\end{leancode}
+\begin{dictionary}
+\lean{V.IntegralWeights} says $V_h=0$ for $h\notin\Z$; \lean{gradingZ k} is $V_k$. \lean{superZhuMul}
+applies \lean{superZhuFamily} to the homogeneous components. The generator
+$(L_{-1}u+L_0u)\ast v$ for $u\in V_k$ equals Zhu's $u\circ v=\Res_z Y(u,z)v\frac{(1+z)^{k}}{z^2}$ (the
+Pascal identity is checked by hand in a docstring, not formalised). \textbf{No parity case split}: for
+an integrally graded super VOA this is the Zhu algebra relevant to untwisted (``Neveu--Schwarz'' in the
+integral sense) modules, as in Abe's treatment of symplectic fermions; Kac--Wang and Dong--Zhao's
+untwisted $A(V)$ for a $\frac12\Z$-graded VOSA (with $u\circ v=\Res_z Y(u,z)v\,(1+z)^{\wt u-1/2}/z$ for odd $u$)
+is \emph{not} covered: the library requires integer weights.
+\end{dictionary}
+\begin{physics}
+Ground states of a sector form a module over $A(V)$; the zero mode $o(u)=u_{(\wt u-1)}$ of each field
+acts on them, and $O(V)$ is the set of combinations whose zero modes vanish on every ground state.
+\end{physics}
+\begin{status}
+Definitions; standard axioms.
+\end{status}
+
+\begin{theorem}[$A(V)$ is an associative ring; Dong--Zhao Thm.~3.1]\label{l17:thm:superzhuring}
+For every integrally graded super VOA $W$, $O(W)$ is a two-sided ideal for $\ast$ and $\ast$ is
+associative modulo $O(W)$; so $A(W)$ is an associative unital $\C$-algebra. If $W$ is super
+$C_2$-cofinite, $A(W)$ is finite-dimensional.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak SuperZhuRingDischarge.lean}.
+\begin{leancode}
+theorem superZhuRingData (W : SuperVertexOperatorAlgebra 𝒱)
+    (hV : W.toSuperNearVOA.IntegralWeights) :
+    SuperZhuRingData W.toSuperNearVOA hV :=
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SuperZhuAlgebraFinite.lean}.
+\begin{leancode}
+theorem finiteDimensional_superA_of_superC2Cofinite (W : SuperVertexOperatorAlgebra 𝒱)
+    (hV : W.toSuperNearVOA.IntegralWeights) (hC2 : SuperC2Cofinite W) :
+    FiniteDimensional ℂ (W.toSuperNearVOA.superA hV) := by
+\end{leancode}
+\begin{dictionary}
+\lean{SuperZhuRingData V hV} is the proposition with fields \lean{left_ideal}, \lean{right_ideal},
+\lean{assoc} (\leanpath{Modules/\allowbreak SuperZhuRing.lean}); from it the ring and algebra instances
+are built (\lean{instRingSuperA}). The general near-VOA version \lean{superZhuRingData_holds} needs
+only integrality and vanishing of negative weight spaces. No spin--statistics, no skew gate.
+\end{dictionary}
+\begin{physics}
+Zhu's theorem: $A(V)$ is the algebra of zero modes on ground states; it is associative because the
+zero modes compose. The finite dimensionality reflects finitely many ground-state types in a lisse
+theory.
+\end{physics}
+\begin{proof}[Proof on paper]
+Zhu's residue calculus, run with the super Jacobi identity: the right-ideal and associator identities
+are residue manipulations in which every exchange of two vectors happens through the Jacobi identity,
+so the Koszul sign appears and cancels consistently; the left-ideal property follows from
+associativity. Finite-dimensionality: by triangularity in the weight, every $u_{(-2)}v$ equals
+$(L_{-1}u+L_0u)\ast v$ plus lower-weight terms, so a finite spanning set of $W/C_2$ spans $A(W)$.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms} of \lean{VOA.SuperVertexOperatorAlgebra.superZhuRingData} and
+\lean{VOA.SuperNearVOA.finiteDimensional\_superA\_of\_superC2Cofinite}: \lean{[propext,
+Classical.choice, Quot.sound]}. Unconditional beyond \lean{hV} (and \lean{hC2}).
+\end{status}
+
+\begin{definition}[Twisted super Zhu quotient]\label{l17:def:twistedzhu}
+Let $g$ be an even automorphism with $g^N=1$, $\delta_r=1$ if $r=0$ and $0$ otherwise. For $u\in W_k$
+in the eigenspace $W^r$ ($gu=e^{-2\pi ir/N}u$) put
+$u\circ_gv=\sum_{i\ge0}\binom{k-1+\delta_r+r/N}{i}u_{(i-1-\delta_r)}v$. Let $\bar u=\frac1N\sum_{a<N}g^au$
+(Reynolds average). $O_g(W)$ is spanned by the fixed-sector generators $(L_{-1}\bar u+L_0\bar u)\ast v$
+and the nonfixed residues $u\circ_gv$ ($u\in W_k\cap W^r$, $r\neq0$); $A_g(W)=W/O_g(W)$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak SuperTwistedZhu.lean}.
+\begin{leancode}
+noncomputable def twistedZhuCircleHom (W : SuperVertexOperatorAlgebra 𝒱)
+    (N r : ℕ) (k : ℤ) (u v : 𝒱) : 𝒱 :=
+  ∑ᶠ i : ℕ, fractionalBinom (twistedZhuExponent N r k) i •
+    W.smul u ((i : ℤ) - 1 - (twistedZhuDelta r : ℤ)) v
+...
+def SuperVertexOperatorAlgebra.twistedO
+    (W : SuperVertexOperatorAlgebra 𝒱) (hW : W.toSuperNearVOA.IntegralWeights)
+    (g : SuperAut W) (N : ℕ) : Submodule ℂ 𝒱 :=
+  Submodule.span ℂ (W.twistedZhuFixedGeneratorSet hW g N ∪
+    W.twistedZhuNonfixedGeneratorSet g N)
+...
+abbrev SuperVertexOperatorAlgebra.twistedA
+    (W : SuperVertexOperatorAlgebra 𝒱) (hW : W.toSuperNearVOA.IntegralWeights)
+    (g : SuperAut W) (N : ℕ) : Type u := 𝒱 ⧸ W.twistedO hW g N
+\end{leancode}
+\begin{dictionary}
+\lean{twistedZhuExponent N r k} $=k-1+\delta_r+r/N$; in the fixed sector the circle has exponent $k$
+and pole order $2$ (\lean{twistedZhuCircleHom_fixed}). At the identity twist $O_1=O$ exactly
+(\lean{twistedO_identity}). This matches Dong--Zhao (math/0411524), §3, in the integral-weight case;
+their sign-adjusted convention ($\sigma g$ in place of $g$) is kept separate in the library
+(\lean{SuperAut.twistedZhuSignAdjusted}). The ring axioms for $g\neq1$ are the unproved proposition
+\lean{SuperTwistedZhuRingData} (including the right-unit statement $u-\bar u\in O_g$); so for $g\ne1$
+$A_g$ is only a vector space in Lean.
+\end{dictionary}
+\begin{physics}
+Ground states of $g$-twisted sectors are modules for $A_g(V)$; the nonfixed fields have no zero modes
+in a $g$-twisted sector (their modes are fractional), which is why $W^r$, $r\neq0$, is killed.
+In the library the quotient $A_g(W)$ is a genuine object, but the map from twisted modules to it
+(\lean{SuperTwistedModule.twistedZeroModeAction}) takes a \lean{SuperTwistedModule}, which for
+$N\ge2$ is the zero space (F1); so no nonzero ground-state module of a twisted sector is ever
+produced.
+\end{physics}
+\begin{status}
+Definitions; standard axioms.
+\end{status}
+
+\begin{theorem}[Twisted Zhu finiteness]\label{l17:thm:twistedzhufinite}
+If $W$ is integrally graded and super $C_2$-cofinite, $g^N=1$ with $N>0$, and the eigenspace
+decomposition of $g$ is internal and compatible with weight and parity, then $A_g(W)$ is
+finite-dimensional.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak SuperTwistedZhuFinite.lean}.
+\begin{leancode}
+theorem finiteDimensional_twistedA_of_superC2Cofinite
+    (W : SuperVertexOperatorAlgebra 𝒱) (hW : W.toSuperNearVOA.IntegralWeights)
+    (g : SuperAut W) {N : ℕ} (hN : 0 < N) (_hpow : g ^ N = 1)
+    (hE : TwistEigenspaceDecomposition W g N) (hC2 : SuperC2Cofinite W) :
+    FiniteDimensional ℂ (W.twistedA hW g N) := by
+\end{leancode}
+\begin{dictionary}
+\lean{TwistEigenspaceDecomposition W g N} has three fields: \lean{isInternal} (the eigenspaces
+$W^r$, $r\in\Z/N$, form an internal direct sum, i.e.\ $g$ is diagonalisable) and the two statements that
+the projections preserve each $W_k$ and each parity. Over $\C$ a finite-order operator is
+diagonalisable, and on each finite-dimensional $W_k$ the projections are polynomials in $g$; so this
+hypothesis is in principle derivable from $g^N=1$, but the library supplies it as data. \lean{_hpow}
+is recorded but not used. The conclusion concerns a vector space (no ring structure needed). This
+theorem does \emph{not} involve \lean{SuperTwistedModule}, so finding (F1) does not touch it: it is a
+true statement about the vector space $A_g(W)$. What (F1) does touch is any intended application to
+twisted modules: there is no nonzero twisted module with $N\ge2$ in the library for $A_g(W)$ to act on.
+\end{dictionary}
+\begin{physics}
+A lisse theory has finitely many ground-state types in each twisted sector too.
+\end{physics}
+\begin{proof}[Proof on paper]
+Triangular reduction by weight within each eigen-sector: for $u\in W^r_k$, the leading term of the
+circle residue is $u_{(-2)}v$ (fixed sector) or $u_{(-1)}v$ plus a pole-one tail (nonfixed), which
+reduces $C_2$ modulo $O_g$ and strictly lower weights; a finite spanning set of $W/C_2$ then spans
+$A_g$.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms VOA.finiteDimensional\_twistedA\_of\_superC2Cofinite}: \lean{[propext,
+Classical.choice, Quot.sound]}. Conditional on \lean{hE} (diagonalisability data), \lean{hW},
+\lean{hC2}.
+\end{status}
+
+%======================================================================
+\section{The modular toolkit for super and half-integral theories}\label{l17:sec:modularity}
+%======================================================================
+
+For a bosonic rational $C_2$-cofinite VOA, Zhu's theorem (Chapter~\ref{ch:L15}) says that the torus
+one-point functions $\tr_Mo(v)q^{L_0-c/24}$ span an $SL_2(\Z)$-invariant space. With fermions or
+half-integer weights two things change. First, $T:\tau\mapsto\tau+1$ multiplies a $q^{h}$-term by
+$e^{2\pi ih}=-1$ when $h\in\frac12+\Z$, so only $T^2$ is a symmetry of a single character and the
+natural group is the theta group $\Gamma_\theta=\langle S,T^2\rangle$. Second, a fermion on a torus
+needs a spin structure: a choice of periodic or antiperiodic boundary condition along each of the two
+cycles. The four spin structures $(\mu,\lambda)\in\{\pm\}^2$ correspond to the four traces
+$\tr_{NS}$, $\tr_{NS}(-1)^F$, $\tr_R$, $\tr_R(-1)^F$ and are permuted by $SL_2(\Z)$ through its
+action on $(\Z/2)^2$; $\Gamma_\theta$ is the stabiliser of the NS--NS structure. This section presents
+the group theory, the automorphy factor, the four ``spin'' Eisenstein-type coefficient families of
+van Ekeren, and the proved transformation statements.
+
+\begin{definition}[The theta group]\label{l17:def:gammatheta}
+$\Gamma_\theta=\{g\in SL_2(\Z): g\equiv\begin{psmallmatrix}1&0\\0&1\end{psmallmatrix}\text{ or }
+g\equiv\begin{psmallmatrix}0&1\\1&0\end{psmallmatrix}\pmod 2\}$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak ThetaGroup.lean}.
+\begin{leancode}
+def redEntry (g : SL(2, ℤ)) (i j : Fin 2) : ZMod 2 :=
+  (((g : Matrix (Fin 2) (Fin 2) ℤ) i j : ℤ) : ZMod 2)
+...
+def IsThetaCongr (g : SL(2, ℤ)) : Prop :=
+  (redEntry g 0 0 = 1 ∧ redEntry g 0 1 = 0 ∧ redEntry g 1 0 = 0 ∧ redEntry g 1 1 = 1) ∨
+    (redEntry g 0 0 = 0 ∧ redEntry g 0 1 = 1 ∧ redEntry g 1 0 = 1 ∧ redEntry g 1 1 = 0)
+def GammaTheta : Subgroup SL(2, ℤ) where
+  carrier := {g | IsThetaCongr g}
+\end{leancode}
+\begin{dictionary}
+Mod $2$, $S=\begin{psmallmatrix}0&-1\\1&0\end{psmallmatrix}\equiv\begin{psmallmatrix}0&1\\1&0\end{psmallmatrix}$,
+so this is ``$g\equiv I$ or $g\equiv S$''. Closure under products and inverses is proved by computation
+in $\Z/2$. Standard (e.g.\ Knopp, \emph{Modular functions in analytic number theory}, Ch.~2).
+\end{dictionary}
+\begin{physics}
+$\Gamma_\theta$ is the subgroup of the mapping class group of the torus preserving the NS--NS
+(antiperiodic--antiperiodic) spin structure, i.e.\ the modular group of a single fermionic partition
+function $\tr_{NS}q^{L_0-c/24}$.
+\end{physics}
+\begin{status}
+A definition; standard axioms.
+\end{status}
+
+\begin{theorem}[Generation and index]\label{l17:thm:gammatheta}
+$\Gamma_\theta=\langle S,T^2\rangle$, $T\notin\Gamma_\theta$, $\Gamma(2)\le\Gamma_\theta$, and
+$[SL_2(\Z):\Gamma_\theta]=3$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak ThetaGroup.lean}.
+\begin{leancode}
+theorem Gamma_two_le : CongruenceSubgroup.Gamma 2 ≤ GammaTheta := by
+...
+theorem T_not_mem : ModularGroup.T ∉ GammaTheta := by
+...
+def genSTsq : Subgroup SL(2, ℤ) :=
+  Subgroup.closure ({ModularGroup.S, ModularGroup.T ^ 2} : Set SL(2, ℤ))
+...
+theorem GammaTheta_eq_genSTsq : GammaTheta = genSTsq := by
+...
+theorem index_eq_three : GammaTheta.index = 3 := by
+\end{leancode}
+\begin{dictionary}
+\lean{Subgroup.closure} is the subgroup generated. \lean{index} is Mathlib's \lean{Subgroup.index}
+(the cardinality of $SL_2(\Z)/\Gamma_\theta$). \lean{genSTsq} is definitionally the \lean{thetaGroup}
+of \leanpath{Modularity/\allowbreak SlashSubgroup.lean} (Chapter~\ref{ch:L14}), and
+\lean{GammaThetaStmt.thetaGroup_eq} records \lean{SlashSub.thetaGroup = ThetaGroup.GammaTheta}.
+\end{dictionary}
+\begin{physics}
+The three cosets $\Gamma_\theta$, $T^{-1}\Gamma_\theta$, $(TS)^{-1}\Gamma_\theta$ correspond to the
+three even spin structures (NS--NS, NS--R, R--NS), permuted by $SL_2(\Z)$; the odd R--R structure is
+fixed.
+\end{physics}
+\begin{proof}[Proof on paper]
+$\langle S,T^2\rangle\le\Gamma_\theta$ since both generators are in it. Conversely, $SL_2(\Z)$ acts on
+the three right cosets of $\langle S,T^2\rangle$ represented by $1,T,TS$ (checked on the generators
+$S,T$); an element of $\Gamma_\theta$ maps the coset of $1$ to that of $t\in\{1,T,TS\}$ with
+$t\in\Gamma_\theta$, and $T,TS\notin\Gamma_\theta$ force $t=1$. Index: every $g$ is in exactly one of
+three explicit cosets, by its reduction mod $2$ ($SL_2(\Z/2)\cong S_3$ has order $6$ and the image of
+$\Gamma_\theta$ has order $2$).
+\end{proof}
+\begin{status}
+\texttt{\#print axioms} of \lean{VOA.ThetaGroup.GammaTheta\_eq\_genSTsq},
+\lean{VOA.ThetaGroup.index\_eq\_three}: \lean{[propext, Classical.choice, Quot.sound]}. Unconditional.
+\end{status}
+
+\begin{theorem}[A half-integral automorphy factor on $\Gamma_\theta$]\label{l17:thm:halfaut}
+The principal square root $s(A,\tau)=\sqrt{c\tau+d}$ satisfies, for all $A,B\in SL_2(\Z)$ and $\tau$ in
+the upper half-plane, $s(AB,\tau)=m(A,B)\,s(A,B\tau)\,s(B,\tau)$ with a constant $m(A,B)$ independent
+of $\tau$; hence a \lean{HalfAutFactor} exists on every subgroup, in particular on $\Gamma_\theta$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SlashSubgroup.lean}.
+\begin{leancode}
+structure HalfAutFactor (Γ : Subgroup SL(2, ℤ)) where
+  sq : SL(2, ℤ) → UpperHalfPlane → ℂ
+  sq_sq : ∀ A ∈ Γ, ∀ τ : UpperHalfPlane, sq A τ ^ (2 : ℤ) = autFactor A τ
+  sq_ne_zero : ∀ A ∈ Γ, ∀ τ : UpperHalfPlane, sq A τ ≠ 0
+  mult : SL(2, ℤ) → SL(2, ℤ) → ℂ
+  cocycle : ∀ A ∈ Γ, ∀ B ∈ Γ, ∀ τ : UpperHalfPlane,
+    sq (A * B) τ = mult A B * (sq A (B • τ) * sq B τ)
+  sq_one : ∀ τ : UpperHalfPlane, sq 1 τ = 1
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak ThetaHalfAutFactor.lean}.
+\begin{leancode}
+noncomputable def principalHalfRoot (A : SL(2, ℤ)) (τ : UpperHalfPlane) : ℂ :=
+  Complex.sqrt (autFactor A τ)
+...
+noncomputable def thetaHalfAutFactor : HalfAutFactor thetaGroup :=
+  principalHalfAutFactor thetaGroup
+...
+theorem thetaHalfAutFactorExists : ThetaHalfAutFactorExists :=
+  ⟨SlashSub.thetaHalfAutFactor⟩
+\end{leancode}
+\begin{dictionary}
+\lean{autFactor A τ} $=c\tau+d$ (Chapter~\ref{ch:L14}). The crucial point is that \lean{mult} does
+\emph{not} depend on $\tau$; that is a real constraint, proved by continuity of the ratio, the fact that
+its square is $1$, and connectedness of the upper half-plane (evaluate at $\tau=i$). The resulting
+multiplier is $\pm1$-valued; the docstring's ``intended'' theta multiplier (an eighth root of unity) is
+a different, equally valid choice, the difference being absorbable into the representation $\rho$ of a
+modularity statement. \lean{ThetaHalfAutFactorExists} is
+\lean{Nonempty (SlashSub.HalfAutFactor SlashSub.thetaGroup)}.
+\end{dictionary}
+\begin{physics}
+Characters of weight $\frac12$ objects ($\eta$, $\theta$-functions, fermionic partition functions with
+insertions of half-integral weight) transform with $(c\tau+d)^{1/2}$ times a multiplier system; this is
+the analytic datum needed to even state $\Gamma_\theta$-modularity.
+\end{physics}
+\begin{proof}[Proof on paper]
+$s(AB,\tau)^2=j(AB,\tau)=j(A,B\tau)j(B,\tau)=(s(A,B\tau)s(B,\tau))^2$ ($j$ the automorphy factor, a
+cocycle), so the ratio $m$ is a continuous function on the upper half-plane with values in $\{\pm1\}$
+(the denominator never vanishes), hence constant.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms VOA.GammaThetaStmt.thetaHalfAutFactorExists}: \lean{[propext,
+Classical.choice, Quot.sound]} (umbrella check). Unconditional.
+\end{status}
+
+\begin{definition}[Spin pairs and their $SL_2(\Z)$-action]\label{l17:def:spinpair}
+A spin pair is $(\mu,\lambda)\in(\Z/2)^2$ (bit $0$ for $+1$, $1$ for $-1$); $A=\begin{psmallmatrix}a&b\\c&d\end{psmallmatrix}$
+acts on the right by $(\mu,\lambda)\cdot A=(a\mu+c\lambda,\,b\mu+d\lambda)$ mod $2$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SuperSpinCoefficients.lean}.
+\begin{leancode}
+structure SpinPair where
+  mu : SpinPhase
+  lambda : SpinPhase
+deriving DecidableEq, Fintype
+...
+def act (A : SL(2, ℤ)) (p : SpinPair) : SpinPair :=
+  ⟨p.mu * ThetaGroup.redEntry A 0 0 + p.lambda * ThetaGroup.redEntry A 1 0,
+   p.mu * ThetaGroup.redEntry A 0 1 + p.lambda * ThetaGroup.redEntry A 1 1⟩
+\end{leancode}
+\begin{dictionary}
+\lean{SpinPhase} is \lean{ZMod 2}. Proved: a right action (\lean{act_mul}), $S$ swaps the labels,
+$T$ sends $(\mu,\lambda)\mapsto(\mu,\mu+\lambda)$, $T^2$ fixes everything, and every element of
+$\Gamma_\theta$ either fixes or swaps (\lean{act_gammaTheta_self_or_swap}). The labels are \emph{not}
+identified with parity: \lean{mu} and \lean{lambda} are spatial and temporal eigenvalue labels.
+\end{dictionary}
+\begin{physics}
+$\mu$ labels the boundary condition along the spatial circle (the twist $g$ of the sector), $\lambda$
+along the time circle (the insertion $h$ in the trace). The action is the orbifold rule
+$(g,h)\cdot A=(g^ah^c,g^bh^d)$ of Dong--Li--Mason read on $\pm1$ eigenvalues. For fermions the physical
+spin structure combines these labels with the conformal sign $\kappa=e^{2\pi iL_0}$ (\leanpath{SuperConformalSign.lean}),
+which is why $T$ fixes the label $(+,+)$ and yet $T\notin\Gamma_\theta$: on half-integral weights $T$
+itself produces a sign.
+\end{physics}
+\begin{status}
+Definitions; standard axioms.
+\end{status}
+
+\begin{definition}[Characteristic theta functions]\label{l17:def:thetachar}
+$\Theta[a,b](z,\tau)=e^{\pi ia^2\tau+2\pi ia(z+b)}\,\vartheta(z+a\tau+b,\tau)$ with
+$\vartheta(z,\tau)=\sum_ne^{\pi in^2\tau+2\pi inz}$ (Mathlib's \lean{jacobiTheta₂}); for a spin pair
+the characteristics are $a,b\in\{0,\frac12\}$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SuperSpinThetaBridge.lean}.
+\begin{leancode}
+noncomputable def spinThetaChar (a b z tau : Complex) : Complex :=
+  Complex.exp (Real.pi * Complex.I * a ^ 2 * tau +
+    2 * Real.pi * Complex.I * a * (z + b)) *
+      jacobiTheta₂ (z + a * tau + b) tau
+...
+noncomputable def spinPairTheta (p : SpinPair) (z tau : Complex) : Complex :=
+  spinThetaChar (spinThetaHalf p.mu) (spinThetaHalf p.lambda) z tau
+\end{leancode}
+\begin{dictionary}
+\lean{spinThetaHalf} sends $+\mapsto0$, $-\mapsto\frac12$. This is the standard theta function with
+characteristics (Mumford, \emph{Tata lectures on theta I}, §II.1).
+\end{dictionary}
+\begin{physics}
+$\vartheta[a,b](0,\tau)/\eta(\tau)$ are the partition functions of a complex fermion in the four
+spin structures; their ratios and logarithmic derivatives are the propagators of a fermion on the
+torus, which is how they enter the genus-one recursion.
+\end{physics}
+\begin{status}
+Definitions; standard axioms.
+\end{status}
+
+\begin{theorem}[Spin theta $S$-law]\label{l17:thm:thetaS}
+For all $a,b,z\in\C$ and $\tau\neq0$,
+\begin{equation*}
+\Theta[a,b]\Bigl(\frac z\tau,-\frac1\tau\Bigr)=(-i\tau)^{1/2}\,e^{\pi iz^2/\tau+2\pi iab}\,\Theta[b,-a](z,\tau),
+\end{equation*}
+and, for $\operatorname{Im}\tau>0$, the cross-multiplied difference of logarithmic derivatives of two
+such theta functions transforms homogeneously with the factor $((-i\tau)^{1/2})^2$ and the product of
+the two Gaussian-and-phase exponentials.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SuperSpinThetaBridge.lean}.
+\begin{leancode}
+theorem spinThetaChar_S (a b z tau : Complex) (htau : tau ≠ 0) :
+    spinThetaChar a b (z / tau) (-1 / tau) =
+      (-Complex.I * tau) ^ (1 / 2 : Complex) *
+        Complex.exp (Real.pi * Complex.I * z ^ 2 / tau +
+          2 * Real.pi * Complex.I * a * b) * spinThetaChar b (-a) z tau := by
+...
+theorem spinThetaCross_S
+    (a b c d z tau : Complex) (htauIm : 0 < tau.im) :
+    thetaCross
+        (fun w => spinThetaChar a b (w / tau) (-1 / tau))
+        (fun w => spinThetaChar c d (w / tau) (-1 / tau)) z =
+      ((-Complex.I * tau) ^ (1 / 2 : Complex)) ^ 2 *
+        Complex.exp (2 * (Real.pi * Complex.I * z ^ 2 / tau) +
+          2 * Real.pi * Complex.I * (a * b + c * d)) *
+        thetaCross (fun w => spinThetaChar b (-a) w tau)
+          (fun w => spinThetaChar d (-c) w tau) z := by
+\end{leancode}
+\begin{dictionary}
+\lean{(-Complex.I * tau) ^ (1 / 2 : Complex)} is the principal power $(-i\tau)^{1/2}$.
+\lean{thetaCross f g z} $=f'(z)g(z)-g'(z)f(z)$, so $\mathrm{thetaCross}=0$ says the logarithmic
+derivatives agree; the second statement is the denominator-free form of the law for
+$\partial_z\log\Theta[a,b]-\partial_z\log\Theta[c,d]$. The characteristic $[b,-a]$ is unreduced
+($-a$ rather than $-a$ mod $1$); reduction only changes a constant sign. \textbf{This is the analytic
+kernel only}: the identification of the coefficient families $P^{\mu,\lambda}_k$ below with Taylor
+coefficients of these logarithmic derivatives (a Jacobi triple product / Lambert expansion) is
+\emph{not} in the library, so no $S$-law for the non-$(+,+)$ spin coefficients follows.
+\end{dictionary}
+\begin{physics}
+Poisson summation: $S$ exchanges space and time, hence the two characteristics, i.e.\ the NS--R and
+R--NS spin structures, with the modular anomaly $(-i\tau)^{1/2}$ of a weight-$\frac12$ object.
+\end{physics}
+\begin{proof}[Proof on paper]
+Mathlib's \lean{jacobiTheta₂_functional_equation} is the case $a=b=0$; substitute
+$w=z-a+b\tau$ and collect the Gaussian exponentials (a polynomial identity in the exponents). For the
+logarithmic-derivative form, the $z$-independent phase and the common Gaussian cancel in
+$f'g-g'f$.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms} of \lean{VOA.spinThetaChar\_S}, \lean{VOA.spinThetaCross\_S}: \lean{[propext,
+Classical.choice, Quot.sound]}. Unconditional.
+\end{status}
+
+\begin{definition}[Van Ekeren's spin coefficient series]\label{l17:def:spinP}
+For a spin pair $p=(\mu,\lambda)$ and $k\in\N$, $P^{\mu,\lambda}_k$ is the formal series on the half-lattice
+$\frac12\N$ of exponents with constant term $\delta_{k,0}\delta_{p,(+,-)}\pi i-\frac{(2\pi i)^{k+1}}{(k+1)!}B_{k+1}(1+\varepsilon_\mu)$
+($\varepsilon_+=0$, $\varepsilon_-=-\frac12$) and higher coefficients the Lambert sums of van Ekeren's
+Lemma 3.1; $Q^{\mu,\lambda}_k=(2\pi i)^{-k-1}P^{\mu,\lambda}_k$, and $\mathcal Q^{\mu,\lambda}_k(\tau)=\sum_NQ_k(N/2)e^{\pi iN\tau}$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SuperSpinCoefficients.lean}.
+\begin{leancode}
+noncomputable def spinP (p : SpinPair) (k : ℕ) : FormalQSeries :=
+  halfLatticeQSeries (spinPNatCoeff p k)
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SuperSpinRelations.lean}.
+\begin{leancode}
+noncomputable def spinQ (p : SpinPair) (k : Nat) : FormalQSeries :=
+  (spinTwoPiI ^ (k + 1))⁻¹ • spinP p k
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SuperSpinAnalytic.lean}.
+\begin{leancode}
+noncomputable def spinQAnalyticTerm (p : SpinPair) (k N : Nat) (z : Complex) : Complex :=
+  spinQ p k (halfQExponent N) *
+    Complex.exp (spinTwoPiI * z * halfQExponent N)
+noncomputable def spinQAnalytic (p : SpinPair) (k : Nat) (z : Complex) : Complex :=
+  ∑' N : Nat, spinQAnalyticTerm p k N z
+\end{leancode}
+\begin{dictionary}
+\lean{FormalQSeries} is $\C\to\C$ (coefficient at a complex exponent, Chapter~\ref{ch:L14});
+\lean{halfLatticeQSeries a} places $a(N)$ at exponent $N/2$ and $0$ elsewhere; \lean{spinPNatCoeff}
+is the explicit cusp-plus-Lambert coefficient (quoted in full in the source; it uses
+\lean{Polynomial.bernoulli} and divisor sums over \lean{Nat.divisorsAntidiagonal}). \lean{∑'} is
+Mathlib's \lean{tsum} (value $0$ if not summable; summability is proved,
+\lean{summable_spinQAnalyticTerm}, for $\operatorname{Im}z>0$). Proved fidelity check: at $(+,+)$ and
+$k=2j-1$, $Q$ is \emph{exactly} Zhu's normalised Eisenstein series \lean{zhuG j}
+(Chapter~\ref{ch:L14}, Definition~\ref{l14:def:zhuG}; \lean{spinP_pp_eq_spinTwoPiI_pow_zhuG}); for
+$\mu=+$ the odd half-exponents vanish.
+\end{dictionary}
+\begin{physics}
+These are the coefficient functions of the twisted Weierstrass functions $P_k\bigl[{\mu\atop\lambda}\bigr](z,\tau)$
+that appear in genus-one recursion for traces over twisted sectors with twisted insertions (Mason--Tuite--Zuevsky,
+van Ekeren). In the untwisted sector they are the Eisenstein series $G_{2k}$. (The coefficient
+functions are genuine; but the twisted-sector traces they are meant to enter are, in the library,
+traces over \lean{SuperTwistedModule}s with $N\ge2$, which are zero spaces (F1).)
+\end{physics}
+\begin{status}
+Definitions; standard axioms. Holomorphy (\lean{differentiableOn_spinQAnalytic}) and uniform convergence
+on closed sub-half-planes are proved.
+\end{status}
+
+\begin{theorem}[Proved transformation cells]\label{l17:thm:spinS}
+For every spin pair, $\mathcal Q^{\mu,\lambda}_k(\tau+2)=\mathcal Q^{\mu,\lambda}_k(\tau)$. In the invariant
+sector $(+,+)$: for $j\ge2$, $\mathcal Q_{2j-1}(-1/\tau)=\tau^{2j}\mathcal Q_{2j-1}(\tau)$, and
+$\mathcal Q_1(-1/\tau)=\tau^2\mathcal Q_1(\tau)-\tau/(2\pi i)$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SuperSpinAnalytic.lean}.
+\begin{leancode}
+theorem spinQAnalytic_add_two (p : SpinPair) (k : Nat) (z : Complex) :
+    spinQAnalytic p k (z + 2) = spinQAnalytic p k z := by
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SuperSpinS.lean}.
+\begin{leancode}
+theorem spinQAnalytic_pp_higher_S {j : Nat} (hj : 2 ≤ j) {z : Complex}
+    (hz : z ∈ imGT 0) :
+    spinQAnalytic SpinPair.pp (2 * j - 1) (-1 / z) =
+      z ^ (2 * j) * spinQAnalytic SpinPair.pp (2 * j - 1) z := by
+...
+theorem spinQAnalytic_pp_one_S {z : Complex} (hz : z ∈ imGT 0) :
+    spinQAnalytic SpinPair.pp 1 (-1 / z) =
+      z ^ 2 * spinQAnalytic SpinPair.pp 1 z - z / spinTwoPiI := by
+\end{leancode}
+\begin{dictionary}
+\lean{imGT 0} is $\{z:\operatorname{Im}z>0\}$. The $(+,+)$ cells are the Eisenstein $S$-laws of
+Chapter~\ref{ch:L14} transported through the identification with \lean{zhuGC}; the weight-$2$ cell
+carries the $G_2$ anomaly. \textbf{The three other spin sectors have no proved $S$-law}; the
+$T^2$-law holds for all four. The weight-$1$ case $k=0$ (a constant) is deliberately not given a
+transformation law.
+\end{dictionary}
+\begin{physics}
+Only the untwisted Eisenstein series are covered; the twisted ones, which mix sectors under $S$
+($(+,-)\leftrightarrow(-,+)$), are exactly what a $\Gamma_\theta$-modularity proof needs.
+\end{physics}
+\begin{proof}[Proof on paper]
+$T^2$: every exponent $N/2$ satisfies $e^{2\pi i(N/2)\cdot2}=1$. $S$ at $(+,+)$: the odd half-exponents
+vanish, the even ones reindex to $\sum_nG_{2j}(n)q^n$, and the Eisenstein law applies.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms} of the three theorems: \lean{[propext, Classical.choice, Quot.sound]}.
+Unconditional, as statements about coefficient functions. Their intended use, traces over twisted (spin) sectors, is
+vacuous in the library: those sectors are \lean{SuperTwistedModule}s with $N\ge2$, hence zero (F1).
+\end{status}
+
+\subsection{Genus-one blocks for integrally graded super VOAs}
+
+\textbf{Notation: square-bracket modes.} Genus-one (torus) quantities are naturally written in the
+cylinder coordinate $w$, with $z=e^{w}-1$. Zhu's change of coordinates
+(Chapter~\ref{ch:L15}, Definition~\ref{l15:def:sqmode}; Chapter~\ref{ch:L16}, §\ref{l16:sec:formal})
+defines, for $a$ of integral weight $k$, the field $Y[a,w]=Y(a,e^{w}-1)e^{kw}=\sum_{m\in\Z}a[m]w^{-m-1}$;
+its coefficients $a[m]$ are the \emph{square-bracket modes}. Each $a[m]$ is a finite combination
+$a[m]=a_{(m)}+(\text{terms }a_{(m+i)},\ i\ge1)$ of ordinary modes, so $a[-2]b$ differs from $a_{(-2)}b$
+by terms of lower weight. The square-bracket Virasoro operators are
+$L[n]=\omega[n+1]-\frac c{24}\delta_{n,-2}\,\mathrm{id}$, and $a$ is \emph{square-bracket primary} of weight $\Delta$
+if $L[0]a=\Delta a$ and $L[n]a=0$ for $n\ge1$. The functions $G_{2m+2}(z)$ below are Zhu's normalised
+Eisenstein series (Chapter~\ref{ch:L14}, Definition~\ref{l14:def:zhuGC}).
+
+\begin{definition}[Analytic super block]\label{l17:def:superblock}
+For an integrally graded super near-VOA $V$, a function $F:V\times\{\operatorname{Im}z>0\}\to\C$, linear
+in the state and holomorphic in $z$, is an analytic super block if $F(a[0]v)=0$ for $a\in V_k$, $k\ge1$,
+$F(a[-2]v)+\sum_{m\ge0}(2m+1)G_{2m+2}(z)F(a[2m]v)=0$, and the $\omega$-recursion
+$F(L[-2]v)=\frac1{2\pi i}\partial_zF(v)+\sum_mG_{2m+2}(z)F(L[2m]v)$ holds.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SuperAnalyticBlock.lean}.
+\begin{leancode}
+structure IsSuperAnalyticBlock (F : 𝒱 → ℂ → ℂ) : Prop where
+  holo : ∀ v : 𝒱, DifferentiableOn ℂ (F v) (imGT 0)
+  addv : ∀ (v w : 𝒱) (z : ℂ), F (v + w) z = F v z + F w z
+  smulv : ∀ (c : ℂ) (v : 𝒱) (z : ℂ), F (c • v) z = c * F v z
+  vanish : ∀ (k : ℕ), 1 ≤ k → ∀ a ∈ V.gradingZ (k : ℤ), ∀ v : 𝒱,
+    F (V.superVSqZ a k 0 v) = 0
+  negTwo : ∀ (k : ℕ), 1 ≤ k → ∀ a ∈ V.gradingZ (k : ℤ), ∀ (v : 𝒱), ∀ z ∈ imGT 0,
+    F (V.superVSqZ a k (-2) v) z
+      + ∑ᶠ m : ℕ, ((2 * (m + 1) - 1 : ℕ) : ℂ)
+          * (zhuGC (m + 1) z
+            * F (V.superVSqZ a k (2 * (m + 1) - 2 : ℤ) v) z) = 0
+  omega : ∀ (v : 𝒱), ∀ z ∈ imGT 0,
+    F (V.superLsq (-2) v) z
+      = (2 * (Real.pi : ℂ) * Complex.I)⁻¹ * _root_.deriv (F v) z
+        + ∑ᶠ m : ℕ, zhuGC (m + 1) z
+            * F (V.superLsq (2 * (m + 1) - 2 : ℤ) v) z
+\end{leancode}
+\begin{dictionary}
+\lean{V.superVSqZ a k m} is the square-bracket mode $a[m]$ for $a$ of weight $k$ (Zhu's change of
+coordinates, Chapter~\ref{ch:L15}, Definition~\ref{l15:def:sqmode}); \lean{superLsq n} $=L[n]$;
+\lean{zhuGC j} $=G_{2j}$ in Zhu's normalisation (Chapter~\ref{ch:L14}, Definition~\ref{l14:def:zhuGC}).
+The $m=0$ term of \lean{negTwo} is $G_2F(a[0]v)$, killed by \lean{vanish}, so this is Zhu's recursion
+$\sum_{k\ge2}$. The Koszul sign does not appear in the definition: it appears only when $a[0]v$ is
+identified, modulo $O(V)$, with a supercommutator $[a]\ast[v]-(-1)^{pq}[v]\ast[a]$
+(\leanpath{SuperZhuCommutator.lean}); a supertrace kills supercommutators.
+\end{dictionary}
+\begin{physics}
+The torus one-point functions $\lseventeenstr_Mo(v)q^{L_0-c/24}$ (with the $(-1)^F$ insertion, i.e.\ the
+$(+,-)$-type temporal structure for integral weights) satisfy these Ward identities; the definition
+axiomatises them.
+\end{physics}
+\begin{status}
+A definition; standard axioms.
+\end{status}
+
+\begin{theorem}[Super Arike--Nagatomo upper bound]\label{l17:thm:AN}
+If $W$ is an integrally graded, super $C_2$-cofinite super VOA, the space of analytic super blocks
+(restricted to the upper half-plane) is finite-dimensional and its dimension is at most the dimension
+of the space of supersymmetric linear functionals on $A(W)$ (those $\phi$ with
+$\phi(ab)=(-1)^{pq}\phi(ba)$ on homogeneous $a,b$).
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SuperBlockBoundC2.lean}.
+\begin{leancode}
+theorem finrank_superAnalyticBlocks_le_finrank_superZhuSymmetricFunctionals
+    (W : SuperVertexOperatorAlgebra 𝒱) (hV : W.toSuperNearVOA.IntegralWeights)
+    (hC2 : SuperC2Cofinite W) :
+    finrank ℂ (Submodule.map restrictImGT W.toSuperNearVOA.superAnalyticBlocks)
+      ≤ (let hZ := W.superZhuRingData hV
+        letI := hZ.AsRing
+        letI := hZ.AsAlgebra
+        finrank ℂ hZ.superZhuSymmetricFunctionals) := by
+\end{leancode}
+\begin{dictionary}
+\lean{restrictImGT} restricts functions to the upper half-plane. \lean{finrank} of an
+infinite-dimensional space is $0$ in Mathlib, so the companion
+\lean{finiteDimensional_superAnalyticBlocks_of_superC2} (finite-dimensionality) is what prevents the
+inequality from being vacuous; it is proved. No rationality or semisimplicity is assumed. The bound
+is the upper-bound half of Arike--Nagatomo's theorem (super version); the realisation of the bound by
+pseudo-supertraces is not proved.
+\end{dictionary}
+\begin{physics}
+The number of independent torus amplitudes with a $(-1)^F$ insertion is at most the number of
+supersymmetric functionals on the zero-mode algebra; in a logarithmic theory such as symplectic
+fermions, pseudo-supertraces over non-semisimple sectors are expected to saturate it.
+\end{physics}
+\begin{proof}[Proof on paper]
+Every block kills the relation space spanned by the $a[0]v$ and the $a[-2]v+\dots$; by $C_2$-cofiniteness
+and a triangular descent (the square-bracket $a[-2]b$ differs from $a_{(-2)}b$ by lower-weight terms),
+finitely many states $T$ span modulo the relations at some interior point, with $|T|$ bounded by the
+cusp quotient, which is identified with $A(W)/[A(W),A(W)]_{\mathrm{super}}$
+(\leanpath{SuperCuspFunctionalCount.lean}); a block vanishing at $T$ at one point vanishes identically
+by the $\omega$-ODE. Its dual is the space of supersymmetric functionals.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms
+VOA.SuperNearVOA.\allowbreak finrank\_superAnalyticBlocks\_\allowbreak le\_finrank\_\allowbreak superZhuSymmetricFunctionals}:
+\lean{[propext, Classical.choice, Quot.sound]}. Unconditional beyond \lean{hV}, \lean{hC2}. Instance:
+symplectic fermions (\leanpath{SympFermSuperBlockBound.lean}, dimension $\le4$).
+\end{status}
+
+\begin{theorem}[Supertraces are formal super blocks]\label{l17:thm:formalblock}
+For every graded super module $N$ of an integrally graded super VOA, the formal one-point supertrace
+$v\mapsto\sum_e\lseventeenstr_{N_{e+c/24}}o(v)\,q^e$ is a formal super block: it kills the relation
+module and satisfies the $\omega$-recursion with the formal Eisenstein coefficients.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SuperTorusRecursionClose.lean}.
+\begin{leancode}
+theorem superTorusOnePoint_isSuperFormalBlock
+    (N : SuperOrdVModule W M) (hW : W.toSuperNearVOA.IntegralWeights) :
+    SuperNearVOA.IsSuperFormalBlock W (N.superTorusOnePoint hW) := by
+\end{leancode}
+\begin{dictionary}
+\lean{IsSuperFormalBlock W S} (\leanpath{SuperFormalBlock.lean}) is the conjunction of
+``\lean{superBlockRelSpanG} is in the kernel of every supported lift'' and the formal $\omega$-recursion
+$S(L[-2]v)=q\frac{d}{dq}S(v)+\sum_m G_{2m+2}\ast S(L[2m]v)$ (\lean{qConv} is convolution with the
+coefficient sequence). \lean{superTorusOnePoint} takes at exponent $e$ the supertrace (\lean{supertrace},
+$\tr((-1)^F\cdot)$, basis-free) of the zero mode on $N_{e+c/24}$. Since the only \lean{SuperOrdVModule}s
+constructed are bosonic (\lean{OrdVModule.toSuper}), this theorem has no instance with a nonzero odd
+part in the library.
+\end{dictionary}
+\begin{physics}
+Zhu's recursion for torus amplitudes with $(-1)^F$: the two signs (Koszul in the commutator, Koszul in
+supertrace cyclicity) cancel, so the bosonic Lambert--Eisenstein resummation goes through.
+\end{physics}
+\begin{proof}[Proof on paper]
+The super module commutator formula from the $\ell=0$ slice of the module Jacobi identity gives
+$o(a[0]b)=o(a)o(b)-(-1)^{pq}o(b)o(a)$, which has zero supertrace by Koszul cyclicity; the $[-2]$ and
+$\omega$ relations follow from Zhu's geometric-series argument, the compensated pair carrying one
+Koszul scalar from the iterate and the same from cyclicity, whose product is $1$.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms VOA.SuperOrdVModule.superTorusOnePoint\_isSuperFormalBlock}: \lean{[propext,
+Classical.choice, Quot.sound]}. Unconditional; untwisted sector only. Odd (type-Q) traces: only the
+square-bracket-zero slice is proved.
+\end{status}
+
+\begin{theorem}[Super Arakawa--Kawasetsu formal ODE]\label{l17:thm:AK}
+If $W$ is integrally graded and super Etingof-finite, $S$ is a formal super block supported on
+$q^{h+\N}$, and $a$ is square-bracket primary, then $S(a)$ satisfies a monic formal $q$-differential
+equation $(q\frac d{dq})^sS(a)+\sum_{i<s}g_i\ast(q\frac d{dq})^iS(a)=0$ with subexponential coefficient
+sequences $g_i$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SuperAKFormalODE.lean}.
+\begin{leancode}
+theorem formalODE_of_etingofFinite_of_sqPrimary {S : 𝒱 →ₗ[ℂ] FormalQSeries} {hbase : ℂ}
+    (hsupp : ∀ v, S v ∈ QSeriesAt hbase) (hS : SuperNearVOA.IsSuperFormalBlock W S)
+    (hV : W.toSuperNearVOA.IntegralWeights) (hE : SuperEtingofFinite W) {a : 𝒱} {Δ : ℂ}
+    (ha : W.toSuperNearVOA.IsSuperSqPrimary a Δ) :
+    ∃ (s : ℕ) (g : ℕ → ℕ → ℂ), 1 ≤ s ∧ (∀ i, Subexponential (fun k => ‖g i k‖)) ∧
+      ∀ e : ℂ, (qDeriv^[s] (S a)) e
+        + ∑ i ∈ Finset.range s, qConv (g i) (qDeriv^[i] (S a)) e = 0 :=
+\end{leancode}
+\begin{dictionary}
+\lean{QSeriesAt hbase}: series supported on $hbase+\N$. \lean{IsSuperSqPrimary a Δ}: $L[0]a=\Delta a$,
+$L[n]a=0$ for $n\ge1$. \lean{qDeriv} is $q\frac d{dq}$ on formal series; \lean{Subexponential}: growth
+$e^{o(k)}$ (Chapter~\ref{ch:L14}, Definition~\ref{l14:def:subexp}). The coefficients are formal series,
+not elements of $\C[G_4,G_6]$; so this is \textbf{not} a modular linear differential equation, and
+nothing about modularity or convergence follows (the docstring says so).
+\end{dictionary}
+\begin{physics}
+Arakawa--Kawasetsu: characters of quasi-lisse theories satisfy modular linear differential equations.
+The formal shadow proved here is the Noetherian argument; the modular coefficients and the analytic
+continuation are missing.
+\end{physics}
+\begin{proof}[Proof on paper]
+By Etingof-finiteness the block span is a finitely generated module over the Noetherian ring of Zhu's
+quasimodular coefficients, so the tower $S(L[-2]^ia)$ satisfies a monic relation; for a primary $a$ the
+$\omega$-recursion makes $S(L[-2]^ia)$ unitriangular in $(q\frac d{dq})^jS(a)$, which converts the relation.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms VOA.SuperAK.formalODE\_of\_etingofFinite\_of\_sqPrimary}: \lean{[propext,
+Classical.choice, Quot.sound]}. Conditional on \lean{hS} (supplied by Theorem~\ref{l17:thm:formalblock}
+for supertraces), \lean{hV}, \lean{hE}, \lean{ha}. No instance in the library combines integral weights,
+super Etingof-finiteness and a genuinely odd part.
+\end{status}
+
+\subsection{The half-integral side: finite cusp descent}
+
+\begin{theorem}[Finite square-spin cusp quotient]\label{l17:thm:cusp}
+Let $W$ be a half-integrally graded super VOA ($W_h=0$ unless $h\in\frac12\Z$), super $C_2$-cofinite, and
+$(g,h)$ a commuting pair of involutive even automorphisms. Then the quotient of $W$ by the
+square-spin cusp relation span of the $(+,+)$ inner eigensector of $(g,h)$ is finite-dimensional.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SuperSpinDescentSqFinite.lean}.
+\begin{leancode}
+theorem BoundaryPair.finiteDimensional_superSpinSqCuspQuotient_of_superC2
+    (b : BoundaryPair W) (hhalf : IsHalfIntegerGraded W)
+    (hspatial : b.spatial ^ 2 = 1) (htemporal : b.temporal ^ 2 = 1)
+    (hC2 : SuperC2Cofinite W) :
+    FiniteDimensional Complex
+      (VType ⧸ superSpinSqCuspRelSpan W hhalf b.spinEigenspace) :=
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SuperSectorSystem.lean}.
+\begin{leancode}
+structure BoundaryPair (W : SuperVertexOperatorAlgebra VType) where
+  spatial : SuperAut W
+  temporal : SuperAut W
+  commute : Commute spatial temporal
+\end{leancode}
+\begin{dictionary}
+\lean{IsHalfIntegerGraded W}: $W_k=0$ unless $k=m/2$ for some $m\in\Z$ (\leanpath{GammaThetaStatement.lean}).
+\lean{b.spinEigenspace} assigns to each \lean{SpinPair} the simultaneous $\pm1$ eigenspace of the two
+involutions; \lean{superSpinSqCuspRelSpan} is spanned by the cusp ($q\to0$) limits of the square-bracket
+spin relations together with the three non-$(+,+)$ eigenspaces, the square $C_2$ being formed with the
+square-bracket $[-2]$ products (a separate span \lean{superSqO₂}, because ordinary $C_2$ is not
+square-graded). No spin--statistics and no identification of $g,h$ with parity. This does not involve
+twisted modules, so (F1) does not touch it.
+\end{dictionary}
+\begin{physics}
+The finiteness of the space of genus-one conformal blocks in one spin structure, at the level of the
+cusp: the algebraic precondition of any $\Gamma_\theta$-modularity theorem.
+\end{physics}
+\begin{proof}[Proof on paper]
+Ordinary $C_2$-cofiniteness implies square $C_2$-cofiniteness by unitriangular induction on doubled
+weight (the square $[-2]$ mode has leading coefficient one); projecting to the $(+,+)$ eigenspace is
+compatible with the square grading.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms
+VOA.SuperNearVOA.\allowbreak BoundaryPair.\allowbreak finiteDimensional\_\allowbreak superSpinSqCuspQuotient\_\allowbreak of\_superC2}:
+\lean{[propext, Classical.choice, Quot.sound]}. Unconditional beyond its hypotheses. No half-integrally
+graded super $C_2$-cofinite instance exists in the library ($\beta\gamma$ is not $C_2$-cofinite; the free
+fermion is not built).
+\end{status}
+
+%======================================================================
+\section{The four-by-three grid: what each cell contains}\label{l17:sec:grid}
+%======================================================================
+
+The project organises super modularity as a grid. The \emph{columns} are four independent kinds of
+object: integral non-super (ordinary VOAs), integral super (integer weights, nontrivial parity),
+half-integral non-super (weights in $\frac12\Z$, purely even; represented as purely even
+\lean{SuperVertexOperatorAlgebra}s, since \lean{VertexOperatorAlgebra} is $\Z$-graded), and
+half-integral super. The \emph{rows} are three routes to modularity: (R1) strong rationality and Zhu's
+theorem (Chapter~\ref{ch:L15}); (R2) strong finiteness and the Arike--Nagatomo / pseudo-trace theorem
+(Chapter~\ref{ch:L18}); (R3) the quasi-lisse (Etingof-finite) Arakawa--Kawasetsu route
+(Chapter~\ref{ch:L16}). A cell is \emph{complete} only when the corresponding modular-invariance
+theorem is proved for the abstract class \emph{and} instantiated. The table below says exactly what is
+in Lean. ``(F1)'' marks a component that is vacuous by Theorem~\ref{l17:thm:twistvacuous}: it takes
+a \lean{SuperTwistedModule} with $N\ge2$ as input, and (when this chapter was first written, and still in the released source) every such module is
+the zero space. Such components are listed
+for completeness only; they have no mathematical content.
+
+\begin{center}
+\scriptsize
+\renewcommand{\arraystretch}{1.3}
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{1.4cm}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{3.1cm}@{}}
+\toprule
+& \textbf{Integral non-super} & \textbf{Integral super} & \textbf{Half-integral non-super} &
+\textbf{Half-integral super}\\
+\midrule
+\endhead
+\textbf{R1 Zhu} &
+Bosonic $SL_2(\Z)$ modularity proved \emph{conditionally} on \lean{StronglyRational} plus named
+Dong--Li--Mason inputs (Chapter~\ref{ch:L15}). No model instantiated (Lee--Yang lacks
+\lean{StronglyRational}). &
+Proved: super Zhu ring (Thm.~\ref{l17:thm:superzhuring}); identity-sector supertrace is a formal
+block (Thm.~\ref{l17:thm:formalblock}); finite type-M/type-Q Wedderburn functional calculus for a
+\emph{supplied} decomposition (\leanpath{SuperWedderburn}\allowbreak\leanpath{Trace.lean}, \leanpath{QueerOddTrace.lean}).
+Supplied-data sector realization (\lean{FiniteCompleteSector}\allowbreak\lean{TraceRealization}): vacuous for $N\ge2$
+(F1). No modularity theorem. No model. &
+Proved: $\Gamma_\theta$, half-automorphy factor, spin coefficients with $T^2$-law and $(+,+)$ $S$-cells
+(Thms.~\ref{l17:thm:gammatheta}--\ref{l17:thm:spinS}); finite cusp descent
+(Thm.~\ref{l17:thm:cusp}). Denominator-two trace carrier: vacuous (F1). No $\Gamma_\theta$ theorem.
+No model. &
+Same foundation as the previous column (parity independent of weight). No $\Gamma_\theta$ theorem.
+Intended model, the free fermion, exists only as operators (Thm.~\ref{l17:thm:psinotfield}).\\
+\addlinespace
+\textbf{R2 AN} &
+Analytic-block upper bound and partial pseudo-trace blocks (Chapter~\ref{ch:L18}); realization,
+convergence, spanning, modular invariance open. &
+Proved: super AN upper bound (Thm.~\ref{l17:thm:AN}). Model: symplectic fermions are super
+$C_2$-cofinite with non-semisimple $A(SF)$, $\dim\le4$ (Thms.~\ref{l17:thm:sfc2},
+\ref{l17:thm:sfzhu}); bound $\le4$ for them. No pseudo-supertraces; irrationality only conditional
+(Thm.~\ref{l17:thm:sfirrat}). &
+Finite cusp descent (Thm.~\ref{l17:thm:cusp}); the recursion bridge
+(\lean{SuperSpinSq}\allowbreak\lean{RecursionData}) has three unproved fields and acts on a vacuous carrier (F1). &
+Same, parity independent. No model.\\
+\addlinespace
+\textbf{R3 AK} &
+A common monic MLDE for analytic blocks from \lean{EtingofFinite} and supplied grading/Ramanujan
+inputs (Chapter~\ref{ch:L16}); character modularity open. &
+Proved: formal super AK ODE (Thm.~\ref{l17:thm:AK}), conditional on a formal block and
+\lean{SuperEtingofFinite}; relative quotient carriers for twisted modules vacuous for $N\ge2$ (F1).
+No convergence, no modularity. No model. &
+Proved: Noetherian bounded coefficient algebra and a $pp$ cusp recurrence
+(\leanpath{SuperSpinQuasiLisse}\allowbreak\leanpath{Algebra.lean}), conditional on \lean{SuperSpinCusp}\allowbreak\lean{EulerData} and
+\lean{SuperSpinRelative}\allowbreak\lean{EtingofData}. Model: $\beta\gamma$ is super Etingof-finite and not super $C_2$
+(Thm.~\ref{l17:thm:bgquasi}); no trace or ODE instantiated. &
+Same conditional infrastructure, parity independent. No model.\\
+\bottomrule
+\end{longtable}
+\end{center}
+
+\begin{warning}[title={The grid in one sentence}]
+\textbf{No cell of the three new columns contains a modular-invariance theorem}, conditional or not;
+every proved item is a foundation, a finiteness or upper-bound result, a formal (non-analytic) ODE, or
+a transformation law of the Eisenstein-type coefficient functions. In addition, finding (F1) empties
+every component that uses a \lean{SuperTwistedModule} with $N\ge2$: the half-integral trace
+carriers, the Ramond support statements, the twisted sector realization, and the relative quotients
+of twisted modules. The integral non-super column is documented in Chapters~\ref{ch:L15},
+\ref{ch:L16}, \ref{ch:L18}; its status was not re-verified for this chapter.
+\end{warning}
+
+%======================================================================
+\section{Machine status of the headlines}\label{l17:sec:status}
+%======================================================================
+
+All axiom checks below were run for this chapter on a scratch file importing the relevant modules
+(the umbrellas \leanpath{Modularity/\allowbreak SuperIntegral.lean} and
+\leanpath{Modularity/\allowbreak HalfIntegralGridFoundations.lean} among them) with
+\texttt{lake env lean -DmaxSynthPendingDepth=3}; no full \texttt{lake build} was run. Every
+declaration listed reports exactly the three standard axioms; \textbf{none uses \lean{VOA.pbw} (the PBW theorem of Chapter~\ref{ch:L02}; formerly a project axiom, now a theorem)}.
+
+\begin{plaincode}
+'VOA.SuperVertexAlgebra' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.SuperVertexAlgebra.dong_fields' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.SuperVertexAlgebra.goddard_uniquenessε' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.SuperNearVOA.superBorcherds' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.SuperNearVOA.superJacobi' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.SuperNearVOA.superSmul_eq_skew_Lpow' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.SuperVertexOperatorAlgebra.skew_modeε' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.SuperVertexOperatorAlgebra.orderOf_parityAut_eq_two' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.SuperVertexOperatorAlgebra.evenPartVOA' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.SuperNearVOA.adjointSuperWeakModule' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.FreeFermion.psi_localε' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Ghost.bcGhostSVA' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.BGInst.bgSVOA' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.BGNonC2.not_SuperC2Cofinite_bgSVOA' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.SympFerm.sympFermSVOA' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.SympFerm.sympFerm_superC2Cofinite' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.SympFerm.ASF_not_isSemisimpleRing' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.SympFerm.sympFermSVOA_not_isSuperRational' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.SuperVertexOperatorAlgebra.superZhuRingData' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.finiteDimensional_twistedA_of_superC2Cofinite' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.ThetaGroup.GammaTheta_eq_genSTsq' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.ThetaGroup.index_eq_three' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.spinThetaChar_S' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.spinQAnalytic_pp_higher_S' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.spinQAnalytic_pp_one_S' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.SuperNearVOA.finrank_superAnalyticBlocks_le_finrank_superZhuSymmetricFunctionals' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.SuperAK.formalODE_of_etingofFinite_of_sqPrimary' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.SuperOrdVModule.superTorusOnePoint_isSuperFormalBlock' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.SuperNearVOA.BoundaryPair.finiteDimensional_superSpinSqCuspQuotient_of_superC2' depends on axioms: [propext, Classical.choice, Quot.sound]
+\end{plaincode}
+
+The Lean checks behind Theorems~\ref{l17:thm:nocov}, \ref{l17:thm:twistvacuous} and~\ref{l17:thm:psinotfield}
+(not part of this release) compile with the same three axioms.
+
+\paragraph{Release audit 2026-10-27: RELEASE\_AUDIT\_L17\_L18\_L23.md.} The independent release audit
+\texttt{Notes/\allowbreak Textbook/\allowbreak referee/\allowbreak RELEASE\_AUDIT\_L17\_L18\_L23.md} re-elaborated, at a later
+pre-release commit and from the existing build products (\texttt{lake env lean -DmaxSynthPendingDepth=3}; \texttt{lake build}
+not run), \lean{SuperNearVOA.superJacobi}, \lean{evenPartVOA}, \lean{sympFermSVOA}, \lean{sympFerm_superC2Cofinite},
+\lean{ASF_not_isSemisimpleRing}, \lean{finrank_ASF_le_four}, \lean{sympFermSVOA_not_isSuperRational}, \lean{bgSVOA},
+\lean{not_SuperC2Cofinite_bgSVOA}, \lean{bgSVOA_superEtingofFinite} and \lean{bcGhostSVA}; each reports only the three standard
+axioms. It recompiled the checks mentioned above. Verdicts: \emph{super VOAs, even part, symplectic fermions, $\beta\gamma$:
+announceable with caveats} --- the super Jacobi identity for \lean{SuperNearVOA}, \lean{evenPartVOA} and \lean{sympFermSVOA}
+($c=-2$, genuinely odd) are sound; super $C_2$-cofiniteness and non-semisimplicity of the super Zhu algebra are proved, its
+dimension only shown $\le4$ (m11); \lean{bgSVOA} ($c=-1$) is purely even (m10); \lean{SuperVertexAlgebra} lacks translation
+covariance, which weakens \lean{bcGhostSVA} (m9). \emph{Twisted/Ramond super modules, super-irrationality and the free fermion:
+not announceable} (M6, m10, m12): \lean{SuperTwistedModule} is the zero module for $N\ge2$, still at the audited commit and
+then unflagged in the library (the released source now flags it in docstrings) (warning box in Section~\ref{l17:warn:twistzero}); \lean{NonSplitSuperModule sympFermSVOA} is never
+constructed; the free fermion is not a field. No modular-invariance theorem exists in any of the three new grid columns (m13).
+The audit also records (M7) that the aggregate build is not certified for the release commit.
+
+\begin{warning}[title={Further minor finding: irreducible twisted modules may be zero}]
+\lean{SuperTwistedModule.IsIrreducible} (\leanpath{Modularity/\allowbreak SuperSectorRationality.lean})
+requires only that every graded invariant subspace be $\bot$ or $\top$; it does not require $M\neq0$,
+so the zero module is ``irreducible''. Combined with (F1), for $N\ge2$ the irreducible objects of
+\lean{PackagedIrreducibleSuperTwistedModule} are exactly zero modules. Severity: moderate (compare \lean{IsLowestWeight}, which likewise does not require $M_h\neq0$;
+Chapter~\ref{ch:L12}).
+\end{warning}
+
+%======================================================================
+\section{Referee's checklist}\label{l17:sec:checklist}
+%======================================================================
+
+\begin{center}
+\scriptsize
+\renewcommand{\arraystretch}{1.25}
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.1cm}>{\raggedright\arraybackslash}p{4.3cm}>{\raggedright\arraybackslash}p{3.6cm}>{\raggedright\arraybackslash}p{2.4cm}@{}}
+\toprule
+\textbf{Lean declaration} & \textbf{Intended meaning} & \textbf{Hypotheses; status} & \textbf{Fidelity}\\
+\midrule
+\endhead
+\lean{SuperVertexAlgebra} & super vertex algebra with $\C$-grading & definition; lacks translation
+covariance (F2) & Def.~\ref{l17:def:sva}, Thm.~\ref{l17:thm:nocov}\\
+\lean{SpinStatistics} & integer weight iff even & predicate; satisfiable & Def.~\ref{l17:def:spinstat}\\
+\lean{SuperNearVOA}, \lean{SuperVertexOperatorAlgebra} & conformal super vertex algebra (of CFT type) &
+definitions & Defs.~\ref{l17:def:snvoa}, \ref{l17:def:svoa}\\
+\lean{dong_fields} & OPE of local fields is local, with product sign & homogeneity; unconditional &
+Thm.~\ref{l17:thm:dong}\\
+\lean{goddard_uniquenessε} & a field is determined by the state it creates & locality, vacuum tower;
+unconditional & Thm.~\ref{l17:thm:goddard}\\
+\lean{superBorcherds}, \lean{superJacobi} & full super Borcherds identity, all $\ell,m,n$ &
+\lean{SuperNearVOA}, homogeneity; unconditional & Thm.~\ref{l17:thm:superjacobi}\\
+\lean{superSmul_eq_skew_Lpow} & super skew-symmetry & \lean{SuperNearVOA}; unconditional &
+Thm.~\ref{l17:thm:skew}\\
+\lean{skew_modeε} & super skew-symmetry & gate \lean{WeakAssocLocε} never proved; superseded (F5) &
+Prop.~\ref{l17:prop:skewgated}\\
+\lean{parityAut}, \lean{orderOf_parityAut_eq_two} & $(-1)^F$ is an automorphism of order $2$ &
+odd part nonzero; unconditional & Thm.~\ref{l17:thm:parityaut}\\
+\lean{evenPartVOA} & even part is an ordinary VOA & integrality of even weights &
+Thm.~\ref{l17:thm:evenpart}\\
+\lean{SuperWeakModule}, \lean{adjointSuperWeakModule} & super module; adjoint module & definition;
+unconditional & Def.~\ref{l17:def:superweak}, Prop.~\ref{l17:prop:adjoint}\\
+\lean{SuperTwistedModule} & $g$-twisted super module & \textbf{uninhabited except by $M=0$ for $N\ge2$}
+(F1; still so in the released source); content only at $N=1$; every twisted/Ramond claim built on it vacuous &
+Def.~\ref{l17:def:supertwisted}, Thm.~\ref{l17:thm:twistvacuous}\\
+\lean{FreeFermion.psi}, \lean{psi_localε} & NS free fermion & CAR, locality true; not a field, no SVA
+(F3) & Def.~\ref{l17:def:psi}, Thm.~\ref{l17:thm:psinotfield}\\
+\lean{Ghost.bcGhostSVA} & $bc$ system at $\lambda=1$ & unconditional in the weak sense (no translation covariance, F2); no Virasoro (F6) &
+Thm.~\ref{l17:thm:bc}, Def.~\ref{l17:def:ghostvir}\\
+\lean{BGInst.bgSVOA} & $\beta\gamma$ at $\lambda=\frac12$, $c=-1$, purely even & unconditional; never exercises the Koszul sign &
+Thm.~\ref{l17:thm:bgsvoa}\\
+\lean{not_SuperC2Cofinite_bgSVOA}, \lean{bgSVOA_strict_}\allowbreak\lean{halfIntegral_quasiLisse} & $\beta\gamma$
+quasi-lisse, not lisse & unconditional & Thm.~\ref{l17:thm:bgquasi}\\
+\lean{SympFerm.sympFermSVOA} & symplectic fermions, $c=-2$, genuinely odd states & unconditional & Thm.~\ref{l17:thm:sfsvoa}\\
+\lean{sympFerm_superC2Cofinite} & SF are $C_2$-cofinite & unconditional & Thm.~\ref{l17:thm:sfc2}\\
+\lean{ASF_not_isSemisimpleRing}, \lean{finrank_ASF_le_four} & $A(SF)$ not semisimple, $\dim\le4$ (not ``$=4$'') & unconditional & Thm.~\ref{l17:thm:sfzhu}\\
+\lean{IsSuperRational} & complete reducibility of graded super modules & definition; quantifies over
+\lean{SympFermSuperOrdVModule}, which omits \lean{weight_mode} (a larger class than
+\lean{SuperOrdVModule}; F8) & Def.~\ref{l17:def:superrat}\\
+\lean{sympFermSVOA_not_}\allowbreak\lean{isSuperRational} & SF not super-rational & \textbf{conditional on the missing
+module} (F4); a socle lemma, not an irrationality theorem & Thm.~\ref{l17:thm:sfirrat}\\
+\lean{superZhuRingData} & $A(W)$ associative (Dong--Zhao 3.1) & integral weights; unconditional &
+Thm.~\ref{l17:thm:superzhuring}\\
+\lean{finiteDimensional_}\allowbreak\lean{twistedA_of_}\allowbreak\lean{superC2Cofinite} & twisted Zhu finiteness & integral, $C_2$,
+diagonalisability data & Thm.~\ref{l17:thm:twistedzhufinite}\\
+\lean{GammaTheta_eq_genSTsq}, \lean{index_eq_three} & $\Gamma_\theta=\langle S,T^2\rangle$, index $3$
+& unconditional & Thm.~\ref{l17:thm:gammatheta}\\
+\lean{thetaHalfAutFactorExists} & half-automorphy factor on $\Gamma_\theta$ & unconditional &
+Thm.~\ref{l17:thm:halfaut}\\
+\lean{spinThetaChar_S} & theta-characteristic $S$-law & $\tau\neq0$; unconditional &
+Thm.~\ref{l17:thm:thetaS}\\
+\lean{spinQAnalytic_pp_higher_S}, \lean{_pp_one_S}, \lean{_add_two} & $(+,+)$ $S$-cells, $T^2$ for all &
+unconditional; other three $S$-cells open & Thm.~\ref{l17:thm:spinS}\\
+\lean{finrank_superAnalytic}\allowbreak\lean{Blocks_le_...} & super AN upper bound & integral, $C_2$ &
+Thm.~\ref{l17:thm:AN}\\
+\lean{superTorusOnePoint_}\allowbreak\lean{isSuperFormalBlock} & supertraces are formal blocks & integral; untwisted &
+Thm.~\ref{l17:thm:formalblock}\\
+\lean{formalODE_of_}\allowbreak\lean{etingofFinite_of_sqPrimary} & formal AK ODE & formal block, Etingof, primary; not
+modular & Thm.~\ref{l17:thm:AK}\\
+\lean{finiteDimensional_}\allowbreak\lean{superSpinSqCusp}\allowbreak\lean{Quotient_of_superC2} & finite cusp quotient, $(+,+)$ sector &
+half-integral, $C_2$, involutive pair & Thm.~\ref{l17:thm:cusp}\\
+\bottomrule
+\end{longtable}
+\end{center}
+
+%======================================================================
+\section{Notes and references}\label{l17:sec:notes}
+%======================================================================
+
+\textbf{Vertex superalgebras.} V.~G.~Kac, \emph{Vertex Algebras for Beginners}, University Lecture
+Series 10, American Mathematical Society, second edition 1998: Definition~1.3 and §4.1 (vertex
+superalgebras, the Koszul sign), Theorem~4.4 (Goddard uniqueness), §4.8 (the Borcherds identity
+(4.8.3) and skew-symmetry), §3.6 (free fermions, $bc$ and $\beta\gamma$ systems). E.~Frenkel and
+D.~Ben-Zvi, \emph{Vertex Algebras and Algebraic Curves}, AMS, 2nd ed.\ 2004. H.~Li, ``Local systems of
+vertex operators, vertex superalgebras and modules'', J.\ Pure Appl.\ Algebra 109 (1996) 143--195.
+
+\textbf{Twisted modules and Zhu algebras for vertex operator superalgebras.} C.~Dong and Z.~Zhao,
+``Modularity in orbifold theory for vertex operator superalgebras'', Comm.\ Math.\ Phys.\ 260 (2005)
+227--256, arXiv:math/0411523; and ``Twisted representations of vertex operator superalgebras'', Commun.\
+Contemp.\ Math.\ 8 (2006) 101--121, arXiv:math/0411524 (the twisted Zhu algebra $A_g(V)$ and
+Theorem~3.1). V.~G.~Kac and W.~Wang, ``Vertex operator superalgebras and their representations'',
+Contemp.\ Math.\ 175 (1994). C.~Dong, H.~Li and G.~Mason, ``Modular-invariance of trace functions in
+orbifold theory and generalized moonshine'', Comm.\ Math.\ Phys.\ 214 (2000) 1--56.
+
+\textbf{Super modularity.} J.~van Ekeren, ``Modular invariance for twisted modules over a vertex operator
+superalgebra'', Comm.\ Math.\ Phys.\ 322 (2013) 333--371, arXiv:1111.0682 (Section~3, equation (3.1)
+and Lemma~3.1 for the coefficients $P^{\mu,\lambda}_k$; type-M and type-Q supertraces). G.~Höhn,
+\emph{Selbstduale Vertexoperatorsuperalgebren und das Babymonster}, PhD thesis, Bonn 1995. Y.~Arike and
+K.~Nagatomo, ``Some remarks on pseudo-trace functions for orbifold models associated with symplectic
+fermions'', Int.\ J.\ Math.\ 24 (2013), arXiv:1104.0068. T.~Arakawa and K.~Kawasetsu, ``Quasi-lisse
+vertex algebras and modular linear differential equations'', in \emph{Lie Groups, Geometry, and
+Representation Theory}, Progr.\ Math.\ 326 (2018), arXiv:1610.05865. P.~Etingof and T.~Schedler,
+``Poisson traces and D-modules on Poisson varieties'', GAFA 20 (2010).
+
+\textbf{Symplectic fermions and logarithmic CFT.} H.~G.~Kausch, ``Symplectic fermions'', Nucl.\ Phys.\
+B583 (2000) 513--541, arXiv:hep-th/0003029. M.~R.~Gaberdiel and H.~G.~Kausch, ``A rational logarithmic
+conformal field theory'', Phys.\ Lett.\ B386 (1996) 131--137, arXiv:hep-th/9606050, and ``A local
+logarithmic conformal field theory'', Nucl.\ Phys.\ B538 (1999) 631--658, arXiv:hep-th/9807091.
+T.~Abe, ``A $\Z_2$-orbifold model of the symplectic fermionic vertex operator superalgebra'', Math.\
+Z.\ 255 (2007) 755--792, arXiv:math/0503472.
+
+\textbf{Ghosts and strings.} D.~Friedan, E.~Martinec and S.~Shenker, ``Conformal invariance,
+supersymmetry and string theory'', Nucl.\ Phys.\ B271 (1986) 93--165 ($bc$ and $\beta\gamma$ systems,
+$c=\mp(3(2\lambda-1)^2-1)$, the ghost anomalies $-26$ and $+11$). J.~Polchinski, \emph{String Theory}
+vol.~1, §2.5.
+
+\textbf{Theta functions.} D.~Mumford, \emph{Tata Lectures on Theta I}, Birkhäuser 1983; M.~Knopp,
+\emph{Modular Functions in Analytic Number Theory}, Markham 1970 (the theta group).
+
+\textbf{Within the library.} Project notes written before \leanpath{BetaGammaInstance.lean} and
+\leanpath{GhostSystem.lean} describe the $bc$ and $\beta\gamma$ systems as ``not yet'' super VOA instances; that is out of
+date for them (it remains true of the free fermion). The bosonic counterparts are Chapters~\ref{ch:L03} (axioms, Borcherds), \ref{ch:L12} (modules,
+Zhu), \ref{ch:06} (twisted modules and the repaired \lean{TwistedModule.jacobi}), \ref{ch:L14} and
+\ref{ch:L15} (modular forms and Zhu's theorem).
+
+\endgroup

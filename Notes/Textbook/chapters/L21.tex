@@ -1,0 +1,2201 @@
+\chapter{Huang's modular tensor category and the congruence property}\label{ch:L21}
+\begingroup\setlength{\emergencystretch}{3em}\sloppy
+
+\providecommand{\ltwooneSL}{\mathrm{SL}_2}
+\providecommand{\ltwooneRep}{\operatorname{Rep}}
+
+This chapter was first written against an earlier state of the LeanVOA library \emph{together with the
+working tree of 2026-10-13} (the book's snapshot); its last section (Section~\ref{l21:sec:log}) was revised
+on 2026-10-14, after the logarithmic monoidal and braided categories were completed in the
+commits following that snapshot. Two further files were added on 2026-10-28:
+\leanpath{VOA/\allowbreak Huang/\allowbreak RigidOrdinary.lean} (two-sided rigidity, Theorem~\ref{l21:thm:rigid2}) and
+\leanpath{VOA/\allowbreak Huang/\allowbreak CongruenceNamed.lean} (the named congruence theorems,
+Theorem~\ref{l21:thm:congnamed}). Checks that were run at an earlier state of the library and not re-run for this
+edition are marked as such. Every Lean quotation was copied mechanically from the source and is
+machine-checked by \texttt{scripts/textbook/sync.py} to occur verbatim in the source files of the release documented by this edition. It covers the directory
+\leanpath{VOA/\allowbreak Huang/} (about nine hundred files) and its umbrella \leanpath{VOA/\allowbreak Huang.lean}.
+These files supply the deep representation-theoretic inputs of the Gannon--Rayhaun classification
+(Chapter~\ref{ch:L22}): intertwining operators and fusion rules, the braided monoidal category of modules of a
+strongly rational VOA and its rigidity, Huang's Verlinde theorem, the modular-data package \lean{IModData}, the
+Dong--Lin--Ng congruence property through Ng--Schauenburg and Beyl's Schur-multiplier computations, Deligne's
+theorem on symmetric fusion categories, and the Huang--Kirillov--Lepowsky extension theory. The same directory, together
+with \leanpath{VOA/\allowbreak Modules/\allowbreak LogTensor*.lean} and the \leanpath{McRaeM2*.lean} files of
+\leanpath{VOA/\allowbreak Classification/\allowbreak COne/}, also contains the braided tensor category of logarithmic modules of
+a $C_2$-cofinite VOA, on which the proof of the Gannon--Rayhaun converse is built (Section~\ref{l21:sec:log}).
+
+We rely on Chapter~\ref{ch:L12} for modules (\lean{OrdVModule}, \lean{ModuleEquiv}, \lean{adjointModule},
+\lean{StronglyRational}, \lean{AdmissiblyRational}, \lean{C2Cofinite}), on Chapters~\ref{ch:L13} and~\ref{ch:L15} for
+Zhu's algebra, the bottom projection \lean{BottomProjection} and Zhu's modularity theorem
+(\lean{ZhuModularityAnalytic}), and on Mathlib's category theory (\lean{MonoidalCategory}, \lean{BraidedCategory},
+\lean{RightRigidCategory}, \lean{FDRep}) explained in plain words where it first appears. Several statements below
+are phrased with the vocabulary of the Gannon--Rayhaun classification, which is \emph{defined with its full fidelity
+check in the next chapter}; Section~\ref{l21:sec:vocab} recalls each of these notions in mathematical terms, with
+an exact pointer, so that this chapter can be read first.
+
+\paragraph{The findings of this chapter, in brief.}
+\begin{enumerate}
+\item \textbf{The braided tensor category is formalized for every strongly rational VOA}: the ordinary modules form a
+  Mathlib braided monoidal category (\lean{monoidalCategoryOfStronglyRational_pbw},
+  \lean{braidedCategory_stronglyRational_pbw}), built on the Huang--Lepowsky tensor product, with pentagon and hexagons
+  proved. The only hypothesis is \lean{StronglyRational W} (plus a choice \lean{F} of fusion products, always available).
+\item \textbf{Rigidity, Verlinde and the modular category are formalized for \emph{nice} VOAs only}, that is strongly
+  rational \emph{and pseudo-unitary} (Definition~\ref{l21:def:nice}). Huang's theorems need no pseudo-unitarity. The
+  library's headline theorems are still stated for nice $V$. Of the two uses of pseudo-unitarity recorded by the release
+  audit, the first is now removed: $V'\cong V$ holds for every strongly rational $V$ by self-duality
+  (\lean{contra_vacuum_equiv_of_stronglyRational}), and the vacuum-fusion chain has \lean{_of_stronglyRational} copies
+  (Theorem~\ref{l21:thm:vacSR}). The second, \lean{CardyPositivity.vacColumn_mem_K}, keeps \lean{Nice}, and there
+  pseudo-unitarity is essential (Lee--Yang $M(2,5)$). So these results remain stated more narrowly than Huang's. Within
+  that class:
+  \begin{itemize}
+  \item rigidity is two-sided: \lean{rigid_ordinary} gives Mathlib's \lean{RigidCategory} (left and right duals), obtained
+    from the right duals of \lean{rightRigid_ordinary} and the proved braiding (Theorem~\ref{l21:thm:rigid2}, added
+    2026-10-28);
+  \item the Verlinde formula is proved in the form $S_{ax}S_{bx}=S_{0x}\sum_cN_{ab}^cS_{cx}$, with $S_{0x}\ne0$ and
+    $S_{0a}=S_{a0}$ (\lean{huangVerlindeFusionInput_holds}, index universe \lean{u+1});
+  \item the modular tensor category exists only on a small model: nondegeneracy of $S$ (\lean{modelModular},
+    \leanpath{ZhuRepModel.lean}) is proved on \lean{canonicalModel}, a small category equivalent (as a braided monoidal
+    category) to \lean{Ordinary W}, and it takes a modular-data datum \lean{D} with \lean{D.IsModularData} (which exists by
+    \lean{iModData_holds}). No single declaration says ``\lean{Ordinary W} is a modular tensor category''.
+  \end{itemize}
+\item \textbf{\lean{VOA.pbw} is a theorem; the suffix \lean{_pbw} is historical.} It marks declarations that use
+  \lean{voaPBWBottomProjection}, the datum \lean{BottomProjection} of Chapter~\ref{ch:L13} built from \lean{VOA.pbw}.
+  At the snapshot \lean{VOA.pbw} was an axiom; since then it has become a theorem, the library has no project
+  axiom, and every declaration of this chapter reports Lean's three standard axioms only (release audit, 2026-10-27). The
+  suffix, and the phrase ``uses \lean{VOA.pbw}'' in the status boxes below, record a route through a proved theorem, not
+  an axiom dependence.
+\item \textbf{Congruence: what is proved, and in what form.} (a) Only the \emph{kernel half} of Ng--Schauenburg's
+  Theorem~6.8 is proved: for every modular category there is some $N>0$ with $\Gamma(N)$ acting by scalars in every lift
+  (\lean{nsProjectiveKernelAll_holds}). The other half --- that the level is exactly the Frobenius--Schur exponent, and
+  minimal (\lean{ProjectiveCongruenceTheorem}, universally \lean{NSProjectiveCongruenceAll}) --- is not proved and appears
+  only as a hypothesis. (b) The VOA congruence property, for nice $V$, is stated as \textbf{named, hypothesis-free
+  theorems} (Theorem~\ref{l21:thm:congnamed}, added 2026-10-28): \lean{dlnCongruenceInput_holds} (characters are
+  $\Gamma(N)$-invariant at every level $N$), \lean{galoisSymmetryNontrivialInput_holds} (the Galois half),
+  \lean{zhuCongruenceInput_holds} (kernel form: $\Gamma(L)\subseteq\ker\rho_V$ for some $L>0$) and
+  \lean{zhu_kernelContainsGamma_at_level} ($\Gamma(N)\subseteq\ker\rho_V$ at every level $N$). Before that revision the property
+  was discharged only inside the proof term of \lean{gannonRayhaun_forward} (Chapter~\ref{ch:L22}). (c)
+  \lean{DLNCongruenceInput} is about characters only; the kernel form $\ker\rho_V\supseteq\Gamma(N)$ is
+  \lean{ZhuCongruenceInput} and its at-level corollary.
+\item \textbf{Deligne's theorem is the positive-dimension (Tannakian) case}: a symmetric fusion category over $\C$
+  whose simple objects all have positive dimension is braided-equivalent to $\ltwooneRep(G)$ (\lean{deligneTannakian_holds}),
+  proved by constructing a fiber functor and reconstructing the group. It is Deligne 1990 / EGNO §9.9 in the fusion case,
+  not Deligne's 2002 theorem including the super case $\ltwooneRep(G,z)$.
+\item \textbf{Stale docstrings} (a documentation defect only): several statement files still say ``not proved here'' for \lean{Prop}s that have
+  since been proved in other files (Section~\ref{l21:sec:defects}).
+\item \textbf{The logarithmic theory no longer assumes a semisimple Zhu algebra.} The finiteness of the set of
+  irreducible modules of every $C_2$-cofinite VOA is now proved without that hypothesis
+  (\lean{finite_Φ_of_C2Cofinite_pbw}, using the theorem \lean{VOA.pbw}), and the logarithmic tensor chain was rebuilt on it
+  (Section~\ref{l21:sec:log}). Its admissible analogue, Dong--Li--Mason's ``finitely many irreducible admissible modules'', is
+  also a theorem for every $C_2$-cofinite admissibly rational VOA (\lean{dlmFinitelyManyIrredAdmissible_of_c2Cofinite},
+  Chapter~\ref{ch:L12}, Theorem~\ref{l12:thm:litproved}; added in a later revision of the library), as are Abe--Buhl--Dong's theorems that
+  every weak module of a $C_2$-cofinite VOA is admissible and every irreducible one ordinary.
+\item \textbf{The logarithmic braided tensor category is constructed.} For every $C_2$-cofinite VOA the finitely
+  generated logarithmic modules form a Mathlib \lean{MonoidalCategory} and \lean{BraidedCategory}
+  (\lean{logarithmicMonoidalCategory}, \lean{logarithmicBraidedCategory}), with the Huang--Lepowsky--Zhang tensor
+  product, the analytically constructed associator, and the pentagon and both hexagons \emph{proved}; the only
+  hypothesis is $C_2$-cofiniteness (the construction uses the theorem \lean{VOA.pbw}). This category carries McRae's orbifold argument, which
+  proves the last input of the Gannon--Rayhaun converse; the converse, and with it the whole classification, is now proved
+  (Chapter~\ref{ch:L22}, Section~\ref{l22:sec:B3} and Theorem~\ref{l22:thm:final}).
+\end{enumerate}
+
+%======================================================================
+\section{Vocabulary borrowed from the classification chapter}\label{l21:sec:vocab}
+%======================================================================
+
+The Huang-side theorems were formalized to feed the Gannon--Rayhaun classification, so their statements use five
+notions that are presented, with their complete fidelity checks, in Chapter~\ref{ch:L22}. We recall them here in
+mathematical terms; nothing in this chapter depends on more than what is said in this section, and the reader who
+wants to check a Lean definition clause by clause should follow the pointer.
+
+\begin{definition}[Nice VOA; Chapter~\ref{ch:L22}, Definitions~\ref{l22:def:pu} and~\ref{l22:def:nice}]\label{l21:def:nice}
+A VOA $V$ is \emph{pseudo-unitary} if every irreducible ordinary module $M\not\cong V$ has all its $L_0$-eigenvalues of
+strictly positive real part. $V$ is \emph{nice} if it is strongly rational (simple, of CFT type, self-dual,
+$C_2$-cofinite and rational; Chapter~\ref{ch:L12}, Definition~\ref{l12:def:strong}) and pseudo-unitary.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Classification/\allowbreak COne/\allowbreak Statement.lean}.
+\begin{leancode}
+def Nice (V : VertexOperatorAlgebra 𝒱) : Prop :=
+  StronglyRational V ∧ PseudoUnitary V
+\end{leancode}
+
+\begin{dictionary}
+\lean{Nice V} is a \lean{Prop} (a statement, not data): the conjunction (\lean{∧}) of strong rationality and
+pseudo-unitarity. Every theorem below that takes \lean{hNice : Nice W} or \lean{hV : Nice V} assumes exactly these two
+properties. Strong rationality alone is Huang's hypothesis; pseudo-unitarity is an \emph{extra} assumption made by
+Gannon--Rayhaun, so a theorem stated for nice $V$ is (harmlessly, for the classification) weaker than Huang's theorem
+stated for strongly rational $V$. The rigidity, Verlinde, modular-data and congruence results of this chapter are all
+stated for nice $V$, and their proofs use pseudo-unitarity (now essentially only through the Cardy-positivity step,
+\lean{CardyPositivity.vacColumn_mem_K}; the vacuum-fusion chain no longer needs it, Theorem~\ref{l21:thm:vacSR}), so the
+extra hypothesis cannot be dropped without new proofs; it must be stated whenever these results are quoted.
+\end{dictionary}
+
+\begin{physics}
+Nice VOAs are the chiral algebras of rational CFTs whose sectors all carry positive energy, as in a unitary theory.
+\end{physics}
+
+\begin{status}
+Definition (Chapter~\ref{ch:L22}).
+\end{status}
+
+\paragraph{Modular data (Chapter~\ref{ch:L22}, Definitions~\ref{l22:def:moddata}--\ref{l22:def:level}).}
+A term \lean{D : VOA.Classification.COne.ModularData V} is a bundle of \emph{candidate} data: a finite label set
+\lean{D.ι} with a vacuum label \lean{D.vac}, one ordinary module $M_a$ for each label (\lean{D.module a}), rational numbers
+$h_a$ (\lean{D.h a}), functions $\operatorname{ch}_a$ on the upper half plane (\lean{D.ch a}), a complex matrix $S$
+(\lean{D.S}), a positive real number $S_{00}$ (\lean{D.S00}) and real numbers $d_a$ (\lean{D.d a}). The predicate
+\lean{D.IsModularData} says these data are \emph{the} modular data of $V$: the $M_a$ are a complete irredundant list of
+the irreducible modules with $M_{\mathrm{vac}}\cong V$; the $L_0$-weights of $M_a$ lie in $h_a+\N$ with $h_a$ attained;
+$\operatorname{ch}_a(\tau)=\sum_n\dim(M_a)_{h_a+n}\,q^{h_a+n-c/24}$ as a convergent series; $S$ implements
+$\tau\mapsto-1/\tau$ on characters \emph{and} on all Zhu one-point functions (\lean{SPinned}); $S_{a0}=S_{0a}=S_{00}d_a$
+with $d_a\ge1$; and $|S_{ab}|\le S_{00}d_ad_b$. A natural number $N>0$ is a \emph{level} (\lean{D.IsLevel N}) if
+$N(h_a-c/24)\in\Z$ for every $a$. \lean{mobius γ τ} is the Möbius action $(a\tau+b)/(c\tau+d)$ of
+$\gamma\in\mathrm{SL}_2(\Z)$ (Definition~\ref{l22:def:thetatype}). Finally, \lean{IModData}, \lean{ICongruenceGalois}
+and \lean{ITannakian} are the three ``external inputs'' of the classification that this chapter proves
+(Definition~\ref{l22:def:inputs}): every nice VOA has modular data; its characters are $\Gamma(N)$-invariant and
+Galois-symmetric at every level $N$; and a nice VOA whose integer-weight sectors braid trivially is a fixed-point
+algebra $W^G$ of a nice $W$ under a finite group.
+
+Two different structures are both called ``modular data'' in the library, and the reader must not confuse them:
+\lean{VOA.ModularData W ι} of Chapter~\ref{ch:L15} is \emph{Zhu's} family of irreducible modules with weights, on
+which Zhu's representation \lean{repS} of $S$ is defined; \lean{VOA.Classification.COne.ModularData V} is the
+classification package just described. Huang's Verlinde theorem (Definition~\ref{l21:def:verlinde}) is stated for the
+first; the congruence and Tannakian inputs for the second.
+
+%======================================================================
+\section{Intertwining operators and fusion rules}\label{l21:sec:intertwining}
+%======================================================================
+
+\begin{definition}[Intertwining operator; Frenkel--Huang--Lepowsky Def.~5.4.1]\label{l21:def:intw}
+For ordinary $V$-modules $M_1,M_2,M_3$, an \emph{intertwining operator of type $\binom{M_3}{M_1\,M_2}$} is a family of
+bilinear maps $(w_1,w_2)\mapsto (w_1)_{(n)}w_2\in M_3$, $n\in\C$, such that (i) for fixed $w_1,w_2,n$,
+$(w_1)_{(n+k)}w_2=0$ for $k\gg0$; (ii) $(L_{-1}w_1)_{(n)}=-n\,(w_1)_{(n-1)}$; (iii) the Jacobi identity holds in all
+mode coefficients.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak Intertwining.lean}.
+\begin{leancode}
+abbrev IntertwiningModes (M₁ : Type v₁) (M₂ : Type v₂) (M₃ : Type v₃)
+    [AddCommGroup M₁] [Module ℂ M₁] [AddCommGroup M₂] [Module ℂ M₂]
+    [AddCommGroup M₃] [Module ℂ M₃] :=
+  ℂ → (M₁ →ₗ[ℂ] M₂ →ₗ[ℂ] M₃)
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak Substitution.lean}.
+\begin{leancode}
+noncomputable def cbz (n k : ℤ) : ℂ := if 0 ≤ k then gBinom n k.toNat else 0
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak Intertwining.lean}.
+\begin{leancode}
+structure IsIntertwiningOperator (A₁ : OrdVModule W M₁) (A₂ : OrdVModule W M₂)
+    (A₃ : OrdVModule W M₃) (Y : IntertwiningModes M₁ M₂ M₃) : Prop where
+  /-- **Truncation** (FHL): `(w₁)₍ₙ₊ₖ₎ w₂ = 0` for `k ∈ ℤ` sufficiently large. -/
+  truncation : ∀ (w₁ : M₁) (w₂ : M₂) (n : ℂ), ∃ N : ℤ, ∀ k : ℤ, N ≤ k → Y (n + k) w₁ w₂ = 0
+  /-- **`L₋₁`-derivative**: `𝒴(L₋₁ w₁, z) = d/dz 𝒴(w₁, z)`, i.e. `(L₋₁w₁)₍ₙ₎ = −n (w₁)₍ₙ₋₁₎`. -/
+  L_neg_one : ∀ (w₁ : M₁) (n : ℂ), Y n (A₁.Lm1 w₁) = (-n) • Y (n - 1) w₁
+  /-- **Jacobi identity**, coefficient of `z₀^{-ℓ-1} z₁^{-m-1} z₂^{-n-1}`. -/
+  jacobi : ∀ (u : 𝒱) (w₁ : M₁) (w₂ : M₂) (ℓ m : ℤ) (n : ℂ),
+    (∑ᶠ i : ℤ, (negOnePow i * cbz ℓ i) •
+        (mode (A₃.YM u) (ℓ + m - i) (Y (n + i) w₁ w₂)
+          - negOnePow ℓ • Y (ℓ + n - i) w₁ (mode (A₂.YM u) (m + i) w₂)))
+      = ∑ᶠ i : ℤ, cbz m i • Y (m + n - i) (mode (A₁.YM u) (ℓ + i) w₁) w₂
+\end{leancode}
+
+\begin{dictionary}
+\lean{IntertwiningModes M₁ M₂ M₃} is the type \lean{ℂ → (M₁ →ₗ[ℂ] M₂ →ₗ[ℂ] M₃)}: for each complex number $n$ a
+\emph{bilinear} map (a $\C$-linear map from $M_1$ to the $\C$-linear maps $M_2\to M_3$); \lean{Y n w₁ w₂} is
+$(w_1)_{(n)}w_2$, the coefficient of $z^{-n-1}$ in $\mathcal Y(w_1,z)w_2$, with complex mode index because conformal
+weights of modules need not be integers or congruent modulo $\Z$. Bilinearity is thus built into the type, as in
+Definition~\ref{l21:def:intw}. \lean{A₁.Lm1} is $L_{-1}=\omega_{(0)}$ on $M_1$; \lean{mode (A.YM u) k} is the $k$-th mode
+$u_{(k)}$ of $u\in V$ on the module (Chapter~\ref{ch:L03}).
+\lean{cbz ℓ i} is the binomial coefficient $\binom{\ell}{i}$ for integer $\ell$, set to $0$ for $i<0$ (so the sums may
+run over all of $\Z$), \lean{negOnePow i} is $(-1)^i$, and \lean{∑ᶠ} is Mathlib's \lean{finsum}: the sum of a finitely
+supported family, \emph{and $0$ by convention if the support is infinite} (Chapter~\ref{ch:01}). That junk value never
+matters here: for fixed $u,w_1,w_2,\ell,m,n$ the three families are finitely supported, because $\binom{\ell}{i}=0$ for
+$i<0$ and, for $i\gg0$, the truncation clause and the truncation of module modes kill the terms (the library proves
+this, \lean{jacL_support_finite}, \lean{jacR_support_finite}). The identity is then the coefficient of
+$z_0^{-\ell-1}z_1^{-m-1}z_2^{-n-1}$ in the Jacobi identity of FHL, exactly as for modules in
+Chapter~\ref{ch:L03}. \textbf{Same as FHL Def.~5.4.1}: truncation, $L_{-1}$-derivative property, Jacobi identity. \textbf{Why a new structure.} The older bundled \lean{Intertwiner} of
+\leanpath{Modules/Fusion.lean} lacks the $L_{-1}$ property and the full Jacobi identity, and its \lean{fusionCoeff} is
+identically zero (Chapter~\ref{ch:L12}); this structure replaces it for all fusion-theoretic work.
+\end{dictionary}
+
+\begin{physics}
+An intertwining operator is a chiral vertex operator $\mathcal Y(w_1,z)$ creating the state $w_1$ of sector $M_1$ and
+mapping sector $M_2$ to sector $M_3$: a primary field in the sense of BPZ, with fractional powers of $z$ allowed.
+\end{physics}
+
+\begin{status}
+Definition. Non-vacuous: every module $M$ gives an intertwining operator of type $\binom{M}{V\,M}$
+(\lean{moduleIntertwiner_ne_zero}).
+\end{status}
+
+\begin{definition}[Fusion rule]\label{l21:def:fusion}
+$N_{M_1M_2}^{M_3}$ is the dimension of the space of intertwining operators of type $\binom{M_3}{M_1\,M_2}$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak Intertwining.lean}.
+\begin{leancode}
+noncomputable def fusionRule (A₁ : OrdVModule W M₁) (A₂ : OrdVModule W M₂)
+    (A₃ : OrdVModule W M₃) : ℕ :=
+  Module.finrank ℂ (intertwiningSpace A₁ A₂ A₃)
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak Intertwining.lean}.
+\begin{leancode}
+noncomputable def intertwiningSpace (A₁ : OrdVModule W M₁) (A₂ : OrdVModule W M₂)
+    (A₃ : OrdVModule W M₃) : Submodule ℂ (IntertwiningModes M₁ M₂ M₃) where
+  carrier := {Y | IsIntertwiningOperator A₁ A₂ A₃ Y}
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak VerlindeFusion.lean}.
+\begin{leancode}
+theorem finiteDimensional_fusion (hIn : ModuleC2Input.{u}) (hV : Nice W) {ι : Type w} [Fintype ι]
+    [DecidableEq ι] (D : VOA.ModularData W ι) (a b c : ι) :
+    FiniteDimensional ℂ
+      (intertwiningSpace (D.Mfam a).isMod (D.Mfam b).isMod (D.Mfam c).isMod) :=
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak BuhlSpanningMain.lean}.
+\begin{leancode}
+theorem moduleC2Input_holds : ModuleC2Input.{u} :=
+  moduleC2Input_of_buhlFiniteLWGen buhlFiniteLWGenInput_holds
+\end{leancode}
+
+\begin{dictionary}
+\lean{intertwiningSpace A₁ A₂ A₃} is the $\C$-subspace (\lean{Submodule ℂ}) of \lean{IntertwiningModes} whose elements
+are exactly the families satisfying \lean{IsIntertwiningOperator} (the omitted fields of the definition prove that this
+set contains $0$ and is closed under sums and scalars). \lean{Module.finrank} is $0$ on infinite-dimensional spaces
+(Chapter~\ref{ch:01}), so the definition is honest only where the space is finite-dimensional. For the irreducible
+modules of a nice $V$ this is \lean{finiteDimensional_fusion}, which assumes \lean{ModuleC2Input} (``every irreducible
+module of a strongly rational VOA is $C_2$-cofinite'', a theorem of Buhl), and that input is proved
+(\lean{moduleC2Input_holds}). So for nice $V$ the fusion rule among irreducibles is the true dimension.
+\end{dictionary}
+
+\begin{physics}
+The number of independent ways sectors $M_1$ and $M_2$ fuse into $M_3$: the OPE coefficients of the anyon theory.
+\end{physics}
+
+\begin{status}
+Definition.
+\end{status}
+
+\begin{theorem}[Fusion rules of $V_{2m}$]\label{l21:thm:latfusion}
+For the irreducible $V_{2m}$-modules $V_{L+j/2m}$, $N_{jk}^l=1$ if $l\equiv j+k\pmod{2m}$ and $0$ otherwise.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak LatticeFusion.lean}.
+\begin{leancode}
+theorem fusionRule_latticeModule :
+    fusionRule (latticeModule m hm j) (latticeModule m hm k) (latticeModule m hm l)
+      = if (l - j - k) % (2 * (m : ℤ)) = 0 then 1 else 0 :=
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Classification/\allowbreak COne/\allowbreak LatticeModules.lean}.
+\begin{leancode}
+noncomputable def latticeModule : OrdVModule (V2m m hm) (LatModuleGen (latP m)) :=
+\end{leancode}
+
+\begin{dictionary}
+\lean{V2m m hm} is the lattice VOA $V_{2m}$ of $\sqrt{2m}\,\Z$ (Chapter~\ref{ch:L22}, Definition~\ref{l22:def:V2m}).
+\lean{latticeModule m hm j} is the ordinary $V_{2m}$-module $V_{L+j\alpha/2m}$ for an integer $j$ (the variables
+\lean{m}, \lean{hm : 1 ≤ m} and \lean{j k l : ℤ} are section variables of the files): its underlying space is the same
+Fock space $\otimes\,\C\{L\}$ as $V_{2m}$, with the state $p\otimes e^{n\alpha}$ standing for
+$p\otimes e^{(n+j/2m)\alpha}$ and lowest weight $j^2/4m$. In the quotation, \texttt{\%} is the integer remainder modulo $2m$, so the
+condition is $l\equiv j+k\pmod{2m}$. The statement is for all integers $j,k,l$, not only representatives; it is the
+textbook statement.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+Existence: the lattice vertex operators $E^\pm(\lambda,z)z^{\lambda(0)}e^\lambda$ give a nonzero intertwiner of type
+$\binom{j+k}{j\ k}$. Uniqueness and vanishing: an intertwiner is determined by its action on the lowest weight space,
+and charge conservation under the Heisenberg zero mode forces $l\equiv j+k$; the second-slot commutator formula sweeps
+all charge sectors.
+\end{proof}
+
+\begin{physics}
+The compact boson at rational radius has $\Z_{2m}$ fusion: momenta add.
+\end{physics}
+
+\begin{status}
+Proved, Lean's three axioms.
+\end{status}
+
+%======================================================================
+\section{The braided monoidal category of modules and its rigidity}\label{l21:sec:mtc}
+%======================================================================
+
+\begin{theorem}[Huang--Lepowsky: the tensor category]\label{l21:thm:monoidal}
+For a strongly rational $V$ and any choice $F$ of fusion products, the category of ordinary $V$-modules carries a monoidal
+structure with tensor product $\boxtimes_F$, unit $V$, the analytically defined associator and the unitors.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak PentagonCloseMain.lean}.
+\begin{leancode}
+abbrev monoidalCategoryOfStronglyRational_pbw (hV : StronglyRational W) :
+    MonoidalCategory (Ordinary W) :=
+  monoidalCategoryOfStronglyRationalSewing F hV (fivePointSewingInput_stronglyRational_pbw F hV)
+    (vacuumCreationCompatibility_pbw F hV)
+
+\end{leancode}
+
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak TensorCatOrdinary.lean}.
+\begin{leancode}
+structure Ordinary where
+  carrier : Type u
+  [addCommGroup : AddCommGroup carrier]
+  [module : Module ℂ carrier]
+  isMod : OrdVModule W carrier
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak FusionProductBasic.lean}.
+\begin{leancode}
+def IsUniversal {A₁ : OrdVModule W M₁} {A₂ : OrdVModule W M₂}
+    {AT : OrdVModule W T} (Y : IntertwiningOperator A₁ A₂ AT) : Prop :=
+  ∀ (N : Type u) [AddCommGroup N] [Module ℂ N] (AN : OrdVModule W N), UniversalFor Y AN
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak FusionProductBasic.lean}.
+\begin{leancode}
+structure Product (A₁ : OrdVModule W M₁) (A₂ : OrdVModule W M₂) where
+  carrier : Type u
+  [addCommGroup : AddCommGroup carrier]
+  [module : Module ℂ carrier]
+  isMod : OrdVModule W carrier
+  intertwiner : IntertwiningOperator A₁ A₂ isMod
+  universal : IsUniversal intertwiner
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak TensorCatBifunctor.lean}.
+\begin{leancode}
+abbrev FusionChoice (W : VertexOperatorAlgebra V) :=
+  ∀ X Y : Ordinary W, Product X.isMod Y.isMod
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak TensorCatBifunctor.lean}.
+\begin{leancode}
+def tensorObj (X Y : Ordinary W) : Ordinary W := Ordinary.ofProduct (F X Y)
+\end{leancode}
+
+\begin{dictionary}
+\lean{MonoidalCategory C} is Mathlib's monoidal category structure (tensor product of objects and morphisms, unit object,
+associator and unitor isomorphisms, with the pentagon and triangle axioms as fields). Providing a term of it \emph{is}
+proving pentagon and triangle. \lean{Ordinary W} is the category whose objects bundle a carrier space with an ordinary
+module structure \lean{isMod} (reducible modules and the zero module included), and whose morphisms are module maps.
+
+\textbf{What the type does not say, and where it is pinned down.} The bare type \lean{MonoidalCategory (Ordinary W)}
+does not say \emph{which} tensor product is used: a degenerate monoidal structure would have the same type. The
+identification is in the definitions. \lean{IntertwiningOperator A₁ A₂ A₃} is the subtype of
+\lean{intertwiningSpace}; \lean{UniversalFor Y AN} says that composing $\mathcal Y$ with module maps
+$M_T\to N$ is a \emph{bijection} onto the intertwining operators of type $\binom{N}{M_1\,M_2}$, and \lean{IsUniversal}
+asks this for every target $N$. So a \lean{Product} of $M_1,M_2$ is a module $M_1\boxtimes M_2$ together with an
+intertwining operator through which every intertwining operator out of $M_1\otimes M_2$ factors uniquely --- the
+defining universal property of the Huang--Lepowsky tensor product (in its ordinary-module form). \lean{FusionChoice W}
+chooses one such product for every pair of objects (products are unique up to unique isomorphism, so the choice is a
+convenience); \lean{tensorObj F X Y} is the chosen product. In the source, the monoidal structure is assembled
+(\lean{monoidalCategoryOfModes}, \leanpath{TensorCatCoherence.lean}) with \lean{tensorObj := tensorObj F},
+\lean{tensorUnit := vacuumObject} (the adjoint module $V$) and the associator defined from the analytic four-point
+evaluation of products and iterates of the universal intertwiners. \lean{abbrev} is a transparent definition. The two
+arguments \lean{…_pbw} supply the five-point sewing input (pentagon) and the vacuum creation compatibility (triangle),
+each built using \lean{voaPBWBottomProjection}.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+Huang--Lepowsky: the $P(z)$-tensor product $M_1\boxtimes M_2$ represents intertwining operators. Products and iterates of
+intertwining operators converge (from $C_1$-cofiniteness via regular-singular differential equations, Huang 2005) and
+agree on overlapping domains (associativity); this gives the associator, and the pentagon follows from five-point
+sewing (convergence and analytic continuation of four-fold products).
+\end{proof}
+
+\begin{physics}
+Fusion of anyons is associative up to the $F$-matrices; the pentagon is the consistency of the five-point conformal
+blocks.
+\end{physics}
+
+\begin{status}
+A construction (no hypothesis beyond strong rationality); Lean's three standard axioms (the construction passes through
+the theorem \lean{VOA.pbw}).
+\end{status}
+
+\begin{theorem}[The braiding]\label{l21:thm:braided}
+The braiding given by the skew-symmetry of intertwining operators makes this monoidal category braided.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak HexagonCloseResidual.lean}.
+\begin{leancode}
+abbrev braidedCategory_stronglyRational_pbw :
+    @BraidedCategory (Ordinary W) _ (monoidalCategoryOfStronglyRational_pbw F hV) :=
+  braidedCategoryOfStronglyRational_pbw F hV (hexagonInput_pbw F hV)
+\end{leancode}
+
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak BraidRibbonHexagon.lean}.
+\begin{leancode}
+theorem braidedCategoryOfStronglyRational_pbw_braiding (hH : HexagonInput F) (X Y : Ordinary W) :
+    @BraidedCategory.braiding (Ordinary W) _ (monoidalCategoryOfStronglyRational_pbw F hV)
+      (braidedCategoryOfStronglyRational_pbw F hV hH) X Y = braiding F X Y := rfl
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak BraidRibbonBraiding.lean}.
+\begin{leancode}
+abbrev braiding (X Y : Ordinary W) : tensorObj F X Y ≅ tensorObj F Y X :=
+  braidingP Phase.upper F X Y
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak BraidRibbonBraiding.lean}.
+\begin{leancode}
+@[simp] theorem braidingP_intertwiner (X Y : Ordinary W) (n : ℂ) (x : X.carrier)
+    (y : Y.carrier) :
+    (braidingP p F X Y).hom.val ((F X Y).intertwiner.val n x y) =
+      (skewP p Y X (tensorObj F Y X) (F Y X).intertwiner).val n x y :=
+\end{leancode}
+
+\begin{dictionary}
+\lean{BraidedCategory} is Mathlib's: a natural isomorphism $c_{X,Y}:X\otimes Y\cong Y\otimes X$ satisfying both hexagons.
+As for the monoidal structure, the type alone does not identify the braiding; the three quotations do. The first (a
+definitional equality, \lean{rfl}) says the braiding of \lean{braidedCategory_stronglyRational_pbw} is
+\lean{braiding F}; the second that this is \lean{braidingP} at the upper half-plane phase; the third is its defining
+equation on the universal intertwiner: $c_{X,Y}(\mathcal Y_{X,Y}(x,z)y)=\Omega(\mathcal Y_{Y,X})(x,z)y$, where
+\lean{skewP p} is the skew-symmetry isomorphism of FHL §5.4, $\Omega_r(\mathcal Y)(x,z)y=e^{zL_{-1}}\mathcal
+Y(y,e^{(2r+1)\pi i}z)x$, from operators of type $\binom{Z}{Y\,X}$ to operators of type $\binom{Z}{X\,Y}$, with the branch
+index $r$ fixed by the phase \lean{p} (here \lean{Phase.upper}). This is Huang--Lepowsky's braiding. The hexagons are supplied by
+\lean{hexagonInput_pbw}, proved from analytic continuation of products on half-planes.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+Naturality of $c$ is immediate from its definition through the universal property. For the hexagon
+$\alpha\circ c_{X,Y\otimes Z}\circ\alpha=(1\otimes c_{X,Z})\circ\alpha\circ(c_{X,Y}\otimes 1)$, evaluate both sides on
+products $\mathcal Y(x,z_1)\mathcal Y(y,z_2)w$ in the region $|z_1|>|z_2|>0$: each side is the analytic continuation of
+the same multivalued four-point function along homotopic paths in the configuration space of two points, one moving
+$x$ half-way around the pair and the other moving it around each in turn. Huang's convergence and associativity
+theorems make these continuations well defined; the two hexagons correspond to the two phases (upper and lower half
+plane).
+\end{proof}
+
+\begin{physics}
+Exchanging two anyons along a half-turn; the hexagons are the compatibility of braiding with fusion ($R$- and $F$-moves).
+\end{physics}
+
+\begin{status}
+A construction (hypothesis: strong rationality); Lean's three standard axioms (through the theorem \lean{VOA.pbw}).
+\end{status}
+
+\begin{theorem}[Huang's rigidity theorem, right-rigid form, for nice $V$]\label{l21:thm:rigid}
+For a nice (strongly rational and pseudo-unitary) $V$ the monoidal category of ordinary modules is right rigid: every
+object has a right dual.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak HuangRigidOrdinary.lean}.
+\begin{leancode}
+theorem rightRigid_ordinary (F : FusionChoice W) (hNice : Nice W) :
+    letI := monoidalCategoryOfStronglyRational_pbw F hNice.1
+    Nonempty (RightRigidCategory (Ordinary W)) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{RightRigidCategory} is Mathlib's: every object has a right dual with evaluation and coevaluation satisfying the zigzag
+identities. \lean{Nonempty} because duals are data. \textbf{Two ways in which this is weaker than Huang's theorem.} (1) The
+hypothesis \lean{Nice W} includes pseudo-unitarity, which Huang does not need; the proof uses the \lean{Nice} forms of
+the Verlinde package (e.g.\ \lean{contra_vacuum_equiv} in \leanpath{VerlindeVacuumFusion.lean}), so the library's statement
+covers only pseudo-unitary $V$. That particular step now has a strongly rational form (Theorem~\ref{l21:thm:vacSR}), but
+the rigidity theorem has not been restated. (2) The conclusion is \emph{right} rigidity, not Mathlib's two-sided \lean{RigidCategory}; Huang's
+rigidity is two-sided. Left duals follow from the braiding (take $X^\vee$ with the evaluation precomposed with the
+braiding); this corollary is now stated and proved for \lean{Ordinary W} as \lean{rigid_ordinary}
+(Theorem~\ref{l21:thm:rigid2}), so restriction (2) is removed. Restriction (1) remains; it is harmless for the classification.
+The statement is not vacuous: it is instantiated at $V_2$ by \lean{V2m_nice} (Chapter~\ref{ch:L22}).
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+The dual of $M$ is its contragredient $M'$. The evaluation is the intertwining operator obtained from the module action and
+the invariant pairing. The zigzag identity reduces to the nonvanishing of a quantity related to $S_{0M}$, which follows from the
+Verlinde formula ($S_{0x}\ne0$) and Zhu's modular invariance: this is Huang's argument (2008).
+\end{proof}
+
+\begin{physics}
+Every anyon has an antiparticle; creating a pair from the vacuum and annihilating it again is the identity (up to the quantum
+dimension, normalized away).
+\end{physics}
+
+\begin{status}
+Proved, for nice $V$ only, right rigidity; Lean's three standard axioms (the proof passes through the theorem
+\lean{VOA.pbw}). The two-sided form is Theorem~\ref{l21:thm:rigid2}.
+\end{status}
+
+\begin{theorem}[Huang's rigidity theorem, two-sided, for nice $V$]\label{l21:thm:rigid2}
+For a nice (strongly rational and pseudo-unitary) $V$ and any choice $F$ of fusion products, the monoidal category of ordinary
+$V$-modules of Theorem~\ref{l21:thm:monoidal} is rigid: every object has both a right dual and a left dual.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak RigidOrdinary.lean}.
+\begin{leancode}
+theorem rigid_ordinary (F : FusionChoice W) (hNice : Nice W) :
+    letI := monoidalCategoryOfStronglyRational_pbw F hNice.1
+    Nonempty (RigidCategory (Ordinary W)) := by
+
+def rigidCategoryOrdinary (F : FusionChoice W) (hNice : Nice W) :
+    letI := monoidalCategoryOfStronglyRational_pbw F hNice.1
+    RigidCategory (Ordinary W) :=
+  Classical.choice (rigid_ordinary F hNice)
+\end{leancode}
+
+\begin{dictionary}
+Namespace \lean{VOA.Huang.HuangRigid}; \lean{W : VertexOperatorAlgebra 𝒱} is a section variable. \lean{RigidCategory C} is
+Mathlib's two-sided notion: a \lean{RightRigidCategory} together with a \lean{LeftRigidCategory}, i.e.\ every object $X$ has a
+right dual $X^\vee$ and a left dual ${}^\vee X$, each given by an \emph{exact pairing} (evaluation and coevaluation morphisms
+satisfying both zigzag identities). This is the textbook definition of a rigid monoidal category (EGNO, Def.~2.10.11).
+\lean{letI := monoidalCategoryOfStronglyRational_pbw F hNice.1} says that the monoidal structure in question is the proved
+Huang--Lepowsky structure of Theorem~\ref{l21:thm:monoidal}, built from the fusion choice \lean{F} and the strong rationality
+\lean{hNice.1}; the statement is about \emph{that} monoidal category, not about some other monoidal structure on
+\lean{Ordinary W}. \lean{Nonempty} because duals are data. \lean{rigidCategoryOrdinary} picks one such structure with
+\lean{Classical.choice}; it is a convenience for later statements and adds no content.
+
+\textbf{Same, stronger, or weaker than Huang?} The conclusion is now Huang's: two-sided rigidity. The remaining difference is
+the hypothesis: \lean{Nice W} includes pseudo-unitarity, which Huang does not need (dictionary of
+Theorem~\ref{l21:thm:rigid}). \textbf{How the left duals arise.} The proof uses Mathlib's
+\lean{BraidedCategory.rigidCategoryOfRightRigidCategory}: in a braided category, an exact pairing $(X,Y)$ (Mathlib's
+convention: coevaluation $\eta\colon\mathbf 1\to X\otimes Y$, evaluation $\varepsilon\colon Y\otimes X\to\mathbf 1$, so $Y$ is a
+right dual of $X$) yields an exact pairing $(Y,X)$ with coevaluation $c_{Y,X}^{-1}\circ\eta\colon\mathbf 1\to Y\otimes X$ and
+evaluation $\varepsilon\circ c_{X,Y}\colon X\otimes Y\to\mathbf 1$ (Mathlib's \lean{exactPairing_swap}); so a right dual of $X$
+is also a left dual of $X$. The braiding used is the proved braiding
+\lean{braidedCategory_stronglyRational_pbw F hNice.1} of Theorem~\ref{l21:thm:braided}, on the same monoidal structure. So
+nothing beyond Theorems~\ref{l21:thm:braided} and~\ref{l21:thm:rigid} enters. \textbf{Non-vacuity:} as for
+Theorem~\ref{l21:thm:rigid}, it applies to $V_2$ (\lean{V2m_nice}, Chapter~\ref{ch:L22}).
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+By Theorem~\ref{l21:thm:rigid} every object $X$ has a right dual $X^\vee$ with $\eta_X\colon V\to X\otimes X^\vee$
+and $\varepsilon_X\colon X^\vee\otimes X\to V$ satisfying the zigzag identities. Put $\eta'=c_{X^\vee,X}^{-1}\circ\eta_X\colon
+V\to X^\vee\otimes X$ and $\varepsilon'=\varepsilon_X\circ c_{X,X^\vee}\colon X\otimes X^\vee\to V$. Naturality of the braiding and the
+hexagon identities transform each zigzag identity for $(\varepsilon',\eta')$ into one for $(\varepsilon_X,\eta_X)$, so
+$(\varepsilon',\eta')$ exhibits $X^\vee$ as a left dual of $X$. Together with the right duals this is a rigid structure.
+\end{proof}
+
+\begin{physics}
+Every anyon has an antiparticle on either side: creating a particle--antiparticle pair from the vacuum and fusing it back is the
+identity whether the antiparticle sits to the left or to the right. In a braided theory the two are related by exchanging the
+pair, which is the half-braiding in the formula above.
+\end{physics}
+
+\begin{status}
+Proved, for nice $V$ only; \texttt{\#print axioms} of \lean{rigid_ordinary} and \lean{rigidCategoryOrdinary}:
+\lean{[propext, Classical.choice, Quot.sound]} (2026-10-28; Section~\ref{l21:sec:verify}). The release audit's ``right rigidity
+only'' caveat (finding F4) is discharged.
+\end{status}
+
+%======================================================================
+\section{Modular data: Anderson--Moore, Verlinde and the package \texorpdfstring{\texttt{IModData}}{IModData}}\label{l21:sec:moddata}
+%======================================================================
+
+\begin{definition}[The Anderson--Moore input]\label{l21:def:am}
+For finitely many $q$-series $f_i(\tau)=\sum_m a_{i,m}q^{\lambda_i+m}$ with $a_{i,m}\in\N$, $a_{i,0}\ne0$, whose span is
+closed under $\tau\mapsto-1/\tau$, every exponent $\lambda_i$ is rational.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak AndersonMoore.lean}.
+\begin{leancode}
+def AndersonMooreInput : Prop :=
+  ∀ (n : ℕ) (lam : Fin n → ℂ) (coeff : Fin n → ℕ → ℕ) (f : Fin n → UpperHalfPlane → ℂ)
+    (S : Fin n → Fin n → ℂ),
+    (∀ i, coeff i 0 ≠ 0) →
+    (∀ i (τ : UpperHalfPlane), HasSum (fun m : ℕ => (coeff i m : ℂ) *
+        cexp (2 * Real.pi * I * (lam i + m) * τ)) (f i τ)) →
+    (∀ i (τ : UpperHalfPlane), f i (ModularGroup.S • τ) = ∑ j, S i j * f j τ) →
+    ∀ i, ∃ q : ℚ, (q : ℂ) = lam i
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak AndersonMooreMain.lean}.
+\begin{leancode}
+theorem andersonMooreInput_holds : AndersonMooreInput :=
+  andersonMooreInput_of_core amCore_holds
+\end{leancode}
+
+\begin{dictionary}
+\lean{UpperHalfPlane} is Mathlib's $\mathbb H$; \lean{ModularGroup.S • τ} is $-1/\tau$. \lean{coeff i 0 ≠ 0} pins $\lambda_i$
+(otherwise $f_i\equiv0$ would allow any $\lambda_i$). Source: Anderson--Moore (1988); used by Dong--Li--Mason for the
+rationality of conformal weights. The input is stated with the $S$-transformation only; closure under
+$T:\tau\mapsto\tau+1$ is automatic, since $f_i(\tau+1)=e^{2\pi i\lambda_i}f_i(\tau)$ term by term. The exponents are
+allowed to be complex a priori; rationality (in particular reality) is the conclusion. \lean{∃ q : ℚ, (q : ℂ) = lam i}
+says $\lambda_i$ is the image of a rational number. Same as the textbook statement.
+\end{dictionary}
+
+\begin{proof}[Proof on paper (sketch)]
+Let $\mathcal F$ be the span of the $f_i$; it is invariant under $S$ and $T$, hence under $\mathrm{SL}_2(\Z)$, and on it
+$T$ acts with eigenvalues $e^{2\pi i\lambda_i}$. The $f_i$ form a fundamental system of a monic modular linear
+differential equation (built from the Wronskian), whose coefficients are modular forms and whose indicial roots at the
+cusp $i\infty$ are the $\lambda_i$. Because the solutions have $q$-expansions with \emph{integer} coefficients and nonzero
+leading term, the equation is defined over $\Q$ and has a full set of solutions with integral expansions; an
+arithmetic argument of Grothendieck--Katz type (Anderson--Moore's key step) then forces the local monodromy at the cusp,
+which is $\rho(T)$, to be quasi-unipotent: its eigenvalues $e^{2\pi i\lambda_i}$ are roots of unity, i.e.\
+$\lambda_i\in\Q$. The library proves this through its own core statement \lean{amCore_holds}; we do not reproduce
+that route.
+\end{proof}
+
+\begin{physics}
+The conformal weights of a rational CFT are rational numbers: $T$ has finite order.
+\end{physics}
+
+\begin{status}
+Proved (\lean{andersonMooreInput_holds}), Lean's three axioms.
+\end{status}
+
+\begin{theorem}[$V'\cong V$ and the vacuum-fusion chain, for strongly rational $V$]\label{l21:thm:vacSR}
+Let $V$ be strongly rational. (i) If $A$ is a $V$-module with $A\cong V$, then $A'\cong V$; no pseudo-unitarity is used.
+(ii) For a modular-data family $(M_a)$ with $M_{v_0}\cong V$: $N_{ab}^{v_0}\le[M_b\cong M_a']$; $N_{ab}^{v_0}=1$ (in
+particular $\neq0$, and $\ge1$) when $M_a'\cong M_b$; and $\dim I\binom{V}{M_b\,M_a}\le1$. So $N_{ab}^{0}=\delta_{b,a'}$
+holds without pseudo-unitarity.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak SelfDualContragredient.lean}.
+\begin{leancode}
+theorem contra_vacuum_equiv_of_stronglyRational (hSR : StronglyRational W) (A : OrdVModule W M)
+    (_hirr : A.IsIrreducible) (e : ModuleEquiv W A (adjointModule W)) :
+    Nonempty (ModuleEquiv W (contragredientModule A) (adjointModule W)) :=
+  contragredient_equiv_of_selfDual hSR.toStronglyFinite.selfDual A e
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak VerlindeVacuumFusionSR.lean} (one of five copies).
+\begin{leancode}
+theorem famFusion_vacuum_le_of_stronglyRational (hSR : StronglyRational W) (v0 : ι)
+    (hv0 : Nonempty (ModuleEquiv W (D.Mfam v0).isMod (adjointModule W))) (a b : ι) :
+    famFusion D a b v0
+      ≤ if Nonempty (ModuleEquiv W (D.Mfam b).isMod (contragredientModule (D.Mfam a).isMod))
+        then 1 else 0 := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{SelfDual} in \lean{StronglyRational} supplies a fully invariant bilinear form on $V$ with zero left radical; the
+general lemma \lean{contragredient_equiv_of_selfDual} turns a weight-orthogonal, fully invariant, nondegenerate module form
+into an isomorphism $N\cong N'$, and transports it along $A\cong V$. The five copies, with \lean{StronglyRational W} in place
+of \lean{Nice W}, are \lean{VerlindeVacuum.famFusion_vacuum_le_of_stronglyRational},
+\lean{VerlindeVacuum.famFusion_vacuum_contra_of_stronglyRational}, \lean{VerlindeVacuum.famFusion_vacuum_ne_zero_of_stronglyRational},
+\lean{GenusOneG1f.vacuum_pairing_le_one_of_stronglyRational} and
+\lean{VerlindeRho.one_le_famFusion_contragredient_of_stronglyRational}; the \lean{Nice} originals are untouched. The
+argument \lean{_hirr} is unused, and the docstring of \lean{vacuum_pairing_le_one_of_stronglyRational} still says ``nice
+$V$'' (documentation only). \lean{CardyPositivity.vacColumn_mem_K} keeps \lean{Nice}: there pseudo-unitarity is essential,
+as the Lee--Yang model $M(2,5)$ shows. The rigidity, Verlinde and modular-data headline theorems have not been restated
+for strongly rational $V$.
+\end{dictionary}
+
+\begin{physics}
+$V'\cong V$ says the vacuum sector is its own conjugate: the vacuum two-point function pairs $V$ with itself, so the
+identity field has itself as charge conjugate. Part (ii) is the familiar fusion rule $\mathbf 1\times a$ contains $b$
+exactly when $b=\bar a$, with multiplicity one, i.e.\ $N_{ab}^{0}=\delta_{b,\bar a}$: the input that lets the vacuum column of
+$S$ act as the unit in Verlinde-type arguments. The point recorded here is that only the self-duality built into strong
+rationality (a nondegenerate invariant bilinear form on $V$) is used, not pseudo-unitarity, so non-unitary models such as
+Lee--Yang are covered. What is not extended: the Cardy-positivity step (\lean{CardyPositivity.}\allowbreak\lean{vacColumn_mem_K})
+still needs pseudo-unitarity, and the Verlinde, rigidity and modular-data headline theorems are still stated for nice $V$.
+\end{physics}
+
+\begin{status}
+Proved; \texttt{\#print axioms} of \lean{VOA.contra_vacuum_equiv_of_stronglyRational} and of the five copies:
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}, recorded in
+\texttt{Notes/\allowbreak release/\allowbreak WS-RELEASE2.md} (commit \texttt{34b74b85}); audited as stated in
+\texttt{Notes/\allowbreak Textbook/\allowbreak referee/\allowbreak RELEASE\_AUDIT\_QUEUE2.md}. The aggregate
+\texttt{lake build} at the release commit is pending.
+\end{status}
+
+\begin{definition}[Huang's Verlinde theorem, fusion form, for nice $V$]\label{l21:def:verlinde}
+For a nice (strongly rational and pseudo-unitary) $V$ and a complete irredundant family of irreducibles with Zhu's modular matrix $S$, the vacuum row is nonzero,
+$S_{0a}=S_{a0}$, and $S_{ax}S_{bx}=S_{0x}\sum_cN_{ab}^cS_{cx}$ with the true fusion rules $N_{ab}^c$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak VerlindeFusion.lean}.
+\begin{leancode}
+def HuangVerlindeFusionInput : Prop :=
+  ∀ (𝒱 : Type u) [AddCommGroup 𝒱] [Module ℂ 𝒱] (W : VertexOperatorAlgebra 𝒱), Nice W →
+    ∀ (ι : Type w) [Fintype ι] [DecidableEq ι] (D : VOA.ModularData W ι),
+      ZhuModularityAnalytic D → Irredundant D.Mfam → Complete D.Mfam →
+      ∀ v0 : ι, Nonempty (ModuleEquiv W (D.Mfam v0).isMod (adjointModule W)) →
+        (∀ x, D.repS v0 x ≠ 0) ∧ (∀ a, D.repS v0 a = D.repS a v0) ∧
+        ∀ a b x, D.repS a x * D.repS b x
+          = D.repS v0 x * ∑ c, (famFusion D a b c : ℂ) * D.repS c x
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Classification/\allowbreak COne/\allowbreak MainVerlindeProved.lean}.
+\begin{leancode}
+theorem huangVerlindeFusionInput_holds : VOA.Huang.VerlindeFusion.HuangVerlindeFusionInput.{u, u + 1} :=
+  VOA.Huang.VerlindeVacuum.huangVerlindeFusionInput_of_eigen_rho
+    VOA.Huang.GenusOneG1f.fusionEigenInput_holds VOA.Huang.VerlindeRho.rhoNegOneInput_pbw
+\end{leancode}
+
+\begin{dictionary}
+\lean{VOA.ModularData W ι} here is Chapter~\ref{ch:L15}'s Zhu data (a family \lean{Mfam} of irreducible modules and
+weights), \lean{D.repS} is Zhu's $\rho(S)$ on it; \lean{ZhuModularityAnalytic D} is Zhu's theorem for the family;
+\lean{Irredundant}, \lean{Complete}: the family is a system of representatives. \lean{famFusion D a b c} is the
+\lean{fusionRule} of Definition~\ref{l21:def:fusion} on the family (\lean{famFusion D a b c = fusionRule (D.Mfam a).isMod
+(D.Mfam b).isMod (D.Mfam c).isMod}, \leanpath{VerlindeFusion.lean}), cast to $\C$. \lean{v0} is the label of the
+vacuum module (\lean{ModuleEquiv … (adjointModule W)}: $M_{v_0}\cong V$). The three conjuncts are, in order:
+$S_{v_0x}\ne0$ for all $x$; $S_{v_0a}=S_{av_0}$; and the Verlinde identity
+$S_{ax}S_{bx}=S_{v_0x}\sum_cN_{ab}^cS_{cx}$ for all $a,b,x$ --- the quotation is the complete statement. This is Huang's
+main theorem of ``Vertex operator algebras and the Verlinde conjecture'', written without division, for nice $V$
+(Huang assumes no pseudo-unitarity). \textbf{The proved form.} The conclusion is the diagonalisation form
+$S_{ax}S_{bx}=S_{0x}\sum_cN_{ab}^cS_{cx}$ together with $S_{0x}\ne0$ and $S_{0a}=S_{a0}$. It is equivalent to the
+familiar $N_{ab}^c=\sum_xS_{ax}S_{bx}(S^{-1})_{xc}/S_{0x}$ only given invertibility of $S$, which holds because
+\lean{D.repS} comes from a group homomorphism; full symmetry $S=S^{T}$ is \emph{not} part of this statement. Quote it in the
+proved form. The index type
+\lean{ι} lives in universe \lean{w}; the proved instance takes \lean{w = u + 1}, which is the universe in which Zhu's
+family is built, so a \lean{Fin n}-indexed family needs a \lean{ULift}; this is a bookkeeping restriction, not one of
+content.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+Huang: the genus-one one-point functions of intertwining operators span a space on which $\ltwooneSL(\Z)$ acts; the
+fusion matrices $N_a$ act on characters by inserting the vertex operator of $a$ along a cycle, and the $S$-transformation
+exchanges the two cycles of the torus, which diagonalizes the $N_a$. The library proves the eigenvalue form
+(\lean{fusionEigenInput_holds}) through a full genus-one theory of intertwining operators and transports it to the
+character $S$-matrix.
+\end{proof}
+
+\begin{physics}
+The Verlinde formula: the modular $S$-matrix diagonalizes fusion.
+\end{physics}
+
+\begin{status}
+Proved for nice $V$, in the form above; \lean{#print axioms}: Lean's three axioms (it uses the theorem \lean{VOA.pbw}; while \lean{VOA.pbw} was an axiom the report also listed \lean{VOA.pbw}).
+\end{status}
+
+\begin{definition}[The PBW bottom input]\label{l21:def:zhupbw}
+Every VOA admits a bottom projection for the parabolic module induced from its regular Zhu module.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak ZhuModData.lean}.
+\begin{leancode}
+def ZhuPBWBottomInput : Prop :=
+  ∀ (𝒱 : Type u) [AddCommGroup 𝒱] [Module ℂ 𝒱] (W : VertexOperatorAlgebra 𝒱),
+    Nonempty (BottomProjection (parabolicRepOfAMod W (regularAMod W)))
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak ZhuModData.lean}.
+\begin{leancode}
+theorem zhuPBWBottomInput_of_pbw : ZhuPBWBottomInput.{u} :=
+  fun _ _ _ W => ⟨voaPBWBottomProjection (parabolicRepOfAMod W (regularAMod W))⟩
+\end{leancode}
+
+\begin{dictionary}
+\lean{BottomProjection} is the datum of Chapter~\ref{ch:L13}: a projection onto the bottom of the induced parabolic module
+compatible with the Zhu action, which Zhu's induced-module construction needs. The library constructs it, for
+every VOA, from the theorem \lean{VOA.pbw} (\lean{voaPBWBottomProjection}). \textbf{This is the single point where
+\lean{VOA.pbw} enters the $c=1$ classification} (it was an axiom in earlier versions of the library).
+\end{dictionary}
+
+\begin{physics}
+The statement that the ``generalized Verma module'' induced from the zero-mode algebra has no unexpected collapse at its
+bottom level --- a PBW-type freeness statement.
+\end{physics}
+
+\begin{status}
+\lean{Prop}; proved from \lean{VOA.pbw}.
+\end{status}
+
+\begin{theorem}[\texttt{IModData} holds]\label{l21:thm:imoddata}
+Every nice VOA has modular data in the sense of Chapter~\ref{ch:L22}, Definition~\ref{l22:def:ismoddata}.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak HuangTierReduced.lean}.
+\begin{leancode}
+theorem iModData_of_verlinde_inputs (hPBW : ZhuPBWBottomInput.{u}) (hAM : AndersonMooreInput)
+    (hV : VerlindeInput.{u, u + 1}) : IModData.{u} :=
+  iModData_of_reduced_inputs hPBW (dlmRationalityInput_of_andersonMoore hPBW hAM)
+    (huangSInput_of_am_verlinde hPBW hAM hV)
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak HKLFrobDimMain.lean}.
+\begin{leancode}
+theorem iModData_holds : IModData.{u} :=
+  VOA.Huang.HuangTierReduced.iModData_of_verlinde_pbw_inputs
+    VOA.Huang.AndersonMoore.andersonMooreInput_holds
+    (VOA.Huang.VerlindeFusion.verlindeInput_of_fusion huangVerlindeFusionInput_holds)
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak HuangTierReduced.lean}.
+\begin{leancode}
+theorem iModData_of_verlinde_pbw_inputs (hAM : AndersonMooreInput)
+    (hV : VerlindeInput.{u, u + 1}) : IModData.{u} :=
+  iModData_of_verlinde_inputs zhuPBWBottomInput_of_pbw hAM hV
+\end{leancode}
+
+\begin{dictionary}
+\lean{IModData.{u}}: every nice VOA on a carrier in universe \lean{u} has modular data \lean{D} with
+\lean{D.IsModularData} (Section~\ref{l21:sec:vocab}). \lean{iModData_of_verlinde_inputs} is the conditional form, with
+three \lean{Prop} hypotheses: the PBW bottom input (Definition~\ref{l21:def:zhupbw}), Anderson--Moore
+(Definition~\ref{l21:def:am}) and \lean{VerlindeInput}, a weakened form of Huang's Verlinde theorem (the vacuum row is
+nonzero and symmetric, and the fusion matrices are diagonalized by $\rho(S)$ with \emph{some} non-negative integer
+coefficients) which \lean{verlindeInput_of_fusion} derives from Definition~\ref{l21:def:verlinde}.
+\lean{iModData_of_verlinde_pbw_inputs} fills the PBW input with \lean{zhuPBWBottomInput_of_pbw}, and
+\lean{iModData_holds} fills the other two with their proofs. The chain is thus a composition of proved statements.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+Let $V$ be nice. (1) Zhu's theory, with the bottom projection, shows that the irreducible ordinary modules are the
+induced modules of the finitely many simple modules of the finite-dimensional semisimple algebra $A(V)$: this gives the
+finite complete irredundant list $M_a$ with $M_0\cong V$, the lowest weights $h_a$, and the weight-space description.
+(2) Zhu's modular invariance gives the characters as convergent $q$-series and a matrix $S=\rho(S)$ with
+$\operatorname{ch}_a(-1/\tau)=\sum_bS_{ab}\operatorname{ch}_b(\tau)$, and in fact the same law for every one-point
+function, i.e.\ $S$ is pinned. (3) Anderson--Moore, applied to the characters, makes every $h_a$ (and $c$) rational. (4)
+Huang's Verlinde theorem gives $S_{0x}\ne0$ and $S_{0a}=S_{a0}$. (5) Put $S_{00}:=S_{0,0}$ and $d_a:=S_{a0}/S_{00}$. The
+$d_a$ are the quantum dimensions; comparing the growth of $\operatorname{ch}_a(it)$ and $\operatorname{ch}_0(it)$ as
+$t\to0^+$ (where $\operatorname{ch}_a(it)\sim S_{a0}\,\operatorname{ch}_0(i/t)$ and pseudo-unitarity makes the vacuum
+the unique minimal weight) shows $S_{00}>0$ and $d_a\ge1$. (6) Gannon's bound $|S_{ab}|\le S_{00}d_ad_b$ follows from
+the Verlinde formula: $S_{ab}/S_{0b}$ is an eigenvalue of the fusion matrix $N_a$, whose Perron--Frobenius eigenvalue is
+$d_a$.
+\end{proof}
+
+\begin{physics}
+The statement that a rational, positive-energy chiral algebra has a genuine modular tensor category's worth of data: a
+finite list of primaries with rational spins, characters forming a representation of the modular group, and quantum
+dimensions $\ge1$ bounding the $S$-matrix.
+\end{physics}
+
+\begin{status}
+Proved; Lean's three axioms (it uses the theorem \lean{VOA.pbw}; while \lean{VOA.pbw} was an axiom the report also listed \lean{VOA.pbw}).
+\end{status}
+
+\begin{theorem}[The pinned $S$-matrix is unique, and characters do not pin it]\label{l21:thm:spin}
+(i) Let $V$ be $C_2$-cofinite, let $\mathrm{Pr}$ be a bottom projection for the parabolic module induced from the
+regular Zhu module, and let $D$ be modular data of $V$ (\lean{D.IsModularData}). If two matrices $S,S'$ both satisfy the
+pinned law for $D$, then $S=S'$.
+(ii) Let $D$ satisfy the old, character-only package \lean{IsModularDataWeak} (every clause of \lean{IsModularData}
+except the pinned law). Let $a,b,b'$ be labels with $b\ne b'$ and $a,b,b'\ne\mathrm{vac}$, such that
+$\operatorname{ch}_b=\operatorname{ch}_{b'}$ on the upper half plane, and let $t\in\C$ satisfy
+$|S_{ab}+t|\le S_{00}d_ad_b$ and $|S_{ab'}-t|\le S_{00}d_ad_{b'}$. Then the data with $S$ replaced by
+$S+t(E_{ab}-E_{ab'})$ still satisfy \lean{IsModularDataWeak}.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak SPinning.lean}.
+\begin{leancode}
+theorem S_unique_of_pinned
+    (Pr : BottomProjection (parabolicRepOfAMod V (regularAMod V)))
+    (hC2 : C2Cofinite V) (D : VOA.Classification.COne.ModularData V) (hD : D.IsModularData)
+    {S S' : D.ι → D.ι → ℂ} (hS : D.SPinned S) (hS' : D.SPinned S') : S = S' :=
+  rho_unique (famOf D hD) (hOf D) (traceIndependent_of_isModularData Pr hC2 D hD)
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak HuangModularObstruction.lean}.
+\begin{leancode}
+theorem isModularDataWeak_perturbS (D : VOA.Classification.COne.ModularData W) (hD : IsModularDataWeak D) {a b b' : D.ι}
+    (hbb : b ≠ b') (ha : a ≠ D.vac) (hb : b ≠ D.vac) (hb' : b' ≠ D.vac)
+    (hch : ∀ τ : ℂ, 0 < τ.im → D.ch b τ = D.ch b' τ) (t : ℂ)
+    (hbd : ‖D.S a b + t‖ ≤ D.S00 * D.d a * D.d b)
+    (hbd' : ‖D.S a b' - t‖ ≤ D.S00 * D.d a * D.d b') :
+    IsModularDataWeak (withS D (perturbS D a b b' t)) where
+\end{leancode}
+
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak HuangModularObstruction.lean}.
+\begin{leancode}
+def perturbS (D : VOA.Classification.COne.ModularData W) (a b b' : D.ι) (t : ℂ) : D.ι → D.ι → ℂ :=
+  fun x y => D.S x y + (if x = a ∧ y = b then t else 0) - (if x = a ∧ y = b' then t else 0)
+\end{leancode}
+
+\begin{dictionary}
+(i) \lean{Pr}, \lean{hC2} and \lean{hD} are explicit hypotheses; \lean{Pr} is the bottom-projection datum of
+Chapter~\ref{ch:L13}, taken as an argument rather than built from \lean{VOA.pbw}, so the theorem is axiom-clean but
+\emph{conditional on} \lean{Pr}; instantiating \lean{Pr := voaPBWBottomProjection _} makes it hold for every
+$C_2$-cofinite $V$ (\lean{voaPBWBottomProjection} uses the theorem \lean{VOA.pbw}). \lean{D.SPinned S} is the pinned law $T_a(v,-1/\tau)=\tau^n\sum_b
+S_{ab}T_b(v,\tau)$ for square-bracket weight-$n$ states $v$ (Chapter~\ref{ch:L22}, Definition~\ref{l22:def:spin}).
+(ii) is the machine-checked counterexample that forced the repair of the modular-data package (Chapter~\ref{ch:L22},
+Warning~\ref{l22:warn:spin}): \lean{IsModularDataWeak} is the structure \lean{IsModularData} with the field
+\lean{S_pinned} removed (\leanpath{HuangModularObstruction.lean}); \lean{withS D S'} is $D$ with its matrix replaced by
+\lean{S'}; \lean{perturbS D a b b' t} adds $t$ to the entry $(a,b)$ and subtracts it from $(a,b')$; \lean{hch} assumes
+two modules with equal characters (e.g.\ $M$ and its contragredient $M'$). The bounds \lean{hbd}, \lean{hbd'} keep
+Gannon's inequality; when both inequalities are strict for $t=0$, every $t$ in a small disc qualifies, which is the
+``continuum'' of wrong $S$-matrices quoted in Chapter~\ref{ch:L22}. The conditions $a,b,b'\ne\mathrm{vac}$ keep the
+vacuum row and column, hence $S_{00}$ and the $d_a$, unchanged.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+(i) Subtracting the two pinned laws gives $\sum_b(S_{ab}-S'_{ab})T_b(v,\tau)=0$ for every $v$ and every $a$. Zhu's
+one-point functions of a complete irredundant family of irreducible modules are linearly independent as functions of
+$(v,\tau)$ (Zhu; Dong--Li--Mason): the leading coefficient of $T_b(v,\tau)$ is the trace of $o(v)$ on the bottom
+$A(V)$-module of $M_b$, and traces of inequivalent simple modules of a finite-dimensional algebra are linearly
+independent. Hence $S_{ab}=S'_{ab}$. (ii) Every clause of \lean{IsModularDataWeak} other than the $S$-law and the bounds
+does not mention $S$; in the $S$-law, the row $a$ changes by $t(\operatorname{ch}_b-\operatorname{ch}_{b'})=0$; the vacuum
+entries are unchanged; the bounds are assumed.
+\end{proof}
+
+\begin{physics}
+Charge conjugation is invisible in the partition function but visible in correlators with insertions: characters
+cannot tell a sector from its conjugate, one-point functions can.
+\end{physics}
+
+\begin{status}
+Both proved, Lean's three axioms. (i) is \textbf{conditional on its explicit datum} \lean{Pr} (a clean
+\lean{#print axioms} does not report it); the PBW projection \lean{voaPBWBottomProjection} discharges \lean{Pr}, so (i) is then conditional only on its
+remaining explicit hypotheses \lean{hC2} and \lean{hD}.
+\end{status}
+
+%======================================================================
+\section{The congruence property}\label{l21:sec:congruence}
+%======================================================================
+
+\begin{definition}[The two halves of \texttt{ICongruenceGalois}]\label{l21:def:split}
+\emph{DLN congruence}: for every level $N$, characters are $\Gamma(N)$-invariant. \emph{Galois symmetry, nontrivial case}:
+for $\ell\not\equiv\pm1$ and $\gamma\equiv\operatorname{diag}(\ell,\ell^{-1})$, the character transformation is a signed
+permutation (\lean{GaloisCase D γ}).
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak CongruenceGaloisSplit.lean}.
+\begin{leancode}
+def DLNCongruenceInput : Prop :=
+  ∀ (𝒱 : Type u) [AddCommGroup 𝒱] [Module ℂ 𝒱] (V : VertexOperatorAlgebra 𝒱), Nice V →
+    ∀ D : VOA.Classification.COne.ModularData V, D.IsModularData → ∀ N : ℕ, D.IsLevel N →
+      ∀ γ ∈ CongruenceSubgroup.Gamma N, ∀ a (τ : ℂ), 0 < τ.im →
+        D.ch a (mobius γ τ) = D.ch a τ
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak CongruenceGaloisSplit.lean}.
+\begin{leancode}
+def GaloisSymmetryNontrivialInput : Prop :=
+  ∀ (𝒱 : Type u) [AddCommGroup 𝒱] [Module ℂ 𝒱] (V : VertexOperatorAlgebra 𝒱), Nice V →
+    ∀ D : VOA.Classification.COne.ModularData V, D.IsModularData → ∀ N : ℕ, D.IsLevel N →
+      ∀ ℓ ℓ' : ℤ, ℓ * ℓ' ≡ 1 [ZMOD N] → ¬ ℓ ≡ 1 [ZMOD N] → ¬ ℓ ≡ -1 [ZMOD N] →
+      ∀ γ : Matrix.SpecialLinearGroup (Fin 2) ℤ,
+        γ 0 0 ≡ ℓ [ZMOD N] → γ 1 1 ≡ ℓ' [ZMOD N] → γ 0 1 ≡ 0 [ZMOD N] → γ 1 0 ≡ 0 [ZMOD N] →
+        GaloisCase D γ
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak CongruenceGaloisSplit.lean}.
+\begin{leancode}
+theorem iCongruenceGalois_of_split (hC : DLNCongruenceInput.{u})
+    (hG : GaloisSymmetryNontrivialInput.{u}) : ICongruenceGalois.{u} := by
+\end{leancode}
+
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak CongruenceGaloisSplit.lean}.
+\begin{leancode}
+def GaloisCase {𝒱 : Type u} [AddCommGroup 𝒱] [Module ℂ 𝒱] {V : VertexOperatorAlgebra 𝒱}
+    (D : VOA.Classification.COne.ModularData V) (γ : Matrix.SpecialLinearGroup (Fin 2) ℤ) : Prop :=
+  ∃ (π : D.ι ≃ D.ι) (ε : D.ι → ℂ), (∀ a, ε a = 1 ∨ ε a = -1) ∧
+    ∀ a (τ : ℂ), 0 < τ.im → D.ch a (mobius γ τ) = ε a * D.ch (π a) τ
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak CongruenceGaloisSplit.lean}.
+\begin{leancode}
+theorem mobius_neg (γ : Matrix.SpecialLinearGroup (Fin 2) ℤ) (τ : ℂ) :
+    mobius (-γ) τ = mobius γ τ := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{GaloisCase D γ}: there are a permutation $\pi$ of the labels (\lean{D.ι ≃ D.ι}) and signs $\varepsilon_a=\pm1$ with
+$\operatorname{ch}_a(\gamma\tau)=\varepsilon_a\operatorname{ch}_{\pi a}(\tau)$ on the upper half plane --- exactly the
+clause of the Galois symmetry of Chapter~\ref{ch:L22}, Definition~\ref{l22:def:level}, for one $\gamma$. The hypothesis
+\lean{ℓ * ℓ' ≡ 1 [ZMOD N]} makes $\ell$ invertible modulo $N$ (no separate coprimality hypothesis is needed).
+\textbf{Why only $\ell\not\equiv\pm1$ is a separate input.} If $\ell\equiv1$, then $\gamma\equiv I\pmod N$, i.e.\
+$\gamma\in\Gamma(N)$, and the congruence half gives \lean{GaloisCase} with $\pi=\mathrm{id}$, $\varepsilon=1$. If
+$\ell\equiv-1$, then $-\gamma\in\Gamma(N)$ and $-\gamma$ acts on $\mathbb H$ exactly as $\gamma$ (\lean{mobius_neg}), so
+the same applies. \lean{iCongruenceGalois_of_split} assembles Chapter~\ref{ch:L22}'s \lean{ICongruenceGalois} from the
+two halves; the Lean statement is the same as the textbook one.
+\end{dictionary}
+
+\begin{physics}
+The torus partition functions of a rational CFT are modular functions for a congruence subgroup, and the Galois group of
+the cyclotomic field of the $S$-matrix permutes the sectors up to sign.
+\end{physics}
+
+\begin{status}
+Definitions (\lean{Prop}s), stated for nice $V$. Both halves are proved, as the named hypothesis-free theorems
+\lean{dlnCongruenceInput_holds} and \lean{galoisSymmetryNontrivialInput_holds} (Theorem~\ref{l21:thm:congnamed}, added
+2026-10-28), by \lean{dln_inputs_of_beyl} (Theorem~\ref{l21:thm:beyl}) applied to the proved Beyl facts. Before that
+revision the composition was formed only inside the proof of \lean{gannonRayhaun_forward} (Chapter~\ref{ch:L22}).
+\end{status}
+
+\begin{theorem}[Ng--Schauenburg, kernel half: kernels of modular representations are congruence]\label{l21:thm:ns}
+For every modular category there is $N>0$ such that $\Gamma(N)$ acts by scalars in every lift of the categorical projective
+$\ltwooneSL(\Z)$-representation.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak NSCongruenceBridge.lean}.
+\begin{leancode}
+def NSProjectiveKernelAll : Prop :=
+  ∀ (C : Type w) [Category.{v} C] [MonoidalCategory C] [RightRigidCategory C]
+    [Preadditive C] [Linear ℂ C] [MonoidalPreadditive C] [MonoidalLinear ℂ C]
+    [HasKernels C] [HasFiniteBiproducts C] [BraidedCategory C]
+    (F : SphericalFusion C) (M : Modular F),
+    ∃ N : ℕ, 0 < N ∧ ∀ ρ : SL(2, ℤ) →* ((F.Label → ℂ) ≃ₗ[ℂ] (F.Label → ℂ)),
+      IsModularRepresentation F M ρ → ProjectiveKernelContainsGamma ρ N
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak NSSMoveC4Assembly.lean}.
+\begin{leancode}
+theorem nsProjectiveKernelAll_holds : NSProjectiveKernelAll.{v, w} :=
+\end{leancode}
+
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak NgSchauenburgCongruence.lean}.
+\begin{leancode}
+def IsModularRepresentation (F : SphericalFusion C) (M : Modular F)
+    (ρ : SL(2, ℤ) →* ((F.Label → ℂ) ≃ₗ[ℂ] (F.Label → ℂ))) : Prop :=
+  ∃ a b : ℂˣ,
+    (∀ z i, ρ ModularGroup.S z i = (a : ℂ) * ∑ j, categoricalS F i j * z j) ∧
+    (∀ z i, ρ ModularGroup.T z i = (b : ℂ) * M.twistScalar i * z i)
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak NgSchauenburgCongruence.lean}.
+\begin{leancode}
+def InPrincipalCongruence (N : ℕ) (γ : SL(2, ℤ)) : Prop :=
+  ∀ i j : Fin 2, (γ i j : ZMod N) = (1 : Matrix (Fin 2) (Fin 2) (ZMod N)) i j
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak NgSchauenburgCongruence.lean}.
+\begin{leancode}
+def ProjectiveKernelContainsGamma (ρ : SL(2, ℤ) →* (W ≃ₗ[ℂ] W)) (N : ℕ) : Prop :=
+  ∀ γ, InPrincipalCongruence N γ → ∃ c : ℂˣ, ∀ w, ρ γ w = (c : ℂ) • w
+\end{leancode}
+
+\begin{dictionary}
+Quantified over every $\C$-linear, preadditive, right-rigid, braided monoidal category with kernels and finite
+biproducts (the bracketed arguments are Mathlib's type classes for these structures), and a spherical fusion structure
+\lean{F : SphericalFusion C} (a pivotal structure with spherical traces, finitely many simple objects indexed by
+\lean{F.Label}) that is modular (\lean{M : Modular F}: a ribbon twist with nondegenerate $S$-matrix,
+\leanpath{NgSchauenburgModular.lean}). A representation \lean{ρ} of $\mathrm{SL}_2(\Z)$ on $\C^{\mathrm{Label}}$ is
+\lean{IsModularRepresentation} if $\rho(S)$ is a nonzero multiple of the categorical $S$-matrix and $\rho(T)$ a nonzero
+multiple of the diagonal matrix of twists $\theta_i$: a \emph{lift} of the projective modular representation of the
+category. \lean{InPrincipalCongruence N γ}: $\gamma\equiv I\pmod N$, i.e.\ $\gamma\in\Gamma(N)$.
+\lean{ProjectiveKernelContainsGamma ρ N}: every $\gamma\in\Gamma(N)$ acts by a scalar. The $N$ is chosen before $\rho$, so
+one level works for all lifts. \textbf{Vacuity.} The statement would be empty if no category satisfied the hypotheses;
+it is not: the DLN bridge applies it to the modular tensor category of a nice VOA (Section~\ref{l21:sec:mtc}), where
+\lean{IsModularRepresentation} is \emph{proved} for the representation on characters (\leanpath{DLNBridgeCategorical.lean}),
+and that application is what feeds the congruence property below. That application is made on a \emph{small model}:
+the categorical structures are put on \lean{canonicalModel}, a small category with a constructed braided monoidal
+equivalence to \lean{Ordinary W}, and its \lean{Modular} structure \lean{modelModular} (\leanpath{ZhuRepModel.lean}; a
+genuine determinant condition on the categorical $S$) takes a modular-data datum \lean{D} with \lean{D.IsModularData},
+which exists by \lean{iModData_holds}. There is no single declaration ``\lean{Ordinary W} is a modular tensor category''.
+\textbf{Weaker than NS Theorem~6.8.} This is only the \emph{kernel half} of NS Theorem~6.8: some $N>0$ works. The other
+half --- $N$ is the Frobenius--Schur exponent, and is minimal --- is the separate statement
+\lean{ProjectiveCongruenceTheorem} (\leanpath{NgSchauenburgCongruence.lean}), whose universal form
+\lean{NSProjectiveCongruenceAll} is \emph{not proved}; it occurs only as a hypothesis (of
+\lean{zhuProjectiveCongruence_of_NS}, \lean{dln_inputs_of_NS_twist}, \lean{dln_inputs_of_categorical} and others). The
+correct wording is: ``the kernel of the projective modular representation of a modular category contains a principal
+congruence subgroup''.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+Ng--Schauenburg (2010, Thm.~6.8): generalized Frobenius--Schur indicators are invariant under a Galois action and satisfy
+$\nu_{n,k}$-relations that force the $T$-eigenvalues and the image of $\Gamma(N)$ to behave as in a congruence
+quotient.
+\end{proof}
+
+\begin{physics}
+Modular invariance of anyon theories is ``arithmetic'': the modular group acts through a finite quotient.
+\end{physics}
+
+\begin{status}
+Proved (kernel half of NS~6.8 only), standard axioms (the docstring of the definition still says ``not proved in this file'',
+true but misleading). The Frobenius--Schur-exponent half is open.
+\end{status}
+
+\begin{definition}[Beyl's Schur-multiplier facts]\label{l21:def:beyl}
+A homomorphism $r:B\to A$ has \emph{trivial inflation} if for every central extension $\pi:E\to A$ (surjective, with
+central kernel) and every commuting square $\pi\circ\alpha=r\circ\beta$ with $\alpha:F\to E$, $\beta:F\to B$, every
+commutator element $x\in[F,F]$ with $\beta(x)=1$ has $\alpha(x)=1$. Beyl: the reduction
+$\ltwooneSL(\Z/2N)\to\ltwooneSL(\Z/N)$ has trivial inflation. The library splits this into: odd prime powers (trivial Schur
+multiplier of $\ltwooneSL(\Z/p^k)$), the prime $3$, the $2$-adic inflation for exponents $\ge2$, and a Gauss-chart relation for
+primes $p\ge5$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak DLNBeylInflation.lean}.
+\begin{leancode}
+def InflationTrivial {A B : Type*} [Group A] [Group B] (r : B →* A) : Prop :=
+  ∀ (E : Type) [Group E] (π : E →* A), Function.Surjective π → π.ker ≤ Subgroup.center E →
+    ∀ (F : Type) [Group F] (α : F →* E) (β : F →* B), π.comp α = r.comp β →
+      ∀ x ∈ commutator F, β x = 1 → α x = 1
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak DLNBeylInflation.lean}.
+\begin{leancode}
+def BeylInflationSL2 : Prop :=
+  ∀ N : ℕ, 0 < N → InflationTrivial (reductionMod (2 * N) N (dvd_mul_left N 2))
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak DLNBeylLocal.lean}.
+\begin{leancode}
+def OddPrimePowerSchur : Prop :=
+  ∀ p k : ℕ, p.Prime → p ≠ 2 → 0 < k → SchurTrivial (SLm(p ^ k))
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak DLNSchur2Relations.lean}.
+\begin{leancode}
+def ThreePowerSchur : Prop :=
+  ∀ k : ℕ, 0 < k → SchurTrivial (Matrix.SpecialLinearGroup (Fin 2) (ZMod (3 ^ k)))
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak DLNSchurTwo.lean}.
+\begin{leancode}
+def TwoPowerInflationFromTwo : Prop :=
+  ∀ a : ℕ, 2 ≤ a → InflationTrivial
+    (reductionMod (2 ^ (a + 1)) (2 ^ a) (pow_dvd_pow 2 (Nat.le_succ a)))
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak DLNSchur3Relations.lean}.
+\begin{leancode}
+def LargePrimeGaussLowerRelations : Prop :=
+  ∀ p k : ℕ, ∀ hp : p.Prime, ∀ hp5 : 5 ≤ p, 0 < k →
+    GaussLowerRelations (p ^ k) (primePower_coprime_two_three hp hp5).1
+\end{leancode}
+
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak DLNBeylInflation.lean}.
+\begin{leancode}
+def SchurTrivial (Q : Type*) [Group Q] : Prop := InflationTrivial (MonoidHom.id Q)
+\end{leancode}
+
+\begin{dictionary}
+The definitions are homology-free reformulations (no group cohomology in the statement). \lean{commutator F} is the
+commutator subgroup $[F,F]$; \lean{π.ker ≤ Subgroup.center E} says the extension is central. The Lean definition
+quantifies over all commuting squares, not only the pullback; this is equivalent (any commuting square maps to the
+pullback, and commutators map to commutators). ``Trivial Schur multiplier'' is \lean{SchurTrivial Q}, i.e.\
+\lean{InflationTrivial (MonoidHom.id Q)}: taking $F=E$, $\alpha=\mathrm{id}$, $\beta=\pi$, it says $\ker\pi\cap[E,E]=1$ for
+every central extension, which by Hopf's formula is $H_2(Q,\Z)=0$ (for the finite groups considered).
+\lean{reductionMod (2 * N) N _} is the reduction $\ltwooneSL(\Z/2N)\to\ltwooneSL(\Z/N)$. \lean{SLm(p ^ k)} is
+$\ltwooneSL(\Z/p^k)$. \lean{GaussLowerRelations} is an explicit relation in a presentation of $\ltwooneSL(\Z/p^k)$ by
+Gauss-chart generators; \lean{primePower_coprime_two_three} supplies the coprimality of $p^k$ to $6$ that the
+presentation needs. The extension groups \lean{E}, \lean{F} range over \lean{Type} (universe $0$), which is enough since
+all groups involved are finite.
+\end{dictionary}
+
+\begin{physics}
+These group-theoretic facts are what let a projective representation of $\ltwooneSL(\Z)$ that factors projectively through a
+congruence quotient be lifted to a genuine one with the same kernel --- the step from Ng--Schauenburg's projective statement
+to DLN's linear one.
+\end{physics}
+
+\begin{status}
+Definitions (\lean{Prop}s). All proved: Theorem~\ref{l21:thm:beyl}.
+\end{status}
+
+\begin{theorem}[Beyl's facts and the DLN inputs]\label{l21:thm:beyl}
+The three residuals hold, and with Ng--Schauenburg they imply both halves of the congruence input.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak DLNSmallThreePower.lean}.
+\begin{leancode}
+theorem threePowerSchur : ThreePowerSchur := by
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak DLNSmallTwoPower.lean}.
+\begin{leancode}
+theorem twoPowerInflationFromTwo_holds : TwoPowerInflationFromTwo :=
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak DLNSchur6Relations.lean}.
+\begin{leancode}
+theorem largePrimeGaussLowerRelations : LargePrimeGaussLowerRelations := by
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak NSSMoveC4Assembly.lean}.
+\begin{leancode}
+theorem dln_inputs_of_beyl (hodd : VOA.Huang.DLNBeyl.OddPrimePowerSchur)
+    (htwo : VOA.Huang.DLNSchur.TwoPowerInflationFromTwo) :
+    VOA.Huang.CongruenceGaloisSplit.DLNCongruenceInput.{u} ∧
+      VOA.Huang.CongruenceGaloisSplit.GaloisSymmetryNontrivialInput.{u} :=
+  dln_inputs_of_lifting (VOA.Huang.DLNSchur.matrixDLNLifting_of_remaining hodd htwo)
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak DLNSchur2Relations.lean}.
+\begin{leancode}
+theorem oddPrimePowerSchur_iff_rootRelations_and_three :
+    OddPrimePowerSchur ↔ LargePrimeRootRelations ∧ ThreePowerSchur := by
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak DLNSchur3Relations.lean}.
+\begin{leancode}
+theorem largePrimeRootRelations_iff_gaussLowerRelations :
+    LargePrimeRootRelations ↔ LargePrimeGaussLowerRelations := by
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Classification/\allowbreak COne/\allowbreak MainBeyl.lean}.
+\begin{leancode}
+theorem gannonRayhaun_beyl (hodd : VOA.Huang.DLNBeyl.OddPrimePowerSchur)
+    (htwo : VOA.Huang.DLNSchur.TwoPowerInflationFromTwo) : GannonRayhaunStatement.{u} :=
+  gannonRayhaun_hkl_qexp (VOA.Huang.NSGaloisCore.dln_inputs_of_beyl hodd htwo).1
+    (VOA.Huang.NSGaloisCore.dln_inputs_of_beyl hodd htwo).2
+\end{leancode}
+
+\begin{dictionary}
+How the three proved residuals reach the two DLN inputs: \lean{OddPrimePowerSchur} (all odd primes $p$, all $k\ge1$) is
+equivalent to the conjunction of the prime-$3$ statement \lean{ThreePowerSchur} and a root-relation statement for primes
+$p\ge5$, which is in turn equivalent to \lean{LargePrimeGaussLowerRelations}. Since \lean{threePowerSchur} and
+\lean{largePrimeGaussLowerRelations} are proved, so is \lean{OddPrimePowerSchur}; with
+\lean{twoPowerInflationFromTwo_holds} this feeds \lean{dln_inputs_of_beyl}, whose conclusion is \emph{both} halves of
+Definition~\ref{l21:def:split}. The last quotation shows the use in the forward classification (Chapter~\ref{ch:L22},
+\lean{gannonRayhaun_beyl_fine} makes the composition with the two equivalences explicit). The Ng--Schauenburg
+ingredients enter inside \lean{dln_inputs_of_lifting}, through the proved statement \lean{nsMixedNonzeroSMoveAll_holds}
+(an $S$-move nonvanishing fact from the same NS analysis); the standalone \lean{nsProjectiveKernelAll_holds} of
+Theorem~\ref{l21:thm:ns} is a sibling result of that analysis rather than a literal argument of this chain.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+For odd $p$, $\ltwooneSL(\Z/p^k)$ has a presentation in which every central extension splits (Mennicke; Beyl): the library
+verifies the defining relations in an arbitrary central extension, by explicit computations in Gauss-chart coordinates
+(for $p\ge5$) and separately for $p=3$, where an extra relation is needed. The $2$-adic case is a finite inflation computation.
+DLN's Theorem 2.1 then lifts Ng--Schauenburg's projective congruence statement to the linear representation on characters.
+\end{proof}
+
+\begin{physics}
+The modular group acts on the torus partition functions of a rational CFT only up to phases (the central charge
+anomaly $e^{2\pi ic/24}$ and the choice of normalisation of the $S$-move). Vanishing of the relevant Schur multipliers
+says these phases can be fixed consistently, so that the honest, linear action on characters also factors through
+a finite congruence quotient: no anomaly obstructs it.
+\end{physics}
+
+\begin{status}
+The three Beyl facts are proved, standard axioms. \lean{dln_inputs_of_beyl} is \textbf{conditional on its two explicit
+hypotheses} \lean{hodd}, \lean{htwo}; both are proved, and \lean{dln_inputs_of_beyl} itself does not discharge them; the
+resulting hypothesis-free congruence theorem is stated in \leanpath{VOA/\allowbreak Huang/\allowbreak CongruenceNamed.lean}
+(Theorem~\ref{l21:thm:congnamed}, \lean{dlnCongruence_and_galois_holds}).
+Standard axioms (the route passes through the theorem \lean{VOA.pbw}, via the tensor category).
+\end{status}
+
+\paragraph{The named congruence theorems (added 2026-10-28).} Until this revision the congruence property was proved only
+inside the proof term of \lean{gannonRayhaun_forward}: every declaration whose conclusion was \lean{DLNCongruenceInput},
+\lean{GaloisSymmetryNontrivialInput} or the kernel form \lean{ZhuCongruenceInput} took hypotheses (release audit, finding F2).
+The file \leanpath{VOA/\allowbreak Huang/\allowbreak CongruenceNamed.lean} now states these as named theorems with \emph{no}
+hypotheses, assembled from proved pieces only. Two caveats are unchanged and must be stated with them: they are proved for
+\emph{nice} $V$ only (pseudo-unitarity, Definition~\ref{l21:def:nice}), and the categorical input is only the \emph{kernel half}
+of Ng--Schauenburg's Theorem~6.8 (Theorem~\ref{l21:thm:ns}). The kernel form needs one more piece of vocabulary.
+
+\begin{definition}[Zhu datum on the labels of $D$; kernel containment; the kernel form of congruence]\label{l21:def:zhucong}
+Let $V$ be nice and $D$ its modular data (Section~\ref{l21:sec:vocab}). A \emph{Zhu datum on the labels of $D$} is a Zhu modular
+datum $D'$ (Chapter~\ref{ch:L15}, Definition~\ref{l15:def:modulardata}: a family of irreducible modules with weights and a
+representation $\rho=\rho_{D'}\colon\ltwooneSL(\Z)\to\mathrm{Mat}_{D.\iota}(\C)$ with $\rho(S)$ and $\rho(T)$ specified) whose
+modules and weights are those of $D$ and which satisfies Zhu's analytic modularity law. A representation $\rho$
+\emph{contains $\Gamma(N)$ in its kernel} if $\rho(\gamma)=1$ for every $\gamma\in\Gamma(N)=\{\gamma\equiv I\bmod N\}$. The
+\emph{kernel form of the congruence property} says: for every nice $V$, every such $D$ and every Zhu datum $D'$ on its labels,
+there is $L>0$ with $\Gamma(L)\subseteq\ker\rho_{D'}$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak DLNBridge.lean}.
+\begin{leancode}
+def IsZhuDatum (D : VOA.Classification.COne.ModularData V) (hD : D.IsModularData)
+    (D' : VOA.ModularData V D.ι) : Prop :=
+  D'.Mfam = famOf D hD ∧ D'.h = hOf D ∧ ZhuModularityAnalytic D'
+
+def ZhuCongruenceInput : Prop :=
+  ∀ (𝒱 : Type u) [AddCommGroup 𝒱] [Module ℂ 𝒱] (V : VertexOperatorAlgebra 𝒱), Nice V →
+    ∀ (D : VOA.Classification.COne.ModularData V) (hD : D.IsModularData)
+      (D' : VOA.ModularData V D.ι), IsZhuDatum D hD D' →
+      ∃ L : ℕ, 0 < L ∧ KernelContainsGamma D'.rep L
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak DLNReduction.lean}.
+\begin{leancode}
+def KernelContainsGamma (ρ : SL2Z →* Matrix ι ι ℂ) (N : ℕ) : Prop :=
+  ∀ γ ∈ CongruenceSubgroup.Gamma N, ρ γ = 1
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak HuangModularityZhu.lean}.
+\begin{leancode}
+theorem exists_zhuData (hW : Nice W) (D : VOA.Classification.COne.ModularData W)
+    (hD : D.IsModularData) :
+    ∃ D' : VOA.ModularData W D.ι, D'.Mfam = famOf D hD ∧ D'.h = hOf D ∧
+      ZhuModularityAnalytic D' := by
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Two ``modular data''.} \lean{D : VOA.Classification.COne.ModularData V} is the classification package of
+Section~\ref{l21:sec:vocab}; \lean{D' : VOA.ModularData V D.ι} is Zhu's data of Chapter~\ref{ch:L15}, indexed by the same
+label type \lean{D.ι}. \lean{famOf D hD} is the family of modules of \lean{D}, bundled as irreducible modules (irreducibility
+comes from \lean{hD}), and \lean{hOf D} is the family of weights $h_a$ of \lean{D}, cast from $\Q$ to $\C$
+(\leanpath{VOA/\allowbreak Huang/\allowbreak SPinning.lean}). \lean{ZhuModularityAnalytic D'} is Zhu's transformation law for
+all torus one-point functions (Chapter~\ref{ch:L15}, Definition~\ref{l15:def:modulardata}). So \lean{IsZhuDatum D hD D'} says
+exactly: $D'$ is Zhu's modular datum on $D$'s modules and weights, and its \lean{rep} is Zhu's representation $\rho_V$.
+
+\lean{SL2Z} abbreviates \lean{Matrix.SpecialLinearGroup (Fin 2) ℤ} $=\ltwooneSL(\Z)$; \lean{→*} is a group homomorphism into
+the multiplicative monoid of matrices (so a genuine, not projective, representation); \lean{CongruenceSubgroup.Gamma N} is
+Mathlib's principal congruence subgroup $\Gamma(N)$. \lean{KernelContainsGamma ρ N} (namespace \lean{VOA.Huang.DLN}) is
+$\Gamma(N)\subseteq\ker\rho$, with \emph{no} scalar discarded; contrast \lean{ProjectiveKernelContainsGamma} of
+Theorem~\ref{l21:thm:ns}, which allows $\rho(\gamma)$ to be a scalar. (A homonymous \lean{KernelContainsGamma} for
+representations on a vector space exists in \leanpath{NgSchauenburgCongruence.lean}; the one used here is the matrix version.)
+\lean{ZhuCongruenceInput} is the kernel form: some $L>0$ with $\Gamma(L)\subseteq\ker\rho_V$. The condition \lean{0 < L}
+excludes the vacuous $\Gamma(0)=\{1\}$.
+
+\textbf{Non-vacuity.} \lean{exists_zhuData} proves that for every nice $V$ and every modular datum $D$ a Zhu datum on its labels
+exists (it is built from Zhu's modularity theorem, Chapter~\ref{ch:L15}); and modular data $D$ with \lean{D.IsModularData} exist
+for every nice $V$ (\lean{iModData_holds}, Theorem~\ref{l21:thm:imoddata}). So the universal quantifiers in
+\lean{ZhuCongruenceInput} range over non-empty sets, and the statement is about the actual $\rho_V$.
+\end{dictionary}
+
+\begin{physics}
+$\rho_V$ is the matrix by which a modular transformation acts on the torus one-point functions of the rational CFT, i.e.\ on
+its genus-one conformal blocks. ``$\Gamma(L)$ lies in the kernel'' says that the torus blocks are modular functions for the
+principal congruence subgroup of level $L$: the modular group acts on them through the finite group
+$\ltwooneSL(\Z/L\Z)$.
+\end{physics}
+
+\begin{status}
+Definitions (\lean{Prop}s); \lean{exists_zhuData} proved, Lean's three standard axioms (the route passes through the theorem
+\lean{VOA.pbw}). The kernel form is proved in Theorem~\ref{l21:thm:congnamed}.
+\end{status}
+
+\begin{theorem}[The Dong--Lin--Ng congruence property, named and hypothesis-free, for nice $V$]\label{l21:thm:congnamed}
+Let $V$ be a nice VOA, $D$ its modular data, $\rho_V$ Zhu's representation on the labels of $D$ (any Zhu datum $D'$ on them).
+\begin{enumerate}
+\item (\emph{Character form.}) For every level $N$ of $D$, every $\gamma\in\Gamma(N)$, every label $a$ and every $\tau$ with
+  $\operatorname{Im}\tau>0$: $\operatorname{ch}_a(\gamma\tau)=\operatorname{ch}_a(\tau)$.
+\item (\emph{Galois symmetry, nontrivial case.}) For every level $N$, every $\ell$ invertible modulo $N$ with
+  $\ell\not\equiv\pm1$, and every $\gamma\equiv\operatorname{diag}(\ell,\ell^{-1})\pmod N$, $\gamma$ acts on the characters by a
+  signed permutation.
+\item (\emph{Kernel form.}) There is $L>0$ with $\Gamma(L)\subseteq\ker\rho_V$.
+\item (\emph{Kernel form at every level.}) For every level $N$ of $D$, $\Gamma(N)\subseteq\ker\rho_V$.
+\end{enumerate}
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak CongruenceNamed.lean}.
+\begin{leancode}
+theorem dlnCongruence_and_galois_holds :
+    CongruenceGaloisSplit.DLNCongruenceInput.{u} ∧
+      CongruenceGaloisSplit.GaloisSymmetryNontrivialInput.{u} :=
+  NSGaloisCore.dln_inputs_of_beyl
+    (DLNSchur.oddPrimePowerSchur_iff_largePrimeGaussLowerRelations.mpr
+      DLNSchur.largePrimeGaussLowerRelations)
+    DLNSchur.twoPowerInflationFromTwo_holds
+
+theorem dlnCongruenceInput_holds : CongruenceGaloisSplit.DLNCongruenceInput.{u} :=
+  dlnCongruence_and_galois_holds.1
+
+theorem galoisSymmetryNontrivialInput_holds :
+    CongruenceGaloisSplit.GaloisSymmetryNontrivialInput.{u} :=
+  dlnCongruence_and_galois_holds.2
+
+theorem zhuCongruenceInput_holds : DLNBridge.ZhuCongruenceInput.{u} :=
+  DLNBeyl.zhuCongruence_of_beyl
+    (DLNSchur.beylInflationSL2_of_large DLNSchur.largePrimeGaussLowerRelations)
+    (DLNBridge.zhuProjectiveCongruence_of_NSKernel DLNBridge.nsProjectiveKernelAll_holds
+      ZhuRep.zhuModularRepresentationInput_holds)
+
+theorem zhu_kernelContainsGamma_at_level {𝒱 : Type u} [AddCommGroup 𝒱] [Module ℂ 𝒱]
+    {V : VertexOperatorAlgebra 𝒱} (hV : VOA.Classification.COne.Nice V)
+    (D : VOA.Classification.COne.ModularData V) (hD : D.IsModularData)
+    (D' : VOA.ModularData V D.ι) (hZD : DLNBridge.IsZhuDatum D hD D') {N : ℕ}
+    (hN : D.IsLevel N) : DLN.KernelContainsGamma D'.rep N :=
+  DLNBridge.kernel_at_level zhuCongruenceInput_holds hV D hD D' hZD hN
+\end{leancode}
+
+\begin{dictionary}
+Namespace \lean{VOA.Huang.CongruenceNamed}; \lean{u} is the universe of the VOA's carrier, and each theorem holds for every
+\lean{u}. \textbf{The statements.} The first four theorems have \emph{no} arguments: their types are the \lean{Prop}s of
+Definitions~\ref{l21:def:split} and~\ref{l21:def:zhucong}, which already quantify over all nice VOAs, all modular data, all
+levels, etc. So \lean{dlnCongruenceInput_holds} is item~1, \lean{galoisSymmetryNontrivialInput_holds} item~2 (their conjunction
+is \lean{dlnCongruence_and_galois_holds}), and \lean{zhuCongruenceInput_holds} item~3. \lean{zhu_kernelContainsGamma_at_level}
+is item~4, stated pointwise: given $V$, \lean{hV : Nice V}, $D$ with \lean{hD}, a Zhu datum $D'$ with \lean{hZD}, and a level
+$N$ (\lean{D.IsLevel N}: $N>0$ and $N(h_a-c/24)\in\Z$ for all $a$), it concludes $\Gamma(N)\subseteq\ker\rho_{D'}$. Every
+hypothesis of item~4 is satisfiable for every nice $V$ (dictionary of Definition~\ref{l21:def:zhucong}), and every hypothesis
+quantified inside items~1--3 is the intended one (Section~\ref{l21:sec:vocab}).
+
+\textbf{The proof terms (shown because they are informative).} Items~1--2: \lean{dln_inputs_of_beyl}
+(Theorem~\ref{l21:thm:beyl}) applied to \lean{OddPrimePowerSchur}, obtained from the proved
+\lean{largePrimeGaussLowerRelations} through the proved equivalence \lean{oddPrimePowerSchur_iff_largePrimeGaussLowerRelations},
+and to \lean{twoPowerInflationFromTwo_holds}: exactly the composition that the release audit compiled as
+\lean{audit_dln_congruence}. Item~3: \lean{zhuCongruence_of_beyl}, which lifts projective congruence of $\rho_V$ to linear
+congruence using Beyl's inflation theorem \lean{BeylInflationSL2} (here from \lean{beylInflationSL2_of_large}), applied to the
+projective congruence of $\rho_V$, which \lean{zhuProjectiveCongruence_of_NSKernel} derives from the kernel half of
+Ng--Schauenburg (\lean{nsProjectiveKernelAll_holds}, Theorem~\ref{l21:thm:ns}) and from DLN's Theorem~3.10, that $\rho_V$ is a
+modular representation of a modular category (\lean{zhuModularRepresentationInput_holds},
+\leanpath{VOA/\allowbreak Huang/\allowbreak ZhuRepInput.lean}). Item~4: \lean{kernel_at_level} applied to item~3.
+
+\textbf{Same, stronger, or weaker than Dong--Lin--Ng?} DLN's Theorem~I: for a rational, $C_2$-cofinite, self-dual VOA of CFT type,
+$\ker\rho_V$ is a congruence subgroup of level $n=\operatorname{ord}\rho_V(T)$, and the characters are modular functions for
+$\Gamma(n)$. (a) The hypothesis here is \emph{nice}, i.e.\ additionally pseudo-unitary: \textbf{weaker than DLN} in scope.
+(b) For nice $V$, item~4 gives DLN's level exactly, on paper: $\rho_V(T)=\operatorname{diag}(e^{2\pi i(h_a-c/24)})$, so the levels
+$N$ of $D$ are precisely the positive $N$ with $\rho_V(T)^N=1$, i.e.\ the positive multiples of $n$; $n$ itself is a level, and
+item~4 at $N=n$ is $\Gamma(n)\subseteq\ker\rho_V$. (Conversely no smaller level is possible, since $T^{n'}\in\Gamma(n')$.) This
+reading is a two-line argument on paper, not a separate Lean statement. (c) \lean{DLNCongruenceInput} (item~1) concerns
+characters only; it does not by itself say anything about $\ker\rho_V$, which is why items~3--4 are stated separately.
+(d) Only the kernel half of Ng--Schauenburg~6.8 is used. The statement that the projective level equals the Frobenius--Schur
+exponent (\lean{ProjectiveCongruenceTheorem}, \lean{NSProjectiveCongruenceAll}) is \emph{not} proved and is \emph{not} used.
+
+\textbf{How it could have been vacuous, and why it is not.} The quantified \lean{Prop}s would be empty if no nice VOA, no modular
+datum or no Zhu datum existed. $V_2$ is nice (\lean{V2m_nice}, Chapter~\ref{ch:L22}); modular data exist for every nice $V$
+(\lean{iModData_holds}); Zhu data on them exist (\lean{exists_zhuData}).
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+Let $\mathcal C$ be the modular tensor category of $V$ (Section~\ref{l21:sec:mtc}). By DLN Theorem~3.10, $\rho_V(S)$ and
+$\rho_V(T)$ are nonzero multiples of the categorical $S$-matrix and of the twist matrix, so $\rho_V$ lifts the projective modular
+representation of $\mathcal C$. The kernel half of Ng--Schauenburg gives $N_0>0$ such that $\Gamma(N_0)$ acts on it by scalars:
+$\rho_V$ is \emph{projectively} congruence. To remove the scalars, one shows that a projective representation of
+$\ltwooneSL(\Z)$ trivial on $\Gamma(N_0)$ up to scalars becomes a linear one trivial on some $\Gamma(L)$: the obstruction lives in
+the Schur multipliers of $\ltwooneSL(\Z/N)$, and Beyl's computation (trivial multiplier for odd prime powers, plus the $2$-adic
+inflation) kills it; this gives item~3. DLN's Lemma~A.1 then improves ``some $L$'' to ``the order $n$ of $\rho_V(T)$'', hence to
+every level (item~4). Item~1 follows because $\operatorname{ch}_a(\gamma\tau)=\sum_b\rho_V(\gamma)_{ab}\operatorname{ch}_b(\tau)$
+(Zhu's law at the vacuum) and $\rho_V(\gamma)=1$ for $\gamma\in\Gamma(N)$. Item~2 is DLN's Theorem~II (Coste--Gannon Galois
+symmetry), whose proof uses the same lifting together with the Galois action on the cyclotomic field generated by the entries of
+$\rho_V$.
+\end{proof}
+
+\begin{physics}
+The torus partition function of a rational CFT with positive energies is a modular function for $\Gamma(N)$, where $N$ is the
+smallest integer making all the phases $e^{2\pi i N(h_a-c/24)}$ trivial; the modular group acts on the genus-one blocks
+through the finite group $\ltwooneSL(\Z/N\Z)$, and the cyclotomic Galois group permutes the sectors up to sign. This is the
+statement physicists use to constrain characters of rational theories (modular linear differential equations, the
+``bootstrap'' of rational CFTs).
+\end{physics}
+
+\begin{status}
+\textbf{Proved, hypothesis-free}, for nice $V$ (strongly rational \emph{and} pseudo-unitary) only; only the kernel half of
+Ng--Schauenburg~6.8 is used. \texttt{\#print axioms} of all five declarations: \lean{[propext, Classical.choice, Quot.sound]}
+(2026-10-28; Section~\ref{l21:sec:verify}). This discharges the release audit's finding F2.
+\end{status}
+
+%======================================================================
+\section{Deligne's theorem and the Huang--Kirillov--Lepowsky extension}\label{l21:sec:tannakian}
+%======================================================================
+
+\begin{definition}[Deligne's theorem, positive-dimension (Tannakian) case, as used by GR]\label{l21:def:deligne}
+A symmetric fusion category over $\C$ whose simple objects all have positive braided dimension is braided-equivalent,
+by a $\C$-linear functor, to $\ltwooneRep(G)$ for a finite group $G$.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak TannakianSymmetric.lean}.
+\begin{leancode}
+def DeligneTannakian : Prop :=
+  ∀ (D : Type u) [Category.{v} D] [Preadditive D] [Linear ℂ D] [MonoidalCategory D]
+    [MonoidalPreadditive D] [MonoidalLinear ℂ D] [HasKernels D] [HasFiniteBiproducts D]
+    [RightRigidCategory D] [SymmetricCategory D] [F : FusionCategory D],
+    (∀ i, 0 < (symDim (F.simple i)).re) →
+    ∃ (G : Type) (_ : Group G) (_ : Fintype G) (Φ : D ⥤ FDRep ℂ G),
+      Nonempty Φ.Braided ∧ Φ.Linear ℂ ∧ Φ.IsEquivalence
+\end{leancode}
+
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak TensorCategories.lean}.
+\begin{leancode}
+class FusionCategory [HasKernels C] [HasFiniteBiproducts C] [RightRigidCategory C] where
+  ι : Type
+  [fintype : Fintype ι]
+  [decEq : DecidableEq ι]
+  simple : ι → C
+  isSimple : ∀ i, Simple (simple i)
+  unitLabel : ι
+  unitIso : simple unitLabel ≅ 𝟙_ C
+  inequivalent : ∀ i j, Nonempty (simple i ≅ simple j) → i = j
+  semisimple : ∀ X : C, ∃ (n : ℕ) (f : Fin n → ι), Nonempty (X ≅ ⨁ fun k => simple (f k))
+  finiteDimensional : ∀ X Y : C, FiniteDimensional ℂ (X ⟶ Y)
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak TannakianSymmetric.lean}.
+\begin{leancode}
+def symDim (X : C₀) : ℂ := toScalar (η_ X Xᘁ ≫ (β_ X Xᘁ).hom ≫ ε_ X Xᘁ)
+\end{leancode}
+
+\begin{dictionary}
+\lean{SymmetricCategory}: braided with $c_{Y,X}c_{X,Y}=\mathrm{id}$. \lean{FusionCategory D}: a finite family of simple
+objects (Mathlib's \lean{Simple}: every monomorphism into it is zero or an isomorphism), one of them isomorphic to the
+unit, pairwise non-isomorphic, such that every object is a finite direct sum (\lean{⨁}, a biproduct) of them, with
+finite-dimensional $\operatorname{Hom}$-spaces; $\operatorname{End}\mathbf 1=\C$ is then a theorem
+(\lean{finrank_end_unit}). \lean{symDim X} is the composite
+$\mathbf 1\xrightarrow{\eta}X\otimes X^\vee\xrightarrow{c}X^\vee\otimes X\xrightarrow{\varepsilon}\mathbf 1$ read as a
+scalar (\lean{toScalar}): the categorical dimension computed with the symmetric braiding; it is $\dim V$ in
+$\ltwooneRep(G)$ and $-1$ for the odd line in super vector spaces.
+\lean{FDRep ℂ G}: finite-dimensional complex representations of $G$. \lean{Φ.Braided}, \lean{Φ.Linear ℂ},
+\lean{Φ.IsEquivalence}: the functor is braided monoidal, linear, and an equivalence. The positivity hypothesis excludes super
+vector spaces (where the odd line has dimension $-1$); this is the bosonic form, the one GR need. It is Deligne 1990 /
+EGNO §9.9 in the fusion case, \emph{not} Deligne's 2002 theorem (every symmetric fusion category is $\ltwooneRep(G,z)$,
+super case included), which is not formalized.
+\end{dictionary}
+
+\begin{physics}
+A set of anyons that braid trivially with each other and have bosonic statistics is the representation category of an
+ordinary global symmetry group; they can be condensed (the symmetry gauged or ungauged).
+\end{physics}
+
+\begin{status}
+\lean{Prop}; proved (next theorem).
+\end{status}
+
+\begin{theorem}[Deligne's theorem, proved via a fiber functor]\label{l21:thm:deligne}
+Every such category has a faithful braided linear functor to finite-dimensional vector spaces, and a category with such a
+fiber functor is $\ltwooneRep(G)$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak DeligneReduction.lean}.
+\begin{leancode}
+def SymmetricFiberFunctorExists : Prop :=
+  ∀ (D : Type u) [Category.{v} D] [Preadditive D] [Linear ℂ D] [MonoidalCategory D]
+    [MonoidalPreadditive D] [MonoidalLinear ℂ D] [HasKernels D] [HasFiniteBiproducts D]
+    [RightRigidCategory D] [SymmetricCategory D] [F : FusionCategory D],
+    (∀ i, 0 < (symDim (F.simple i)).re) →
+    ∃ ω : D ⥤ FGModuleCat ℂ, Nonempty ω.Braided ∧ ω.Linear ℂ ∧ ω.Faithful
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak DeligneFiberMain.lean}.
+\begin{leancode}
+theorem symmetricFiberFunctorExists_holds : SymmetricFiberFunctorExists.{v, u} :=
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak DeligneReduction.lean}.
+\begin{leancode}
+def FiberFunctorReconstruction : Prop :=
+  ∀ (D : Type u) [Category.{v} D] [Preadditive D] [Linear ℂ D] [MonoidalCategory D]
+    [MonoidalPreadditive D] [MonoidalLinear ℂ D] [HasKernels D] [HasFiniteBiproducts D]
+    [RightRigidCategory D] [SymmetricCategory D] [FusionCategory D]
+    (ω : D ⥤ FGModuleCat ℂ), Nonempty ω.Braided → ω.Linear ℂ → ω.Faithful →
+    ∃ (G : Type) (_ : Group G) (_ : Fintype G) (Φ : D ⥤ FDRep ℂ G),
+      Nonempty Φ.Braided ∧ Φ.Linear ℂ ∧ Φ.IsEquivalence
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak ReconstructionFunctor.lean}.
+\begin{leancode}
+theorem fiberFunctorReconstruction : FiberFunctorReconstruction.{v, u} := by
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak DeligneReduction.lean}.
+\begin{leancode}
+theorem deligneTannakian_of_fiberFunctor (hF : SymmetricFiberFunctorExists.{v, u})
+    (hR : FiberFunctorReconstruction.{v, u}) : DeligneTannakian.{v, u} := by
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak DeligneFiberMain.lean}.
+\begin{leancode}
+theorem deligneTannakian_holds : DeligneTannakian.{v, u} :=
+  deligneTannakian_of_symmetricFiberFunctorExists symmetricFiberFunctorExists_holds
+\end{leancode}
+
+\begin{dictionary}
+\lean{FGModuleCat ℂ} is the category of finite-dimensional complex vector spaces. A \emph{fiber functor} \lean{ω} is a
+braided (\lean{Nonempty ω.Braided}: a braided monoidal structure on the functor exists), $\C$-linear, faithful functor
+to it. \lean{SymmetricFiberFunctorExists}: every symmetric fusion category with positive braided dimensions has one.
+\lean{FiberFunctorReconstruction}: a symmetric fusion category with a fiber functor is braided-equivalent to
+$\ltwooneRep(G)$ for a finite group $G$ (no positivity hypothesis is needed once the fiber functor is given).
+\lean{deligneTannakian_holds} is the hypothesis-free theorem \lean{DeligneTannakian}; its proof term composes the
+existence of the fiber functor with reconstruction (\lean{deligneTannakian_of_symmetricFiberFunctorExists} has
+\lean{fiberFunctorReconstruction} built in). Universes: \lean{D : Type u} with morphisms in \lean{Type v}; the group
+\lean{G} is in \lean{Type}. Same as Deligne's theorem in its bosonic, fusion form.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+In the fusion case Deligne's theorem has an elementary proof (EGNO §9.9): positivity of dimensions makes the symmetric
+category ``even'', and a fiber functor is built from a commutative algebra object of dimension equal to the global
+dimension; Tannaka reconstruction then identifies the category with the representations of the automorphism group of the
+fiber functor.
+\end{proof}
+
+\begin{physics}
+A fiber functor is ``forgetting which representation a state is in'': it realizes each anyon of the symmetric category as
+an ordinary vector space of internal states. Reconstruction says the symmetries of this forgetting form a finite global
+symmetry group $G$, and the anyons are exactly its charges --- the Wilson lines of a $G$ gauge theory.
+\end{physics}
+
+\begin{status}
+Proved, Lean's three axioms (\lean{deligneTannakian_holds}).
+\end{status}
+
+\begin{definition}[HKL extension inputs]\label{l21:def:hkl}
+For nice $V$, a commutative haploid algebra $A$ in $\ltwooneRep V$ with trivial twist defines a VOA extension
+(Huang--Kirillov--Lepowsky). \emph{HKLRationalInput}: that extension is rational. \emph{HKLFrobeniusDimInput}: for a
+copairing $c$ of $A$ satisfying a zigzag identity with $q\circ\mu$, the composite $\mu\circ c:\mathbf 1\to A$ is
+nonzero (a nondegeneracy of the Frobenius structure, slightly weaker than nonvanishing of the categorical dimension).
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak HKLNiceMain.lean}.
+\begin{leancode}
+def HKLRationalInput : Prop :=
+  ∀ (𝒱 : Type u) [AddCommGroup 𝒱] [Module ℂ 𝒱] (V : VertexOperatorAlgebra 𝒱) (hV : Nice V)
+    (F : FusionChoice V),
+    letI := monoidalCategoryOfStronglyRational_pbw F hV.1
+    letI := HexagonClose.braidedCategory_stronglyRational_pbw F hV.1
+    ∀ (A : Ordinary V) [MonObj A], IsCommMonObj A → ∀ htw : (twistIso A).hom = 𝟙 A,
+      finrank ℂ (𝟙_ (Ordinary V) ⟶ A) = 1 → ∀ q : A ⟶ 𝟙_ (Ordinary V), IsFrobeniusCounit A q →
+      ∀ hloc hvac hpos,
+        AdmissiblyRational (extVOA F (MonObj.mul : tensorObj F A A ⟶ A)
+          (MonObj.one : vacuumObject ⟶ A) (MonObj.one_mul A) (MonObj.mul_one A) htw hloc hvac hpos)
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak HKLRationalMain.lean}.
+\begin{leancode}
+def HKLFrobeniusDimInput : Prop :=
+  ∀ (𝒱 : Type u) [AddCommGroup 𝒱] [Module ℂ 𝒱] (V : VertexOperatorAlgebra 𝒱) (hV : Nice V)
+    (F : FusionChoice V),
+    letI := monoidalCategoryOfStronglyRational_pbw F hV.1
+    letI := HexagonClose.braidedCategory_stronglyRational_pbw F hV.1
+    ∀ (A : Ordinary V) [MonObj A], IsCommMonObj A → (twistIso A).hom = 𝟙 A →
+      finrank ℂ (𝟙_ (Ordinary V) ⟶ A) = 1 → ∀ q : A ⟶ 𝟙_ (Ordinary V),
+      ∀ c : 𝟙_ (Ordinary V) ⟶ A ⊗ A, Zig₁ c (MonObj.mul ≫ q) → c ≫ MonObj.mul ≠ 0
+\end{leancode}
+
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak HKLExtVOA.lean}.
+\begin{leancode}
+def extVOA (hl : tensorHom F η (𝟙 A) ≫ m = (leftUnitor F A).hom)
+    (hr : tensorHom F (𝟙 A) η ≫ m = (rightUnitor F A).hom) (htw : (twistIso A).hom = 𝟙 A)
+    (hloc : ∀ a b : A.carrier, Local (extField F m a) (extField F m b))
+    (hvac : A.isMod.weight 0 = ℂ ∙ η.val V.vacuum)
+    (hpos : ∀ k : ℤ, k < 0 → A.isMod.weight (k : ℂ) = ⊥) :
+    VertexOperatorAlgebra A.carrier where
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak HKLExtRigid.lean}.
+\begin{leancode}
+def IsFrobeniusCounit (A : C) [MonObj A] (q : A ⟶ 𝟙_ C) : Prop :=
+  ∃ c : 𝟙_ C ⟶ A ⊗ A,
+    (λ_ A).inv ≫ (c ▷ A) ≫ (α_ A A A).hom ≫ (A ◁ (MonObj.mul ≫ q)) ≫ (ρ_ A).hom = 𝟙 A
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak HKLRationalSeparable.lean}.
+\begin{leancode}
+def Zig₁ (c : 𝟙_ C ⟶ A ⊗ A) (p : A ⊗ A ⟶ 𝟙_ C) : Prop :=
+  (λ_ A).inv ≫ (c ▷ A) ≫ (α_ A A A).hom ≫ (A ◁ p) ≫ (ρ_ A).hom = 𝟙 A
+\end{leancode}
+
+\begin{dictionary}
+\lean{MonObj A}, \lean{IsCommMonObj A}: $A$ is an algebra object $(A,\mu,\eta)$ of the braided category, commutative
+($\mu\circ c_{A,A}=\mu$) (Mathlib). \lean{(twistIso A).hom = 𝟙 A}: trivial twist $\theta_A=e^{2\pi iL_0}=1$, i.e.\
+integer conformal weights. \lean{finrank ℂ (𝟙 ⟶ A) = 1}: haploid ($V$ appears exactly once in $A$).
+\textbf{The extension VOA.} \lean{extVOA} builds a VOA on the carrier of $A$ from the multiplication $m=\mu$ and the unit
+$\eta$: its vertex operator \lean{extField F m a} is the intertwining operator $\mu\circ\mathcal Y_{A,A}(a,z)$ (the
+universal intertwiner followed by the multiplication), its grading is the $L_0$-grading of $A$ (integral by
+\lean{htw}), its vacuum $\eta(\mathbf 1)$. The left and right unit laws \lean{hl}, \lean{hr} are those of the algebra
+object (supplied by \lean{MonObj.one_mul}, \lean{MonObj.mul_one}). The three remaining hypotheses are those that are
+not automatic: \lean{hloc}, \emph{locality} of any two extension fields (this is HKL's Theorem~3.2, where commutativity of
+$A$ is used); \lean{hvac}, the weight-$0$ space of $A$ is spanned by the vacuum; \lean{hpos}, no negative weights ---
+together, CFT type. In \lean{HKLRationalInput} these three appear as \lean{∀ hloc hvac hpos}: the claim is made for every
+proof of them, so it says ``\emph{whenever} the extension is a VOA of CFT type, it is admissibly rational''. Locality is
+then discharged separately (\lean{hklLocalityInput_holds}), and the CFT-type hypotheses are supplied where the input is
+used (the Tannakian step of Chapter~\ref{ch:L22}). \lean{IsFrobeniusCounit A q}: there is a copairing $c:\mathbf 1\to A\otimes A$ satisfying the zigzag
+identity \lean{Zig₁} with the pairing $q\circ\mu$; i.e.\ $q\circ\mu$ is a nondegenerate invariant form on $A$.
+\textbf{The dimension input.} In \lean{HKLFrobeniusDimInput} the conclusion \lean{c ≫ MonObj.mul ≠ 0} says that
+$\mu\circ c:\mathbf 1\to A$ is nonzero. Since $\operatorname{Hom}(\mathbf 1,A)=\C\eta$ (haploid), $\mu\circ c=\lambda\eta$
+and the categorical dimension of $A$ computed with this Frobenius structure is $\lambda\,(q\circ\eta)$; the Lean
+conclusion is $\lambda\ne0$, which is implied by (and slightly weaker than) ``$\dim A\ne0$''. Note also that \lean{q} is
+not assumed to be a counit in this Prop; the zigzag hypothesis on \lean{c} already forces $q\circ\mu\ne0$.
+\end{dictionary}
+
+\begin{physics}
+Condensing a set of bosonic anyons that form a commutative algebra produces a larger chiral algebra; HKL says the result is
+again a rational chiral algebra.
+\end{physics}
+
+\begin{status}
+Both proved: \lean{hklFrobeniusDimInput_holds}, \lean{hklRationalInput_holds}; they use the theorem \lean{VOA.pbw}.
+\end{status}
+
+\begin{theorem}[\texttt{ITannakian} from Deligne and HKL]\label{l21:thm:itannakian}
+Deligne's theorem and the repaired Huang--HKL interface imply the Tannakian input of Chapter~\ref{ch:L22}.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak HKLExtRigid.lean}.
+\begin{leancode}
+theorem iTannakian_of_rigid (hDel : DeligneTannakian.{v, w})
+    (hHK : HuangHKLInterfaceRigid.{u, v, w}) : ITannakian.{u} := by
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak HKLFrobDimMain.lean}.
+\begin{leancode}
+theorem hklRationalInput_holds : HKLRationalInput.{u} :=
+  hklRationalInput_of_dim hklFrobeniusDimInput_holds
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak HKLExtRigid.lean}.
+\begin{leancode}
+def HuangHKLInterfaceRigid : Prop :=
+  ∀ (𝒱 : Type u) [AddCommGroup 𝒱] [Module ℂ 𝒱] (V : VertexOperatorAlgebra 𝒱), Nice V →
+    ∀ D : VOA.Classification.COne.ModularData V, D.IsModularData →
+      ∃ H : Tannakian.HuangRibbonRealization.{u, v, w} V D, H.HKLExtensionPropertyRigid
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak HKLExtRigid.lean}.
+\begin{leancode}
+def HKLRepInputRigid : Prop :=
+  ∀ (𝒱 : Type u) [AddCommGroup 𝒱] [Module ℂ 𝒱] (V : VertexOperatorAlgebra 𝒱), Nice V →
+    ∀ D : VOA.Classification.COne.ModularData V, D.IsModularData →
+      ∀ H : Tannakian.HuangRibbonRealization.{u, 0, 0} V D, IsRepRealization H →
+        H.HKLExtensionPropertyRigid
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak HKLExtHeadline.lean}.
+\begin{leancode}
+theorem gannonRayhaun_huang_rigid
+    (hC : DLNCongruenceInput.{u}) (hG : GaloisSymmetryNontrivialInput.{u})
+    (hQ : SSHecke.QExpPrinciple24Away 2)
+    (hR : VOA.Huang.HKLExt.HKLRepInputRigid.{u}) :
+    GannonRayhaunStatement.{u} :=
+  gannonRayhaun_of_iTannakian hC hG hQ
+    (VOA.Huang.HKLExt.iTannakian_of_rigid
+      (deligneTannakian_of_fiberFunctor DeligneFiber.symmetricFiberFunctorExists_holds
+        fiberFunctorReconstruction)
+      (VOA.Huang.HKLExt.huangHKLInterfaceRigid_of_hklRepRigid hR))
+\end{leancode}
+
+\begin{dictionary}
+\lean{HuangHKLInterfaceRigid}: for every nice $V$ with modular data $D$ there is a \emph{ribbon realization} \lean{H} ---
+a ribbon category of $V$-modules whose simple objects, twists and $S$-matrix are those of $D$ (Huang's theorem, packaged)
+--- with the extension property \lean{HKLExtensionPropertyRigid}: for every commutative, haploid, trivially twisted
+algebra $A$ carrying an action of a finite group $G$ by algebra automorphisms with $\sum_g\rho(g)=\eta\circ q$ (the
+shape of the regular algebra $\mathrm{Fun}(G)$) and a Frobenius counit $q$, there are a nice VOA $W$ of the same central
+charge and a finite $\Gamma\le\Aut W$ with $V\cong W^\Gamma$ and
+$\dim W_n=\sum_i\dim\operatorname{Hom}(A,X_i)\dim(M_{i})_n$ ($X_i$ the simple objects) --- precisely the conclusion
+shape of \lean{ITannakian}. \lean{HKLRepInputRigid} asks the extension
+property for every realization that is the actual module category \lean{Rep V} (\lean{IsRepRealization H}).
+\lean{huangHKLInterfaceRigid_of_hklRepRigid} gets the interface from it, with Huang's half (that \lean{Rep V} is such a
+realization) proved. \textbf{Where the hypotheses go.} \lean{iTannakian_of_rigid} has two \lean{Prop} hypotheses; in the
+forward chain they are instantiated as displayed in \lean{gannonRayhaun_huang_rigid}: Deligne by the two proved
+theorems of Theorem~\ref{l21:thm:deligne}, and the interface by \lean{HKLRepInputRigid}. The latter is proved through
+the chain \lean{hklRepInputRigid_of_ordinary} (from locality \lean{hklLocalityInput_holds}, CFT type
+\lean{hklCFTTypeInput_holds}, and niceness of extensions \lean{hklNiceInput_of_rational}) with
+\lean{hklRationalInput_holds}, as composed in the theorems \lean{gannonRayhaun_hkl_two}, \lean{gannonRayhaun_hkl_nice},
+\lean{gannonRayhaun_hkl_rational}, \lean{gannonRayhaun_hkl_dim}, \lean{gannonRayhaun_hkl_final} of
+\leanpath{VOA/\allowbreak Huang/\allowbreak HKL*.lean}. The library has no standalone \lean{theorem … : ITannakian}
+(Chapter~\ref{ch:L22}, Warning on standalone theorems); the instance exists only inside this chain, whose endpoint is
+the hypothesis-free forward theorem. Universes: the realization is taken at \lean{.{u, 0, 0}} and Deligne at
+\lean{.{0, 0}}.
+\textbf{A recorded trap.} The source records an earlier, unrepaired input \lean{HKLRepInput} that is \emph{false} as
+stated (its docstring in \leanpath{HKLExtRigid.lean}); \lean{HKLRepInputRigid} restricts it to nondegenerate (Frobenius)
+algebras, and \lean{hklRepInputRigid_of_hklRepInput} shows nothing provable was lost.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+If $S_{ab}=S_{00}d_ad_b$ on the integer-weight sectors, they form a symmetric fusion subcategory with positive dimensions
+(Müger), hence $\ltwooneRep(G)$ by Deligne. The regular algebra $\mathrm{Fun}(G)$ transported to $\ltwooneRep V$ is commutative,
+haploid, with trivial twist and a Frobenius counit; HKL turns it into a VOA extension $W$, nice by
+\lean{hklRationalInput_holds}, with $W^G\cong V$ and $W\cong\bigoplus_{h_a\in\Z}d_aM_a$ as graded spaces.
+\end{proof}
+
+\begin{physics}
+Condensing (``ungauging'') the bosonic, mutually transparent anyons of a rational CFT: they are the Wilson lines of a
+finite gauge group $G$, and condensing them produces the parent theory $W$ in which $G$ is an ordinary global symmetry;
+the original theory is the $G$-orbifold of $W$.
+\end{physics}
+
+\begin{status}
+\lean{iTannakian_of_rigid} is proved, Lean's three axioms, \textbf{conditional on its two displayed hypotheses}. Both
+hypotheses are discharged inside the forward chain (dictionary above), using the theorem \lean{VOA.pbw}; there is no single
+named theorem of type \lean{ITannakian}.
+\end{status}
+
+%======================================================================
+\section{The logarithmic braided tensor category}\label{l21:sec:log}
+%======================================================================
+
+\paragraph{What it is for.} The converse of the Gannon--Rayhaun classification needed one input,
+\lean{FiniteV2OrbifoldRationalOfC2Fact}, the rationality of the exceptional orbifolds: every $C_2$-cofinite fixed-point algebra $V_2^G$ of a finite group is
+rational. It is proved by formalizing McRae's \emph{orbifold} theorem (arXiv:1910.13226, Thm.~4.20 and Cor.~4.23: if
+$V$ is strongly rational and $V^G$ is $C_2$-cofinite for a finite group $G$, then $V^G$ is strongly rational) for
+$V=V_2$; the whole argument, in seven steps, is presented in Chapter~\ref{ch:L22}, Section~\ref{l22:sec:B3}. McRae works in
+the braided tensor category $\mathcal C$ of finite-length generalized (``logarithmic'') $V^G$-modules, because a
+$C_2$-cofinite VOA that is not yet known to be rational may have modules on which $L_0$ is not diagonalizable. This
+section documents that category: its objects, the finiteness theorem that makes the tensor product land in it (Step~1 of that argument,
+\emph{finitely many irreducibles}), and the monoidal and braided structures with the pentagon and both hexagons proved
+(Step~2, \emph{the braided tensor category of logarithmic modules}). Nothing in this section is
+used by the forward theorem or by distinctness. An earlier plan for proving orbifold rationality (McRae's rationality criterion,
+arXiv:2108.01898) needed in addition rigidity, factorizability and unimodularity of $\mathcal C$; those remain open
+(\lean{CoverDualLitFact}, Chapter~\ref{ch:L22}, Section~\ref{l22:sec:oldroute}) and are \emph{not} needed.
+
+\paragraph{No semisimple Zhu algebra.} The logarithmic constructions need, at one point, that a $C_2$-cofinite VOA has
+only finitely many irreducible modules. That was previously available only under the hypothesis that Zhu's algebra is
+semisimple (\lean{hss}). It is now proved without it.
+
+\begin{theorem}[Finitely many irreducibles for $C_2$-cofinite VOAs]\label{l21:thm:finitephi}
+Every $C_2$-cofinite VOA has only finitely many isomorphism classes of irreducible ordinary modules.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak Rationality.lean}.
+\begin{leancode}
+def Φ (W : VertexOperatorAlgebra 𝒱) : Type (u + 1) := Quotient (IrrModule.setoid W)
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Classification/\allowbreak COne/\allowbreak McRaeO1FinitePhi.lean}.
+\begin{leancode}
+theorem finite_Φ_of_C2Cofinite'
+    (Pr : BottomProjection (parabolicRepOfAMod W (regularAMod W)))
+    (hC2 : C2Cofinite W) : Finite (Φ W) :=
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Classification/\allowbreak COne/\allowbreak McRaeO1FinitePhi.lean}.
+\begin{leancode}
+theorem finite_Φ_of_C2Cofinite_pbw (hC2 : C2Cofinite W) : Finite (Φ W) :=
+  finite_Φ_of_C2Cofinite' (voaPBWBottomProjection (parabolicRepOfAMod W (regularAMod W))) hC2
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Classification/\allowbreak COne/\allowbreak McRaeM2TensorFiniteLength.lean}.
+\begin{leancode}
+theorem finiteLength_maximal_of_c2 (hC2 : C2Cofinite W)
+    (N₁ : LogVModule W M₁) (N₂ : LogVModule W M₂)
+    (h₁ : FinGen N₁.toWeakModule) (h₂ : FinGen N₂.toWeakModule) :
+    IsFiniteLength (modeAlg (maximalWeakModule N₁.toWeakModule N₂.toWeakModule))
+      (maximalCarrier N₁.toWeakModule N₂.toWeakModule) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{IrrModule W} bundles an irreducible ordinary module (carrier, module structure, irreducibility), and
+\lean{IrrModule.setoid W} is the relation ``isomorphic as modules''; \lean{Φ W} is the set of isomorphism classes
+(Chapter~\ref{ch:L12}). \lean{Finite (Φ W)}: there are finitely many. The only hypothesis is \lean{C2Cofinite W}; in the
+primed form the bottom projection \lean{Pr} is an explicit datum (axiom-free, conditional on \lean{Pr}), in the
+\lean{_pbw} form it is supplied by \lean{voaPBWBottomProjection}, so that form uses the theorem \lean{VOA.pbw} and is conditional
+only on $C_2$. The older
+\lean{finite_Φ_of_C2Cofinite} (\leanpath{ZhuFiniteIrr.lean}) carries the extra hypothesis \lean{hss : IsSemisimpleRing (A W)};
+the new statements are strictly more general. The fourth quotation is the consumer: the canonical ``maximal
+compatible'' module $M_1\boxtimes M_2$ built from two finitely generated logarithmic modules has finite length, again
+with only \lean{hC2}. The named literature predicate \lean{DLMFinitelyManyIrredAdmissible} of Chapter~\ref{ch:L12} (finitely
+many irreducible \emph{admissible} modules) is derived from \lean{finite_Φ_of_C2Cofinite} for every $C_2$-cofinite VOA, using
+that its irreducible admissible modules are ordinary (\lean{dlmFinitelyManyIrredAdmissible_of_c2Cofinite},
+Theorem~\ref{l12:thm:litproved}); it is not an input of this chapter. \lean{LogVModule} is a grading-restricted generalized (logarithmic) module, \lean{FinGen} finite
+generation, \lean{modeAlg B} the algebra generated by the modes acting on \lean{B}, \lean{IsFiniteLength} finite
+composition length. The definitions downstream (\lean{maximalLogModule} and the $P(z)$-tensor products built on it) no
+longer take \lean{hss}.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+$C_2$-cofiniteness makes Zhu's algebra $A=A(W)$ finite-dimensional, hence Artinian, so $A/J(A)$ ($J$ the Jacobson
+radical) is a semisimple module, a finite direct sum of simple modules. Every simple $A$-module $U$ is killed by $J(A)$
+and receives the nonzero map $A/J(A)\to U$, $\bar a\mapsto a\cdot u$, so by Schur it is isomorphic to one of those finitely
+many summands. The bottom level of an irreducible ordinary module is a simple $A$-module, and (with the bottom projection,
+Zhu's induced-module construction) irreducible modules with isomorphic bottoms are isomorphic. Hence $\Phi(W)$ injects
+into a finite set. Semisimplicity of $A$ was never needed.
+\end{proof}
+
+\begin{physics}
+A $C_2$-cofinite (``lisse'') chiral algebra has finitely many primary fields, even when the theory is logarithmic and the
+sectors do not split into irreducibles.
+\end{physics}
+
+\begin{status}
+\lean{finite_Φ_of_C2Cofinite'}: Lean's three axioms, conditional on \lean{Pr}; \lean{finite_Φ_of_C2Cofinite_pbw}:
+proved, Lean's three axioms (re-probed at an earlier commit, not re-run for this edition; while \lean{VOA.pbw} was an axiom, also \lean{VOA.pbw}). The files are committed (since the snapshot) and imported by the
+umbrella \leanpath{VOA/\allowbreak Classification.lean}; the aggregate \texttt{lake build} was green on 2026-10-14 (13,306 jobs,
+coordinator; green again on 2026-10-28, 18{,}901 jobs, and later 18{,}907, in pre-release builds; for the release build see Chapter~\ref{ch:15}, Section~\ref{ch15:sec:record}), and \lean{finite_Φ_of_C2Cofinite_pbw} is in the maintained audit with
+expected axioms \lean{PBW_AXIOMS} (now defined to be the standard three). \textbf{Consequence for the converse}: the
+proof of the rationality of the exceptional orbifolds uses this theorem, hence \lean{VOA.pbw}; the converse is
+unconditional, like the forward theorem
+(Chapter~\ref{ch:L22}, Theorem~\ref{l22:thm:final}).
+\end{status}
+
+\paragraph{The logarithmic braided category: what is built.} The files \leanpath{VOA/\allowbreak Huang/\allowbreak
+Log*.lean}, \leanpath{VOA/\allowbreak Modules/\allowbreak LogTensor*.lean}, \leanpath{VOA/\allowbreak Modules/\allowbreak
+LogModuleCategory.lean} and \leanpath{VOA/\allowbreak Classification/\allowbreak COne/\allowbreak McRaeM2*.lean} develop the
+Huang--Lepowsky--Zhang logarithmic tensor category on finitely generated generalized modules of a $C_2$-cofinite VOA:
+logarithmic intertwining operators and skew-symmetry; finiteness of logarithmic fusion; the logarithmic contragredient;
+$P(z)$-tensor products with their universal property; uniform bounds on logarithmic degree; convergence of products and
+iterates of logarithmic intertwining operators; equality of products and iterates on the overlap of their domains; the
+categorical tensor objects, unit isomorphisms, the associator as a natural isomorphism and the triangle identity; and,
+completed after the snapshot, the pentagon, the braiding, both hexagons, and the packaging as Mathlib
+\lean{MonoidalCategory} and \lean{BraidedCategory}. The semisimple-Zhu hypothesis \lean{hss}, which earlier versions of
+these files carried, is gone: it was used only through the finiteness theorem above.
+
+\begin{definition}[The category $\mathcal C_W$ of logarithmic modules]\label{l21:def:logcat}
+For a VOA $W$, an object of $\mathcal C_W$ is a grading-restricted generalized $W$-module (a logarithmic module,
+Chapter~\ref{ch:L12}, Definition~\ref{l12:def:log}) which is finitely generated; morphisms are linear maps commuting with
+all modes.
+\end{definition}
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak LogModuleCategory.lean}.
+\begin{leancode}
+structure LogModuleCat (W : VertexOperatorAlgebra V) where
+  carrier : Type u
+  [group : AddCommGroup carrier]
+  [module : Module ℂ carrier]
+  act : LogVModule W carrier
+  finiteGeneration : FinGen act.toWeakModule
+\end{leancode}
+
+\begin{dictionary}
+\lean{carrier : Type u} is the underlying vector space, in the same universe \lean{u} as the carrier \lean{V} of $W$.
+\lean{act : LogVModule W carrier} is the logarithmic module structure: a weak module with a $\C$-grading by generalized
+$L_0$-eigenspaces, finite-dimensional pieces and real parts of weights bounded below. \lean{FinGen act.toWeakModule}: finitely
+many vectors generate the module under all modes. Morphisms (same file) are \lean{moduleHomSpace}, the linear maps
+commuting with every mode $u_{(n)}$; the category is $\C$-linear (\lean{Preadditive}, \lean{Linear ℂ} instances). For a
+$C_2$-cofinite $W$, finitely generated is the same as finite length (Huang's theorem for $C_2$-cofinite VOAs), so this is
+McRae's category of ``finite-length generalized modules''. That equivalence is a fact from the literature, \emph{not} a
+single Lean theorem: the definition uses finite generation, and the library proves finite length where it needs it
+(for instance \lean{finiteLength_maximal_of_c2} above).
+\end{dictionary}
+
+\begin{physics}
+The sectors of a possibly logarithmic chiral CFT: each has finitely many primaries and descendants up to any given
+energy, and $L_0$ may have Jordan blocks (logarithmic partners).
+\end{physics}
+
+\begin{status}
+Definition; Lean's three axioms.
+\end{status}
+
+\begin{theorem}[The logarithmic associator and the triangle identity]\label{l21:thm:logassoc}
+Let $W$ be $C_2$-cofinite. For all objects $N,P,Q$ of $\mathcal C_W$ there is an isomorphism
+$\alpha_{N,P,Q}:(N\boxtimes P)\boxtimes Q\to N\boxtimes(P\boxtimes Q)$ of $\mathcal C_W$, natural in $N,P,Q$, whose maps
+are the associativity maps obtained by analytically continuing products of logarithmic intertwining operators to
+iterates. Together with the left and right unit isomorphisms $\lambda_P:W\boxtimes P\to P$ and $\rho_N:N\boxtimes W\to N$
+it satisfies the triangle identity
+\begin{equation*}
+  (\mathrm{id}_N\boxtimes\lambda_P)\circ\alpha_{N,W,P}=\rho_N\boxtimes\mathrm{id}_P:\ (N\boxtimes W)\boxtimes P\to N\boxtimes P .
+\end{equation*}
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Classification/\allowbreak COne/\allowbreak McRaeM2LogAssociator.lean}.
+\begin{leancode}
+def associatorIso (N P Q : LogModuleCat W) :
+    tensorObject hC2 (tensorObject hC2 N P) Q ≅
+      tensorObject hC2 N (tensorObject hC2 P Q) where
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Classification/\allowbreak COne/\allowbreak McRaeM2LogTriangle.lean}.
+\begin{leancode}
+theorem associatorIso_triangle (N P : LogModuleCat W) :
+    (associatorIso hC2 N unitObject P).hom ≫
+      tensorMorphism hC2 (𝟙 N) (leftUnitIso hC2 P).hom=
+    tensorMorphism hC2 (rightUnitIso hC2 N).hom (𝟙 P) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{LogModuleCat W} is the category of finitely generated logarithmic modules of $W$; \lean{tensorObject hC2 N P} is
+the logarithmic $P(z)$-tensor product $N\boxtimes P$ (built on \lean{maximalLogModule} above), \lean{tensorMorphism} its
+action on morphisms, \lean{unitObject} the adjoint module, \lean{leftUnitIso}, \lean{rightUnitIso} the unitors.
+\lean{associatorIso} is an isomorphism $(N\boxtimes P)\boxtimes Q\cong N\boxtimes(P\boxtimes Q)$ whose maps are the
+analytically constructed associativity maps (their source docstring: no associativity or coherence witness is supplied as
+an extra premise); \lean{associatorIso_naturality} (same file) proves naturality; \lean{associatorIso_triangle} is the
+triangle identity $(1\otimes\lambda)\circ\alpha=\rho\otimes1$. The Lean statements are exactly
+Theorem~\ref{l21:thm:logassoc}, with $\otimes$ for $\boxtimes$ and \lean{≫} for composition in diagrammatic order.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+By the universal property, a map out of $(N\boxtimes P)\boxtimes Q$ is determined by its values on the canonical
+elements, i.e.\ on iterates $\mathcal Y_{\boxtimes}(\mathcal Y_{\boxtimes}(n,z_1-z_2)p,z_2)q$. For $|z_1|>|z_2|>|z_1-z_2|>0$
+such an iterate converges and agrees with a product $\mathcal Y_{\boxtimes}(n,z_1)\mathcal Y_{\boxtimes}(p,z_2)q$ of
+intertwining operators into $N\boxtimes(P\boxtimes Q)$ (convergence and associativity of logarithmic intertwining
+operators, which is where $C_2$-cofiniteness and the finite-length theorem enter); sending the first to the second
+defines $\alpha$, and the same construction in the opposite direction gives its inverse. Naturality is the uniqueness
+part of the universal property. For the triangle, put $p=\mathbf 1$: both sides send the canonical element built
+from $n,\mathbf 1,q$ to the one built from $n,q$, by the vacuum property $\mathcal Y(\mathbf 1,z)=\mathrm{id}$ and the
+creation property $\mathcal Y(n,z)\mathbf 1=e^{zL_{-1}}n$.
+\end{proof}
+
+\begin{physics}
+Associativity of fusion of sectors up to the $F$-move, and its compatibility with the vacuum sector.
+\end{physics}
+
+\begin{status}
+Proved; Lean's three axioms (it uses the theorem \lean{VOA.pbw}; while \lean{VOA.pbw} was an axiom the report also listed \lean{VOA.pbw}) (through the finite-length theorem above).
+\end{status}
+
+\begin{theorem}[The logarithmic pentagon]\label{l21:thm:logpent}
+For every $C_2$-cofinite $W$ and objects $N,P,Q,R$ of $\mathcal C_W$, the two composites of associators
+$((NP)Q)R\to N(P(QR))$ agree:
+$(1\boxtimes\alpha_{P,Q,R})\circ\alpha_{N,PQ,R}\circ(\alpha_{N,P,Q}\boxtimes1)=\alpha_{N,P,QR}\circ\alpha_{NP,Q,R}$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak LogAssocTensorPentagonReduction.lean}.
+\begin{leancode}
+def tensorPentagonShort (N P Q R : LogModuleCat W) :
+    tensorObject hC2 (tensorObject hC2 (tensorObject hC2 N P) Q) R ⟶
+      tensorObject hC2 N (tensorObject hC2 P (tensorObject hC2 Q R)) :=
+  (associatorIso hC2 (tensorObject hC2 N P) Q R).hom ≫
+    (associatorIso hC2 N P (tensorObject hC2 Q R)).hom
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Huang/\allowbreak LogAssocTensorPentagonReduction.lean}.
+\begin{leancode}
+def tensorPentagonLong (N P Q R : LogModuleCat W) :
+    tensorObject hC2 (tensorObject hC2 (tensorObject hC2 N P) Q) R ⟶
+      tensorObject hC2 N (tensorObject hC2 P (tensorObject hC2 Q R)) :=
+  tensorMorphism hC2 (associatorIso hC2 N P Q).hom (𝟙 R) ≫
+    (associatorIso hC2 N (tensorObject hC2 P Q) R).hom ≫
+      tensorMorphism hC2 (𝟙 N) (associatorIso hC2 P Q R).hom
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Classification/\allowbreak COne/\allowbreak McRaeM2LogPentagon.lean}.
+\begin{leancode}
+theorem tensorPentagon (N P Q R : LogModuleCat W) :
+    tensorPentagonLong hC2 N P Q R=tensorPentagonShort hC2 N P Q R := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{hC2 : C2Cofinite W} is a section variable. \lean{≫} is composition in diagrammatic order, so
+\lean{tensorPentagonLong} is $(1\boxtimes\alpha)\circ\alpha\circ(\alpha\boxtimes1)$ and \lean{tensorPentagonShort} is
+$\alpha\circ\alpha$, both with the specific \lean{associatorIso} of this section. This is exactly Mac Lane's pentagon,
+and it is the \lean{pentagon} field of the monoidal category below.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+Evaluate both sides on the canonical elements $\eta(n,p,q,r)$ of the fourfold tensor product, i.e.\ test them on iterated
+products of four logarithmic intertwining operators at points $(z_1,z_2,z_3,0)$. Each associator converts a product of
+two intertwiners into an iterate on the common domain where both converge; the two paths of the pentagon thus lead to
+two of the five bracketings (``trees'') of a five-point function. Step one: all five trees converge absolutely at
+suitable chart ratios (for instance $(1+s)/(1+s+r)$ and $1/(1+s)$ for one tree), the two trees that are not literal
+products being reduced to products by a reflection of the root. Step two: the two paths agree after evaluation, by
+the already proved two-intertwiner associativity applied along the path. Step three (faithfulness): a two-variable
+power-log series $\sum c_{m,n,k,l}\,r^{m}s^{n}(\log r)^k(\log s)^l$ with summable rows that vanishes on an open set has
+all coefficients zero (apply the one-variable uniqueness first in $r$ for fixed $s$, then in $s$); hence the two
+morphisms agree on every canonical element and are equal by the universal property.
+\end{proof}
+
+\begin{physics}
+The two ways of fusing four sectors into one agree: crossing symmetry of logarithmic five-point conformal blocks, the
+pentagon identity for logarithmic $F$-matrices.
+\end{physics}
+
+\begin{status}
+Proved; the only hypothesis is \lean{hC2}. Lean's three axioms (it uses the theorem \lean{VOA.pbw}; while \lean{VOA.pbw} was an axiom the report also listed \lean{VOA.pbw}) (re-checked at the snapshot with
+\texttt{lake env lean -DmaxSynthPendingDepth=3}).
+\end{status}
+
+\begin{theorem}[The logarithmic monoidal category]\label{l21:thm:logmon}
+For every $C_2$-cofinite $W$, $\mathcal C_W$ with $\boxtimes$, unit $W$, the associator \lean{associatorIso} and the
+unitors is a monoidal category.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Classification/\allowbreak COne/\allowbreak McRaeM2LogMonoidal.lean}.
+\begin{leancode}
+abbrev logarithmicMonoidalCategory : MonoidalCategory (LogModuleCat W) :=
+  letI := logarithmicTensorStruct hC2
+  MonoidalCategory.ofTensorHom
+    (id_tensorHom_id := fun X Y => (tensorBifunctor hC2).map_id (X,Y))
+    (id_tensorHom := fun _ _ _ _ => rfl)
+    (tensorHom_id := fun _ _ => rfl)
+    (tensorHom_comp_tensorHom := fun f₁ f₂ g₁ g₂ =>
+      ((tensorBifunctor hC2).map_comp (X := (_,_)) (Y := (_,_)) (Z := (_,_))
+        (f₁,f₂) (g₁,g₂)).symm)
+    (associator_naturality := fun f₁ f₂ f₃ => associatorIso_naturality hC2 f₁ f₂ f₃)
+    (leftUnitor_naturality := fun f => leftUnitIso_naturality hC2 f)
+    (rightUnitor_naturality := fun f => rightUnitIso_naturality hC2 f)
+    (pentagon := fun N P Q R => tensorPentagon hC2 N P Q R)
+    (triangle := fun N P => associatorIso_triangle hC2 N P)
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Classification/\allowbreak COne/\allowbreak McRaeM2LogMonoidal.lean}.
+\begin{leancode}
+theorem logarithmicMonoidalCategory_tensorObj (N P : LogModuleCat W) :
+    (logarithmicMonoidalCategory hC2).tensorObj N P=tensorObject hC2 N P := rfl
+
+theorem logarithmicMonoidalCategory_associator (N P Q : LogModuleCat W) :
+    @MonoidalCategoryStruct.associator _ _
+      (logarithmicMonoidalCategory hC2).toMonoidalCategoryStruct N P Q=
+      associatorIso hC2 N P Q := rfl
+
+theorem logarithmicMonoidalCategory_tensorUnit :
+    (logarithmicMonoidalCategory hC2).tensorUnit=unitObject := rfl
+\end{leancode}
+
+\begin{dictionary}
+\lean{MonoidalCategory.ofTensorHom} is Mathlib's constructor of a monoidal category from a tensor structure
+(\lean{logarithmicTensorStruct hC2}: tensor objects \lean{tensorObject}, tensor of morphisms \lean{tensorMorphism},
+unit, associator, unitors) together with proofs of each axiom; each named argument is one axiom, and each is supplied
+by a proved theorem: functoriality of $\boxtimes$ (\lean{tensorBifunctor}), naturality of associator and unitors, the
+pentagon (Theorem~\ref{l21:thm:logpent}) and the triangle (\lean{associatorIso_triangle}). As for the strongly
+rational category (Theorem~\ref{l21:thm:monoidal}), the bare type \lean{MonoidalCategory (LogModuleCat W)} is not the
+content; the three \lean{rfl} lemmas pin the tensor product to the HLZ product \lean{tensorObject}, the associator to
+\lean{associatorIso}, and the unit to the adjoint module \lean{unitObject}. No coherence datum is taken as a hypothesis.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+Each axiom is one of the theorems listed; the pentagon is Theorem~\ref{l21:thm:logpent}.
+\end{proof}
+
+\begin{physics}
+Fusion of logarithmic sectors is a consistent, associative operation with the vacuum as identity.
+\end{physics}
+
+\begin{status}
+Constructed; the only hypothesis is \lean{hC2}. Lean's three axioms (it uses the theorem \lean{VOA.pbw}; while \lean{VOA.pbw} was an axiom the report also listed \lean{VOA.pbw}) (re-checked at the snapshot).
+\end{status}
+
+\begin{theorem}[The logarithmic braided category]\label{l21:thm:logbraid}
+For every $C_2$-cofinite $W$, the monoidal category of Theorem~\ref{l21:thm:logmon} is braided, with braiding
+$c_{X,Y}:X\boxtimes Y\to Y\boxtimes X$ induced by the skew-symmetry operator $\Omega_0$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Classification/\allowbreak COne/\allowbreak McRaeM2LogBraided.lean}.
+\begin{leancode}
+abbrev logarithmicBraidedCategory :
+    @BraidedCategory (LogModuleCat W) _ (logarithmicMonoidalCategory hC2) :=
+  letI := logarithmicMonoidalCategory hC2
+  { braiding := braidingIso hC2
+    braiding_naturality_right := fun X {_ _} f => swapIso_naturality hC2 (𝟙 X) f 0
+    braiding_naturality_left := fun {_ _} f Z => swapIso_naturality hC2 f (𝟙 Z) 0
+    hexagon_forward := hexagon_forward hC2
+    hexagon_reverse := hexagon_reverse hC2 }
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Classification/\allowbreak COne/\allowbreak McRaeM2LogBraided.lean}.
+\begin{leancode}
+theorem logarithmicBraidedCategory_braiding (X Y : LogModuleCat W) :
+    @BraidedCategory.braiding _ _ (logarithmicMonoidalCategory hC2)
+      (logarithmicBraidedCategory hC2) X Y = swapIso hC2 X Y 0 := rfl
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Classification/\allowbreak COne/\allowbreak McRaeM2LogBraided.lean}.
+\begin{leancode}
+theorem hexagon_forward (X Y Z : LogModuleCat W) :
+    letI := logarithmicMonoidalCategory hC2
+    (α_ X Y Z).hom ≫ (braidingIso hC2 X (Y ⊗ Z)).hom ≫ (α_ Y Z X).hom =
+      ((braidingIso hC2 X Y).hom ▷ Z) ≫ (α_ Y X Z).hom ≫ (Y ◁ (braidingIso hC2 X Z).hom) :=
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Classification/\allowbreak COne/\allowbreak McRaeM2LogBraidedIso.lean}.
+\begin{leancode}
+abbrev braidingIso (N P : LogModuleCat W) : tensorObject hC2 N P ≅ tensorObject hC2 P N :=
+  swapIso hC2 N P 0
+\end{leancode}
+
+\begin{dictionary}
+\lean{BraidedCategory} is Mathlib's (Theorem~\ref{l21:thm:braided}): a natural isomorphism $c_{X,Y}$ with both
+hexagons. Its five fields are supplied by proved theorems. \lean{swapIso hC2 N P r} is the isomorphism $N\boxtimes
+P\cong P\boxtimes N$ induced by the HLZ skew-symmetry operator $\Omega_r$, $\Omega_r(\mathcal Y)(w_2,z)w_1=
+e^{zL_{-1}}\mathcal Y(w_1,e^{(2r+1)\pi i}z)w_2$; the braiding uses the branch $r=0$, its inverse is induced by $\Omega_{-1}$.
+\lean{hexagon_forward} is Mathlib's first hexagon $\alpha\circ c_{X,YZ}\circ\alpha=(1\boxtimes c_{X,Z})\circ\alpha\circ(c_{X,Y}
+\boxtimes1)$ (diagrammatic order in Lean); \lean{hexagon_reverse} (same file) is the second. The \lean{rfl} lemma pins the
+braiding to \lean{swapIso … 0}. The only hypothesis is \lean{hC2}.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+\emph{Naturality} of $c$ comes from its definition through the universal property. \emph{Hexagon.} Test both paths
+$(X\boxtimes Y)\boxtimes Z\to Y\boxtimes(Z\boxtimes X)$ on completed canonical iterates with $x$ at $1+u$, $y$ at $1$, $z$ at $0$.
+(1) Skew-symmetry at a branch: on each weight block, $\Omega_r(\mathcal Y)(y,e^{\ell})x=\sum_j\frac{e^{j\ell}}{j!}L_{-1}^j
+\mathcal Y(x,e^{\ell+\kappa_r})y$ with $\kappa_r=(2r+1)\pi i$, the phases cancelling because $e^{-\kappa_r}=-1$. (2) An
+inner translation theorem: an iterate whose inner operator is $\Omega_r(\mathcal Y)$ equals the iterate of $\mathcal Y$
+with translated argument, proved by Taylor expansion of the $L_{-1}$-derivative and Cauchy estimates. (3) Products
+continue analytically to a half-plane, because each row of a product solves a rational Fuchsian equation with its only
+finite singularity at $1$. (4) Four local expansions of the two paths are matched pairwise (associativity twice, then
+skew-symmetry combined with the binomial identity $e^{(1+u)L}e^{-uL}=e^{L}$ for $L=L_{-1}$) on overlapping discs and glued
+around a common point; the identity theorem gives equality. The second hexagon is the first for the reverse braiding
+$\Omega_{-1}$, inverted.
+\end{proof}
+
+\begin{physics}
+Exchanging two logarithmic sectors along a half-turn is compatible with fusion: the logarithmic $R$-moves satisfy the
+hexagon identities with the $F$-moves.
+\end{physics}
+
+\begin{status}
+Constructed; the only hypothesis is \lean{hC2}. Lean's three axioms (it uses the theorem \lean{VOA.pbw}; while \lean{VOA.pbw} was an axiom the report also listed \lean{VOA.pbw}); re-probed at an earlier commit (not re-run for this edition): standard three.
+\lean{logarithmicBraidedCategory} is in the maintained audit (\lean{PBW_AXIOMS}, now equal to the standard three). Rigidity of $\mathcal C_W$, factorizability, unimodularity and genus-one
+logarithmic modularity are \textbf{not} proved; they are not needed for the classification. The orbifold route that uses
+this category is in Chapter~\ref{ch:L22}, Section~\ref{l22:sec:B3}.
+\end{status}
+
+%======================================================================
+\section{Traps and documentation defects}\label{l21:sec:defects}
+%======================================================================
+
+\begin{warning}[title={Traps}]
+\begin{enumerate}
+\item \textbf{The old fusion coefficient is identically zero} (\lean{fusionCoeff}, Chapter~\ref{ch:L12}); all fusion here uses
+  \lean{IsIntertwiningOperator} and \lean{fusionRule}.
+\item \textbf{Characters do not pin $S$} (Theorem~\ref{l21:thm:spin}(ii)).
+\item \textbf{The tensor category depends on a fusion choice} \lean{F}; any two choices give equivalent categories, but
+  statements are made per choice.
+\end{enumerate}
+\end{warning}
+
+\begin{warning}[title={Scope restrictions recorded by the release audit (2026-10-27)}]
+None of these is a defect of a statement; each is a place where a careless summary would overclaim.
+\begin{enumerate}
+\item \textbf{Pseudo-unitarity.} Rigidity, Verlinde, \lean{IModData}, the modular model and congruence assume \lean{Nice}
+  (strongly rational \emph{and} pseudo-unitary). Huang and Dong--Lin--Ng need no pseudo-unitarity. The hypothesis was
+  used in two places. The first (\leanpath{VerlindeVacuumFusion.lean} l.~132, $V'\cong V$) is now avoided via
+  self-duality: \lean{contra_vacuum_equiv_of_stronglyRational} and the \lean{_of_stronglyRational} copies of the
+  vacuum-fusion chain (Theorem~\ref{l21:thm:vacSR}). The second (\leanpath{CardyPositivity.lean} l.~210,
+  \lean{vacColumn_mem_K}) is essential and keeps \lean{Nice}. The headline theorems are still stated for \lean{Nice}.
+\item \textbf{Right rigidity only} --- \emph{removed 2026-10-28}: two-sided rigidity is \lean{rigid_ordinary}
+  (Theorem~\ref{l21:thm:rigid2}); still for nice $V$ only.
+\item \textbf{Verlinde in the proved form} (Definition~\ref{l21:def:verlinde}): no $S=S^T$, index universe \lean{u+1}.
+\item \textbf{Congruence: kernel half of NS~6.8 only.} The ``no named theorem'' caveat is \emph{removed 2026-10-28}: the named
+  hypothesis-free theorems are in Theorem~\ref{l21:thm:congnamed}. What remains: only the kernel half of NS~6.8 is proved and
+  used (Theorem~\ref{l21:thm:ns}); the results are for nice $V$; and \lean{DLNCongruenceInput} concerns characters (the kernel
+  form is \lean{zhuCongruenceInput_holds}).
+\item \textbf{Deligne} is the positive-dimension case (Definition~\ref{l21:def:deligne}).
+\item \textbf{The modular tensor category} exists only on the small model \lean{canonicalModel} with a datum \lean{D}
+  (Theorem~\ref{l21:thm:ns}, dictionary).
+\end{enumerate}
+\end{warning}
+
+\paragraph{Documentation defects (docstrings only; no statement affected).} The docstrings of \lean{NSProjectiveKernelAll} (``not proved in this file''),
+\lean{BeylInflationSL2} (``Unproved here''), \lean{DeligneTannakian} (``Not proved here'') and the module docstring of
+\leanpath{MainVerlindeProved.lean} (``still CONDITIONAL on \ldots'') describe the state of their own file, but all these
+\lean{Prop}s are now proved elsewhere and the forward theorem is hypothesis-free. The release audit (2026-10-27) adds: docstrings that still call \lean{VOA.pbw} an axiom
+(\leanpath{PentagonCloseMain.lean}, \leanpath{HexagonCloseResidual.lean}, \leanpath{MainVerlindeProved.lean}: ``the
+sanctioned axiom'', ``Lean's three + \lean{VOA.pbw}''), and docstrings that call proved residuals unproved
+(\leanpath{TensorCatEvaluation.lean}, \leanpath{TensorCatNatural.lean}: summability, faithfulness and range equality, all
+proved by \lean{ordinaryFourPointInput_pbw}); about twenty-two files in \leanpath{VOA/Huang/} carry such phrasing, and the
+\lean{_pbw} suffix itself suggests an axiom dependence that no longer exists. These are being corrected separately.
+
+%======================================================================
+\section{Verification record for the 2026-10-28 additions}\label{l21:sec:verify}
+%======================================================================
+
+The two files \leanpath{VOA/\allowbreak Huang/\allowbreak RigidOrdinary.lean} and
+\leanpath{VOA/\allowbreak Huang/\allowbreak CongruenceNamed.lean} are committed, but their
+compiled modules were \emph{missing} from the main checkout's \texttt{.lake}, and no \texttt{lake build} was run for this
+revision. The reviser ran \texttt{lake env lean -DmaxSynthPendingDepth=3} on a scratch file importing
+\texttt{VOA.Huang.CongruenceNamed} and \texttt{VOA.Huang.RigidOrdinary} from the root of the \texttt{release-cheap} worktree,
+whose compiled modules include both (built 2026-10-27) and whose copies of both files are byte-identical to the main checkout's
+(\texttt{cmp}). Output (line breaks joined; peak RSS 6.1\,GB):
+\begin{plaincode}
+'VOA.Huang.CongruenceNamed.dlnCongruence_and_galois_holds' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Huang.CongruenceNamed.dlnCongruenceInput_holds' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Huang.CongruenceNamed.galoisSymmetryNontrivialInput_holds' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Huang.CongruenceNamed.zhuCongruenceInput_holds' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Huang.CongruenceNamed.zhu_kernelContainsGamma_at_level' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Huang.HuangRigid.rigid_ordinary' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Huang.HuangRigid.rigidCategoryOrdinary' depends on axioms: [propext, Classical.choice, Quot.sound]
+\end{plaincode}
+The build record is the project's (\texttt{Notes/RELEASE\_PLAN.md}, ``Caveats removed in Lean'', 2026-10-28: merged from
+\texttt{release-cheap}, umbrellas green, axioms standard). The aggregate build was green on 2026-10-28 (18{,}901 jobs, and later 18{,}907, in pre-release builds; for the release build see Chapter~\ref{ch:15}, Section~\ref{ch15:sec:record}); the
+addition of these declarations to the maintained axiom audit is still to be confirmed (release audit, findings F2 and F11).
+
+%======================================================================
+\section{Referee's checklist}\label{l21:sec:checklist}
+%======================================================================
+
+A trailing \lean{VOA.pbw} in the status column means that the proof goes through the theorem \lean{VOA.pbw} (an axiom
+at the snapshot, a theorem since); such entries now report the standard three axioms, so it
+records a route, not an axiom dependence. ``Nice'' means strongly rational \emph{and} pseudo-unitary.
+
+\begin{center}\footnotesize
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.36\textwidth}p{0.20\textwidth}p{0.21\textwidth}p{0.09\textwidth}}
+\toprule
+Declaration & Intended meaning & Status & Fidelity \\
+\midrule
+\lean{IsIntertwiningOperator}, \lean{fusionRule} & FHL intertwiners, fusion rules & definitions & Defs.~\ref{l21:def:intw}, \ref{l21:def:fusion} \\
+\lean{fusionRule_latticeModule} & $\Z_{2m}$ fusion of $V_{2m}$ & proved & Thm.~\ref{l21:thm:latfusion} \\
+\lean{monoidalCategoryOfStronglyRational_pbw} & Huang--Lepowsky tensor category & construction; \lean{VOA.pbw} & Thm.~\ref{l21:thm:monoidal} \\
+\lean{braidedCategory_stronglyRational_pbw} & braiding, hexagons & construction; \lean{VOA.pbw} & Thm.~\ref{l21:thm:braided} \\
+\lean{rightRigid_ordinary} & Huang's rigidity, right duals & proved for \emph{nice} $V$; \lean{VOA.pbw} & Thm.~\ref{l21:thm:rigid} \\
+\lean{rigid_ordinary}, \lean{rigidCategoryOrdinary} & Huang's rigidity, \textbf{two-sided} (Mathlib \lean{RigidCategory}) & proved for \emph{nice} $V$; \lean{VOA.pbw} & Thm.~\ref{l21:thm:rigid2} \\
+\lean{huangVerlindeFusionInput_holds} & Verlinde formula, form $S_{ax}S_{bx}=S_{0x}\sum_cN_{ab}^cS_{cx}$ & proved for \emph{nice} $V$; \lean{VOA.pbw} & Def.~\ref{l21:def:verlinde} \\
+\lean{andersonMooreInput_holds} & rational exponents & proved & Def.~\ref{l21:def:am} \\
+\lean{iModData_holds} & modular data of nice $V$ & proved; \lean{VOA.pbw} & Thm.~\ref{l21:thm:imoddata} \\
+\lean{S_unique_of_pinned} & pinned $S$ unique & proved; conditional on \lean{Pr} & Thm.~\ref{l21:thm:spin} \\
+\lean{isModularDataWeak_perturbS} & characters do not pin $S$ & proved (counterexample) & Thm.~\ref{l21:thm:spin} \\
+\lean{nsProjectiveKernelAll_holds} & Ng--Schauenburg, \emph{kernel half} only (FS-exponent half open) & proved & Thm.~\ref{l21:thm:ns} \\
+\lean{dln_inputs_of_beyl} + Beyl facts & DLN congruence and Galois, for \emph{nice} $V$ & conditional on \lean{OddPrimePowerSchur}, \lean{TwoPowerInflationFromTwo}, both proved; \lean{VOA.pbw} & Thm.~\ref{l21:thm:beyl} \\
+\lean{dlnCongruenceInput_holds}, \lean{galoisSymmetryNontrivialInput_holds}, \lean{dlnCongruence_and_galois_holds} & DLN congruence (characters $\Gamma(N)$-invariant at every level) and Galois symmetry, for \emph{nice} $V$ & \textbf{proved, hypothesis-free}; kernel half of NS~6.8 only; \lean{VOA.pbw} & Thm.~\ref{l21:thm:congnamed} \\
+\lean{zhuCongruenceInput_holds}, \lean{zhu_kernelContainsGamma_at_level} & kernel form: $\Gamma(L)\subseteq\ker\rho_V$; $\Gamma(N)\subseteq\ker\rho_V$ at every level $N$ & \textbf{proved, hypothesis-free} (at-level: hypotheses \lean{hV}, \lean{hD}, \lean{hZD}, \lean{hN}, all satisfiable); for \emph{nice} $V$; \lean{VOA.pbw} & Def.~\ref{l21:def:zhucong}, Thm.~\ref{l21:thm:congnamed} \\
+\lean{deligneTannakian_holds} & Deligne's theorem, positive-dimension (Tannakian) case & proved & Thm.~\ref{l21:thm:deligne} \\
+\lean{hklRationalInput_holds} & HKL extensions rational & proved; \lean{VOA.pbw} & Def.~\ref{l21:def:hkl} \\
+\lean{iTannakian_of_rigid} & GR Props.~2.13, 2.17 & conditional on its two inputs (both discharged in the forward chain; \lean{VOA.pbw}) & Thm.~\ref{l21:thm:itannakian} \\
+\lean{finite_Φ_of_C2Cofinite_pbw} & finitely many irreducibles, $C_2$ only & proved; \lean{VOA.pbw} & Thm.~\ref{l21:thm:finitephi} \\
+\lean{LogModuleCat} & finitely generated logarithmic modules & definition & Def.~\ref{l21:def:logcat} \\
+\lean{associatorIso}, \lean{associatorIso_triangle} & log.\ associator, triangle & \lean{hC2}; proved; \lean{VOA.pbw} & Thm.~\ref{l21:thm:logassoc} \\
+\lean{tensorPentagon} & logarithmic pentagon & \lean{hC2}; proved; \lean{VOA.pbw} & Thm.~\ref{l21:thm:logpent} \\
+\lean{logarithmicMonoidalCategory} & HLZ monoidal category & construction, \lean{hC2} only; \lean{VOA.pbw} & Thm.~\ref{l21:thm:logmon} \\
+\lean{logarithmicBraidedCategory} & HLZ braiding, both hexagons & construction, \lean{hC2} only; \lean{VOA.pbw} & Thm.~\ref{l21:thm:logbraid} \\
+\bottomrule
+\end{longtable}
+\end{center}
+
+%======================================================================
+\section{Notes and references}\label{l21:sec:notes}
+%======================================================================
+
+I.~Frenkel, Y.-Z.~Huang and J.~Lepowsky, \emph{On axiomatic approaches to vertex operator algebras and modules}, Mem.\ AMS 494
+(1993). Y.-Z.~Huang and J.~Lepowsky, \emph{A theory of tensor products for module categories for a vertex operator algebra}
+I--III, Selecta Math.\ 1 (1995), and IV, J.\ Pure Appl.\ Algebra 100 (1995). Y.-Z.~Huang, \emph{Differential equations and
+intertwining operators}, Commun.\ Contemp.\ Math.\ 7 (2005); \emph{Vertex operator algebras and the Verlinde conjecture} and
+\emph{Rigidity and modularity of vertex tensor categories}, Commun.\ Contemp.\ Math.\ 10 (2008). G.~Anderson and G.~Moore,
+\emph{Rationality in conformal field theory}, Comm.\ Math.\ Phys.\ 117 (1988). S.-H.~Ng and P.~Schauenburg, \emph{Congruence
+subgroups and generalized Frobenius--Schur indicators}, Comm.\ Math.\ Phys.\ 300 (2010). C.~Dong, X.~Lin and S.-H.~Ng,
+\emph{Congruence property in conformal field theory}, Algebra Number Theory 9 (2015). F.~R.~Beyl, Math.\ Z.\ 191 (1986).
+P.~Deligne, \emph{Catégories tannakiennes} (1990) and \emph{Catégories tensorielles}, Mosc.\ Math.\ J.\ 2 (2002); P.~Etingof,
+S.~Gelaki, D.~Nikshych and V.~Ostrik, \emph{Tensor categories}, AMS (2015), §9.9. Y.-Z.~Huang, A.~Kirillov Jr.\ and
+J.~Lepowsky, Comm.\ Math.\ Phys.\ 337 (2015); A.~Kirillov Jr.\ and V.~Ostrik, Adv.\ Math.\ 171 (2002); T.~Creutzig,
+S.~Kanade and R.~McRae, \emph{Tensor categories for vertex operator superalgebra extensions}, Mem.\ AMS (2024). Y.-Z.~Huang,
+J.~Lepowsky and L.~Zhang, \emph{Logarithmic tensor category theory} I--VIII (2010--2011). Project notes:
+\leanpath{Notes/\allowbreak HUANG\_MTC\_ROADMAP.md}.
+
+\paragraph{Verification record.} Quotations checked verbatim by \texttt{scripts/textbook/sync.py}; axiom reports as stated
+in the status boxes (re-probed at an earlier commit, not re-run for this edition); for the 2026-10-28 additions see Section~\ref{l21:sec:verify}.
+Release audit 2026-10-27: see Notes/Textbook/referee/RELEASE\_AUDIT\_L21.md. (The auditor re-ran \texttt{\#print axioms}
+on the six headlines, \lean{iModData}-related inputs and \lean{gannonRayhaun_forward}: Lean's three standard axioms
+only; instantiated every headline at $V_2$; and did not run \texttt{lake build}, which must be re-confirmed on the
+release commit.)
+
+\endgroup

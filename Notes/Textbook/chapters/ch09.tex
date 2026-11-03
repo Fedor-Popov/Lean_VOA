@@ -1,0 +1,2488 @@
+\chapter{Intertwiners and invariant forms: the operators \texorpdfstring{$W$}{W} and \texorpdfstring{$\overline{W}$}{Wbar}}\label{ch:09}
+
+\providecommand{\chnineVP}{V_{\Lambda}^{+}}
+\providecommand{\chnineTP}{(V_{\Lambda}^{T})^{+}}
+\providecommand{\chnineWb}{\overline{W}}
+\providecommand{\chnineWd}{W^{\dagger}}
+\providecommand{\chnineV}{\mathcal{V}}
+
+This chapter documents the release of the LeanVOA library named in the front matter. Every Lean quotation below is checked by \texttt{scripts/textbook/sync.py} to occur verbatim (up to whitespace and comments) in the source files of that release. Checks that were run at an earlier state of the library and not re-run for this edition are marked as such.
+The Moonshine module of Frenkel, Lepowsky and Meurman is, as a vector space, the direct sum
+\begin{equation}\label{ch09:eq:vnat}
+  \Vnat \;=\; \chnineVP \;\oplus\; \chnineTP
+\end{equation}
+of the $\theta$-fixed part of the Leech lattice vertex operator algebra (Chapter~\ref{ch:04})
+and the $\theta$-fixed part of the twisted Leech module (Chapter~\ref{ch:08}). Up to this point
+of the book the two summands have lived separate lives: $\chnineVP$ is a vertex operator
+algebra, and $\chnineTP$ is an (ordinary, integrally graded) module over it. A vertex operator
+algebra structure on the sum needs more: a vertex operator $Y^\natural(t,z)$ for every
+\emph{twisted} state $t\in\chnineTP$, and such an operator must move vectors between the two
+summands. This chapter constructs the two pieces of $Y^\natural(t,z)$:
+\begin{itemize}
+\item the operator $W(t,z)\colon \chnineVP\to\chnineTP$ (``twisted $\times$ untwisted $\to$
+twisted''), obtained from the module structure by \emph{skew-symmetry}; and
+\item the operator $\chnineWb(t,z)\colon \chnineTP\to\chnineVP$ (``twisted $\times$ twisted
+$\to$ untwisted''), obtained from $W$ by taking the \emph{adjoint} with respect to invariant
+bilinear forms on the two summands.
+\end{itemize}
+Along the way we develop, from first principles, the three pieces of general theory that the
+construction needs: intertwining operators and their skew-symmetry; contragredient modules and
+invariant bilinear forms (Frenkel--Huang--Lepowsky); and a graded Riesz representation theorem
+that turns ``adjoint'' into an honest linear map. We then prove that $W$ and $\chnineWb$ have
+every property that involves \emph{one} untwisted and \emph{one} twisted argument (the
+commutator formulas, locality with all untwisted vertex operators, translation covariance), and
+the skew-symmetry of $\chnineWb$. The genuinely hard relation, the locality of two twisted
+vertex operators with each other, is \emph{not} proved in this chapter; it occupies
+Chapters~\ref{ch:10}--\ref{ch:14}.
+
+The chapter is written under the Fidelity Protocol of the book's constitution: every definition
+and theorem is given mathematically, then in its verbatim Lean form, then checked for fidelity
+(every symbol decoded, every hypothesis listed, every defined term traced), then proved on
+paper, and finally given its machine status. The chapter ends with a referee's checklist.
+
+\section{Why \texorpdfstring{$\Vnat$}{V-natural} needs \texorpdfstring{$W$}{W} and \texorpdfstring{$\overline{W}$}{Wbar}}\label{ch09:sec:why}
+
+\subsection{The block form of the vertex operator}
+
+Suppose for a moment that $\Vnat$ of \eqref{ch09:eq:vnat} already carried a vertex operator
+algebra structure $Y^\natural$ extending the structure of $\chnineVP$ and the module structure
+$Y^T$ on $\chnineTP$. Write a general state as a pair $(u,t)$ and a general vector on which
+operators act as a column $(\varphi,a)$ with $\varphi\in\chnineVP$ and $a\in\chnineTP$. The
+vertex operator of $(u,t)$ is then a $2\times 2$ matrix of formal distributions
+\begin{equation}\label{ch09:eq:block}
+  Y^\natural\big((u,t),z\big) \;=\;
+  \begin{pmatrix} Y(u,z) & \chnineWb(t,z) \\ W(t,z) & Y^T(u,z)\end{pmatrix},
+  \qquad
+  Y^\natural\big((u,t),z\big)\begin{pmatrix}\varphi\\ a\end{pmatrix}
+  =\begin{pmatrix} Y(u,z)\varphi + \chnineWb(t,z)a\\ W(t,z)\varphi + Y^T(u,z)a\end{pmatrix}.
+\end{equation}
+The diagonal blocks are forced: $\chnineVP$ is a subalgebra and $\chnineTP$ is a module. The
+lower-left block $W(t,z)\colon\chnineVP\to\chnineTP$ and the upper-right block
+$\chnineWb(t,z)\colon\chnineTP\to\chnineVP$ are new data. (The diagonal entries for a twisted
+state $t$, and the off-diagonal entries for an untwisted state $u$, vanish because the
+$\mathbb{Z}/2$-grading by the eigenvalue of $\theta$ must be respected: untwisted $\times$
+untwisted lands in the untwisted part, untwisted $\times$ twisted in the twisted part, and twisted
+$\times$ twisted in the untwisted part.)
+
+\paragraph{Physical picture.} In two-dimensional conformal field theory $\chnineVP$ is the chiral
+algebra of 24 free bosons compactified on the Leech torus and then orbifolded by $X\mapsto-X$;
+$\chnineTP$ is the space of states created by the 2-to-1 ``twist fields'' sitting at the fixed
+points of the orbifold (the $2^{12}$-dimensional space $T$ records which fixed point). The
+operator $W(t,z)$ is the operator product ``twist field $\times$ ordinary field $\to$ twist
+field'', and $\chnineWb(t,z)$ is ``twist field $\times$ twist field $\to$ ordinary field''. The
+latter is the interesting one: when two twist fields collide, the branch cuts they carry cancel
+and an \emph{untwisted} field appears. That this fusion is consistent with locality is the whole
+difficulty of the Moonshine construction.
+
+\subsection{The off-diagonal blocks are forced}
+
+Both new blocks are determined by data we already have.
+
+\emph{The block $W$.} A vertex algebra satisfies skew-symmetry
+$Y(a,z)b=e^{zL_{-1}}Y(b,-z)a$. Applied in $\Vnat$ to $a=(0,t)$ and $b=(\varphi,0)$ it gives
+\begin{equation}\label{ch09:eq:Wforced}
+  W(t,z)\varphi \;=\; e^{zL_{-1}}\,Y^T(\varphi,-z)\,t .
+\end{equation}
+So $W$ is forced by the module structure alone. We shall take \eqref{ch09:eq:Wforced} as the
+definition (Section~\ref{ch09:sec:W}).
+
+\emph{The block $\chnineWb$.} A simple vertex operator algebra of CFT type with $L_1V_1=0$ has a
+nondegenerate invariant bilinear form, unique up to scale (Li). If $\Vnat$ has one, its
+restriction to the two summands must make them orthogonal (they have different $\theta$-parity)
+and must restrict to invariant forms $B_V$ on $\chnineVP$ and $B_T$ on $\chnineTP$. Invariance
+of the form for the state $(0,t)$ then says
+\begin{equation}\label{ch09:eq:Wbarforced}
+  B_V\big(\chnineWb(t,z)a,\varphi\big)\;=\;B_T\Big(a,\,W\big(e^{zL_1}(-z^{-2})^{L_0}t,\,z^{-1}\big)\varphi\Big).
+\end{equation}
+So once $B_V$ and $B_T$ are chosen, $\chnineWb$ is forced as well: it is the adjoint of $W$.
+This is Dolan--Goddard--Montague's equation (4.3), and it is how we shall define $\chnineWb$
+(Section~\ref{ch09:sec:Wbar}).  This form-adjoint definition is the presentation of Huang and of
+Dolan--Goddard--Montague; it is \emph{not} FLM's own explicit formula for the twisted vertex operators
+on $\chnineTP\times\chnineTP$.  No Lean theorem compares the two: that the resulting vertex operator
+algebra is isomorphic to FLM's $\Vnat$ follows on paper from the uniqueness of simple-current
+extensions (Dong--Mason), which is not formalized (Chapter~\ref{ch:14}).
+
+\begin{remark}[Scaling, and why $\chnineWb=0$ is dangerous]\label{ch09:rem:scaling}
+Conjugating the block form by the linear automorphism $g=\operatorname{diag}(1,\lambda)$ of
+$\Vnat$ ($\lambda\in\C^\times$) replaces the state $t$ by $\lambda t$; a short computation with
+$Y'(x,z)=gY^\natural(g^{-1}x,z)g^{-1}$ shows that $W$ is unchanged and $\chnineWb$ is multiplied
+by $\lambda^{-2}$. Every axiom of a vertex algebra is homogeneous in $\chnineWb$ (each locality
+relation contains $\chnineWb$ either zero times or exactly once in each term), so the set of
+admissible $\chnineWb$ is a cone: if $\chnineWb$ works, so does $c\chnineWb$ for every
+$c\in\C$, and all $c\neq0$ give isomorphic algebras. The value $c=0$ also ``works'': it gives the
+\emph{square-zero extension} $\chnineVP\ltimes\chnineTP$, a perfectly good vertex operator algebra
+with the same central charge $24$, the same $V_1=0$, the same $\dim V_2=196884$ and the same
+graded dimension $J(q)$ as $\Vnat$ --- but it is not simple and it is not the Moonshine module.
+(This remark is argued on paper; it is not a Lean theorem.)
+\end{remark}
+
+\begin{warning}
+\textbf{The square-zero trap} (recorded in \texttt{Notes/MonsterRoadmap.md}, ``Definition of
+done'', and \texttt{Notes/M8GluingPlan.md}, status after M8d part 1). The Lean reconstruction
+theorem for $\Vnat$ (Chapter~\ref{ch:10}) takes an \emph{arbitrary} operator family
+\texttt{Wbar} as input, and every one of its hypotheses about \texttt{Wbar} holds for
+\texttt{Wbar = 0}. Hence a proof that ``some vertex operator algebra on $\Vnat$ with graded
+dimension $J$ exists'' proves nothing about Moonshine. Two things in this chapter guard against
+the trap: the operator $\chnineWb$ is the \emph{specific} adjoint \eqref{ch09:eq:Wbarforced},
+and Theorem~\ref{ch09:thm:nonzero} proves in Lean that it is not zero (indeed that it pairs
+the lowest twisted weight space nondegenerately into the vacuum line). The final theorem of the
+book additionally proves simplicity of $\Vnat$ (Chapter~\ref{ch:10}).
+\end{warning}
+
+\subsection{The six locality relations}
+
+To show that \eqref{ch09:eq:block} defines a vertex algebra, Dolan, Goddard and Montague
+(Comm.\ Math.\ Phys.\ 179 (1996), \S4) reduce locality of all pairs of block operators to six
+relations, their (4.18)--(4.23):
+\begin{enumerate}
+\item $Y(u_1,z_1)Y(u_2,z_2)\sim Y(u_2,z_2)Y(u_1,z_1)$ on $\chnineVP$ (locality in the vertex
+operator algebra $\chnineVP$);
+\item $Y^T(u_1,z_1)Y^T(u_2,z_2)\sim Y^T(u_2,z_2)Y^T(u_1,z_1)$ on $\chnineTP$ (locality in the
+module);
+\item the locality of $Y^T(u,z_1)$ and $W(t,z_2)$, in the sense
+$Y^T(u,z_1)W(t,z_2)\sim W(t,z_2)Y(u,z_1)$ as maps $\chnineVP\to\chnineTP$;
+\item the analogous locality of $Y(u,z_1)$ and $\chnineWb(t,z_2)$ as maps $\chnineTP\to\chnineVP$;
+\item[(4.22)] $\chnineWb(t_1,z_1)W(t_2,z_2)\sim\chnineWb(t_2,z_2)W(t_1,z_1)$ on $\chnineVP$;
+\item[(4.23)] $W(t_1,z_1)\chnineWb(t_2,z_2)\sim W(t_2,z_2)\chnineWb(t_1,z_1)$ on $\chnineTP$.
+\end{enumerate}
+Here ``$A(z_1)B(z_2)\sim C(z_2)D(z_1)$'' means that $(z_1-z_2)^N\big(A(z_1)B(z_2)-C(z_2)D(z_1)\big)=0$
+for some $N$. The first two are already known (Chapters~\ref{ch:04} and~\ref{ch:08}). This
+chapter proves the third and fourth (Theorems~\ref{ch09:thm:Wlocal} and~\ref{ch09:thm:Wbarlocal})
+in full generality, and the skew-symmetry of $\chnineWb$ (Theorem~\ref{ch09:thm:skew}) which is
+the main input to (4.22) in Chapter~\ref{ch:10}. Dolan, Goddard and Montague remark that the last
+relation (4.23) ``involves the lattice in a non-trivial way''; it is the subject of
+Chapters~\ref{ch:11}--\ref{ch:14}.
+
+\section{Notation and prerequisites}\label{ch09:sec:notation}
+
+This section collects the elementary objects that occur in the statements of this chapter. Their
+Lean sources are quoted verbatim and decoded in Chapters~\ref{ch:L01}, \ref{ch:L03}
+and~\ref{ch:L12}; here they are recalled with pointers. Everything else is defined where it is
+used, or in an explicitly cited earlier chapter.
+
+\subsection{Formal distributions and modes}
+
+\begin{definition}[Formal distributions, modes, derivative]\label{ch09:def:fd}
+For a complex vector space $X$, a \emph{formal distribution} is a two-sided sequence
+$f=(f_k)_{k\in\Z}$ in $X$, thought of as $f(z)=\sum_{k\in\Z}f_k z^k$. A two-variable formal
+distribution is a family $(f_{a,b})_{a,b\in\Z}$, thought of as $\sum f_{a,b}z_1^az_2^b$. The
+\emph{$n$-th mode} of $f$ is the coefficient of $z^{-n-1}$:
+$\operatorname{mode}(f,n)=f_{-n-1}$, so that $f(z)=\sum_n \operatorname{mode}(f,n)z^{-n-1}$. The
+formal derivative is $(\partial_zf)_k=(k+1)f_{k+1}$.
+\end{definition}
+
+In Lean these are \lean{FormalDist 𝒲} $=$ \lean{ℤ → 𝒲}, \lean{FormalDist₂ 𝒲} $=$
+\lean{ℤ → ℤ → 𝒲}, \lean{mode f m = f (-m - 1)} and the linear map \lean{deriv} with
+\lean{deriv f n = (n + 1) • f (n + 1)} (Definitions~\ref{l01:def:formaldist},
+\ref{l01:def:formaldist2} and~\ref{l01:def:mode}; \leanpath{VOA/Foundations/FormalSeries.lean},
+\leanpath{VOA/Foundations/FormalCalculus.lean}).
+
+\begin{dictionary}
+\texttt{f k} is the coefficient of $z^k$, \emph{not} the $k$-th mode. Throughout the library
+a vertex operator is stored as the distribution $k\mapsto u_{(-k-1)}$ and its modes are recovered
+by \lean{mode}: \texttt{mode (Y u) n} is $u_{(n)}$. In the twisted setting of
+Chapters~\ref{ch:06}--\ref{ch:08}, an integer index $k$ fed to a twisted vertex operator
+\texttt{YM u k} stands for the half-integral mode $u_{(k/2)}$; on the $\theta$-fixed module
+$\chnineTP$ this is converted back to integral modes by the identity
+\texttt{mode (plusModule.YM u) n = YM u (2n)} (Lean name \lean{mode_plusModule}, Chapter~\ref{ch:08}).
+\end{dictionary}
+
+\begin{physics}
+A formal distribution is the bookkeeping device for a chiral field: $f(z)=\sum_n f_nz^{-n-1}$ is the Laurent expansion of an operator-valued field $\phi(z)$ on the plane in the radial quantisation, and the modes $f_n$ are the operators that create or annihilate states of definite energy. The derivative is the translation $\partial_z$ of the field, which later becomes the $L_{-1}$-derivative property. The definition is pure algebra; it fixes the mode convention ($z^{-n-1}$, weight $h$ field has modes $\phi_{(n)}$ of degree $h-n-1$) used everywhere below.
+\end{physics}
+
+\begin{definition}[Generalised binomials and signs]\label{ch09:def:binom}
+For $n\in\Z$ and $k\in\N$, $\binom{n}{k}=n(n-1)\cdots(n-k+1)/k!$ (so $\binom{-1}{k}=(-1)^k$).
+For $k\in\Z$ the library writes \lean{cbz} for the extension by zero to negative $k$, and
+$\lean{negOnePow}(n)=(-1)^n$.
+\end{definition}
+In Lean these are \lean{gBinom n k}, \lean{cbz n k} (equal to \lean{gBinom n k.toNat} for
+$k\ge0$ and to $0$ for $k<0$) and \lean{negOnePow n}, quoted verbatim in
+Definition~\ref{l01:def:gbinom} (\leanpath{VOA/Foundations/Substitution.lean},
+\leanpath{VOA/Foundations/Expansion.lean}).
+
+\begin{physics}
+These are the coefficients that appear when one expands $(z_1-z_2)^{-k}$ in a chosen region, i.e.\ the algebraic shadow of the choice of radial ordering $|z_1|>|z_2|$ in an operator product. The signs $(-1)^n$ record the exchange of two fields, as in the passage from $z_1-z_2$ to $z_2-z_1$. They are only calculational devices.
+\end{physics}
+
+\begin{definition}[Multiplication by $(z_1-z_2)^N$; locality]\label{ch09:def:local}
+On two-variable distributions, $(z_1-z_2)f$ has coefficients $f_{a-1,b}-f_{a,b-1}$, and
+$(z_1-z_2)^N$ is its $N$-fold iterate. Two $\End(V)$-valued distributions $a,b$ are \emph{local}
+if $(z_1-z_2)^N[a(z_1),b(z_2)]=0$ for some $N$, where $[a(z_1),b(z_2)]$ has coefficients
+$a_m b_n-b_n a_m$.
+\end{definition}
+In Lean, \lean{mulBySub} $=$ \lean{shiftZ₁ - shiftZ₂} (where \lean{shiftZ₁}~$f$ has
+coefficients $f_{a-1,b}$ and \lean{shiftZ₂}~$f$ has $f_{a,b-1}$), \lean{mulBySubPow N} is its
+$N$-fold iterate, and \lean{Local a b} is \lean{∃ N : ℕ, mulBySubPow N (bracketDist a b) = 0}
+(Definitions~\ref{l01:def:formaldist2} and~\ref{l01:def:bracket};
+\leanpath{VOA/Foundations/FormalSeries.lean}, \leanpath{VOA/Foundations/Locality.lean}).
+
+\begin{dictionary}
+In this chapter many ``locality'' statements are between maps of \emph{different} spaces, e.g.\
+$Y^T(u,z_1)W(t,z_2)-W(t,z_2)Y(u,z_1)$ is a distribution of linear maps $\chnineVP\to\chnineTP$.
+For those the library does not use \lean{Local} (which is for $\End(V)$-valued distributions)
+but writes the commutator distribution out as an explicit \lean{FormalDist₂} of
+\texttt{→ₗ[ℂ]}-maps and asks that \lean{mulBySubPow N} kill it. The block-matrix lemma
+\lean{local_diag_off} (Chapter~\ref{ch:10}) converts two such statements into an honest
+\lean{Local} on $\End(\Vnat)$.
+\end{dictionary}
+
+\begin{physics}
+Locality is the algebraic form of the physical requirement that fields at separated points commute (or braid trivially): the correlator is single-valued, so the only singularities of the operator product are poles at $z_1=z_2$. The order $N$ is the maximal pole order of the OPE of the two fields. Locality for fields acting between different sectors, as in the dictionary, says that an untwisted current can be moved across a twist-field insertion up to contact terms.
+\end{physics}
+
+\subsection{Modules}
+
+\begin{definition}[Weak and ordinary modules]\label{ch09:def:module}
+Let $\chnineV$ be a vertex operator algebra (Definition~\ref{l03:def:VOA}) with modes $u_{(n)}$, vacuum
+$\mathbf 1$, conformal vector $\omega$ and $L_n=\omega_{(n+1)}$. A \emph{weak module} is a vector
+space $M$ with a linear map $u\mapsto Y_M(u,z)=\sum u^M_{(n)}z^{-n-1}$ into $\End(M)$-valued
+distributions such that $Y_M(\mathbf 1,z)=\mathrm{id}$, $u_{(n)}x=0$ for $n\gg0$, and the module
+Jacobi identity holds in the mode form
+\begin{equation}\label{ch09:eq:modjac}
+\sum_{i\ge0}(-1)^i\binom{\ell}{i}\Big(u_{(\ell+m-i)}v_{(n+i)}x-(-1)^\ell v_{(\ell+n-i)}u_{(m+i)}x\Big)
+=\sum_{i\ge0}\binom{m}{i}\,(u_{(\ell+i)}v)_{(m+n-i)}x
+\end{equation}
+for all $u,v\in\chnineV$, $x\in M$, $\ell,m,n\in\Z$. An \emph{ordinary module} is a weak module
+with a grading $M=\bigoplus_{\alpha\in\C}M_\alpha$ by finite-dimensional $L_0$-eigenspaces
+($L_0=\omega_{(1)}$ acts on $M_\alpha$ by $\alpha$) whose real parts are bounded below.
+\end{definition}
+
+In Lean these are the structures \lean{WeakModule W M} (fields \lean{YM}, \lean{vacuum_YM},
+\lean{truncation}, \lean{jacobi}) and \lean{OrdVModule W M}, which extends it by \lean{weight},
+\lean{isInternal}, \lean{L0_weight}, \lean{finrank} and \lean{boundedBelow}
+(\leanpath{VOA/Modules/WeakModule.lean}); they are quoted verbatim and decoded in
+Definitions~\ref{l12:def:weakmodule} and~\ref{l12:def:ordmodule}. The field \lean{jacobi} is
+\eqref{ch09:eq:modjac} written with \lean{negOnePow}, \lean{cbz} and \lean{∑ᶠ}.
+
+\begin{dictionary}
+\lean{W.smul u n v} is the $n$-th product $u_{(n)}v$ inside $\chnineV$; \lean{A.act u n x} is
+the library's abbreviation for $u^M_{(n)}x=$ \texttt{mode (A.YM u) n x}. \lean{∑ᶠ} is a sum
+over the (finitely many) indices where the summand is nonzero; \lean{cbz ℓ i} vanishes for $i<0$,
+so both sums run over $i\ge0$ as in \eqref{ch09:eq:modjac}. \lean{DirectSum.IsInternal weight}
+says that $M$ is the internal direct sum of the subspaces \texttt{weight α}. The
+\emph{adjoint module} \lean{adjointModule W} is $\chnineV$ acting on itself.
+\end{dictionary}
+
+\begin{physics}
+A module is a sector of the chiral CFT, a space of states on which the chiral algebra acts: the Jacobi identity is the statement that the OPE of the chiral fields closes consistently on that sector. An ordinary module with $L_0$-grading is a representation space with a spectrum of conformal weights bounded below and finite multiplicities, as for a unitary sector with a ground state. The twisted sector $\chnineTP$ of the orbifold will be such a module over $\chnineVP$.
+\end{physics}
+
+\subsection{The Leech objects}\label{ch09:sec:leechobjects}
+
+The concrete objects are those of Chapters~\ref{ch:04} and~\ref{ch:08}:
+\begin{itemize}
+\item \lean{leechVOAPlus : VertexOperatorAlgebra VPlus}, the vertex operator algebra
+$\chnineVP$; its carrier type is written \lean{VPlus} or, in the files of this chapter,
+\lean{SkewVP} (the two are the same type: \lean{abbrev SkewVP : Type := ↥(orbifold (Subgroup.zpowers leechTheta)).carrier}).
+It has $(\chnineVP)_1=0$ (\lean{leechVOAPlus_grading_one}) and $\dim(\chnineVP)_2=98580$.
+\item \lean{Tw := FockT 24 ⊗[ℂ] leechT}, the twisted space $S[\theta]\otimes T$, where
+$S[\theta]=\C[h_i(-n-\tfrac12)]$ is the twisted Fock space of rank $24$ and $T$ the
+$2^{12}$-dimensional module of the extraspecial group.
+\item \lean{TP : Submodule ℂ Tw}, the $\theta$-fixed subspace $\chnineTP$, and
+\lean{plusModule : OrdVModule leechVOAPlus TP}, its structure of ordinary
+$\chnineVP$-module. Its weights are integers $\ge2$ (\lean{plusModule_weight_ne_bot}) and
+$\dim\chnineTP_{2}=24\cdot4096=98304$ (\lean{finrank_plusModule_weight_two}).
+\end{itemize}
+
+\section{Intertwining operators and skew-symmetry}\label{ch09:sec:intertwiners}
+
+\subsection{The definition of Frenkel, Huang and Lepowsky}
+
+Let $M_1,M_2,M_3$ be modules for a vertex operator algebra $\chnineV$. An \emph{intertwining
+operator of type $\binom{M_3}{M_1\,M_2}$} (FHL, Definition~5.4.1) is a linear map
+$w_1\otimes w_2\mapsto\mathcal Y(w_1,z)w_2=\sum_{s\in\C}(w_1)_{(s)}w_2\,z^{-s-1}$ with values in
+$M_3\{z\}$ (arbitrary complex powers) such that
+\begin{enumerate}
+\item[(I1)] (truncation) for fixed $w_1,w_2$, $(w_1)_{(s)}w_2=0$ when $\operatorname{Re}s\gg0$;
+\item[(I2)] ($L_{-1}$-derivative) $\mathcal Y(L_{-1}w_1,z)=\partial_z\mathcal Y(w_1,z)$;
+\item[(I3)] (Jacobi identity) for $u\in\chnineV$,
+\begin{multline*}
+z_0^{-1}\delta\!\Big(\frac{z_1-z_2}{z_0}\Big)Y_3(u,z_1)\mathcal Y(w_1,z_2)
+-z_0^{-1}\delta\!\Big(\frac{z_2-z_1}{-z_0}\Big)\mathcal Y(w_1,z_2)Y_2(u,z_1)\\
+=z_2^{-1}\delta\!\Big(\frac{z_1-z_0}{z_2}\Big)\mathcal Y\big(Y_1(u,z_0)w_1,z_2\big).
+\end{multline*}
+\end{enumerate}
+Taking $\Res_{z_0}$ of (I3) gives the \emph{commutator formula}
+\begin{equation}\label{ch09:eq:intcomm}
+u_{(m)}\,(w_1)_{(s)}w_2-(w_1)_{(s)}\,u_{(m)}w_2=\sum_{r\ge0}\binom{m}{r}\big(u_{(r)}w_1\big)_{(m+s-r)}w_2 ,
+\end{equation}
+and taking $\Res_{z_1}$ gives an associativity formula. In general (I3) is equivalent to the
+commutator formula \emph{together with} associativity; the commutator formula alone is weaker.
+The dimension of the space of intertwining operators of a given type is the \emph{fusion rule}
+$\mathcal N^{M_3}_{M_1M_2}$.
+
+The physical meaning: $\mathcal Y(w_1,z)$ is the field of the state $w_1$ of one module, acting
+from a second module to a third; the commutator formula \eqref{ch09:eq:intcomm} says that the
+chiral algebra $\chnineV$ acts on such fields by the same rule (the operator product
+$u(z_1)\mathcal Y(w_1,z_2)\sim\sum_r (u_{(r)}w_1)(z_2)/(z_1-z_2)^{r+1}$) as it acts on its own
+fields.
+
+\subsection{The library's notion: a commutator-type intertwiner}
+
+\begin{definition}[Intertwiner, library form]\label{ch09:def:intertwiner}
+For ordinary modules $A,B,C$ (with carriers $M,N,P$), an \lean{Intertwiner A B C} consists of
+mode data $\mathcal Y_s\colon M\times N\to P$ bilinear, for $s\in\C$, which is lower truncated
+(I1) and satisfies the commutator formula \eqref{ch09:eq:intcomm}, written with the module $A$
+acting on the first argument, $B$ on the second and $C$ on the output.
+\end{definition}
+
+\begin{leancode}
+abbrev IntertwinerModes (M N P : Type u) [AddCommGroup M] [Module ℂ M] [AddCommGroup N]
+    [Module ℂ N] [AddCommGroup P] [Module ℂ P] : Type u := ℂ → (M →ₗ[ℂ] N →ₗ[ℂ] P)
+
+noncomputable def intertwinerSummand (A : OrdVModule W M) (Y : IntertwinerModes M N P)
+    (a : 𝒱) (p : ℤ) (s : ℂ) (u : M) (x : N) (j : ℕ) : P :=
+  cbz p j • Y (s + p - j) (A.toWeakModule.act a (j : ℤ) u) x
+
+noncomputable def intertwiningDefect (A : OrdVModule W M) (B : OrdVModule W N) (C : OrdVModule W P) :
+    IntertwinerModes M N P →ₗ[ℂ] (𝒱 → ℤ → ℂ → M → N → P) where
+  toFun Y := fun a p s u x =>
+    C.toWeakModule.act a p (Y s u x) - Y s u (B.toWeakModule.act a p x)
+      - ∑ᶠ j : ℕ, intertwinerSummand A Y a p s u x j
+
+structure Intertwiner (A : OrdVModule W M) (B : OrdVModule W N) (C : OrdVModule W P) where
+  modes : IntertwinerModes M N P
+  truncation : ∀ (u : M) (x : N), ∃ s₀ : ℝ, ∀ s : ℂ, s₀ ≤ s.re → modes s u x = 0
+  isIntertwiner : modes ∈ IntertwinerSpace A B C
+\end{leancode}
+(\leanpath{VOA/Modules/Fusion.lean}; \lean{IntertwinerSpace A B C} is the kernel of
+\lean{intertwiningDefect A B C}; the additivity proofs of the defect are omitted.)
+
+\begin{dictionary}
+\textbf{Decoding.} \texttt{modes s u x} is $u_{(s)}x$ for $u\in M$, $x\in N$. The defect is
+$a^C_{(p)}(u_{(s)}x)-u_{(s)}(a^B_{(p)}x)-\sum_j\binom{p}{j}(a^A_{(j)}u)_{(s+p-j)}x$; being in its
+kernel is exactly \eqref{ch09:eq:intcomm} for all $a\in\chnineV$, $p\in\Z$, $s\in\C$.
+
+\textbf{Same, stronger or weaker?} \emph{Weaker than FHL.} The structure records (I1) and the
+commutator formula only. It does not record the $L_{-1}$-derivative property (I2), and it does not
+record the full Jacobi identity (I3) (no associativity). Consequently the library's
+\lean{fusionCoeff} (the \lean{finrank} of \lean{IntertwinerSpace}) is not the FHL fusion rule;
+this chapter never uses it. Every intertwiner constructed below is a genuine FHL-type object in
+the sense that we prove the $L_{-1}$-derivative property \emph{separately} (Theorems
+\ref{ch09:thm:Wderiv} and~\ref{ch09:thm:Wbarderiv}); the full Jacobi identity for $W$ and
+$\chnineWb$ is \emph{not} proved anywhere in the library, and it is not needed: the
+reconstruction route of Chapter~\ref{ch:10} consumes only commutator formulas, locality and
+translation covariance.
+
+\textbf{Could it be vacuous?} No: the zero mode family is always an intertwiner, so the structure
+is inhabited; the content of a particular \lean{Intertwiner} value lies in which modes it carries.
+\end{dictionary}
+
+\begin{physics}
+An intertwining operator is a chiral vertex operator: it is the field $\mathcal Y(w_1,z)$ of a state $w_1$ in sector $M_1$ that maps states of sector $M_2$ to states of sector $M_3$, and the commutator formula is the Ward identity saying that the chiral currents act on it by the same OPE as on any primary field. The dimension $\mathcal N^{M_3}_{M_1M_2}$ of the space of such operators is the fusion rule: the number of independent three-point couplings $\langle M_3|\mathcal Y|M_2\rangle$ among the three sectors. For $\Vnat$ the interesting couplings are twisted $\times$ untwisted $\to$ twisted and twisted $\times$ twisted $\to$ untwisted. (Heuristic: the library \texttt{Intertwiner} records only the commutator part of the axioms.)
+\end{physics}
+
+\subsection{Skew-symmetry: from a module to an intertwiner}
+
+\begin{definition}[The skew operator]\label{ch09:def:skew}
+Let $M$ be a weak $\chnineV$-module and $L_{-1}^M=\omega^M_{(0)}$. For $t\in M$ and
+$\varphi\in\chnineV$ put
+\begin{equation}\label{ch09:eq:Wdef}
+W(t,z)\varphi=e^{zL_{-1}}Y_M(\varphi,-z)t,\qquad\text{i.e.}\qquad
+W(t)_{(n)}\varphi=\sum_{i\ge0}\frac{(-1)^{n+i+1}}{i!}\,L_{-1}^{\,i}\big(\varphi_{(n+i)}t\big).
+\end{equation}
+\end{definition}
+
+\begin{physics}
+Skew-symmetry is the exchange of two fields in a two-point function: $\langle\phi_a(z)\phi_b(0)\rangle$ and $\langle\phi_b(-z)\phi_a(0)\rangle$ are the same correlator read from the two radial orderings, related by the translation $e^{zL_{-1}}$. Defining $W(t,z)\varphi=e^{zL_{-1}}Y_M(\varphi,-z)t$ says that the field of the twisted state $t$ acting on an untwisted state $\varphi$ is obtained by moving the untwisted field $\varphi$ around it: the chiral vertex operator ``twist field $\times$ ordinary field $\to$ twist field'' is forced by the module structure alone.
+\end{physics}
+
+\noindent\emph{Derivation of the mode formula.} $Y_M(\varphi,-z)t=\sum_p\varphi_{(p)}t\,(-z)^{-p-1}$
+and $e^{zL_{-1}}=\sum_i z^iL_{-1}^i/i!$. The coefficient of $z^{-n-1}$ collects the pairs with
+$i-p-1=-n-1$, i.e.\ $p=n+i$, with sign $(-1)^{-p-1}=(-1)^{n+i+1}$. Only finitely many $i$
+contribute because $\varphi_{(n+i)}t=0$ for $n+i$ large.
+
+When $M=\chnineV$ is the adjoint module, skew-symmetry of $\chnineV$ says $W(t,z)\varphi=Y(t,z)\varphi$;
+so $W$ is the module analogue of ``the vertex operator of $t$''. The theorem we want is that
+$W$ is an intertwining operator of type $\binom{M}{M\;\chnineV}$ (FHL \S5.4, where it appears
+as $\Omega$ of the module vertex operator $Y_M$, viewed as an intertwiner of type
+$\binom{M}{\chnineV\;M}$).
+
+\section{The skew operator \texorpdfstring{$W$}{W} in Lean}\label{ch09:sec:W}
+
+All declarations in this section are in \leanpath{VOA/Moonshine/SkewIntertwiner.lean},
+namespace \lean{VOA.SkewIntertwiner}, for an arbitrary vertex operator algebra
+\lean{W : VertexOperatorAlgebra 𝒱} and an arbitrary weak module \lean{A : WeakModule W M}.
+(In these files the letter \lean{W} denotes the vertex operator algebra, not the skew operator;
+the skew operator is called \lean{Wsk}.)
+
+\subsection{The translation operator of a module}
+
+\begin{definition}\label{ch09:def:Lm1}
+$L^M_{-1}:=\omega^M_{(0)}\in\End(M)$.
+\end{definition}
+\begin{leancode}
+noncomputable def Lm1 (A : WeakModule W M) : End ℂ M := mode (A.YM W.conformalVector) 0
+\end{leancode}
+
+\begin{physics}
+$L_{-1}$ generates translations of the plane, so $L_{-1}^M$ is the momentum operator of the sector. Its action on modes is the dilation-translation covariance of fields, $[L_{-1},\phi(z)]=\partial_z\phi(z)$.
+\end{physics}
+
+\begin{proposition}[$L_{-1}$-commutator]\label{ch09:prop:actLm1}
+For $u\in\chnineV$, $p\in\Z$, $x\in M$:
+$u_{(p)}L_{-1}x=L_{-1}u_{(p)}x+p\,u_{(p-1)}x$.
+More generally
+$u_{(p)}L_{-1}^kx=\sum_{r=0}^{k}\binom{k}{r}p(p-1)\cdots(p-r+1)\,L_{-1}^{k-r}u_{(p-r)}x$.
+\end{proposition}
+\begin{leancode}
+theorem act_Lm1 (A : WeakModule W M) (u : 𝒱) (p : ℤ) (x : M) :
+    A.act u p (Lm1 A x) = Lm1 A (A.act u p x) + p • A.act u (p - 1) x
+
+theorem act_Lm1_pow_expand (A : WeakModule W M) (c : 𝒱) (p : ℤ) (k : ℕ) (u : M) :
+    A.act c p ((Lm1 A ^ k) u)
+      = ∑ r ∈ Finset.range (k + 1),
+          (mcoeff p k r) • ((Lm1 A ^ (k - r)) (A.act c (p - (r : ℤ)) u))
+\end{leancode}
+
+\begin{dictionary}
+\lean{mcoeff p k r} is the integer $\binom{k}{r}\cdot p(p-1)\cdots(p-r+1)$
+(\texttt{def mcoeff (p : ℤ) (k r : ℕ) : ℤ := (k.choose r : ℤ) * fallI p r}, with
+\lean{fallI p r} the falling factorial; \leanpath{VOA/Core/WeakAssoc.lean}). The integer scalar
+\texttt{p •} is the $\Z$-action on $M$, equal to multiplication by the complex number $p$. No
+hypothesis beyond ``$A$ is a weak module''. Same as the textbook statement.
+\end{dictionary}
+
+\begin{physics}
+This is the statement that $L_{-1}=\partial_z$ acts on every field of the module as differentiation: $[L_{-1},Y_M(u,z)]=\partial_zY_M(u,z)$, equivalently that translating a field by $z$ is $e^{zL_{-1}}$. It is the technical ingredient behind the translation covariance of $W$. (A standard consequence of the conformal Ward identity; the physics does not replace the proof below.)
+\end{physics}
+
+\noindent\emph{Proof.} Apply the module Jacobi identity \eqref{ch09:eq:modjac} with $u=\omega$,
+$\ell=m=0$: it gives $[\omega_{(0)},u_{(n)}]=(\omega_{(0)}u)_{(n)}=(L_{-1}u)_{(n)}$, and
+$(L_{-1}u)_{(n)}=-n\,u_{(n-1)}$ (translation covariance of module vertex operators, which is itself the $\ell=0$, $m=0$, $v\mapsto L_{-1}u$ case of the
+same identity). Rearranging, $u_{(p)}L_{-1}=L_{-1}u_{(p)}+p\,u_{(p-1)}$. The general formula is
+the induction on $k$ of this one, the coefficients satisfying Pascal-type recursions; it is the
+mode form of $e^{-zL_{-1}}u_{(p)}e^{zL_{-1}}=\sum_k\binom{p}{k}z^ku_{(p-k)}$. \qed
+
+\begin{status}
+Both statements proved, no hypotheses beyond the weak module. Proof in
+\leanpath{VOA/Moonshine/SkewIntertwiner.lean}.
+\end{status}
+
+\subsection{The modes and the field}
+
+\begin{definition}[Skew modes and skew field]\label{ch09:def:wMode}
+$\lean{wTerm}(t,n,\varphi,i)=\frac{(-1)^{n+i+1}}{i!}L_{-1}^i(\varphi_{(n+i)}t)$,
+$\lean{wMode}(t,n,\varphi)=\sum_i\lean{wTerm}(t,n,\varphi,i)=W(t)_{(n)}\varphi$, and
+$\lean{Wsk}(t)$ is the $\operatorname{Hom}(\chnineV,M)$-valued distribution whose $z^k$-coefficient
+is $W(t)_{(-k-1)}$.
+\end{definition}
+\begin{leancode}
+noncomputable def wTerm (A : WeakModule W M) (t : M) (n : ℤ) (φ : 𝒱) (i : ℕ) : M :=
+  (((i.factorial : ℂ)⁻¹) * negOnePow (n + i + 1)) • ((Lm1 A ^ i) (A.act φ (n + i) t))
+
+noncomputable def wMode (A : WeakModule W M) (t : M) (n : ℤ) (φ : 𝒱) : M :=
+  ∑ᶠ i : ℕ, wTerm A t n φ i
+
+noncomputable def wModeLin (A : WeakModule W M) (t : M) (n : ℤ) : 𝒱 →ₗ[ℂ] M where
+  toFun := wMode A t n
+
+noncomputable def Wsk (A : WeakModule W M) (t : M) : FormalDist (𝒱 →ₗ[ℂ] M) :=
+  fun k => wModeLin A t (-k - 1)
+
+theorem mode_Wsk (A : WeakModule W M) (t : M) (n : ℤ) :
+    mode (Wsk A t) n = wModeLin A t n
+\end{leancode}
+(The linearity fields of \lean{wModeLin}, which are the lemmas \lean{wMode_add_left} and
+\lean{wMode_smul_left}, are omitted.)
+
+\begin{dictionary}
+The \lean{∑ᶠ} over $i\in\N$ is a genuine finite sum: by the truncation axiom of $A$,
+$\varphi_{(n+i)}t=0$ for $i$ large, so only finitely many summands are nonzero; if infinitely many
+were nonzero, \lean{∑ᶠ} would return $0$ by convention, which is why the library proves
+separately that the support is finite (\lean{wMode_eq_sum}: for any bound $K$ past the truncation,
+\lean{wMode} equals the honest sum over $i<K$). With that lemma the definition is exactly
+\eqref{ch09:eq:Wdef}. The indexing \texttt{fun k => wModeLin A t (-k - 1)} together with
+\lean{mode_Wsk} says that \lean{Wsk A t} is $\sum_nW(t)_{(n)}z^{-n-1}$.
+\end{dictionary}
+
+\begin{physics}
+The definition spells out the field $W(t,z)$ in modes: the sum over $i$ is the Taylor expansion $e^{zL_{-1}}$ that translates the insertion point of the untwisted field from $-z$ back to the origin. The $\mathrm{Hom}(\chnineV,M)$-valued distribution is the chiral vertex operator ``twisted state $t$ at position $z$ acting on an untwisted state''.
+\end{physics}
+
+\begin{example}[Low modes]\label{ch09:ex:lowmodes}
+Take $\varphi=\mathbf 1$. Since $\mathbf 1_{(p)}t=\delta_{p,-1}t$, only $i=-n-1$ survives, so
+$W(t)_{(n)}\mathbf 1=L_{-1}^{-n-1}t/(-n-1)!$ for $n\le-1$ and $0$ otherwise: $W(t)_{(-1)}\mathbf1=t$,
+$W(t)_{(-2)}\mathbf 1=L_{-1}t$, $W(t)_{(-3)}\mathbf 1=\tfrac12L_{-1}^2t$. Next take $\varphi$ of
+weight $1$ in a VOA with $\chnineV_1\neq0$ and $t$ of lowest weight in $M$, so that
+$\varphi_{(p)}t=0$ for $p\ge1$ (it would have weight below the lowest weight). Then
+$W(t)_{(0)}\varphi=-\varphi_{(0)}t$ (only $i=0$), and
+$W(t)_{(-1)}\varphi=\varphi_{(-1)}t-L_{-1}(\varphi_{(0)}t)$. In the Leech case $(\chnineVP)_1=0$
+and the first nontrivial instance is a weight-two $\varphi$.
+\end{example}
+
+\subsection{Vacuum and translation properties}
+
+\begin{theorem}[$W(t,z)\mathbf1=e^{zL_{-1}}t$]\label{ch09:thm:Wvac}
+For every $t\in M$ and $k\in\Z$, the $z^k$-coefficient of $W(t,z)\mathbf 1$ is
+$L_{-1}^kt/k!$ if $k\ge0$ and $0$ if $k<0$.
+\end{theorem}
+\begin{leancode}
+theorem Wsk_vacuum (A : WeakModule W M) (t : M) (k : ℤ) :
+    Wsk A t k W.vacuum
+      = if 0 ≤ k then ((k.toNat.factorial : ℂ)⁻¹) • (Lm1 A ^ k.toNat) t else 0
+\end{leancode}
+\begin{dictionary}
+\texttt{Wsk A t k} is the $z^k$-coefficient (a linear map $\chnineV\to M$) applied to
+\lean{W.vacuum}. \lean{k.toNat} is $k$ viewed as a natural number (used only when $k\ge0$). No
+hypotheses. Exactly the textbook statement $W(t,z)\mathbf 1=\sum_{k\ge0}z^kL_{-1}^kt/k!$.
+\end{dictionary}
+\begin{physics}
+This is the state--operator correspondence for $W$: acting on the vacuum, the vertex operator of the state $t$ creates $t$ at $z=0$, $W(t,z)\mathbf1=e^{zL_{-1}}t$, i.e.\ the state $t$ translated to the point $z$. It is the normalisation that makes $W(t,z)$ the field of the state $t$ rather than some other operator.
+\end{physics}
+
+\noindent\emph{Proof.} Example~\ref{ch09:ex:lowmodes}: $Y_M(\mathbf1,-z)=\mathrm{id}$, so
+$W(t,z)\mathbf1=e^{zL_{-1}}t$. \qed
+
+\begin{theorem}[$L_{-1}$-derivative property]\label{ch09:thm:Wderiv}
+$W(L_{-1}t)_{(n)}=-n\,W(t)_{(n-1)}$ for all $n$; equivalently $W(L_{-1}t,z)=\partial_zW(t,z)$.
+\end{theorem}
+\begin{leancode}
+theorem wMode_Lm1 (A : WeakModule W M) (t : M) (n : ℤ) (φ : 𝒱) :
+    wMode A (Lm1 A t) n φ = (-(n : ℂ)) • wMode A t (n - 1) φ
+
+theorem Wsk_deriv (A : WeakModule W M) (t : M) :
+    Wsk A (Lm1 A t) = deriv (Wsk A t)
+\end{leancode}
+\begin{dictionary}
+\lean{deriv} is the coefficientwise derivative of Definition~\ref{ch09:def:fd}. The mode form
+and the field form agree: the $z^k$-coefficient of $\partial_zW$ is $(k+1)W(t)_{(-k-2)}$, and the
+mode form with $n=-k-1$ gives $W(L_{-1}t)_{(-k-1)}=(k+1)W(t)_{(-k-2)}$. No hypotheses. This is
+(I2) for $W$; it is not part of the library's \lean{Intertwiner} structure, which is why it is
+proved as a separate theorem.
+\end{dictionary}
+\begin{physics}
+The field of the descendant $L_{-1}t=\partial t$ is the derivative of the field of $t$: $W(\partial t,z)=\partial_zW(t,z)$. This is the translation covariance every chiral field satisfies, and it is axiom (I2) of an intertwining operator.
+\end{physics}
+
+\noindent\emph{Proof.} In terms of fields: $W(L_{-1}t,z)\varphi=e^{zL_{-1}}Y_M(\varphi,-z)L_{-1}t$.
+The module commutator $[L_{-1},Y_M(\varphi,x)]=\partial_xY_M(\varphi,x)$ (Proposition
+\ref{ch09:prop:actLm1}) gives $Y_M(\varphi,-z)L_{-1}t=L_{-1}Y_M(\varphi,-z)t+\partial_zY_M(\varphi,-z)t$
+(the chain rule for $x=-z$ produces the sign). Hence
+$W(L_{-1}t,z)\varphi=\big(L_{-1}e^{zL_{-1}}+e^{zL_{-1}}\partial_z\big)Y_M(\varphi,-z)t=\partial_z\big(e^{zL_{-1}}Y_M(\varphi,-z)t\big)$.
+In modes this is a telescoping identity between the finite sums \eqref{ch09:eq:Wdef}. \qed
+
+\begin{proposition}[Truncation]\label{ch09:prop:Wtrunc}
+For fixed $t,\varphi$, $W(t)_{(n)}\varphi=0$ for $n\gg0$.
+\end{proposition}
+\noindent File \leanpath{VOA/Moonshine/SkewIntertwiner.lean}.
+\begin{leancode}
+theorem wMode_truncation (A : WeakModule W M) (t : M) (φ : 𝒱) :
+    ∃ N : ℤ, ∀ n : ℤ, N ≤ n → wMode A t n φ = 0
+\end{leancode}
+\begin{physics}
+In a sector with energy bounded below, acting with a field on a fixed state produces only finitely many poles at the insertion point, i.e.\ the matrix elements of $W(t,z)$ between fixed states are Laurent series in $z$ with finite principal part. This is the usual condition that the OPE has a finite pole order.
+\end{physics}
+
+\noindent\emph{Proof.} If $\varphi_{(p)}t=0$ for $p\ge N$, every summand of \eqref{ch09:eq:Wdef}
+vanishes for $n\ge N$. \qed
+
+\begin{status}
+\lean{Wsk_vacuum}, \lean{wMode_Lm1}, \lean{Wsk_deriv}, \lean{wMode_truncation}: proved for every
+weak module, no further hypotheses. \lean{#print axioms} of the file's headline declarations
+(rechecked for this chapter, see Section~\ref{ch09:sec:verification}):
+\texttt{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\subsection{The commutator formula}
+
+\begin{theorem}[Intertwining commutator formula for $W$]\label{ch09:thm:Wcomm}
+Let $M$ be a weak $\chnineV$-module, $u\in\chnineV$, $t\in M$, and let $J\in\N$ be such that
+$u_{(j)}t=0$ for all $j\ge J$. Then for \emph{all} $m,n\in\Z$ and $\varphi\in\chnineV$,
+\begin{equation}\label{ch09:eq:Wcomm}
+u^M_{(m)}\,W(t)_{(n)}\varphi-W(t)_{(n)}\big(u_{(m)}\varphi\big)
+=\sum_{r=0}^{J-1}\binom{m}{r}\,W\big(u^M_{(r)}t\big)_{(m+n-r)}\varphi .
+\end{equation}
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/SkewIntertwiner.lean}.
+\begin{leancode}
+theorem wMode_comm (A : WeakModule W M) (u : 𝒱) (m : ℤ) (t : M) (n : ℤ) (φ : 𝒱) (J : ℕ)
+    (hJ : ∀ j : ℕ, J ≤ j → A.act u j t = 0) :
+    A.act u m (wMode A t n φ) - wMode A t n (W.smul u m φ)
+      = ∑ r ∈ Finset.range J, gBinom m r • wMode A (A.act u r t) (m + n - r) φ
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Symbols.} \lean{A.act u m} is $u^M_{(m)}$ on $M$; \lean{W.smul u m φ} is $u_{(m)}\varphi$
+in $\chnineV$; \lean{wMode A s q φ} is $W(s)_{(q)}\varphi$; \lean{gBinom m r} is $\binom{m}{r}$
+with $m\in\Z$; \lean{Finset.range J} is $\{0,\dots,J-1\}$.
+
+\textbf{Hypotheses.} Only \lean{hJ}: $J$ is past the truncation of $u$ on $t$. Such a $J$ always
+exists (truncation axiom), and the formula is then true for \emph{every} such $J$, because the
+extra terms with $r\ge J$ vanish. The quantifier order matters: $J$ depends only on $u$ and $t$,
+not on $\varphi$, $m$ or $n$. That is what makes locality (Theorem~\ref{ch09:thm:Wlocal}) follow
+with an order independent of the test vector.
+
+\textbf{Comparison.} This is exactly \eqref{ch09:eq:intcomm} for the intertwiner $W$ of type
+$\binom{M}{M\;\chnineV}$: the first argument $t$ lies in $M$, the second $\varphi$ in
+$\chnineV$, the output in $M$. Same as the textbook statement, for all $m\in\Z$ (including
+negative $m$, where the binomial coefficients are the generalised ones and the sum is still
+finite because of $J$).
+
+\textbf{Could it be vacuous?} The hypothesis is satisfiable for every $u,t$; the conclusion is a
+nontrivial identity in $M$. No degenerate case is hidden.
+\end{dictionary}
+
+\begin{physics}
+This is the Ward identity of the chiral algebra on the field $W$: the OPE $u(z_1)W(t,z_2)\sim\sum_{r}W(u_{(r)}t,z_2)/(z_1-z_2)^{r+1}$ says that a current $u$ passing the insertion of the twist field acts on it by the singular terms of the OPE, with the twisted state $u_{(r)}t$ appearing as the residue. The same formula describes how a current commutes with a primary field, including the twisted sector's modes. It holds for all $m$ because the field lives on an annulus of convergence in both orderings.
+\end{physics}
+
+\paragraph{Proof on paper.} Write $L=L^M_{-1}$ and $c_i(n)=(-1)^{n+i+1}/i!$, so that
+$W(t)_{(n)}\varphi=\sum_ic_i(n)L^i(\varphi_{(n+i)}t)$.
+
+\emph{Step 1: move $u_{(m)}$ through the powers of $L$.} By Proposition~\ref{ch09:prop:actLm1},
+$u_{(m)}L^iy=\sum_{r\le i}\binom ir m(m-1)\cdots(m-r+1)\,L^{i-r}u_{(m-r)}y$. Substituting and
+writing $i=a+r$, the scalar becomes
+$\frac{(-1)^{n+a+r+1}}{(a+r)!}\binom{a+r}{r}m(m-1)\cdots(m-r+1)=\frac{(-1)^{n+a+1}}{a!}\,(-1)^r\binom mr$.
+Hence
+\begin{equation}\label{ch09:eq:step1}
+u_{(m)}W(t)_{(n)}\varphi=\sum_{a\ge0}\frac{(-1)^{n+a+1}}{a!}\,L^a\Big[\sum_{r\ge0}(-1)^r\binom mr\,u_{(m-r)}\varphi_{(n+a+r)}t\Big].
+\end{equation}
+
+\emph{Step 2: the iterate formula.} The module Jacobi identity \eqref{ch09:eq:modjac} with
+$(\ell,m,n)$ replaced by $(m,0,q)$ reads
+\begin{equation}\label{ch09:eq:iterate}
+\sum_{r\ge0}(-1)^r\binom mr\Big(u_{(m-r)}\varphi_{(q+r)}t-(-1)^m\varphi_{(m+q-r)}u_{(r)}t\Big)=(u_{(m)}\varphi)_{(q)}t,
+\end{equation}
+the sum on the right of \eqref{ch09:eq:modjac} collapsing to its $i=0$ term because $\binom0i=\delta_{i0}$.
+Apply it with $q=n+a$ to the bracket in \eqref{ch09:eq:step1}.
+
+\emph{Step 3: recognise the two pieces.} The term $(u_{(m)}\varphi)_{(n+a)}t$ contributes
+$\sum_a\frac{(-1)^{n+a+1}}{a!}L^a(u_{(m)}\varphi)_{(n+a)}t=W(t)_{(n)}(u_{(m)}\varphi)$. The other
+term contributes
+\begin{equation*}
+\sum_{r}\binom mr\sum_a\frac{(-1)^{n+a+1+r+m}}{a!}L^a\big(\varphi_{(m+n-r+a)}\,u_{(r)}t\big)
+=\sum_r\binom mr\,W\big(u_{(r)}t\big)_{(m+n-r)}\varphi ,
+\end{equation*}
+because $(-1)^{n+a+1+r+m}=(-1)^{(m+n-r)+a+1}$, which is exactly the sign in the definition of
+$W(s)_{(m+n-r)}\varphi$ with $s=u_{(r)}t$. Finally $u_{(r)}t=0$ for $r\ge J$, so the $r$-sum
+stops at $J-1$. Every sum in the argument is finite, since all the truncations involved are
+finite. \qed
+
+\begin{remark}[No Goddard uniqueness]\label{ch09:rem:nogoddard}
+For a vertex algebra acting on itself, skew-symmetry and commutator formulas are usually derived
+from a uniqueness argument (Goddard's lemma: a field local with all $Y(u,z)$ and with the
+right value on the vacuum is determined). That argument needs a vacuum vector in the space the
+field acts on. In the present situation the field $W(t,z)$ maps $\chnineV$ to $M$, and $M$ has no
+vacuum, so the commutator formula is proved directly by the computation above, for all $m$
+(positive and negative) at once.
+\end{remark}
+
+\begin{status}
+\lean{wMode_comm}: proved for every weak module; only hypothesis \lean{hJ}. Axioms
+\texttt{[propext, Classical.choice, Quot.sound]} (rechecked).
+\end{status}
+
+\subsection{Locality of \texorpdfstring{$Y_M(u,z_1)$}{Y\_M(u,z1)} and \texorpdfstring{$W(t,z_2)$}{W(t,z2)}}
+
+\begin{theorem}[$W$ is local with every module vertex operator]\label{ch09:thm:Wlocal}
+For $u\in\chnineV$ and $t\in M$, let $J$ be past the truncation of $u$ on $t$. Then
+\begin{equation*}
+(z_1-z_2)^J\Big(Y_M(u,z_1)\,W(t,z_2)-W(t,z_2)\,Y(u,z_1)\Big)=0
+\end{equation*}
+as a two-variable distribution with values in $\operatorname{Hom}(\chnineV,M)$. In particular such
+an exponent exists.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/SkewIntertwiner.lean}.
+\begin{leancode}
+noncomputable def wBracket (A : WeakModule W M) (u : 𝒱) (t : M) : FormalDist₂ (𝒱 →ₗ[ℂ] M) :=
+  fun a b => (A.YM u a).comp (Wsk A t b) - (Wsk A t b).comp (W.Y u a)
+
+theorem Wsk_local_of_bound (A : WeakModule W M) (u : 𝒱) (t : M) (J : ℕ)
+    (hJ : ∀ j : ℕ, J ≤ j → A.act u j t = 0) :
+    mulBySubPow J (wBracket A u t) = 0
+
+theorem Wsk_local (A : WeakModule W M) (u : 𝒱) (t : M) :
+    ∃ N : ℕ, mulBySubPow N (wBracket A u t) = 0
+\end{leancode}
+
+\begin{dictionary}
+\lean{wBracket A u t} has as $(a,b)$-coefficient the map
+$Y_M(u)_a\circ W(t)_b-W(t)_b\circ Y(u)_a$, where subscripts are coefficients of $z_1^a$ and
+$z_2^b$ (Definition~\ref{ch09:def:fd}), and \lean{comp} is composition of linear maps. This is the
+coefficient of $z_1^az_2^b$ in $Y_M(u,z_1)W(t,z_2)-W(t,z_2)Y(u,z_1)$. \lean{mulBySubPow J}
+multiplies by $(z_1-z_2)^J$ (Definition~\ref{ch09:def:local}). The order $J$ is the truncation
+order of $u$ on $t$; it does not depend on the vector $\varphi$ on which the operators act. That is
+the strong (uniform) form of locality, as required for fields.
+\end{dictionary}
+
+\begin{physics}
+Mutual locality of $W(t,z_2)$ with every current $Y(u,z_1)$ means that the correlation functions of the twist-field vertex operator with currents are single-valued meromorphic functions in $z_1$ with poles only at $z_2$: the twist field creates no branch cut seen by the \emph{untwisted} (invariant) currents. The pole order $J$ is the order of the OPE singularity, independent of the state on which the operators act, as for a genuine field.
+\end{physics}
+
+\paragraph{Proof on paper.} Theorem~\ref{ch09:thm:Wcomm}, rewritten for distributions, says
+\begin{equation*}
+[Y_M(u,z_1),W(t,z_2)]=\sum_{r<J}W(u_{(r)}t,z_2)\,\frac{1}{r!}\partial_{z_2}^{\,r}\,z_1^{-1}\delta\Big(\frac{z_2}{z_1}\Big),
+\end{equation*}
+whose $(a,b)$-coefficient is $\binom{-a-1}{r}\,W(u_{(r)}t)_{(-a-b-2-r)}$. A distribution of the
+form $g(z_2)\partial^{(r)}\delta$ is killed by $(z_1-z_2)^{r+1}$: in coefficients,
+$(z_1-z_2)$ maps the pattern $\binom{-a-1}{r}g_{a+b}$ to the pattern with $r$ replaced by $r-1$
+(Pascal's rule), and kills it when $r=0$. Hence $(z_1-z_2)^J$ kills every term with $r<J$. \qed
+
+\begin{status}
+\lean{Wsk_local_of_bound}, \lean{Wsk_local}: proved for every weak module, no further hypotheses.
+Axioms of \lean{Wsk_local}: \texttt{[propext, Classical.choice, Quot.sound]} (rechecked).
+\end{status}
+
+\subsection{Packaging: the skew intertwiner}
+
+\begin{definition}[Skew intertwiner]\label{ch09:def:skewInt}
+For an ordinary module $A$ on $M'$, \lean{skewIntertwiner A} is the library \lean{Intertwiner}
+of type $(A;A,\chnineV)$ whose mode at an integer $s=n$ is $W(\cdot)_{(n)}(\cdot)$ and whose modes
+at non-integral $s\in\C$ are zero.
+\end{definition}
+\noindent File \leanpath{VOA/Moonshine/SkewIntertwiner.lean}.
+\begin{leancode}
+noncomputable def skModes (A : WeakModule W M) (s : ℂ) : M →ₗ[ℂ] 𝒱 →ₗ[ℂ] M :=
+  if h : ∃ n : ℤ, (n : ℂ) = s then wBil A (Classical.choose h) else 0
+
+noncomputable def skewIntertwiner (A : OrdVModule W M') :
+    Intertwiner A (adjointModule W) A where
+  modes := skModes A.toWeakModule
+
+theorem skewIntertwiner_modes (A : OrdVModule W M') (n : ℤ) (t : M') (φ : 𝒱) :
+    (skewIntertwiner A).modes (n : ℂ) t φ = wMode A.toWeakModule t n φ
+\end{leancode}
+(\lean{wBil A n} is $W(\cdot)_{(n)}(\cdot)$ as a bilinear map $M\times\chnineV\to M$; the
+\lean{truncation} and \lean{isIntertwiner} fields of the structure, proved from
+Proposition~\ref{ch09:prop:Wtrunc} and Theorem~\ref{ch09:thm:Wcomm}, are omitted.)
+
+\begin{dictionary}
+\textbf{Type.} \lean{Intertwiner A (adjointModule W) A}: first argument from $A$, second from the
+adjoint module $\chnineV$, output in $A$; i.e.\ type $\binom{M}{M\;\chnineV}$.
+\textbf{Complex modes.} The library's intertwiners have complex modes; $W$ has only integral modes,
+so \lean{skModes} reads off the integer $n$ with $(n:\C)=s$ when it exists (the
+\lean{Classical.choose} is harmless: the integer is unique) and is zero otherwise.
+\textbf{Strength.} As explained under Definition~\ref{ch09:def:intertwiner}, this records only
+truncation and the commutator formula. The $L_{-1}$-property is Theorem~\ref{ch09:thm:Wderiv},
+proved separately; the full Jacobi identity of $W$ is not proved in the library.
+\end{dictionary}
+
+\begin{physics}
+Packaging $W$ as an \texttt{Intertwiner} records it as a chiral vertex operator of type twisted $\times$ untwisted $\to$ twisted, i.e.\ as a choice of three-point coupling $\langle T|\,W(t,z)\,|V^+\rangle$ among the twisted module, the adjoint (vacuum) module and the twisted module. The vanishing of non-integral modes expresses that the sector $\chnineTP$ has integer conformal weights, so no fractional monodromy appears.
+\end{physics}
+
+\begin{status}
+Definition with all fields proved; for every ordinary module. Axioms of \lean{skewIntertwiner}:
+\texttt{[propext, Classical.choice, Quot.sound]} (rechecked).
+\end{status}
+
+\section{The Leech instance of \texorpdfstring{$W$}{W}}\label{ch09:sec:Wleech}
+
+The file \leanpath{VOA/Moonshine/SkewLeech.lean} specialises everything to the module
+\lean{plusModule} of Section~\ref{ch09:sec:leechobjects}. Since \lean{plusModule} is an
+\emph{ordinary} module with integral modes ($u_{(n)}=Y^T(u)_{(2n/2)}$ on $\chnineTP$), $W$ has only
+integral modes and no fractional bookkeeping arises.
+
+\begin{definition}\label{ch09:def:leechWsk}
+$L_{-1}$ on $\chnineTP$ and the skew field
+$W(t,z)=e^{zL_{-1}}Y^T(\cdot,-z)t\colon\chnineVP\to\chnineTP$ for $t\in\chnineTP$:
+\end{definition}
+\begin{leancode}
+noncomputable abbrev leechLTP : Module.End ℂ TP := Lm1 plusModule.toWeakModule
+
+theorem leechLTP_coe (x : TP) :
+    ((leechLTP x : TP) : Tw) = leechTwistedModule.YM leechVOAPlus.conformalVector.1 0 x
+
+noncomputable def leechWsk (t : TP) : FormalDist (SkewVP →ₗ[ℂ] TP) :=
+  Wsk plusModule.toWeakModule t
+\end{leancode}
+\begin{dictionary}
+\lean{leechLTP_coe} confirms that the module translation operator on $\chnineTP$ is the twisted
+$\omega$-mode at twisted index $0$, i.e.\ $\omega_{(0)}=L_{-1}$ of the twisted module of
+Chapter~\ref{ch:08}, restricted to the $\theta$-fixed part (the coercion
+\texttt{((· : TP) : Tw)} includes $\chnineTP$ into $S[\theta]\otimes T$). So ``$L_{-1}$'' means
+what it should.
+\end{dictionary}
+
+\begin{physics}
+This is the concrete 2d CFT object: $W(t,z)$ is the vertex operator for the twist-field state $t\in\chnineTP$ of the $\mathbb Z/2$ orbifold of 24 bosons on the Leech torus, acting from the untwisted chiral algebra $\chnineVP$ into the twisted sector. Everything is forced by the module structure through skew-symmetry, with no choices.
+\end{physics}
+
+\begin{theorem}[Properties of the Leech $W$]\label{ch09:thm:leechW}
+For $t\in\chnineTP$: $W(t,z)\mathbf1=e^{zL_{-1}}t$; $W(L_{-1}t,z)=\partial_zW(t,z)$; the
+commutator formula \eqref{ch09:eq:Wcomm} holds for all $u\in\chnineVP$, $m,n\in\Z$; and
+$Y^T(u,z_1)$, $W(t,z_2)$ are mutually local. Finally $W$ is an intertwiner of type
+$\binom{\chnineTP}{\chnineTP\;\chnineVP}$ in the library's sense.
+\end{theorem}
+\begin{leancode}
+theorem leechWsk_vacuum (t : TP) (k : ℤ) :
+    leechWsk t k leechVOAPlus.vacuum
+      = if 0 ≤ k then ((k.toNat.factorial : ℂ)⁻¹) • (leechLTP ^ k.toNat) t else 0
+
+theorem leechWsk_deriv (t : TP) : leechWsk (leechLTP t) = deriv (leechWsk t)
+
+theorem leechWsk_comm (u : SkewVP) (m : ℤ) (t : TP) (n : ℤ) (φ : SkewVP) (J : ℕ)
+    (hJ : ∀ j : ℕ, J ≤ j → mode (plusModule.YM u) j t = 0) :
+    mode (plusModule.YM u) m (mode (leechWsk t) n φ)
+        - mode (leechWsk t) n (leechVOAPlus.smul u m φ)
+      = ∑ r ∈ Finset.range J,
+          gBinom m r • mode (leechWsk (mode (plusModule.YM u) r t)) (m + n - r) φ
+
+theorem leechWsk_local (u : SkewVP) (t : TP) :
+    ∃ N : ℕ, mulBySubPow N
+      (fun a b => (plusModule.YM u a).comp (leechWsk t b)
+        - (leechWsk t b).comp (leechVOAPlus.Y u a) : FormalDist₂ (SkewVP →ₗ[ℂ] TP)) = 0
+
+noncomputable def leechSkewIntertwiner :
+    Intertwiner plusModule (adjointModule leechVOAPlus) plusModule :=
+  skewIntertwiner plusModule
+\end{leancode}
+\begin{dictionary}
+Each statement is the general theorem of Section~\ref{ch09:sec:W} at
+\lean{A := plusModule.toWeakModule}; the proofs are one-line applications. In
+\lean{leechWsk_comm}, \texttt{mode (leechWsk t) n} is $W(t)_{(n)}$ and
+\texttt{mode (plusModule.YM u) m} is $u_{(m)}$ on $\chnineTP$. The locality statement is the
+$\operatorname{Hom}(\chnineVP,\chnineTP)$-valued form explained after
+Definition~\ref{ch09:def:local}. Same as the textbook statements; unconditional.
+\end{dictionary}
+\begin{physics}
+The theorem says the twisted sector can be consistently ``fused'' with the untwisted algebra: the OPE of an invariant current with a twist-field operator closes on twist fields, and the translation and vacuum axioms hold. This is the part of the interaction between sectors that is fixed by the module structure; the interaction between two twist fields is the harder statement, proved in later chapters.
+\end{physics}
+
+\begin{status}
+All unconditional (no hypotheses beyond the already-built \lean{leechVOAPlus} and
+\lean{plusModule}). Axioms of \lean{leechSkewIntertwiner}: \texttt{[propext, Classical.choice,
+Quot.sound]} (rechecked).
+\end{status}
+
+\section{Contragredient modules and invariant bilinear forms}\label{ch09:sec:contra}
+
+\subsection{The contragredient module}
+
+Let $M=\bigoplus_\alpha M_\alpha$ be an ordinary $\chnineV$-module. Its \emph{restricted} (or
+graded) dual is $M'=\bigoplus_\alpha M_\alpha^*$, the direct sum of the duals of the
+finite-dimensional weight spaces; write $\langle f,x\rangle$ for the pairing. Frenkel, Huang and
+Lepowsky (FHL, \S5.2) define vertex operators on $M'$ by
+\begin{equation}\label{ch09:eq:contra}
+\big\langle Y'(u,z)f,\;x\big\rangle=\Big\langle f,\;Y\big(e^{zL_1}(-z^{-2})^{L_0}u,\,z^{-1}\big)x\Big\rangle
+\end{equation}
+and prove (FHL, Theorem~5.2.1) that $(M',Y')$ is again a module, the \emph{contragredient} module.
+The operator $u\mapsto e^{zL_1}(-z^{-2})^{L_0}u$ is the action of the M\"obius transformation
+$z\mapsto 1/z$ on states, which is why it appears: physically, \eqref{ch09:eq:contra} is the
+statement that the ``out'' state $\langle f|$ at infinity is the BPZ conjugate of an ``in'' state.
+
+\emph{Mode form.} For $u\in\chnineV_{\mathrm{wt}}$ we have
+$e^{zL_1}(-z^{-2})^{L_0}u=(-1)^{\mathrm{wt}}z^{-2\mathrm{wt}}\sum_{j\ge0}z^jL_1^ju/j!$ and
+$Y(v,z^{-1})=\sum_qv_{(q)}z^{q+1}$. Comparing coefficients of $z^{-n-1}$ forces
+$q=2\mathrm{wt}-n-2-j$, so
+\begin{equation}\label{ch09:eq:contramode}
+\big\langle u'_{(n)}f,x\big\rangle=(-1)^{\mathrm{wt}}\sum_{j=0}^{\mathrm{wt}}\frac1{j!}\,
+\big\langle f,\;(L_1^ju)_{(2\mathrm{wt}-n-2-j)}x\big\rangle .
+\end{equation}
+The sum stops at $j=\mathrm{wt}$ because $L_1^ju$ has weight $\mathrm{wt}-j$ and a CFT-type vertex
+operator algebra has no negative weights. If $u$ is \emph{quasi-primary} ($L_1u=0$) only $j=0$
+survives: $u_{(n)}$ is transposed to $(-1)^{\mathrm{wt}}u_{(2\mathrm{wt}-n-2)}$.
+
+\begin{example}\label{ch09:ex:contra}
+(i) $u=\omega$, $\mathrm{wt}=2$, $L_1\omega=0$: $\omega_{(n)}=L_{n-1}$ is transposed to
+$\omega_{(2-n)}=L_{1-n}$, i.e.\ $L_k^{\,t}=L_{-k}$: the Virasoro operators are BPZ-adjoint as
+expected. (ii) $u=h(-1)\mathbf 1$ a Heisenberg vector, $\mathrm{wt}=1$, quasi-primary:
+$h_{(n)}=h(n)$ is transposed to $-h(-n)$. Note the \emph{minus sign}: it will make the natural
+invariant form on a Fock space indefinite (Section~\ref{ch09:sec:fock}). (iii) $u=e^\alpha$ in a
+lattice VOA, weight $N=\langle\alpha,\alpha\rangle/2$, primary: $e^\alpha_{(n)}$ is transposed to
+$(-1)^Ne^\alpha_{(2N-n-2)}$.
+\end{example}
+
+In the library, $M'$ is the type \lean{RestrictedDual N} and its vertex operator is
+\lean{YMdual N}:
+\begin{leancode}
+def RestrictedDual (N : OrdVModule W M) : Type u := DirectSum ℂ (fun α => Module.Dual ℂ (N.weight α))
+
+noncomputable def YMdual (N : OrdVModule W M) : 𝒱 →ₗ[ℂ] (End ℂ (RestrictedDual N))⟦z^±⟧ where
+  toFun u := fun p => dualModeAt N (-p - 1) u
+\end{leancode}
+(\leanpath{VOA/Modules/Contragredient.lean}, \leanpath{VOA/Modules/ContragredientJacobi.lean};
+\lean{dualModeAt N n u} is, on homogeneous $u$, the operator defined by \eqref{ch09:eq:contramode},
+and it is extended linearly over the weight decomposition of $u$. The library proves that $Y'$
+satisfies the module Jacobi identity: \lean{contragredientJacobi_holds}, in
+\leanpath{VOA/Modules/ContragredientClose.lean}.)
+
+\subsection{Invariant bilinear forms on a module}
+
+\begin{definition}[FHL invariance at a homogeneous state]\label{ch09:def:FHLInv}
+Let $N$ be an ordinary $\chnineV$-module on $M$ and $B$ a bilinear form on $M$. For
+$u\in\chnineV_{\mathrm{wt}}$, $B$ is \emph{invariant at $u$} if for all $n\in\Z$, $a,b\in M$
+\begin{equation}\label{ch09:eq:FHLInv}
+B\big(u_{(n)}a,b\big)=(-1)^{\mathrm{wt}}\sum_{j=0}^{\mathrm{wt}}\frac1{j!}\,
+B\big(a,(L_1^ju)_{(2\mathrm{wt}-n-2-j)}b\big),
+\end{equation}
+the mode form of $B(Y(u,z)a,b)=B(a,Y(e^{zL_1}(-z^{-2})^{L_0}u,z^{-1})b)$. The form has
+\emph{orthogonal weight spaces} if $B(M_\alpha,M_\beta)=0$ for $\alpha\neq\beta$.
+\end{definition}
+\begin{leancode}
+def FHLInv (N : OrdVModule W M) (B : LinearMap.BilinForm ℂ M) (wt : ℤ) (u : 𝒱) : Prop :=
+  ∀ (n : ℤ) (a b : M), B (mode (N.YM u) n a) b
+    = (-1 : ℂ) ^ wt • ∑ j ∈ Finset.range (wt.toNat + 1), ((j.factorial : ℂ)⁻¹) •
+        B a (mode (N.YM (((W.L 1) ^ j) u)) (2 * wt - n - 2 - (j : ℤ)) b)
+
+def WeightOrth (N : OrdVModule W M) (B : LinearMap.BilinForm ℂ M) : Prop :=
+  ∀ α β : ℂ, α ≠ β → ∀ x ∈ N.weight α, ∀ y ∈ N.weight β, B x y = 0
+\end{leancode}
+(\leanpath{VOA/Moonshine/InvFormClosure.lean}, namespace \lean{VOA.Moonshine.InvForm}.)
+
+\begin{dictionary}
+\lean{LinearMap.BilinForm ℂ M} is a bilinear form $M\times M\to\C$, applied as \texttt{B a b}.
+\lean{W.L 1} is $L_1$ on $\chnineV$, \texttt{(W.L 1)\^{}j} its $j$-th power.
+\lean{Finset.range (wt.toNat + 1)} is $\{0,\dots,\mathrm{wt}\}$ (for $\mathrm{wt}<0$ it is
+$\{0\}$, but then $u=0$ by CFT type and both sides vanish). \lean{FHLInv} takes the weight
+\texttt{wt} as a separate argument and does \emph{not} itself require $u\in\chnineV_{\mathrm{wt}}$;
+every theorem below that uses it adds the hypothesis \texttt{u ∈ W.grading wt}, so the
+predicate is only ever applied in its intended meaning. This is the module analogue of the
+library's \lean{InvariantForm.IsFullyInvariant} for forms on $\chnineV$ itself (same formula with
+\texttt{W.smul} in place of module modes). Same as the textbook definition.
+\end{dictionary}
+
+\begin{physics}
+An invariant bilinear form is the two-point function of the sector: $B(a,b)=\langle a|b\rangle$ with $\langle a|$ the out-state at infinity. The invariance condition says that moving a field $Y(u,z)$ from the right to the left of the bracket replaces it by its BPZ conjugate, the field transformed by the inversion $z\mapsto1/z$, which is why $e^{zL_1}(-z^{-2})^{L_0}$ appears. For a weight-$\mathrm{wt}$ quasi-primary field the transposition rule is $u_{(n)}\mapsto(-1)^{\mathrm{wt}}u_{(2\mathrm{wt}-n-2)}$, the familiar $L_n\mapsto L_{-n}$ and $J_n\mapsto-J_{-n}$. The orthogonality of weight spaces is the selection rule that two-point functions vanish between states of different energy.
+\end{physics}
+
+\begin{definition}[The map $M\to M'$ of a form]\label{ch09:def:dualMap}
+$\lean{dualMap}\,N\,B\colon M\to M'$ sends $a$ to the functional whose $M_\beta$-component is
+$x\mapsto B(\pi_\beta a,x)$, $\pi_\beta$ the projection to $M_\beta$. If the weight spaces are
+orthogonal, $\langle\lean{dualMap}(a),x\rangle=B(a,x)$ for every $x$.
+\end{definition}
+\begin{leancode}
+noncomputable def dualMap (N : OrdVModule W M) (B : LinearMap.BilinForm ℂ M) :
+    M →ₗ[ℂ] RestrictedDual N :=
+  letI := DirectSum.IsInternal.chooseDecomposition N.weight N.isInternal
+  (DFinsupp.mapRange.linearMap fun α => B.compl₁₂ (N.weight α).subtype (N.weight α).subtype).comp
+    (DirectSum.decomposeLinearEquiv N.weight).toLinearMap
+\end{leancode}
+
+\begin{physics}
+The assignment $a\mapsto B(a,\cdot)$ sends an in-state to the corresponding out-state $\langle a|$ in the dual (contragredient) space of out-states. This definition is the bra--ket map defined by the two-point function.
+\end{physics}
+
+\begin{theorem}[Invariance means $a\mapsto B(a,\cdot)$ is a module map]\label{ch09:thm:fhlInviff}
+Assume orthogonal weight spaces and $u\in\chnineV_{\mathrm{wt}}$. Then $B$ is invariant at $u$ if
+and only if $\lean{dualMap}(u_{(n)}a)=u'_{(n)}\lean{dualMap}(a)$ for all $n$ and $a$.
+\end{theorem}
+\begin{leancode}
+theorem fhlInv_iff (hO : WeightOrth N B) {wt : ℤ} {u : 𝒱} (hu : u ∈ W.grading wt) :
+    FHLInv N B wt u ↔
+      ∀ (n : ℤ) (a : M), dualMap N B (mode (N.YM u) n a) = mode (YMdual N u) n (dualMap N B a)
+\end{leancode}
+\begin{dictionary}
+Hypotheses: \lean{hO} (orthogonal weight spaces; needed so that $\langle\lean{dualMap}(a),x\rangle$
+really equals $B(a,x)$ and not $B$ of a projection) and \lean{hu} (homogeneity, so that
+\lean{FHLInv} is used with the right weight and \lean{YMdual} is given by
+\eqref{ch09:eq:contramode}). Both sides of the equivalence are the textbook ones.
+\end{dictionary}
+\begin{physics}
+The theorem says that a form is invariant exactly when the in-to-out map $a\mapsto\langle a|$ intertwines the chiral algebra action, i.e.\ when the contragredient module $M'$ of out-states, with the BPZ-conjugated action, is identified with $M$ by the form. Physically the sector is its own conjugate, with the form playing the role of the Zamolodchikov metric that identifies states with out-states. (Heuristic gloss; the equivalence is proved mode by mode.)
+\end{physics}
+
+\noindent\emph{Proof.} Pair both sides of the right-hand equation with $x\in M_\alpha$. By
+orthogonality the left side gives $B(u_{(n)}a,x)$, and by \eqref{ch09:eq:contramode} the right side
+gives the right-hand side of \eqref{ch09:eq:FHLInv} with $b=x$. Elements of $M'$ are determined by
+their pairings with homogeneous vectors, and both sides of \eqref{ch09:eq:FHLInv} are linear in
+$b$, so the equivalence follows. \qed
+
+\subsection{Generator reduction}
+
+Checking \eqref{ch09:eq:FHLInv} for every state of $\chnineV$ directly is hopeless for $\chnineVP$.
+The following principle reduces it to generators.
+
+\begin{definition}\label{ch09:def:interSub}
+$\lean{interSub}\,N\,B$ is the set of $u\in\chnineV$ (homogeneous or not) such that
+$\lean{dualMap}(u_{(n)}a)=u'_{(n)}\lean{dualMap}(a)$ for all $n$ and $a$. It is a linear subspace.
+\end{definition}
+\noindent File \leanpath{VOA/Moonshine/InvFormClosure.lean}.
+\begin{leancode}
+noncomputable def interSub (N : OrdVModule W M) (B : LinearMap.BilinForm ℂ M) : Submodule ℂ 𝒱 where
+  carrier := {u | ∀ (n : ℤ) (a : M),
+    dualMap N B (mode (N.YM u) n a) = mode (YMdual N u) n (dualMap N B a)}
+\end{leancode}
+
+\begin{physics}
+Technical definition: the set of fields for which the in--out map commutes with the action. Physically, the fields whose BPZ conjugate behaves correctly under the form; the next theorem shows these form a closed operator algebra, so it suffices to check the generating currents.
+\end{physics}
+
+\begin{theorem}[The intertwined states form a vertex subalgebra]\label{ch09:thm:interSub}
+$\mathbf1\in\lean{interSub}$, and if $u,v\in\lean{interSub}$ then $u_{(\ell)}v\in\lean{interSub}$
+for every $\ell\in\Z$.
+\end{theorem}
+\begin{leancode}
+theorem vacuum_mem_interSub : W.vacuum ∈ interSub N B
+
+theorem smul_mem_interSub {u v : 𝒱} (hu : u ∈ interSub N B) (hv : v ∈ interSub N B) (ℓ : ℤ) :
+    W.smul u ℓ v ∈ interSub N B
+\end{leancode}
+\begin{physics}
+Operator products of fields that satisfy the BPZ reflection rule again satisfy it: if the conjugate of each of two fields is the correct reflected field, the conjugate of their OPE coefficients is as well. This is the closure of the set of ``good'' fields under the OPE.
+\end{physics}
+
+\noindent\emph{Proof.} The vacuum acts as the identity on $M$ and on $M'$. For the products, the
+iterate formula \eqref{ch09:eq:iterate} (with $m=0$) writes $(u_{(\ell)}v)_{(n)}$ on $M$ as a finite
+combination of products $u_{(\cdot)}v_{(\cdot)}$ and $v_{(\cdot)}u_{(\cdot)}$; the same formula holds
+on $M'$ because $M'$ is a module (FHL Theorem~5.2.1, \lean{contragredientJacobi_holds}). The map
+$\lean{dualMap}$ intertwines each factor, hence each product, hence the combination. \qed
+
+\begin{theorem}[Generator reduction for module invariant forms]\label{ch09:thm:generates}
+Let $B$ have orthogonal weight spaces and let $G\subseteq\chnineV$ be a set of homogeneous states
+which generates $\chnineV$ in the sense that every subspace containing $\mathbf 1$ and $G$ and
+closed under all $n$-th products is all of $\chnineV$. If $B$ is invariant at every $g\in G$, then
+$B$ is invariant at every homogeneous $u\in\chnineV$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/InvFormClosure.lean}.
+\begin{leancode}
+theorem fhlInv_of_generates (hO : WeightOrth N B) (G : Set 𝒱)
+    (hG : ∀ S : Submodule ℂ 𝒱, W.vacuum ∈ S → (∀ u ∈ S, ∀ v ∈ S, ∀ n : ℤ, W.smul u n v ∈ S) →
+      G ⊆ S → S = ⊤)
+    (hGinv : ∀ g ∈ G, ∃ wt : ℤ, g ∈ W.grading wt ∧ FHLInv N B wt g)
+    {wt : ℤ} {u : 𝒱} (hu : u ∈ W.grading wt) : FHLInv N B wt u
+\end{leancode}
+\begin{dictionary}
+\textbf{Hypotheses.} \lean{hO}: orthogonal weight spaces. \lean{hG}: generation, stated exactly
+as in the theorem (the smallest vertex subalgebra containing $G$ is everything; \lean{⊤} is the
+whole space). \lean{hGinv}: each generator is homogeneous of some weight and $B$ is invariant at it.
+\lean{hu}: the conclusion is for homogeneous $u$. \textbf{Comparison.} Same as the textbook
+statement. \textbf{Not vacuous:} generation is a genuine hypothesis and is discharged for the Leech
+case by a real theorem (\lean{leechPlus_generated}, Chapter~\ref{ch:04}).
+\end{dictionary}
+\begin{physics}
+(See the preceding box for the closure under OPE.) Physically this says that a two-point metric which is compatible with the BPZ conjugation of the generating currents (here the lattice fields $e^\beta+e^{-\beta}$) is automatically compatible with the whole chiral algebra, since every field is built from the generators by OPE. This is how one avoids checking invariance on all of $\chnineVP$.
+\end{physics}
+
+\noindent\emph{Proof.} By Theorem~\ref{ch09:thm:interSub} \lean{interSub} is a subspace containing
+$\mathbf1$, closed under products; by Theorem~\ref{ch09:thm:fhlInviff} it contains $G$. By
+generation it is everything, so every homogeneous $u$ lies in it, and Theorem
+\ref{ch09:thm:fhlInviff} again gives invariance at $u$. The point of working with
+\lean{interSub} rather than with \lean{FHLInv} is that \lean{interSub} is defined for
+inhomogeneous states and is visibly linear, whereas \eqref{ch09:eq:FHLInv} mixes the state with
+its weight. \qed
+
+\begin{status}
+\lean{fhlInv_iff}, \lean{smul_mem_interSub}, \lean{fhlInv_of_generates}: proved for every VOA,
+module and form, with exactly the displayed hypotheses. Axioms of \lean{fhlInv_of_generates}:
+\texttt{[propext, Classical.choice, Quot.sound]} (rechecked).
+\end{status}
+
+\section{The invariant form on the twisted Fock space}\label{ch09:sec:fock}
+
+We now build the form $B_T$ on $\chnineTP$ that enters \eqref{ch09:eq:Wbarforced}. It is the
+restriction of a product form $F\otimes B_{T}$ on $S[\theta]\otimes T$: a form $F$ on the twisted
+Fock space and the symmetric form \lean{TForm} on the $2^{12}$-dimensional space $T$ constructed
+in Chapter~\ref{ch:06}. (To avoid a clash we write $B_{\mathrm{tw}}$ for the form on
+$S[\theta]\otimes T$ and keep $B_T$ for its restriction to $\chnineTP$; the Lean names are
+\lean{leechTwForm} and \lean{TPForm}.) All declarations of this section and the next are in
+namespace \lean{VOA.Moonshine.InvForm}.
+
+\subsection{Which sign? The negative Fock form}
+
+Recall (Chapter~\ref{ch:06}) that $S[\theta]=\C[X_{(n,i)}]$ with $X_{(n,i)}=h_i(-n-\frac12)$,
+$n\ge0$, $1\le i\le r$, and that the twisted oscillators act by
+$h_i(-n-\tfrac12)=$ multiplication by $X_{(n,i)}$ and $h_i(n+\tfrac12)=(n+\tfrac12)\partial/\partial X_{(n,i)}$,
+so that $[h_i(m),h_j(m')]=m\,\delta_{ij}\delta_{m+m',0}$. In Lean the oscillator $h_i(k/2)$ ($k$ odd)
+is \lean{modeT r i k} (Chapter~\ref{ch:06}); for even $k$ it is defined to be $0$.
+
+Example~\ref{ch09:ex:contra}(ii) dictates the adjointness relation that an invariant form must
+satisfy for the weight-one vectors $h_i(-1)\mathbf1$ of the lattice VOA, whose twisted vertex
+operators have the modes $h_i(k/2)$:
+\begin{equation}\label{ch09:eq:hadj}
+F\big(h_i(m)p,q\big)=-F\big(p,h_i(-m)q\big).
+\end{equation}
+With $m=-n-\tfrac12$ this reads $F(X_vp,q)=-F(p,h_i(n+\tfrac12)q)=c_v\,F(p,\partial_vq)$ with
+\begin{equation*}
+c_v=-(n+\tfrac12)\qquad (v=(n,i)).
+\end{equation*}
+Iterating, monomials are orthogonal and $F(X^d,X^d)=\prod_v c_v^{\,d_v}\,d_v!$. This is not
+positive: in rank one $F(X_{(0,1)},X_{(0,1)})=-\tfrac12$, $F(X_{(0,1)}^2,X_{(0,1)}^2)=\tfrac12$,
+$F(X_{(1,1)},X_{(1,1)})=-\tfrac32$. The familiar positive-definite Fock form
+($c_v=+(n+\frac12)$) is the \emph{Hermitian} form of unitary CFT, adapted to the anti-linear
+adjoint $h(m)^\dagger=h(-m)$; the FHL \emph{bilinear} form, adapted to the linear transposition
+$Y(u,z)\mapsto Y(e^{zL_1}(-z^{-2})^{L_0}u,z^{-1})$, carries the sign $(-1)^{\mathrm{wt}}=-1$ for
+weight-one fields. The two differ by the anti-linear involution $h\mapsto-h$.
+
+\begin{definition}[The Fock form]\label{ch09:def:fockForm}
+$c_v=-(n+\tfrac12)$ for $v=(n,i)$; $\lean{fockWt}(d)=\prod_v c_v^{d_v}d_v!$ for a multi-index
+$d$; and $F(X^d,X^e)=\delta_{d,e}\,\lean{fockWt}(d)$, extended bilinearly.
+\end{definition}
+\begin{leancode}
+noncomputable def cVar (v : ℕ × Fin r) : ℂ := -((v.1 : ℂ) + 1 / 2)
+
+noncomputable def fockWt (d : (ℕ × Fin r) →₀ ℕ) : ℂ :=
+  d.prod fun v m => cVar v ^ m * (m.factorial : ℂ)
+
+noncomputable def fockForm (r : ℕ) : LinearMap.BilinForm ℂ (FockT r) :=
+  Finsupp.lsum ℂ fun d => LinearMap.smulRight LinearMap.id (fockWt d • lcoeff ℂ d)
+\end{leancode}
+(\leanpath{VOA/Moonshine/InvFormFock.lean}.)
+\begin{dictionary}
+\lean{FockT r} is the polynomial ring $\C[X_{(n,i)}]$, i.e.\ \lean{MvPolynomial (ℕ × Fin r) ℂ}
+(Chapter~\ref{ch:06}); a monomial is a finitely supported exponent function
+\lean{d : (ℕ × Fin r) →₀ ℕ}, and \lean{d.prod f} is $\prod_{v\in\operatorname{supp}d}f(v,d_v)$.
+\lean{lcoeff ℂ d} is the linear functional ``coefficient of $X^d$''. Unwinding \lean{Finsupp.lsum}
+and \lean{smulRight}: for $p=\sum_dp_dX^d$, $F(p,q)=\sum_dp_d\,\lean{fockWt}(d)\,q_d$. That is
+Definition~\ref{ch09:def:fockForm} exactly. Note the minus sign in \lean{cVar}: this is the
+\emph{negative} form, deliberately.
+\end{dictionary}
+
+\begin{physics}
+The Fock form is the two-point function of the free twisted bosons. Its normalisation $F(X_vp,q)=c_vF(p,\partial_vq)$ with $c_v=-(n+\frac12)$ is the algebraic form of the oscillator algebra with the BPZ-reflection rule $h(m)^t=-h(-m)$ of a weight-one current. It differs in sign from the Hermitian form of a unitary theory because the bilinear form is adapted to the linear (not antilinear) conjugation, so the Zamolodchikov-type metric is indefinite in these conventions.
+\end{physics}
+
+\begin{theorem}[Basic properties of $F$]\label{ch09:thm:fockbasic}
+$F$ is symmetric; $F(X_vp,q)=c_vF(p,\partial_vq)$; and the twisted oscillators are anti-adjoint,
+$F(h_i(k/2)p,q)=-F(p,h_i(-k/2)q)$ for every $k\in\Z$.
+\end{theorem}
+\begin{leancode}
+theorem fockForm_symm (p q : FockT r) : fockForm r p q = fockForm r q p
+
+theorem fockForm_X_mul (v : ℕ × Fin r) (p q : FockT r) :
+    fockForm r (X v * p) q = cVar v * fockForm r p (pderiv v q)
+
+theorem fockForm_modeT (i : Fin r) (k : ℤ) (p q : FockT r) :
+    fockForm r (modeT r i k p) q = -fockForm r p (modeT r i (-k) q)
+\end{leancode}
+\begin{dictionary}
+\lean{X v} is the variable $X_v$, \lean{pderiv v} is $\partial/\partial X_v$. In
+\lean{fockForm_modeT} the integer $k$ encodes the mode $k/2$; for odd $k<0$, \lean{modeT r i k}
+is multiplication by $X_{((-k-1)/2,i)}$, for odd $k>0$ it is $\tfrac k2\partial_{((k-1)/2,i)}$,
+and for even $k$ both sides are $0$ (the junk value $0$ of even modes makes the statement true but
+empty there). No hypotheses. This is \eqref{ch09:eq:hadj}.
+\end{dictionary}
+\begin{physics}
+These are the standard oscillator identities for a free boson: creation operators are adjoint to annihilation operators up to the sign fixed by the BPZ conjugate of the current; symmetry of the two-point function is the statement that there is no preferred ordering of the two states in the metric.
+\end{physics}
+
+\noindent\emph{Proof.} Symmetry is visible from the diagonal formula. For the second identity it
+suffices to take $p=X^d$, $q=X^e$: both sides vanish unless $e=d+\mathbf e_v$, and then the left
+side is $\lean{fockWt}(d+\mathbf e_v)=c_v(d_v+1)\lean{fockWt}(d)$ while $\partial_vX^e=(d_v+1)X^d$
+gives the same on the right. The oscillator identity for a creation mode $k=-(2n+1)$ is the second
+identity together with $h_i(n+\tfrac12)=(n+\tfrac12)\partial$: $F(Xp,q)=-(n+\tfrac12)F(p,\partial q)=-F(p,h_i(n+\tfrac12)q)$;
+the annihilation case follows by symmetry of $F$. \qed
+
+\subsection{The dressing is self-adjoint up to inversion}
+
+The twisted vertex operator of $e^\alpha$ (Chapter~\ref{ch:08}) has the form
+$Y^T(e^\alpha,z)=2^{-\langle\alpha,\alpha\rangle}z^{-\langle\alpha,\alpha\rangle/2}E^-(-\alpha,z)E^+(-\alpha,z)\otimes e_\alpha$,
+where $E^\pm$ are exponentials of the creation/annihilation oscillators. The library stores the
+coefficients of the dressing $E^-(-v,w)E^+(-v,w)$ as $\lean{DD}\,v\,a$ (the coefficient of
+$w^a$; Chapter~\ref{ch:08}). Invariance of $F$ under these vertex operators needs the
+transposition rule for $\lean{DD}$.
+
+\begin{theorem}[Transpose of the dressing]\label{ch09:thm:DD}
+For every $v\in\C^r$, $a\in\Z$ and $y,y'\in S[\theta]$:
+$F(\lean{DD}\,v\,a\,y,\;y')=F(y,\;\lean{DD}\,v\,(-a)\,y')$. Equivalently, the transpose of
+$E^-(-v,w)E^+(-v,w)$ with respect to $F$ is $E^-(-v,w^{-1})E^+(-v,w^{-1})$ (no sign and no
+$v\mapsto-v$).
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/InvFormFock.lean}.
+\begin{leancode}
+theorem fockForm_DD (v : Fin r → ℂ) (a : ℤ) (y y' : FockT r) :
+    fockForm r (DD v a y) y' = fockForm r y (DD v (-a) y')
+\end{leancode}
+\begin{dictionary}
+\lean{DD v a} is the endomorphism $\sum_{p-q=a}E^-_p(-v)E^+_q(-v)$ of $S[\theta]$ (Chapter~\ref{ch:08},
+\lean{noncomputable def DD (v : Fin r → ℂ) (a : ℤ) : End ℂ (FockT r)}). The vector $v$ is
+arbitrary complex; in the application $v$ is the coordinate vector of a lattice vector $\alpha$.
+No hypotheses. Same as the textbook transposition rule.
+\end{dictionary}
+\begin{physics}
+The coefficients $E^-(-v,w)E^+(-v,w)$ are the normal-ordered exponential of oscillators in the vertex operator $e^{i\alpha\cdot X}$ of the lattice field. The theorem says that its transpose under the Fock metric is the same exponential with $w\to w^{-1}$, which is the BPZ conjugation of the vertex operator $e^{i\alpha X}$ with itself (the charge not flipped: the sign is absorbed into the form). It is the free-boson computation that makes the lattice fields satisfy the reflection rule at the level of the twisted Fock space. A heuristic check: the reflected exponential $e^{i\alpha X(1/w)}$ has the same oscillator content with the $E^\pm$ roles exchanged.
+\end{physics}
+
+\paragraph{Proof on paper.} Write $\Phi_a=\lean{DD}\,v\,a$. Two facts determine $\Phi_a$: its
+value on the vacuum, $\Phi_a\mathbf1=E^-_a(-v)\mathbf1$, whose constant term is $\delta_{a,0}$;
+and its commutator with oscillators, $[h_i(K/2),\Phi_a]=v_i\,\Phi_{a-K}$ for odd $K$ (because
+$E^\pm(-v,w)$ are exponentials of oscillators with coefficients $\propto v_iw^{\mp K}$). Now prove
+the identity by induction on the degree of $y$, then of $y'$. If $y=\mathbf1$, write $y'$ as a
+polynomial; $F(\Phi_a\mathbf1,X_vy'')$ is moved by \eqref{ch09:eq:hadj} to an annihilator acting on
+$\Phi_a\mathbf 1$, which the commutator rule converts into $\Phi_{a'}\mathbf1$ terms of lower degree;
+the base case is the constant-term identity $\delta_{a,0}=\delta_{-a,0}$. If $y=X_vy_0$, move $X_v$
+across $\Phi_a$ with the commutator rule (producing $\Phi_{a+K}$), then across $F$ with
+\eqref{ch09:eq:hadj} (producing the sign $-1$ and $h(-K/2)$), and apply the induction hypothesis;
+the same two moves on the right side, with $a\mapsto-a$ and $K\mapsto-K$, give the same terms. The
+signs work out precisely because the form is the negative one: the minus sign of
+\eqref{ch09:eq:hadj} compensates the change of sign of $K$ in the commutator rule. \qed
+
+\begin{warning}
+\textbf{The positive Fock form is wrong here.} With the positive form ($c_v=+(n+\frac12)$) the same
+argument transposes $\lean{DD}\,v\,a$ to $\lean{DD}\,(-v)\,(-a)$, so the vertex operator of
+$e^\alpha$ would be transposed to that of $e^{-\alpha}$ and the form would not be FHL-invariant
+in the required sense. The recorded cross-check (file docstring of
+\leanpath{VOA/Moonshine/InvFormFock.lean}; scripts \texttt{dd.py}, \texttt{dd2.py} in
+\texttt{scripts/moonshine/numerics/}): a sympy computation in rank $2$ with three oscillator levels
+and $v=(\frac32,-\frac23)$ found $F(\lean{DD}\,a\,y,y')=F(y,\lean{DD}\,(-a)\,y')$ on all test pairs
+for $|a|\le4$ with the negative form, and failure with the positive form. This is numerical
+evidence recorded by the project, not a proof; the scripts were \emph{not} re-run for this chapter
+(sympy is not installed in the environment used). The proof is Theorem~\ref{ch09:thm:DD}.
+\end{warning}
+
+\begin{status}
+\lean{fockForm_symm}, \lean{fockForm_X_mul}, \lean{fockForm_modeT}, \lean{fockForm_DD}: proved,
+no hypotheses. Axioms of \lean{fockForm_DD}: \texttt{[propext, Classical.choice, Quot.sound]}
+(rechecked).
+\end{status}
+
+\section{The form on \texorpdfstring{$S[\theta]\otimes T$}{S[theta] x T} and on \texorpdfstring{$(V_\Lambda^T)^+$}{the twisted plus part}}\label{ch09:sec:twform}
+
+\subsection{The product form}
+
+\begin{definition}[Product form]\label{ch09:def:twForm}
+For a bilinear form $B_T$ on a space $T$:
+$B_{\mathrm{tw}}(p\otimes t,p'\otimes t')=F(p,p')\,B_T(t,t')$ on $S[\theta]\otimes T$.
+\end{definition}
+\begin{leancode}
+noncomputable def twForm (r : ℕ) (BT : LinearMap.BilinForm ℂ Tm) :
+    LinearMap.BilinForm ℂ (FockT r ⊗[ℂ] Tm) :=
+  (fockForm r).tmul BT
+\end{leancode}
+(\leanpath{VOA/Moonshine/InvFormTwisted.lean}.) \lean{LinearMap.BilinForm.tmul} is Mathlib's
+tensor product of bilinear forms; on pure tensors it is the product of the values
+(\lean{twForm_tmul}, proved by \lean{rfl}).
+
+\begin{physics}
+The product form $F\otimes B_T$ is the two-point function of the twisted sector as a tensor product of its oscillator part (the free bosons in the twisted sector) and the zero-mode space $T$ of the twist-field ground states ($2^{12}$-dimensional, labelling the fixed points). The Fock factor carries the oscillator two-point function and the factor $B_T$ the two-point function of the twist fields themselves.
+\end{physics}
+
+\begin{theorem}[{Adjoints on $S[\theta]\otimes T$}]\label{ch09:thm:twadj}
+\textup{(i)} $B_{\mathrm{tw}}(h_a(k/2)x,y)=-B_{\mathrm{tw}}(x,h_a(-k/2)y)$.
+\textup{(ii)} Suppose $g,g'\in\End(T)$ and $s\in\C$ satisfy $B_T(gt,t')=s\,B_T(t,g't')$. For the
+generic twisted exponential field $Y_g(k)=\kappa\,\lean{DD}\,v\,(-k-2+c_0)\otimes g$,
+$B_{\mathrm{tw}}(Y_g(k)x,y)=s\,B_{\mathrm{tw}}(x,Y_{g'}(2c_0-k-4)y)$.
+\textup{(iii)} In particular, for an even lattice $L$ and a form on its $T$ with
+$B_T(e_\alpha t,t')=(-1)^{\langle\alpha,\alpha\rangle/2}B_T(t,e_\alpha t')$, the twisted vertex
+operator $Y^T(e^\alpha)_{(k/2)}$ satisfies
+\begin{equation}\label{ch09:eq:YTLadj}
+B_{\mathrm{tw}}\big(Y^T(e^\alpha)_{(k/2)}x,y\big)=(-1)^{\langle\alpha,\alpha\rangle/2}\,
+B_{\mathrm{tw}}\big(x,Y^T(e^\alpha)_{((2\langle\alpha,\alpha\rangle-k-4)/2)}y\big).
+\end{equation}
+\end{theorem}
+\begin{leancode}
+theorem twForm_modeTT (BT : LinearMap.BilinForm ℂ Tm) (a : Fin r) (k : ℤ)
+    (x y : FockT r ⊗[ℂ] Tm) :
+    twForm r BT (modeTT (Tm := Tm) a k x) y = -twForm r BT x (modeTT (Tm := Tm) a (-k) y)
+
+theorem twForm_YTg (BT : LinearMap.BilinForm ℂ Tm) (v : Fin r → ℂ) (c0 : ℤ) (κ : ℂ)
+    {g g' : End ℂ Tm} {s : ℂ} (hg : ∀ t t', BT (g t) t' = s * BT t (g' t')) (k : ℤ)
+    (x y : FockT r ⊗[ℂ] Tm) :
+    twForm r BT (YTg v c0 κ g k x) y = s * twForm r BT x (YTg v c0 κ g' (2 * c0 - k - 4) y)
+
+theorem twForm_YTL (BT : LinearMap.BilinForm ℂ (Rep (cocMat L) (isUnit_det_cocMat L hEven hU)))
+    (hT : ∀ (α : L.carrier) t t', BT (eT L hEven hU α t) t'
+      = (-1 : ℂ) ^ (L.form α α / 2) * BT t (eT L hEven hU α t'))
+    (α : L.carrier) (k : ℤ) (x y : MT L hEven hU) :
+    twForm (rank L) BT (YTL L hEven hU α k x) y
+      = (-1 : ℂ) ^ (L.form α α / 2) *
+          twForm (rank L) BT x (YTL L hEven hU α (2 * L.form α α - k - 4) y)
+\end{leancode}
+\begin{dictionary}
+\textbf{Symbols.} \lean{modeTT a k} is $h_a(k/2)\otimes\mathrm{id}_T$. \lean{YTg v c0 κ g k} is
+$\kappa\cdot\lean{DD}\,v\,(-k-2+c_0)\otimes g$ (Chapter~\ref{ch:08}); \lean{YTL L hEven hU α k} is
+the instance $v=$ coordinates of $\alpha$, $c_0=\langle\alpha,\alpha\rangle$,
+$\kappa=2^{-\langle\alpha,\alpha\rangle}$, $g=e_\alpha$, and represents the twisted mode
+$Y^T(e^\alpha)_{(k/2)}$ on $\lean{MT L hEven hU}=S[\theta]\otimes T$. \lean{eT ... α} is the
+operator $e_\alpha$ on $T$ (Chapter~\ref{ch:06}). \lean{L.form α α} is $\langle\alpha,\alpha\rangle$,
+an even integer for an even lattice, so \lean{L.form α α / 2} is the exact integer
+$\langle\alpha,\alpha\rangle/2$ (integer division with zero remainder).
+
+\textbf{Hypotheses.} In (ii) the hypothesis \lean{hg} is the $T$-side adjointness; in (iii) it
+is \lean{hT}, the ``$T$-law'' with sign $(-1)^{\langle\alpha,\alpha\rangle/2}$, and the lattice
+hypotheses \lean{hEven} (even), \lean{hU} (unimodular Gram determinant) needed to have $T$ at all.
+\lean{hT} is discharged for the Leech lattice by \lean{TForm_eT} (Chapter~\ref{ch:06}).
+
+\textbf{Comparison with FHL.} $e^\alpha$ is primary of weight $N=\langle\alpha,\alpha\rangle/2$, so
+by Example~\ref{ch09:ex:contra}(iii) its mode $m$ must be transposed to $(-1)^N$ times its mode
+$2N-m-2$. With $m=k/2$: $2N-\frac k2-2=\frac{2\langle\alpha,\alpha\rangle-k-4}{2}$, which is the
+index in \eqref{ch09:eq:YTLadj}. So (iii) is exactly FHL invariance of $B_{\mathrm{tw}}$ at
+$e^\alpha$, at the level of the full twisted module (all half-integral modes).
+\end{dictionary}
+\begin{physics}
+This theorem is the BPZ reflection rule for the lattice vertex operators $e^\alpha$ acting on the twisted sector: the field $e^\alpha$ of weight $N=\langle\alpha,\alpha\rangle/2$ transposes to $(-1)^N$ times its own mode of index $2N-n-2$. The sign on $T$ is the sign $(-1)^{L_0}$ of the BPZ conjugation, and it is forced by consistency of the two-point function of twist fields (heuristically, the commutation of fields at the fixed points). For the frame constructions the oscillator and cocycle parts each contribute the expected sign.
+\end{physics}
+
+\noindent\emph{Proof.} (i) is Theorem~\ref{ch09:thm:fockbasic} tensored with the identity. For
+(ii), $B_{\mathrm{tw}}((A\otimes g)x,y)=B_{\mathrm{tw}}(x,(A^t\otimes g^t)y)$ on pure tensors, and
+by Theorem~\ref{ch09:thm:DD} the transpose of $\lean{DD}\,v\,(-k-2+c_0)$ is
+$\lean{DD}\,v\,(k+2-c_0)$, which equals $\lean{DD}\,v\,(-k'-2+c_0)$ for $k'=2c_0-k-4$. (iii) is
+(ii) with $s=(-1)^{\langle\alpha,\alpha\rangle/2}$, $g=g'=e_\alpha$. \qed
+
+\begin{warning}
+\textbf{The sign on $T$ is forced.} The $T$-form must satisfy the law with the sign
+$(-1)^{\langle\alpha,\alpha\rangle/2}$ (the $(-1)^{L_0}$ of the contragredient), and the Fock
+part contributes no sign. This was a \emph{finding}: it fixed which of the possible forms on $T$
+(Chapter~\ref{ch:06}) is the compatible one, with no extra twist by $e_\gamma$ needed. In the
+numerical $E_8$ model of the orbifold (\texttt{Notes/M8hRoute.md}, \S1a; scripts \texttt{orb.py},
+\texttt{tt.py}), replacing this sign by the ``group'' sign $\varepsilon(\alpha,\alpha)$ makes the
+twisted$\times$twisted relation (4.23) fail with relative residual $1.7$--$2.0$, while the chosen
+conventions satisfy it to $3.7\times10^{-14}$. Numerical evidence, not proof.
+\end{warning}
+
+\subsection{Nondegeneracy on graded pieces}
+
+Write $S[\theta]_d$ for the span of monomials of doubled degree $d=\sum_v(2n_v+1)d_v$ and
+$\lean{twGrading}\,r\,T\,d=S[\theta]_d\otimes T$ (Chapter~\ref{ch:05}).
+
+\begin{theorem}[{Nondegeneracy and orthogonality on $S[\theta]_d\otimes T$}]\label{ch09:thm:twnondeg}
+If $B_T$ is nondegenerate, then for every $d$ and every nonzero $x\in S[\theta]_d\otimes T$ there
+is a pure tensor $X^m\otimes t'\in S[\theta]_d\otimes T$ with $B_{\mathrm{tw}}(x,X^m\otimes t')\neq0$.
+For any $B_T$, distinct graded pieces are orthogonal.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/InvFormTwisted.lean}.
+\begin{leancode}
+theorem twForm_nondegenerate_twGrading {BT : LinearMap.BilinForm ℂ Tm} (hBT : BT.Nondegenerate)
+    {d : ℕ} {x : FockT r ⊗[ℂ] Tm} (hx : x ∈ TwistedSector.twGrading r Tm d) (hx0 : x ≠ 0) :
+    ∃ m : (ℕ × Fin r) →₀ ℕ, ∃ t' : Tm, monomial m 1 ⊗ₜ t' ∈ TwistedSector.twGrading r Tm d ∧
+      twForm r BT x (monomial m 1 ⊗ₜ t') ≠ 0
+
+theorem twForm_orth_twGrading (BT : LinearMap.BilinForm ℂ Tm) {d d' : ℕ} (hdd : d ≠ d')
+    {x y : FockT r ⊗[ℂ] Tm} (hx : x ∈ TwistedSector.twGrading r Tm d)
+    (hy : y ∈ TwistedSector.twGrading r Tm d') : twForm r BT x y = 0
+\end{leancode}
+\begin{dictionary}
+\lean{BT.Nondegenerate} is Mathlib's nondegeneracy (trivial left and right radical);
+\lean{monomial m 1} is $X^m$. Conclusion of the first statement is slightly stronger than
+nondegeneracy (the partner can be taken to be a pure tensor in the same graded piece).
+\end{dictionary}
+\begin{physics}
+Nondegeneracy of a two-point function means that no state is null: every nonzero state has a nonvanishing overlap with some state at the same energy. Here this holds on each graded piece of the twisted Fock space because the Fock metric is nonzero on every monomial and $B_T$ is nondegenerate. Orthogonality is the selection rule: states of different energy have zero two-point function.
+\end{physics}
+
+\noindent\emph{Proof.} Expand $x=\sum_mX^m\otimes t_m$ in the monomial basis; pick $m$ with
+$t_m\neq0$, then $t'$ with $B_T(t_m,t')\neq0$. Monomials are $F$-orthogonal, so
+$B_{\mathrm{tw}}(x,X^m\otimes t')=\lean{fockWt}(m)\,B_T(t_m,t')$, and $\lean{fockWt}(m)\neq0$ since
+every $c_v=-(n+\frac12)\neq0$. Orthogonality: monomials of different degree are $F$-orthogonal. \qed
+
+\subsection{The form on \texorpdfstring{$(V_\Lambda^T)^+$}{the twisted plus part}}
+
+\begin{definition}\label{ch09:def:TPForm}
+$B_{\mathrm{tw}}:=\lean{leechTwForm}=F\otimes\lean{TForm}$ on $S[\theta]\otimes T$ (rank $24$),
+and $B_T:=\lean{TPForm}$ its restriction to $\chnineTP$.
+\end{definition}
+\begin{leancode}
+noncomputable def leechTwForm : LinearMap.BilinForm ℂ Tw := twForm 24 TForm
+
+noncomputable def TPForm : LinearMap.BilinForm ℂ TP :=
+  leechTwForm.compl₁₂ TP.subtype TP.subtype
+\end{leancode}
+(\leanpath{VOA/Moonshine/InvFormTP.lean}.) \lean{compl₁₂ TP.subtype TP.subtype} precomposes both
+arguments with the inclusion $\chnineTP\hookrightarrow S[\theta]\otimes T$, i.e.\ restricts.
+\lean{TForm} is the symmetric nondegenerate form on the Leech $T$ with
+$\lean{TForm}(e_\alpha t,t')=(-1)^{\langle\alpha,\alpha\rangle/2}\lean{TForm}(t,e_\alpha t')$
+(\lean{TForm_symm}, \lean{TForm_nondegenerate}, \lean{TForm_eT}; Chapter~\ref{ch:06}).
+
+\begin{physics}
+Definition of the metric on the physical twisted sector $\chnineTP$ (the $\theta$-invariant states), as the restriction of the twisted Fock form tensor the form on the fixed-point space $T$. It is the Zamolodchikov metric of the twist-field sector.
+\end{physics}
+
+\begin{theorem}[Symmetry, nondegeneracy, orthogonality of $B_T$]\label{ch09:thm:TPForm}
+$B_T$ is symmetric; for every $\alpha\in\C$ and nonzero $x\in(\chnineTP)_\alpha$ there is
+$y\in(\chnineTP)_\alpha$ with $B_T(x,y)\neq0$; and distinct weight spaces of $\chnineTP$ are
+$B_T$-orthogonal.
+\end{theorem}
+\begin{leancode}
+theorem TPForm_symm (x y : TP) : TPForm x y = TPForm y x := leechTwForm_symm _ _
+
+theorem TPForm_nondegenerate (α : ℂ) (x : TP) (hx : x ∈ plusModule.weight α) (hx0 : x ≠ 0) :
+    ∃ y ∈ plusModule.weight α, TPForm x y ≠ 0
+
+theorem TPForm_weightOrth : WeightOrth plusModule TPForm
+\end{leancode}
+\begin{dictionary}
+\lean{plusModule.weight α} is the weight-$\alpha$ space of the $\chnineVP$-module $\chnineTP$
+(Chapter~\ref{ch:08}). Nondegeneracy is stated weight space by weight space, which is the form
+needed for the Riesz representation below (a form on an infinite-dimensional space can have zero
+radical without inducing isomorphisms $M_\alpha\cong M_\alpha^*$; weightwise nondegeneracy is the
+right notion). \lean{WeightOrth} is Definition~\ref{ch09:def:FHLInv}. No hypotheses.
+\end{dictionary}
+\begin{physics}
+The twisted sector has no null states: the form is nondegenerate at each conformal weight, and different weights are orthogonal, so $B_T$ is a genuine Zamolodchikov metric on $\chnineTP$ with symmetric two-point functions. Weight $2$ is the lowest level, spanned by $h_i(-\tfrac12)\mathbf1\otimes t$: the 24 excitations of the ground state at each of the $2^{12}$ fixed points, matching the $98304$-dimensional lowest weight space.
+\end{physics}
+
+\noindent\emph{Proof.} The weights of $\chnineTP$ are the integers $k+2$, $k\ge0$, and
+$(\chnineTP)_{k+2}=S[\theta]_{2k+1}\otimes T$: the twisted weight of $X^d\otimes t$ is
+$\frac{24}{16}+\frac d2=\frac32+\frac d2$, an integer exactly when $d$ is odd; and a monomial of odd
+doubled degree has an odd number of factors (each factor contributes an odd number $2n+1$), hence
+is fixed by $\theta=(-1)^{\#\text{factors}}\otimes(-1)_T$. So the whole graded piece of odd degree
+lies in $\chnineTP$, and Theorem~\ref{ch09:thm:twnondeg} applies inside it. Orthogonality is the
+second part of the same theorem. \qed
+
+\begin{example}
+On the lowest weight space $(\chnineTP)_2=S[\theta]_1\otimes T$, spanned by
+$h_i(-\frac12)\mathbf1\otimes t$ ($24\cdot4096=98304$ vectors for a basis of $T$),
+$B_T(h_i(-\frac12)\otimes t,\;h_j(-\frac12)\otimes t')=-\tfrac12\,\delta_{ij}\,\lean{TForm}(t,t')$.
+\end{example}
+
+\begin{status}
+\lean{TPForm_symm}, \lean{TPForm_nondegenerate}, \lean{TPForm_weightOrth}: unconditional. Axioms
+of \lean{TPForm_nondegenerate}: \texttt{[propext, Classical.choice, Quot.sound]} (rechecked).
+\end{status}
+
+\subsection{Invariance of \texorpdfstring{$B_T$}{B\_T} under all of \texorpdfstring{$V_\Lambda^+$}{V Lambda plus}}
+
+\begin{theorem}[Invariance at the generators]\label{ch09:thm:TPgen}
+For every $\beta\in\Lambda$, $B_T$ is FHL-invariant at $x_\beta=e^\beta+e^{-\beta}\in\chnineVP$,
+a state of weight $\langle\beta,\beta\rangle/2$. Explicitly
+$B_T(x_{\beta(n)}a,b)=(-1)^{\langle\beta,\beta\rangle/2}B_T(a,x_{\beta(\langle\beta,\beta\rangle-n-2)}b)$.
+Consequently the set \lean{interSub plusModule TPForm} of Definition~\ref{ch09:def:interSub} contains
+$\mathbf1$, is closed under all products, and contains every $x_\beta$.
+\end{theorem}
+\begin{leancode}
+theorem TPForm_invariant_frameX0 (β : leech.carrier) (n : ℤ) (x y : TP) :
+    TPForm (mode (plusModule.YM (frameX0P β)) n x) y
+      = (-1 : ℂ) ^ (leech.form β β / 2) *
+          TPForm x (mode (plusModule.YM (frameX0P β)) (leech.form β β - n - 2) y)
+
+theorem TPForm_fhlInv_frameX0P (β : leech.carrier) :
+    FHLInv plusModule TPForm (LatGen.halfNorm leech β) (frameX0P β)
+
+theorem interSub_TPForm :
+    leechVOAPlus.vacuum ∈ interSub plusModule TPForm ∧
+    (∀ u ∈ interSub plusModule TPForm, ∀ v ∈ interSub plusModule TPForm, ∀ n : ℤ,
+      leechVOAPlus.smul u n v ∈ interSub plusModule TPForm) ∧
+    ∀ β : leech.carrier, frameX0P β ∈ interSub plusModule TPForm
+\end{leancode}
+\begin{dictionary}
+\lean{frameX0P β} is $e^\beta+e^{-\beta}$ as an element of $\chnineVP$ (Chapter~\ref{ch:04});
+\lean{LatGen.halfNorm leech β} $=\langle\beta,\beta\rangle/2$ is its weight. The explicit form uses
+the integral modes of \lean{plusModule}; it is the twisted identity \eqref{ch09:eq:YTLadj} at even
+$k=2n$, since $(2\langle\beta,\beta\rangle-2n-4)/2=\langle\beta,\beta\rangle-n-2$. To pass to
+\lean{FHLInv} one needs $L_1x_\beta=0$, so that only the $j=0$ term of \eqref{ch09:eq:FHLInv}
+survives; this is the lemma \lean{L_one_latChargeGen} ($L_1e^\beta=0$ in every lattice VOA:
+$L_1e^\beta$ would have charge $\beta$ and weight $\frac12\langle\beta,\beta\rangle-1$, below the
+minimal weight of the charge-$\beta$ sector). No hypotheses.
+\end{dictionary}
+
+\begin{physics}
+At the generators $x_\beta=e^\beta+e^{-\beta}$, the BPZ reflection rule for the lattice currents of the orbifold: the two-point function in the twisted sector is compatible with the conjugation of these fields, with the sign $(-1)^{\langle\beta,\beta\rangle/2}$. By the generator-reduction principle this will give compatibility with the whole chiral algebra $\chnineVP$.
+\end{physics}
+
+\begin{theorem}[Full invariance]\label{ch09:thm:TPinv}
+$B_T$ is FHL-invariant at every homogeneous $u\in\chnineVP$. The library proves this first
+conditionally on generation, then unconditionally.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/InvFormTP.lean}.
+\begin{leancode}
+theorem TPForm_fhlInv_of_generates
+    (hgen : ∀ S : Submodule ℂ VPlus, leechVOAPlus.vacuum ∈ S →
+      (∀ u ∈ S, ∀ v ∈ S, ∀ n : ℤ, leechVOAPlus.smul u n v ∈ S) →
+      (∀ β : leech.carrier, frameX0P β ∈ S) → S = ⊤)
+    {wt : ℤ} {u : VPlus} (hu : u ∈ leechVOAPlus.grading wt) :
+    FHLInv plusModule TPForm wt u
+
+theorem TPForm_fhlInv {wt : ℤ} {u : VPlus} (hu : u ∈ leechVOAPlus.grading wt) :
+    InvForm.FHLInv plusModule InvForm.TPForm wt u :=
+  InvForm.TPForm_fhlInv_of_generates leechPlus_generated hu
+\end{leancode}
+\begin{dictionary}
+\textbf{The residual and its discharge.} \lean{hgen} says that $\chnineVP$ is generated as a vertex
+algebra by the states $e^\beta+e^{-\beta}$. When the form part of this milestone was written,
+\lean{hgen} was an open named residual. It was closed by \lean{leechPlus_generated}
+(\leanpath{VOA/Moonshine/Generation.lean}, proved in Chapter~\ref{ch:04}), and the unconditional
+\lean{TPForm_fhlInv} (namespace \lean{VOA.Moonshine}, file \leanpath{VOA/Moonshine/Generation.lean})
+is the one-line composition shown. The hypothesis \lean{hu} restricts to homogeneous $u$, as
+\lean{FHLInv} requires. Same as the textbook statement ``$B_T$ is an invariant form on the
+$\chnineVP$-module $\chnineTP$''.
+\end{dictionary}
+\begin{physics}
+The twisted sector's metric $B_T$ is invariant under all fields of the orbifold chiral algebra: it is a legitimate two-point function of the sector, with $\chnineTP$ self-dual (isomorphic to its contragredient, i.e.\ its own conjugate sector) as the self-conjugate twist-field sector must be. This is what allows the adjoint field $\overline W$ to be defined at all.
+\end{physics}
+
+\noindent\emph{Proof.} Theorem~\ref{ch09:thm:TPgen}, Theorem~\ref{ch09:thm:generates} and the
+generation theorem of Chapter~\ref{ch:04}. \qed
+
+\begin{remark}
+At the twisted level the library also proves invariance under the Heisenberg vectors,
+$B_{\mathrm{tw}}(h_b(k/2)x,y)=-B_{\mathrm{tw}}(x,h_b(-k/2)y)$ (\lean{leechTwForm_YM_hgen}). This is
+not used for $\chnineTP$, because $h_b(-1)\mathbf1$ is $\theta$-odd and so is not in $\chnineVP$.
+\end{remark}
+
+\begin{status}
+\lean{TPForm_fhlInv_frameX0P}, \lean{interSub_TPForm}: unconditional.
+\lean{TPForm_fhlInv_of_generates}: conditional on \lean{hgen} (by design).
+\lean{TPForm_fhlInv}: unconditional. Axioms of \lean{TPForm_fhlInv}: \texttt{[propext,
+Classical.choice, Quot.sound]} (rechecked).
+\end{status}
+
+\section{Graded Riesz representation}\label{ch09:sec:riesz}
+
+Equation \eqref{ch09:eq:Wbarforced} prescribes the \emph{functional}
+$\varphi\mapsto B_V(\chnineWb(t)_{(n)}a,\varphi)$. To obtain the \emph{vector}
+$\chnineWb(t)_{(n)}a\in\chnineVP$ we need a Riesz representation: every suitable functional on
+$\chnineVP$ is $B_V(x,\cdot)$ for a unique $x$. On an infinite-dimensional space this is false in
+general (the algebraic dual is much bigger than the space). It is true for functionals that live on
+finitely many weight spaces, provided the form is nondegenerate on each weight space and the weight
+spaces are orthogonal. This section proves that, in Lean, for an arbitrary vertex operator algebra.
+Namespace \lean{VOA.Moonshine.SkewAdjoint}, file \leanpath{VOA/Moonshine/WbarRiesz.lean}.
+
+\begin{definition}[Graded nondegeneracy and orthogonality]\label{ch09:def:graded}
+For a VOA $\chnineV=\bigoplus_k\chnineV_k$ and a bilinear form $B$ on it: $B$ is \emph{graded
+nondegenerate} if the restriction of $B$ to $\chnineV_k\times\chnineV_k$ is nondegenerate for every
+$k$; \emph{graded orthogonal} if $B(\chnineV_m,\chnineV_n)=0$ for $m\neq n$.
+\end{definition}
+\begin{leancode}
+noncomputable def gradForm (W : VertexOperatorAlgebra 𝒱) (B : LinearMap.BilinForm ℂ 𝒱) (k : ℤ) :
+    LinearMap.BilinForm ℂ (W.grading k) :=
+  B.compl₁₂ (W.grading k).subtype (W.grading k).subtype
+
+def GradedNondeg (W : VertexOperatorAlgebra 𝒱) (B : LinearMap.BilinForm ℂ 𝒱) : Prop :=
+  ∀ k : ℤ, (gradForm W B k).Nondegenerate
+
+def GradedOrth (W : VertexOperatorAlgebra 𝒱) (B : LinearMap.BilinForm ℂ 𝒱) : Prop :=
+  ∀ m n : ℤ, m ≠ n → ∀ x ∈ W.grading m, ∀ y ∈ W.grading n, B x y = 0
+\end{leancode}
+
+\begin{physics}
+Graded nondegeneracy is the absence of null fields level by level: every state of the VOA at a given weight has a nonvanishing overlap with some other state at that weight, so the Zamolodchikov metric can be inverted. Graded orthogonality is the selection rule that fields of different conformal weight have vanishing two-point functions. These are what a simple (no null states) chiral algebra gives.
+\end{physics}
+
+\begin{definition}[The Riesz vector]\label{ch09:def:riesz}
+For a functional $f$ on $\chnineV$ let $f_k=f|_{\chnineV_k}$. Its \emph{graded support} is
+$\{k:f_k\neq0\}$. Let $\mathrm{rk}_k\colon\chnineV_k^*\to\chnineV_k\subseteq\chnineV$ be the inverse
+of $x\mapsto B(x,\cdot)|_{\chnineV_k}$ when $B|_{\chnineV_k}$ is nondegenerate (and $0$ otherwise).
+The Riesz vector is $\mathrm{riesz}(f)=\sum_k\mathrm{rk}_k(f_k)$.
+\end{definition}
+\begin{leancode}
+noncomputable def rk (W : VertexOperatorAlgebra 𝒱) (B : LinearMap.BilinForm ℂ 𝒱) (k : ℤ) :
+    Dual ℂ (W.grading k) →ₗ[ℂ] 𝒱 :=
+  haveI := W.finrank k
+  if h : (gradForm W B k).Nondegenerate then
+    (W.grading k).subtype ∘ₗ ((gradForm W B k).toDual h).symm.toLinearMap
+  else 0
+
+noncomputable def restr (W : VertexOperatorAlgebra 𝒱) (k : ℤ) (f : 𝒱 →ₗ[ℂ] ℂ) :
+    Dual ℂ (W.grading k) :=
+  f ∘ₗ (W.grading k).subtype
+
+def gsupp (W : VertexOperatorAlgebra 𝒱) (f : 𝒱 →ₗ[ℂ] ℂ) : Set ℤ := {k | restr W k f ≠ 0}
+
+noncomputable def riesz (W : VertexOperatorAlgebra 𝒱) (B : LinearMap.BilinForm ℂ 𝒱)
+    (f : 𝒱 →ₗ[ℂ] ℂ) : 𝒱 :=
+  ∑ᶠ k : ℤ, rk W B k (restr W k f)
+\end{leancode}
+\begin{dictionary}
+\lean{W.finrank k} is the VOA axiom that $\chnineV_k$ is finite-dimensional; it is needed because
+Mathlib's \lean{toDual} (the isomorphism $V\cong V^*$ of a nondegenerate form) exists only in finite
+dimension. The ``else 0'' branch of \lean{rk} is a junk value never used under
+\lean{GradedNondeg}. The \lean{∑ᶠ} is a finite sum when the graded support is finite, and
+\lean{riesz} is only ever used on such functionals.
+\end{dictionary}
+
+\begin{physics}
+The Riesz vector is the dual construction: given a linear functional (an out-state, i.e.\ a bra) on finitely many levels, it produces the in-state with that overlap, i.e.\ it raises an index with the inverse Zamolodchikov metric. It is how an out-state obtained by contraction with a three-point function is converted into an ordinary vertex-operator output.
+\end{physics}
+
+\begin{theorem}[Riesz property and separation]\label{ch09:thm:riesz}
+Assume $B$ is graded orthogonal and graded nondegenerate. If $f$ has finite graded support then
+$B(\mathrm{riesz}(f),\varphi)=f(\varphi)$ for all $\varphi$. If $B(x,\varphi)=B(y,\varphi)$ for all
+$\varphi$, then $x=y$.
+\end{theorem}
+\begin{leancode}
+theorem riesz_spec {B : LinearMap.BilinForm ℂ 𝒱} (hO : GradedOrth W B) (hnd : GradedNondeg W B)
+    {f : 𝒱 →ₗ[ℂ] ℂ} (hf : (gsupp W f).Finite) (φ : 𝒱) : B (riesz W B f) φ = f φ
+
+theorem eq_of_form {B : LinearMap.BilinForm ℂ 𝒱} (hO : GradedOrth W B) (hnd : GradedNondeg W B)
+    {x y : 𝒱} (h : ∀ φ, B x φ = B y φ) : x = y
+\end{leancode}
+\begin{dictionary}
+Three hypotheses, all displayed: orthogonality, weightwise nondegeneracy, finite support of $f$.
+Each is necessary: without finite support the sum need not exist; without orthogonality
+$B(\mathrm{rk}_k(f_k),\varphi)$ would pick up contributions from other weight spaces; without
+nondegeneracy $\mathrm{rk}_k$ does not exist. Same as the textbook statement.
+\end{dictionary}
+\begin{physics}
+Raising and lowering indices with the inverse metric: when the metric is nondegenerate on each level, a bra determines a unique ket, and a ket is determined by its overlaps with all states (no null directions).
+\end{physics}
+
+\noindent\emph{Proof.} For $\varphi\in\chnineV_k$, orthogonality kills every summand except
+$\mathrm{rk}_k(f_k)$, and $B(\mathrm{rk}_k(f_k),\varphi)=f_k(\varphi)$ by definition of the inverse
+of $x\mapsto B(x,\cdot)$. Both sides are linear in $\varphi$ and $\chnineV=\bigoplus\chnineV_k$.
+Separation: if $B(x-y,\cdot)=0$, each homogeneous component of $x-y$ pairs to zero with its own
+weight space (orthogonality), hence vanishes (nondegeneracy). \qed
+
+\begin{status}
+Unconditional apart from the displayed hypotheses. Axioms of \lean{riesz_spec}:
+\texttt{[propext, Classical.choice, Quot.sound]} (rechecked).
+\end{status}
+
+\section{The definition of \texorpdfstring{$\overline{W}$}{Wbar}}\label{ch09:sec:Wbar}
+
+Throughout this section $\chnineV$ is a VOA, $N$ an ordinary $\chnineV$-module on $M$, $B_V$ a form on
+$\chnineV$, $B_M$ a form on $M$, and \lean{hO : WeightOrth N BM}. These are the section
+\lean{variable}s of \leanpath{VOA/Moonshine/WbarDef.lean} (namespace \lean{VOA.Moonshine.SkewAdjoint}),
+so they appear as leading arguments \texttt{BV N BM hO} of the definitions below.
+
+\subsection{The dagger}
+
+Expanding the right side of \eqref{ch09:eq:Wbarforced} exactly as we expanded
+\eqref{ch09:eq:contra}, for $t\in M_w$ with $w\in\Z$:
+\begin{equation}\label{ch09:eq:dagger}
+B_V\big(\chnineWb(t)_{(n)}a,\varphi\big)=B_M\big(a,\chnineWd(t)_{(n)}\varphi\big),\qquad
+\chnineWd(t)_{(n)}:=(-1)^w\sum_{j\ge0}\frac1{j!}\,W(L_1^jt)_{(2w-n-2-j)} .
+\end{equation}
+The \emph{dagger} $\chnineWd(t)_{(n)}\colon\chnineV\to M$ involves only $W$ and $L_1=\omega_{(2)}$ on $M$.
+The $j$-sum is finite: $L_1^jt$ has weight $w-j$ and vanishes once $w-j$ is below the lowest weight
+of $M$.
+
+\begin{definition}[$L_1$, a lower bound, the dagger]\label{ch09:def:Wdag}
+$L_1^M=\omega^M_{(2)}$; $\lean{lowB}\,N$ is an integer below which all weight spaces of $M$ vanish;
+$\lean{dagBound}\,N\,w=(w-\lean{lowB})_++1$; $\lean{dagHom}\,N\,n\,w$ is the right side of
+\eqref{ch09:eq:dagger} with $j<\lean{dagBound}$; and $\lean{Wdag}\,N\,n$ applies $\lean{dagHom}$ with
+$w$ the weight to each integral-weight component of $t$ and $0$ to components of non-integral weight.
+\end{definition}
+\begin{leancode}
+noncomputable def Lp1 (N : OrdVModule W M) : End ℂ M := mode (N.YM W.conformalVector) 2
+
+noncomputable def lowB (N : OrdVModule W M) : ℤ := ⌈N.boundedBelow.choose⌉
+
+noncomputable def dagBound (N : OrdVModule W M) (w : ℤ) : ℕ := (w - lowB N).toNat + 1
+
+noncomputable def dagHom (N : OrdVModule W M) (n w : ℤ) : M →ₗ[ℂ] 𝒱 →ₗ[ℂ] M :=
+  (-1 : ℂ) ^ w • ∑ j ∈ Finset.range (dagBound N w),
+    ((j.factorial : ℂ)⁻¹) • (wBil N.toWeakModule (2 * w - n - 2 - j)) ∘ₗ (Lp1 N ^ j)
+
+noncomputable def dagFam (N : OrdVModule W M) (n : ℤ) (α : ℂ) :
+    N.weight α →ₗ[ℂ] 𝒱 →ₗ[ℂ] M :=
+  if h : ∃ w : ℤ, (w : ℂ) = α then (dagHom N n (Classical.choose h)) ∘ₗ (N.weight α).subtype
+  else 0
+
+noncomputable def Wdag (N : OrdVModule W M) (n : ℤ) : M →ₗ[ℂ] 𝒱 →ₗ[ℂ] M :=
+  letI := DirectSum.IsInternal.chooseDecomposition N.weight N.isInternal
+  (DFinsupp.lsum ℂ (dagFam N n)).comp (DirectSum.decomposeLinearEquiv N.weight).toLinearMap
+\end{leancode}
+\begin{dictionary}
+\textbf{Decoding.} \lean{N.boundedBelow.choose} is a real $B$ with $\operatorname{Re}\alpha\ge B$ on
+nonzero weight spaces; $\lceil B\rceil$ is \lean{lowB}. \lean{wBil N.toWeakModule q} is
+$(s,\varphi)\mapsto W(s)_{(q)}\varphi$ (Section~\ref{ch09:sec:W}); composing with $L_1^j$ gives
+$W(L_1^jt)_{(q)}$. \lean{Wdag} decomposes $t$ into weight components (\lean{decomposeLinearEquiv})
+and applies \lean{dagFam} componentwise (\lean{DFinsupp.lsum}).
+
+\textbf{Why the non-integral clause is harmless.} The formula \eqref{ch09:eq:dagger} needs
+$(-1)^w$, meaningful only for integral $w$. In the application (Leech) all weights of $\chnineTP$ are
+integers, so the clause never fires. In general it makes \lean{Wdag} linear in $t$ by fiat.
+
+\textbf{Well-definedness.} The lemma \lean{Wdag_int_eq_sum} shows that on $t\in M_w$ the dagger
+equals the sum \eqref{ch09:eq:dagger} with any bound past the vanishing of $L_1^jt$, so the choice
+of \lean{dagBound} does not matter.
+\end{dictionary}
+
+\begin{physics}
+The dagger is the BPZ conjugate of the field $W$: by the invariance rule, transposing $W(t,z)$ across the two-point function replaces $t$ by its reflected state $e^{zL_1}(-z^{-2})^{L_0}t$ and $z$ by $1/z$. It computes, in terms of the already-known $W$, the matrix elements of the twisted $\times$ twisted $\to$ untwisted field with a final untwisted state pulled to the other side of the pairing.
+\end{physics}
+
+\subsection{\texorpdfstring{$\overline{W}$}{Wbar} as a Riesz vector}
+
+\begin{definition}[$\chnineWb$]\label{ch09:def:WbarMode}
+$\Phi_{n,t,a}(\varphi)=B_M(a,\chnineWd(t)_{(n)}\varphi)$, $\chnineWb(t)_{(n)}a=\mathrm{riesz}(\Phi_{n,t,a})$,
+and $\chnineWb(t,z)=\sum_n\chnineWb(t)_{(n)}z^{-n-1}\in\operatorname{Hom}(M,\chnineV)[[z^{\pm1}]]$.
+\end{definition}
+\begin{leancode}
+noncomputable def Phi (N : OrdVModule W M) (BM : LinearMap.BilinForm ℂ M) (n : ℤ) (t a : M) :
+    𝒱 →ₗ[ℂ] ℂ :=
+  (BM a) ∘ₗ (Wdag N n t)
+
+noncomputable def WbarMode (n : ℤ) (t : M) : M →ₗ[ℂ] 𝒱 where
+  toFun a := riesz W BV (Phi N BM n t a)
+
+noncomputable def Wbar (t : M) : FormalDist (M →ₗ[ℂ] 𝒱) :=
+  fun k => WbarMode BV N BM hO (-k - 1) t
+
+theorem mode_Wbar (t : M) (n : ℤ) : mode (Wbar BV N BM hO t) n = WbarMode BV N BM hO n t
+\end{leancode}
+\begin{dictionary}
+\lean{WbarMode BV N BM hO n t} is the linear map $a\mapsto\chnineWb(t)_{(n)}a$ (its linearity
+fields, which use \lean{hO} through the finiteness of the graded support of $\Phi$, are omitted).
+The definition itself needs \emph{no} hypothesis on $B_V$; if $B_V$ were degenerate it would still
+be defined, but the adjunction below would fail. \textbf{Could this be the trap $\chnineWb=0$?} Not
+by definition alone: for instance with $B_V=0$ every \lean{rk} is the junk $0$ and
+$\chnineWb=0$. This is precisely why the adjunction (Theorem~\ref{ch09:thm:adj}) carries the
+hypotheses on $B_V$, why the Leech instance needs the nondegeneracy theorem of Chapter~\ref{ch:04},
+and why Theorem~\ref{ch09:thm:nonzero} is proved.
+\end{dictionary}
+
+\begin{physics}
+The conjugate field $\overline W(t,z)\colon\chnineTP\to\chnineVP$ is the operator ``twist field $\times$ twist field $\to$ untwisted field'': the OPE in which two twist fields collide and the branch cuts cancel to leave an ordinary field. It is defined as the adjoint of $W$ under the two-point metrics, $\langle\overline W(t,z)a,\varphi\rangle=\langle a,W(t^*,z^{-1})\varphi\rangle$, which expresses the three-point coupling $\langle V^+|\overline W|T\rangle$ through the coupling $\langle T|W|V^+\rangle$ already constructed. Heuristically it is the same three-point function read as an OPE of two twist fields instead of an OPE of a twist field with an untwisted field. It is nontrivial that the twisted sector actually couples to itself; if $\overline W=0$ the twist fields would be decoupled and the extension would be a square-zero extension of $\chnineVP$.
+\end{physics}
+
+\begin{theorem}[The defining adjunction, DGM (4.3)]\label{ch09:thm:adj}
+If $B_V$ is graded orthogonal and graded nondegenerate, then for all $n,t,a,\varphi$,
+$B_V(\chnineWb(t)_{(n)}a,\varphi)=B_M(a,\chnineWd(t)_{(n)}\varphi)$; explicitly, for $t\in M_w$ and any
+$R$ with $L_1^jt=0$ for $j\ge R$,
+\begin{equation*}
+B_V\big(\chnineWb(t)_{(n)}a,\varphi\big)=(-1)^w\sum_{j<R}\frac1{j!}\,B_M\big(a,W(L_1^jt)_{(2w-n-2-j)}\varphi\big).
+\end{equation*}
+The vector $\chnineWb(t)_{(n)}a$ is the unique vector with this property.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/WbarDef.lean}.
+\begin{leancode}
+theorem form_WbarMode (hVo : GradedOrth W BV) (hVnd : GradedNondeg W BV) (n : ℤ) (t a : M)
+    (φ : 𝒱) : BV (WbarMode BV N BM hO n t a) φ = BM a (Wdag N n t φ) :=
+  riesz_spec hVo hVnd (gsupp_Phi_finite N hO n t a) φ
+
+theorem form_WbarMode_int (hVo : GradedOrth W BV) (hVnd : GradedNondeg W BV) (n : ℤ) {w : ℤ}
+    {t : M} (ht : t ∈ N.weight (w : ℂ)) (R : ℕ) (hR : ∀ j : ℕ, R ≤ j → (Lp1 N ^ j) t = 0)
+    (a : M) (φ : 𝒱) :
+    BV (WbarMode BV N BM hO n t a) φ = (-1 : ℂ) ^ w • ∑ j ∈ Finset.range R,
+      ((j.factorial : ℂ)⁻¹) • BM a (wMode N.toWeakModule ((Lp1 N ^ j) t) (2 * w - n - 2 - j) φ)
+
+theorem WbarMode_eq_of_form (hVo : GradedOrth W BV) (hVnd : GradedNondeg W BV) {n : ℤ} {t a : M}
+    {x : 𝒱} (h : ∀ φ, BV x φ = BM a (Wdag N n t φ)) : WbarMode BV N BM hO n t a = x
+\end{leancode}
+\begin{dictionary}
+\textbf{Hypotheses.} \lean{hVo}, \lean{hVnd} on $B_V$ (Definition~\ref{ch09:def:graded}); \lean{hO}
+on $B_M$ (section variable); for the explicit form, \lean{ht} ($t$ homogeneous of integral weight $w$)
+and \lean{hR}. \textbf{Comparison.} The explicit form is the mode expansion of
+\eqref{ch09:eq:Wbarforced}, derived in \eqref{ch09:eq:dagger}: it is DGM (4.3), including the sign
+$(-1)^w$. No invariance of $B_V$ or $B_M$ is assumed at this stage; invariance enters only in the
+commutator formula. The proof of \lean{form_WbarMode} is the one-line term shown: the Riesz property
+applied to $\Phi$, whose graded support is finite (a single weight, by the next theorem).
+\end{dictionary}
+
+\begin{physics}
+This is the defining three-point relation: the adjoint exists exactly when the metric on $\chnineVP$ has no null fields, and it is unique. The factor $(-1)^w$ and the sum over $L_1^jt$ are the BPZ conjugation of the field of $t$. Physically, the coupling of two twist fields to an untwisted field is uniquely determined by the coupling of a twist field to the untwisted sector and the metrics.
+\end{physics}
+
+\begin{theorem}[Grading and truncation of $\chnineWb$]\label{ch09:thm:Wbargrade}
+If $t\in M_w$ and $a\in M_b$ ($w,b\in\Z$) then $\chnineWb(t)_{(n)}a\in\chnineV_{b+w-n-1}$. For all $t,a$,
+$\chnineWb(t)_{(n)}a=0$ for $n\gg0$; i.e.\ $\chnineWb(t,z)a\in\chnineV((z))$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/WbarDef.lean}.
+\begin{leancode}
+theorem WbarMode_mem (n : ℤ) {w b : ℤ} {t a : M} (ht : t ∈ N.weight (w : ℂ))
+    (ha : a ∈ N.weight (b : ℂ)) : WbarMode BV N BM hO n t a ∈ W.grading (b + w - n - 1)
+
+theorem WbarMode_trunc (t a : M) : ∃ N₀ : ℤ, ∀ n : ℤ, N₀ ≤ n → WbarMode BV N BM hO n t a = 0
+
+theorem Wbar_trunc (t : M) : ∀ a : M, ∃ B : ℤ, ∀ k : ℤ, k < B → Wbar BV N BM hO t k a = 0
+\end{leancode}
+\begin{dictionary}
+No hypothesis on $B_V$: these hold for the Riesz vector by construction. The weight
+$b+w-n-1$ is the usual weight of an intertwining operator's output (sum of the input weights minus
+$n+1$). \lean{Wbar_trunc} is the same statement in terms of coefficients ($k=-n-1$).
+\end{dictionary}
+\begin{physics}
+The selection rule for the three-point function: $\overline W(t)_{(n)}$ maps a state of weight $b$ to weight $b+w-n-1$, as for any chiral vertex operator, and the vanishing for large $n$ is the finite pole order of the OPE in a sector with energy bounded below (the untwisted algebra has no negative weights).
+\end{physics}
+
+\noindent\emph{Proof.} By the weights of $W$ (output of $W(s)_{(q)}\varphi$ has weight
+$\mathrm{wt}\,s+\mathrm{wt}\,\varphi-q-1$), $\chnineWd(t)_{(n)}$ maps $\chnineV_k$ to $M_{k-w+n+1}$. By
+orthogonality on $M$, $\Phi_{n,t,a}$ vanishes on $\chnineV_k$ unless $k-w+n+1=b$, so the Riesz vector
+lies in the single weight space $k=b+w-n-1$. Truncation: for $n\ge b+w$ that weight is negative and
+$\chnineV$ has no negative weights. \qed
+
+\begin{status}
+\lean{form_WbarMode}, \lean{form_WbarMode_int}, \lean{WbarMode_eq_of_form}: conditional exactly on
+\lean{hVo}, \lean{hVnd} (and \lean{hO}). \lean{WbarMode_mem}, \lean{WbarMode_trunc}: only \lean{hO}.
+All proved; axioms \texttt{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\section{Properties of \texorpdfstring{$\overline{W}$}{Wbar}}\label{ch09:sec:Wbarprops}
+
+\subsection{The \texorpdfstring{$L_{-1}$}{L-1}-derivative property}
+
+\begin{theorem}[$\chnineWb(L_{-1}t,z)=\partial_z\chnineWb(t,z)$]\label{ch09:thm:Wbarderiv}
+For every $t\in M$ and $n$: $\chnineWb(L_{-1}t)_{(n)}=-n\,\chnineWb(t)_{(n-1)}$.
+\end{theorem}
+\begin{leancode}
+theorem Lp1_Lm1 (N : OrdVModule W M) {α : ℂ} {x : M} (hx : x ∈ N.weight α) :
+    Lp1 N (Lm1 N.toWeakModule x) = Lm1 N.toWeakModule (Lp1 N x) + (2 * α) • x
+
+theorem Wdag_Lm1 (N : OrdVModule W M) (n : ℤ) (t : M) :
+    Wdag N n (Lm1 N.toWeakModule t) = (-(n : ℂ)) • Wdag N (n - 1) t
+
+theorem WbarMode_Lm1 (n : ℤ) (t : M) :
+    WbarMode BV N BM hO n (Lm1 N.toWeakModule t) = (-(n : ℂ)) • WbarMode BV N BM hO (n - 1) t
+
+theorem Wbar_deriv (t : M) :
+    Wbar BV N BM hO (Lm1 N.toWeakModule t) = deriv (Wbar BV N BM hO t)
+\end{leancode}
+(\leanpath{VOA/Moonshine/WbarDeriv.lean}.)
+\begin{dictionary}
+Only the section hypothesis \lean{hO} is used: the identity already holds for the defining
+functionals, hence for their Riesz vectors (\lean{riesz} is linear on finitely supported
+functionals). The intermediate statements are the $\mathfrak{sl}_2$ relation $[L_1,L_{-1}]=2L_0$ on
+$M$ and the dagger identity; they are listed because they are of independent use (Theorem~\ref{ch09:thm:skew}).
+\end{dictionary}
+\begin{physics}
+Translation covariance of the conjugate field: the field of the derivative state is the derivative of the field. It holds for $\overline W$ because the two-point metrics are invariant under translations (they intertwine $L_{-1}$ with $L_1$) and holds for $W$ by construction.
+\end{physics}
+
+\noindent\emph{Proof.} By Theorem~\ref{ch09:thm:Wderiv}, $W(L_{-1}s)_{(q)}=-q\,W(s)_{(q-1)}$. In
+$\chnineWd(L_{-1}t)_{(n)}$ (note $L_{-1}t$ has weight $w+1$) we must move $L_1^j$ past $L_{-1}$:
+$L_1^{j+1}L_{-1}t=L_{-1}L_1^{j+1}t+(j+1)(2w-j)L_1^jt$ (induction on $[L_1,L_{-1}]=2L_0$). Substituting,
+the $L_{-1}L_1^{j}t$ terms give $-(2w+2-n-2-j)$ times $W(L_1^jt)_{(2w-n-1-j)}$, the correction terms
+give $j(2w-j+1)/j!$ times $W(L_1^{j-1}t)_{(2w-n-j)}$; reindexing $i=j-1$, the coefficient of
+$\frac1{i!}W(L_1^it)_{(2w-n-1-i)}$ is $-(2w-n-i)+(2w-i)=n$, and the overall sign
+$(-1)^{w+1}=-(-1)^w$ turns this into $-n$. The result is
+$-n\,\chnineWd(t)_{(n-1)}$. Pairing with $a$ and taking Riesz vectors gives the claim. \qed
+
+\subsection{The commutator formula: first for quasi-primary states}
+
+\begin{definition}[Invariant form on the VOA]\label{ch09:def:VInv}
+$\lean{VInv}\,W\,B_V$: for every homogeneous $u\in\chnineV_{\mathrm{wt}}$, $B_V(u_{(n)}a,b)$ is given by
+\eqref{ch09:eq:FHLInv} with $\chnineV$ in place of $M$. It is literally the library's
+\lean{InvariantForm.IsFullyInvariant} (\lean{vInv_of_isFullyInvariant} is the identity).
+\end{definition}
+\begin{leancode}
+def VInv (W : VertexOperatorAlgebra 𝒱) (BV : LinearMap.BilinForm ℂ 𝒱) : Prop :=
+  ∀ (wt : ℤ) (u : 𝒱), u ∈ W.grading wt → ∀ (n : ℤ) (a b : 𝒱),
+    BV (W.smul u n a) b
+      = (-1 : ℂ) ^ wt • ∑ j ∈ Finset.range (wt.toNat + 1), ((j.factorial : ℂ)⁻¹) •
+          BV a (W.smul (((W.L 1) ^ j) u) (2 * wt - n - 2 - (j : ℤ)) b)
+\end{leancode}
+(\leanpath{VOA/Moonshine/WbarComm.lean}.)
+
+\begin{physics}
+Same as for modules, with the adjoint module: this is the invariant Zamolodchikov metric on the untwisted chiral algebra itself, $\langle u|v\rangle$ with the BPZ conjugation $L_n\mapsto L_{-n}$, normalised by $\langle\mathbf1|\mathbf1\rangle=1$.
+\end{physics}
+
+\begin{theorem}[Dagger commutator identity]\label{ch09:thm:Wdagcomm}
+Let $u\in\chnineV_p$ be quasi-primary ($L_1u=0$), $t\in M_w$, $Q=2p-m-2$, and $J$ past the
+truncation of $u$ on $t$. Then
+\begin{equation*}
+(-1)^p\Big(\chnineWd(t)_{(n)}\big(u_{(Q)}\varphi\big)-u_{(Q)}\,\chnineWd(t)_{(n)}\varphi\Big)
+=\sum_{r<J}\binom mr\,\chnineWd\big(u_{(r)}t\big)_{(m+n-r)}\varphi .
+\end{equation*}
+\end{theorem}
+\begin{leancode}
+theorem Wdag_comm_qp (N : OrdVModule W M) {p : ℤ} {u : 𝒱} (hu : u ∈ W.grading p)
+    (hqp : W.L 1 u = 0) {w : ℤ} {t : M} (ht : t ∈ N.weight (w : ℂ)) (m n : ℤ) (J : ℕ)
+    (hJ : ∀ j : ℕ, J ≤ j → N.act u j t = 0) (φ : 𝒱) :
+    (-1 : ℂ) ^ p • (Wdag N n t (W.smul u (2 * p - m - 2) φ)
+        - N.act u (2 * p - m - 2) (Wdag N n t φ))
+      = ∑ r ∈ Finset.range J, gBinom m r • Wdag N (m + n - r) (N.act u r t) φ
+\end{leancode}
+(\leanpath{VOA/Moonshine/WbarCore.lean}.)
+\begin{dictionary}
+This is the transpose of the commutator formula we want for $\chnineWb$: for quasi-primary $u$ the
+FHL transpose of $u_{(m)}$ is $(-1)^pu_{(Q)}$, $Q=2p-m-2$ (Example~\ref{ch09:ex:contra}). It
+involves no forms at all. Hypotheses \lean{hu}, \lean{hqp}, \lean{ht}, \lean{hJ} as stated.
+\end{dictionary}
+\begin{physics}
+Technical lemma: the Ward identity of the chiral currents on the conjugate field, with all forms eliminated, formulated for the BPZ-transposed fields. It is part of the proof that the OPE of a quasi-primary current with $\overline W$ has the same singular structure as with $W$.
+\end{physics}
+
+\paragraph{Proof on paper.} Expand both sides with \eqref{ch09:eq:dagger}. On the left, apply the
+commutator formula of $W$ (Theorem~\ref{ch09:thm:Wcomm}) to each $W(L_1^jt)$ with the mode $u_{(Q)}$;
+the result is a double sum over $j$ and $s$ of $\binom Qs W(u_{(s)}L_1^jt)_{(\cdots)}$. On the right,
+each $\chnineWd(u_{(r)}t)$ contains $L_1^k(u_{(r)}t)$, which must be rewritten with $u$ to the left:
+for quasi-primary $u$,
+$\frac1{k!}L_1^k(u_{(r)}x)=\sum_{b+c=k}\frac1{b!}\binom{2p-r-2}{c}u_{(r+c)}L_1^bx$ (from
+$[L_1,u_{(r)}]=(2p-r-2)u_{(r+1)}+(L_1u)_{(r)}$, the $\mathfrak{sl}_2$-covariance of a weight-$p$ field).
+Both sides are now sums of the same terms $\frac1{b!}W(u_{(s)}L_1^bt)_{(2p+2w-m-n-4-b-s)}\varphi$, and
+comparing coefficients reduces to the Vandermonde-type identity
+$\sum_{r}(-1)^r\binom mr\binom{2p-2-r}{s-r}=\binom{2p-2-m}{s}$, with $2p-2-m=Q$. \qed
+
+\begin{theorem}[Commutator formula for quasi-primary $u$]\label{ch09:thm:Wbarcommqp}
+Assume $B_V$ graded orthogonal, graded nondegenerate and invariant (\lean{VInv}), and $B_M$
+invariant at every homogeneous state. Then for quasi-primary $u\in\chnineV_p$ and $t\in M_w$,
+\begin{equation*}
+u_{(m)}\chnineWb(t)_{(n)}a-\chnineWb(t)_{(n)}u_{(m)}a=\sum_{r<J}\binom mr\,\chnineWb(u_{(r)}t)_{(m+n-r)}a .
+\end{equation*}
+\end{theorem}
+\begin{leancode}
+theorem WbarMode_comm_qp (hVo : GradedOrth W BV) (hVnd : GradedNondeg W BV) (hVinv : VInv W BV)
+    (hMinv : ∀ (wt : ℤ) (u : 𝒱), u ∈ W.grading wt → FHLInv N BM wt u)
+    {p : ℤ} {u : 𝒱} (hu : u ∈ W.grading p) (hqp : W.L 1 u = 0) {w : ℤ} {t : M}
+    (ht : t ∈ N.weight (w : ℂ)) (m n : ℤ) (J : ℕ) (hJ : ∀ j : ℕ, J ≤ j → N.act u j t = 0)
+    (a : M) :
+    W.smul u m (WbarMode BV N BM hO n t a) - WbarMode BV N BM hO n t (N.act u m a)
+      = ∑ r ∈ Finset.range J, gBinom m r • WbarMode BV N BM hO (m + n - r) (N.act u r t) a
+\end{leancode}
+\begin{physics}
+The Ward identity for $\overline W$ on quasi-primary currents: a current $u$ passing the conjugate field $\overline W(t,z)$ obeys the same OPE with $\overline W$ as with $W$, with the residues given by the action of $u$ on the twist-field state $t$. It is obtained by moving the current across the two metrics, using their invariance.
+\end{physics}
+
+\noindent\emph{Proof.} Pair both sides with $\varphi$ under $B_V$ and use separation
+(Theorem~\ref{ch09:thm:riesz}). By invariance of $B_V$, $B_V(u_{(m)}x,\varphi)=(-1)^pB_V(x,u_{(Q)}\varphi)$;
+by the adjunction this is $(-1)^pB_M(a,\chnineWd(t)_{(n)}u_{(Q)}\varphi)$. By invariance of $B_M$,
+$B_V(\chnineWb(t)_{(n)}u_{(m)}a,\varphi)=B_M(u_{(m)}a,\chnineWd\varphi)=(-1)^pB_M(a,u_{(Q)}\chnineWd\varphi)$.
+The difference is $B_M(a,\cdot)$ applied to the left side of Theorem~\ref{ch09:thm:Wdagcomm}, which is
+$\sum\binom mr B_M(a,\chnineWd(u_{(r)}t)_{(m+n-r)}\varphi)=\sum\binom mrB_V(\chnineWb(u_{(r)}t)_{(m+n-r)}a,\varphi)$. \qed
+
+\subsection{The commutator formula for all states}
+
+\begin{theorem}[Intertwining commutator formula for $\chnineWb$]\label{ch09:thm:Wbarcomm}
+Assume: $B_V$ graded orthogonal, graded nondegenerate and invariant; $B_M$ invariant at every
+homogeneous state; and $L_1\chnineV_1=0$. Then for \emph{every} $u\in\chnineV$, $m,n\in\Z$, $t,a\in M$
+and $J$ past the truncation of $u$ on $t$,
+\begin{equation}\label{ch09:eq:Wbarcomm}
+u_{(m)}\chnineWb(t)_{(n)}a-\chnineWb(t)_{(n)}\big(u_{(m)}a\big)=\sum_{r<J}\binom mr\,\chnineWb\big(u_{(r)}t\big)_{(m+n-r)}a .
+\end{equation}
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/WbarComm.lean}.
+\begin{leancode}
+theorem WbarMode_comm (hVo : GradedOrth W BV) (hVnd : GradedNondeg W BV) (hVinv : VInv W BV)
+    (hMinv : ∀ (wt : ℤ) (u : 𝒱), u ∈ W.grading wt → FHLInv N BM wt u)
+    (hqpV : ∀ v, v ∈ W.grading 1 → W.L 1 v = 0) (u : 𝒱) (m : ℤ) (t : M) (n : ℤ) (a : M)
+    (J : ℕ) (hJ : ∀ j : ℕ, J ≤ j → N.act u j t = 0) :
+    W.smul u m (WbarMode BV N BM hO n t a) - WbarMode BV N BM hO n t (N.act u m a)
+      = ∑ r ∈ Finset.range J, gBinom m r • WbarMode BV N BM hO (m + n - r) (N.act u r t) a
+\end{leancode}
+\begin{dictionary}
+\textbf{Type.} This is \eqref{ch09:eq:intcomm} for an intertwiner of type $\binom{\chnineV}{M\;M}$:
+first argument $t\in M$, second $a\in M$, output in $\chnineV$, with $\chnineV$ acting on the output by
+\lean{W.smul} and on the second argument by \lean{N.act}.
+
+\textbf{Hypotheses, one by one.} \lean{hVo}, \lean{hVnd}: needed for the Riesz representation.
+\lean{hVinv}: invariance of $B_V$, needed to move $u_{(m)}$ across $B_V$. \lean{hMinv}: invariance
+of $B_M$ at every homogeneous $u$, needed to move $u_{(m)}$ across $B_M$. \lean{hqpV}:
+$L_1\chnineV_1=0$, used only for the quasi-primary decomposition below. \lean{hJ}: truncation bound.
+For the Leech case all are discharged (Section~\ref{ch09:sec:Wbarleech}). Same as the textbook
+statement, for all $u$ (not only quasi-primary, not only homogeneous).
+\end{dictionary}
+\begin{physics}
+This is what makes $\overline W$ a bona fide chiral vertex operator, of type twisted $\times$ twisted $\to$ untwisted: its transformation under the chiral algebra is the same as that of any field of a (twisted) state. It requires the metrics to be invariant and nondegenerate: invariance transports the currents across the pairing, and nondegeneracy turns the resulting identity between pairings into an identity of states. The extension to non-quasi-primary currents uses only that these are $L_{-1}$-descendants of quasi-primary ones.
+\end{physics}
+
+\paragraph{Proof on paper.} The set of $u$ for which \eqref{ch09:eq:Wbarcomm} holds (for all large
+$J$) is a linear subspace, and it is closed under $u\mapsto L_{-1}u$: since
+$(L_{-1}u)_{(m)}=-m\,u_{(m-1)}$ and $(L_{-1}u)_{(r)}t=-r\,u_{(r-1)}t$, the formula for $L_{-1}u$ follows
+from the formula for $u$ at $m-1$ after the Pascal-type rearrangement
+$m\binom{m-1}{r-1}=r\binom mr$. Every homogeneous $u$ of weight $p\ge1$ decomposes as
+$u=u_0+L_{-1}c$ with $u_0$ quasi-primary of weight $p$ and $c$ of weight $p-1$ (the
+$\mathfrak{sl}_2$ quasi-primary decomposition, which in a VOA of CFT type needs exactly
+$L_1\chnineV_1=0$; Lean name \lean{qpDecomp}, \leanpath{VOA/Core/QuasiPrimaryDecomp.lean}). By
+induction on the weight, Theorem~\ref{ch09:thm:Wbarcommqp} for $u_0$ and the closure under $L_{-1}$
+give the formula for $u$; weight $0$ is $\C\mathbf1$, which is quasi-primary. \qed
+
+\subsection{Locality and translation covariance}
+
+\begin{theorem}[Locality of $Y(u,z_1)$ and $\chnineWb(t,z_2)$]\label{ch09:thm:Wbarlocal}
+Under the hypotheses of Theorem~\ref{ch09:thm:Wbarcomm}, for every $u\in\chnineV$, $t\in M$ there is $N$
+with $(z_1-z_2)^N\big(Y(u,z_1)\chnineWb(t,z_2)-\chnineWb(t,z_2)Y_M(u,z_1)\big)=0$ in
+$\operatorname{Hom}(M,\chnineV)[[z_1^{\pm1},z_2^{\pm1}]]$. Moreover
+$[L_{-1},\chnineWb(t,z)]=\partial_z\chnineWb(t,z)$, in coefficients
+$L_{-1}\circ\chnineWb(t)_k-\chnineWb(t)_k\circ L_{-1}^M=(k+1)\chnineWb(t)_{k+1}$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/WbarComm.lean}.
+\begin{leancode}
+theorem Wbar_local (hVo : GradedOrth W BV) (hVnd : GradedNondeg W BV)
+    (hVinv : VInv W BV) (hMinv : ∀ (wt : ℤ) (u : 𝒱), u ∈ W.grading wt → FHLInv N BM wt u)
+    (hqpV : ∀ v, v ∈ W.grading 1 → W.L 1 v = 0) (u : 𝒱) (t : M) :
+    ∃ N₀ : ℕ, mulBySubPow N₀
+      (fun a b => (W.Y u a).comp (Wbar BV N BM hO t b) - (Wbar BV N BM hO t b).comp (N.YM u a) :
+        FormalDist₂ (M →ₗ[ℂ] 𝒱)) = 0
+
+theorem Wbar_homCov (hVo : GradedOrth W BV) (hVnd : GradedNondeg W BV)
+    (hVinv : VInv W BV) (hMinv : ∀ (wt : ℤ) (u : 𝒱), u ∈ W.grading wt → FHLInv N BM wt u)
+    (hqpV : ∀ v, v ∈ W.grading 1 → W.L 1 v = 0) (t : M) (k : ℤ) :
+    W.L (-1) ∘ₗ Wbar BV N BM hO t k - Wbar BV N BM hO t k ∘ₗ Lm1 N.toWeakModule
+      = (k + 1 : ℤ) • Wbar BV N BM hO t (k + 1)
+\end{leancode}
+\begin{dictionary}
+Hypotheses as in Theorem~\ref{ch09:thm:Wbarcomm}. Coefficient conventions as in
+Theorem~\ref{ch09:thm:Wlocal}; \texttt{Wbar ... t k} is the $z^k$ coefficient. The covariance
+statement is the shape in which the block-matrix machinery of Chapter~\ref{ch:10} consumes it.
+\end{dictionary}
+\begin{physics}
+Mutual locality of the conjugate field $\overline W(t,z)$ with all untwisted currents: untwisted currents see no branch cut from a pair of twist fields that is fused into an untwisted field. This is the single-valuedness of the correlator $\langle\varphi|u(z_1)\overline W(t,z_2)|a\rangle$ in $z_1$. Together with $W$ it is the exchange property of fields of different sectors with an invariant current, and the translation covariance expresses $L_{-1}=\partial_z$. These are the \emph{one-twisted} locality relations; locality of two twisted fields with each other is much harder.
+\end{physics}
+
+\noindent\emph{Proof.} Locality follows from \eqref{ch09:eq:Wbarcomm} exactly as
+Theorem~\ref{ch09:thm:Wlocal} follows from Theorem~\ref{ch09:thm:Wcomm}. Covariance is
+\eqref{ch09:eq:Wbarcomm} at $u=\omega$, $m=0$ (only $r=0$ survives since $\binom0r=\delta_{r0}$),
+combined with Theorem~\ref{ch09:thm:Wbarderiv}: $[L_{-1},\chnineWb(t)_{(n)}]=\chnineWb(L_{-1}t)_{(n)}=-n\chnineWb(t)_{(n-1)}$. \qed
+
+\begin{status}
+\lean{Wbar_deriv}: only \lean{hO}. \lean{Wdag_comm_qp}: form-free, unconditional.
+\lean{WbarMode_comm}, \lean{Wbar_local}, \lean{Wbar_homCov}: conditional exactly on
+\lean{hVo}, \lean{hVnd}, \lean{hVinv}, \lean{hMinv}, \lean{hqpV} (and \lean{hO}). All proved; axioms
+of \lean{Wdag_comm_qp}, \lean{WbarMode_comm}, \lean{Wbar_local}: \texttt{[propext, Classical.choice,
+Quot.sound]} (rechecked).
+\end{status}
+
+\section{The Leech instance of \texorpdfstring{$\overline{W}$}{Wbar}}\label{ch09:sec:Wbarleech}
+
+\subsection{The form \texorpdfstring{$B_V$}{B\_V} on \texorpdfstring{$V_\Lambda^+$}{V Lambda plus}}
+
+For $B_V$ the library takes the \emph{canonical invariant form} of the vertex operator algebra
+$\chnineVP$ (Li's theorem, Theorem~\ref{l04:thm:canonical}: a VOA of CFT type with $L_1V_1=0$ has a
+fully invariant form, unique once normalised by $(\mathbf1,\mathbf1)=1$). Its hypotheses are
+$\mathbf1\neq0$ and $L_1(\chnineVP)_1=0$; the latter holds trivially because $(\chnineVP)_1=0$.
+File \leanpath{VOA/Moonshine/WbarLeech.lean}, namespace \lean{VOA.Moonshine}.
+\begin{leancode}
+theorem leechVOAPlus_L1_one : ∀ v, v ∈ leechVOAPlus.grading 1 → leechVOAPlus.L 1 v = 0
+
+noncomputable def leechBVForm : InvariantForm leechVOAPlus :=
+  canonicalInvariantForm leechVOAPlus_vacuum_ne_zero leechVOAPlus_L1_one
+
+noncomputable abbrev leechBV : LinearMap.BilinForm ℂ SkewVP := leechBVForm.form
+
+theorem leechBV_normalized : leechBV leechVOAPlus.vacuum leechVOAPlus.vacuum = 1 :=
+  canonicalInvariantForm_normalized leechVOAPlus_vacuum_ne_zero leechVOAPlus_L1_one
+
+theorem leechBV_orth : GradedOrth leechVOAPlus leechBV := gradedOrth_of_invariantForm _
+
+theorem leechBV_inv : VInv leechVOAPlus leechBV :=
+  vInv_of_isFullyInvariant _ (canonicalInvariantForm_isFullyInvariant _ _)
+\end{leancode}
+\begin{dictionary}
+\lean{InvariantForm leechVOAPlus} is the library's structure ``bilinear form with
+$(L_na,b)=(a,L_{-n}b)$'' (Definition~\ref{l04:def:invform}); \lean{canonicalInvariantForm} is Li's form, and
+\lean{canonicalInvariantForm_isFullyInvariant} proves it satisfies the full FHL invariance
+\lean{IsFullyInvariant}, which is \lean{VInv}. Orthogonality of distinct weights follows from
+$L_0$-adjointness. What is \emph{not} free is graded nondegeneracy: Li's form is nondegenerate if
+and only if the VOA is simple (for CFT type), and the library has no general simplicity theorem
+for $\chnineVP$.
+\end{dictionary}
+
+\subsection{The definition and the unconditional properties}
+
+\begin{definition}\label{ch09:def:leechWbar}
+$\chnineWb(t,z)$ for $t\in\chnineTP$ is the adjoint of \lean{leechWsk t} with respect to
+$B_V=\lean{leechBV}$ and $B_T=\lean{TPForm}$.
+\end{definition}
+\begin{leancode}
+noncomputable def leechWbar (t : TP) : FormalDist (TP →ₗ[ℂ] SkewVP) :=
+  Wbar leechBV plusModule TPForm TPForm_weightOrth t
+
+noncomputable def leechWbarMode (n : ℤ) (t : TP) : TP →ₗ[ℂ] SkewVP :=
+  WbarMode leechBV plusModule TPForm TPForm_weightOrth n t
+
+theorem leechWbar_mem (n : ℤ) {w b : ℤ} {t a : TP} (ht : t ∈ plusModule.weight (w : ℂ))
+    (ha : a ∈ plusModule.weight (b : ℂ)) :
+    leechWbarMode n t a ∈ leechVOAPlus.grading (b + w - n - 1) :=
+  WbarMode_mem n ht ha
+
+theorem leechWbar_trunc (t : TP) :
+    ∀ a : TP, ∃ B : ℤ, ∀ k : ℤ, k < B → leechWbar t k a = 0 :=
+  Wbar_trunc t
+
+theorem leechWbar_deriv (t : TP) : leechWbar (leechLTP t) = deriv (leechWbar t) :=
+  Wbar_deriv _ _ _ _ t
+\end{leancode}
+\begin{dictionary}
+The four arguments of \lean{Wbar} are $B_V$, the module, $B_M$ and the orthogonality proof
+\lean{TPForm_weightOrth} (Theorem~\ref{ch09:thm:TPForm}). These three statements need nothing
+beyond \lean{hO}, which is supplied.
+\end{dictionary}
+
+\begin{physics}
+The conjugate field of the Leech orbifold: the OPE of two twist fields of the 24 Leech bosons, producing an operator in $\chnineVP$. It is defined using the canonical invariant two-point function $B_V$ (unique up to normalisation for a VOA of CFT type with $L_1V_1=0$) on the untwisted side and $B_T$ on the twisted side. The quantity whose existence this requires is nondegeneracy of $B_V$ (no null fields in $\chnineVP$), which is established below.
+\end{physics}
+
+\subsection{The residual \texorpdfstring{\lean{hnd}}{hnd} and its discharge}
+
+\begin{theorem}[Conditional properties]\label{ch09:thm:leechcond}
+If $B_V$ is graded nondegenerate (hypothesis \lean{hnd}), then the Leech $\chnineWb$ satisfies the
+adjunction DGM (4.3), the commutator formula \eqref{ch09:eq:Wbarcomm} for all $u\in\chnineVP$, locality
+with every $Y(u,z)$, and translation covariance.
+\end{theorem}
+\begin{leancode}
+theorem leechBV_gradedNondeg_of_isSimple (hsimple : leechVOAPlus.IsSimple) :
+    GradedNondeg leechVOAPlus leechBV :=
+  gradedNondeg_of_radical _ (invariantForm_nondegenerate_FHL _ _ hsimple)
+
+theorem leechWbar_adj (n : ℤ) {w : ℤ} {t : TP} (ht : t ∈ plusModule.weight (w : ℂ)) (R : ℕ)
+    (hR : ∀ j : ℕ, R ≤ j → (Lp1 plusModule ^ j) t = 0) (a : TP) (φ : SkewVP) :
+    leechBV (leechWbarMode n t a) φ = (-1 : ℂ) ^ w • ∑ j ∈ Finset.range R,
+      ((j.factorial : ℂ)⁻¹) • TPForm a (mode (leechWsk ((Lp1 plusModule ^ j) t))
+        (2 * w - n - 2 - j) φ)
+
+theorem leechWbar_comm (u : SkewVP) (m : ℤ) (t : TP) (n : ℤ) (a : TP) (J : ℕ)
+    (hJ : ∀ j : ℕ, J ≤ j → mode (plusModule.YM u) j t = 0) :
+    leechVOAPlus.smul u m (leechWbarMode n t a) - leechWbarMode n t (mode (plusModule.YM u) m a)
+      = ∑ r ∈ Finset.range J,
+          gBinom m r • leechWbarMode (m + n - r) (mode (plusModule.YM u) r t) a :=
+  WbarMode_comm leechBV_orth hnd leechBV_inv (fun _ _ hu => TPForm_fhlInv hu) leechVOAPlus_L1_one
+    u m t n a J hJ
+\end{leancode}
+\begin{dictionary}
+\textbf{A hidden-looking hypothesis.} The statements of \lean{leechWbar_adj} and
+\lean{leechWbar_comm} as printed do not mention \lean{hnd}, but the file declares
+\lean{variable (hnd : GradedNondeg leechVOAPlus leechBV)} followed by \lean{include hnd}; so each
+of these theorems takes \lean{hnd} as its \emph{first explicit argument}. (One sees it used in the
+proof term of \lean{leechWbar_comm}.) The same holds for \lean{leechWbar_local} and
+\lean{leechWbar_homCov}, whose statements are those of Theorem~\ref{ch09:thm:Wbarlocal} at the
+Leech data. A referee must read these as ``\lean{hnd} $\Rightarrow$ \dots''.
+
+\textbf{The other hypotheses of Theorem~\ref{ch09:thm:Wbarcomm}} are discharged in the proof term:
+\lean{leechBV_orth}, \lean{leechBV_inv}, \lean{TPForm_fhlInv} (Theorem~\ref{ch09:thm:TPinv}),
+\lean{leechVOAPlus_L1_one}.
+\end{dictionary}
+
+\begin{physics}
+If the untwisted chiral algebra is simple (no null states), then all the general properties established above apply to the genuine conjugate field: its adjunction with $W$, its OPE with the invariant currents, locality, translation covariance. The hypothesis is the physical statement that the metric on the vertex algebra has no zero modes; it is the main assumption that has to be checked for the actual model.
+\end{physics}
+
+\begin{theorem}[$B_V$ is graded nondegenerate; $\chnineWb$ unconditional]\label{ch09:thm:hnd}
+\lean{hnd} holds. Consequently the adjunction, the commutator formula, locality and covariance of
+the Leech $\chnineWb$ hold unconditionally.
+\end{theorem}
+\begin{leancode}
+theorem leechBV_gradedNondeg : GradedNondeg leechVOAPlus leechBV :=
+  gradedNondeg_of_radical _ leechBVForm_leftRadical
+
+theorem leechWbar_adj' (n : ℤ) {w : ℤ} {t : TP} (ht : t ∈ plusModule.weight (w : ℂ)) (R : ℕ)
+    (hR : ∀ j : ℕ, R ≤ j → (Lp1 plusModule ^ j) t = 0) (a : TP) (φ : SkewVP) :
+    leechBV (leechWbarMode n t a) φ = (-1 : ℂ) ^ w • ∑ j ∈ Finset.range R,
+      ((j.factorial : ℂ)⁻¹) • TPForm a (mode (leechWsk ((Lp1 plusModule ^ j) t))
+        (2 * w - n - 2 - j) φ) :=
+  leechWbar_adj leechBV_gradedNondeg n ht R hR a φ
+
+theorem leechWbar_comm' (u : SkewVP) (m : ℤ) (t : TP) (n : ℤ) (a : TP) (J : ℕ)
+    (hJ : ∀ j : ℕ, J ≤ j → mode (plusModule.YM u) j t = 0) :
+    leechVOAPlus.smul u m (leechWbarMode n t a) - leechWbarMode n t (mode (plusModule.YM u) m a)
+      = ∑ r ∈ Finset.range J,
+          gBinom m r • leechWbarMode (m + n - r) (mode (plusModule.YM u) r t) a :=
+  leechWbar_comm leechBV_gradedNondeg u m t n a J hJ
+
+theorem leechWbar_local' (u : SkewVP) (t : TP) :
+    ∃ N : ℕ, mulBySubPow N
+      (fun a b => (leechVOAPlus.Y u a).comp (leechWbar t b)
+        - (leechWbar t b).comp (plusModule.YM u a) : FormalDist₂ (TP →ₗ[ℂ] SkewVP)) = 0 :=
+  leechWbar_local leechBV_gradedNondeg u t
+
+theorem leechWbar_homCov' (t : TP) (k : ℤ) :
+    leechVOAPlus.L (-1) ∘ₗ leechWbar t k - leechWbar t k ∘ₗ leechLTP
+      = (k + 1 : ℤ) • leechWbar t (k + 1) :=
+  leechWbar_homCov leechBV_gradedNondeg t k
+\end{leancode}
+(\leanpath{VOA/Moonshine/NondegLeech.lean}.)
+\begin{dictionary}
+The proof terms shown make the logic transparent: each primed theorem is the conditional one
+applied to \lean{leechBV_gradedNondeg}. That theorem is proved in Chapter~\ref{ch:04} \emph{without}
+simplicity of $\chnineVP$: the library writes down an explicit lattice form on $V_\Lambda$, proves it
+invariant and nondegenerate and $\theta$-isometric, identifies its restriction to $\chnineVP$ with
+\lean{leechBV} by uniqueness of the normalised invariant form, and deduces that the radical of
+\lean{leechBV} is zero (\lean{leechBVForm_leftRadical}). The primed statements have no remaining
+hypotheses other than the truncation bound \lean{hJ} (resp.\ \lean{ht}, \lean{hR}).
+\end{dictionary}
+
+\begin{physics}
+The nondegeneracy of the two-point function of the Leech orbifold's untwisted sector: no null fields. This is what upgrades the conditional properties of $\overline W$ to unconditional ones, and it ensures the OPE of two twist fields is genuinely determined by (and consistent with) the coupling to the untwisted fields.
+\end{physics}
+
+\begin{warning}
+\textbf{Signs that must not be ``simplified''} (\texttt{Notes/M8hRoute.md}, \S1a and dead end 3).
+In the numerical $E_8$ model, dropping the factor $(-1)^w$ in the adjunction \eqref{ch09:eq:dagger},
+or replacing the lattice form's sign $c(\alpha)=(-1)^{\langle\alpha,\alpha\rangle/2}\varepsilon(\alpha,\alpha)$
+of Chapter~\ref{ch:04} by $c(\alpha)=1$, breaks the twisted$\times$twisted relation (4.23) (relative
+residual $\approx2$). These signs are therefore not conventions that can be changed freely: they
+are necessary for $\chnineWb$ to be the operator that later makes $\Vnat$ a vertex algebra.
+Numerical evidence (\texttt{tt.py}, \texttt{tt\_K3.log}), not proof.
+\end{warning}
+
+\begin{status}
+\lean{leechWbar_mem}, \lean{leechWbar_trunc}, \lean{leechWbar_deriv}: unconditional.
+\lean{leechWbar_adj}, \lean{leechWbar_comm}, \lean{leechWbar_local}, \lean{leechWbar_homCov}:
+conditional on \lean{hnd}. \lean{leechBV_gradedNondeg} and the four primed theorems: unconditional;
+axioms of \lean{leechBV_gradedNondeg} and \lean{leechWbar_comm'}: \texttt{[propext,
+Classical.choice, Quot.sound]} (rechecked).
+\end{status}
+
+\section{The genuine \texorpdfstring{$\overline{W}$}{Wbar} in the block field, and the anti-trap certificate}\label{ch09:sec:genuine}
+
+\subsection{Plugging \texorpdfstring{$\overline{W}$}{Wbar} into the block field}
+
+Chapter~\ref{ch:10} builds the block vertex operators \eqref{ch09:eq:block} for an
+\emph{arbitrary} family \texttt{Wbar}, and asks of it a commutator formula:
+\begin{leancode}
+def WbarComm (Wbar : TP → FormalDist (TP →ₗ[ℂ] SkewVP)) : Prop :=
+  ∀ (u : SkewVP) (m : ℤ) (t : TP) (n : ℤ) (J : ℕ),
+    (∀ j : ℕ, J ≤ j → mode (plusModule.YM u) j t = 0) →
+    mode (leechVOAPlus.Y u) m ∘ₗ mode (Wbar t) n - mode (Wbar t) n ∘ₗ mode (plusModule.YM u) m
+      = ∑ r ∈ Finset.range J, gBinom m r • mode (Wbar (mode (plusModule.YM u) r t)) (m + n - r)
+
+noncomputable def YnatU (u : SkewVP) : FormalDist (End ℂ Vnat) :=
+  diagF (leechVOAPlus.Y u) (plusModule.YM u)
+
+noncomputable def YnatT (Wbar : TP → FormalDist (TP →ₗ[ℂ] SkewVP)) (t : TP) :
+    FormalDist (End ℂ Vnat) :=
+  offF (Wbar t) (leechWsk t)
+\end{leancode}
+(\leanpath{VOA/Moonshine/VnatFields.lean}, documented in Chapter~\ref{ch:10}.) Here
+\lean{Vnat} is the product \lean{SkewVP × TP}, \lean{diagF a b} the diagonal block distribution
+$\operatorname{diag}(a,b)$ and \lean{offF c d} the off-diagonal one with $c$ in the upper right and
+$d$ in the lower left, so \lean{YnatT Wbar t} is the twisted column of \eqref{ch09:eq:block}.
+\lean{WbarComm} is \eqref{ch09:eq:Wbarcomm} written as an identity of linear maps.
+
+\begin{theorem}[The genuine $\chnineWb$ satisfies the block-field hypotheses]\label{ch09:thm:genuine}
+\lean{leechWbar} satisfies \lean{WbarComm}, and the block fields of untwisted and twisted states
+are mutually local: for all $u\in\chnineVP$, $t\in\chnineTP$, $Y^\natural((u,0),z)$ and
+$Y^\natural((0,t),z)$ are local on $\Vnat$.
+\end{theorem}
+\begin{leancode}
+theorem leechWbar_WbarComm : WbarComm leechWbar
+
+theorem YnatU_YnatT_local_genuine (u : SkewVP) (t : TP) : Local (YnatU u) (YnatT leechWbar t) :=
+  YnatU_YnatT_local leechWbar_WbarComm u t
+
+theorem YnatT_YnatU_local_genuine (t : TP) (u : SkewVP) : Local (YnatT leechWbar t) (YnatU u) :=
+  YnatT_YnatU_local leechWbar_WbarComm t u
+\end{leancode}
+(\leanpath{VOA/Moonshine/VnatGenuine.lean}.)
+\begin{dictionary}
+\lean{Local} is Definition~\ref{ch09:def:local} on $\End(\Vnat)$. A block computation (Chapter~\ref{ch:10},
+\lean{local_diag_off}) shows that $\operatorname{diag}(a,b)$ and $\operatorname{offdiag}(c,d)$ are local
+iff $a c-c b$ and $b d-d a$ are killed by a power of $(z_1-z_2)$; these are
+Theorem~\ref{ch09:thm:Wbarlocal} (via \lean{WbarComm}) and Theorem~\ref{ch09:thm:Wlocal}. These are
+relations (3) and (4) of Section~\ref{ch09:sec:why}. Unconditional.
+\end{dictionary}
+
+\begin{physics}
+The block-matrix $Y^\natural$ of a twisted and an untwisted state is the full vertex operator of the sum of the two sectors; the statement is that untwisted and twisted fields are mutually local, i.e.\ they have an OPE with finite pole order and commute up to contact terms. This is the consistency of the operator algebra of the orbifold with its twist fields at the level of one twist-field insertion; the harder consistency condition with two twist fields remains.
+\end{physics}
+
+\subsection{The genuine \texorpdfstring{$\overline{W}$}{Wbar} is not zero}
+
+\begin{theorem}[The vacuum pairing]\label{ch09:thm:nonzero}
+\textup{(i)} For $t,t'\in(\chnineTP)_2$ (the lowest weight space),
+$\chnineWb(t)_{(3)}t'=B_T(t',t)\,\mathbf1$.
+\textup{(ii)} For every nonzero $t\in(\chnineTP)_2$ there are $t'\in(\chnineTP)_2$ and $c\neq0$ with
+$\chnineWb(t)_{(3)}t'=c\,\mathbf1$.
+\textup{(iii)} $\chnineWb\neq0$.
+\end{theorem}
+\begin{leancode}
+theorem leechWbarMode_three_weight_two {t t' : TP} (ht : t ∈ plusModule.weight ((2 : ℤ) : ℂ))
+    (ht' : t' ∈ plusModule.weight ((2 : ℤ) : ℂ)) :
+    leechWbarMode 3 t t' = TPForm t' t • leechVOAPlus.vacuum
+
+theorem leechWbar_vacuum_pairing_ne_zero {t : TP} (ht : t ∈ plusModule.weight ((2 : ℤ) : ℂ))
+    (ht0 : t ≠ 0) :
+    ∃ t' ∈ plusModule.weight ((2 : ℤ) : ℂ), ∃ c : ℂ, c ≠ 0 ∧
+      leechWbarMode 3 t t' = c • leechVOAPlus.vacuum
+
+theorem leechWbar_ne_zero : leechWbar ≠ 0
+\end{leancode}
+\begin{dictionary}
+\textbf{Decoding.} \texttt{((2 : ℤ) : ℂ)} is the weight $2$, cast to $\C$ because module weights are
+complex. \lean{leechWbarMode 3 t t'} is $\chnineWb(t)_{(3)}t'$. \lean{leechWbar ≠ 0} compares the
+function $t\mapsto\chnineWb(t,z)$ with the zero function.
+
+\textbf{Why this is the right certificate.} The trap of Section~\ref{ch09:sec:why} is
+$\chnineWb=0$. Statement (iii) excludes it outright, and (ii) says more: the twisted$\times$twisted
+product of lowest-weight states reaches the vacuum through the nondegenerate pairing $B_T$, which
+reflects the nondegenerate invariant form that a simple algebra must carry (in the square-zero
+extension this product is identically zero). It is not by itself a simplicity proof; simplicity of $\Vnat$ is
+proved in Chapter~\ref{ch:10}. No hypotheses beyond the displayed homogeneity.
+\end{dictionary}
+\begin{physics}
+The twisted $\times$ twisted OPE actually produces the identity: the product of two lowest-weight twist fields contains the vacuum with coefficient the two-point function $B_T(t',t)$, which is non-vanishing because the Zamolodchikov metric on the twisted sector is nondegenerate. This is the CFT statement that two twist fields $\sigma\sigma\sim1/(z-w)^{2h}+\dots$ fuse to the identity, and it is why $\overline W\neq0$: without it the twisted sector would not interact with itself and the sum $\chnineVP\oplus\chnineTP$ would be a decoupled, non-simple square-zero extension, not the Moonshine module. (Heuristic: the coefficient is the identity channel in the two-point function.)
+\end{physics}
+
+\paragraph{Proof on paper.} (i) By Theorem~\ref{ch09:thm:Wbargrade}, $\chnineWb(t)_{(3)}t'$ has weight
+$2+2-3-1=0$, and $(\chnineVP)_0=\C\mathbf1$; write it $c\mathbf1$. Pair with $\mathbf1$:
+$c=c\,B_V(\mathbf1,\mathbf1)=B_V(\chnineWb(t)_{(3)}t',\mathbf1)$. By the adjunction with $w=2$ and $n=3$,
+this is $(-1)^2\sum_j\frac1{j!}B_T(t',W(L_1^jt)_{(4-3-2-j)}\mathbf1)$. Since $L_1t$ has weight $1$ and
+$(\chnineTP)_1=0$, only $j=0$ remains: $B_T(t',W(t)_{(-1)}\mathbf1)=B_T(t',t)$ by
+Example~\ref{ch09:ex:lowmodes}. (ii) Choose $t'$ with $B_T(t,t')\neq0$ (Theorem~\ref{ch09:thm:TPForm})
+and use symmetry. (iii) $(\chnineTP)_2$ has dimension $98304>0$, so a nonzero $t$ exists, and
+$c\mathbf1\neq0$ because $\mathbf1\neq0$. \qed
+
+\begin{status}
+\lean{leechWbar_WbarComm}, \lean{YnatU_YnatT_local_genuine}, \lean{YnatT_YnatU_local_genuine},
+\lean{leechWbarMode_three_weight_two}, \lean{leechWbar_vacuum_pairing_ne_zero},
+\lean{leechWbar_ne_zero}: unconditional. Axioms of \lean{leechWbar_WbarComm},
+\lean{YnatU_YnatT_local_genuine}, \lean{leechWbarMode_three_weight_two}, \lean{leechWbar_ne_zero}:
+\texttt{[propext, Classical.choice, Quot.sound]} (rechecked).
+\end{status}
+
+\section{Skew-symmetry of \texorpdfstring{$\overline{W}$}{Wbar}}\label{ch09:sec:skew}
+
+If $\Vnat$ is a vertex algebra, skew-symmetry for two twisted states $t_1,t_2$ reads, in the
+untwisted component, $\chnineWb(t_1,z)t_2=e^{zL_{-1}}\chnineWb(t_2,-z)t_1$ (DGM (4.9)). This identity is
+one of the inputs that reduce the twisted$\times$twisted locality to a single relation in
+Chapter~\ref{ch:10}. It is proved directly from the construction. (The file
+\leanpath{VOA/Moonshine/M8h0Skew.lean} is assigned to Chapter~\ref{ch:10}; we state the theorem here
+because it is a property of $\chnineWb$.)
+
+\begin{theorem}[Skew-symmetry of $\chnineWb$]\label{ch09:thm:skew}
+For homogeneous $t_1\in(\chnineTP)_a$, $t_2\in(\chnineTP)_b$ and every $n\in\Z$,
+\begin{equation*}
+\chnineWb(t_1)_{(n)}t_2=\sum_{i\ge0}\frac{(-1)^{n+i+1}}{i!}\,L_{-1}^{\,i}\Big(\chnineWb(t_2)_{(n+i)}t_1\Big).
+\end{equation*}
+\end{theorem}
+\begin{leancode}
+theorem TPForm_Lm1 (x y : TP) : TPForm (leechLTP x) y = TPForm x (Lp1 plusModule y)
+
+theorem leechBV_Lm1_pow (i : ℕ) (x y : SkewVP) :
+    leechBV (((leechVOAPlus.L (-1)) ^ i) x) y = leechBV x (((leechVOAPlus.L 1) ^ i) y)
+
+theorem leechWbar_skew {a b : ℤ} {t₁ t₂ : TP} (ht₁ : t₁ ∈ plusModule.weight (a : ℂ))
+    (ht₂ : t₂ ∈ plusModule.weight (b : ℂ)) (n : ℤ) :
+    leechWbarMode n t₁ t₂ = ∑ᶠ i : ℕ, (((i.factorial : ℂ)⁻¹) * negOnePow (n + i + 1)) •
+      ((leechVOAPlus.L (-1)) ^ i) (leechWbarMode (n + i) t₂ t₁)
+\end{leancode}
+(namespace \lean{VOA.Moonshine.M8h0}.)
+\begin{dictionary}
+The right side is the mode expansion of $e^{zL_{-1}}\chnineWb(t_2,-z)t_1$, exactly as in
+\eqref{ch09:eq:Wdef}; the \lean{∑ᶠ} is finite because $\chnineWb(t_2)_{(n+i)}t_1=0$ for $i$ large
+(Theorem~\ref{ch09:thm:Wbargrade}). \textbf{Restriction:} $t_1,t_2$ homogeneous of integral weight.
+This is harmless: both sides are bilinear in $(t_1,t_2)$, every vector of $\chnineTP$ is a finite sum
+of homogeneous ones, and all weights of $\chnineTP$ are integers. The two auxiliary statements are
+the adjointness $L_{-1}^t=L_1$ for $B_T$ (from invariance at $\omega$, using $L_1\omega=0$) and for
+$B_V$ (Virasoro adjointness of an \lean{InvariantForm}).
+\end{dictionary}
+
+\begin{physics}
+Skew-symmetry is the exchange symmetry of two twist fields: the OPE of $t_1$ with $t_2$ and the OPE of $t_2$ with $t_1$ describe the same correlator in different radial orderings, related by translation $e^{zL_{-1}}$ and $z\to-z$. For the untwisted output it is the bosonic exchange property of twist fields (braiding is trivial in the untwisted channel). It holds for the constructed $\overline W$ because it is the adjoint of $W$ with respect to a symmetric metric, which is one of the inputs to their mutual locality.
+\end{physics}
+
+\paragraph{Proof on paper.} Pair both sides with $\varphi\in(\chnineVP)_k$, $k=a+b-n-1$ (other weights
+pair to zero on both sides), and use separation. On the left, the adjunction gives
+$(-1)^a\sum_j\frac1{j!}B_T\big(t_2,W(L_1^jt_1)_{(2a-n-2-j)}\varphi\big)$; expanding $W$ by
+\eqref{ch09:eq:Wdef} produces $L_{-1}^l$ acting on $\varphi_{(\cdot)}L_1^jt_1$, which is moved across
+$B_T$ as $L_1^l$ (by $L_{-1}^t=L_1$), and then $\varphi_{(\cdot)}$ is moved across $B_T$ by FHL
+invariance (which brings in $L_1^r\varphi$). The result is a triple sum over $(j,l,r)$ of
+matrix elements $B_T\big(L_1^jt_1,(L_1^r\varphi)_{(\gamma)}L_1^lt_2\big)$. On the right, $L_{-1}^i$ is
+moved across $B_V$ as $L_1^i$, then the adjunction for $\chnineWb(t_2)_{(n+i)}$ and the same
+expansion give a triple sum of the same matrix elements, with the roles of $j$ and $r$ exchanged.
+After the relabelling $(j,l,r)\mapsto(r,l,j)$ the two sums agree term by term: the factorials match,
+the mode indices agree because $n=a+b-k-1$, and the signs differ by an even power of $-1$. Symmetry of
+$B_T$ is used to put $t_1,t_2$ in matching slots. \qed
+
+\begin{status}
+\lean{leechWbar_skew}: unconditional (homogeneity is part of the statement). Axioms:
+\texttt{[propext, Classical.choice, Quot.sound]} (rechecked). The corresponding relation DGM
+(4.22) is proved in Chapter~\ref{ch:10} (\lean{leechWbar_VPBlockLocal}).
+\end{status}
+
+\section{Traps, dead ends and corrected mistakes}\label{ch09:sec:deadends}
+
+For convenience we collect the recorded traps that concern this chapter.
+\begin{enumerate}
+\item \textbf{The square-zero trap} ($\chnineWb=0$): every hypothesis that the reconstruction
+theorem places on \texttt{Wbar} is satisfied by $0$, producing a non-simple VOA with the graded
+dimension of $\Vnat$. Countered by defining $\chnineWb$ as the adjoint and by
+Theorem~\ref{ch09:thm:nonzero} (Section~\ref{ch09:sec:why}).
+\item \textbf{The positive Fock form} is the wrong form: it transposes the dressing
+$\lean{DD}\,v$ to $\lean{DD}\,(-v)$. The FHL bilinear form forces $h(m)^t=-h(-m)$
+(Section~\ref{ch09:sec:fock}).
+\item \textbf{Signs on $T$ and in $\chnineWb$}: the $T$-law sign $(-1)^{\langle\alpha,\alpha\rangle/2}$
+(not $\varepsilon(\alpha,\alpha)$), the factor $(-1)^w$ in \eqref{ch09:eq:dagger}, and the non-constant
+sign $c(\alpha)$ of the lattice form are each necessary; dropping any of them breaks (4.23) in the
+numerical $E_8$ model (\texttt{Notes/M8hRoute.md}).
+\item \textbf{The library \lean{Intertwiner} is commutator-only.} It is weaker than FHL's notion
+(no $L_{-1}$-property, no Jacobi identity). The $L_{-1}$-properties of $W$ and $\chnineWb$ are proved
+separately; their full Jacobi identities are not proved and not used.
+\item \textbf{One-argument commutator formulas do not give twisted$\times$twisted locality.}
+\texttt{Notes/M8GluingPlan.md} (status after M8f) records that the formulas
+\lean{wMode_comm} and \lean{WbarMode_comm} do not imply the Borcherds identity for three twisted
+vectors (DGM (4.23)); that relation needs the triality of Chapters~\ref{ch:11}--\ref{ch:14}.
+\item \textbf{The residuals of this chapter, both closed:} \lean{hgen} (generation of $\chnineVP$,
+closed by \lean{leechPlus_generated}) and \lean{hnd} (graded nondegeneracy of $B_V$, closed by
+\lean{leechBV_gradedNondeg} without using simplicity). Both are proved in Chapter~\ref{ch:04}.
+\end{enumerate}
+
+\section{Verification record}\label{ch09:sec:verification}
+
+For this chapter, at an earlier commit (not re-run for this edition), the following probe file (in a scratch directory,
+not part of the library) was compiled with the audit-safe option recommended by the project
+(\texttt{-DmaxSynthPendingDepth=3}):
+\begin{plaincode}
+import VOA.Moonshine.M8h0Skew
+import VOA.Moonshine.Generation
+#print axioms VOA.SkewIntertwiner.wMode_comm
+#print axioms VOA.SkewIntertwiner.Wsk_local
+#print axioms VOA.SkewIntertwiner.skewIntertwiner
+#print axioms VOA.Moonshine.leechSkewIntertwiner
+#print axioms VOA.Moonshine.InvForm.fockForm_DD
+#print axioms VOA.Moonshine.InvForm.twForm_YTL
+#print axioms VOA.Moonshine.InvForm.TPForm_nondegenerate
+#print axioms VOA.Moonshine.InvForm.fhlInv_of_generates
+#print axioms VOA.Moonshine.InvForm.TPForm_fhlInv_of_generates
+#print axioms VOA.Moonshine.TPForm_fhlInv
+#print axioms VOA.Moonshine.SkewAdjoint.riesz_spec
+#print axioms VOA.Moonshine.SkewAdjoint.Wdag_comm_qp
+#print axioms VOA.Moonshine.SkewAdjoint.WbarMode_comm
+#print axioms VOA.Moonshine.SkewAdjoint.Wbar_local
+#print axioms VOA.Moonshine.leechBV_gradedNondeg
+#print axioms VOA.Moonshine.leechWbar_comm'
+#print axioms VOA.Moonshine.leechWbar_WbarComm
+#print axioms VOA.Moonshine.YnatU_YnatT_local_genuine
+#print axioms VOA.Moonshine.leechWbarMode_three_weight_two
+#print axioms VOA.Moonshine.leechWbar_ne_zero
+#print axioms VOA.Moonshine.M8h0.leechWbar_skew
+\end{plaincode}
+Command: \texttt{lake env lean -DmaxSynthPendingDepth=3 Ax09.lean}. Output: each of the 21
+declarations ``depends on axioms: [propext, Classical.choice, Quot.sound]''; exit code $0$. In
+particular none uses \lean{VOA.pbw} (the PBW theorem of Chapter~\ref{ch:L02}; formerly a project axiom, now a theorem). This run did not rebuild the library; it
+relies on the build artefacts of the aggregate \texttt{lake build} of that commit, which the project's
+build record reports green (10343 jobs, exit $0$; not re-run for this chapter). The sympy scripts mentioned in
+Section~\ref{ch09:sec:fock} were not re-run.
+
+\section{Referee's checklist}\label{ch09:sec:checklist}
+
+``Uncond.''\ means: no hypothesis that is an unestablished datum; $^\ast$ marks declarations whose
+\texttt{\#print axioms} was rechecked above (result \texttt{[propext, Classical.choice, Quot.sound]}).
+$\chnineV$, $M$ denote an arbitrary VOA and module.
+
+{\footnotesize
+\begin{longtable}{>{\raggedright\arraybackslash}p{4.4cm}>{\raggedright\arraybackslash}p{5.0cm}>{\raggedright\arraybackslash}p{2.6cm}>{\raggedright\arraybackslash}p{2.0cm}}
+\toprule
+Lean declaration & intended meaning & hypotheses & status / check\\
+\midrule
+\endhead
+\lean{Intertwiner} (library) & commutator-type intertwiner, weaker than FHL & --- & definition; Def.~\ref{ch09:def:intertwiner}\\
+\lean{Lm1}, \lean{act_Lm1} & $L_{-1}^M=\omega_{(0)}$; $[u_{(p)},L_{-1}]=-p\,u_{(p-1)}$ & weak module & uncond.; Prop.~\ref{ch09:prop:actLm1}\\
+\lean{wMode}, \lean{Wsk} & $W(t,z)\varphi=e^{zL_{-1}}Y_M(\varphi,-z)t$ & weak module & definition; Def.~\ref{ch09:def:wMode}\\
+\lean{Wsk_vacuum} & $W(t,z)\mathbf1=e^{zL_{-1}}t$ & none & uncond.; Thm.~\ref{ch09:thm:Wvac}\\
+\lean{Wsk_deriv} & $W(L_{-1}t,z)=\partial_zW(t,z)$ & none & uncond.; Thm.~\ref{ch09:thm:Wderiv}\\
+\lean{wMode_comm}$^\ast$ & commutator formula of $W$, all $m$ & $J$ past truncation & uncond.; Thm.~\ref{ch09:thm:Wcomm}\\
+\lean{Wsk_local}$^\ast$ & $Y_M(u,z_1)$, $W(t,z_2)$ local & none & uncond.; Thm.~\ref{ch09:thm:Wlocal}\\
+\lean{skewIntertwiner}$^\ast$ & $W$ as library intertwiner of type $(M;M,\chnineV)$ & ordinary module & uncond.; Def.~\ref{ch09:def:skewInt}\\
+\lean{leechWsk_*}, \lean{leechSkewIntertwiner}$^\ast$ & the above for $\chnineTP$ & none & uncond.; Thm.~\ref{ch09:thm:leechW}\\
+\lean{FHLInv}, \lean{WeightOrth} & FHL invariance at $u$; orthogonal weights & --- & definition; Def.~\ref{ch09:def:FHLInv}\\
+\lean{fhlInv_iff} & invariance $\iff$ $M\to M'$ intertwines & orth., $u$ homog. & uncond.; Thm.~\ref{ch09:thm:fhlInviff}\\
+\lean{smul_mem_interSub} & intertwined states closed under products & $u,v$ intertwined & uncond.; Thm.~\ref{ch09:thm:interSub}\\
+\lean{fhlInv_of_generates}$^\ast$ & invariance on generators $\Rightarrow$ everywhere & orth., generation, gens.\ invariant & uncond.\ (hyps by design); Thm.~\ref{ch09:thm:generates}\\
+\lean{fockForm} & negative Fock form, $c_v=-(n+\frac12)$ & --- & definition; Def.~\ref{ch09:def:fockForm}\\
+\lean{fockForm_modeT} & $h(m)^t=-h(-m)$ & none & uncond.; Thm.~\ref{ch09:thm:fockbasic}\\
+\lean{fockForm_DD}$^\ast$ & $\lean{DD}\,v\,a$ transposes to $\lean{DD}\,v\,(-a)$ & none & uncond.; Thm.~\ref{ch09:thm:DD}\\
+\lean{twForm_YTL}$^\ast$ & FHL law for $Y^T(e^\alpha)$ on $S[\theta]\otimes T$ & $T$-law \lean{hT}, lattice even, unimodular & uncond.\ given \lean{hT}; Thm.~\ref{ch09:thm:twadj}\\
+\lean{TPForm} & $B_T=(F\otimes\lean{TForm})|_{\chnineTP}$ & --- & definition; Def.~\ref{ch09:def:TPForm}\\
+\lean{TPForm_symm}, \lean{TPForm_nondegenerate}$^\ast$, \lean{TPForm_weightOrth} & symmetric, nondegenerate per weight, weight-orthogonal & none & uncond.; Thm.~\ref{ch09:thm:TPForm}\\
+\lean{TPForm_fhlInv_frameX0P}, \lean{interSub_TPForm} & invariance at $e^\beta+e^{-\beta}$ & none & uncond.; Thm.~\ref{ch09:thm:TPgen}\\
+\lean{TPForm_fhlInv_of_generates}$^\ast$ & invariance at all homogeneous $u$ & \lean{hgen} & conditional; Thm.~\ref{ch09:thm:TPinv}\\
+\lean{TPForm_fhlInv}$^\ast$ & invariance at all homogeneous $u$ & none & uncond.; Thm.~\ref{ch09:thm:TPinv}\\
+\lean{GradedNondeg}, \lean{GradedOrth}, \lean{riesz} & weightwise nondegenerate; Riesz vector & --- & definitions; Defs.~\ref{ch09:def:graded}, \ref{ch09:def:riesz}\\
+\lean{riesz_spec}$^\ast$, \lean{eq_of_form} & $B(\mathrm{riesz} f,\cdot)=f$; separation & orth., nondeg., finite support & uncond.; Thm.~\ref{ch09:thm:riesz}\\
+\lean{Wdag}, \lean{WbarMode}, \lean{Wbar} & dagger; $\chnineWb$ as Riesz vector & \lean{hO} & definitions; Defs.~\ref{ch09:def:Wdag}, \ref{ch09:def:WbarMode}\\
+\lean{form_WbarMode}, \lean{form_WbarMode_int} & adjunction DGM (4.3) & \lean{hVo}, \lean{hVnd} & uncond.\ given hyps; Thm.~\ref{ch09:thm:adj}\\
+\lean{WbarMode_mem}, \lean{WbarMode_trunc} & weights; truncation & \lean{hO} & uncond.; Thm.~\ref{ch09:thm:Wbargrade}\\
+\lean{Wbar_deriv} & $\chnineWb(L_{-1}t,z)=\partial_z\chnineWb(t,z)$ & \lean{hO} & uncond.; Thm.~\ref{ch09:thm:Wbarderiv}\\
+\lean{Wdag_comm_qp}$^\ast$ & transposed commutator, quasi-primary $u$ & $L_1u=0$ & uncond.; Thm.~\ref{ch09:thm:Wdagcomm}\\
+\lean{WbarMode_comm}$^\ast$ & commutator formula of $\chnineWb$, all $u$ & \lean{hVo,hVnd,hVinv,hMinv,hqpV} & conditional (general); Thm.~\ref{ch09:thm:Wbarcomm}\\
+\lean{Wbar_local}$^\ast$, \lean{Wbar_homCov} & locality with $Y(u)$; $L_{-1}$-covariance & same & conditional (general); Thm.~\ref{ch09:thm:Wbarlocal}\\
+\lean{leechBV} & Li's canonical form on $\chnineVP$, $(\mathbf1,\mathbf1)=1$ & --- & definition; \S\ref{ch09:sec:Wbarleech}\\
+\lean{leechWbar} & the Leech $\chnineWb$ & --- & definition; Def.~\ref{ch09:def:leechWbar}\\
+\lean{leechWbar_adj/comm/local/homCov} & Leech properties & \lean{hnd} (via \lean{include}) & conditional; Thm.~\ref{ch09:thm:leechcond}\\
+\lean{leechBV_gradedNondeg}$^\ast$ & $B_V$ nondegenerate on each $(\chnineVP)_k$ & none & uncond.; Thm.~\ref{ch09:thm:hnd}\\
+\lean{leechWbar_adj'}, \lean{leechWbar_comm'}$^\ast$, \lean{leechWbar_local'}, \lean{leechWbar_homCov'} & the Leech properties & none & uncond.; Thm.~\ref{ch09:thm:hnd}\\
+\lean{leechWbar_WbarComm}$^\ast$ & block-field hypothesis \lean{WbarComm} & none & uncond.; Thm.~\ref{ch09:thm:genuine}\\
+\lean{YnatU_YnatT_local_genuine}$^\ast$ & $Y^\natural(u)$, $Y^\natural(t)$ local on $\Vnat$ & none & uncond.; Thm.~\ref{ch09:thm:genuine}\\
+\lean{leechWbarMode_three_weight_two}$^\ast$ & $\chnineWb(t)_{(3)}t'=B_T(t',t)\mathbf1$ on weight $2$ & $t,t'$ of weight 2 & uncond.; Thm.~\ref{ch09:thm:nonzero}\\
+\lean{leechWbar_vacuum_pairing_ne_zero} & nondegenerate vacuum pairing & $t\neq0$ of weight 2 & uncond.; Thm.~\ref{ch09:thm:nonzero}\\
+\lean{leechWbar_ne_zero}$^\ast$ & $\chnineWb\neq0$ (not the trap) & none & uncond.; Thm.~\ref{ch09:thm:nonzero}\\
+\lean{M8h0.leechWbar_skew}$^\ast$ & $\chnineWb(t_1,z)t_2=e^{zL_{-1}}\chnineWb(t_2,-z)t_1$ & $t_1,t_2$ homogeneous & uncond.; Thm.~\ref{ch09:thm:skew}\\
+\bottomrule
+\end{longtable}
+}
+
+\section{Notes and references}\label{ch09:sec:notes}
+
+The intertwining operators, contragredient modules and invariant bilinear forms of this chapter are
+those of I.~B.~Frenkel, Y.-Z.~Huang and J.~Lepowsky, \emph{On axiomatic approaches to vertex operator
+algebras and modules}, Memoirs of the American Mathematical Society 104 (1993), no.~494: the
+contragredient module is \S5.2 (Theorem~5.2.1), invariant forms \S5.3, intertwining operators and
+their skew-symmetry operators $\Omega$ \S5.4--5.5. The classification of invariant bilinear forms on
+a vertex operator algebra ($\cong(V_0/L_1V_1)^*$) and the equivalence of nondegeneracy with
+simplicity are due to H.~Li, \emph{Symmetric invariant bilinear forms on vertex operator algebras},
+Journal of Pure and Applied Algebra 96 (1994), 279--297. Li's theory of local systems
+(\emph{Local systems of vertex operators, vertex superalgebras and modules}, J.\ Pure Appl.\ Algebra
+109 (1996) 143--195, arXiv:hep-th/9406185) is the conceptual background for constructing a vertex
+algebra from mutually local fields, the route taken in Chapter~\ref{ch:10}.
+
+The block form \eqref{ch09:eq:block}, the definition of $W$ by skew-symmetry (their (3.8)), of
+$\chnineWb$ as an adjoint (their (4.3)), the skew-symmetry of $\chnineWb$ (their (4.9)) and the
+reduction of locality to the six relations (4.18)--(4.23) follow L.~Dolan, P.~Goddard and
+P.~Montague, \emph{Conformal field theories, representations and lattice constructions},
+Communications in Mathematical Physics 179 (1996), 61--120, arXiv:hep-th/9410029; their earlier paper
+\emph{Conformal field theory of twisted vertex operators}, Nuclear Physics B 338 (1990), 529--601,
+treats the twisted operators directly. The Moonshine module itself, the twisted Fock space with its
+form, the space $T$ and the triality that eventually proves (4.23), are in I.~Frenkel, J.~Lepowsky and
+A.~Meurman, \emph{Vertex Operator Algebras and the Monster}, Pure and Applied Mathematics 134,
+Academic Press, 1988 (Chapters~9--13). For the mode-level conventions (generalised binomials,
+$\Res$, the module Jacobi identity in modes) the library follows T.~Gannon, \emph{Moonshine beyond
+the Monster}, Cambridge University Press, 2006, \S5.1--5.3 and Definition~6.1.9 (intertwiners).
+
+The project's own records of the work in this chapter are \texttt{Notes/M8GluingPlan.md}
+(milestones M8b, M8c and the status sections ``after M8b'', ``after M8c form part'', ``residual hgen
+CLOSED'', ``W̄ built; residual hnd'', ``hnd CLOSED''), \texttt{Notes/M8hRoute.md} (numerical
+$E_8$ model and sign controls).

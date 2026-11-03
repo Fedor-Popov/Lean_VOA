@@ -1,0 +1,2096 @@
+\chapter{Twisted modules, the twisted Fock space and the module \texorpdfstring{$T$}{T}}\label{ch:06}
+\begingroup\sloppy
+
+\providecommand{\chsixS}{S[\theta]}
+\providecommand{\chsixeps}{\varepsilon}
+
+The Moonshine module of Frenkel, Lepowsky and Meurman is built from two halves,
+\begin{equation*}
+  \Vnat \;=\; V_\Leech^{+} \;\oplus\; \bigl(V_\Leech^{T}\bigr)^{+},
+\end{equation*}
+where $V_\Leech$ is the vertex operator algebra of the Leech lattice (Chapter~\ref{ch:03}),
+$\theta$ is the lift of the lattice involution $\alpha\mapsto-\alpha$ to $V_\Leech$, $V_\Leech^+$
+is its fixed-point subalgebra (the \emph{untwisted sector}, Chapter~\ref{ch:04}), and
+$V_\Leech^T$ is a \emph{$\theta$-twisted module} for $V_\Leech$ (the \emph{twisted sector}), of
+which one keeps again the $\theta$-fixed part.  This chapter lays the foundations for the twisted
+sector.  It contains three independent pieces of mathematics, which are assembled into
+$V_\Leech^T$ in Chapters~\ref{ch:07} and~\ref{ch:08}.  The chapter documents the release of the library named in the front matter; every Lean quotation is checked by \texttt{scripts/textbook/sync.py} to occur verbatim
+(up to whitespace and comments) in the source files of that release. Checks that were run at an earlier state of the library and not re-run for this edition are marked as such.
+
+\begin{enumerate}[label=(\Roman*)]
+\item \textbf{The notion of a twisted module} (Dong--Li--Mason).  We must say precisely what it
+  means for a vector space $M$ to carry a $g$-twisted action of a vertex operator algebra $V$ for
+  an automorphism $g$ of finite order $N$.  The library's answer is the structure
+  \lean{VOA.TwistedModule}.  Its first version contained a defect: one axiom was quantified over
+  too many indices and, as a consequence, \emph{no nonzero vector space could carry a twisted
+  module structure for $N\ge 2$}.  We present the defect, the machine-checked certificate that
+  exhibits it, the repair, and the argument that the repair loses nothing.  A structurally
+  identical defect remains, unrepaired, in the super version \lean{VOA.SuperTwistedModule}.
+\item \textbf{The twisted Heisenberg algebra and its Fock space $\chsixS$.}  Twisting by $\theta$
+  turns the integer-moded free bosons $h(n)$ of the lattice theory into half-integer-moded bosons
+  $h(n+\tfrac12)$.  Their Fock space $\chsixS$ is a polynomial ring in infinitely many variables;
+  its lowest $L_0$-eigenvalue is $r/16$ (for the Leech lattice, $r=24$, this is $3/2$).
+\item \textbf{The module $T$.}  The lattice part of the twisted sector is not a group algebra of
+  $\Leech$, as in the untwisted case, but a finite-dimensional irreducible representation $T$ of an
+  \emph{extraspecial $2$-group} $2^{1+24}$, of dimension $2^{12}=4096$.  We build $T$ as the simple
+  module of a twisted group algebra $\C^\chsixeps[\Leech/2\Leech]$, prove its dimension from
+  Wedderburn--Artin, and construct on $T$ a nondegenerate \emph{symmetric} invariant bilinear form
+  with the sign law $B(e_\alpha t,t') = (-1)^{\langle\alpha,\alpha\rangle/2}B(t,e_\alpha t')$.  The
+  sign was fixed after a numerical experiment with the $E_8$ lattice ruled out a plausible
+  alternative.
+\end{enumerate}
+
+\noindent The Lean sources are:
+\begin{center}
+\footnotesize
+\begin{tabular}{>{\raggedright\arraybackslash}p{8.6cm}>{\raggedright\arraybackslash}p{5.6cm}}
+\toprule
+\leanpath{VOA/Modularity/Twisted.lean} & \lean{TwistedModule}, eigenspaces, \lean{OrdVModule.toTwisted}\\
+\leanpath{VOA/Moonshine/HeisenbergTwistedModuleDefect.lean} & the defect certificate, \lean{TwistedJacobi}\\
+\leanpath{VOA/Moonshine/TwistedHeisenberg.lean} & $\chsixS$: \lean{FockT}, \lean{modeT}, grading, $\theta$, $L_0$\\
+\leanpath{VOA/Moonshine/ExtraspecialModule.lean} & $\C^\chsixeps[L/2L]$, Wedderburn--Artin, $T$\\
+\leanpath{VOA/Moonshine/TFormAlg.lean} & anti-involutions and trace forms on $T$\\
+\leanpath{VOA/Moonshine/TFormLattice.lean} & the sign $(-1)^{Q}$, Lagrangian data\\
+\leanpath{VOA/Moonshine/TForm.lean} & the Leech Lagrangian and \lean{TForm}\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{How to read this chapter.}  Following the book's protocol, each definition and theorem
+appears four times: as mathematics, as the verbatim Lean declaration, in a \emph{fidelity check}
+(the box headed ``From the mathematics to the Lean statement'') in which every symbol and every
+hypothesis of the Lean text is decoded and compared with the mathematics, and in a \emph{status}
+box saying what the machine verified.  Proofs are explained on paper; we do not describe the Lean
+proof scripts.  Where a Lean proof body is a one-line composition of earlier results we show it,
+because then the proof term is itself informative.
+
+\paragraph{Trust model, recalled.}  The library contains no project
+axiom (\lean{VOA.pbw}, formerly its only axiom, is now a theorem; Chapter~\ref{ch:L02}).  Nothing in
+this chapter uses it.  When we say a declaration
+is ``\texttt{\#print axioms}-clean'' we mean that Lean reports that it depends only on
+\lean{propext}, \lean{Classical.choice} and \lean{Quot.sound}, the three standard axioms of Lean's
+logic.  For this chapter we re-ran \texttt{\#print axioms} on twenty-four headline declarations
+against the current build of the library, in the audit mode the project prescribes,
+\begin{plaincode}
+lake env lean -DmaxSynthPendingDepth=3 ax06.lean
+\end{plaincode}
+and every one returned exactly
+\begin{plaincode}
+depends on axioms: [propext, Classical.choice, Quot.sound]
+\end{plaincode}
+A clean axiom list does not make a theorem unconditional: hypotheses stated in the theorem are not
+``axioms''.  We therefore always list the hypotheses as well.
+
+%======================================================================
+\section{Why twisted modules}\label{ch06:sec:why}
+
+\subsection{The physical picture: strings on an orbifold}
+
+A vertex operator algebra $V$ is the algebra of chiral fields of a two-dimensional conformal field
+theory.  A state $u\in V$ corresponds to a field $Y(u,z)=\sum_{n\in\Z}u_{(n)}z^{-n-1}$ on the
+punctured plane, and the fact that only integer powers of $z$ occur says that $Y(u,z)$ is
+single-valued: transporting $z$ once around the origin, $z\mapsto e^{2\pi i}z$, returns the same
+operator.
+
+Suppose $g$ is an automorphism of $V$ of finite order $N$.  Physically $g$ is a symmetry of the
+theory, and one may form the \emph{orbifold} theory in which only $g$-invariant states are kept.
+Consistency of the orbifold (modular invariance of its torus partition function) forces one to
+add new sectors: states created by ``twist fields'' around which the fields are \emph{not}
+single-valued, but come back transformed by $g$:
+\begin{equation}\label{ch06:eq:monodromy}
+  Y_M(g u, z) \;=\; Y_M\bigl(u, e^{2\pi i} z\bigr)\qquad\text{(monodromy around a twist field).}
+\end{equation}
+If $g u = e^{-2\pi i j/N}u$, then \eqref{ch06:eq:monodromy} says that $Y_M(u,z)$ picks up the
+phase $e^{-2\pi i j/N}$ around the origin, so the exponents of $z$ in $Y_M(u,z)$ must lie in
+$\tfrac{j}{N}+\Z$ (because $z^{a}\mapsto e^{2\pi i a}z^a$; the sign conventions are such that the
+two phases agree).  Writing $Y_M(u,z)=\sum_r u_{(r)}z^{-r-1}$, this means $r\in -\tfrac jN+\Z$.
+This is the defining feature of a twisted module: \emph{fractional modes}.  For the Moonshine
+module, $g=\theta$ has order $N=2$; the Heisenberg fields $h(z)$ satisfy $\theta h=-h$ (so $j=1$)
+and become half-integer moded in the twisted sector.  This is the ``twisted boson'' of string
+theory on the orbifold $\mathbb R^{24}/\Leech$ divided by $\pm1$: the string is closed only up to
+the reflection $x\mapsto -x$, so its oscillators have half-integral frequencies.
+
+\subsection{The mathematical picture}
+
+Algebraically, a $g$-twisted module is to the automorphism $g$ what an ordinary module is to the
+identity.  The axioms (the Jacobi identity in particular) are those of an ordinary module, with the
+delta-function that encodes locality modified by a fractional power that absorbs the monodromy.
+They were formulated by Frenkel--Lepowsky--Meurman for the case at hand ($g=\theta$, $N=2$) and in
+general by Dong, Li and Mason.  We now develop them.
+
+%======================================================================
+\section{Fractional modes and the twisted Jacobi identity}\label{ch06:sec:dlm}
+
+\subsection{Setting}
+
+Throughout, $V$ is a vertex operator algebra over $\C$ in the sense of the library (the structure
+\lean{VertexOperatorAlgebra}, Definition~\ref{l03:def:VOA}): $V$ has a vacuum $\mathbf 1$, a conformal
+vector $\omega$ with $\omega_{(1)}=L_0$, and products $u_{(n)}v$ for $n\in\Z$.  In Lean the $n$-th
+product is written \lean{W.smul u n v} $:=$ \lean{mode (W.Y u) n v}, where
+\lean{W : VertexOperatorAlgebra 𝒱} (Definition~\ref{l03:def:smulT},
+\leanpath{VOA/Core/VertexAlgebra.lean}), with \lean{mode f n = f (-n - 1)}
+(Definition~\ref{l01:def:mode}, \leanpath{VOA/Foundations/FormalCalculus.lean}): the library
+stores a formal series $f(z)=\sum_k f_k z^{k}$ as the function $k\mapsto f_k$, and the mode
+$u_{(n)}$ is the coefficient of $z^{-n-1}$.  One consequence of the vacuum axiom is used below:
+$\mathbf 1_{(n)}v=\delta_{n,-1}v$ (Lean: \lean{PreVertexAlgebra.smul_vacuum_left}).
+
+\begin{definition}[Automorphism]\label{ch06:def:aut}
+An \emph{automorphism} of $V$ is a linear bijection $g:V\to V$ with $g(u_{(n)}v)=(gu)_{(n)}(gv)$
+for all $u,v,n$, $g\mathbf 1=\mathbf 1$ and $g\omega=\omega$.
+\end{definition}
+In Lean this is the structure \lean{VOA.Aut} (\leanpath{VOA/Core/Automorphism.lean}), quoted
+verbatim and decoded in Definition~\ref{l04:def:aut}: a $\C$-linear bijection \lean{toLinearEquiv}
+(\lean{≃ₗ[ℂ]}) with fields \lean{map_smul'}, \lean{map_vacuum}, \lean{map_omega}; it is literally
+Definition~\ref{ch06:def:aut}.
+
+\begin{physics}
+An automorphism of $V$ is a symmetry of the chiral algebra: a transformation of the fields that preserves all operator product expansions, the identity operator, and the stress tensor $\omega$, hence commutes with $L_0$ and the Virasoro algebra. It is the data one needs to gauge: the finite group $\langle g\rangle$ acts on the theory, and the orbifold keeps only the $g$-invariant states. The requirement $g\omega=\omega$ says the symmetry is internal (it does not move the worldsheet), which is why the twisted sectors below are again conformal theories.
+\end{physics}
+
+\subsection{Eigenspaces}
+
+Let $g$ have order dividing $N\ge1$ and put $\xi_N=e^{2\pi i/N}$.  Since $g^N=1$ and $\C$ contains
+the $N$-th roots of unity, $g$ is diagonalisable and
+\begin{equation*}
+  V=\bigoplus_{j=0}^{N-1}V^j,\qquad V^j=\{v\in V : gv=\xi_N^{-j}v\}.
+\end{equation*}
+\begin{definition}[Twisted eigenspace]\label{ch06:def:eigen}
+For $g\in\Aut(V)$, $N\in\N$ and $j\in\N$, $V^j=\ker(g-e^{-2\pi i j/N})$.
+\end{definition}
+\noindent File \leanpath{VOA/Modularity/Twisted.lean}.
+\begin{leancode}
+noncomputable def Aut.twistedEigenspace (g : Aut W) (N : ℕ) (j : ℕ) : Submodule ℂ 𝒱 :=
+  Module.End.eigenspace (g.toLinearEquiv : Module.End ℂ 𝒱)
+    (Complex.exp (-(2 * (Real.pi : ℂ) * Complex.I * j) / N))
+\end{leancode}
+\begin{dictionary}
+\lean{Module.End.eigenspace f μ} is Mathlib's $\ker(f-\mu)$, a subspace (\lean{Submodule ℂ 𝒱}).
+The eigenvalue is $\exp(-2\pi i j/N)=\xi_N^{-j}$, exactly as in the definition.  The index $j$ is a
+natural number, not a residue mod $N$; $V^j=V^{j+N}$ automatically, since the eigenvalue depends
+only on $j$ mod $N$.  Nothing in the definition requires $g^N=1$: if that fails, $V$ need not be the
+sum of these eigenspaces, but every statement below only speaks about vectors that lie in some
+$V^j$, so this is harmless.  In Lean, division by $0$ returns $0$, so at $N=0$ the ``eigenspace'' is
+the fixed space $\ker(g-1)$; no result of this book applies the definition at $N=0$.  The vacuum lies
+in $V^0$ for every $g$ (Lean: \lean{Aut.vacuum_mem_twistedEigenspace_zero}), because $g\mathbf
+1=\mathbf 1$.
+\end{dictionary}
+
+\begin{physics}
+The space $V^j$ is the set of fields carrying charge $j$ under the $\mathbb Z_N$ symmetry $g$, in the convention that $g$ acts by the phase $e^{-2\pi i j/N}$. Charge $j$ is exactly the monodromy that a field of $V^j$ picks up when transported around a twist field, so the decomposition $V=\bigoplus_jV^j$ sorts fields by how they behave in the twisted sector. The vacuum has charge $0$, as it must: the identity operator is single-valued.
+\end{physics}
+
+\subsection{The generating form of the twisted Jacobi identity}
+
+\begin{definition}[Twisted module, informal]\label{ch06:def:dlm}
+Let $g\in\Aut(V)$ with $g^N=1$.  A (weak) $g$-twisted $V$-module is a vector space $M$ with a
+linear map
+\begin{equation*}
+  u\longmapsto Y_M(u,z)=\sum_{r\in\frac1N\Z}u_{(r)}z^{-r-1},\qquad u_{(r)}\in\End(M),
+\end{equation*}
+such that: (a) $Y_M(\mathbf 1,z)=\mathrm{id}_M$; (b) for $u\in V$, $x\in M$, $u_{(r)}x=0$ for $r$
+large (lower truncation); (c) for $u\in V^j$, $u_{(r)}=0$ unless $r\in-\tfrac jN+\Z$ (the
+\emph{support condition}); (d) for $u\in V^j$ and $v\in V$ the \emph{twisted Jacobi identity}
+\begin{multline}\label{ch06:eq:jacobi-gen}
+  z_0^{-1}\delta\!\Bigl(\frac{z_1-z_2}{z_0}\Bigr)Y_M(u,z_1)Y_M(v,z_2)
+  -z_0^{-1}\delta\!\Bigl(\frac{z_2-z_1}{-z_0}\Bigr)Y_M(v,z_2)Y_M(u,z_1)\\
+  = z_2^{-1}\Bigl(\frac{z_1-z_0}{z_2}\Bigr)^{j/N}\delta\!\Bigl(\frac{z_1-z_0}{z_2}\Bigr)
+     Y_M\bigl(Y(u,z_0)v,z_2\bigr)
+\end{multline}
+holds, where $\delta(x)=\sum_{n\in\Z}x^n$ and binomials $(a-b)^c$ are expanded in nonnegative
+powers of the second variable.
+\end{definition}
+
+\begin{physics}
+This is the definition of a twisted sector of the orbifold. A $g$-twisted module is the space of states on a circle around which every field $Y(u,z)$ returns to $Y(gu,z)$, i.e. $Y_M(gu,z)=Y_M(u,e^{2\pi i}z)$; such states are created by a twist field inserted at the origin. A field of charge $j$ then has expansion exponents in $\tfrac jN+\mathbb Z$, so the modes are fractional (multiples of $1/N$), while the fusion identity acquires the factor $((z_1-z_0)/z_2)^{j/N}$ that records the branch cut running from the twist field. For $N=1$ this reduces to the ordinary periodic (Neveu--Schwarz-type, untwisted) sector.
+\end{physics}
+
+The factor $\bigl(\frac{z_1-z_0}{z_2}\bigr)^{j/N}$ is the only difference from an ordinary
+module.  Its purpose is bookkeeping of exponents.  On the left, the powers of $z_1$ that occur are
+the exponents $-r-1$ of $Y_M(u,z_1)$, which by (c) lie in $\tfrac jN+\Z$.  On the right, the delta
+function contributes only integral powers of $z_1$; multiplying by $(z_1-z_0)^{j/N}$ shifts them
+into $\tfrac jN+\Z$, so that both sides live in the same space of formal series.  This is the
+algebraic shadow of the monodromy \eqref{ch06:eq:monodromy}.  When $N=1$ the factor is $1$ and
+\eqref{ch06:eq:jacobi-gen} is the Jacobi identity of an ordinary module.
+
+\subsection{The mode form}
+
+Lean has no formal series in fractional powers, so the library states the Jacobi identity as an
+identity between \emph{coefficients}.  We now derive that coefficient identity from
+\eqref{ch06:eq:jacobi-gen}, carefully, because the derivation is what explains the hypothesis
+$N\mid k+j$ of the library.  Write $a=j/N$ and fix $u\in V^j$, $v\in V$.  By the support condition
+(c), $Y_M(u,z_1)=\sum_{p\in-a+\Z}u_{(p)}z_1^{-p-1}$, while $Y_M(v,z_2)=\sum_{q\in\frac1N\Z}
+v_{(q)}z_2^{-q-1}$ and $Y(u,z_0)v=\sum_{p\in\Z}(u_{(p)}v)z_0^{-p-1}$ (integral modes in $V$).
+Fix $\ell\in\Z$ and $r,s\in\frac1N\Z$, and compare the coefficients of
+$z_0^{-\ell-1}z_1^{-r-1}z_2^{-s-1}$ on the two sides.
+
+\paragraph{Step 1: the first term on the left.}  Expanding the delta function and then the binomial
+in nonnegative powers of $z_2$,
+\begin{equation*}
+  z_0^{-1}\delta\Bigl(\frac{z_1-z_2}{z_0}\Bigr)=\sum_{n\in\Z}(z_1-z_2)^nz_0^{-n-1}
+  =\sum_{n\in\Z}\sum_{i\ge0}(-1)^i\binom ni z_1^{n-i}z_2^{i}z_0^{-n-1}.
+\end{equation*}
+The coefficient of $z_0^{-\ell-1}$ selects $n=\ell$.  Multiplying by
+$Y_M(u,z_1)Y_M(v,z_2)=\sum_{p,q}u_{(p)}v_{(q)}z_1^{-p-1}z_2^{-q-1}$, the power of $z_1$ is
+$\ell-i-p-1$ and that of $z_2$ is $i-q-1$; equating them with $-r-1$ and $-s-1$ gives $p=\ell+r-i$,
+$q=s+i$.  So the coefficient is $\sum_{i\ge0}(-1)^i\binom\ell i\,u_{(\ell+r-i)}v_{(s+i)}$.
+
+\paragraph{Step 2: the second term on the left.}  Similarly
+$z_0^{-1}\delta(\frac{z_2-z_1}{-z_0})=\sum_n(-1)^n(z_2-z_1)^nz_0^{-n-1}$, now expanded in powers of
+$z_1$: $(z_2-z_1)^\ell=\sum_{i\ge0}(-1)^i\binom\ell i z_2^{\ell-i}z_1^{i}$.  Against
+$Y_M(v,z_2)Y_M(u,z_1)$ this gives $p=r+i$, $q=\ell+s-i$, and with the overall minus sign the
+coefficient is $-\sum_{i\ge0}(-1)^i\binom\ell i(-1)^\ell v_{(\ell+s-i)}u_{(r+i)}$.
+
+\paragraph{Step 3: the right side.}  Here
+\begin{equation*}
+  z_2^{-1}\Bigl(\frac{z_1-z_0}{z_2}\Bigr)^{a}\delta\Bigl(\frac{z_1-z_0}{z_2}\Bigr)
+  =\sum_{n\in\Z}(z_1-z_0)^{n+a}z_2^{-n-a-1},\qquad
+  (z_1-z_0)^{n+a}=\sum_{i\ge0}(-1)^i\binom{n+a}{i}z_1^{n+a-i}z_0^{i},
+\end{equation*}
+the binomial series in nonnegative powers of $z_0$ (convergent as a formal series, because the
+exponent of $z_1$ is merely shifted).  Against $Y_M(Y(u,z_0)v,z_2)=\sum_{p\in\Z}\sum_t
+(u_{(p)}v)_{(t)}z_0^{-p-1}z_2^{-t-1}$: the power of $z_0$ is $i-p-1$, so $p=\ell+i$; the power of
+$z_1$ is $n+a-i$, so we need
+\begin{equation}\label{ch06:eq:cosetcond}
+  n+a-i=-r-1,\qquad\text{i.e.}\qquad n=i-1-r-a\in\Z .
+\end{equation}
+\emph{This has an integer solution $n$ if and only if $r\in-a+\Z$}, i.e.\ $Nr\equiv -j\pmod N$.
+When it does, the power of $z_2$ gives $t=-n-a-1+s=r+s-i$, and the coefficient is
+$(-1)^i\binom{-r-1+i}{i}=\binom ri$ (the elementary identity
+$(-1)^i\binom{-x-1+i}{i}=\binom xi$, valid for every $x$).  So the right side contributes
+$\sum_{i\ge0}\binom ri(u_{(\ell+i)}v)_{(r+s-i)}$.
+
+\paragraph{Conclusion.}  For $r$ on the support coset $-\frac jN+\Z$, comparing coefficients gives
+the \emph{mode form} (Dong--Li--Mason; FLM for $N=2$)
+\begin{equation}\label{ch06:eq:jacobi-mode}
+  \sum_{i\ge0}(-1)^i\binom{\ell}{i}\Bigl(u_{(\ell+r-i)}v_{(s+i)}
+     -(-1)^{\ell}v_{(\ell+s-i)}u_{(r+i)}\Bigr)
+  =\sum_{i\ge0}\binom{r}{i}\bigl(u_{(\ell+i)}v\bigr)_{(r+s-i)},
+\end{equation}
+with the \emph{generalised binomial coefficient} $\binom{r}{i}=r(r-1)\cdots(r-i+1)/i!$ for
+$r\in\Q$.  Both sums are finite when applied to a vector $x\in M$: on the left, the factors
+$v_{(s+i)}x$ and $u_{(r+i)}x$ vanish for $i$ large by truncation; on the right, $u_{(\ell+i)}v=0$
+for $i$ large because $V$ itself is truncated.  Conversely, the coefficients with $r$ on the coset
+are \emph{all} the coefficients of \eqref{ch06:eq:jacobi-gen} that can be nonzero, so
+\eqref{ch06:eq:jacobi-mode} for all such $r$ (and all $\ell$, $s$) is equivalent to
+\eqref{ch06:eq:jacobi-gen}.
+
+\paragraph{What happens off the coset.}  For $r\notin-\frac jN+\Z$, the left side of the
+coefficient comparison is $0$: in Steps~1 and 2 the operators $u_{(\ell+r-i)}$ and $u_{(r+i)}$ have
+indices off the coset and vanish by (c).  The right side is also $0$: by
+\eqref{ch06:eq:cosetcond} no term of the expansion has the power $z_1^{-r-1}$ at all.  So the
+generating identity says only ``$0=0$'' there.  But the \emph{formula} on the right of
+\eqref{ch06:eq:jacobi-mode}, evaluated at such an $r$, is not this coefficient: it is the
+expression $\sum_i\binom ri(u_{(\ell+i)}v)_{(r+s-i)}$, which never occurred in the expansion and
+can be nonzero.  Requiring \eqref{ch06:eq:jacobi-mode} off the coset therefore adds new,
+unjustified relations; this is the whole story of \S\ref{ch06:sec:repair}.  In the library's
+encoding $r=k/N$, ``$r$ on the coset'' is exactly \texttt{(k + j) \% N = 0}, i.e.\ $N\mid k+j$.
+\textbf{Honesty note:} this derivation, and the equivalence of the mode form with the generating
+form, are argued here on paper; the library has no fractional formal series and does not prove the
+equivalence in Lean.  It takes the mode form as the definition.
+
+Three special cases are worth keeping in mind.
+\begin{itemize}
+\item $\ell=0$: since $\binom0i=\delta_{i,0}$, only $i=0$ survives on the left, which becomes
+  $u_{(r)}v_{(s)}-v_{(s)}u_{(r)}$; this is the \emph{commutator formula}
+  $[u_{(r)},v_{(s)}]=\sum_{i\ge0}\binom ri(u_{(i)}v)_{(r+s-i)}$.  This is what one uses in
+  practice; for the twisted Heisenberg algebra (\S\ref{ch06:sec:heis}) it is the whole content.
+  Take $u=h_a$, $v=h_b$, two of the weight-one Heisenberg states, with $\theta h_a=-h_a$, so
+  $h_a\in V^1$ for $N=2$ and $r\in\frac12+\Z$ is on the coset.  In the Heisenberg VOA
+  (Chapter~\ref{ch:03}) $h_{a(0)}h_b=0$, $h_{a(1)}h_b=\langle h_a,h_b\rangle\mathbf 1=
+  \delta_{ab}\mathbf 1$, and $h_{a(i)}h_b=0$ for $i\ge2$ (it would have weight $1-i<0$).  So the
+  right side has only the terms $i=0$ and $i=1$:
+  \begin{equation*}
+    [h_{a(r)},h_{b(s)}]=\binom r0(h_{a(0)}h_b)_{(r+s)}+\binom r1(h_{a(1)}h_b)_{(r+s-1)}
+    =0+r\,\delta_{ab}\,\mathbf 1_{(r+s-1)}=r\,\delta_{ab}\,\delta_{r+s,0}\,\mathrm{id}_M,
+  \end{equation*}
+  using $\mathbf 1_{(t)}=\delta_{t,-1}\mathrm{id}_M$.  These are exactly the twisted Heisenberg
+  relations \eqref{ch06:eq:twheis}, now with half-integral $r,s$.
+\item $N=1$: \eqref{ch06:eq:jacobi-mode} is the Borcherds identity of an ordinary module.
+\item $u=\mathbf 1$ (so $j=0$, $r\in\Z$): both sides collapse using $\mathbf 1_{(n)}=\delta_{n,-1}$
+  and the identity is a tautology.  We shall see that it is \emph{not} a tautology if one allows
+  $r\notin\Z$.
+\end{itemize}
+
+%======================================================================
+\section{The library's \texorpdfstring{\lean{TwistedModule}}{TwistedModule}}\label{ch06:sec:tm}
+
+\subsection{Auxiliary definitions}
+
+The Lean statement of \eqref{ch06:eq:jacobi-mode} uses three small functions.  We give them
+verbatim.
+\begin{leancode}
+def negOnePow (n : ℤ) : ℂ := if Even n then 1 else -1
+\end{leancode}
+(\leanpath{VOA/Foundations/Expansion.lean}): $(-1)^n$ for an integer $n$.
+\begin{leancode}
+noncomputable def gBinom (n : ℤ) (k : ℕ) : ℂ :=
+  (∏ i ∈ Finset.range k, ((n : ℂ) - (i : ℂ))) / (k.factorial : ℂ)
+
+noncomputable def cbz (n k : ℤ) : ℂ := if 0 ≤ k then gBinom n k.toNat else 0
+\end{leancode}
+(\leanpath{VOA/Foundations/FormalCalculus.lean}, \leanpath{VOA/Foundations/Substitution.lean}):
+\lean{gBinom n k} is $\binom nk=n(n-1)\cdots(n-k+1)/k!$ for $n\in\Z$, $k\in\N$ (negative upper
+indices allowed: $\binom{-1}{k}=(-1)^k$), and \lean{cbz n k} extends it to $k\in\Z$ by $0$ for
+$k<0$ (\lean{k.toNat} is $k$ viewed as a natural number, used only when $k\ge0$).
+\begin{leancode}
+noncomputable def cbinom (x : ℂ) (i : ℕ) : ℂ :=
+  (∏ k ∈ Finset.range i, (x - k)) / (i.factorial : ℂ)
+\end{leancode}
+(\leanpath{VOA/Modularity/Twisted.lean}): $\binom xi$ for complex $x$, used at $x=r\in\frac1N\Z$.
+
+Finally, $\sum^{\mathrm f}$ (Lean \lean{∑ᶠ}, Mathlib's \lean{finsum}) is the sum of a family with
+finite support.  \emph{Convention:} if the support is infinite, Mathlib defines \lean{finsum} to be
+$0$.  For the sums in the Jacobi identity the supports are finite whenever the truncation axioms
+hold (as explained after \eqref{ch06:eq:jacobi-mode}), so the convention never bites in a genuine
+module: in the field \lean{jacobi} below, the left sum has finite support because
+$v_{(s+i)}x=0$ and $u_{(r+i)}x=0$ for large $i$ (truncation in $M$) and $\binom\ell i=0$ for
+$i<0$, and the right sum because $u_{(\ell+i)}v=0$ for large $i$ (truncation in $V$).  We flag it because a referee must know that ``$\sum^{\mathrm f}=\dots$'' is not
+automatically a statement about a convergent infinite sum.
+
+\subsection{The definition}
+
+The library encodes the fractional mode $u_{(k/N)}$ by its integer numerator $k$.
+
+\begin{definition}[$g$-twisted module, as in the library]\label{ch06:def:tm}
+Let $g\in\Aut(V)$ and $N\in\N$.  A $g$-twisted $V$-module structure on a complex vector space
+$M$ consists of a linear map $u\mapsto(k\mapsto u_{(k/N)})$ from $V$ to $\Z$-indexed families of
+endomorphisms of $M$ and a family of subspaces $(M_\alpha)_{\alpha\in\C}$ such that
+\begin{enumerate}[label=(\roman*)]
+\item $\mathbf 1_{(k/N)}=\delta_{k,-N}\,\mathrm{id}_M$;
+\item for all $u,x$ there is $K$ with $u_{(k/N)}x=0$ for all $k\ge K$;
+\item for $u\in V^j$: $u_{(k/N)}=0$ whenever $N\nmid k+j$;
+\item for $u\in V^j$, $v\in V$, $x\in M$, $\ell,k,m\in\Z$ \textbf{with $N\mid k+j$}, the identity
+  \eqref{ch06:eq:jacobi-mode} holds at $r=k/N$, $s=m/N$, applied to $x$;
+\item $M=\bigoplus_\alpha M_\alpha$ (internal direct sum), $L_0=\omega_{(1)}$ acts on $M_\alpha$ as
+  $\alpha$, each $M_\alpha$ is finite-dimensional, and $\operatorname{Re}\alpha$ is bounded below on
+  the $\alpha$ with $M_\alpha\ne0$.
+\end{enumerate}
+\end{definition}
+
+\begin{leancode}
+structure TwistedModule (g : Aut W) (N : ℕ) (M : Type u) [AddCommGroup M] [Module ℂ M] where
+  /-- The fractional modes: `YM u k = u₍k/N₎`. -/
+  YM : 𝒱 →ₗ[ℂ] (ℤ → Module.End ℂ M)
+  /-- `Y_M(𝟙,z) = id`: only the mode `r = −1`, i.e. `k = −N`, survives. -/
+  vacuum_YM : ∀ k : ℤ, YM W.vacuum k = if k = -(N : ℤ) then 1 else 0
+  /-- Lower truncation. -/
+  truncation : ∀ (u : 𝒱) (x : M), ∃ K : ℤ, ∀ k : ℤ, K ≤ k → YM u k x = 0
+  /-- **5.3.22a**: for `u ∈ 𝒱ʲ` the modes are supported on `k ≡ −j (mod N)`. -/
+  support : ∀ (j : ℕ) (u : 𝒱), u ∈ g.twistedEigenspace N j →
+    ∀ k : ℤ, (k + j) % (N : ℤ) ≠ 0 → YM u k = 0
+  /-- **5.3.22b — the twisted Jacobi identity** (mode form, Dong–Li–Mason): for `u ∈ 𝒱ʲ`,
+  `v ∈ 𝒱`, `k, m ∈ ℤ` (fractional modes `k/N`, `m/N`) and `ℓ ∈ ℤ`,
+  `Σᶠ_i (−1)^i C(ℓ,i)·[u₍(ℓN+k−iN)/N₎ v₍(m+iN)/N₎ x − (−1)^ℓ v₍(ℓN+m−iN)/N₎ u₍(k+iN)/N₎ x]`
+  `= Σᶠ_i C(k/N, i)·(u₍ℓ₊ᵢ₎v)₍(k+m−iN)/N₎ x`.
+  The index `k` is restricted to the support coset `k ≡ −j (mod N)` of `u`, as in DLM.  Without
+  this restriction the field is unsatisfiable on any nonzero `M` once `N ≥ 2` (certificate:
+  `u = v = 𝟙`, `ℓ = −1`, `k = 1`, `m = −N−1` gives `0 = x`; see
+  `VOA.jacobiAllIndices_eq_zero` in `VOA/Moonshine/HeisenbergTwistedModuleDefect.lean`). -/
+  jacobi : ∀ (j : ℕ) (u : 𝒱), u ∈ g.twistedEigenspace N j → ∀ (v : 𝒱) (x : M) (ℓ k m : ℤ),
+    (k + j) % (N : ℤ) = 0 →
+    (∑ᶠ i : ℤ, (negOnePow i * cbz ℓ i) •
+        (YM u (ℓ * N + k - i * N) (YM v (m + i * N) x)
+          - negOnePow ℓ • YM v (ℓ * N + m - i * N) (YM u (k + i * N) x)))
+      = ∑ᶠ i : ℕ, cbinom ((k : ℂ) / N) i • YM (W.smul u (ℓ + i) v) (k + m - i * N) x
+  /-- The `ℂ`-grading. -/
+  weight : ℂ → Submodule ℂ M
+  isInternal : DirectSum.IsInternal weight
+  /-- `L₀ = ω₍₁₎` (mode `k = N`) acts on `M_α` by `α`. -/
+  L0_weight : ∀ (α : ℂ) (x : M), x ∈ weight α → YM W.conformalVector N x = α • x
+  finrank : ∀ α, FiniteDimensional ℂ (weight α)
+  boundedBelow : ∃ B : ℝ, ∀ α : ℂ, weight α ≠ ⊥ → B ≤ α.re
+\end{leancode}
+(\lean{VOA.TwistedModule}, \leanpath{VOA/Modularity/Twisted.lean}.)
+
+\begin{dictionary}
+\textbf{The carrier of modes.}  \lean{YM : 𝒱 →ₗ[ℂ] (ℤ → Module.End ℂ M)} is a $\C$-linear map from
+$V$ to functions $\Z\to\End_\C(M)$.  The documented reading is \lean{YM u k} $=u_{(k/N)}$.  Note
+that this is the \emph{mode itself}, not the coefficient of a power of $z$: unlike the untwisted
+\lean{mode} convention there is no shift $-n-1$ here.  The field is $\sum_k u_{(k/N)}z^{-k/N-1}$.
+
+\textbf{(i) \lean{vacuum_YM}.}  $\mathbf 1_{(k/N)}=1$ if $k=-N$ (i.e.\ $r=-1$) and $0$ otherwise:
+$Y_M(\mathbf 1,z)=\mathbf 1_{(-1)}z^0=\mathrm{id}$.  Same as (a).
+
+\textbf{(ii) \lean{truncation}.}  Same as (b), quantifiers $\forall u\,\forall x\,\exists K\,
+\forall k\ge K$; $K$ may depend on $u$ and $x$, as it should.
+
+\textbf{(iii) \lean{support}.}  \texttt{(k + j) \% (N : ℤ) ≠ 0} says that the remainder of $k+j$ on
+division by $N$ is nonzero, i.e.\ $N\nmid k+j$, i.e.\ $k/N\notin-\tfrac jN+\Z$; for such $k$ the
+whole operator \lean{YM u k} is $0$.  Same as (c).
+
+\textbf{(iv) \lean{jacobi}.}  Substitute $r=k/N$, $s=m/N$.  The $u$-index
+\lean{ℓ * N + k - i * N} is $N(\ell+r-i)$, the $v$-index \lean{m + i * N} is $N(s+i)$, the second
+term's indices \lean{ℓ * N + m - i * N} and \lean{k + i * N} are $N(\ell+s-i)$ and $N(r+i)$; the
+coefficient \lean{negOnePow i * cbz ℓ i} is $(-1)^i\binom\ell i$ (zero for $i<0$, so summing over
+$i\in\Z$ is summing over $i\ge0$).  On the right, \lean{cbinom ((k : ℂ) / N) i} $=\binom ri$,
+\lean{W.smul u (ℓ + i) v} $=u_{(\ell+i)}v$ (the product in $V$, integral index), and the index
+\lean{k + m - i * N} is $N(r+s-i)$.  So the Lean identity is \eqref{ch06:eq:jacobi-mode} applied to
+$x$, term by term.  Hypotheses: $u\in V^j$ (\lean{u ∈ g.twistedEigenspace N j}); $v$
+\emph{arbitrary} (it need not be an eigenvector; this is the intended generality, as the
+identity is linear in $v$); $\ell,m$ arbitrary; and \texttt{(k + j) \% (N : ℤ) = 0}, i.e.\ $r$ in the
+support coset.  This last hypothesis is the 2026-10-06 repair (\S\ref{ch06:sec:repair}).
+
+\textbf{(v) the grading.}  \lean{weight : ℂ → Submodule ℂ M} is the family $(M_\alpha)$;
+\lean{DirectSum.IsInternal weight} is Mathlib's statement that the natural map
+$\bigoplus_\alpha M_\alpha\to M$ is an isomorphism.  \lean{L0_weight} uses the mode numerator
+$k=N$, i.e.\ $\omega_{(N/N)}=\omega_{(1)}=L_0$ (note $\omega\in V^0$, so this index is on the
+support coset).  Together with \lean{isInternal} this forces $M_\alpha$ to be the full
+$L_0$-eigenspace of eigenvalue $\alpha$.  \lean{finrank} says each $M_\alpha$ is
+finite-dimensional, \lean{boundedBelow} that $\{\operatorname{Re}\alpha : M_\alpha\neq 0\}$ is
+bounded below; $\bot$ is the zero subspace.
+
+\textbf{Same, stronger or weaker?}  The structure matches Definition~\ref{ch06:def:dlm} plus the
+grading conditions of an ordinary (not merely weak) twisted module in the sense of
+Dong--Li--Mason, with the Jacobi identity in its mode form.  Three remarks.  (1) The structure does
+not itself demand $g^N=1$ or $N>0$; those are hypotheses of the theorems that consume it (the
+proposition \lean{Conjecture_5_3_10} in the same file adds \lean{0 < N} and \lean{g ^ N = 1}), and
+the Moonshine instances have $N=2$ and $\theta^2=1$.  (2) The mode form is \emph{taken as the
+definition}; the equivalence of \eqref{ch06:eq:jacobi-mode} (on the support coset) with the
+generating identity \eqref{ch06:eq:jacobi-gen} is the classical computation sketched above, argued
+on paper, not formalised.  (3) No $L_{-1}$-derivative axiom is included; it is not part of the DLM
+definition either, where it is a consequence of the other axioms.
+
+\textbf{Could it be vacuous?}  It \emph{was}: before the repair, (iv) was required for every $k$,
+and no nonzero $M$ satisfied it for $N\ge2$ (\S\ref{ch06:sec:repair}).  After the repair it is
+satisfiable by genuine objects: the library constructs the twisted Heisenberg module
+\lean{Moonshine.heisTwistedModule r : TwistedModule (sigma1 r) 2 (FockT r)} (Chapter~\ref{ch:07})
+and the twisted Leech module \lean{Moonshine.LatticeTwisted.leechTwistedModule}, of type
+\lean{TwistedModule leechTheta 2 (FockT 24 ⊗[ℂ] Rep (cocMat leech) _)} (Chapter~\ref{ch:08}), on
+nonzero spaces; and every ordinary module is a twisted module for $g=1$, $N=1$
+(Proposition~\ref{ch06:prop:totwisted}).
+\end{dictionary}
+
+\begin{physics}
+The repaired structure is the precise statement that a twisted sector is a state space on which the modes of a charge-$j$ field are supported only on the coset $-\tfrac jN+\mathbb Z$: the support condition is the monodromy, and the coset hypothesis in \lean{jacobi} says that only mode numbers compatible with that monodromy ever appear in the operator product expansion. The grading by $L_0$ with finite-dimensional, bounded-below eigenspaces is the usual physical requirement of a Hamiltonian with a gapped, discrete spectrum bounded from below on the twisted circle. The fractional $L_0$ eigenvalues (here multiples of $1/N$ up to a shift) are the scaling weights of twist-field excitations. This is a restatement of standard orbifold lore (Dong--Li--Mason, FLM); the physical picture motivates the axioms but certifies nothing.
+\end{physics}
+
+\begin{status}
+\lean{TwistedModule} is a definition (a structure), so there is nothing to prove; its
+satisfiability is witnessed by the instances just named.  The only change to an upstream
+definition made by the Moonshine work is the addition of the hypothesis
+\texttt{(k + j) \% (N : ℤ) = 0} to the field \lean{jacobi} (Section~\ref{ch06:sec:repair}).
+\end{status}
+
+\begin{remark}[Twisted traces]
+The same file defines \lean{TwistedModule.weightBlock} (the block of an operator on $M_\alpha$) and
+\lean{twistedTrace T φ}, the formal series $\sum_e \tr(\varphi|_{M_{e+c/24}})\,q^{e}$, i.e.\
+$q^{-c/24}\tr_M\varphi\, q^{L_0}$; and the proposition \lean{Conjecture_5_3_10} (modularity of
+twisted traces), which is \emph{stated and never asserted}.  None of these is used in the
+Moonshine construction.
+\end{remark}
+
+\subsection{Ordinary modules are twisted modules for the identity}
+
+Recall (Definition~\ref{l12:def:ordmodule}) that an ordinary module \lean{OrdVModule W M} has a field map
+\lean{YM : 𝒱 →ₗ[ℂ] (End ℂ M)⟦z^±⟧} (formal series, read through \lean{mode}) with the Borcherds
+identity in mode form
+\begin{leancode}
+  jacobi : ∀ (u v : 𝒱) (x : M) (ℓ m n : ℤ),
+    (∑ᶠ i : ℤ, (negOnePow i * cbz ℓ i) •
+        (mode (YM u) (ℓ + m - i) (mode (YM v) (n + i) x)
+          - negOnePow ℓ • mode (YM v) (ℓ + n - i) (mode (YM u) (m + i) x)))
+      = ∑ᶠ i : ℤ, cbz m i • mode (YM (W.smul u (ℓ + i) v)) (m + n - i) x
+\end{leancode}
+together with vacuum, truncation and grading fields of the same shape
+(\leanpath{VOA/Modules/WeakModule.lean}).
+
+\begin{proposition}\label{ch06:prop:totwisted}
+Every ordinary $V$-module is a $1$-twisted module with $N=1$, with $u_{(k/1)}=u_{(k)}$ and the same
+grading.
+\end{proposition}
+\noindent File \leanpath{VOA/Modularity/Twisted.lean}.
+\begin{leancode}
+noncomputable def OrdVModule.toTwisted {M : Type u} [AddCommGroup M] [Module ℂ M]
+    (Nm : OrdVModule W M) : TwistedModule (1 : Aut W) 1 M where
+\end{leancode}
+\begin{dictionary}
+This is a \emph{construction} (\lean{def}) whose type is the statement: from \lean{Nm} it produces
+a \lean{TwistedModule (1 : Aut W) 1 M}.  Its modes are \lean{fun u k => mode (Nm.YM u) k}, i.e.\
+$u_{(k)}$; vacuum, truncation and grading are copied.  For $N=1$ the support condition is vacuous
+(every integer is $\equiv 0 \bmod 1$) and the coset hypothesis of \lean{jacobi} is always true, so
+the twisted Jacobi identity must hold for all $k$; it is the module identity with $m:=k$,
+$n:=m$, after observing $\binom{k/1}{i}=\binom ki$ and that the sum over $i\in\Z$ weighted by
+\lean{cbz} equals the sum over $i\in\N$.  So the construction is exactly the proposition.
+\end{dictionary}
+
+\begin{physics}
+For $g=1$ there is no twist: the boundary condition around the circle is periodic and the twisted sector is the ordinary (untwisted) sector, all modes are integral, and the support condition is empty. The proposition says that the twisted-module formalism contains ordinary representation theory as its trivial-twist case, so it genuinely generalises the notion of a state space of the CFT.
+\end{physics}
+\begin{proof}[Proof on paper]
+Identify $u_{(k/1)}$ with $u_{(k)}$; the twisted axioms with $N=1$ are then literally the module
+axioms, the only bookkeeping being that $\binom{m}{i}=0$ for $i<0$.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms} \lean{VOA.OrdVModule.toTwisted}: \lean{[propext, Classical.choice, Quot.sound]}.
+Unconditional.
+\end{status}
+
+%======================================================================
+\section{The defect and its repair}\label{ch06:sec:repair}
+
+\subsection{What went wrong}
+
+Until 2026-10-06 the field \lean{jacobi} read exactly as above \emph{without} the line
+\texttt{(k + j) \% (N : ℤ) = 0 →}.  That is, the mode identity \eqref{ch06:eq:jacobi-mode} was
+required for every $r=k/N\in\frac1N\Z$, including those off the support coset of $u$.  As explained
+after \eqref{ch06:eq:jacobi-mode}, such instances are not coefficients of the generating identity.
+They are not merely redundant: they are false in every nonzero module.
+
+To make this a theorem, the library isolates the old field as a predicate on a mode map.
+\begin{definition}\label{ch06:def:allindices}
+For a linear map $Y_M:V\to(\Z\to\End M)$ write $\mathrm{JacobiAllIndices}(g,N,Y_M)$ for the
+statement: for all $j$, $u\in V^j$, $v\in V$, $x\in M$ and all $\ell,k,m\in\Z$, identity
+\eqref{ch06:eq:jacobi-mode} holds at $r=k/N$, $s=m/N$, applied to $x$.
+\end{definition}
+\noindent File \leanpath{VOA/Moonshine/HeisenbergTwistedModuleDefect.lean}.
+\begin{leancode}
+def JacobiAllIndices (g : Aut W) (N : ℕ) {M : Type*} [AddCommGroup M] [Module ℂ M]
+    (YM : 𝒱 →ₗ[ℂ] (ℤ → End ℂ M)) : Prop :=
+  ∀ (j : ℕ) (u : 𝒱), u ∈ g.twistedEigenspace N j → ∀ (v : 𝒱) (x : M) (ℓ k m : ℤ),
+    (∑ᶠ i : ℤ, (negOnePow i * cbz ℓ i) •
+        (YM u (ℓ * N + k - i * N) (YM v (m + i * N) x)
+          - negOnePow ℓ • YM v (ℓ * N + m - i * N) (YM u (k + i * N) x)))
+      = ∑ᶠ i : ℕ, cbinom ((k : ℂ) / N) i • YM (W.smul u (ℓ + i) v) (k + m - i * N) x
+\end{leancode}
+\begin{dictionary}
+Character for character this is the body of the current \lean{TwistedModule.jacobi} with the
+coset hypothesis deleted (compare the two displays).  It is a \lean{Prop} about an arbitrary mode
+map \lean{YM}, so it can be studied without the rest of the structure.  (\lean{End ℂ M} is
+\lean{Module.End ℂ M}, the endomorphisms, with the namespace opened.)
+\end{dictionary}
+
+\begin{physics}
+This predicate is the old, overly strong form of the fusion identity in which the OPE relation is demanded even for mode numbers that cannot occur in a twisted sector (those off the monodromy coset). Physically such mode numbers are simply absent from the field, so demanding a relation for them is demanding a constraint with no counterpart in the correlation functions; it is a bookkeeping error, not a different theory.
+\end{physics}
+
+\begin{theorem}[Dead-end certificate]\label{ch06:thm:defect}
+Let $N\ge2$, and let $Y_M:V\to(\Z\to\End M)$ be linear with $\mathbf 1_{(k/N)}=\delta_{k,-N}$.  If
+$\mathrm{JacobiAllIndices}(g,N,Y_M)$ holds, then $M=0$: every $x\in M$ is zero.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/HeisenbergTwistedModuleDefect.lean}.
+\begin{leancode}
+theorem jacobiAllIndices_eq_zero {g : Aut W} {N : ℕ} (hN : 2 ≤ N) {M : Type*}
+    [AddCommGroup M] [Module ℂ M] (YM : 𝒱 →ₗ[ℂ] (ℤ → End ℂ M))
+    (hvac : ∀ k : ℤ, YM W.vacuum k = if k = -(N : ℤ) then 1 else 0)
+    (hJ : JacobiAllIndices g N YM) (x : M) : x = 0
+\end{leancode}
+\begin{dictionary}
+Hypotheses: \lean{hN} ($N\ge2$); \lean{hvac} (the vacuum axiom (i), verbatim the field
+\lean{vacuum_YM}); \lean{hJ} (the old Jacobi field).  Conclusion: \lean{x = 0} for the arbitrary
+\lean{x : M}.  No truncation, support or grading hypotheses are needed, so the theorem applies
+\emph{a fortiori} to every structure of the old shape.  Consequence: under the old definition,
+\lean{TwistedModule g N M} with $N\ge2$ forced $M=0$; in particular the intended Moonshine object
+on \lean{FockT r} could not exist, and every theorem of the form ``for every twisted module with
+$N\ge 2$ \dots'' was about the zero space only.  The Lean statement is exactly the informal
+theorem.
+\end{dictionary}
+
+\begin{physics}
+Heuristically this is the observation that a fractional-moded field times an off-coset mode can still land on an allowed mode, producing a spurious relation that kills every state; in the CFT the corresponding terms are multiplied by vanishing coefficients of the field expansion and are absent. The theorem is a statement about the axiom system, not about a physical twisted sector: no physical twisted theory violates it, since in a true twisted sector those instances do not arise.
+\end{physics}
+\begin{proof}[Proof on paper]
+Apply the identity with $u=v=\mathbf 1$ (which lies in $V^0$, as $g\mathbf 1=\mathbf 1$), $j=0$,
+$\ell=-1$, $k=1$ and $m=-N-1$; that is, $r=1/N$ and $s=-1-1/N$.  Note $r\notin\Z$: we are off the
+support coset of $\mathbf 1$.
+
+\emph{Left side.}  The $i$-th term is a difference of two products of vacuum modes.  The first
+product is $\mathbf 1_{(k_1/N)}\mathbf 1_{(k_2/N)}x$ with outer numerator
+$k_1=(-1)N+1-iN=1-(i+1)N$ (and $k_2=-N-1+iN$); the second is
+$\mathbf 1_{(k_3/N)}\mathbf 1_{(k_4/N)}x$ with inner numerator $k_4=1+iN$ (and $k_3=-2N-1-iN$).  By
+the vacuum hypothesis $\mathbf 1_{(k'/N)}\ne 0$ only for $k'=-N$.  But $k_1=-N$ would give $iN=1$,
+and $k_4=-N$ would give $(i+1)N=-1$; both are impossible for an integer $i$, because $N\ge2$ does
+not divide $\pm1$.  So in each product one factor is the zero operator, every term vanishes, and
+the left side is $0$.
+
+\emph{Right side.}  $\mathbf 1_{(\ell+i)}\mathbf 1=\mathbf 1_{(i-1)}\mathbf 1=\delta_{i,0}\mathbf 1$.
+Only $i=0$ survives, with coefficient $\binom{1/N}{0}=1$, and the remaining operator is
+$\mathbf 1_{((1+(-N-1))/N)}=\mathbf 1_{(-N/N)}=\mathrm{id}$.  So the right side is $x$.
+
+Hence $0=x$.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms} \lean{VOA.jacobiAllIndices_eq_zero}: \lean{[propext, Classical.choice, Quot.sound]}.
+Unconditional beyond its stated hypotheses (which are the point).  File:
+\leanpath{VOA/Moonshine/HeisenbergTwistedModuleDefect.lean}.
+\end{status}
+
+\begin{warning}
+\textbf{Recorded dead end (found 2026-10-06).}  The old \lean{TwistedModule.jacobi} was
+unsatisfiable on every nonzero $M$ once $N\ge2$.  Certificate: $u=v=\mathbf 1$, $\ell=-1$, $k=1$,
+$m=-N-1$ gives $0=x$ (Theorem~\ref{ch06:thm:defect}).  It was discovered when the project first
+tried to build an \emph{instance} for the twisted Heisenberg algebra: one of the identities to be
+proved was false.  The general lesson for the referee: a structure whose axioms are written in mode
+form can be inconsistent in a way that no amount of ``the definition looks like the textbook''
+reveals; one needs a nontrivial instance, or a certificate of inconsistency.
+\end{warning}
+
+\subsection{The repaired identity}
+
+\begin{definition}\label{ch06:def:twjac}
+$\mathrm{TwistedJacobi}(g,N,Y_M)$: identity \eqref{ch06:eq:jacobi-mode} for all $j$, $u\in V^j$,
+$v$, $x$, $\ell$, $m$, and all $k$ \emph{with} $N\mid k+j$.
+\end{definition}
+\begin{leancode}
+def TwistedJacobi (g : Aut W) (N : ℕ) {M : Type*} [AddCommGroup M] [Module ℂ M]
+    (YM : 𝒱 →ₗ[ℂ] (ℤ → End ℂ M)) : Prop :=
+  ∀ (j : ℕ) (u : 𝒱), u ∈ g.twistedEigenspace N j → ∀ (v : 𝒱) (x : M) (ℓ k m : ℤ),
+    (k + j) % (N : ℤ) = 0 →
+    (∑ᶠ i : ℤ, (negOnePow i * cbz ℓ i) •
+        (YM u (ℓ * N + k - i * N) (YM v (m + i * N) x)
+          - negOnePow ℓ • YM v (ℓ * N + m - i * N) (YM u (k + i * N) x)))
+      = ∑ᶠ i : ℕ, cbinom ((k : ℂ) / N) i • YM (W.smul u (ℓ + i) v) (k + m - i * N) x
+\end{leancode}
+
+\begin{physics}
+This is the correct fusion (Jacobi) identity of a twisted sector, written in modes: it restricts the OPE of a charge-$j$ field with another field to those fractional mode numbers $k/N$ that the monodromy permits. The commutator case $\ell=0$ gives the twisted version of the current algebra, with commutator $[u_{(r)},v_{(s)}]=\sum_i\binom ri(u_{(i)}v)_{(r+s-i)}$, whose binomial coefficients with fractional $r$ are the effect of the branch cut.
+\end{physics}
+\begin{proposition}\label{ch06:prop:twjac}
+The Jacobi field of every \lean{TwistedModule} is $\mathrm{TwistedJacobi}$.
+\end{proposition}
+\begin{leancode}
+theorem twistedJacobi_of_twistedModule {g : Aut W} {N : ℕ} {M : Type u} [AddCommGroup M]
+    [Module ℂ M] (T : TwistedModule g N M) : TwistedJacobi g N T.YM :=
+  fun j u hu v x ℓ k m hk => T.jacobi j u hu v x ℓ k m hk
+\end{leancode}
+\begin{dictionary}
+The proof term (shown) passes all arguments to \lean{T.jacobi}: the predicate and the field are
+literally the same formula.  The predicate exists so that later files can state ``this mode map
+satisfies the twisted Jacobi identity'' before the rest of a \lean{TwistedModule} has been
+assembled.  Conversely, a mode map with \lean{TwistedJacobi} and the other fields gives a
+\lean{TwistedModule}; there is no hidden extra condition.
+\end{dictionary}
+
+\begin{physics}
+This says that the physical identity of the twisted sector is exactly the repaired mode identity: the predicate that later files check for a candidate mode map is the one actually carried by every twisted module. It is a consistency statement about definitions, with no further physical content.
+\end{physics}
+\begin{status}
+\texttt{\#print axioms} \lean{VOA.twistedJacobi_of_twistedModule}: \lean{[propext, Classical.choice,
+Quot.sound]}.  Unconditional.
+\end{status}
+
+\subsection{Why the restriction loses nothing}\label{ch06:sec:nothinglost}
+
+A referee should ask: by weakening an axiom, did the library make the notion of twisted module too
+weak, so that a later theorem about twisted modules is now about a larger, unintended class?
+The answer is no, for two reasons.
+
+\emph{First, the restricted identity is the full content of the generating identity.}  The
+generating identity \eqref{ch06:eq:jacobi-gen} for $u\in V^j$ is an equality of formal series in
+$z_0,z_1,z_2$ whose $z_1$-exponents correspond to $r\in-\frac jN+\Z$.  An equality of formal series
+is the equality of all coefficients, and the coefficients that occur are precisely those with $r$
+on the coset.  So ``\eqref{ch06:eq:jacobi-mode} for all $r$ on the coset and all $\ell$, $s$'' is
+equivalent to \eqref{ch06:eq:jacobi-gen}.  This is exactly how Dong--Li--Mason (and FLM for $N=2$)
+state the mode identity.  Hence the repaired \lean{TwistedModule} is the textbook notion.
+
+\emph{Second, the excluded instances are not consequences of anything.}  For $r$ off the coset,
+the left side of \eqref{ch06:eq:jacobi-mode} vanishes identically by the support condition (every
+term contains a mode $u_{(\ell+r-i)}$ or $u_{(r+i)}$ with index off the coset).  The right side,
+however, involves $(u_{(n)}v)_{(r+s-i)}$.  If $v\in V^{j'}$ and $s$ is \emph{off} the coset of $v$,
+then $r+s$ may land \emph{on} the coset of $u_{(n)}v\in V^{j+j'}$, and the right side can be
+nonzero.  This is precisely what happens in the certificate ($u=v=\mathbf 1$, $r$ and $s$ both off
+$\Z$, $r+s=-1\in\Z$).  In the generating identity those terms come multiplied by coefficients of
+$Y_M(v,z_2)$ that vanish, so no such relation is implied.  The excluded instances therefore assert
+a relation that the intended objects do not satisfy; demanding them strengthened the definition to
+inconsistency.
+
+Finally, the repair is minimal: one hypothesis added, the ordinary-module case untouched
+(Proposition~\ref{ch06:prop:totwisted}), and the old form kept in the library
+(\lean{JacobiAllIndices}) together with its refutation.  The equivalence with the generating form
+is argued on paper here; it is not a Lean theorem.
+
+\begin{warning}
+\textbf{Same defect, not repaired: \lean{SuperTwistedModule}.}  The super ($\Z/2$-graded) twisted
+module structure \lean{SuperTwistedModule} in \leanpath{VOA/Modules/SuperTwistedModule.lean} has a
+field
+\begin{leancode}
+  jacobi : ∀ {p q : ZMod 2} (j : ℕ) (u : 𝒱),
+    u ∈ g.twistedEigenspace N j → u ∈ W.parity p →
+    ∀ (w : 𝒱), w ∈ W.parity q → ∀ (x : M) (ℓ k m : ℤ),
+    (∑ᶠ i : ℤ, (negOnePow i * cbz ℓ i) •
+        (YM u (ℓ * N + k - i * N) (YM w (m + i * N) x)
+          - (koszul p q * negOnePow ℓ) •
+            YM w (ℓ * N + m - i * N) (YM u (k + i * N) x))) =
+      ∑ᶠ i : ℕ, fractionalBinom ((k : ℂ) / N) i •
+        YM (W.smul u (ℓ + i) w) (k + m - i * N) x
+\end{leancode}
+quantified over \emph{every} $k$, with no coset hypothesis (its support field uses the opposite
+sign convention, \texttt{(k - j) \% (N : ℤ) ≠ 0}).  The same choice $u=w=\mathbf 1$ (even, $p=q=0$,
+Koszul sign $1$), $\ell=-1$, $k=1$, $m=-N-1$ gives $0=x$ by the identical computation, so for
+$N\ge2$ no nonzero module satisfies it.  This certificate is argued on paper; no Lean theorem
+states it for \lean{SuperTwistedModule}.  The name occurs in eleven files of the library (its own
+file included).  \textbf{Any theorem whose hypotheses include a \lean{SuperTwistedModule} with
+$N\ge 2$ may be vacuously true.}  The repair is a decision left to the maintainers.  The Moonshine
+construction does not use \lean{SuperTwistedModule}.
+\end{warning}
+
+%======================================================================
+\section{The twisted Heisenberg algebra and its Fock space}\label{ch06:sec:heis}
+
+\subsection{From integer to half-integer modes}
+
+Recall from Chapter~\ref{ch:03} the rank-$r$ Heisenberg vertex operator algebra: it is generated by
+$r$ free bosons $h_i(z)=\sum_{n\in\Z}h_i(n)z^{-n-1}$, $i=1,\dots,r$, with
+$[h_i(m),h_j(n)]=m\,\delta_{ij}\delta_{m+n,0}$ (we use the standard form $\delta_{ij}$ on
+$\C^r$).  The lift $\theta$ of $-1$ acts by $h_i\mapsto-h_i$, so $h_i\in V^1$ for $N=2$, and in a
+$\theta$-twisted module the support condition forces $h_i(z)$ to have modes $h_i(r)$ with
+$r\in\frac12+\Z$.  The commutator formula (the case $\ell=0$ of \eqref{ch06:eq:jacobi-mode},
+worked out after it) gives
+\begin{equation}\label{ch06:eq:twheis}
+  [h_i(r),h_j(s)] \;=\; r\,\delta_{ij}\,\delta_{r+s,0},\qquad r,s\in\tfrac12+\Z .
+\end{equation}
+\begin{definition}[Twisted Heisenberg algebra]\label{ch06:def:twheis}
+The \emph{$\theta$-twisted Heisenberg algebra} $\hat{\mathfrak h}[-1]$ of rank $r$ is the Lie
+algebra with basis $h_i(r)$ ($1\le i\le r$, $r\in\frac12+\Z$) and a central element $c$, with
+$[h_i(r),h_j(s)]=r\delta_{ij}\delta_{r+s,0}c$.  It has no zero mode: there is no momentum, so no
+lattice charge can be measured in the twisted sector.
+\end{definition}
+
+\begin{physics}
+This is the oscillator algebra of the twisted boson. A free boson $h(z)$ with $\theta h=-h$ is antiperiodic around the twist field, $h(e^{2\pi i}z)=-h(z)$, so its mode expansion runs over half-integers $h(z)=\sum_{r\in\frac12+\mathbb Z}h(r)z^{-r-1}$ with $[h(r),h(s)]=r\delta_{r+s,0}$. There is no zero mode: an antiperiodic boson has no conserved momentum, because the string coordinate $x\to-x$ is identified, which is why no lattice charge can be measured in the twisted sector.
+\end{physics}
+Its canonical representation is the Fock space: the \emph{annihilation operators} $h_i(n+\frac12)$,
+$n\ge 0$, kill a vacuum vector, and the \emph{creation operators} $h_i(-n-\frac12)$ act freely.
+Because creation operators commute among themselves, the Fock space is a polynomial ring.
+\begin{definition}[Twisted Fock space]\label{ch06:def:fockT}
+$\chsixS=S(\hat{\mathfrak h}[-1]^-)=\C[x_{n,i}: n\in\N,\ 1\le i\le r]$, where $x_{n,i}$ stands for
+$h_i(-n-\frac12)\mathbf 1$; the vacuum is the polynomial $1$; $h_i(-n-\frac12)$ acts as
+multiplication by $x_{n,i}$ and $h_i(n+\frac12)$ acts as $(n+\frac12)\,\partial/\partial x_{n,i}$.
+\end{definition}
+
+\begin{physics}
+$\chsixS$ is the Hilbert space of the antiperiodic (half-integer moded) bosons: states are built from the vacuum by creation operators of frequencies $\tfrac12,\tfrac32,\ldots$, exactly the Fock space of $r$ independent harmonic oscillators of half-integral frequency. The vacuum polynomial $1$ is the twist-field ground state (without the zero-point shift, which is accounted for by $L_0$ below), and a monomial in the $x_{n,i}$ is a multi-particle state of oscillator quanta.
+\end{physics}
+The factor $n+\frac12$ is forced by \eqref{ch06:eq:twheis}: $[(n+\frac12)\partial_{x},x]=n+\frac12$.
+\emph{Physically}, $x_{n,i}$ is one quantum of the $i$-th oscillator of frequency $n+\frac12$, and a
+monomial is a multi-particle state.
+
+\subsection{The Lean model}
+
+\begin{leancode}
+abbrev FockT (r : ℕ) : Type := MvPolynomial (ℕ × Fin r) ℂ
+\end{leancode}
+\begin{leancode}
+noncomputable def vacT (r : ℕ) : FockT r := 1
+\end{leancode}
+\begin{leancode}
+def varT {r : ℕ} (i : Fin r) (k : ℤ) : ℕ × Fin r := (((|k| - 1) / 2).toNat, i)
+\end{leancode}
+\begin{leancode}
+noncomputable def mulXT {r : ℕ} (v : ℕ × Fin r) : Module.End ℂ (FockT r) :=
+  Algebra.lmul ℂ (FockT r) (X v)
+\end{leancode}
+\begin{leancode}
+noncomputable def pderivT {r : ℕ} (v : ℕ × Fin r) : Module.End ℂ (FockT r) :=
+  (pderiv v : Derivation ℂ (FockT r) (FockT r)).toLinearMap
+\end{leancode}
+\begin{leancode}
+noncomputable def modeT (r : ℕ) (i : Fin r) (k : ℤ) : Module.End ℂ (FockT r) :=
+  if k % 2 = 0 then 0
+  else if k < 0 then mulXT (varT i k)
+  else ((k : ℂ) / 2) • pderivT (varT i k)
+\end{leancode}
+(namespace \lean{VOA.TwistedHeisenberg}, \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.)
+
+\begin{dictionary}
+\textbf{\lean{FockT r}.}  \lean{MvPolynomial σ ℂ} is the polynomial ring over $\C$ in variables
+indexed by $\sigma$; here $\sigma=\N\times\{0,\dots,r-1\}$ (\lean{Fin r} is the type of the $r$
+numbers $0,\dots,r-1$, so the colour index runs from $0$, not $1$).  The variable \lean{X (n, i)}
+is $x_{n,i}$ of Definition~\ref{ch06:def:fockT}.  It is an \lean{abbrev}, so it is the polynomial
+ring itself, with its vector-space structure.
+
+\textbf{Odd-integer indexing.}  \lean{modeT r i k} is the mode $h_i(k/2)$.  Only odd $k$ are
+meaningful (they give $k/2\in\frac12+\Z$).  \lean{varT i k} is the variable with index
+$n=(|k|-1)/2$: for $k=-(2n+1)$ it is the variable created by $h_i(-n-\frac12)$, for $k=2n+1$ the
+variable differentiated by $h_i(n+\frac12)$.  \lean{mulXT v} is multiplication by $X_v$;
+\lean{pderivT v} is $\partial/\partial X_v$.  For odd $k<0$, \lean{modeT} is multiplication by
+$x_{n,i}$; for odd $k>0$ it is $\frac k2\,\partial/\partial x_{n,i}=(n+\frac12)\partial_{x_{n,i}}$.
+Both agree with Definition~\ref{ch06:def:fockT}.
+
+\textbf{Even $k$: a junk value.}  For even $k$ (integral modes), \lean{modeT} returns $0$.  This is
+a convention, not a theorem: the twisted Heisenberg algebra has no integral modes, and the value
+$0$ is exactly what the support condition (iii) of a $\theta$-twisted module demands for
+$u=h_i\in V^1$ at $k$ even (\texttt{(k + 1) \% 2 ≠ 0}).  So in the twisted module of
+Chapter~\ref{ch:07} the even modes must be $0$, and the convention is the correct one.  This also
+matches \lean{TwistedModule.YM u k} $=u_{(k/N)}$ with $N=2$.  (One could instead restrict $k$ to odd integers by a subtype; that would complicate every
+statement that adds or negates mode indices, and the junk-value convention is equivalent because it
+coincides with what the support condition forces.)
+\end{dictionary}
+\begin{status}
+These are definitions.  Lemmas \lean{modeT_even}, \lean{modeT_neg}, \lean{modeT_pos},
+\lean{modeT_creation} ($h_i(-(2n+1)/2)p=x_{n,i}p$) and \lean{modeT_annihilation}
+($h_i((2n+1)/2)p=\frac{2n+1}2\partial_{x_{n,i}}p$) restate the three cases; all proved,
+unconditional.
+\end{status}
+
+\subsection{The commutation relations}
+
+\begin{theorem}\label{ch06:thm:modeTcomm}
+For odd integers $k,l$ and colours $i,j$,
+$[h_i(k/2),h_j(l/2)]=\frac k2\,\delta_{ij}\,\delta_{k+l,0}\,\mathrm{id}$ on $\chsixS$.
+\end{theorem}
+\begin{leancode}
+theorem modeT_comm (r : ℕ) (i j : Fin r) {k l : ℤ} (hk : Odd k) (hl : Odd l) :
+    modeT r i k * modeT r j l - modeT r j l * modeT r i k
+      = (if i = j ∧ k + l = 0 then (k : ℂ) / 2 else 0) • LinearMap.id
+\end{leancode}
+\begin{dictionary}
+Products of endomorphisms (\lean{*}) are compositions, so the left side is the commutator.
+\lean{LinearMap.id} is the identity operator; the scalar is $k/2$ exactly when $i=j$ and $k+l=0$,
+i.e.\ $r=k/2$, $s=l/2=-r$.  This is \eqref{ch06:eq:twheis} with $c=1$.  Hypotheses: $k,l$ odd;
+they are necessary, because for even $k$ the junk value $0$ would make the left side $0$ while the
+right side would not vanish at $k=-l\ne 0$ even.  Same as the textbook statement.
+\end{dictionary}
+
+\begin{physics}
+This is the canonical commutation relation of the antiperiodic boson, the half-integral analogue of $[\alpha_m,\alpha_n]=m\delta_{m+n,0}$. It encodes the double-pole OPE $h(z)h(w)\sim 1/(z-w)^2$ in the presence of the twist field: the singular part is unchanged, only the mode numbers are shifted to $\tfrac12+\mathbb Z$. The oscillators are independent, one family of half-integer frequencies per colour.
+\end{physics}
+\begin{proof}[Proof on paper]
+Four cases by the signs of $k$ and $l$.  Two creation operators are multiplications and commute.
+Two annihilation operators are multiples of partial derivatives and commute.  For one creation
+$x_{v}$ and one annihilation $\frac l2\partial_{w}$, the Leibniz rule gives
+$[\partial_w,x_v]=\delta_{vw}$, and $v=w$ happens precisely when $i=j$ and $|k|=|l|$, i.e.\ $k=-l$;
+the scalar is $\frac l2\cdot(-1)=\frac k2$ or $\frac k2\cdot 1$ according to the order.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms} \lean{VOA.TwistedHeisenberg.modeT_comm}: \lean{[propext, Classical.choice,
+Quot.sound]}.  Unconditional.
+\end{status}
+
+\begin{proposition}[Vacuum and cyclicity]\label{ch06:prop:vacT}
+Every positive mode kills the vacuum, and $\chsixS$ is spanned by creation words applied to the
+vacuum.
+\end{proposition}
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+theorem modeT_vacT (r : ℕ) (i : Fin r) {k : ℤ} (hk : 0 < k) : modeT r i k (vacT r) = 0
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+noncomputable def creationWordT (r : ℕ) (l : List (ℕ × Fin r)) : Module.End ℂ (FockT r) :=
+  (l.map fun v => modeT r v.2 (-(2 * v.1 + 1))).prod
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+theorem span_creationWordT_vacT (r : ℕ) :
+    Submodule.span ℂ (Set.range fun l => creationWordT r l (vacT r)) = ⊤
+\end{leancode}
+\begin{dictionary}
+\lean{creationWordT r [(n₁,i₁),…,(nₘ,iₘ)]} is the composite
+$h_{i_1}(-n_1-\frac12)\cdots h_{i_m}(-n_m-\frac12)$ (a list product of operators; the empty
+list gives the identity).  \lean{Submodule.span ℂ S = ⊤} says the linear span of $S$ is the whole
+space.  So the theorem states that the vectors $h_{i_1}(-n_1-\frac12)\cdots\mathbf 1$ span
+$\chsixS$; in polynomial language, monomials span the polynomial ring.  The first statement holds
+for every $k>0$, odd or even (for even $k$ trivially, by the junk value).
+\end{dictionary}
+
+\begin{physics}
+The first statement is the defining property of a ground state: positive-frequency (annihilation) modes kill the twist-field vacuum, which is the lowest-energy state of the twisted sector. The second says that every state is a finite excitation of this vacuum by creation operators, so the Fock space is the irreducible oscillator module on the twist-field ground state, with no other primary states in the oscillator sector.
+\end{physics}
+\begin{status}
+Both proved, unconditional (the span is generated because each creation word on $1$ is a monomial).
+\end{status}
+
+\subsection{The \texorpdfstring{$L_0$}{L0}-grading and the vacuum weight \texorpdfstring{$r/16$}{r/16}}
+
+\paragraph{The physics of $r/16$.}  In the untwisted Heisenberg theory the vacuum has
+$L_0=0$.  In the twisted sector the vacuum energy is shifted.  A heuristic computation: $L_0$ is
+$\sum_i\sum_{n\ge0}h_i(-n-\frac12)h_i(n+\frac12)$ plus a normal-ordering constant, and the
+constant is the zero-point energy of $r$ oscillators of frequencies $n+\frac12$,
+$\frac r2\sum_{n\ge 0}(n+\frac12)$, regularised by the Hurwitz zeta function:
+$\zeta(-1,\tfrac12)=-\tfrac12B_2(\tfrac12)=\tfrac1{24}$, giving $\frac r{48}$; the untwisted
+regularised value is $\frac r2\zeta(-1)=-\frac r{24}$.  Measured from the untwisted vacuum, the
+shift is $\frac r{48}+\frac r{24}=\frac r{16}$.  FLM obtain the same constant rigorously from the
+twisted vertex operator of $\omega$ (the operator $\Delta_z$ of their Chapter~9), and in this
+library the identification is proved in Chapter~\ref{ch:07}, where the twisted field of $\omega$
+has zero mode \lean{L0T}.  For the Leech lattice ($r=24$), $r/16=3/2$: the twisted ground states
+have weight $\frac32$; since $\theta$ will act on them by $-1$, none survive in $\Vnat$, which is
+one reason $\Vnat_1=0$.
+
+\paragraph{The grading.}  Give $x_{n,i}$ \emph{doubled} weight $2n+1$ (so that weights stay in
+$\N$); a monomial has doubled weight the sum of those of its variables; and the doubled weight $d$
+corresponds to $L_0$-eigenvalue $d/2+r/16$.
+
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+def wT {r : ℕ} : ℕ × Fin r → ℕ := fun v => 2 * v.1 + 1
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+def gradingT (r d : ℕ) : Submodule ℂ (FockT r) := weightedHomogeneousSubmodule ℂ wT d
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+def degSetT (r d : ℕ) : Set ((ℕ × Fin r) →₀ ℕ) := {m | Finsupp.weight wT m = d}
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+def levelT (r d : ℕ) : ℚ := (d : ℚ) / 2 + (r : ℚ) / 16
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+noncomputable def weightT (r : ℕ) (q : ℚ) : Submodule ℂ (FockT r) :=
+  ⨆ (d : ℕ) (_ : levelT r d = q), gradingT r d
+\end{leancode}
+\begin{dictionary}
+\lean{weightedHomogeneousSubmodule ℂ w d} is Mathlib's space of polynomials all of whose monomials
+$\prod X_v^{m_v}$ have weighted degree $\sum_v m_v w(v)=d$.  An exponent vector is a finitely
+supported function $m:\sigma\to\N$ (Lean \lean{σ →₀ ℕ}), and \lean{Finsupp.weight wT m} is
+$\sum_v m_v\,\mathrm{wT}(v)$.  So \lean{gradingT r d} is the span of monomials of doubled weight
+$d$, \lean{degSetT r d} the set of their exponent vectors.  \lean{levelT r d} is $d/2+r/16\in\Q$.
+\lean{weightT r q} is the supremum (sum) of the \lean{gradingT r d} over all $d$ with
+$d/2+r/16=q$; since $d\mapsto d/2+r/16$ is injective there is at most one such $d$, so
+\lean{weightT r q} is $\chsixS_d$ if $q=d/2+r/16$ and $0$ otherwise (\lean{weightT_levelT},
+\lean{weightT_eq_bot}).  The index $q$ is rational, whereas \lean{TwistedModule.weight} is indexed
+by $\C$; the passage is made in Chapter~\ref{ch:07}.
+\end{dictionary}
+
+\begin{theorem}[Structure of the grading]\label{ch06:thm:gradingT}
+(a) $\chsixS=\bigoplus_{q\in\Q}\chsixS_q$ with each $\chsixS_q$ finite-dimensional;
+(b) $\dim\chsixS_{(d)}$ is the number of exponent vectors of doubled weight $d$;
+(c) $\chsixS_{r/16}=\C\cdot 1$;
+(d) $\dim\chsixS_{r/16+1/2}=r$;
+(e) $\chsixS_q=0$ for $q<r/16$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+theorem weightT_isInternal (r : ℕ) : DirectSum.IsInternal (weightT r)
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+instance weightT_finiteDimensional (r : ℕ) (q : ℚ) : FiniteDimensional ℂ (weightT r q)
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+theorem finrank_gradingT (r d : ℕ) :
+    Module.finrank ℂ (gradingT r d) = Nat.card (degSetT r d)
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+theorem weightT_vacuum (r : ℕ) : weightT r ((r : ℚ) / 16) = ℂ ∙ vacT r
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+theorem finrank_weightT_half (r : ℕ) :
+    Module.finrank ℂ (weightT r ((r : ℚ) / 16 + 1 / 2)) = r
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+theorem weightT_eq_bot_of_lt {r : ℕ} {q : ℚ} (hq : q < (r : ℚ) / 16) : weightT r q = ⊥
+\end{leancode}
+\begin{dictionary}
+\lean{DirectSum.IsInternal} is the internal direct sum (as in \lean{TwistedModule}).
+\lean{FiniteDimensional ℂ (weightT r q)} is an \lean{instance}: a theorem registered for automatic
+use, here the finite-dimensionality of every piece.  \lean{Module.finrank ℂ V} is the dimension of
+$V$ (a natural number, $0$ for infinite-dimensional spaces; here all are finite).
+\lean{Nat.card} is the cardinality of a finite set.  \lean{ℂ ∙ vacT r} is the line spanned by the
+vacuum.  \lean{⊥} is the zero subspace.  All six statements are exactly (a)--(e).  Could (d) be
+vacuous or trivial?  No: it computes a genuine dimension, and (b) shows the dimension is the
+combinatorial count one expects.
+\end{dictionary}
+
+\begin{physics}
+The grading is the energy spectrum of the antiperiodic bosons: a quantum of the oscillator $h_i(-n-\tfrac12)$ carries energy $n+\tfrac12$, so the energy levels are $r/16+d/2$ with $d$ the doubled weight, and the degeneracy of the $d$-th level counts multi-oscillator states; its generating function $\prod_n(1-t^{2n+1})^{-r}$ is the oscillator partition function of $r$ antiperiodic bosons. The lowest level $r/16$ is the twist-field ground state, non-degenerate in the oscillator sector, and the first excited level (energy $+\tfrac12$) is the $r$ single-quantum states of the lowest mode. For the Leech case the ground state sits at weight $24/16=3/2$, as quoted in the physics paragraph above.
+\end{physics}
+\begin{proof}[Proof on paper]
+Monomials form a basis of a polynomial ring; each has a doubled weight, so the ring is the direct
+sum of the spans of monomials of fixed doubled weight, and the dimension is the number of such
+monomials.  A variable of index $n$ has weight $2n+1\ge1$, so there are finitely many monomials of
+weight $d$ (each exponent is $\le d$ and only variables with $n<d$ occur).  Weight $0$: only the
+constant monomial.  Weight $1$: only the $r$ variables $x_{0,i}$.  Negative weights do not occur.
+\end{proof}
+\begin{status}
+All proved; \texttt{\#print axioms} for \lean{weightT_vacuum} and \lean{finrank_weightT_half}:
+\lean{[propext, Classical.choice, Quot.sound]}.  Unconditional.
+\end{status}
+
+\begin{example}[Graded dimensions]\label{ch06:ex:dims}
+The generating function is $\sum_d\dim\chsixS_{(d)}\,t^d=\prod_{n\ge0}(1-t^{2n+1})^{-r}$.  For
+$r=1$ the coefficients are the numbers of partitions into odd parts,
+$1,1,1,2,2,3,4,5,6,8,10,\dots$.  For $r=24$, by a direct expansion (computed for this chapter, not a
+Lean theorem):
+\begin{center}
+\begin{tabular}{c|ccccccc}
+$d$ & 0&1&2&3&4&5&6\\\hline
+$L_0$ & $\frac32$&$2$&$\frac52$&$3$&$\frac72$&$4$&$\frac92$\\
+$\dim\chsixS_{(d)}$ & 1&24&300&2624&18126&105504&538296
+\end{tabular}
+\end{center}
+For instance $300=\binom{25}{2}$ (quadratic monomials in the $24$ variables $x_{0,i}$), and
+$2624=\binom{26}3+24$ (cubics in $x_{0,i}$, plus the $24$ variables $x_{1,i}$ of doubled weight
+$3$).  Tensoring with the $4096$-dimensional $T$ and keeping the $\theta$-fixed part, the weight-$2$
+piece of $(V_\Leech^T)^+$ is $24\cdot 4096=98304$-dimensional (the oscillator number is odd and
+$\theta=-1$ on $T$), which together with $\dim(V_\Leech^+)_2=98580$ gives $196884$.  These facts
+are proved in later chapters.
+\end{example}
+
+\subsection{The involution \texorpdfstring{$\theta$}{theta} on \texorpdfstring{$S[\theta]$}{S[theta]}}
+
+The lift of $-1$ satisfies $\theta h_i(t)\theta^{-1}=-h_i(t)$; on $\chsixS$ it is the algebra
+automorphism negating every variable, i.e.\ $(-1)^{\text{number of oscillators}}$.
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+noncomputable def thetaHom (r : ℕ) : FockT r →ₐ[ℂ] FockT r := aeval fun v => -X v
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+noncomputable def thetaT (r : ℕ) : FockT r ≃ₐ[ℂ] FockT r :=
+  AlgEquiv.ofAlgHom (thetaHom r) (thetaHom r) (thetaHom_comp_self r) (thetaHom_comp_self r)
+\end{leancode}
+\begin{theorem}\label{ch06:thm:thetaT}
+(a) $\theta X^m=(-1)^{|m|}X^m$ on monomials, $|m|$ the total degree;
+(b) $\theta h_i(k/2)=-h_i(k/2)\theta$;
+(c) $\theta p=p$ iff every monomial of $p$ has even degree, and $\theta p=-p$ iff every monomial has
+odd degree; $\theta=-1$ on $\chsixS_{(1)}$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+theorem thetaT_monomial (r : ℕ) (m : (ℕ × Fin r) →₀ ℕ) (c : ℂ) :
+    thetaT r (monomial m c) = (-1 : ℂ) ^ m.degree • monomial m c
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+theorem thetaT_modeT (r : ℕ) (i : Fin r) (k : ℤ) (p : FockT r) :
+    thetaT r (modeT r i k p) = -modeT r i k (thetaT r p)
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+theorem thetaT_eq_self_iff (r : ℕ) (p : FockT r) :
+    thetaT r p = p ↔ ∀ m, coeff m p ≠ 0 → Even m.degree
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+theorem thetaT_eq_neg_iff (r : ℕ) (p : FockT r) :
+    thetaT r p = -p ↔ ∀ m, coeff m p ≠ 0 → Odd m.degree
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+theorem thetaT_of_mem_gradingT_one {r : ℕ} {p : FockT r} (hp : p ∈ gradingT r 1) :
+    thetaT r p = -p
+\end{leancode}
+\begin{dictionary}
+\lean{aeval f} is the unique algebra homomorphism of the polynomial ring sending $X_v\mapsto f(v)$;
+here $X_v\mapsto -X_v$.  \lean{≃ₐ[ℂ]} is an algebra automorphism; \lean{AlgEquiv.ofAlgHom} builds it
+from the homomorphism and its inverse (itself), with the proofs that both composites are the
+identity.  \lean{monomial m c} is $cX^m$; \lean{m.degree} is $\sum_v m_v$, the number of
+oscillators (not the doubled weight).  \lean{coeff m p} is the coefficient of $X^m$ in $p$.  So (a),
+(b), (c) are literally the Lean statements.  The anticommutation (b) holds for every $k$ (for even
+$k$ both sides are $0$).
+\end{dictionary}
+
+\begin{physics}
+The operator $\theta$ is the $\mathbb Z_2$ symmetry of the twisted sector under which the antiperiodic bosons are odd, $h\mapsto-h$, i.e. $(-1)^{F}$ with $F$ the oscillator number. Keeping only the $\theta$-even states is the orbifold projection: odd-number-of-oscillator states are projected out in the plus sector. The weight-$\tfrac{r}{16}+\tfrac12$ states (one oscillator) are $\theta$-odd, which is the Fock-space side of the fact that the twisted sector contributes no weight-one states to $\Vnat$ and hence $\Vnat_1=0$.
+\end{physics}
+\begin{proof}[Proof on paper]
+(a) is immediate from $X_v\mapsto-X_v$.  (b): multiplication by $X_v$ anticommutes with $\theta$
+since $\theta(X_vp)=-X_v\theta p$; for $\partial_w$, the conjugate $\theta\partial_w\theta^{-1}$ is again a derivation,
+and it sends $X_v$ to $\theta(\partial_w(-X_v))=-\delta_{vw}$, so it equals $-\partial_w$.  (c) compares
+coefficients using (a).
+\end{proof}
+\begin{status}
+All proved; \texttt{\#print axioms} \lean{VOA.TwistedHeisenberg.thetaT_eq_self_iff}: \lean{[propext,
+Classical.choice, Quot.sound]}.  Unconditional.  That \lean{thetaT} is the restriction of an
+automorphism of the twisted module (a statement involving $V$) is a matter for
+Chapters~\ref{ch:07}--\ref{ch:08}; here $\theta$ is an operator on $\chsixS$ alone.
+\end{status}
+
+\subsection{The operator \texorpdfstring{$L_0$}{L0}}
+
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+noncomputable def eulerT (r : ℕ) : Derivation ℂ (FockT r) (FockT r) :=
+  mkDerivation ℂ fun v => ((wT v : ℕ) : ℂ) • (X v : FockT r)
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+noncomputable def L0T (r : ℕ) : Module.End ℂ (FockT r) :=
+  (1 / 2 : ℂ) • (eulerT r).toLinearMap + ((r : ℂ) / 16) • LinearMap.id
+\end{leancode}
+\begin{definition}\label{ch06:def:L0T}
+Let $E$ be the derivation of $\chsixS$ with $E(x_{n,i})=(2n+1)x_{n,i}$ (the weighted Euler
+operator; it multiplies a monomial by its doubled weight).  Put $L_0=\frac12E+\frac r{16}$.
+\end{definition}
+\begin{dictionary}
+\lean{mkDerivation ℂ f} is the unique $\C$-linear derivation of the polynomial ring with
+$X_v\mapsto f(v)$; here $f(v)=\mathrm{wT}(v)X_v$.  It is well defined although the would-be formula
+$\sum_v\mathrm{wT}(v)X_v\partial_v$ is an infinite sum, because on each polynomial only finitely many
+terms act.  \lean{.toLinearMap} forgets the derivation property.  Thus \lean{L0T} is
+Definition~\ref{ch06:def:L0T}.  \emph{Caution:} \lean{L0T} is defined, not derived; that it is the
+zero mode $\omega_{(1)}$ of the twisted field of $\omega$ is a theorem of Chapter~\ref{ch:07}
+(\lean{YT_omega_two}).  A wrong constant here would be caught there.
+\end{dictionary}
+
+\begin{physics}
+$L_0$ is the Hamiltonian of the twisted sector on the cylinder, with the oscillator part $\tfrac12E=\sum_{n,i}(n+\tfrac12)\,x_{n,i}\partial_{x_{n,i}}$ (frequency times number operator) and the constant $r/16$ coming from the Casimir (zero-point) energy of the antiperiodic bosons; the Hurwitz-zeta heuristic of the previous subsection gives $r/48+r/24=r/16$. Here the constant is put in by hand; it is identified with the Virasoro zero mode only in Chapter~\ref{ch:07}, which is the rigorous counterpart of the regularisation argument.
+\end{physics}
+\begin{theorem}\label{ch06:thm:L0T}
+(a) $L_0$ acts on $\chsixS_q$ by $q$; (b) $L_0p=\sum_{v\in\mathrm{vars}(p)}h_v(-n-\tfrac12)
+h_v(n+\tfrac12)p+\frac r{16}p$ (the normal-ordered mode sum); (c) $[L_0,h_i(k/2)]=-\frac k2h_i(k/2)$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+theorem L0T_of_mem_weightT {r : ℕ} {q : ℚ} {p : FockT r} (hp : p ∈ weightT r q) :
+    L0T r p = (q : ℂ) • p
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+theorem L0T_eq_modeSum (r : ℕ) (p : FockT r) :
+    L0T r p = ∑ v ∈ p.vars, modeT r v.2 (-(2 * v.1 + 1)) (modeT r v.2 (2 * v.1 + 1) p)
+      + ((r : ℂ) / 16) • p
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+theorem L0T_comm_modeT (r : ℕ) (i : Fin r) (k : ℤ) :
+    L0T r * modeT r i k - modeT r i k * L0T r = -((k : ℂ) / 2) • modeT r i k
+\end{leancode}
+\begin{dictionary}
+\lean{(q : ℂ)} is the rational $q$ viewed as a complex number.  \lean{p.vars} is the finite set of
+variables occurring in $p$; for $v=(n,i)$, \lean{modeT r v.2 (-(2 * v.1 + 1))} is $h_i(-n-\frac12)$
+and \lean{modeT r v.2 (2 * v.1 + 1)} is $h_i(n+\frac12)$.  The textbook formula sums over all
+$(n,i)$; variables not occurring in $p$ contribute $h(n+\frac12)p=0$, so restricting to
+\lean{p.vars} is the same.  In (c), $k$ is arbitrary (for even $k$ both sides vanish); for odd $k$,
+mode $h_i(k/2)$ lowers $L_0$ by $k/2$, as a mode of a weight-one field must.
+\end{dictionary}
+
+\begin{physics}
+The three statements are the standard properties of a free-field Hamiltonian: it acts on energy eigenstates by their energy, equals the normal-ordered sum of frequency times number of quanta plus the vacuum (Casimir) energy $r/16$, and each mode $h(k/2)$ shifts the energy by $-k/2$ (creation operators raise energy, annihilation operators lower it). Together they say that the twisted Fock space is a genuine positive-energy representation of the Virasoro algebra with ground state weight $r/16$; for $r=24$, weight $3/2$, the twist-field dimension of $24$ antiperiodic bosons.
+\end{physics}
+\begin{proof}[Proof on paper]
+(a) Euler's identity: $E$ multiplies weighted-homogeneous polynomials of doubled weight $d$ by
+$d$, so $L_0$ acts by $d/2+r/16=q$.  (b) $x_v\cdot(n+\frac12)\partial_v=\frac12(2n+1)x_v\partial_v$,
+and $\sum_v(2n+1)x_v\partial_v=E$.  (c) $[E,x_v]=(2n+1)x_v$ and $[E,\partial_v]=-(2n+1)\partial_v$.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms} for \lean{L0T_of_mem_weightT} and \lean{L0T_comm_modeT}: \lean{[propext,
+Classical.choice, Quot.sound]}.  Unconditional.
+\end{status}
+
+%======================================================================
+\section{Extraspecial 2-groups and twisted group algebras}\label{ch06:sec:extra}
+
+\subsection{Why a finite group appears}
+
+In the untwisted lattice theory $V_L=S(\hat{\mathfrak h}^-)\otimes\C[L]$ (Chapter~\ref{ch:03}), the
+factor $\C[L]$ (more precisely the twisted group algebra $\C^\chsixeps[L]$) records the momentum
+$\alpha$ of a state $e^\alpha$: the zero mode $h(0)$ measures it.  In the twisted sector there is no
+zero mode, and the operators $e^\alpha$ no longer act diagonally.  What survives is the
+\emph{central extension} $\hat L$ of $L$ by $\{\pm1\}$ in which $e_\alpha e_\beta=\chsixeps(\alpha,
+\beta)e_{\alpha+\beta}$, acting on a space $T$ on which, roughly, $e_{2\alpha}$ acts trivially (it is
+``invisible'' to an observer who cannot distinguish $x$ from $-x$).  So $T$ is a representation of a
+finite quotient of $\hat L$, of order $2\cdot|L/2L|=2^{1+\operatorname{rank}L}$, and the commutator
+$e_\alpha e_\beta e_\alpha^{-1}e_\beta^{-1}=(-1)^{\langle\alpha,\beta\rangle}$ makes that group
+\emph{extraspecial}.  Physically, $T$ is the space of ground states of the twisted string: the
+$2^{24}$ fixed points of $x\mapsto-x$ on the torus $\mathbb R^{24}/\Leech$ (one for each class in
+$\frac12\Leech/\Leech$), reorganised; its dimension $2^{12}=\sqrt{2^{24}}$ is the square root of the
+number of fixed points, as one expects from a Heisenberg-type group acting irreducibly.
+
+\subsection{Extraspecial groups: the facts we need}
+
+A finite $2$-group $G$ is \emph{extraspecial} if its centre $Z$, its commutator subgroup and its
+Frattini subgroup coincide and have order $2$.  Then $\bar G=G/Z$ is an $\mathbb F_2$-vector space
+of even dimension $2m$; the commutator $[a,b]\in Z\cong\mathbb F_2$ defines a nondegenerate
+alternating form on $\bar G$, and $|G|=2^{1+2m}$.  Every irreducible complex representation of $G$
+on which $Z$ acts nontrivially (``faithful'') is isomorphic to a unique one, of dimension $2^m$.
+This is the finite analogue of the Stone--von Neumann theorem.  The library does \emph{not} define
+extraspecial groups; it works with the equivalent algebra.
+
+\begin{definition}[Twisted group algebra]\label{ch06:def:twga}
+Let $V=\mathbb F_2^n$ and let $c:V\times V\to\{\pm1\}$ be bimultiplicative.  The \emph{twisted group
+algebra} $\C^c[V]$ has basis $\{e_x\}_{x\in V}$ and product $e_xe_y=c(x,y)e_{x+y}$.
+\end{definition}
+
+\begin{physics}
+$\mathbb C^c[V]$ is the algebra of the zero modes of the twisted sector: the operators $e_x$ implement translations of the ground state by the half-lattice vector $x/2$, and the cocycle $c$ records the nontrivial signs $(-1)^{\langle\alpha,\beta\rangle}$ in their commutation relations. Since the antiperiodic boson has no momentum, these operators do not diagonalise; instead they generate a finite Heisenberg-type algebra (Clifford algebra for the associated extraspecial $2$-group) acting on the twist-field ground states. The mod-$2$ structure reflects that $\alpha$ and $-\alpha$ are indistinguishable once $x$ is identified with $-x$.
+\end{physics}
+A representation of the central extension $\hat V=\{\pm e_x\}$ in which $-1$ acts as $-1$ is the
+same thing as a $\C^c[V]$-module, so ``faithful irreducible representations of the extraspecial
+group'' are ``simple $\C^c[V]$-modules''.  The commutator $e_xe_y=c(x,y)c(y,x)e_ye_x$ is governed by
+the alternating form $\omega(x,y)$ with $(-1)^{\omega(x,y)}=c(x,y)c(y,x)$.
+
+\subsection{The library's construction}
+
+The library takes $c(x,y)=(-1)^{x\cdot My}$ for a matrix $M$ over $\mathbb F_2=$ \lean{ZMod 2} and
+realises $\C^c[V]$ inside the endomorphisms of the space of functions $V\to\C$ (the left regular
+representation), which makes the associativity and unit axioms automatic.
+
+\begin{leancode}
+noncomputable def sgn (z : ZMod 2) : ℂ := (-1 : ℂ) ^ z.val
+\end{leancode}
+\begin{leancode}
+noncomputable def coc (x y : Fin n → ZMod 2) : ℂ := sgn (x ⬝ᵥ (M *ᵥ y))
+\end{leancode}
+\begin{leancode}
+theorem coc_comm (x y : Fin n → ZMod 2) :
+    coc M x y * coc M y x = sgn (x ⬝ᵥ ((M + Mᵀ) *ᵥ y))
+\end{leancode}
+\begin{leancode}
+noncomputable def op (x : Fin n → ZMod 2) : Module.End ℂ ((Fin n → ZMod 2) → ℂ) where
+  toFun g y := coc M x (x + y) * g (x + y)
+\end{leancode}
+\begin{leancode}
+theorem op_mul (x y : Fin n → ZMod 2) : op M x * op M y = coc M x y • op M (x + y)
+\end{leancode}
+\begin{leancode}
+noncomputable def alg : Subalgebra ℂ (Module.End ℂ ((Fin n → ZMod 2) → ℂ)) :=
+  (Submodule.span ℂ (Set.range (op M))).toSubalgebra
+\end{leancode}
+\begin{leancode}
+theorem finrank_alg : Module.finrank ℂ (alg M) = 2 ^ n
+\end{leancode}
+(namespace \lean{VOA.Moonshine.Extraspecial}, \leanpath{VOA/Moonshine/ExtraspecialModule.lean}; the
+two-line excerpts of \lean{op} and \lean{alg} are their headers, the remaining lines being the
+linearity and closure proofs.)
+\begin{dictionary}
+\lean{sgn z} is $(-1)^z$ for $z\in\mathbb F_2$ (\lean{z.val} is the representative $0$ or $1$).
+\lean{Fin n → ZMod 2} is $V=\mathbb F_2^n$; \lean{x ⬝ᵥ y} is the dot product and
+\lean{M *ᵥ y} the matrix--vector product, so \lean{coc M x y} $=(-1)^{x^{\mathsf T}My}=c(x,y)$; it
+is bimultiplicative (\lean{coc_add_left}, \lean{coc_add_right}) and \lean{coc_comm} says the
+commutator form is $\omega(x,y)=x^{\mathsf T}(M+M^{\mathsf T})y$.  \lean{op M x} is the operator
+$(e_x g)(y)=c(x,x+y)g(x+y)$ on functions $g:V\to\C$, so that $e_x\delta_z=c(x,z)\delta_{x+z}$;
+\lean{op_mul} is $e_xe_y=c(x,y)e_{x+y}$.  \lean{alg M} is the linear span of the $e_x$, which
+\lean{op_mul} shows is closed under products, made into a subalgebra; \lean{finrank_alg} says the
+$2^n$ operators $e_x$ are linearly independent.  Hence \lean{alg M} is $\C^c[V]$ of
+Definition~\ref{ch06:def:twga}.
+\end{dictionary}
+\begin{status}
+All proved, unconditional.
+\end{status}
+
+\begin{example}[$n=2$: the Pauli matrices]\label{ch06:ex:pauli}
+Take $M=\begin{pmatrix}0&0\\1&0\end{pmatrix}$, so $c(x,y)=(-1)^{x_1y_0}$ and
+$M+M^{\mathsf T}=\begin{pmatrix}0&1\\1&0\end{pmatrix}$ is invertible.  Then $e_{(1,0)}^2=e_{(0,1)}^2=1$,
+$e_{(1,1)}^2=c((1,1),(1,1))=-1$, and $e_{(1,0)}e_{(0,1)}=-e_{(0,1)}e_{(1,0)}$.  The assignment
+$e_{(1,0)}\mapsto\sigma_x$, $e_{(0,1)}\mapsto\sigma_z$, $e_{(1,1)}\mapsto\sigma_x\sigma_z$ is an
+isomorphism $\C^c[\mathbb F_2^2]\cong M_2(\C)$, and $T=\C^2$.  The group $\{\pm1,\pm\sigma_x,
+\pm\sigma_z,\pm\sigma_x\sigma_z\}$ is the dihedral group of order $8$, the smallest extraspecial
+$2$-group.  The general case is a tensor product of $m$ such blocks (up to the
+quaternion/dihedral distinction, which is the Arf invariant of \S\ref{ch06:sec:form}).
+\end{example}
+
+\subsection{Simplicity and Wedderburn--Artin}
+
+\begin{theorem}\label{ch06:thm:simple}
+If $M+M^{\mathsf T}$ is invertible over $\mathbb F_2$, then $\C^c[V]$ is a simple ring (its only
+two-sided ideals are $0$ and itself).
+\end{theorem}
+\begin{leancode}
+theorem isSimpleRing_alg (hN : IsUnit (M + Mᵀ).det) : IsSimpleRing (alg M)
+\end{leancode}
+\begin{dictionary}
+\lean{IsUnit (M + Mᵀ).det} says the determinant of $M+M^{\mathsf T}$ is a unit of \lean{ZMod 2},
+i.e.\ equals $1$: the commutator form is nondegenerate.  \lean{IsSimpleRing R} is Mathlib's notion:
+$R$ is nontrivial and its only two-sided ideals are $\bot$ and $\top$.  Same as the theorem.  The
+hypothesis is necessary: if $\omega$ is degenerate, a radical vector $x$ gives a central $e_x$ and
+the ideal generated by $e_x\mp\lambda$ is proper.
+\end{dictionary}
+
+\begin{physics}
+Simplicity of the twisted group algebra says that the commutator pairing on $V$ (the sign $(-1)^{\langle\alpha,\beta\rangle}$) is nondegenerate, so the zero-mode algebra is a full matrix algebra and has a unique irreducible representation. Physically, the ground-state space of the twisted sector is then forced: there is exactly one irreducible way for the zero modes of the twisted boson to act, which is the analogue of the Stone--von Neumann theorem for a finite Heisenberg group. This uniqueness is what makes the twisted sector of the Leech lattice theory unique (Frenkel--Lepowsky--Meurman).
+\end{physics}
+\begin{proof}[Proof on paper]
+The key identity: $c(w,w)\,e_we_ve_w=(-1)^{\omega(w,v)}e_v$ (\lean{op_conj}).  For
+$f=\sum_vf_ve_v$, averaging gives $\sum_wc(w,w)e_wfe_w=\sum_vf_v\bigl(\sum_w(-1)^{\omega(w,v)}\bigr)
+e_v=2^nf_0\cdot1$, because by character orthogonality $\sum_w(-1)^{\omega(w,v)}$ is $2^n$ for $v=0$
+and $0$ otherwise, using nondegeneracy ($\omega(\cdot,v)\ne0$ for $v\ne0$).  Given a nonzero $a$ in
+an ideal $I$, pick $v_0$ with $a_{v_0}\ne0$; then $b=e_{v_0}a\in I$ has $b_0=\pm a_{v_0}\ne0$, and the
+average of $b$, which lies in $I$, is the nonzero scalar $2^nb_0$; so $1\in I$.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms} \lean{VOA.Moonshine.Extraspecial.isSimpleRing_alg}: \lean{[propext,
+Classical.choice, Quot.sound]}.  Unconditional apart from the displayed hypothesis.
+\end{status}
+
+\begin{theorem}[Dimension of the simple module]\label{ch06:thm:repdim}
+Under the same hypothesis, $\C^c[V]\cong M_k(\C)$ with $k^2=2^n$; hence $n$ is even and
+$k=2^{n/2}$.  Put $T=\C^k$ with $\C^c[V]$ acting through this isomorphism.  Then $T$ is a simple
+module of dimension $2^{n/2}$, and every simple $\C^c[V]$-module is isomorphic to $T$.
+\end{theorem}
+\begin{leancode}
+noncomputable def repDim (hN : IsUnit (M + Mᵀ).det) : ℕ := (exists_matrix M hN).choose
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/ExtraspecialModule.lean}.
+\begin{leancode}
+theorem repDim_eq (hN : IsUnit (M + Mᵀ).det) : repDim M hN = 2 ^ (n / 2)
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/ExtraspecialModule.lean}.
+\begin{leancode}
+def Rep (hN : IsUnit (M + Mᵀ).det) : Type := Fin (repDim M hN) → ℂ
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/ExtraspecialModule.lean}.
+\begin{leancode}
+noncomputable def repEquiv (hN : IsUnit (M + Mᵀ).det) : alg M ≃ₐ[ℂ] Module.End ℂ (Rep M hN) :=
+  (exists_matrix M hN).choose_spec.2.some.trans Matrix.toLinAlgEquiv'
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/ExtraspecialModule.lean}.
+\begin{leancode}
+theorem finrank_rep (hN : IsUnit (M + Mᵀ).det) :
+    Module.finrank ℂ (Rep M hN) = 2 ^ (n / 2)
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/ExtraspecialModule.lean}.
+\begin{leancode}
+instance isSimpleModule_rep (hN : IsUnit (M + Mᵀ).det) : IsSimpleModule (alg M) (Rep M hN)
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/ExtraspecialModule.lean}.
+\begin{leancode}
+theorem nonempty_linearEquiv_rep (hN : IsUnit (M + Mᵀ).det) (S : Type*) [AddCommGroup S]
+    [Module (alg M) S] [IsSimpleModule (alg M) S] :
+    Nonempty (S ≃ₗ[alg M] Rep M hN)
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/ExtraspecialModule.lean}.
+\begin{leancode}
+theorem even_of_isUnit (hN : IsUnit (M + Mᵀ).det) : Even n
+\end{leancode}
+\begin{dictionary}
+\lean{exists_matrix M hN} is the statement $\exists k,\ 2^n=k\cdot k\wedge$ there is an algebra
+isomorphism \lean{alg M ≃ₐ[ℂ] Matrix (Fin k) (Fin k) ℂ}; \lean{.choose} picks such a $k$
+(\lean{repDim}) and \lean{.some} such an isomorphism, which composed with
+\lean{Matrix.toLinAlgEquiv'} (matrices $=$ endomorphisms of $\C^k$) gives \lean{repEquiv}.  So
+$T=$ \lean{Rep M hN} $=\C^k$ and $A$ acts via \lean{repEquiv} (the module instance, defined right
+after, is $a\cdot t=\mathrm{repEquiv}(a)(t)$).  \lean{IsSimpleModule} means nonzero with no proper
+nonzero submodule.  \lean{Nonempty (S ≃ₗ[alg M] Rep M hN)} states the existence of an
+$A$-linear isomorphism $S\cong T$, for every type $S$ with a simple $A$-module structure.
+\textbf{$T$ is abstract}: it is $\C^k$ with an action obtained by choice from Wedderburn--Artin, not
+an explicit model (such as functions on a maximal isotropic subspace or on the Golay code).  Every
+statement about $T$ in the library is invariant under the choice, because of the uniqueness
+theorem; but no basis of $T$ is computable.
+\end{dictionary}
+
+\begin{physics}
+The dimension $2^{n/2}$ is the ground-state degeneracy of the twisted sector. Heuristically, the $2^{24}$ fixed points of the reflection $x\mapsto-x$ on the torus $\mathbb R^{24}/\Leech$ (the half-lattice points $\tfrac12\Leech/\Leech$) would each support a twist-field ground state, but the zero modes $e_\alpha$ and their conjugates do not commute, so only a Lagrangian half of them can be diagonalised at once; the irreducible module is $2^{12}=\sqrt{2^{24}}$-dimensional. In the language of a Clifford algebra, $n=24$ real generators $e_\alpha$ (modulo signs) form a Clifford algebra with irreducible module of dimension $2^{12}$. The parity of $n$ is the familiar fact that a nondegenerate alternating form lives in even dimension.
+\end{physics}
+\begin{proof}[Proof on paper]
+A finite-dimensional simple algebra over the algebraically closed field $\C$ is a full matrix
+algebra $M_k(\C)$ (Wedderburn--Artin; Mathlib's
+\lean{IsSimpleRing.exists_algEquiv_matrix_of_isAlgClosed}).  Comparing dimensions,
+$k^2=\dim A=2^n$, so $2^n$ is a perfect square, $n$ is even and $k=2^{n/2}$.  $\C^k$ is a simple
+$M_k(\C)$-module (any nonzero vector generates), and over a simple artinian ring all simple modules
+are isomorphic.  The parity statement \lean{even_of_isUnit} is the familiar fact that a
+nondegenerate alternating form lives in even dimension, obtained here as a by-product.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms} for \lean{repDim_eq} and \lean{nonempty_linearEquiv_rep}: \lean{[propext,
+Classical.choice, Quot.sound]}.  Unconditional apart from \lean{hN}.
+\end{status}
+
+%======================================================================
+\section{The lattice: \texorpdfstring{$L/2L$}{L/2L}, the cocycle, and the module \texorpdfstring{$T$}{T}}\label{ch06:sec:lattice}
+
+\subsection{Recollection: lattices and the cocycle}
+
+An \lean{IntegralLattice} (Chapter~\ref{ch:02}) is a free $\Z$-module of finite rank with a
+symmetric $\Z$-valued bilinear form $\langle\cdot,\cdot\rangle$; it is \emph{even} if
+$\langle v,v\rangle\in2\Z$ for all $v$:
+\noindent File \leanpath{VOA/Foundations/Lattices.lean}.
+\begin{leancode}
+def Even : Prop := ∀ v : L.carrier, 2 ∣ L.form v v
+\end{leancode}
+The library's cocycle (Chapter~\ref{ch:03}) is defined from a chosen basis $B_1,\dots,B_n$ of $L$
+(\lean{latticeBasis L}, obtained by choice) as
+$\chsixeps(\alpha,\beta)=(-1)^{\sum_{j<i}\langle B_i,B_j\rangle\alpha_i\beta_j}$, where
+$\alpha_i,\beta_j$ are coordinates:
+\noindent File \leanpath{VOA/Foundations/LatticeCocycle.lean}.
+\begin{leancode}
+noncomputable def cocExp (α β : L.carrier) : ℤ :=
+  ∑ i : Fin n, ∑ j : Fin n,
+    (if j < i then L.form (B i) (B j) else 0) * B.repr α i * B.repr β j
+\end{leancode}
+\noindent File \leanpath{VOA/Foundations/LatticeCocycle.lean}.
+\begin{leancode}
+noncomputable def latticeCocycle (α β : L.carrier) : ℂ := cocycle L (latticeBasis L) α β
+\end{leancode}
+with \lean{cocycle L B α β = (-1 : ℂ) ^ (cocExp L B α β)}.  It is bimultiplicative, $\pm1$-valued,
+and $\chsixeps(\alpha,\beta)\chsixeps(\beta,\alpha)=(-1)^{\langle\alpha,\beta\rangle}$ for even $L$
+(\lean{latticeCocycle_comm}).
+
+\subsection{Reduction mod 2}
+
+\noindent File \leanpath{VOA/Moonshine/ExtraspecialModule.lean}.
+\begin{leancode}
+noncomputable def gramMat : Matrix (Fin L.bRank) (Fin L.bRank) ℤ :=
+  Matrix.of fun i j => L.form (latticeBasis L i) (latticeBasis L j)
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/ExtraspecialModule.lean}.
+\begin{leancode}
+noncomputable def cocMat : Matrix (Fin L.bRank) (Fin L.bRank) (ZMod 2) :=
+  Matrix.of fun i j => if j < i then (L.form (latticeBasis L i) (latticeBasis L j) : ZMod 2) else 0
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/ExtraspecialModule.lean}.
+\begin{leancode}
+noncomputable def red : L.carrier →+ (Fin L.bRank → ZMod 2) where
+  toFun α i := ((latticeBasis L).repr α i : ZMod 2)
+\end{leancode}
+\begin{theorem}\label{ch06:thm:descent}
+(a) $\mathrm{red}:L\to\mathbb F_2^n$ is surjective with kernel $2L$, so it identifies $L/2L$ with
+$\mathbb F_2^n$.  (b) $\chsixeps(\alpha,\beta)=c(\bar\alpha,\bar\beta)$ with $c$ built from
+\lean{cocMat}; in particular $\chsixeps$ depends only on classes mod $2L$.  (c) If $L$ is even and
+unimodular, the commutator form on $L/2L$ is nondegenerate.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/ExtraspecialModule.lean}.
+\begin{leancode}
+theorem red_surjective : Function.Surjective (red L)
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/ExtraspecialModule.lean}.
+\begin{leancode}
+theorem red_eq_zero_iff (α : L.carrier) : red L α = 0 ↔ ∃ γ, α = 2 • γ
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/ExtraspecialModule.lean}.
+\begin{leancode}
+theorem latticeCocycle_eq_coc (α β : L.carrier) :
+    latticeCocycle L α β = coc (cocMat L) (red L α) (red L β)
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/ExtraspecialModule.lean}.
+\begin{leancode}
+theorem latticeCocycle_add_two_nsmul (α β γ : L.carrier) :
+    latticeCocycle L (α + 2 • γ) β = latticeCocycle L α β ∧
+      latticeCocycle L α (β + 2 • γ) = latticeCocycle L α β
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/ExtraspecialModule.lean}.
+\begin{leancode}
+theorem isUnit_det_cocMat (hEven : L.Even) (hU : IsUnit (gramMat L).det) :
+    IsUnit (cocMat L + (cocMat L)ᵀ).det
+\end{leancode}
+\begin{dictionary}
+\lean{L.bRank} is the size of the chosen basis (equal to the rank, \lean{bRank_eq_rank}).
+\lean{gramMat L} is the Gram matrix $(\langle B_i,B_j\rangle)$; \lean{cocMat L} its strictly
+lower-triangular part reduced mod 2 (the $(i,j)$ entry for $j<i$).  \lean{red L} is the additive
+map (\lean{→+}) sending $\alpha$ to its coordinates mod 2.  \lean{2 • γ} is $2\gamma$.
+\lean{IsUnit (gramMat L).det} over $\Z$ means $\det=\pm1$, i.e.\ $L$ unimodular.  Statements (a),
+(b), (c) are exactly the theorem; the cocycle identity holds for every $L$ (evenness is not
+needed for descent, only for (c)).
+\end{dictionary}
+
+\begin{physics}
+The key point is that the zero-mode algebra depends on a lattice vector only modulo $2L$: the operator $e_{\alpha+2\gamma}$ coincides with $e_\alpha$ on the twisted ground states because translation by a full lattice vector $\gamma$ acts trivially after the identification $x\sim-x$ and the periodicity of the torus. So the twisted sector sees only the finite group $L/2L$ (rather than $L$), whose commutator form is the nondegenerate pairing $(-1)^{\langle\alpha,\beta\rangle}$ for an even unimodular lattice; this is the extraspecial $2$-group $2^{1+n}$ in disguise. The proposition is the algebraic expression of this descent.
+\end{physics}
+\begin{proof}[Proof on paper]
+(a) Coordinates mod 2.  (b) The exponent $\sum_{j<i}\langle B_i,B_j\rangle\alpha_i\beta_j$ mod 2 is
+$\bar\alpha^{\mathsf T}\,\mathrm{cocMat}\,\bar\beta$.  (c) For even $L$, the diagonal of the Gram
+matrix is $0$ mod 2, so $\mathrm{cocMat}+\mathrm{cocMat}^{\mathsf T}$ is the Gram matrix mod 2
+(\lean{cocMat_add_transpose}); its determinant is $\det(\mathrm{Gram})=\pm1\equiv1$.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms} for \lean{latticeCocycle_eq_coc} and \lean{isUnit_det_cocMat}: \lean{[propext,
+Classical.choice, Quot.sound]}.  Unconditional apart from displayed hypotheses.
+\end{status}
+
+\subsection{The elements \texorpdfstring{$e_\alpha$}{e alpha} and the module \texorpdfstring{$T_L$}{T L}}
+
+\noindent File \leanpath{VOA/Moonshine/ExtraspecialModule.lean}.
+\begin{leancode}
+noncomputable def eA (α : L.carrier) : alg (cocMat L) := ⟨op (cocMat L) (red L α), op_mem _ _⟩
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/ExtraspecialModule.lean}.
+\begin{leancode}
+noncomputable abbrev ExtraT : Type := Rep (cocMat L) (isUnit_det_cocMat L hEven hU)
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/ExtraspecialModule.lean}.
+\begin{leancode}
+noncomputable def eT (α : L.carrier) : Module.End ℂ (ExtraT L hEven hU) :=
+  repEquiv _ (isUnit_det_cocMat L hEven hU) (eA L α)
+\end{leancode}
+\begin{theorem}\label{ch06:thm:eT}
+Let $L$ be even unimodular and $T_L$ the simple $\C^\chsixeps[L/2L]$-module.  Then for all
+$\alpha,\beta,\gamma\in L$:
+$e_\alpha e_\beta=\chsixeps(\alpha,\beta)e_{\alpha+\beta}$, $e_0=1$, $e_{-\alpha}=e_\alpha$,
+$e_{\alpha+2\gamma}=e_\alpha$ on $T_L$; and $\dim T_L=2^{\operatorname{rank}L/2}$.  For the Leech
+lattice, $\dim T=4096$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/ExtraspecialModule.lean}.
+\begin{leancode}
+theorem eT_mul (α β : L.carrier) :
+    eT L hEven hU α * eT L hEven hU β = latticeCocycle L α β • eT L hEven hU (α + β)
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/ExtraspecialModule.lean}.
+\begin{leancode}
+theorem eT_zero : eT L hEven hU 0 = 1
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/ExtraspecialModule.lean}.
+\begin{leancode}
+theorem eT_neg (α : L.carrier) : eT L hEven hU (-α) = eT L hEven hU α
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/ExtraspecialModule.lean}.
+\begin{leancode}
+theorem eT_add_two_nsmul (α γ : L.carrier) : eT L hEven hU (α + 2 • γ) = eT L hEven hU α
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/ExtraspecialModule.lean}.
+\begin{leancode}
+theorem finrank_extraT : Module.finrank ℂ (ExtraT L hEven hU) = 2 ^ (L.rank / 2)
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/ExtraspecialModule.lean}.
+\begin{leancode}
+noncomputable abbrev leechT : Type := ExtraT leech leech_even leech_isUnit_det_gramMat
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/ExtraspecialModule.lean}.
+\begin{leancode}
+theorem finrank_leechT : Module.finrank ℂ leechT = 4096
+\end{leancode}
+\begin{dictionary}
+Throughout, \lean{hEven : L.Even} and \lean{hU : IsUnit (gramMat L).det} are section variables:
+every statement carries them as hypotheses (even, unimodular).  \lean{eA L α} is
+$e_{\bar\alpha}\in\C^c[L/2L]$, and \lean{eT L hEven hU α} its operator on $T_L=$ \lean{ExtraT}.
+\lean{L.rank} is the $\Z$-rank, and $\operatorname{rank}L/2$ is natural-number division, exact
+because the rank is even (\lean{even_rank_of_unimodular}).  For the Leech lattice the hypotheses
+are discharged: \lean{leech_even} and \lean{leech_isUnit_det_gramMat} (from the vendored proof that
+$\Leech$ is unimodular) and \lean{leech_rank : rank leech = 24}, so $2^{24/2}=4096$.  Each Lean
+statement is the corresponding clause of the theorem.
+
+\textbf{Could $T$ be the wrong object?}  Three checks.  (1) $T$ is nonzero and simple
+(\lean{isSimpleModule_extraT}), so it is not a degenerate stand-in.  (2) The central sign
+$\kappa$ acts by $-1$: in the algebra, $-e_\alpha$ is $-1$ times $e_\alpha$, so the extension's
+central element is the scalar $-1$ by construction.  (3) Uniqueness
+(\lean{nonempty_linearEquiv_rep}) means any other construction of ``the'' faithful irreducible
+module is isomorphic to this one.  The identification with FLM's $T$ is argued below, in prose; it
+is not formalised.
+\end{dictionary}
+
+\begin{physics}
+$T$ is the space of ground states of the twisted sector, and $e_\alpha$ are the twisted vertex operator zero modes. The relations $e_\alpha e_\beta=\varepsilon(\alpha,\beta)e_{\alpha+\beta}$ are the cocycle of the lattice vertex operators (the same cocycle that governs the untwisted sector), with the key twisted-sector feature that $e_{-\alpha}=e_\alpha$ and $e_{\alpha+2\gamma}=e_\alpha$, so that $\theta$-fixed information collapses to $L/2L$ and the group generated is the extraspecial group $2^{1+24}$ of order $2^{25}$. Its unique faithful irreducible representation has dimension $2^{12}=4096$ for the Leech lattice, which is the ground-state degeneracy of the twisted string and the number of ground states of weight $3/2$ (before the $\theta$-projection). The fixed-point picture is heuristic; the proof is the Wedderburn--Artin argument above.
+\end{physics}
+\begin{proof}[Proof on paper]
+\lean{eT_mul}: $\mathrm{repEquiv}$ is multiplicative and $e_{\bar\alpha}e_{\bar\beta}=
+c(\bar\alpha,\bar\beta)e_{\bar\alpha+\bar\beta}$ with $c(\bar\alpha,\bar\beta)=\chsixeps(\alpha,
+\beta)$ by descent.  $e_{\alpha+2\gamma}=e_\alpha$ because $\overline{\alpha+2\gamma}=\bar\alpha$;
+$e_{-\alpha}=e_\alpha$ because $-\alpha=\alpha+2(-\alpha)$.  Dimension: Theorem~\ref{ch06:thm:repdim}
+with $n=\operatorname{rank}L$.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms} for \lean{eT_mul}, \lean{eT_neg}, \lean{eT_add_two_nsmul},
+\lean{finrank_leechT}: \lean{[propext, Classical.choice, Quot.sound]}.  \lean{finrank_leechT} is
+unconditional; the general statements are conditional exactly on \lean{hEven}, \lean{hU}.
+\end{status}
+
+\begin{remark}[Why $K=\{e_{2\alpha}\}$ is the right normalisation]\label{ch06:rem:K}
+FLM form $\hat\Leech$ and the subgroup $K=\{a^{-1}\theta(a): a\in\hat\Leech\}$, and $T$ is the
+irreducible $\hat\Leech/K$-module on which $\kappa=-1$.  So the subgroup to be killed depends on
+the chosen lift $\theta$ of $-1$ to $\hat\Leech$.  The library's lift (Chapter~\ref{ch:04}) is
+$\theta(e_\alpha)=e_{-\alpha}$, which is an automorphism because the library's cocycle is
+bimultiplicative, so $\chsixeps(-\alpha,-\beta)=\chsixeps(\alpha,\beta)$.  With this lift,
+using $e_\alpha^{-1}=\chsixeps(\alpha,-\alpha)e_{-\alpha}$ and bimultiplicativity
+($\chsixeps(\alpha,-\alpha)=\chsixeps(-\alpha,-\alpha)=\chsixeps(\alpha,\alpha)$, a sign),
+\begin{equation*}
+  e_\alpha^{-1}\theta(e_\alpha)=\chsixeps(\alpha,-\alpha)\,e_{-\alpha}e_{-\alpha}
+  =\chsixeps(\alpha,\alpha)\chsixeps(-\alpha,-\alpha)\,e_{-2\alpha}=e_{-2\alpha}.
+\end{equation*}
+Hence $K=\{e_{2\gamma}:\gamma\in\Leech\}$, and ``$K$ acts trivially'' is exactly
+\lean{eT_add_two_nsmul} (with \lean{eT_neg}).  (FLM's own lift
+$\theta(a)=a^{-1}\kappa^{\langle\bar a,\bar a\rangle/2}$ gives a $K$ of a different-looking shape;
+the two lifts differ by a sign character and the resulting quotients are isomorphic.)  Note
+also $K\cap\{\pm1\}=1$ and $K$ is central, since $e_{2\gamma}$ commutes with $e_\alpha$ up to
+$(-1)^{\langle\alpha,2\gamma\rangle}=1$; so $\hat\Leech/K$ has order $2\cdot2^{24}$ and is
+extraspecial by Theorem~\ref{ch06:thm:descent}(c).  This identification is argued here on paper.
+\end{remark}
+
+\begin{warning}
+\textbf{Engineering trap: \lean{abbrev ExtraT}.}  Elaborating the scalar action on terms of type
+\lean{ExtraT L hEven hU} times out in Lean (the abbreviation is unfolded during type-class
+search).  Downstream files therefore use the unfolded type \lean{Rep (cocMat L) _} directly, e.g.
+\lean{TFormLeech.TL} below and the carrier of \lean{leechTwistedModule}.  This is a performance
+issue only: the types are definitionally equal, so no statement changes meaning.
+\end{warning}
+
+%======================================================================
+\section{The symmetric invariant form on \texorpdfstring{$T$}{T}}\label{ch06:sec:form}
+
+\subsection{What is needed, and why the sign matters}
+
+The Moonshine module carries a nondegenerate symmetric invariant bilinear form, and its
+construction requires one on each sector.  On $V_\Leech^T=\chsixS\otimes T$ the form is the
+product of a form on $\chsixS$ (Chapter~\ref{ch:09}) and a form $B$ on $T$.  Invariance of a form
+$(\cdot,\cdot)$ on a module means that the adjoint of $Y(u,z)$ is the contragredient operator
+$Y(e^{zL_1}(-z^{-2})^{L_0}u,z^{-1})$.  For $u=e^\alpha$ (of weight $\langle\alpha,\alpha\rangle/2$
+and primary) the factor $(-1)^{L_0}$ contributes $(-1)^{\langle\alpha,\alpha\rangle/2}$; on the $T$
+factor, where $e_{-\alpha}=e_\alpha$, this becomes the requirement
+\begin{equation}\label{ch06:eq:Tlaw}
+  B(e_\alpha t,t')=(-1)^{\langle\alpha,\alpha\rangle/2}\,B(t,e_\alpha t')\qquad(\alpha\in\Leech).
+\end{equation}
+Put differently: the transpose with respect to $B$ must be the linear map
+$\iota:e_\alpha\mapsto(-1)^{\langle\alpha,\alpha\rangle/2}e_\alpha$, which (we shall see) is an
+anti-automorphism of $\End(T)$.  We also need $B$ \emph{symmetric}.  This is not automatic: an
+anti-involution of a matrix algebra $\End(T)$ is the transpose for a form that is either symmetric
+or alternating, and which one occurs depends on $\iota$.
+
+\subsection{Anti-involutions from quadratic signs}
+
+Return to the abstract setting of \S\ref{ch06:sec:extra}: $A=\C^c[V]$, $T$ its simple module,
+$\varphi=$ \lean{repEquiv} $:A\cong\End(T)$.
+
+\noindent File \leanpath{VOA/Moonshine/TFormAlg.lean}.
+\begin{leancode}
+structure IsQuadSign (s : (Fin n → ZMod 2) → ℂ) : Prop where
+  zero : s 0 = 1
+  add : ∀ x y, s (x + y) = s x * s y * (coc M x y * coc M y x)
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TFormAlg.lean}.
+\begin{leancode}
+noncomputable def iotaA (s : (Fin n → ZMod 2) → ℂ) : alg M →ₗ[ℂ] alg M :=
+  (algBasis M).constr ℂ fun x => s x • algBasis M x
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TFormAlg.lean}.
+\begin{leancode}
+noncomputable def iotaT (s : (Fin n → ZMod 2) → ℂ) :
+    Module.End ℂ (Rep M hN) →ₗ[ℂ] Module.End ℂ (Rep M hN) :=
+  (repEquiv M hN).toLinearMap ∘ₗ iotaA M s ∘ₗ (repEquiv M hN).symm.toLinearMap
+\end{leancode}
+\begin{definition}\label{ch06:def:quadsign}
+A \emph{quadratic sign} is $s:V\to\C$ with $s(0)=1$ and $s(x+y)=s(x)s(y)c(x,y)c(y,x)$; then
+$s=(-1)^q$ for a quadratic form $q$ on $V$ whose polar form is the commutator form $\omega$.
+For such $s$, $\iota_s$ is the linear map $e_x\mapsto s(x)e_x$ on $A$, transported to $\End(T)$ by
+$\varphi$.
+\end{definition}
+\begin{dictionary}
+\lean{algBasis M} is the basis $x\mapsto e_x$ of \lean{alg M}; \lean{Basis.constr} defines a linear
+map by its values on a basis.  \lean{iotaT} is $\varphi\circ\iota_s\circ\varphi^{-1}$ (\lean{∘ₗ} is
+composition of linear maps).  The structure \lean{IsQuadSign} has exactly the two conditions of the
+definition (the fact $s(x)^2=1$ follows, \lean{IsQuadSign.mul_self}).
+\end{dictionary}
+
+\begin{physics}
+The sign $s=(-1)^{q}$ is the action of the vertex-algebra conjugation (contragredient) on the zero modes: the factor $(-1)^{L_0}$ in the adjoint of a vertex operator contributes $(-1)^{\langle\alpha,\alpha\rangle/2}$ for a primary field $e^{\alpha}$ of weight $\langle\alpha,\alpha\rangle/2$. The anti-involution $\iota_s$ is therefore the operation of passing to the adjoint (BPZ conjugate) of the twisted zero-mode operators, and the quadratic-form condition on $s$ is the consistency of this adjoint with the commutation relations of the extraspecial group.
+\end{physics}
+\begin{theorem}\label{ch06:thm:iota}
+For a quadratic sign $s$: $\iota_s(XY)=\iota_s(Y)\iota_s(X)$, $\iota_s^2=1$, $\iota_s(1)=1$, and
+$\tr\circ\iota_s=\tr$ on $\End(T)$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/TFormAlg.lean}.
+\begin{leancode}
+theorem iotaT_mul {s : (Fin n → ZMod 2) → ℂ} (hs : IsQuadSign M s)
+    (X Y : Module.End ℂ (Rep M hN)) : iotaT M hN s (X * Y) = iotaT M hN s Y * iotaT M hN s X
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TFormAlg.lean}.
+\begin{leancode}
+theorem iotaT_iotaT {s : (Fin n → ZMod 2) → ℂ} (hs : IsQuadSign M s)
+    (X : Module.End ℂ (Rep M hN)) : iotaT M hN s (iotaT M hN s X) = X
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TFormAlg.lean}.
+\begin{leancode}
+theorem trace_iotaT {s : (Fin n → ZMod 2) → ℂ} (hs : IsQuadSign M s)
+    (X : Module.End ℂ (Rep M hN)) : trace ℂ (Rep M hN) (iotaT M hN s X) = trace ℂ (Rep M hN) X
+\end{leancode}
+\begin{dictionary}
+\lean{trace ℂ (Rep M hN)} is the trace of an endomorphism of $T$.  The hypothesis \lean{hN}
+(nondegeneracy) is a section variable present in all three.  Same as the theorem.
+\end{dictionary}
+
+\begin{physics}
+The theorem says that $\iota_s$ is a well-defined adjoint on the zero-mode algebra: it reverses products, squares to the identity, and preserves the trace. Physically this is the statement that the adjoint operation of the twisted sector is a consistent involution on operators acting on the ground states, so that invariant bilinear forms can exist at all (the form is the two-point function in the twisted sector, and its invariance is the compatibility of adjoint with the vertex operators).
+\end{physics}
+\begin{proof}[Proof on paper]
+On basis elements, $\iota(e_xe_y)=c(x,y)s(x+y)e_{x+y}$ and
+$\iota(e_y)\iota(e_x)=s(x)s(y)c(y,x)e_{x+y}$; these agree by the defining relation of $s$ and
+$c(x,y)^2=1$.  $\iota^2=1$ because $s^2=1$.  For the trace: $\tr\varphi(e_x)=0$ for $x\ne0$, since
+by nondegeneracy there is $w$ with $e_we_xe_w^{-1}=-e_x$ (\lean{trace_op_eq_zero}); so the trace
+only sees the coefficient of $e_0$, which $\iota$ fixes.
+\end{proof}
+
+\begin{definition}[Trace forms]\label{ch06:def:formOf}
+For $u\in T^*$ and $t\in T$ write $t\otimes u$ for the rank-one map $x\mapsto u(x)t$.  Put
+$B_u(t,t')=\tr\bigl(\iota(t\otimes u)\circ(t'\otimes u)\bigr)$.
+\end{definition}
+\noindent File \leanpath{VOA/Moonshine/TFormAlg.lean}.
+\begin{leancode}
+noncomputable def formOf (s : (Fin n → ZMod 2) → ℂ) (u : Module.Dual ℂ (Rep M hN)) :
+    LinearMap.BilinForm ℂ (Rep M hN) :=
+  LinearMap.mk₂ ℂ
+    (fun t t' => trace ℂ (Rep M hN) (iotaT M hN s (u.smulRight t) * u.smulRight t'))
+\end{leancode}
+(the header and defining formula; the remaining four arguments of \lean{LinearMap.mk₂} are the
+bilinearity proofs).
+
+\begin{physics}
+A trace form is a construction of a two-point function on the twisted ground states from the algebraic data: starting from the adjoint $\iota$ on operators, one defines $B_u(t,t')$ by evaluating the trace of the adjoint of a rank-one operator against another. It is the finite-dimensional counterpart of the sesquilinear (BPZ) pairing used to define the Hilbert space structure and correlation functions in the twisted sector; the choice of $u$ is a choice of reference ground state.
+\end{physics}
+\begin{theorem}\label{ch06:thm:formOf}
+For a quadratic sign $s$ and $u\in T^*$: $B_u$ is symmetric; $B_u(Xt,t')=B_u(t,\iota(X)t')$ for all
+$X\in\End(T)$; and if $B_u\ne0$ then $B_u$ is nondegenerate.  Consequently, if there is an
+idempotent $P\in\End(T)$ with $\iota(P)=P$ and $\tr P=1$, then $T$ carries a nondegenerate symmetric
+bilinear form $B$ with $B(Xt,t')=B(t,\iota(X)t')$ for all $X$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/TFormAlg.lean}.
+\begin{leancode}
+theorem formOf_symm {s : (Fin n → ZMod 2) → ℂ} (hs : IsQuadSign M s)
+    (u : Module.Dual ℂ (Rep M hN)) (t t' : Rep M hN) :
+    formOf M hN s u t t' = formOf M hN s u t' t
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TFormAlg.lean}.
+\begin{leancode}
+theorem formOf_invariant {s : (Fin n → ZMod 2) → ℂ} (hs : IsQuadSign M s)
+    (u : Module.Dual ℂ (Rep M hN)) (X : Module.End ℂ (Rep M hN)) (t t' : Rep M hN) :
+    formOf M hN s u (X t) t' = formOf M hN s u t (iotaT M hN s X t')
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TFormAlg.lean}.
+\begin{leancode}
+theorem formOf_nondegenerate {s : (Fin n → ZMod 2) → ℂ} (hs : IsQuadSign M s)
+    (u : Module.Dual ℂ (Rep M hN)) {v w : Rep M hN} (hvw : formOf M hN s u v w ≠ 0) :
+    (formOf M hN s u).Nondegenerate
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TFormAlg.lean}.
+\begin{leancode}
+theorem exists_form_of_idempotent {s : (Fin n → ZMod 2) → ℂ} (hs : IsQuadSign M s)
+    {P : Module.End ℂ (Rep M hN)} (hP : IsIdempotentElem P) (hιP : iotaT M hN s P = P)
+    (htr : trace ℂ (Rep M hN) P = 1) :
+    ∃ B : LinearMap.BilinForm ℂ (Rep M hN), (∀ t t', B t t' = B t' t) ∧ B.Nondegenerate ∧
+      ∀ X t t', B (X t) t' = B t (iotaT M hN s X t')
+\end{leancode}
+\begin{dictionary}
+\lean{Module.Dual ℂ T} is $T^*$; \lean{u.smulRight t} is $t\otimes u$.  \lean{LinearMap.BilinForm}
+is a bilinear form; \lean{B.Nondegenerate} is Mathlib's nondegeneracy (both left and right
+radicals are zero).  \lean{IsIdempotentElem P} is $P^2=P$.  In \lean{formOf_nondegenerate} the
+hypothesis ``$B_u(v,w)\ne0$ for some $v,w$'' is $B_u\ne0$.  Same as the theorem.
+\end{dictionary}
+
+\begin{physics}
+This produces the two-point function on the twisted ground states: a symmetric, nondegenerate pairing with $B(Xt,t')=B(t,\iota(X)t')$, i.e. one in which the zero-mode operators $e_\alpha$ have the adjoint prescribed by the contragredient structure. Symmetry (rather than alternation) is physically significant, since it corresponds to a bosonic-type invariant form on the Moonshine module (the twisted sector contributing weight-$3/2$ states without extra signs). The theorem reduces its existence to an idempotent $P$ of trace one, which is a Lagrangian choice of simultaneous ground states.
+\end{physics}
+\begin{proof}[Proof on paper]
+\emph{Symmetry.} With $P_t=t\otimes u$: $\tr(\iota(P_t)P_{t'})=\tr\iota(\iota(P_t)P_{t'})=
+\tr(\iota(P_{t'})P_t)$, using $\tr\circ\iota=\tr$, the anti-multiplicativity and $\iota^2=1$.
+\emph{Invariance.} $X(t\otimes u)=(Xt)\otimes u$, so $B_u(Xt,t')=\tr(\iota(P_t)\iota(X)P_{t'})=
+B_u(t,\iota(X)t')$.  \emph{Nondegeneracy.} The radical is stable under all $X\in\End(T)$ (by
+invariance), and $\End(T)$ acts transitively on nonzero vectors; so the radical is $0$ or $T$.
+\emph{Existence.} A trace-one idempotent has rank one, $P=v\otimes u$, and then
+$B_u(v,v)=\tr(\iota(P)P)=\tr(P^2)=\tr P=1\ne0$.
+
+\emph{Why symmetry is ``free''.}  The symmetry argument works for every $\iota$; what can fail is
+existence.  If $\iota$ is the adjoint for an \emph{alternating} form, every $B_u$ is both symmetric
+and alternating, hence zero, and no $\iota$-fixed trace-one idempotent exists.  So the whole
+content is the existence of $P$, which (for $\iota=\iota_s$) holds exactly when the quadratic form
+$q$ with $s=(-1)^q$ has Arf invariant $0$; this equivalence is background, not formalised.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms} \lean{VOA.Moonshine.Extraspecial.exists_form_of_idempotent}: \lean{[propext,
+Classical.choice, Quot.sound]}.  All four results proved, conditional on the displayed hypotheses.
+\end{status}
+
+\subsection{The lattice sign \texorpdfstring{$(-1)^{\langle\alpha,\alpha\rangle/2}$}{(-1)^(alpha,alpha)/2}}
+
+\noindent File \leanpath{VOA/Moonshine/TFormLattice.lean}.
+\begin{leancode}
+def halfNorm (α : L.carrier) : ℤ := L.form α α / 2
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TFormLattice.lean}.
+\begin{leancode}
+noncomputable def signQ (x : Fin L.bRank → ZMod 2) : ℂ :=
+  (-1 : ℂ) ^ halfNorm L (red_surjective L x).choose
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TFormLattice.lean}.
+\begin{leancode}
+theorem signQ_red (hEven : L.Even) (α : L.carrier) :
+    signQ L (red L α) = (-1 : ℂ) ^ halfNorm L α
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TFormLattice.lean}.
+\begin{leancode}
+theorem isQuadSign_signQ (hEven : L.Even) : IsQuadSign (cocMat L) (signQ L)
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TFormLattice.lean}.
+\begin{leancode}
+noncomputable def iotaL :
+    Module.End ℂ (Rep (cocMat L) (isUnit_det_cocMat L hEven hU)) →ₗ[ℂ]
+      Module.End ℂ (Rep (cocMat L) (isUnit_det_cocMat L hEven hU)) :=
+  iotaT (cocMat L) (isUnit_det_cocMat L hEven hU) (signQ L)
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TFormLattice.lean}.
+\begin{leancode}
+theorem iotaL_eT (α : L.carrier) :
+    iotaL L hEven hU (eT L hEven hU α) = (-1 : ℂ) ^ halfNorm L α • eT L hEven hU α
+\end{leancode}
+\begin{dictionary}
+\lean{halfNorm L α} is $Q(\alpha)=\langle\alpha,\alpha\rangle/2$ with integer division, which is
+exact for even $L$.  \lean{signQ L x} picks (by choice) some lift $\alpha$ of $x\in L/2L$ and
+returns $(-1)^{Q(\alpha)}$; \lean{signQ_red} shows the value does not depend on the lift (for even
+$L$, $Q(\alpha+2\gamma)=\frac12\langle\alpha+2\gamma,\alpha+2\gamma\rangle=Q(\alpha)
++2\langle\alpha,\gamma\rangle+2\langle\gamma,\gamma\rangle=Q(\alpha)+2(2Q(\gamma)+
+\langle\alpha,\gamma\rangle)$, so the parity of $Q$ does not change).  So the choice is
+harmless.  \lean{isQuadSign_signQ}: $Q(\alpha+\beta)=Q(\alpha)+Q(\beta)+\langle\alpha,\beta\rangle$
+and $\chsixeps(\alpha,\beta)\chsixeps(\beta,\alpha)=(-1)^{\langle\alpha,\beta\rangle}$.
+\lean{iotaL} is $\iota_s$ for $s=(-1)^Q$, and \lean{iotaL_eT} is $\iota(e_\alpha)=
+(-1)^{Q(\alpha)}e_\alpha$, the transpose demanded by \eqref{ch06:eq:Tlaw}.
+\end{dictionary}
+
+\begin{physics}
+The integer $Q(\alpha)=\langle\alpha,\alpha\rangle/2$ is the conformal weight of the lattice vertex operator $e^{\alpha}$, and $(-1)^{Q}$ is the sign picked up by $e^{\alpha}$ under the contragredient (adjoint) operation, which includes the factor $(-1)^{L_0}$. Evenness of the lattice is what makes $Q$ integral and the sign well defined on $L/2L$; $Q$ mod $2$ is the quadratic refinement of the commutator form, and it is the data distinguishing the possible adjoint structures on the extraspecial group.
+\end{physics}
+\begin{status}
+All proved, conditional on \lean{hEven} (and \lean{hU} for \lean{iotaL}).
+\end{status}
+
+\begin{warning}
+\textbf{The sign $\chsixeps(\alpha,\alpha)$ is the wrong choice (numerical certificate).}  A natural
+first guess is the \emph{group} anti-involution $e_\alpha\mapsto e_\alpha^{-1}=\chsixeps(\alpha,
+\alpha)e_\alpha$ (on $T$, $e_\alpha^2=\chsixeps(\alpha,\alpha)$).  It is also an anti-involution
+($s=\chsixeps(\alpha,\alpha)=(-1)^{\bar\alpha\cdot\mathrm{cocMat}\,\bar\alpha}$ is a quadratic sign),
+but its quadratic form $x\mapsto x\cdot\mathrm{cocMat}\,x$ depends on the chosen lattice basis, and
+so does its Arf invariant.  For $E_8$ (rank $8$, $T$ of dimension $16$, built from Pauli matrices)
+the script \leanpath{scripts/moonshine/numerics/e8b.py} transforms the Cartan basis by random
+elements of $GL_8(\Z)$ and counts $\#\{x\in\mathbb F_2^8: x\cdot\mathrm{cocMat}\,x=0\}$; output
+(re-run for this chapter):
+\begin{plaincode}
+[0 0 1 1 1 1 1 0] x.Mx even count 120
+[0 0 1 0 1 1 0 0] x.Mx even count 136
+[1 0 0 0 1 0 0 1] x.Mx even count 120
+...
+\end{plaincode}
+$136=2^7+2^3$ means Arf invariant $0$ (symmetric form), $120=2^7-2^3$ means Arf invariant $1$
+(alternating form).  So with the $\chsixeps(\alpha,\alpha)$ sign the invariant form on $T$ is
+alternating for some bases --- and the library's \lean{latticeBasis} is chosen noncomputably, so one
+cannot even know which case one is in.  The sign $(-1)^Q$ is basis-independent (it is defined from the norm
+$\langle\alpha,\alpha\rangle$ alone, whereas $\chsixeps(\alpha,\alpha)$ is defined from the
+basis-dependent matrix \lean{cocMat}); for $E_8$,
+\lean{e8.py} reports \lean{Q even/odd {0: 136, 1: 120}}, Arf $0$, and the solution space of the
+invariance equations is one-dimensional and symmetric.  This is numerical evidence that fixed the
+convention; the Lean theorems below prove the Leech case directly.
+\end{warning}
+
+\subsection{Lagrangian data}
+
+To produce the idempotent $P$, take a maximal totally singular subspace for $Q$, i.e.\ $m=n/2$
+vectors $\gamma_i$ with $\langle\gamma_i,\gamma_j\rangle$ even and $Q(\gamma_i)$ even.  Then
+$F_i=\sigma_ie_{\gamma_i}$ (with $\sigma_i^2=\chsixeps(\gamma_i,\gamma_i)$, so $F_i^2=1$) are
+commuting $\iota$-fixed involutions, and $P=\prod_i\frac12(1+F_i)$ is an $\iota$-fixed idempotent.
+To compute its trace, use partners $g_i$ with $\langle g_i,\gamma_j\rangle$ even for $j<i$ and odd
+for $j=i$.
+\noindent File \leanpath{VOA/Moonshine/TFormLattice.lean}.
+\begin{leancode}
+structure Lagrangian (L : VOA.IntegralLattice) where
+  m : ℕ
+  γ : ℕ → L.carrier
+  g : ℕ → L.carrier
+  form_even : ∀ i < m, ∀ j < m, _root_.Even (L.form (γ i) (γ j))
+  halfNorm_even : ∀ i < m, _root_.Even (halfNorm L (γ i))
+  partner_even : ∀ i < m, ∀ j < i, _root_.Even (L.form (g i) (γ j))
+  partner_odd : ∀ i < m, Odd (L.form (g i) (γ i))
+  two_mul_m : 2 * m = L.bRank
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TFormLattice.lean}.
+\begin{leancode}
+noncomputable def projP : ℕ → Module.End ℂ TT
+  | 0 => 1
+  | k + 1 => projP k * ((1 / 2 : ℂ) • (1 + lagF L hEven hU D k))
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TFormLattice.lean}.
+\begin{leancode}
+theorem trace_projP : ∀ k ≤ D.m,
+    trace ℂ TT (projP L hEven hU D k) * 2 ^ k = (finrank ℂ TT : ℂ)
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TFormLattice.lean}.
+\begin{leancode}
+theorem exists_TForm (D : Lagrangian L) :
+    ∃ B : LinearMap.BilinForm ℂ TT, (∀ t t', B t t' = B t' t) ∧ B.Nondegenerate ∧
+      ∀ X t t', B (X t) t' = B t (iotaL L hEven hU X t')
+\end{leancode}
+\begin{dictionary}
+\lean{TT} is local notation for \lean{Rep (cocMat L) (isUnit_det_cocMat L hEven hU)}, i.e.\ $T_L$.
+The sequences \lean{γ}, \lean{g} are indexed by $\N$ but only the first \lean{m} entries are
+constrained.  \lean{_root_.Even} is ``is an even integer'' (not lattice evenness).
+\lean{two_mul_m} says $2m=\operatorname{rank}L$.  \lean{lagF ... k} is $F_k=\sigma_ke_{\gamma_k}$
+with $\sigma_k$ a chosen square root of $\chsixeps(\gamma_k,\gamma_k)$ (\lean{sqrtEpsL}), and
+\lean{projP k} is $\prod_{i<k}\frac12(1+F_i)$.  \lean{trace_projP}: $\tr(P_k)\,2^k=\dim T$.
+\lean{exists_TForm} (with section hypotheses \lean{hEven}, \lean{hU}): \emph{given} Lagrangian data,
+a nondegenerate symmetric $\iota_{(-1)^Q}$-invariant form exists.  The conditional is genuine: it is
+discharged for the Leech lattice below.
+\end{dictionary}
+
+\begin{physics}
+A Lagrangian is a maximal set of mutually compatible zero modes: $m=12$ commuting elements $F_i=\pm1$ of the extraspecial algebra, which can be simultaneously diagonalised, together with partners $g_i$ that do not commute with them and flip their eigenvalues. Choosing $F_i=+1$ for all $i$ selects a single ground state out of the $2^{12}$, i.e. the idempotent $P$ of trace one: the analogue of choosing a polarisation (a maximal commuting set of observables) in the quantisation of the finite Heisenberg group. The numbers of the data are a bookkeeping device; they have no independent physical meaning.
+\end{physics}
+\begin{proof}[Proof on paper]
+The $F_i$ commute because $\langle\gamma_i,\gamma_j\rangle$ is even; $F_i^2=\sigma_i^2
+\chsixeps(\gamma_i,\gamma_i)=1$; $\iota(F_i)=(-1)^{Q(\gamma_i)}F_i=F_i$.  So $P_k$ is an
+$\iota$-fixed idempotent.  Trace: $\tr P_{k+1}=\frac12\tr P_k+\frac12\tr(P_kF_k)$, and
+$\tr(P_kF_k)=0$ because $G=e_{g_k}$ commutes with $P_k$ (even pairings with $\gamma_j$, $j<k$) and
+anticommutes with $F_k$ (odd pairing), so
+$\tr(P_kF_k)=\tr(G^{-1}P_kF_kG)=-\tr(P_kF_k)$.  Hence $\tr P_m=\dim T/2^m=2^m/2^m=1$, and
+Theorem~\ref{ch06:thm:formOf} applies.
+\end{proof}
+\begin{status}
+\texttt{\#print axioms} \lean{VOA.IntegralLattice.exists_TForm}: \lean{[propext, Classical.choice,
+Quot.sound]}.  Conditional on \lean{hEven}, \lean{hU} and the Lagrangian data \lean{D}.
+\end{status}
+
+\subsection{The Leech Lagrangian and the form \texorpdfstring{\lean{TForm}}{TForm}}
+
+The vendored Leech lattice (Chapter~\ref{ch:02}) is a sublattice of $\Z^{24}$ with
+$\langle x,y\rangle=x\cdot y/8$, namely $\Leech=2A\cup(u+2A)$ where $A$ is the set of $a\in\Z^{24}$
+with $a\bmod2$ in the Golay code and $\sum a_k\equiv0\pmod4$, and $u=(5,1,\dots,1)$.  Let
+$e_0,\dots,e_{23}$ be the standard vectors and $r_i$ the $i$-th row of the Golay generator matrix
+$[I_{12}\mid B]$ lifted to $\{0,1\}$.  The data are
+\begin{equation*}
+  \gamma_0=8e_0,\quad\gamma_i=4e_0+4e_i\ (1\le i\le11),\qquad g_0=u,\quad g_i=2r_i\ (1\le i\le 11).
+\end{equation*}
+\noindent File \leanpath{VOA/Moonshine/TForm.lean}.
+\begin{leancode}
+def aVec (i : Fin 12) : Fin 24 → ℤ := fun k =>
+  if (i : ℕ) = 0 then (if (k : ℕ) = 0 then 4 else 0)
+  else (if (k : ℕ) = 0 ∨ (k : ℕ) = i then 2 else 0)
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TForm.lean}.
+\begin{leancode}
+def gamVec (i : Fin 12) : Fin 24 → ℤ := fun k => 2 * aVec i k
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TForm.lean}.
+\begin{leancode}
+def rowVec (i : Fin 12) : Fin 24 → ℤ := fun k => ((Code.golayEnc (Pi.single i 1) k).val : ℤ)
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TForm.lean}.
+\begin{leancode}
+def gVec (i : Fin 12) : Fin 24 → ℤ := fun k =>
+  if (i : ℕ) = 0 then Leech.uVec k else 2 * rowVec i k
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TForm.lean}.
+\begin{leancode}
+theorem g_gam_odd : ∀ i : Fin 12, (gVec i ⬝ᵥ gamVec i) / 8 % 2 = 1 := by decide +kernel
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TForm.lean}.
+\begin{leancode}
+noncomputable def leechLagrangian : Lagrangian leech where
+\end{leancode}
+\begin{dictionary}
+\lean{Code.golayEnc (Pi.single i 1)} is the codeword encoding the $i$-th unit message, i.e.\ the
+$i$-th row of $[I_{12}\mid B]$ (\lean{golayEnc x} is $x$ followed by $xB$); \lean{.val} lifts
+$\mathbb F_2$ to $\{0,1\}$.  \lean{Leech.uVec} is $u=(5,1,\dots,1)$.  Checks: $\langle\gamma_0,
+\gamma_0\rangle=64/8=8$, $Q=4$; $\langle\gamma_i,\gamma_i\rangle=4$, $Q=2$; $\langle\gamma_0,
+\gamma_i\rangle=4$, $\langle\gamma_i,\gamma_j\rangle=2$: all even.  Partners:
+$\langle u,\gamma_0\rangle=40/8=5$ odd; $\langle2r_i,\gamma_j\rangle=r_i(0)+r_i(j)=\delta_{ij}$
+for $1\le i,j\le11$ (identity block), and $\langle2r_i,\gamma_0\rangle=2r_i(0)=0$.  These finitely
+many integer identities are checked by the kernel (\lean{decide +kernel}); membership of the vectors
+in $\Leech$ is proved from the definition of the carrier.  \lean{leechLagrangian} has $m=12$, and
+\lean{two_mul_m} is \lean{leech_rank}.
+\end{dictionary}
+
+\begin{theorem}[The form on the Leech $T$]\label{ch06:thm:TForm}
+There is a bilinear form $B$ on the $4096$-dimensional Leech module $T$ which is symmetric,
+nondegenerate, satisfies $B(Xt,t')=B(t,\iota(X)t')$ for all $X\in\End(T)$, and in particular
+\eqref{ch06:eq:Tlaw} and $B(e_\alpha t,e_\alpha t')=(-1)^{\langle\alpha,\alpha\rangle/2}
+\chsixeps(\alpha,\alpha)B(t,t')$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/TForm.lean}.
+\begin{leancode}
+abbrev TL : Type :=
+  Extraspecial.Rep (cocMat leech) (isUnit_det_cocMat leech leech_even leech_isUnit_det_gramMat)
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TForm.lean}.
+\begin{leancode}
+noncomputable def TForm : LinearMap.BilinForm ℂ TL := exists_leech.choose
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TForm.lean}.
+\begin{leancode}
+theorem TForm_symm (t t' : TL) : TForm t t' = TForm t' t := exists_leech.choose_spec.1 t t'
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TForm.lean}.
+\begin{leancode}
+theorem TForm_nondegenerate : TForm.Nondegenerate := exists_leech.choose_spec.2.1
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TForm.lean}.
+\begin{leancode}
+theorem TForm_iota (X : Module.End ℂ TL) (t t' : TL) :
+    TForm (X t) t' = TForm t (iotaL leech leech_even leech_isUnit_det_gramMat X t') :=
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TForm.lean}.
+\begin{leancode}
+theorem TForm_eT (α : leech.carrier) (t t' : TL) :
+    TForm (eT leech leech_even leech_isUnit_det_gramMat α t) t'
+      = (-1 : ℂ) ^ (leech.form α α / 2) *
+        TForm t (eT leech leech_even leech_isUnit_det_gramMat α t')
+\end{leancode}
+\noindent File \leanpath{VOA/Moonshine/TForm.lean}.
+\begin{leancode}
+theorem TForm_eT_eT (α : leech.carrier) (t t' : TL) :
+    TForm (eT leech leech_even leech_isUnit_det_gramMat α t)
+        (eT leech leech_even leech_isUnit_det_gramMat α t')
+      = ((-1 : ℂ) ^ (leech.form α α / 2) * latticeCocycle leech α α) * TForm t t'
+\end{leancode}
+\begin{dictionary}
+\lean{TL} is the Leech $T$ (the same type as \lean{leechT}, written unfolded to avoid the
+\lean{ExtraT} trap).  \lean{exists_leech} is \lean{exists_TForm} applied to
+\lean{leechLagrangian}; \lean{TForm} is a form chosen from it, and the three properties are read
+off.  In \lean{TForm_eT}, \lean{leech.form α α / 2} is $\langle\alpha,\alpha\rangle/2$ (exact since
+$\Leech$ is even), so the statement is \eqref{ch06:eq:Tlaw}.  No hypotheses remain: everything is
+specialised to $\Leech$.  \textbf{Could it be vacuous?}  A zero form would satisfy symmetry and
+invariance; it is excluded by \lean{TForm_nondegenerate} (and $T\ne0$).  \textbf{Not proved:}
+uniqueness of $B$ up to scalar (true by Schur's lemma, not formalised).  The sign is the one
+required in Chapter~\ref{ch:09}, where it is used as \lean{twForm_YTL}.
+\end{dictionary}
+
+\begin{physics}
+For the Leech lattice, $B$ is the two-point function (the invariant bilinear form) on the $2^{12}=4096$ twisted ground states: symmetric and nondegenerate, with the zero modes $e_\alpha$ self-adjoint up to the sign $(-1)^{\langle\alpha,\alpha\rangle/2}$ prescribed by the weight of the lattice vertex operators. Together with the form on $S[\theta]$ it gives the invariant form on the twisted sector $V_\Leech^T=S[\theta]\otimes T$, and this is the form needed so that the Moonshine module, $V_\Leech^+\oplus(V_\Leech^T)^+$, carries a nondegenerate symmetric invariant form (a unitary-type structure, as expected for a physical CFT). The construction is an algebraic check of consistency, not a physical derivation.
+\end{physics}
+\begin{status}
+\texttt{\#print axioms} for \lean{TForm_symm}, \lean{TForm_nondegenerate}, \lean{TForm_eT},
+\lean{TForm_eT_eT}: \lean{[propext, Classical.choice, Quot.sound]}.  Unconditional.  In an earlier version of the library the in-file
+documentation of these files said ``not imported by the umbrella''; that note was already outdated:
+\leanpath{VOA/Moonshine.lean} imported \lean{TwistedHeisenberg}, \lean{ExtraspecialModule} and
+\lean{TForm}. At a pre-release build commit the umbrella still imports all three, and the docstrings no longer
+make the claim.
+\end{status}
+
+%======================================================================
+\section{Referee's checklist}\label{ch06:sec:checklist}
+
+Abbreviations: E $=$ \lean{hEven}, U $=$ \lean{hU} (unimodular), N $=$ \lean{hN}
+($M+M^{\mathsf T}$ invertible), Q $=$ \lean{hs : IsQuadSign}.  All entries have
+\texttt{\#print axioms} $=$ \lean{[propext, Classical.choice, Quot.sound]} (re-run for this chapter);
+none uses \lean{VOA.pbw}.
+
+{\footnotesize
+\begin{longtable}{>{\raggedright\arraybackslash}p{4.6cm}>{\raggedright\arraybackslash}p{5.4cm}>{\raggedright\arraybackslash}p{2.4cm}>{\raggedright\arraybackslash}p{1.6cm}}
+\toprule
+Lean declaration & Intended meaning & Hypotheses & Fidelity\\
+\midrule\endhead
+\lean{TwistedModule} & DLM $g$-twisted module, Jacobi in mode form on the support coset & definition & Def.~\ref{ch06:def:tm}\\
+\lean{OrdVModule.toTwisted} & ordinary module $=$ $1$-twisted, $N=1$ & uncond. & Prop.~\ref{ch06:prop:totwisted}\\
+\lean{jacobiAllIndices_eq_zero} & old all-indices Jacobi forces $M=0$ for $N\ge2$ & $N\ge2$, vacuum & Thm.~\ref{ch06:thm:defect}\\
+\lean{twistedJacobi_of_twistedModule} & repaired field $=$ \lean{TwistedJacobi} & uncond. & Prop.~\ref{ch06:prop:twjac}\\
+\lean{SuperTwistedModule.jacobi} & same defect, \textbf{not repaired} & --- & warning, \S\ref{ch06:sec:nothinglost}\\
+\lean{modeT_comm} & $[h_i(\frac k2),h_j(\frac l2)]=\frac k2\delta_{ij}\delta_{k+l,0}$ & $k,l$ odd & Thm.~\ref{ch06:thm:modeTcomm}\\
+\lean{weightT_isInternal}, \lean{weightT_vacuum}, \lean{finrank_weightT_half}, \lean{weightT_eq_bot_of_lt} & $S[\theta]=\bigoplus S_q$, ground state $r/16$, next level dim $r$ & uncond. & Thm.~\ref{ch06:thm:gradingT}\\
+\lean{thetaT_modeT}, \lean{thetaT_eq_self_iff} & $\theta$ anticommutes with modes; fixed $=$ even oscillator number & uncond. & Thm.~\ref{ch06:thm:thetaT}\\
+\lean{L0T_of_mem_weightT}, \lean{L0T_comm_modeT} & $L_0$ diagonal; modes shift weight & uncond. & Thm.~\ref{ch06:thm:L0T}\\
+\lean{isSimpleRing_alg} & $\C^c[\mathbb F_2^n]$ simple & N & Thm.~\ref{ch06:thm:simple}\\
+\lean{repDim_eq}, \lean{nonempty_linearEquiv_rep} & $\dim T=2^{n/2}$; $T$ unique & N & Thm.~\ref{ch06:thm:repdim}\\
+\lean{latticeCocycle_eq_coc}, \lean{isUnit_det_cocMat} & $\varepsilon$ descends to $L/2L$; nondegenerate & (E, U) & Thm.~\ref{ch06:thm:descent}\\
+\lean{eT_mul}, \lean{eT_neg}, \lean{eT_add_two_nsmul} & relations of $e_\alpha$ on $T$; $K=\{e_{2\alpha}\}$ trivial & E, U & Thm.~\ref{ch06:thm:eT}, Rem.~\ref{ch06:rem:K}\\
+\lean{finrank_leechT} & $\dim T=4096$ & uncond. & Thm.~\ref{ch06:thm:eT}\\
+\lean{exists_form_of_idempotent} & $\iota$-fixed trace-1 idempotent $\Rightarrow$ symmetric invariant form & N, Q, $P$ & Thm.~\ref{ch06:thm:formOf}\\
+\lean{exists_TForm} & form from Lagrangian data & E, U, \lean{D} & \S\ref{ch06:sec:form}\\
+\lean{TForm_symm}, \lean{TForm_nondegenerate}, \lean{TForm_eT} & symmetric nondegenerate form on Leech $T$, sign $(-1)^{\langle\alpha,\alpha\rangle/2}$ & uncond. & Thm.~\ref{ch06:thm:TForm}\\
+\bottomrule
+\end{longtable}}
+
+Points a referee should specifically confirm: (1) the coset hypothesis in \lean{TwistedModule.jacobi}
+(\S\ref{ch06:sec:repair}) and the non-vacuity witnesses of Chapters~\ref{ch:07}--\ref{ch:08};
+(2) the junk value \lean{modeT r i k = 0} for even $k$ agrees with the support condition; (3)
+\lean{L0T} is a definition whose identification with $\omega_{(1)}$ is proved in
+Chapter~\ref{ch:07}; (4) $T$ is abstract (choice), unique up to isomorphism; (5) the sign in
+\lean{TForm_eT} is $(-1)^{\langle\alpha,\alpha\rangle/2}$, not $\chsixeps(\alpha,\alpha)$.
+
+%======================================================================
+\section{Notes and references}\label{ch06:sec:notes}
+
+The twisted vertex operators for the involution $\theta$, the twisted Heisenberg algebra
+$\hat{\mathfrak h}[-1]$, its Fock space $S[\theta]$, the vacuum weight $r/16$, the extraspecial group
+$\hat\Leech/K$ and its module $T$ are due to I.~Frenkel, J.~Lepowsky and A.~Meurman, \emph{Vertex
+Operator Algebras and the Monster}, Pure and Applied Mathematics 134, Academic Press, Boston, 1988
+(Chapters~1, 3, 5, 7 and 9; Chapter~10 for the moonshine module), preceded by their announcement
+\emph{A natural representation of the Fischer--Griess Monster with the modular function $J$ as
+character}, Proc.\ Natl.\ Acad.\ Sci.\ USA 81 (1984) 3256--3260.  Twisted vertex operators in this
+setting go back to J.~Lepowsky, \emph{Calculus of twisted vertex operators}, Proc.\ Natl.\ Acad.\
+Sci.\ USA 82 (1985) 8295--8299, and J.~Lepowsky and R.~L.~Wilson, \emph{Construction of the affine
+Lie algebra $A_1^{(1)}$}, Comm.\ Math.\ Phys.\ 62 (1978) 43--53.  The general notion of a $g$-twisted
+module and its Jacobi identity is that of C.~Dong, H.~Li and G.~Mason, \emph{Twisted
+representations of vertex operator algebras}, Math.\ Ann.\ 310 (1998) 571--600, arXiv:q-alg/9509005;
+see also C.~Dong, \emph{Twisted modules for vertex algebras associated with even lattices}, J.\
+Algebra 165 (1994) 91--112, and, for the textbook treatment of modules and twisted modules,
+J.~Lepowsky and H.~Li, \emph{Introduction to Vertex Operator Algebras and Their Representations},
+Progress in Mathematics 227, Birkh\"auser, 2004.  The notation of the library follows T.~Gannon,
+\emph{Moonshine beyond the Monster}, Cambridge University Press, 2006, \S5.3.6 (equations 5.3.22).
+Extraspecial $2$-groups, their representations and their role in the Monster are treated in
+R.~L.~Griess, Jr., \emph{The Friendly Giant}, Invent.\ Math.\ 69 (1982) 1--102, and \emph{Twelve
+Sporadic Groups}, Springer Monographs in Mathematics, 1998; and in D.~Gorenstein, \emph{Finite
+Groups}, Harper \& Row, 1968, \S5.5.  The Arf invariant of quadratic forms over $\mathbb F_2$ is
+due to C.~Arf, J.\ reine angew.\ Math.\ 183 (1941) 148--167.  The Wedderburn--Artin theorem used
+here is Mathlib's.  The orbifold/string picture is in L.~Dixon, J.~Harvey, C.~Vafa and E.~Witten,
+\emph{Strings on orbifolds}, Nucl.\ Phys.\ B 261 (1985) 678--686, and L.~Dolan, P.~Goddard and
+P.~Montague, \emph{Conformal field theories, representations and lattice constructions}, Comm.\
+Math.\ Phys.\ 179 (1996) 61--120, arXiv:hep-th/9410029.  The defect of \S\ref{ch06:sec:repair} and
+the $E_8$ sign test are recorded in the project file \leanpath{Notes/MonsterRoadmap.md} (``Recorded dead ends'') and
+in Chapter~\ref{ch:15}, Section~\ref{ch15:sec:deadends}.
+
+\endgroup

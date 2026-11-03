@@ -1,0 +1,1977 @@
+\chapter{Reading Lean, and a map of the book}\label{ch:01}
+\begingroup\setlength{\emergencystretch}{3em}
+
+\providecommand{\chonevac}{\mathbf{1}}
+\providecommand{\choneV}{\mathcal{V}}
+
+This book documents the release of the LeanVOA library named in the front matter. Every Lean quotation in this chapter is quoted from the files of that
+release, and every one is machine-checked by \texttt{scripts/textbook/sync.py} to occur verbatim
+(up to whitespace and comments) in the source. This first chapter contains almost no vertex
+algebra. Its job is to prepare the reader for the rest of the book: to say what the book is for
+and how to use it, to collect in one place every Lean and Mathlib idiom that the later chapters use
+(so that their fidelity checks can simply point back here, Section~\ref{ch01:sec:glossary}), to explain exactly what a computer
+check does and does not guarantee, to fix the conventions that recur in every chapter, and to give a
+map of the book and of where each basic notion is defined. The mathematics proper begins in
+Chapter~\ref{ch:L01}.
+
+%======================================================================
+\section{What this book is for, and how to use it}\label{ch01:sec:purpose}
+%======================================================================
+
+\subsection{The referee's question}
+
+The LeanVOA library is a body of roughly ten thousand Lean files (the per-chapter counts at the book's commit are tabulated in
+Appendix~\ref{ch:provenance})
+which formalise a large part of the theory of vertex operator algebras and, as its headline result,
+construct the Moonshine module $\Vnat$ of Frenkel, Lepowsky and Meurman. The Lean system has checked
+every proof in it. That is a strong guarantee, but it is a guarantee about \emph{proofs}, not about
+\emph{statements}. A Lean theorem can be completely verified and still not say what its authors
+meant: a hypothesis may be stronger than intended, a conclusion weaker, a definition may be vacuous
+(satisfied by nothing, or by a trivial object), or a convention may have silently changed between
+two files. No computer can detect such a mismatch, because the ``intended meaning'' lives in the
+heads of the authors and in the literature, not in the code.
+
+This book exists to close that gap. It is written for a \emph{human referee}: a reader who wants
+to take a theorem of the library, read it as mathematics, read the Lean declaration that is
+printed next to it, and convince herself that the Lean statement is \emph{exactly} the intended
+theorem --- no stronger hidden hypotheses, no weaker conclusion, no vacuous definitions, no changed
+conventions. The book is about statements and their meaning. It is not about how Lean checks
+proofs; the proofs are explained on paper, as a mathematician (and, where it helps, a physicist)
+would explain them.
+
+\subsection{How each result is presented}
+
+Every definition and theorem in the later chapters is presented in the same order:
+\begin{enumerate}
+\item the \textbf{mathematical statement}, in textbook form, with every quantifier explicit;
+\item the \textbf{Lean declaration}, copied verbatim from the source file, with its full name and
+  its file (the line ``File \leanpath{VOA/...}'' above or below the code);
+\item a \textbf{fidelity check} (a grey box) which decodes the Lean notation, lists every
+  hypothesis and says why it is the intended one, traces every defined term back to its
+  definition, says whether the Lean form is the same as, stronger than or weaker than the textbook
+  form, and asks how the statement could have been wrong or vacuous;
+\item a \textbf{proof on paper};
+\item the \textbf{physical meaning} (a blue box);
+\item the \textbf{machine status} (a green box): unconditional, or conditional on named
+  hypotheses, and the result of \texttt{\#print axioms} where it was run.
+\end{enumerate}
+Traps, dead ends and defects of the library are recorded in red boxes. Each chapter ends with a
+\emph{Referee's checklist} (a table of its headline declarations) and with \emph{Notes and
+references}. Section~\ref{ch01:sec:boxes} explains the boxes in more detail.
+
+\subsection{How to use the book}
+
+A reader who wants to verify the construction of $\Vnat$ can follow the \emph{Moonshine path} of
+Section~\ref{ch01:sec:paths}; a reader interested in the library as a whole can follow the
+\emph{general path}. In both cases the recommended way to use a chapter is the referee's way: read
+the mathematical statement, then read the Lean statement \emph{before} reading the fidelity check,
+and try to decode it yourself with the help of Sections~\ref{ch01:sec:lean}
+and~\ref{ch01:sec:conventions}. Then read the fidelity check and see whether you agree. The book is
+tied to a single commit: if the library has moved on, the script
+\texttt{python3 scripts/textbook/sync.py check} lists every chapter whose quotations no longer match
+the source (Section~\ref{ch01:sec:bookchecks}).
+
+%======================================================================
+\section{The Lean toolkit: reading Lean for mathematicians}\label{ch01:sec:lean}
+%======================================================================
+
+Lean~4 is a programming language and an interactive proof assistant based on dependent type
+theory; Mathlib is its community library of formalised mathematics. The LeanVOA library is written
+in Lean~4.30.0 against Mathlib v4.30.0. A reader of this book never needs to \emph{write} Lean; she
+needs to \emph{read} statements. This section teaches the minimum, with short examples taken
+verbatim from the library.
+
+\subsection{Terms and types; propositions and data}
+
+Every object in Lean is a \emph{term}, and every term has a \emph{type}, written \lean{x : X} (read:
+``$x$ is a term of type $X$''). A type plays the role of the set to which an element belongs, with
+one difference: the type of a term is part of the term and is always known to the system. Examples:
+\lean{n : ℤ} is an integer, \lean{c : ℂ} a complex number, \lean{k : ℕ} a natural number (and
+$\N$ \emph{includes} $0$). The expression \lean{(n : ℂ)} is the \emph{cast} of the integer $n$ into
+$\C$; casts are sometimes printed as an upward arrow \lean{↑n}. \lean{𝒱 : Type u} declares $\choneV$
+to be a type (``a set'') in universe level $u$; universes are a technical device to avoid Russell's
+paradox and may be ignored. A function type is written with an arrow: \lean{f : ℤ → 𝒲} is a
+function from $\Z$ to $\mathcal W$, applied by juxtaposition, \lean{f n}, so that \lean{f (-n - 1)}
+means $f(-n-1)$. Functions of several variables are curried: \lean{g : ℤ → ℤ → 𝒲} is applied as
+\lean{g m n}.
+
+Statements are also types, of a special kind: they live in the universe \lean{Prop} of
+propositions. A \emph{proof} of a statement \lean{P : Prop} is a term \lean{h : P}. So there are two
+kinds of things in Lean, and a reader must always know which one she is looking at:
+\begin{itemize}
+\item \emph{data}, whose type lives in some \lean{Type u}: numbers, vectors, linear maps, vector
+  spaces, vertex algebras;
+\item \emph{proofs}, whose type is a proposition \lean{P : Prop}: the statement that a map is
+  linear, that a family of subspaces is a direct-sum decomposition, that an identity holds.
+\end{itemize}
+Two proofs of the same proposition are regarded as equal (``proof irrelevance''), so a proof
+carries no information beyond the truth of what it proves. Data, by contrast, can be chosen in
+different ways, and the choice matters.
+
+The logical connectives are written as in mathematics: \lean{P ∧ Q} (and), \lean{P ∨ Q} (or),
+\lean{¬ P} (not), \lean{P → Q} (implies), \lean{P ↔ Q} (if and only if), \lean{∀ x, P x} (for
+all), \lean{∃ x, P x} (there exists). \textbf{Quantifier order matters exactly as in mathematics.}
+For instance \lean{∀ u v : 𝒱, ∃ N : ℤ, ∀ n : ℤ, N ≤ n → P u v n} says that a bound $N$ exists
+for each pair $(u,v)$ and may depend on it; the statement with \lean{∃ N} written first would assert
+a single uniform bound, which is much stronger. Implication associates to the right:
+\lean{P → Q → R} means $P\Rightarrow(Q\Rightarrow R)$, i.e.\ ``if $P$ and $Q$, then $R$''. In a long
+conjunction \lean{A ∧ B ∧ C} the connective also associates to the right; for reading purposes it is
+simply the list of clauses $A$, $B$, $C$.
+
+
+\textbf{Universes.} A declaration may say \lean{(𝒱 : Type u)}, \lean{(𝒲 : Type*)} or
+\lean{Type _}. These are three ways of saying ``a type'' that differ only in how the universe level
+is named: \lean{u} is a named level, \lean{Type*} introduces a fresh anonymous level, and \lean{_}
+asks Lean to infer it. A referee can read all three as ``let $\choneV$ be a set''. The only place
+where universes can matter for a statement is when two types are required to live in the
+\emph{same} universe (a structure field such as \lean{carrier : Type u}); then a theorem quantifying
+over all such structures quantifies over those in universe $u$, which for the mathematics of this
+book loses nothing.
+
+\subsection{Declarations: def, theorem, structure, class, instance}
+
+A Lean file is a sequence of \emph{declarations}. The ones a reader meets are these.
+\begin{itemize}
+\item \lean{def name (arguments) : T := body} \emph{defines} a term of type \lean{T}. A definition
+  proves nothing. If \lean{T} is \lean{Prop}, the definition introduces a new \emph{predicate}; much
+  of the work of refereeing a library is checking that its predicates mean what their names
+  suggest, because a theorem about a badly defined notion can be true and useless. This is why the
+  book prints every definition that occurs in a headline theorem.
+\item \lean{theorem name (arguments) : P := proof} asserts that the proposition \lean{P} holds for
+  all values of the arguments. In this book we print the part up to and including the colon and the
+  statement \lean{P}; the proof after \lean{:=} is usually omitted. (\lean{lemma} is a synonym.)
+\item \lean{structure} introduces a new type whose terms are tuples of data and proofs ---
+  Section~\ref{ch01:sec:structures} below.
+\item \lean{class} is a structure whose terms Lean will \emph{search for automatically}; the
+  standard examples are Mathlib's algebraic structures \lean{AddCommGroup 𝒱} and
+  \lean{Module ℂ 𝒱}. The LeanVOA library declares essentially no classes of its own: a text search finds one
+  declaration beginning with \lean{class}, \lean{VOA.Huang.TensorCat.FusionCategory}
+  (Chapter~\ref{ch:L21}); its vertex-algebraic notions are ordinary structures, passed as explicit
+  arguments.
+\item \lean{instance} declares a term of a class, which the automatic search will then find.
+\item \lean{abbrev} is a definition that Lean unfolds eagerly; for reading it is the same as
+  \lean{def}. \lean{noncomputable} in front of a definition means that Lean cannot run it as a
+  program (typically because it uses the axiom of choice); it has no logical cost for classical
+  mathematics, but it means that numbers such as dimensions cannot simply be evaluated by the
+  computer --- numerical evidence in the project is produced outside Lean and always labelled as
+  evidence.
+\item \lean{axiom name : P} \emph{postulates} \lean{P} without proof. The library contains none;
+  until 19 October 2026 it contained one, \lean{VOA.pbw}, now a theorem
+  (Section~\ref{ch01:sec:trust}).
+\end{itemize}
+
+\begin{example}[The mode convention]\label{ch01:ex:mode}
+Here is the single most important definition of the library, in full.
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalCalculus.lean}.
+\begin{leancode}
+def mode (f : FormalDist 𝒲) (m : ℤ) : 𝒲 := f (-m - 1)
+\end{leancode}
+Read it as follows. The name is \lean{mode} (in full, \lean{VOA.mode}, since the whole library sits
+in the namespace \lean{VOA}). It has two explicit arguments, \lean{f} of type \lean{FormalDist 𝒲}
+and \lean{m} of type \lean{ℤ}; the result has type \lean{𝒲}; and the value is \lean{f (-m - 1)}.
+To understand it one must know what \lean{FormalDist 𝒲} is: it is the type \lean{ℤ → 𝒲} of all
+functions from $\Z$ to $\mathcal W$, thought of as doubly infinite formal series
+$f(z) = \sum_{k\in\Z} f(k)\,z^{k}$ (Chapter~\ref{ch:L01}, Definition~\ref{l01:def:formaldist});
+the library also writes this type as \lean{𝒲⟦z^±⟧}. So \lean{f k} is the coefficient of $z^k$, and
+\lean{mode f m} is the coefficient of $z^{-m-1}$, i.e.\ the $m$-th mode $f_{(m)}$ in
+\begin{equation*}
+  f(z) = \sum_{m\in\Z} f_{(m)}\, z^{-m-1}.
+\end{equation*}
+When \lean{f} is the vertex operator \lean{Y u} of a state $u$, \lean{mode (Y u) n} is the operator
+$u_{(n)}$, whereas \lean{Y u k} (without \lean{mode}) is the coefficient of $z^k$, which is
+$u_{(-k-1)}$. Both forms occur.
+
+\emph{A worked example.} \lean{mode (Y u) 3} unfolds to \lean{Y u (-3 - 1)} $=$ \lean{Y u (-4)}, the
+coefficient of $z^{-4}$ in $Y(u,z)$, and in $\sum_n u_{(n)}z^{-n-1}$ the power $z^{-4}$ carries
+$u_{(3)}$, as it should. \emph{A check with the vacuum.} In a vertex algebra
+$Y(u,z)\chonevac = u + z\,Tu + O(z^2)$, where $Tu = u_{(-2)}\chonevac$. The coefficient of $z^0$ is
+\lean{Y u 0} $=$ \lean{mode (Y u) (-1)}, i.e.\ $u_{(-1)}$, and the library's creation axiom indeed
+reads \lean{mode (Y u) (-1) vacuum = u}; the coefficient of $z^1$ is \lean{Y u 1} $=$
+\lean{mode (Y u) (-2)}, i.e.\ $u_{(-2)}$, and the library defines the translation operator by
+\lean{V.smul u (-2) V.vacuum}. The positive modes $u_{(n)}$, $n\ge0$, sit at negative powers
+$z^{-n-1}$; they kill the vacuum, which is the statement that $Y(u,z)\chonevac$ has no pole at $z=0$.
+The full discussion, with more calibrating examples, is Definition~\ref{l01:def:mode} of
+Chapter~\ref{ch:L01}.
+\end{example}
+
+\begin{dictionary}
+\textbf{How to read it.} Explicit arguments (in parentheses) are the inputs; the type after the last
+colon is the output type. There is no hidden hypothesis: \lean{mode} is a plain re-indexing. The
+variable \lean{𝒲} does not appear among the arguments because it was declared once for the whole
+file by a \lean{variable} command (next subsection), which makes it an implicit argument.
+\end{dictionary}
+
+\begin{physics}
+A chiral field of a two-dimensional conformal field theory is expanded in modes, and the
+mathematician's convention $Y(u,z) = \sum u_{(n)}z^{-n-1}$ indexes the modes so that the exponent
+does not depend on the conformal weight of $u$. For a field of weight $h$ the physicist writes
+$\phi(z) = \sum\phi_m z^{-m-h}$, and then $u_{(n)} = \phi_{n-h+1}$; for the stress tensor ($h=2$)
+this gives $L_m = \omega_{(m+1)}$. The definition itself is bookkeeping; the physics lies in the
+axioms it is used to state (Chapter~\ref{ch:L03}).
+\end{physics}
+
+\begin{status}
+A definition. \texttt{\#print axioms VOA.mode} reports that it depends on no axioms (run for this
+chapter).
+\end{status}
+
+\begin{example}[An instance: the identity field]\label{ch01:ex:instOne}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak VertexAlgebra.lean}.
+\begin{leancode}
+instance instOne [Zero 𝒲] [One 𝒲] : One (FormalDist 𝒲) := ⟨fun n => if n = 0 then 1 else 0⟩
+\end{leancode}
+This declares how the symbol \lean{1} is to be read for formal series: \lean{1} is the series whose
+coefficient of $z^n$ is $1$ for $n=0$ and $0$ otherwise, i.e.\ the constant series $1$. The square
+brackets \lean{[Zero 𝒲] [One 𝒲]} require that $\mathcal W$ have a zero and a one (for example
+$\mathcal W = \End(V)$, where \lean{1} is the identity map). The angle brackets
+\lean{⟨...⟩} build a term of the class \lean{One} from its single field. Why this matters: the vacuum
+axiom of a vertex algebra is written \lean{Y vacuum = 1}, and with this instance it says
+$Y(\chonevac,z) = \mathrm{id}_V$, i.e.\ $\chonevac_{(n)} = \delta_{n,-1}\,\mathrm{id}$. Had the
+library used the \emph{pointwise} constant function $1$ on $\Z$ instead, \lean{1} would have meant
+the formal delta function $\sum_n z^n$, and the vacuum axiom would have said something false for
+every genuine vertex algebra. The library's choice is the correct one; the axiom is decoded in
+Chapter~\ref{ch:L03}, Definition~\ref{l03:def:VA}.
+\end{example}
+
+\begin{dictionary}
+An \lean{instance} has no name that the reader needs (here it is
+\lean{VOA.FormalDist.instOne}); its effect is that every later occurrence of \lean{1} at the type
+\lean{FormalDist 𝒲} means this series. A referee who sees \lean{1} or \lean{0} in a statement should
+always ask \emph{which} instance gives it meaning.
+\end{dictionary}
+
+\begin{physics}
+The identity field is the field of the vacuum state: inserting the vacuum at any point does
+nothing. It is the unit of the operator product expansion.
+\end{physics}
+
+\begin{status}
+A definition; \texttt{\#print axioms VOA.FormalDist.instOne} reports no axioms (run for this
+chapter).
+\end{status}
+
+\subsection{Type synonyms, abbrev, and definitional unfolding}\label{ch01:sec:synonyms}
+
+A \lean{def} whose value is a type creates a \emph{type synonym}: a new name for an existing type.
+The library's most important one is the type of formal distributions.
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalSeries.lean}.
+\begin{leancode}
+def FormalDist (𝒲 : Type*) : Type _ := ℤ → 𝒲
+\end{leancode}
+Mathematically \lean{FormalDist 𝒲} \emph{is} the set of functions $\Z\to\mathcal W$. But Lean
+treats a \lean{def} as \emph{opaque} for the automatic search: the structures that Mathlib puts on
+function types (pointwise addition, but also a pointwise \emph{multiplication}) are not inherited
+automatically, and only the structures the library declares by hand are available. This is
+deliberate: the pointwise product of two formal series in $z$ is \emph{not} their product as series
+(and the series product does not exist in general), so the library keeps the misleading ring
+structure away and gives \lean{FormalDist 𝒲} only its additive and $\C$-linear structure. A
+side-effect, recorded in the source, is that general lemmas about functions do not apply
+automatically, and the library has to restate trivialities such as the following.
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak Deformation.lean}.
+\begin{leancode}
+@[simp] theorem zero_dist_apply {𝒲 : Type*} [AddCommGroup 𝒲] (k : ℤ) :
+    (0 : FormalDist 𝒲) k = 0 := rfl
+\end{leancode}
+Two pieces of syntax appear here. The proof \lean{rfl} (``reflexivity'') means that the two sides
+are equal \emph{by unfolding definitions}: Lean checks the equation by computation. And
+\lean{@[simp]} is an \emph{attribute} that registers the theorem as a rewriting rule for the
+simplifier; it has no logical content. A theorem proved by \lean{rfl} is a \emph{definitional}
+fact: it tells the referee exactly what a definition unfolds to. For instance, immediately after
+\lean{mode}:
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalCalculus.lean}.
+\begin{leancode}
+@[simp] theorem mode_apply (f : FormalDist 𝒲) (m : ℤ) : mode f m = f (-m - 1) := rfl
+\end{leancode}
+Such \lean{rfl}-lemmas are the safest possible statements: they cannot hide any mathematics. The
+same holds for \lean{Iff.rfl}, the proof of \lean{P ↔ P}: a theorem \lean{A ↔ B := Iff.rfl} says that
+the two statements are the same after unfolding definitions, so it is a membership or unfolding
+lemma, not a theorem with content. Similarly \lean{funext h} proves \lean{f = g} from
+\lean{h : ∀ n, f n = g n} (function extensionality). An example combining both:
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalSeries.lean}.
+\begin{leancode}
+def LaurentPoly (𝒲 : Type*) [AddCommGroup 𝒲] [Module ℂ 𝒲] : Submodule ℂ (FormalDist 𝒲) where
+  carrier := {f | (Function.support f).Finite}
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalSeries.lean}.
+\begin{leancode}
+theorem mem_laurentPoly [AddCommGroup 𝒲] [Module ℂ 𝒲] {f : FormalDist 𝒲} :
+    f ∈ LaurentPoly 𝒲 ↔ (Function.support f).Finite := Iff.rfl
+\end{leancode}
+A subspace is defined by giving its \lean{carrier} (the underlying set, here in set-builder notation
+\lean{{f | ...}}) and proofs that it is closed under the operations (omitted here; the \lean{where}
+syntax lists the fields of the structure being built). \lean{Function.support f} is the set
+$\{n : f(n)\ne0\}$ and \lean{.Finite} the proposition that it is finite (Section~\ref{ch01:sec:sums});
+\lean{mem_laurentPoly} merely unfolds the definition.
+
+\textbf{Attributes.} The prefix \lean{@[...]} attaches an \emph{attribute} to a declaration: metadata
+used by the automation, with no logical content. \lean{@[simp]} registers a rewrite rule for the
+simplifier; \lean{@[ext]} registers an \emph{extensionality} lemma, i.e.\ a theorem ``two objects are
+equal when their components agree'', which the tactic \lean{ext} then applies automatically;
+\lean{@[inherit_doc]} copies a documentation string; \lean{@[reducible]} makes a definition unfold like
+an \lean{abbrev}. Example:
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalSeries.lean}.
+\begin{leancode}
+@[ext]
+theorem ext {f g : FormalDist 𝒲} (h : ∀ n, f n = g n) : f = g := funext h
+\end{leancode}
+Two formal distributions are equal when all their coefficients are; since \lean{FormalDist} is opaque,
+this has to be stated (and is proved by \lean{funext}). Likewise \lean{Aut.ext}
+(\leanpath{VOA/\allowbreak Core/\allowbreak Automorphism.lean}) says that two automorphisms are equal when their
+linear maps are: the proof fields carry no information.
+
+\textbf{\lean{inferInstanceAs}.} Since an opaque type synonym inherits no structure, the library
+transfers the structures it \emph{does} want by hand:
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalSeries.lean}.
+\begin{leancode}
+instance instAddCommGroup [AddCommGroup 𝒲] : AddCommGroup (FormalDist 𝒲) :=
+  inferInstanceAs (AddCommGroup (ℤ → 𝒲))
+\end{leancode}
+\lean{inferInstanceAs (C X)} means ``the instance of \lean{C X} that the automatic search finds'', used
+here at the synonym. So the addition on formal distributions is exactly the pointwise addition of
+functions $\Z\to\mathcal W$; the same is done for scalar multiplication, and nothing is done for
+multiplication. A referee reads \lean{inferInstanceAs} as ``the evident structure, transported''.
+
+\textbf{\lean{abbrev} versus \lean{def}.} An \lean{abbrev} is a definition that Lean unfolds
+\emph{eagerly}, in particular during the automatic instance search, so that an \lean{abbrev} of a
+type inherits all the structure of the type it abbreviates. Logically the two are the same: the
+abbreviated type and its unfolding are definitionally equal, and no statement changes meaning. The
+difference is practical, and it can be large. An example:
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak ExtraspecialModule.lean}.
+\begin{leancode}
+noncomputable abbrev ExtraT : Type := Rep (cocMat L) (isUnit_det_cocMat L hEven hU)
+\end{leancode}
+Because this abbreviation is unfolded during instance search, elaborating even the scalar action
+on its elements times out, and downstream files use the unfolded type \lean{Rep (cocMat L) _}
+directly (Chapter~\ref{ch:06}). For a referee the lesson is only that the \emph{same} mathematical
+object can appear under several names in different files; the fidelity checks say when two names are
+definitionally equal. Conversely the carrier of the Moonshine module is an \lean{abbrev},
+\lean{abbrev Vnat : Type := SkewVP × TP} (Section~\ref{ch01:sec:linalg}), so that it inherits the
+vector-space structure of the product.
+
+\begin{warning}
+\textbf{How type synonyms can mislead.} If a type synonym \emph{did} inherit a structure the
+authors did not intend (for \lean{FormalDist}, the pointwise product), a statement using \lean{*} on
+it would silently mean the wrong product. The library avoids this for \lean{FormalDist} by making it
+opaque. A referee who sees an algebraic operation on a type synonym should ask which instance gives
+it meaning --- the same question as for \lean{1} in Example~\ref{ch01:ex:instOne}.
+\end{warning}
+
+\subsection{Arguments: explicit, implicit, instance}
+
+Lean has three kinds of brackets for arguments, and all three are \emph{universally quantified} for
+reading purposes.
+\begin{itemize}
+\item \lean{(x : X)}: an \emph{explicit} argument, written out when the declaration is used.
+\item \lean{{x : X}}: an \emph{implicit} argument, which Lean infers from the other arguments (for
+  example the type $\choneV$ of a vector \lean{v : 𝒱}). In a statement, \lean{∀ {n : ℤ} (v : 𝒱), ...}
+  means ``for all $n$ and $v$''; the braces only say that $n$ need not be written when the statement
+  is used.
+\item \lean{[C X]}: an \emph{instance} argument, a structure of class \lean{C} on \lean{X} which Lean
+  finds by the automatic search.
+\item \lean{⦃x : X⦄}: a \emph{strict implicit} argument. Like \lean{{x : X}} it is inferred, but only
+  once a later explicit argument is supplied. For reading it is again ``for all $x$''. Example:
+\end{itemize}
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak SuperTorusRecursion.lean}.
+\begin{leancode}
+def IsParityHomogeneousMap {X Y : Type*} [AddCommGroup X] [Module ℂ X]
+    [AddCommGroup Y] [Module ℂ Y] (P : ParityGrading X) (Q : ParityGrading Y)
+    (p : ZMod 2) (f : X →ₗ[ℂ] Y) : Prop :=
+  ∀ (q : ZMod 2) ⦃x : X⦄, x ∈ P.parity q → f x ∈ Q.parity (p + q)
+\end{leancode}
+which reads: $f$ is homogeneous of parity $p$ if for every $q$ and every $x$ of parity $q$, $f(x)$ has
+parity $p+q$ (addition in \lean{ZMod 2}).
+
+\textbf{Other declaration syntax.} \lean{inductive} defines a type by listing its constructors (for
+example a type with finitely many named elements, or a type of formal words); \lean{deriving
+DecidableEq} asks Lean to generate the evident instance. \lean{open X in} makes the short names of
+namespace \lean{X} available for one declaration, and \lean{scoped} notation is notation available
+only after \lean{open}. A name prefixed by \lean{_root_.}, as in \lean{_root_.Even}, refers to the
+global declaration rather than to one of the same name inside the current namespace. Tactic names
+(\lean{simp}, \lean{simpa}, \lean{rw}, \lean{exact}, \lean{omega}, \lean{norm_num}, \lean{ring}, \lean{ext})
+and names of Mathlib lemmas such as \lean{smul_add} occur only inside proofs; a reader of statements
+can ignore them.
+Almost every file of the library begins with a line such as
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak VertexAlgebra.lean}.
+\begin{leancode}
+variable {𝒱 : Type u} [AddCommGroup 𝒱] [Module ℂ 𝒱]
+\end{leancode}
+which reads: \emph{let $\choneV$ be a complex vector space}. \lean{AddCommGroup 𝒱} is an abelian
+group structure and \lean{Module ℂ 𝒱} a compatible $\C$-module structure. The \lean{variable}
+command adds these arguments to every subsequent declaration of the file that mentions $\choneV$, so
+they do not appear in the printed statement but are nevertheless hypotheses of it. They are harmless
+here --- they say only that $\choneV$ is a complex vector space --- but a referee must remember that
+a statement can have arguments that are declared further up the file. The fidelity checks of the
+book always list them.
+
+
+A \lean{variable} line may also introduce an \emph{explicit} argument, for instance
+\lean{(W :}\allowbreak\ \lean{VertexOperatorAlgebra 𝒱)}. Then every definition of the file that uses \lean{W} takes
+it as its first explicit argument although it is not printed in the definition itself:
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak ZhuGenFiltration.lean}.
+\begin{leancode}
+variable {𝒱 : Type u} [AddCommGroup 𝒱] [Module ℂ 𝒱] (W : VertexOperatorAlgebra 𝒱)
+noncomputable def Fl (n : ℤ) : Submodule ℂ 𝒱 := ⨆ (k : ℤ) (_ : k < n), W.grading k
+\end{leancode}
+Here \lean{Fl} is really a function of two explicit arguments, \lean{Fl W n}, the span
+$\bigoplus_{k<n}W_k$ of all graded pieces of weight below $n$ (the notation \lean{⨆} is explained in
+Section~\ref{ch01:sec:linalg}).
+
+\textbf{Typeclass search, and why its depth matters.} When a declaration needs an instance argument
+\lean{[C X]}, Lean searches the registered instances, possibly chaining several (``$\choneV$ is a
+$\C$-module, hence an additive group, hence \dots''). The search is bounded by options, one of which,
+\lean{maxSynthPendingDepth}, the library sets globally in its build configuration:
+\begin{plaincode}
+[leanOptions]
+maxSynthPendingDepth = 3
+\end{plaincode}
+(an excerpt of \texttt{lakefile.toml}, shown as plain text because it is not Lean source). Some
+files need this larger depth to elaborate. If a file is compiled \emph{without} it --- which is what
+happens with a bare \texttt{lake env lean}, since that command does not read the build options ---
+the search can fail, and the elaborator may then replace the failing piece by \lean{sorryAx} and
+report an error. This is the origin of the ``audit trap'' of Section~\ref{ch01:sec:trust}: axiom
+audits must be run through \texttt{lake build} or with the option passed explicitly. A failed
+instance search never produces a \emph{wrong} accepted theorem; it produces an error (or a
+\lean{sorryAx} that \texttt{\#print axioms} reveals).
+
+\subsection{Structures: a bundle of data and proofs}\label{ch01:sec:structures}
+
+A \lean{structure} defines a mathematical object as a tuple of data together with axioms --- exactly
+like ``a group is a set with a multiplication, a unit and inverses, such that \dots''. Each component
+is a \emph{field} \lean{name : type}. Fields whose type is data are the data; fields whose type is a
+proposition are the axioms, and a term of the structure must supply a proof of each of them.
+
+\begin{example}[Automorphisms of a VOA]\label{ch01:ex:aut}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak Automorphism.lean}.
+\begin{leancode}
+structure Aut (W : VertexOperatorAlgebra 𝒱) where
+  toLinearEquiv : 𝒱 ≃ₗ[ℂ] 𝒱
+  map_smul' : ∀ (u : 𝒱) (n : ℤ) (v : 𝒱),
+    toLinearEquiv (W.smul u n v) = W.smul (toLinearEquiv u) n (toLinearEquiv v)
+  map_vacuum : toLinearEquiv W.vacuum = W.vacuum
+  map_omega : toLinearEquiv W.conformalVector = W.conformalVector
+\end{leancode}
+(documentation comments removed). A term \lean{α : Aut W} is a quadruple: one piece of data, the
+linear isomorphism \lean{toLinearEquiv} $:\choneV\to\choneV$, and three proofs: that it preserves
+every $n$-th product, $\alpha(u_{(n)}v) = (\alpha u)_{(n)}(\alpha v)$; that it fixes the vacuum;
+and that it fixes the conformal vector. The components are accessed by \emph{projection}, written
+with a dot: \lean{α.toLinearEquiv}, \lean{α.map_vacuum}. The same dot notation is used for functions
+defined in a namespace: if \lean{W : VertexOperatorAlgebra 𝒱} then \lean{W.smul u n v} is the
+function \lean{PreVertexAlgebra.smul} applied to (the underlying pre-vertex algebra of) \lean{W} and to
+\lean{u n v}; it is the $n$-th product $u_{(n)}v$ --- the name \lean{smul} refers to ``product'', not
+to scalar multiplication. The mathematics of automorphisms (that they form a group, preserve the
+grading, and so on) is in Chapter~\ref{ch:L04}, Definition~\ref{l04:def:aut}.
+\end{example}
+
+\begin{dictionary}
+\textbf{Decoding the symbols.} \lean{𝒱 ≃ₗ[ℂ] 𝒱} is the type of $\C$-linear isomorphisms
+$\choneV\to\choneV$, bundled together with their inverses. The quantifier in \lean{map_smul'} is over
+all $u$, $n$, $v$, with no restriction. The structure takes the VOA \lean{W} as an explicit
+parameter, so \lean{Aut W} is a type that depends on \lean{W}. Nothing requires the grading to be
+preserved: that is a \emph{theorem} (Chapter~\ref{ch:L04}), proved from $\alpha\omega = \omega$.
+\end{dictionary}
+
+\begin{physics}
+An automorphism of the chiral algebra is a global internal symmetry of the conformal field theory
+that commutes with conformal transformations (it fixes the stress tensor). For $\Vnat$ the
+automorphism group is the Monster (a theorem of Frenkel, Lepowsky and Meurman, not formalized in
+the library).
+\end{physics}
+
+\begin{status}
+A definition; \texttt{\#print axioms VOA.Aut} lists \lean{[propext, Classical.choice, Quot.sound]}
+(run for this chapter).
+\end{status}
+
+\textbf{The most dangerous failure of a structure.} A structure whose axioms are contradictory has no
+terms at all, and then every theorem of the form ``for every $W$ of this structure, \dots'' is
+vacuously true. The book checks for this explicitly; the library has had several such cases
+(Section~\ref{ch01:sec:failures}, item (F1)). One, a twisted-module axiom quantified over too many
+indices, is recorded and repaired in Chapter~\ref{ch:06}; the others are recorded, unrepaired, in
+Chapters~\ref{ch:L12} and~\ref{ch:L17}. The opposite failure is a structure satisfied by a trivial object: for
+instance, the zero space is a vertex operator algebra of every central charge, which is why
+headline results assert simplicity.
+
+A structure may \lean{extend} another: \lean{structure B extends A} means that a term of \lean{B} has
+all the fields of \lean{A} plus new ones, and \lean{b.toA} is its underlying \lean{A}. This is how a
+vertex operator algebra is built, in layers, on top of the library's basic structure \lean{PreVertexAlgebra}
+(Example~\ref{ch01:ex:VOA}).
+
+\subsection{The Mathlib vocabulary at a glance}
+
+The following Mathlib notions occur constantly. They are standard mathematics; we fix the notation
+and record the conventions that a referee must know. This is an overview; each item is treated with
+library examples in Sections~\ref{ch01:sec:choice}--\ref{ch01:sec:algebra}, and the glossary of
+Section~\ref{ch01:sec:glossary} lists everything in one table.
+\begin{itemize}
+\item \lean{𝒱 →ₗ[ℂ] 𝒲}: the $\C$-linear maps $\choneV\to\mathcal W$, applied like functions,
+  \lean{φ v}. \lean{𝒱 ≃ₗ[ℂ] 𝒲}: the $\C$-linear isomorphisms.
+\item \lean{Module.End ℂ 𝒱}, written \lean{End ℂ 𝒱} in the library: the algebra $\End_\C(\choneV)$.
+  In it \lean{a * b} is the composition $a\circ b$, \lean{1} is the identity, and \lean{⁅a, b⁆} is
+  the commutator $ab-ba$.
+\item \lean{Submodule ℂ 𝒱}: the linear subspaces of $\choneV$, ordered by inclusion, with least
+  element \lean{⊥} $=\{0\}$ and greatest element \lean{⊤} $=\choneV$. Membership is \lean{v ∈ S};
+  \lean{ℂ ∙ v} is the line $\C v$; \lean{Submodule.span ℂ s} is the span of a set $s$.
+\item \lean{↥S}: a subspace \lean{S : Submodule ℂ 𝒱} is a set of vectors; \lean{↥S} is the same
+  subspace regarded as a vector space in its own right (its elements are pairs of a vector and a
+  proof that it lies in $S$). The arrow is a \emph{coercion}: Lean inserts it automatically when a
+  subspace is used where a type is expected, and it is usually invisible in the source but visible
+  in Lean's printed output.
+\item \lean{Module.finrank ℂ X}: the dimension of $X$ as a natural number. \textbf{Caution:} by
+  Mathlib's convention the \lean{finrank} of an \emph{infinite}-dimensional space is $0$. So
+  \lean{finrank ℂ X = 196884} implies that $X$ is finite-dimensional, but \lean{finrank ℂ X = 0}
+  does not imply $X = 0$. This convention has bitten the library once: its ``fusion coefficient'' is
+  identically zero for exactly this reason (Chapter~\ref{ch:L12}, Theorem~\ref{l12:thm:fusionzero}).
+  \lean{FiniteDimensional ℂ X} is the proposition that $X$ is finite-dimensional.
+\item \lean{DirectSum.IsInternal S}, for a family \lean{S : ℤ → Submodule ℂ 𝒱}: the proposition
+  that the natural map $\bigoplus_n S_n\to\choneV$ is an isomorphism, i.e.\
+  $\choneV = \bigoplus_n S_n$ internally. This is how the library says that a space is graded.
+\item \lean{LinearMap.BilinForm ℂ 𝒱}: bilinear forms $\choneV\times\choneV\to\C$, applied as
+  \lean{B a b}.
+\item \lean{PowerSeries ℂ}: formal power series $\sum_{n\ge0}a_nq^n$; \lean{PowerSeries.coeff n f}
+  is the coefficient $a_n$ (printed \lean{(PowerSeries.coeff n) f}).
+\item \lean{∑ i ∈ Finset.range N, f i} is the finite sum $\sum_{i=0}^{N-1}f(i)$. \lean{∑ᶠ i, f i}
+  (``\lean{finsum}'') is the sum of a family with finite support, and \textbf{by convention it is $0$
+  when the support is infinite}. Wherever the library uses \lean{∑ᶠ}, finiteness of the support must
+  be checked separately; the chapters point this out where it matters (see
+  Chapter~\ref{ch:L01}, warning~\ref{l01:warn:finsum}).
+\item \lean{ZMod n}: the integers modulo $n$; \lean{ZMod 2} $=\{0,1\}$ is the parity group, used for
+  the even/odd grading of superalgebras and for the $\Z/2$ orbifold.
+\end{itemize}
+
+\begin{example}[Reading a structure header: vertex operator algebras]\label{ch01:ex:VOA}
+The central structure of the library is the following.
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak VertexOperatorAlgebra.lean}.
+\begin{leancode}
+structure GradedVertexOperatorAlgebra (𝒱 : Type u) [AddCommGroup 𝒱] [Module ℂ 𝒱]
+    extends PreVertexAlgebra 𝒱 where
+  conformalVector : 𝒱
+  conformal_mem : conformalVector ∈ grading 2
+  centralCharge : ℂ
+  virasoro : ∀ m n : ℤ,
+      ⁅mode (Y conformalVector) (m + 1), mode (Y conformalVector) (n + 1)⁆
+        = ((m : ℂ) - n) • mode (Y conformalVector) (m + n + 1)
+          + (if m + n = 0 then (((m : ℂ) ^ 3 - m) / 12 * centralCharge) • (1 : End ℂ 𝒱)
+             else 0)
+  L0_grading : ∀ {n : ℤ} (v : 𝒱), v ∈ grading n → mode (Y conformalVector) 1 v = (n : ℂ) • v
+  translation : ∀ v : 𝒱, Y (mode (Y conformalVector) 0 v) = deriv (Y v)
+  grading_bounded_below : ∃ N : ℤ, ∀ n : ℤ, n < N → grading n = ⊥
+
+structure VertexOperatorAlgebra (𝒱 : Type u) [AddCommGroup 𝒱] [Module ℂ 𝒱]
+    extends GradedVertexOperatorAlgebra 𝒱 where
+  vacuum_grade : grading 0 = ℂ ∙ vacuum
+  positivity : ∀ n : ℤ, n < 0 → grading n = ⊥
+  grading_bounded_below := ⟨0, positivity⟩
+
+def L (W : VertexOperatorAlgebra 𝒱) (n : ℤ) : End ℂ 𝒱 :=
+  mode (W.Y W.conformalVector) (n + 1)
+\end{leancode}
+(documentation comments removed). We read it only at the level of ``what kind of thing is each
+line''; the mathematics is in Chapter~\ref{ch:L03}, Definition~\ref{l03:def:VOA}.
+\begin{itemize}
+\item The headers: \lean{GradedVertexOperatorAlgebra 𝒱} is a type depending on a complex vector space
+  $\choneV$; \lean{extends PreVertexAlgebra 𝒱} means that it has all the fields of
+  \lean{PreVertexAlgebra} --- a grading \lean{grading : ℤ → Submodule ℂ 𝒱}, its directness, the
+  vertex operator \lean{Y : 𝒱 →ₗ[ℂ] (End ℂ 𝒱)⟦z^±⟧}, the \lean{vacuum} and Gannon's axioms VA1--VA5
+  --- which is why \lean{grading}, \lean{Y} and \lean{vacuum} can be used in the new fields
+  without being declared here. In the same way \lean{VertexOperatorAlgebra 𝒱} \lean{extends
+  GradedVertexOperatorAlgebra 𝒱}, so a VOA has every field of both structures.
+\item The layers. \lean{PreVertexAlgebra} (Chapter~\ref{ch:L03}) is \emph{not} a vertex algebra in the
+  standard sense: it has no translation-covariance axiom, and the Borcherds identity can fail for it.
+  The library's \lean{VertexAlgebra} is a \lean{PreVertexAlgebra} plus that axiom.
+  \lean{GradedVertexOperatorAlgebra} is the vertex operator algebra of Frenkel--Lepowsky--Meurman and
+  Lepowsky--Li: finite-dimensional graded pieces, the grading truncated from below
+  (\lean{grading_bounded_below}), Virasoro, $L_0$-grading and $L_{-1}$-derivative.
+  \lean{VertexOperatorAlgebra} adds the two \emph{CFT-type} fields \lean{vacuum_grade} and
+  \lean{positivity}; the line \lean{grading_bounded_below := ⟨0, positivity⟩} fills the parent's truncation
+  field automatically, so a construction of a VOA need not supply it. Every VOA is a vertex algebra
+  (\lean{VertexOperatorAlgebra.toVertexAlgebra}), because \lean{translation} gives covariance.
+\item Data: \lean{conformalVector} (a vector $\omega$) and \lean{centralCharge} (a number
+  $c\in\C$).
+\item Axioms: every other field is a proposition. \lean{conformal_mem} says $\omega\in V_2$.
+  \lean{virasoro} is an equation in \lean{End ℂ 𝒱} quantified over all $m,n\in\Z$, with the
+  commutator bracket \lean{⁅·,·⁆}, a cast \lean{(m : ℂ)}, scalar multiplication \lean{•}, and an
+  \lean{if ... then ... else} for the central term: by the mode convention of
+  Example~\ref{ch01:ex:mode}, \lean{mode (Y conformalVector) (m + 1)} is $\omega_{(m+1)} = L_m$, so
+  this is the Virasoro relation. \lean{L0_grading} has an implicit weight \lean{{n : ℤ}};
+  \lean{translation} uses the formal derivative \lean{deriv}; \lean{vacuum_grade} uses the line
+  \lean{ℂ ∙ vacuum}; \lean{positivity} and \lean{grading_bounded_below} use \lean{⊥}.
+\item After the structure, \lean{def L} introduces the abbreviation \lean{W.L n} for
+  $L_n = \omega_{(n+1)}$.
+\end{itemize}
+The library also has a separate structure \lean{VOA.NearVOA} in the same file, with the same
+Virasoro, grading and translation axioms but without finite-dimensionality of the graded pieces and
+without the conditions $V_0 = \C\chonevac$, $V_{n<0}=0$; every VOA gives one by
+\lean{VertexOperatorAlgebra.toNearVOA}.
+\end{example}
+
+\begin{dictionary}
+\textbf{What to check when reading a structure.} (a) Which fields are data and which are axioms.
+(b) The quantifiers of each axiom, including implicit ones in braces. (c) Every convention in an
+axiom --- here the shift $L_m = \omega_{(m+1)}$, which would make the Virasoro axiom false for every
+genuine VOA if it were off by one. (d) Whether the axioms can be satisfied by something non-trivial,
+and whether they are satisfied by something trivial (the zero space is a VOA of every central
+charge). (e) What the parent structure contributes. The full fidelity check of this structure ---
+including the important point that \lean{VertexOperatorAlgebra} is of \emph{CFT type} by definition, which is
+stronger than the ``grading bounded below'' of Frenkel--Lepowsky--Meurman (that general notion is
+\lean{GradedVertexOperatorAlgebra}) --- is in Chapter~\ref{ch:L03}.
+\end{dictionary}
+
+\begin{warning}
+\textbf{Correction: a bare \lean{PreVertexAlgebra} has no translation covariance.} An earlier version
+of this chapter called the library's \lean{PreVertexAlgebra} ``stronger'' than the textbook
+definitions of Kac and Frenkel--Ben-Zvi. That was wrong. \lean{PreVertexAlgebra} has a grading with
+finite-dimensional pieces but \emph{no} translation-covariance axiom, and without it the Borcherds
+(Jacobi) identity does not follow: Chapter~\ref{ch:L03} gives an explicit three-dimensional
+\lean{PreVertexAlgebra} on which both the Borcherds identity and $Y(Tu,z) = \partial_zY(u,z)$ fail,
+machine-checked and axiom-clean (a copy is in the library as
+\lean{VOA.TranslationCovariantCounterexample.VA}).
+Every Borcherds, skew-symmetry and duality theorem of the library is therefore stated for
+\lean{VertexOperatorAlgebra}, whose axiom \lean{translation} restores covariance, and every
+statement about $\Vnat$ is about \lean{VertexOperatorAlgebra}; the headline theorem is unaffected.
+The defect is catalogued in Chapter~\ref{ch:15}, Section~\ref{ch15:sec:debt}; it led the library to rename the structure (\lean{PreVertexAlgebra}) and to reserve \lean{VertexAlgebra} for the translation-covariant notion.
+\end{warning}
+
+\begin{physics}
+A vertex operator algebra is the chiral algebra of a two-dimensional conformal field theory together
+with its stress tensor $T(z) = Y(\omega,z) = \sum L_nz^{-n-2}$; the central charge $c$ is the
+conformal anomaly, the grading by $L_0$ is the grading by conformal weight, and the axiom
+\lean{translation} is the Ward identity saying that $L_{-1}$ generates translations.
+Section~\ref{ch01:sec:physics} gives the picture in a little more detail.
+\end{physics}
+
+\begin{status}
+A definition. \texttt{\#print axioms VOA.VertexOperatorAlgebra} lists
+\lean{[propext, Classical.choice, Quot.sound]} (run for this chapter).
+\end{status}
+
+\subsection{Existence, emptiness and choice}\label{ch01:sec:choice}
+
+\textbf{\lean{∃} and \lean{Nonempty}.} \lean{∃ x : X, P x} is a proposition; a proof of it does not
+come with a usable witness unless one invokes choice. For a type \lean{X},
+\lean{Nonempty X} is the proposition ``$X$ has at least one element'', and \lean{IsEmpty X} the
+proposition ``$X$ has no element''. Theorems of the form \lean{¬ Nonempty X} are how the library
+records that a notion is empty --- which is sometimes exactly the warning a referee needs:
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuVermaAnArchZhu534.lean}.
+\begin{leancode}
+theorem not_nonempty_inducedAssignment (W : VertexOperatorAlgebra 𝒱) :
+    ¬ Nonempty (InducedAssignment W) := by
+\end{leancode}
+Every theorem that takes a term of \lean{InducedAssignment W} as a hypothesis is therefore vacuous
+(Chapter~\ref{ch:L12}): the structure is uninhabited, so such a theorem proves nothing about any module.
+
+\textbf{\lean{Function.Injective}.} \lean{Function.Injective f} is the proposition
+$\forall a\,b,\ f\,a = f\,b\to a = b$. (Surjective and bijective are \lean{Function.Surjective},
+\lean{Function.Bijective}.) It appears, for instance, in the PBW principle \lean{VOA.pbw} (Chapter~\ref{ch:L02}).
+
+\textbf{Choice: \lean{.choose} and \lean{Classical.choose}.} From a proof \lean{h : ∃ x, P x}
+Lean can extract a witness \lean{h.choose} (also written \lean{Classical.choose h}) together with
+the proof \lean{h.choose_spec : P h.choose}. The witness is \emph{some} element satisfying $P$,
+selected by the axiom of choice; nothing is known about it beyond $P$. Two library examples:
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak Automorphism.lean}.
+\begin{leancode}
+def IsLocNilp (D : End ℂ 𝒱) : Prop := ∀ v : 𝒱, ∃ N : ℕ, (D ^ N) v = 0
+
+noncomputable def locNilpIdx {D : End ℂ 𝒱} (hD : IsLocNilp D) (v : 𝒱) : ℕ := (hD v).choose
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak SigmaAssemble.lean}.
+\begin{leancode}
+noncomputable def s0 : ZMod 2 := (seed_in_frame seedExists).choose
+\end{leancode}
+The first chooses, for a locally nilpotent operator $D$ and a vector $v$, \emph{some} $N$ with
+$D^Nv = 0$ (not necessarily the least one). The second chooses, in the Moonshine construction, one of
+the two sectors in which a ``seed'' vector exists. Such definitions are \lean{noncomputable}. Mathlib
+provides choice-based constructions of the same kind, the commonest in this library being a basis of
+a free module:
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak LatticeCocycle.lean}.
+\begin{leancode}
+noncomputable def latticeBasis :
+    Basis (Fin (Fintype.card (Module.Free.ChooseBasisIndex ℤ L.carrier))) ℤ L.carrier :=
+  (Module.Free.chooseBasis ℤ L.carrier).reindex (Fintype.equivFin _)
+\end{leancode}
+\lean{Module.Free.chooseBasis ℤ L.carrier} is \emph{an arbitrary} $\Z$-basis of the lattice $L$,
+re-indexed by \lean{Fin n} $=\{0,\dots,n-1\}$ (\lean{Fintype.card} is the number of elements of a
+finite type).
+
+\begin{warning}
+\textbf{How choice can make a statement weaker than it looks.} A definition built from a chosen
+witness depends on the choice, and a theorem about it is a theorem about \emph{that} choice. This is
+harmless when the theorem holds for every choice --- the FLM cocycle built from
+\lean{latticeBasis} satisfies the cocycle identities for every basis (Chapters~\ref{ch:L02}
+and~\ref{ch:03}) --- and it is what the referee must check. A statement such as ``\lean{locNilpIdx}
+is minimal'' would be unprovable, since nothing about the chosen $N$ beyond $D^Nv = 0$ is known. In
+the Moonshine construction the choices (\lean{s0}, the seed vector, the basis) are all of this
+harmless kind: the headline theorem is an existence statement, and its conclusion does not refer to
+them (Chapter~\ref{ch:14}).
+\end{warning}
+
+\subsection{Total functions and junk values}\label{ch01:sec:junk}
+
+Every Lean function is \emph{total}: it returns a value on every input, including inputs where the
+mathematical operation is undefined. The value returned there is a \emph{junk value}, fixed by
+convention. The ones that matter:
+\begin{itemize}
+\item \textbf{division by zero}: \lean{x / 0 = 0} in $\C$, $\Q$, $\mathbb R$; in $\N$ and $\Z$
+  division is division with remainder rounded down, so \lean{7 / 2 = 3};
+\item \textbf{natural subtraction is truncated}: for \lean{m n : ℕ}, \lean{m - n = 0} when $m<n$;
+\item \lean{Int.toNat}: \lean{k.toNat} is $k$ for $k\ge0$ and $0$ for $k<0$;
+\item \lean{Module.finrank} of an infinite-dimensional space is $0$, and \lean{∑ᶠ} of an infinitely
+  supported family is $0$ (Sections~\ref{ch01:sec:linalg} and~\ref{ch01:sec:sums});
+\item library functions that are only meaningful on some inputs return $0$ elsewhere.
+\end{itemize}
+Junk values are harmless when the statement only uses the function where it is meaningful, and
+the referee's job is to check that. Three library examples.
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak Substitution.lean}.
+\begin{leancode}
+noncomputable def cbz (n k : ℤ) : ℂ := if 0 ≤ k then gBinom n k.toNat else 0
+\end{leancode}
+The binomial $\binom nk$ with an \emph{integer} lower index: \lean{k.toNat} is used only under the
+guard \lean{0 ≤ k}, and for $k<0$ the value is \emph{defined} to be $0$. This junk value is
+mathematically the right one: it lets the library write the Borcherds identity as a sum over all
+$i\in\Z$ (Chapter~\ref{ch:L01}).
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak TwistedHeisenberg.lean}.
+\begin{leancode}
+noncomputable def modeT (r : ℕ) (i : Fin r) (k : ℤ) : Module.End ℂ (FockT r) :=
+  if k % 2 = 0 then 0
+  else if k < 0 then mulXT (varT i k)
+  else ((k : ℂ) / 2) • pderivT (varT i k)
+\end{leancode}
+This is the \emph{odd-integer encoding} of half-integer modes: the twisted boson has modes
+$h_i(r)$ only for $r\in\frac12+\Z$, and the library indexes $h_i(k/2)$ by the odd integer $k$. For
+even $k$ (\texttt{k \% 2 = 0}, where \texttt{\%} is the remainder) there is no mode, and the junk value
+\lean{0} is returned. The factor \lean{(k : ℂ) / 2} is honest complex division. A statement about
+\lean{modeT} for \emph{all} \lean{k} therefore also says something (usually trivial) about the junk
+values; the fidelity checks of Chapter~\ref{ch:06} note where hypotheses ``$k$ odd'' are needed.
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak ExtraspecialModule.lean}.
+\begin{leancode}
+theorem finrank_extraT : Module.finrank ℂ (ExtraT L hEven hU) = 2 ^ (L.rank / 2) := by
+\end{leancode}
+Here \lean{L.rank / 2} is division of natural numbers, rounded down. The formula $\dim T_L =
+2^{\mathrm{rank}\,L/2}$ is meant for even rank, and the library proves separately that an even
+unimodular lattice has even rank (\lean{even_rank_of_unimodular}, same file), so no rounding occurs
+in the cases used.
+
+\begin{warning}
+\textbf{How junk values make statements vacuous or wrong.} A conclusion
+\lean{Module.finrank ℂ X = 0} is satisfied by every infinite-dimensional $X$; a conclusion
+\lean{∑ᶠ i, f i = 0} by every infinitely supported $f$; an equation between natural numbers involving
+\lean{m - n} may hold only because both sides are truncated. The library has one real casualty: its
+``fusion coefficient'' \lean{VOA.fusionCoeff} is a \lean{finrank} of a space that is always either
+$0$ or infinite-dimensional, so it is identically $0$ (Chapter~\ref{ch:L12},
+Theorem~\ref{l12:thm:fusionzero}). Every statement
+whose content is a value of \lean{VOA.fusionCoeff} is therefore vacuous or false as a fusion rule.
+\end{warning}
+
+\subsection{Numbers, casts, ZMod, Fin, and decidable conditions}\label{ch01:sec:numbers}
+
+\textbf{Casts.} $\N$, $\Z$, $\Q$, $\mathbb R$, $\C$ are different types, and a number is moved between
+them by a cast: \lean{(n : ℤ)} for $n\in\N$, \lean{(m : ℂ)} for $m\in\Z$, printed \lean{↑n} by Lean.
+Casts are injective ring homomorphisms, so an equation of casts means the evident equation, with two
+cautions: a subtraction or division \emph{inside} a cast is computed in the source type (so
+\lean{((m - n : ℕ) : ℤ)} is truncated, whereas \lean{(m : ℤ) - n} is not), and the position of the
+cast matters for that reason. The headline theorem casts the natural number \lean{finrank} to $\C$ to
+compare it with a power-series coefficient (Section~\ref{ch01:sec:headline}).
+
+\textbf{\lean{ZMod n} and \lean{Fin n}.} \lean{ZMod n} is the ring $\Z/n\Z$; \lean{ZMod 2} is the
+parity group, used for super gradings, for the two sectors of an orbifold, and in coding theory.
+\lean{Fin n} is the finite type $\{0,1,\dots,n-1\}$, used as an index set: \lean{i : Fin r} in
+\lean{modeT} above is a colour index $1\le i\le r$ (numbered from $0$). An element of \lean{Fin n}
+is a natural number together with a proof that it is less than $n$.
+
+\textbf{Decidable conditions.} An expression \lean{if c then a else b} requires Lean to be able to
+decide \lean{c}; for equalities of integers, inequalities and parity this is automatic (the relevant
+instances are called \lean{Decidable} and \lean{DecidableEq}), and with classical logic every
+proposition is decidable. For reading purposes \lean{if c then a else b} is the case distinction it
+looks like. Example:
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak Expansion.lean}.
+\begin{leancode}
+def negOnePow (n : ℤ) : ℂ := if Even n then 1 else -1
+\end{leancode}
+which is $(-1)^n$ (\lean{Even n} is the proposition $\exists r,\ n = r + r$).
+
+\subsection{Linear algebra: maps, subspaces, quotients, products}\label{ch01:sec:linalg}
+
+\textbf{Maps.} \lean{𝒱 →ₗ[ℂ] 𝒲} is the type of $\C$-linear maps; a term is a function bundled with
+the proofs that it is additive and $\C$-homogeneous. \lean{𝒱 ≃ₗ[ℂ] 𝒲} is the type of linear
+isomorphisms, bundled with their inverses. \lean{Module.End ℂ 𝒱} (\lean{End ℂ 𝒱}) is
+$\End_\C(\choneV)$, with \lean{*} composition, \lean{1} the identity, \lean{⁅a, b⁆} $=ab-ba$, and
+\lean{D ^ N} the $N$-th power. \lean{LinearMap.id} is the identity map. A curried
+\lean{M →ₗ[ℂ] M →ₗ[ℂ] ℂ} is a \emph{bilinear} map $M\times M\to\C$ (linear in each variable
+separately; there is no complex conjugation anywhere), and \lean{LinearMap.BilinForm ℂ 𝒱} is the
+abbreviation for \lean{𝒱 →ₗ[ℂ] 𝒱 →ₗ[ℂ] ℂ}. \lean{Module.Dual ℂ X} is the dual space
+\lean{X →ₗ[ℂ] ℂ}. \lean{Basis ι ℂ X} is a basis of $X$ indexed by $\iota$.
+
+\textbf{Subspaces as a lattice.} \lean{Submodule ℂ 𝒱} is the set of subspaces of $\choneV$, a complete
+lattice under inclusion \lean{≤}: \lean{⊥} $=\{0\}$, \lean{⊤} $=\choneV$, \lean{S ⊓ T} $=S\cap T$,
+\lean{S ⊔ T} $=S+T$, and \lean{⨆ i, S i} (``\lean{iSup}'') is the sum $\sum_iS_i$ of a family.
+The double supremum \lean{⨆ (k : ℤ) (_ : k < n), W.grading k} in \lean{Fl} above is the sum over all
+$k<n$: the second binder ranges over proofs of $k<n$, and the anonymous name \lean{_} says the proof
+is not used. \lean{Submodule.span ℂ s} is the span of a set $s$, and \lean{ℂ ∙ v} the line $\C v$.
+For a linear map $f$, \lean{LinearMap.ker f} and \lean{LinearMap.range f} are its kernel and image;
+\lean{S.comap f} is the preimage $f^{-1}(S)$ and \lean{S.map f} the image $f(S)$; \lean{S.subtype}
+is the inclusion $S\hookrightarrow\choneV$. \lean{↥S} is the subspace $S$ regarded as a vector space
+(its elements are pairs of a vector and a proof of membership); the coercion is inserted
+automatically.
+
+\textbf{Quotients.} \lean{X ⧸ S} is the quotient space $X/S$. A typical construction, the cohomology
+of a differential:
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak BRSTCohomology.lean}.
+\begin{leancode}
+def kerQ : Submodule ℂ 𝒱 := LinearMap.ker C.Q
+def imQ : Submodule ℂ 𝒱 := LinearMap.range C.Q
+def imQ' : Submodule ℂ C.kerQ := C.imQ.comap C.kerQ.subtype
+abbrev Coh : Type u := C.kerQ ⧸ C.imQ'
+\end{leancode}
+Read: $\ker Q$ and $\operatorname{im}Q$ are subspaces of $\choneV$; since the quotient must be taken
+inside $\ker Q$, the image is first pulled back along the inclusion $\ker Q\hookrightarrow\choneV$
+(\lean{comap} along \lean{subtype}), giving $\operatorname{im}Q$ as a subspace of $\ker Q$; and the
+cohomology is $\ker Q/\operatorname{im}Q$.
+Besides quotient \emph{spaces}, Lean has quotient \emph{types} of a set by an equivalence relation:
+\lean{Quotient.mk} sends an element to its class, \lean{Quotient.lift f h} is the function induced on
+classes by an $f$ that respects the relation (\lean{h} is the proof that it does), and
+\lean{Quotient.sound} says that related elements have equal classes --- it is derived from the axiom
+\lean{Quot.sound} of Section~\ref{ch01:sec:trust}.
+
+\textbf{Gradings.} A grading is a family \lean{grading : ℤ → Submodule ℂ 𝒱}, and
+\lean{DirectSum.IsInternal grading} is the proposition that $\choneV = \bigoplus_nV_n$ (the natural map
+from the external direct sum is bijective). \lean{DirectSum ℂ X} with \lean{X : ι → Type} is the
+external direct sum $\bigoplus_iX_i$; the restricted dual of a graded module is built with it:
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak Contragredient.lean}.
+\begin{leancode}
+def RestrictedDual (N : OrdVModule W M) : Type u := DirectSum ℂ (fun α => Module.Dual ℂ (N.weight α))
+\end{leancode}
+which is $M' = \bigoplus_\alpha M_\alpha^*$.
+
+\textbf{Eigenspaces, exactness, complements.} For \lean{T : Module.End ℂ X},
+\lean{Module.End.eigenspace T μ} is $\ker(T-\mu)$ and \lean{T.maxGenEigenspace μ} the generalised
+eigenspace $\{x : (T-\mu)^kx = 0\text{ for some }k\}$; the library's logarithmic modules are graded by
+the latter (Chapter~\ref{ch:L12}). \lean{IsCompl P Q} says $X = P\oplus Q$ ($P\cap Q = 0$ and
+$P+Q = X$). \lean{Nontrivial X} says $X$ has two distinct elements, i.e.\ for a vector space $X\ne0$.
+Exactness of a pair of module maps is the library's own predicate, stated pointwise without category
+theory:
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak OrdinaryExact.lean}.
+\begin{leancode}
+def ExactAt (f : Hom A B) (g : Hom B C) : Prop :=
+  ∀ n : N, g.toLinearMap n = 0 ↔ ∃ m : M, f.toLinearMap m = n
+\end{leancode}
+i.e.\ $\ker g = \operatorname{im}f$ (Chapter~\ref{ch:L12}).
+
+\textbf{More linear-algebra constructions.} \lean{LinearIndependent ℂ v} says the family $v$ is
+linearly independent; \lean{Module.Basis} (also written \lean{Basis}) is a basis, \lean{Module.Basis.mk} builds a basis from an independent spanning family,
+\lean{b.repr x} is the coordinate vector of $x$ in the basis $b$, and \lean{Pi.basisFun} is the
+standard basis of $\C^n$. \lean{Module.Finite R X} says $X$ is finitely generated (for a vector space:
+finite-dimensional). \lean{Submodule.Quotient.mk x} is the class of $x$ in a quotient, and
+\lean{S.liftQ f h} the map induced on $X/S$ by an $f$ vanishing on $S$. \lean{LinearEquiv.ofBijective},
+\lean{LinearEquiv.ofInjective} (onto the image), \lean{LinearEquiv.ofEq} (between equal subspaces) and
+\lean{LinearEquiv.ofInvolutive}
+build isomorphisms; \lean{LinearMap.fst} is the first projection, \lean{LinearMap.toSpanSingleton ℂ X x}
+the map $c\mapsto cx$, \lean{LinearMap.smulRight f x} the map $y\mapsto f(y)\,x$, \lean{LinearMap.mk₂}
+a bilinear map built from a function, \lean{LinearMap.mul} and \lean{LinearMap.mulLeft} multiplication
+in an algebra, \lean{Algebra.lsmul} scalar multiplication as a linear map, \lean{B.compl₁₂ f g} the
+bilinear form $(x,y)\mapsto B(fx,gy)$, \lean{B.IsSymm} and \lean{B.Nondegenerate} symmetry and
+nondegeneracy of a bilinear form, \lean{Matrix.toBilin'} the bilinear form of a matrix,
+\lean{Matrix.of} a matrix given by its entries, \lean{Matrix.rank} the rank and \lean{M}\lean{ᵀ} (postfix \lean{ᵀ}) the transpose.
+\lean{restrictScalars} regards a $\C$-linear object as linear over a smaller ring. \lean{TensorProduct.mk},
+\lean{TensorProduct.map}, \lean{TensorProduct.lift}, \lean{TensorProduct.congr}, \lean{TensorProduct.lid},
+\lean{LinearMap.lTensor}, \lean{LinearMap.rTensor} are
+respectively $(a,b)\mapsto a\otimes b$, $f\otimes g$, the linear map induced by a bilinear one,
+$f\otimes g$ for isomorphisms, $\C\otimes M\cong M$, $\mathrm{id}\otimes f$ and $f\otimes\mathrm{id}$.
+On direct sums, \lean{DirectSum.decompose} (and \lean{DirectSum.decomposeLinearEquiv}) is the isomorphism
+$V\cong\bigoplus_nV_n$ of a decomposition, \lean{DirectSum.toModule} the map out of a direct sum given
+on summands, \lean{DFinsupp.lsum} its finitely-supported analogue, and
+\lean{DirectSum.IsInternal.chooseDecomposition} a decomposition \emph{chosen} from the bare statement
+\lean{IsInternal} (Section~\ref{ch01:sec:choice}). On finitely supported functions
+(Section~\ref{ch01:sec:sums}): \lean{Finsupp.single i a} is $a$ at $i$ and $0$ elsewhere (and
+\lean{Pi.single} the same for ordinary functions), \lean{Finsupp.linearCombination} is
+$c\mapsto\sum_ic_iv_i$, \lean{Finsupp.lsum} and \lean{Finsupp.lapply} sum and evaluation as linear
+maps, \lean{Finsupp.domLCongr} re-indexing, and \lean{Finsupp.weight w} the weighted degree
+$\sum_i\mu(i)w(i)$ of a multi-index.
+
+\textbf{Dimension.} \lean{Module.finrank ℂ X} is $\dim X$ when finite and $0$ otherwise;
+\lean{FiniteDimensional ℂ X} is the proposition that $X$ is finite-dimensional. A conclusion
+\lean{finrank ℂ X = d} with $d\ne0$ implies finite-dimensionality; with $d = 0$ it does not.
+
+\textbf{Products and tensor products.} \lean{A × B} is the product (direct sum) of two spaces, with
+elements \lean{(a, b)} and projections \lean{x.1}, \lean{x.2}; \lean{S.prod T} is the subspace
+$S\times T$. The Moonshine module is built this way:
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak VnatCarrier.lean}.
+\begin{leancode}
+abbrev Vnat : Type := SkewVP × TP
+
+noncomputable def gradingNat (n : ℤ) : Submodule ℂ Vnat :=
+  (leechVOAPlus.grading n).prod (plusModule.weight (n : ℂ))
+
+noncomputable def vacNat : Vnat := (leechVOAPlus.vacuum, 0)
+\end{leancode}
+so $\Vnat = V_\Leech^+\oplus(V_\Leech^T)^+$, graded piecewise, with vacuum $(\chonevac,0)$ (the
+names \lean{SkewVP}, \lean{TP} are defined in Chapter~\ref{ch:10}). \lean{A ⊗[ℂ] B} is the tensor
+product over $\C$ and \lean{a ⊗ₜ[ℂ] b} a pure tensor:
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak TensorVOA.lean}.
+\begin{leancode}
+def tenSub (P : Submodule ℂ A) (Q : Submodule ℂ B) : Submodule ℂ (A ⊗[ℂ] B) :=
+  Submodule.span ℂ {t : A ⊗[ℂ] B | ∃ a ∈ P, ∃ b ∈ Q, a ⊗ₜ[ℂ] b = t}
+\end{leancode}
+which is the image of $P\otimes Q$ in $A\otimes B$, written as the span of a set given by set-builder
+notation \lean{{t | ...}}; \lean{∃ a ∈ P, ...} abbreviates $\exists a,\ a\in P\wedge\dots$.
+
+\textbf{Matrices.} \lean{Matrix ι ι ℂ} is a square matrix indexed by a finite type $\iota$, and
+\lean{M.det} its determinant. A theorem combining several of these notions:
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak GradedFormMatrix.lean}.
+\begin{leancode}
+theorem gramMatrix_det_ne_zero_iff (hB : B.IsFullyInvariant) (hn : B.Normalized) :
+    (gramMatrix B n e).det ≠ 0 ↔ maxGradedIdeal W ⊓ W.grading n = ⊥ := by
+\end{leancode}
+Its shape: two hypotheses on an invariant form \lean{B} (named \lean{hB} and \lean{hn}; the objects
+\lean{B}, \lean{n}, \lean{e} come from \lean{variable} lines of the file), and a conclusion
+``$\det\ne0$ if and only if the maximal graded ideal meets $V_n$ only in $0$''. The mathematics is in
+Chapter~\ref{ch:L04}.
+
+\subsection{Sums and finitely supported functions}\label{ch01:sec:sums}
+
+\lean{∑ i ∈ s, f i} is the sum over a finite set \lean{s : Finset ι}; \lean{Finset.range N} is
+$\{0,\dots,N-1\}$, so \lean{∑ i ∈ Finset.range N, f i} $=\sum_{i=0}^{N-1}f(i)$, and
+\lean{Finset.univ} is the set of all elements of a finite type. \lean{∑ᶠ i, f i} (\lean{finsum}) is
+the sum of a family indexed by an arbitrary type, defined to be the actual sum when the support
+$\{i : f(i)\ne0\}$ is finite and \textbf{$0$ otherwise}. The library uses \lean{∑ᶠ} to write
+identities such as the Borcherds identity as sums over all $i\in\Z$; every such use requires a
+separate proof that the support is finite, and the fidelity checks point to it (Chapter~\ref{ch:L01},
+warning~\ref{l01:warn:finsum}). \lean{ι →₀ R} (\lean{Finsupp}) is the type of \emph{finitely
+supported} functions $\iota\to R$ --- a function together with a finite set outside which it
+vanishes; \lean{μ.sum g} is the finite sum $\sum_{i}g(i,\mu(i))$ over the support:
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak GrowthBound.lean}.
+\begin{leancode}
+def multSize {g : ℕ} (μ : Fin g × ℕ →₀ ℕ) : ℕ := μ.sum (fun p m => m * (p.2 + 1))
+\end{leancode}
+Here $\mu$ is a multiplicity function on pairs $p = (i,m)\in\{0,\dots,g-1\}\times\N$, and the value is
+$\sum_p\mu(p)\,(p_2+1)$. The anonymous function \lean{fun p m => ...} is $(p,m)\mapsto m(p_2+1)$.
+Infinite sums of convergent series (\lean{∑'}, \lean{tsum}) also occur, in the analytic chapters;
+\lean{∑'} of a non-summable family is again $0$ by convention; \lean{HasProd f a} is the proposition that
+the infinite product of $f$ converges (unconditionally) to $a$, the honest alternative to a junk-valued
+\lean{∏'}. \lean{∏ i ∈ s, f i} is a finite product.
+
+\textbf{Supports and finiteness.} \lean{Function.support f} is the set $\{i : f(i)\ne0\}$. For a set
+\lean{S : Set X}, \lean{S.Finite} and \lean{S.Infinite} are the propositions that $S$ is finite,
+infinite; \lean{Set.toFinite S} is the proof of \lean{S.Finite} when $X$ itself is finite. For a type,
+\lean{Finite X} says $X$ has finitely many elements and \lean{Fintype X} supplies an explicit
+enumeration. \lean{Nat.card X}, \lean{Set.ncard S} and \lean{s.card} (for a \lean{Finset}) count
+elements; \textbf{the first two are $0$ for infinite sets}, the same junk convention as
+\lean{finrank}. \lean{Set X} is the type of subsets of $X$, \lean{Set.univ} the whole of $X$,
+\lean{Set.range f} the image of $f$; \lean{∈}, \lean{∉}, \lean{⊆}, \lean{∩}, \lean{∪} have their usual
+meaning. \lean{Finset.univ.filter p} is the finite set of elements satisfying $p$, and
+\lean{Finset.antidiagonal n} the set of pairs $(a,b)\in\N^2$ with $a+b = n$. \lean{List X} is the type
+of finite sequences, with \lean{List.replicate n x} the constant list of length $n$ and
+\lean{l.flatMap f} the concatenation of the lists $f(x)$, $x\in l$; \lean{Finset.toList} lists a finite set.
+
+\subsection{Polynomials, power series, groups}\label{ch01:sec:algebra}
+
+\lean{Polynomial ℂ} is $\C[x]$ and \lean{MvPolynomial σ ℂ} the polynomials in variables indexed by
+$\sigma$; \lean{Polynomial.aeval a P} evaluates $P$ at an element $a$ of an algebra.
+\lean{PowerSeries ℂ} is $\C[[q]]$, with \lean{PowerSeries.X} the variable $q$ and
+\lean{PowerSeries.coeff n f} the coefficient of $q^n$. The power series in the headline theorem is
+\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak JFunction.lean}.
+\begin{leancode}
+noncomputable def JShift : PowerSeries ℂ := jShift - (744 : ℂ) • PowerSeries.X
+\end{leancode}
+whose meaning --- $q\,J(q) = q\,(j(q)-744) = 1 + 196884\,q^2+\cdots$, with \lean{jShift} the series of
+$q\,j(q)$ ---
+is established in Chapter~\ref{ch:05}. A definition may need a structure on a type that is not
+found automatically; it is then supplied locally with \lean{letI}:
+\noindent File \leanpath{VOA/\allowbreak Modules/\allowbreak ZhuPolynomialSimplicity.lean}.
+\begin{leancode}
+def ZhuPolynomialRelation (P : Polynomial ℂ) : Prop :=
+  letI := instRingA W
+  letI := instAlgebraA W
+  Polynomial.aeval (mk W W.conformalVector) P = 0
+\end{leancode}
+This says $P([\omega]) = 0$ in Zhu's algebra $A(W)$, where the ring and algebra structures of $A(W)$
+are installed by the two \lean{letI} lines (Chapter~\ref{ch:L12}). \lean{haveI} is the same for a
+proposition. Finally, \lean{Subgroup G} is the type of subgroups of a group $G$, and
+\lean{Subgroup.zpowers g} the cyclic subgroup $\langle g\rangle$:
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak LatticeInvolution.lean}.
+\begin{leancode}
+noncomputable def leechVOAPlus :
+    VertexOperatorAlgebra (orbifold (Subgroup.zpowers leechTheta)).carrier :=
+  orbifoldVOA (Subgroup.zpowers leechTheta)
+\end{leancode}
+which is $V_\Leech^+ = V_\Leech^{\langle\theta\rangle}$, the fixed points of the involution $\theta$,
+as a VOA on the carrier (\lean{.carrier}) of the fixed-point subspace (Chapter~\ref{ch:04}).
+
+\textbf{Rings, units, numbers.} \lean{CommRing R} is a commutative ring structure; \lean{algebraMap R A}
+is the structure map $R\to A$ of an $R$-algebra; \lean{Subalgebra R A} is a subalgebra. \lean{A →ₐ[ℂ] B}
+and \lean{A ≃ₐ[ℂ] B} are algebra homomorphisms and isomorphisms (\lean{AlgEquiv.ofAlgHom} builds one from
+two mutually inverse homomorphisms), \lean{A →+ B} an additive homomorphism (\lean{f.toAddMonoidHom}
+forgets the rest of a structured map), and \lean{Additive G} the additive version of a multiplicative
+group. \lean{AddSubgroup G} is an additive subgroup and \lean{Equiv.neg} negation as a bijection.
+\lean{IsUnit a} says $a$ is invertible, \lean{R}\lean{ˣ} (postfix \lean{ˣ}) is the group of units, \lean{a⁻¹} the inverse (with the
+junk value \lean{0⁻¹ = 0} in a field), \lean{a ^ n} a power (\lean{zpow} for integer exponents), and
+\lean{Commute a b} says $ab = ba$. \lean{Odd n}, \lean{a ∣ b} (divides), \lean{Nat.Coprime m n},
+\lean{n.factorial} (also \lean{n !}) and \lean{Nat.choose n k} (written \lean{n.choose k}) are the usual
+integer notions. \lean{Complex.I} is $i$, \lean{Complex.exp} the exponential, \lean{Real.pi} is $\pi$,
+\lean{Real.sqrt} the square root (junk value $0$ on negative numbers), and \lean{CFC.sqrt} the square root
+of a positive semidefinite matrix by the continuous functional calculus. \lean{f ∘ g} is composition,
+\lean{∃! x, P x} unique existence, \lean{x.val} the underlying element of an element of a subtype (or of
+\lean{Fin n}), \lean{Subtype.ext} says two such elements are equal when their values are, and
+\lean{ofLex} strips the lexicographic-order synonym from a tuple.
+
+\textbf{Polynomials and series.} \lean{Polynomial.X} and \lean{Polynomial.C c} are the variable and the
+constant $c$; \lean{Polynomial.eval x P} is $P(x)$; \lean{P.natDegree} is the degree (junk value $0$ for
+$P = 0$) and \lean{P.leadingCoeff} its leading coefficient. For several variables, \lean{MvPolynomial.X i},
+\lean{MvPolynomial.C}, \lean{MvPolynomial.aeval}, \lean{MvPolynomial.lcoeff m} (the coefficient of the
+monomial $m$, as a linear map; \lean{lcoeff} also exists for \lean{Polynomial} and \lean{PowerSeries}),
+\lean{MvPolynomial.pderiv i} ($\partial/\partial x_i$) and
+\lean{MvPolynomial.weightedHomogeneousSubmodule R w d} (the polynomials of weighted degree $d$).
+\lean{PowerSeries.mk a} is the series $\sum a_nq^n$. Mathlib's modular forms appear as
+\lean{ModularForm Γ k} (weight-$k$ forms for a group $\Gamma$) and their $q$-expansions
+\lean{qExpansion}; the Eisenstein-series lemma \lean{EisensteinSeries.E_qExpansion_coeff} gives their
+coefficients (Chapters~\ref{ch:L14} and~\ref{ch:05}).
+
+\textbf{Lie theory.} \lean{LieRing L} and \lean{LieAlgebra ℂ L} give a Lie bracket \lean{⁅x, y⁆};
+\lean{L →ₗ⁅ℂ⁆ L'} (\lean{LieHom}) is a Lie algebra homomorphism, \lean{LieSubalgebra ℂ L} a Lie
+subalgebra, \lean{UniversalEnvelopingAlgebra ℂ L} is $U(L)$, \lean{IsSl2Triple h e f} says $(h,e,f)$
+satisfies the $\mathfrak{sl}_2$ relations, and \lean{oneCochain}, \lean{twoCochain}, \lean{twoCocycle},
+\lean{LieAlgebra.ofTwoCocycle} are Mathlib's Lie algebra cochains, cocycles and the central extension
+defined by a cocycle --- how the Virasoro algebra is built from the Witt algebra (Chapter~\ref{ch:L02}).
+\lean{IsSimpleModule R M} and \lean{IsSemisimpleRing R} are the module-theoretic notions; for a lattice
+of subspaces, \lean{sSup} and \lean{sInf} are the sum and intersection of a set of subspaces.
+\lean{Semiring}, \lean{AddCommMonoid}, \lean{LinearOrder} and \lean{NoZeroDivisors} are the evident
+algebraic and order classes, appearing as instance arguments. \lean{Ideal R} is the type of ideals of a
+ring, \lean{Ideal.span s} the ideal generated by $s$, \lean{RingHom.ker f} the kernel of a ring
+homomorphism, and \lean{I.mkQ} (for a subspace or ideal $I$) the quotient map $X\to X/I$. For
+polynomials, \lean{P.derivative} is $P'$ and \lean{P.eval x} evaluation, so \lean{M.det.eval x} and
+\lean{M.det.derivative.eval x} evaluate a polynomial determinant and its derivative; \lean{MvPolynomial.weightedHomogeneousComponent w d P} is the weighted
+degree-$d$ part of $P$. \lean{Unit} is the one-element type, \lean{l.sort r} sorts a list or finite set
+by a relation $r$, and \lean{cmp a b} compares two elements of a linear order. Hypothesis names that are
+words (\lean{hsum}, \lean{hne}, \lean{hB}) are just labels chosen by the authors; only their types
+matter. \lean{Submodule.Quotient.restrictScalarsEquiv} and lemma names such as
+\lean{Submodule.mem_span_singleton_self} ($x\in\C x$) occur in a few statements and mean what they say.
+
+\subsection{How a Lean statement can fail to mean what it says}\label{ch01:sec:failures}
+
+Everything above is vocabulary. The point of learning it is to recognise the ways in which a
+correct, machine-checked statement can still fail to be the intended theorem. The book's fidelity
+checks are organised around the following list; each entry has occurred in this library, and the
+instances are catalogued in Chapter~\ref{ch:15}, Sections~\ref{ch15:sec:deadends}--\ref{ch15:sec:debt}.
+\begin{enumerate}[label=(F\arabic*)]
+\item \textbf{Unsatisfiable structure.} Its axioms are contradictory, so every theorem about it is
+  vacuous. Instances: the original \lean{TwistedModule} (repaired; Chapter~\ref{ch:06}), the
+  unrepaired \lean{SuperTwistedModule.jacobi} (Chapter~\ref{ch:L17}; Section~\ref{ch15:sec:super}), and
+  \lean{VOA.Unitary}, whose ``positive-definiteness'' is required of a \emph{bilinear} (not
+  Hermitian) form and so cannot hold in dimension $\ge2$ (Chapter~\ref{ch:L12},
+  Proposition~\ref{l12:prop:unitary}). The \lean{¬ Nonempty} theorem quoted in
+  Section~\ref{ch01:sec:choice} is the library recording such a case itself.
+\item \textbf{Predicate satisfied too easily.} \lean{IsLowestWeight N h} does not require the
+  lowest weight space to be nonzero, so the zero module is lowest-weight of every weight
+  (Chapter~\ref{ch:L12}); \lean{SelfContragredient} holds for every module (Chapter~\ref{ch:L12}).
+\item \textbf{Predicate satisfied too rarely.} \lean{IsCommutative} forces $V = \C\chonevac$, so the
+  ``commutativity theorems'' are statements about the trivial VOA only (Chapter~\ref{ch:L03}).
+\item \textbf{Definition differs from its name.} The library's structure transcribing Gannon's axioms lacks
+  translation covariance (Chapter~\ref{ch:L03}); it was called \lean{VertexAlgebra} until the release, when it was renamed
+  \lean{PreVertexAlgebra} and the name \lean{VertexAlgebra} was given to the translation-covariant notion. Similarly the
+  universal affine VOA $V^k(\mathfrak g)$, formerly \lean{simpleAffineVOA}, is now \lean{universalAffineVOA}
+  (Chapter~\ref{ch:L23}). Still open: the super structure \lean{SuperVertexAlgebra}, which has the same omission, keeps the old-style
+  name (Chapter~\ref{ch:L17}); the library's \lean{generated} subalgebra always contains $\omega$
+  (Chapter~\ref{ch:L04}); its \lean{fusionCoeff} is identically $0$, a placeholder and not a fusion rule (Chapter~\ref{ch:L12}).
+\item \textbf{Junk values} in a conclusion (\lean{finrank}, \lean{∑ᶠ}, truncated subtraction),
+  Section~\ref{ch01:sec:junk}.
+\item \textbf{A hypothesis that is never established}, making the theorem conditional although its
+  axiom list is clean (Section~\ref{ch01:sec:uncond}); or a hypothesis that is redundant or
+  tautological, which is harmless but misleading (for instance the hypothesis \lean{homega} still carried by the definition \lean{inner}, Remark~\ref{l04:rem:homega}).
+\item \textbf{Quantifier order or a missing quantifier}: a bound that should be uniform but depends on
+  the data, or the reverse (Section~\ref{ch01:sec:lean}).
+\item \textbf{A conclusion satisfied by a trivial or wrong object}: the zero VOA satisfies every
+  axiom; a non-simple square-zero extension has the same character as $\Vnat$
+  (Chapter~\ref{ch:10}). Headline theorems therefore pin the data and assert simplicity.
+\item \textbf{Choices and instances} that change meaning: a theorem about a chosen witness
+  (Section~\ref{ch01:sec:choice}), or an operation whose meaning comes from an unexpected instance
+  (Example~\ref{ch01:ex:instOne}, Section~\ref{ch01:sec:synonyms}).
+\end{enumerate}
+
+\subsection{A second structure: super vertex algebras}\label{ch01:sec:super}
+
+The same reading technique applies to every structure of the library. As a second example, and
+because it shows two further pieces of vocabulary (gradings indexed by $\C$ and by \lean{ZMod 2}),
+here is the library's super vertex algebra.
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak SuperVertexAlgebra.lean}.
+\begin{leancode}
+structure SuperVertexAlgebra (𝒱 : Type u) [AddCommGroup 𝒱] [Module ℂ 𝒱] where
+  grading : ℂ → Submodule ℂ 𝒱
+  isInternal : DirectSum.IsInternal grading
+  finrank : ∀ h, FiniteDimensional ℂ (grading h)
+  parity : ZMod 2 → Submodule ℂ 𝒱
+  parity_isInternal : DirectSum.IsInternal parity
+  Y : 𝒱 →ₗ[ℂ] (End ℂ 𝒱)⟦z^±⟧
+  vacuum : 𝒱
+  vacuum_mem : vacuum ∈ grading 0
+  vacuum_parity : vacuum ∈ parity 0
+  grading_mode : ∀ {h k : ℂ} (u : 𝒱), u ∈ grading h → ∀ (v : 𝒱), v ∈ grading k →
+    ∀ (n : ℤ), mode (Y u) n v ∈ grading (h + k - n - 1)
+  parity_mode : ∀ {p q : ZMod 2} (u : 𝒱), u ∈ parity p → ∀ (v : 𝒱), v ∈ parity q →
+    ∀ (n : ℤ), mode (Y u) n v ∈ parity (p + q)
+  vacuum_Y : Y vacuum = (1 : (End ℂ 𝒱)⟦z^±⟧)
+  creation : ∀ u : 𝒱, mode (Y u) (-1) vacuum = u ∧ ∀ n : ℤ, 0 ≤ n → mode (Y u) n vacuum = 0
+  locality : ∀ {p q : ZMod 2} (u : 𝒱), u ∈ parity p → ∀ (v : 𝒱), v ∈ parity q →
+    Localε (koszul p q) (Y u) (Y v)
+  regularity : ∀ u v : 𝒱, ∃ N : ℤ, ∀ n : ℤ, N ≤ n → mode (Y u) n v = 0
+\end{leancode}
+
+\begin{dictionary}
+\textbf{How to read it.} Data: two gradings (\lean{grading}, indexed by $\C$ so that half-integer
+weights are allowed while modes remain indexed by $\Z$; \lean{parity}, indexed by \lean{ZMod 2}), the
+vertex operator \lean{Y} and the \lean{vacuum}. Everything else is an axiom. Note the field
+\lean{finrank}: despite its name it is the \emph{proposition} that each graded piece is
+finite-dimensional, not a number. \lean{creation} is a conjunction \lean{∧} of two clauses.
+\lean{locality} is super-locality with the Koszul sign \lean{koszul p q} $=(-1)^{pq}$, defined in
+Chapter~\ref{ch:L01} (\lean{Localε}, Definition~\ref{l01:def:bracketeps}); \lean{regularity} has the
+quantifier order ``for all $u,v$ there is $N$''. No relation between weight and parity
+(spin--statistics) is imposed; the theory of super vertex algebras is Chapter~\ref{ch:L17}. The
+Moonshine construction does not use this structure.
+\end{dictionary}
+
+\begin{physics}
+A super vertex algebra is the chiral algebra of a theory with fermions: odd states create fermionic
+fields, which anticommute at spacelike separation, whence the sign $(-1)^{pq}$ in locality. Free
+fermions and the $bc$ and $\beta\gamma$ ghost systems of string theory are examples.
+\end{physics}
+
+\begin{status}
+A definition. \texttt{\#print axioms VOA.SuperVertexAlgebra} lists
+\lean{[propext, Classical.choice, Quot.sound]} (run for this chapter).
+\end{status}
+
+\subsection{Reading the headline statement}\label{ch01:sec:headline}
+
+Here is the main theorem of the Moonshine part of the library, as it stands in the source.
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak TopPairs.lean}.
+\begin{leancode}
+theorem moonshine :
+    ∃ V : VertexOperatorAlgebra Vnat,
+      V.Y = Ynat VnatAxioms.wbarL ∧ V.vacuum = vacNat ∧ V.conformalVector = omegaNat ∧
+      V.centralCharge = 24 ∧
+      V.grading 1 = ⊥ ∧
+      Module.finrank ℂ (V.grading 2) = 196884 ∧
+      (∀ n : ℕ, (Module.finrank ℂ (V.grading (n : ℤ)) : ℂ) = PowerSeries.coeff n JShift) ∧
+      V.IsSimple :=
+  moonshine_of_topPairs (by norm_num) topPairs_one
+\end{leancode}
+Its full name is \lean{VOA.Moonshine.moonshine}. It has \emph{no arguments}: there is nothing
+before the colon. Its statement is an existential, \lean{∃ V : VertexOperatorAlgebra Vnat, ...},
+whose body is a conjunction of eight clauses. Read it as: \emph{there is a vertex operator algebra
+structure $V$ on the space \lean{Vnat} such that}
+\begin{enumerate}[label=(\arabic*)]
+\item its vertex operator is the explicitly constructed block map \lean{Ynat VnatAxioms.wbarL};
+\item its vacuum is the explicit vector \lean{vacNat};
+\item its conformal vector is the explicit vector \lean{omegaNat};
+\item its central charge is $24$;
+\item its weight-one space is zero, $V_1 = 0$;
+\item $\dim V_2 = 196884$;
+\item for every $n\in\N$, $\dim V_n$ (cast to $\C$) is the $q^n$-coefficient of the power series
+  \lean{JShift};
+\item it is simple.
+\end{enumerate}
+The term after \lean{:=} is the whole proof: it applies an earlier theorem,
+\lean{moonshine_of_topPairs}, to a numerical fact checked by \lean{norm_num} and to the theorem
+\lean{topPairs_one}. Both are explained in Chapter~\ref{ch:14}.
+\begin{dictionary}
+\textbf{What to notice.} (a) The first three clauses \emph{pin} the structure to the explicit
+Frenkel--Lepowsky--Meurman data, so the existential cannot be satisfied by some unrelated object
+on the same space. (b) Clause (7) contains a \emph{cast}: \lean{Module.finrank} is a natural
+number, and \lean{(... : ℂ)} turns it into a complex number so that it can be compared with a
+coefficient of a power series over $\C$; and \lean{(n : ℤ)} casts $n\in\N$ to an integer weight.
+(c) The source writes \lean{Module.finrank ℂ (V.grading 2)}, but \lean{V.grading 2} is a subspace,
+not a type: Lean silently inserts the coercion \lean{↥}, and Lean's own printout of the statement
+shows \lean{Module.finrank ℂ ↥(V.grading 2)}. (d) Clause (8) is essential: a non-simple VOA (the
+``square-zero extension'', Chapter~\ref{ch:10}) has exactly the same central charge and graded
+dimension. (e) Each of the defined terms \lean{Vnat}, \lean{Ynat}, \lean{vacNat},
+\lean{omegaNat}, \lean{JShift}, \lean{grading} and \lean{IsSimple} must be traced to its
+definition. The places are listed in Table~\ref{ch01:tab:notions}, and the complete clause-by-clause
+fidelity check is Chapter~\ref{ch:14}, Section~\ref{ch14:sec:decode}.
+\end{dictionary}
+
+\begin{physics}
+The theorem says that the chiral conformal field theory of the $\Z/2$-orbifold of 24 free bosons on
+the Leech torus exists as a mathematical object, has central charge $24$, has no conserved weight-one
+currents ($V_1 = 0$: no continuous symmetry), has $196884$ states of weight two, and has partition
+function $J(q)$; simplicity says that the theory has a unique vacuum sector with no decoupled
+subsector.
+\end{physics}
+
+\begin{status}
+Unconditional: the theorem has no hypotheses. \texttt{\#print axioms VOA.Moonshine.moonshine}, run for
+this chapter, gives
+\begin{plaincode}
+'VOA.Moonshine.moonshine' depends on axioms: [propext, Classical.choice, Quot.sound]
+\end{plaincode}
+so the proof uses neither \lean{sorry} nor any project-specific axiom (the library has none;
+Chapter~\ref{ch:L02}).
+\end{status}
+
+\subsection{Namespaces and full names}
+
+Declarations live in namespaces, and the full name records them:
+\lean{VOA.VertexOperatorAlgebra.L} is the definition \lean{L} in the namespace
+\lean{VertexOperatorAlgebra} inside \lean{VOA}. The whole library is inside \lean{VOA}; the Moonshine
+part is mostly inside \lean{VOA.Moonshine}. Inside a namespace, and after an \lean{open} command,
+Lean lets one write short names, so a printed statement may say \lean{finrank} for
+\lean{Module.finrank} or \lean{End} for \lean{Module.End}. The book gives full names in the text and
+the file in which each declaration lives.
+
+%======================================================================
+\section{What the machine guarantees}\label{ch01:sec:trust}
+%======================================================================
+
+\subsection{The kernel}
+
+When Lean accepts a file, its \emph{kernel} --- a small program that implements the rules of the type
+theory --- has checked every proof term in it. Everything a user writes, including the
+automation (``tactics'') that produces proofs, is outside the kernel and does not need to be
+trusted: if a tactic produced a wrong proof, the kernel would reject it. What a reader must trust is
+therefore (i) the kernel and the logic, (ii) the axioms, and (iii) the \emph{statements}. This book
+is about (iii).
+
+\subsection{Escape hatches: \texttt{sorry} and friends}
+
+Lean has an escape hatch, \lean{sorry}, which closes any goal without proof; internally it is an
+axiom \lean{sorryAx}. A statement proved with \lean{sorry} is not proved. The project's policy
+forbids \lean{sorry}, \lean{admit}, \lean{native_decide} (which trusts the compiler rather than the
+kernel), \lean{implemented_by} and \lean{stop} in library code; the repository checker enforces it.
+
+\subsection{Axioms and \texttt{\#print axioms}}
+
+Lean's logic uses three standard axioms beyond its type theory: \lean{propext} (logically equivalent
+propositions are equal), \lean{Quot.sound} (quotient types behave as quotients) and
+\lean{Classical.choice} (the axiom of choice, from which the law of the excluded middle follows).
+All of classical mathematics and all of Mathlib use them. A user may add further axioms with the
+keyword \lean{axiom}, and Lean will then accept anything that follows from them; a false axiom makes
+everything provable. The command \texttt{\#print axioms foo} traverses the proof of \lean{foo} down
+to the kernel and lists every axiom it uses.
+
+\textbf{The library contains no project axiom.} Until 19 October 2026 it
+contained exactly one, \lean{VOA.pbw}; that declaration is now a theorem with the same name and type.
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak AffineLie.lean}.
+\begin{leancode}
+theorem pbw : PBWPrinciple :=
+  ⟨fun κ hκ k => AffineLie.vacuumVector_ne_zero_of_induction κ hκ k,
+    fun p rho => PBWTheorem.bottom_injective p rho⟩
+\end{leancode}
+\lean{PBWPrinciple} bundles two consequences of the Poincar\'e--Birkhoff--Witt theorem: that the
+vacuum vector of an affine vacuum module is nonzero, and that a module embeds in the module induced
+from it. Mathlib does not contain PBW, and the library proves the needed relative form itself
+(Chapter~\ref{ch:L02}, Section~\ref{l02:sec:pbwproof}). Its exact statement, its proof, and which
+parts of the library use it are in Chapter~\ref{ch:L02}, Section~\ref{l02:sec:axiom}. Earlier
+editions flagged every result that depended on it; those flags are historical
+(Section~\ref{l02:sec:history}). For example, run for this book at an earlier commit, after \lean{VOA.pbw} became a theorem (not re-run for this edition):
+\begin{plaincode}
+'VOA.AffineLie.vacuumVector_ne_zero' depends on axioms: [propext, Classical.choice, Quot.sound]
+\end{plaincode}
+The construction of $\Vnat$ does not use it, as the axiom report of the headline theorem
+(Section~\ref{ch01:sec:headline}) certifies.
+
+\subsection{A clean axiom list does not make a theorem unconditional}\label{ch01:sec:uncond}
+
+\texttt{\#print axioms} reports \emph{axioms}, not \emph{hypotheses}. A theorem
+\lean{theorem bar (h : SomeHypothesis) : Conclusion} can have a perfectly clean axiom list and still
+prove nothing unconditional: \lean{h} is an explicit argument, and the theorem says only ``if
+\lean{SomeHypothesis} then \lean{Conclusion}''. The book therefore uses two labels, and never
+blurs them:
+\begin{itemize}
+\item \textbf{unconditional}: the statement has no hypotheses beyond the objects it speaks about and
+  their defining structure, and its axioms are the standard three;
+\item \textbf{\texttt{\#print axioms}-clean, conditional on $H$}: the statement has an explicit
+  hypothesis $H$ that is not established anywhere, so it proves $H\Rightarrow C$, not $C$;
+\end{itemize}
+(Earlier editions had a third label, ``uses \lean{VOA.pbw}'', for results whose axiom list contained
+the then project axiom; it no longer applies.)
+Hypotheses that are part of the mathematical statement (``let $V$ be simple'', ``let
+$L_1V_1 = 0$'') are of course fine; the question is always whether a hypothesis is an intended
+condition of the theorem or an unproved input. The library contains many results of the second kind
+--- for example Zhu-type modular invariance under Etingof-finiteness in
+Chapter~\ref{ch:L16} takes hypotheses \lean{hfib} and \lean{hrank} that are discharged only for the trivial
+VOA --- and the status boxes name them. (Such inputs are sometimes later proved: the Arakawa--Kawasetsu weight grading
+\lean{AKWeightGrading W}, long carried as such a hypothesis, is now the theorem \lean{VOA.akWeightGrading} for every VOA.) The headline theorem \lean{VOA.Moonshine.moonshine} has no hypotheses at all.
+
+\subsection{The aggregate build}
+
+\texttt{lake} is Lean's build tool. \texttt{lake build} elaborates every file of the library in
+dependency order and has the kernel check every proof; ``green'' means it finished with no errors.
+The project's rule is that a result counts only when the \emph{aggregate} build of the umbrella
+module \lean{VOA} is green: a file that compiles in isolation might not be imported by the library
+at all. The repository checker \texttt{scripts/check\_repository.py} verifies that every library
+file is reachable from the umbrella, that no forbidden escape hatch occurs, and that no project
+\lean{axiom} declaration exists.
+
+\begin{warning}
+\textbf{Audit trap.} Running a bare \texttt{lake env lean} on a file can silently drop the option
+\lean{maxSynthPendingDepth} that the library's build sets; elaboration may then fail in a way that
+inserts \lean{sorryAx}. Axiom audits are therefore run only through \texttt{lake build} or through
+\texttt{lake env lean -DmaxSynthPendingDepth=3}. All axiom reports in this chapter were obtained the
+second way.
+\end{warning}
+
+\subsection{The book's own machine checks}\label{ch01:sec:bookchecks}
+
+The book itself is checked by machine in three ways, by \texttt{python3 scripts/textbook/sync.py
+check}.
+\begin{itemize}
+\item \textbf{STALE QUOTE.} Every \lean{leancode} block of every chapter is compared with the Lean
+  sources (after removing comments and normalising whitespace); a block that does not occur
+  verbatim is reported. This is what guarantees that the Lean code printed in the book is the code
+  in the library. Tool output, such as \texttt{\#print axioms} reports, is printed in a different
+  (plain) style and is not compared.
+\item \textbf{MISSING PATH.} Every quoted declaration must be accompanied by a citation of the file
+  that defines it (the ``File \leanpath{...}'' lines); \texttt{scripts/textbook/cite\_paths.py}
+  checks this.
+\item \textbf{NO PHYSICS.} Every definition and theorem must be followed by a physics box.
+\end{itemize}
+In addition, \texttt{sync.py} records for every \lean{.lean} file the chapter that documents it and
+its hash at the documented commit, so that when the library changes it lists the new, changed and
+deleted files chapter by chapter. Where a chapter needed a Lean computation of its own --- a
+counterexample, or a proof that a definition is degenerate --- the computation was kept outside the
+library and compiled against the library; these checks are not part of this release, and the
+chapters say so where they use one. Finally, every defect of the library
+found while writing or refereeing the book (a definition that is vacuous, weaker or stronger than its
+name, a redundant hypothesis, a wrong docstring) is reported, with its evidence and a severity, in the
+chapter where it occurs and collected in the catalogue of Chapter~\ref{ch:15}
+(Sections~\ref{ch15:sec:deadends}, \ref{ch15:sec:deadends-oct} and~\ref{ch15:sec:debt}).
+
+\subsection{The verification record for this chapter}
+
+\emph{Run for this chapter} at an earlier commit (the snapshot against which this chapter was
+first written; this record is historical and was not re-run for this edition), with
+\texttt{lake env lean -DmaxSynthPendingDepth=3} on a scratch file importing the relevant modules
+(the library's compiled files were present; no build was run):
+\texttt{\#print axioms} of \lean{VOA.Moonshine.moonshine}, \lean{VOA.Aut},
+\lean{VOA.VertexOperatorAlgebra} and \lean{VOA.SuperVertexAlgebra} each gave
+\lean{[propext, Classical.choice, Quot.sound]}; \lean{VOA.mode} and \lean{VOA.FormalDist.instOne} gave no
+axioms; \lean{VOA.AffineLie.vacuumVector_ne_zero} gave the standard three and \lean{VOA.pbw} (then an axiom). The
+repository checker reported, in that run,
+\begin{plaincode}
+Repository check passed: 1867 library files scanned; 1867 reachable through 4676 local import edges; 1 sanctioned axiom declaration(s).
+\end{plaincode}
+In a later run, after \lean{VOA.pbw} became a theorem (also not re-run for this edition),
+\lean{VOA.AffineLie.vacuumVector_ne_zero} gave the standard three axioms only, and the checker reported
+``0 sanctioned axiom declaration(s)''.
+\emph{Reported by the project's build record for an earlier commit and not re-run for this chapter:}
+the aggregate \texttt{lake build} was green and the axiom-audit script passed. Since then the aggregate build \texttt{bash scripts/campaign\_build.sh VOA} (the full \texttt{lake build VOA} under the project's memory-capped wrapper) was green in two pre-release builds on 2026-10-28 (18{,}901 jobs, and 18{,}907 jobs after merging the then-current \texttt{origin/main}); \texttt{scripts/check\_repository.py} passed (10{,}431 library files, all reachable, 0 project axioms) and \texttt{scripts/audit/run\_axiom\_audits.py} passed (5{,}958 reports across 24 probes). The checks at the release commit are recorded in Chapter~\ref{ch:15}, Section~\ref{ch15:sec:record}, which collects the
+verification record of the whole book.
+
+\subsection{Traps that concern the whole book}\label{ch01:sec:traps}
+
+\begin{warning}
+\textbf{Recorded traps.} (1) A structure with unsatisfiable axioms makes every theorem about it
+vacuous; the library's \lean{TwistedModule} had this defect and was repaired, and the same
+over-quantification remains, unrepaired, in \lean{SuperTwistedModule.jacobi}
+(Chapters~\ref{ch:06} and~\ref{ch:L17}). (2) Graded dimension does not characterise $\Vnat$: a
+non-simple square-zero extension has the same central charge and character, so simplicity is
+essential (Chapter~\ref{ch:10}). (3) \lean{Module.finrank} of an infinite-dimensional space is $0$,
+and \lean{∑ᶠ} of an infinitely supported family is $0$. (4) The library's \lean{fusionCoeff} is not
+the fusion rule; it is identically zero (Chapter~\ref{ch:L12}). (5) A bare \lean{PreVertexAlgebra} does
+not satisfy the Borcherds identity (above, and Chapter~\ref{ch:L03}). (6) Audit only through
+\texttt{lake build} or with \texttt{-DmaxSynthPendingDepth=3}.
+\end{warning}
+
+%======================================================================
+\section{Global conventions}\label{ch01:sec:conventions}
+%======================================================================
+
+The following conventions are used throughout the library and the book. Each is defined in full,
+with its Lean source, in the place indicated, usually with a worked example (the mode convention is
+worked out in Example~\ref{ch01:ex:mode}, the odd-integer encoding in Section~\ref{ch01:sec:junk});
+the table is a quick reference, not a definition. To decode an entry, read the ``Meaning'' column
+as the mathematical expression that the Lean expression in the first column denotes.
+
+\begingroup\small
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.27\textwidth}>{\raggedright\arraybackslash}p{0.47\textwidth}>{\raggedright\arraybackslash}p{0.18\textwidth}}
+\toprule
+Lean & Meaning & Defined in\\
+\midrule\endhead
+\lean{FormalDist 𝒲}, \lean{𝒲⟦z^±⟧} & functions $\Z\to\mathcal W$, i.e.\ series $\sum_k f(k)z^k$; \lean{f k} is the coefficient of $z^k$ & Def.~\ref{l01:def:formaldist}\\
+\lean{mode f n} & $f_{(n)} = f(-n-1)$, the coefficient of $z^{-n-1}$ & Def.~\ref{l01:def:mode}\\
+\lean{mode (Y u) n} & the operator $u_{(n)}$ in $Y(u,z) = \sum_n u_{(n)}z^{-n-1}$; \lean{Y u k} is $u_{(-k-1)}$ & Def.~\ref{l01:def:mode}, \ref{l03:def:VA}\\
+\lean{V.smul u n v} & the $n$-th product $u_{(n)}v$ (not scalar multiplication) & Def.~\ref{l03:def:VA}\\
+\lean{W.L n} & $L_n = \omega_{(n+1)}$, i.e.\ \lean{mode (Y conformalVector) (n + 1)}; $L_0 = \omega_{(1)}$, $L_{-1} = \omega_{(0)}$ & Def.~\ref{l03:def:VOA}\\
+\lean{V.T} & $Tu = u_{(-2)}\chonevac$; equals $L_{-1}$ in a VOA & Def.~\ref{l03:def:smulT}\\
+\lean{deriv} & formal $\partial_z$: coefficient of $z^n$ is $(n+1)f(n+1)$; in modes $(\partial f)_{(m)} = -m f_{(m-1)}$ & Def.~\ref{l01:def:mode}\\
+\lean{1 : (End ℂ 𝒱)⟦z^±⟧} & the identity field (only the $z^0$ coefficient is nonzero) & Example~\ref{ch01:ex:instOne}\\
+\lean{grading : ℤ → Submodule ℂ 𝒱} with \lean{DirectSum.IsInternal} & a $\Z$-grading $V = \bigoplus_n V_n$ (super: indexed by $\C$, parity by \lean{ZMod 2}) & Def.~\ref{l03:def:VA}; §\ref{ch01:sec:super}\\
+\lean{N.weight α} & the weight-$\alpha$ space $M_\alpha$ of a module, $\alpha\in\C$ & Chapter~\ref{ch:L12}, §\ref{l12:sec:recall}\\
+\lean{modeT r i k} & twisted-sector mode $h_i(k/2)$: half-integer modes indexed by odd integers $k\mapsto k/2$ & Chapter~\ref{ch:06}, §\ref{ch06:sec:heis}\\
+\lean{TwistedModule.YM u k} & the twisted mode $u_{(k/N)}$ for an automorphism of order $N$ & Def.~\ref{ch06:def:tm}\\
+\lean{gBinom n k} & $\binom nk = n(n-1)\cdots(n-k+1)/k!$ for $n\in\Z$, $k\in\N$ & Def.~\ref{l01:def:gbinom}\\
+\lean{cbz n k} & $\binom nk$ with $k\in\Z$, defined to be $0$ for $k<0$ & Def.~\ref{l01:def:gbinom}\\
+\lean{negOnePow n} & $(-1)^n$ & Def.~\ref{l01:def:gbinom}\\
+binomial expansion & $(z_1+z_2)^n = \sum_{k\ge0}\binom nk z_1^{n-k}z_2^k$, always in nonnegative powers of the \emph{second} variable & §\ref{l01:sec:binomial}\\
+\lean{Local a b} & $(z_1-z_2)^N[a(z_1),b(z_2)] = 0$ for some $N$ & Def.~\ref{l01:def:bracket}\\
+\lean{Module.finrank} & dimension; $0$ for infinite-dimensional spaces & §\ref{ch01:sec:lean}\\
+\lean{∑ᶠ} & finitely supported sum; $0$ if the support is infinite & warning~\ref{l01:warn:finsum}\\
+\lean{ℕ}, casts & $\N\ni0$; \lean{(n : ℂ)}, \lean{↑n} cast integers to $\C$ & §\ref{ch01:sec:lean}\\
+Virasoro & $[L_m,L_n] = (m-n)L_{m+n} + \frac{m^3-m}{12}c\,\delta_{m+n,0}$ & Def.~\ref{l02:def:vir}, \ref{l03:def:VOA}\\
+\bottomrule
+\end{longtable}
+\endgroup
+
+%======================================================================
+\section{How to read the boxes}\label{ch01:sec:boxes}
+%======================================================================
+
+Four kinds of coloured box recur. They have fixed jobs.
+
+\begin{dictionary}
+\textbf{The fidelity check (grey).} This is the heart of the book. It decodes every symbol and
+convention of the Lean statement; lists \emph{every} hypothesis, including those inherited from
+\lean{variable} lines, and says what each means and whether it is intended, harmless, or an open
+input; traces every defined term to its definition; says whether the Lean statement is the same as,
+stronger than, or weaker than the textbook statement; and asks how it could have been wrong or
+vacuous. A referee who disagrees with a fidelity check has found something important.
+\end{dictionary}
+
+\begin{physics}
+\textbf{The physics box (blue).} Says what the statement means in two-dimensional conformal field
+theory, string theory or statistical mechanics: which states, fields, operator product expansions,
+symmetries, partition functions or orbifolds it is about, and why a physicist would expect it.
+Heuristics are labelled as such; the physical picture never substitutes for the proof.
+\end{physics}
+
+\begin{status}
+\textbf{The status box (green).} The machine status, honestly: unconditional, or conditional on named
+hypotheses (listed); the result of \texttt{\#print axioms} where it was run, and whether it was run
+by the chapter's author or is reported from elsewhere; (in earlier editions) whether \lean{VOA.pbw} was used; numerical
+evidence clearly labelled as evidence.
+\end{status}
+
+\begin{warning}
+\textbf{The warning box (red).} Traps, dead ends, corrected mistakes and defects of the library, with
+the counterexample or other evidence. Every defect recorded in a warning box is also collected in
+the catalogue of Chapter~\ref{ch:15} (Section~\ref{ch15:sec:deadends}).
+\end{warning}
+
+Each chapter ends with a \textbf{Referee's checklist}: a table of the chapter's headline
+declarations with, for each, the intended meaning in one sentence, the hypotheses,
+conditional/unconditional, and a pointer to its fidelity check. A referee who wants to audit a
+chapter quickly can start from that table.
+
+%======================================================================
+\section{A map of the book}\label{ch01:sec:map}
+%======================================================================
+
+\subsection{The parts}
+
+The book has eight parts. Parts~I--V document the general library; Part~VI formalizes recent research
+theorems, and conditional reductions of further ones, on top of it; Part~VII constructs the Moonshine
+module; Part~VIII records how all of it was verified.
+\begin{description}
+\item[Part I, Foundations.] This chapter; Chapter~\ref{ch:L01}, formal calculus and locality
+  (formal distributions, modes, the delta function, generalised binomials, locality and its
+  delta-function characterisation); Chapter~\ref{ch:L02}, the Lie-theoretic inputs (Witt, Virasoro
+  and affine Lie algebras, vacuum modules, root data, lattices) and the PBW theorem
+  \lean{VOA.pbw} (formerly a project axiom, now a theorem); Chapter~\ref{ch:L03}, the axioms of vertex algebras and VOAs, Dong's lemma,
+  Goddard uniqueness, the Borcherds identity, skew-symmetry and the reconstruction theorem;
+  Chapter~\ref{ch:L04}, structure theory: the Lie algebra $V_1$, automorphisms, ideals, simplicity
+  and quotients, homomorphisms, generated subalgebras, invariant bilinear forms and Li's criterion
+  ``simple $\iff$ nondegenerate''.
+\item[Part II, Examples, deformations and rigidity.] Chapters~\ref{ch:L05}--\ref{ch:L11}: Heisenberg
+  and lattice VOAs; the Virasoro VOA, its Verma modules and the Kac determinant; first-order
+  deformations and the rigidity of Virasoro minimal models; affine $\mathfrak{sl}_2$ and its rigidity
+  at every admissible level; filtrations, the $C_2$ algebra and presentations. A chapter on
+  affine $\mathfrak{sl}_3$ is in preparation. Chapter~\ref{ch:L11} also contains a second criterion for the surjectivity of Li's
+  jet map, \emph{generator-word spanning} (Section~\ref{l11:sec:genwords}): if Li's filtration equals the
+  filtration by generator words, the jet map is onto, for any VOA and any finite family of homogeneous
+  generators. Unlike the earlier criterion, it does not force $C_2$-cofiniteness, and it is the
+  surjectivity half of the classical-freeness results of Chapters~\ref{ch:L20} and~\ref{ch:L24}.
+\item[Part III, Representation theory.] Chapter~\ref{ch:L12}: weak, admissible, logarithmic and
+  ordinary modules, Zhu's algebra, $C_2$-cofiniteness, contragredients, intertwining operators and
+  the rationality hierarchy; Chapter~\ref{ch:L13}: Zhu's bijection via the Frenkel--Zhu tower.
+\item[Part IV, Modularity.] Chapters~\ref{ch:L14}--\ref{ch:L16}: modular forms and the analytic
+  toolkit; Zhu's modularity theorem; quasi-lisse vertex algebras. Chapter~\ref{ch:L16} should be read
+  with its own scope: ``quasi-lisse'' is not defined in the library (the theorems assume the weaker
+  finiteness of zeroth Poisson homology, \lean{EtingofFinite}). The Arakawa--Kawasetsu modular linear
+  differential equation (Theorem~5.1) is proved conditionally only on \lean{EtingofFinite}: one monic MLDE, of some
+  unbounded order, satisfied by every abstract analytic genus-one block at a square-bracket primary insertion
+  (\lean{VOA.IsSqPrimary.exists_monicMLDEOn_all_analyticBlocks_of_etingofFinite_uncond}; its former inputs, the weight
+  grading \lean{VOA.akWeightGrading} and the Serre closure \lean{VOA.e46SerreClosed}, are theorems). Unconditionally,
+  $L_{-4/3}(\mathfrak{sl}_2)$ is not $C_2$-cofinite but has finite-dimensional zeroth Poisson homology, and its vacuum
+  one-point blocks satisfy one monic MLDE of unspecified order (\lean{VOA.exists_monicMLDEOn_all_analyticBlocks_simpleSl2QL};
+  Arakawa--Kawasetsu's order~2 is not proved).
+\item[Part V, Super, logarithmic and unitary theories.] Chapters~\ref{ch:L17}--\ref{ch:L19}: super
+  vertex algebras; the triplet and doublet algebras; graded unitarity in the sense of Arabi Ardehali,
+  Beem, Lemos and Rastelli, the Lee--Yang model
+  and weight-one positivity of affine $\mathfrak{sl}_2$ at level $-8/5$.
+  Chapter~\ref{ch:L19} proves the positivity clauses of graded unitarity of the boundary minimal models
+  $M(2,2n+1)$ through filtration degree two only; the full conjecture is not claimed. Its last section
+  (Section~\ref{l19:sec:belowcritical}) proves the first full instance of the predicate
+  \lean{GradedUnitary} in the library: for every real $k<-2$ the \emph{universal} affine VOA
+  $V^k(\mathfrak{sl}_2)$, with its normalised form, compact real structure and current-length flag, is
+  graded unitary, with no hypothesis beyond $k<-2$.
+\item[Part VI, Two recent theorems, formalized.] Chapters~\ref{ch:L20}--\ref{ch:L29}. Despite its
+  title, the part has ten chapters and formalizes recent research of several kinds: some chapters
+  prove published theorems, and others reduce further research statements to named, unproved inputs,
+  and they say so.
+  \begin{itemize}
+  \item Chapter~\ref{ch:L20}: the Arakawa--Dai theorems for $L_k(\mathfrak{sl}_2)$ at the boundary
+    admissible levels $k=-2+2/(2m+1)$, $m\ge1$, proved with only the hypothesis $1\le m$. The vacuum
+    character is proved as stated. Classical freeness, the paper's Theorem~1.1, is one Lean theorem,
+    \lean{arakawaDai_theorem_1_1} (Theorem~\ref{l20:thm:ad11}): the presented algebra
+    $\C[e,h,f]/(eQ^m,hQ^m,fQ^m)$ is isomorphic to the $C_2$-algebra $R_V$, and its arc algebra maps
+    isomorphically onto Li's associated graded. Since the library has no functor $J_\infty$, the arc
+    algebra $J_\infty R_V$ is realized as the jet algebra of the presented algebra, with its universal
+    property. Its Virasoro
+    companion (Section~\ref{l20:sec:vir}) proves, for every $m\ge0$ and with no hypothesis, that the
+    minimal model $L(c_{2,2m+3},0)$ is classically free, with $R_L\cong\C[T]/(T^{m+1})$. A further
+    section (Section~\ref{l20:sec:p3}) describes finite commutative-algebra files that prove no theorem
+    about a VOA and are kept because Chapter~\ref{ch:L24} reuses them.
+  \item Chapter~\ref{ch:L21}: Huang's theory. The ordinary modules of every strongly rational VOA form a
+    braided monoidal category, and the logarithmic modules of a $C_2$-cofinite VOA form a braided tensor
+    category. Rigidity, the Verlinde formula and the modular category are proved only for \emph{nice}
+    VOAs, which the library defines as strongly rational \emph{and pseudo-unitary}; Huang's theorems need
+    no pseudo-unitarity. A first step of its removal is proved: $V'\cong V$ and the vacuum-fusion chain hold for every
+    strongly rational VOA (\lean{VOA.contra_vacuum_equiv_of_stronglyRational}). Rigidity is two-sided (\lean{VOA.Huang.HuangRigid.rigid_ordinary} gives
+    Mathlib's \lean{RigidCategory}). The congruence property has named, hypothesis-free theorems
+    (\lean{dlnCongruenceInput_holds}, \lean{zhuCongruenceInput_holds}, Theorem~\ref{l21:thm:congnamed});
+    of Ng--Schauenburg's Theorem~6.8 only the kernel half is proved.
+  \item Chapter~\ref{ch:L22}: the Gannon--Rayhaun classification of nice VOAs of central charge one,
+    forward and converse, with no hypothesis. ``Rational'' in \lean{Nice} is the library's
+    \lean{AdmissiblyRational}; for $C_2$-cofinite VOAs Dong--Li--Mason rationality implies it
+    (\lean{VOA.Classification.COne.DLMRat.admissiblyRational_of_dlmRational}), and the converse is open;
+    the classification and converse are stated for carriers in \lean{Type 0}.
+  \item Chapter~\ref{ch:L23}: the universal affine VOA $V^k(\mathfrak g)$ for an arbitrary
+    finite-dimensional Lie algebra with an invariant form and the Casimir data (``Lie data''), at every
+    non-critical level; Lie data for every finite-dimensional simple $\mathfrak g$ given a
+    nondegenerate symmetric invariant form; the simple quotient $L_k(\mathfrak g)$,
+    simple, with weight one spanned by the currents; and concrete simple Lie algebras in Lean:
+    $\mathfrak{sl}_n$, the simply-laced $\mathfrak{sl}_3,\mathfrak{so}_8,\mathfrak e_6,\mathfrak e_7,
+    \mathfrak e_8$ as weight-one spaces of lattice VOAs, and $\mathfrak g_2,\mathfrak f_4,\mathfrak e_6$ from
+    kernel-checked structure constants. These results are unconditional. That the algebras are of the
+    named Cartan type is not claimed (the classification of simple Lie algebras is not formalized).
+  \item Chapters~\ref{ch:L24}--\ref{ch:L27}, the Deligne series: classical freeness of $L_k(\mathfrak g)$
+    for the seven types $A_2,G_2,D_4,F_4,E_6,E_7,E_8$ at $k=-1-h^\vee/6$, with the explicit presentation
+    of $R_V$ by the quadrics $I_2^{\mathrm{ns}}$. Chapter~\ref{ch:L24} proves, with no hypothesis, the
+    reduction of classical freeness to one inequality of dimensions, the explicit presentation
+    ($I_2^{\mathrm{ns}}$ lies in the kernel) for all seven types, current-jet surjectivity and the
+    geometric carrier; its carrier chain, certified type by type by large kernel-checked integer
+    certificates, is conditional on two fusion inputs, U5 and U6. Chapter~\ref{ch:L25} proves for all
+    seven types the lower bound $\dim V_N\ge c_N$, where $c_N$ are the coefficients of the normalised
+    solution of the second-order Arakawa--Kawasetsu MLDE; the argument is formal, from a vacuum quartic
+    relation through Zhu's recursion, and does not use the general theorem of Chapter~\ref{ch:L16}. It
+    also proves a library of formal $q$-series identities (Jacobi triple and quintuple products,
+    Ramanujan's differential identities, and others). Equality $\dim V_N=c_N$ is a Lean theorem for $A_2$
+    only. Chapter~\ref{ch:L26} proves U6 by construction and reduces U5 to a total-dimension bound and
+    Demazure realizations; both are proved for $A_2$, and are named, unproved statements for the other six types.
+    Chapter~\ref{ch:L27} states the seven final theorems. The $A_2$ theorem has no hypothesis (machine-confirmed: aggregate build green on 2026-10-28, \texttt{\#print axioms} standard, as
+    Chapter~\ref{ch:L27} records). The
+    other six are \textbf{conditional}. $D_4$ rests on one published input, the total-dimension bound for fusion products
+    (\lean{D4_classicallyFree_of_inputT}; the Demazure realizations are proved in Lean for $D_4$). One step of the published
+    proof of that bound is insufficient as written for $D_4$; the bound itself is not known to fail. $G_2$, $F_4$, $E_6$,
+    $E_7$, $E_8$ rest on that bound, on the Demazure realizations, and on the star bound, a conjecture supported by
+    numerical evidence.
+  \end{itemize}
+  Chapters~\ref{ch:L28} and~\ref{ch:L29} transfer graded unitarity through the BRST coset. Their headline is a
+  proved implication with one explicit hypothesis, \lean{hA}: if the simple affine VOA $L_k(\mathfrak{sl}_2)$ at the
+  boundary admissible level, with its normalised form, compact conjugation and corrected current-and-Sugawara
+  filtration, is graded unitary, then so is the minimal model $M(2,2n+1)$ (Chapter~\ref{ch:L28}: Lee--Yang, $n=2$,
+  from level $-4/3$; Chapter~\ref{ch:L29}: every $n\ge2$). The hypothesis \lean{hA} is open for every $n$, so graded
+  unitarity of $M(2,2n+1)$ beyond filtration degree two is not claimed.
+\item[Part VII, The Moonshine module.] Chapters~\ref{ch:02}--\ref{ch:14}: lattices, codes and the
+  Leech lattice; Heisenberg and lattice VOAs and $V_\Leech$; the involution $\theta$ and
+  $V_\Leech^+$; graded dimensions and $J$; twisted modules and the module $T$; the twisted Heisenberg
+  and twisted lattice modules; the intertwiners $W$ and $\overline W$; the vertex algebra on $\Vnat$
+  modulo one relation, and simplicity; the Golay frame and the untwisted triality; the existence of
+  the twisted triality (two chapters); the key identity and the completion of the proof.
+\item[Part VIII, Verification.] Chapter~\ref{ch:15}: the verification record, the dead ends, the
+  numerical evidence and the open problems.
+\end{description}
+
+\subsection{Dependencies}
+
+Part~I is a prerequisite for everything else, and within it the order is the logical order:
+Chapter~\ref{ch:L01} (formal calculus) is used by Chapter~\ref{ch:L03} (the axioms), which uses
+Chapter~\ref{ch:L02} only for the Virasoro algebra; Chapter~\ref{ch:L04} builds on
+Chapter~\ref{ch:L03}. In Part~II, the Virasoro chapters need the Virasoro algebra of
+Chapter~\ref{ch:L02}, the affine chapters its affine Lie algebras, and the lattice VOAs its lattice
+data; the rigidity chapters build on the corresponding construction chapters. Part~III needs
+Chapter~\ref{ch:L04}; the module-theoretic uses of \lean{VOA.pbw} (through induced modules and
+the Frenkel--Zhu tower) lie in Chapters~\ref{ch:L12} and~\ref{ch:L13}.
+Part~IV needs Part~III, and Chapter~\ref{ch:L14} for modular forms.
+Part~VI builds on all of Parts~I--V. Chapter~\ref{ch:L20} uses the affine $\mathfrak{sl}_2$ chapters
+(\ref{ch:L08}, \ref{ch:L09}) and Li's filtration and jets (Chapter~\ref{ch:L11}); Chapters~\ref{ch:L21}
+and~\ref{ch:L22} use the modules, Zhu's algebra and modularity of Parts~III and~IV, and
+Chapter~\ref{ch:L22} uses Chapter~\ref{ch:L21}. Chapter~\ref{ch:L23} generalizes the constructions of
+Chapter~\ref{ch:L08} (and the affine $\mathfrak{sl}_3$ files, whose chapter is in preparation) and uses
+the lattice VOAs of Chapter~\ref{ch:L05}. The Deligne
+chapters are read in order, Chapter~\ref{ch:L24} to Chapter~\ref{ch:L27}; they use Chapter~\ref{ch:L23}
+for the algebras, Chapter~\ref{ch:L11} for Li's filtration and generator words, Chapter~\ref{ch:L20} as
+the model of the squeeze argument, and Chapter~\ref{ch:L15} for Zhu's recursion (in
+Chapter~\ref{ch:L25}). Chapters~\ref{ch:L28} and~\ref{ch:L29} use the graded-unitarity
+predicate of Chapter~\ref{ch:L19}, the affine and Virasoro algebras of Parts~I--II, and the jet-ring and character
+results that Chapter~\ref{ch:L20} shares with them.
+Part~VII needs Part~I throughout --- above all the VOA axioms and the
+reconstruction theorem (Chapter~\ref{ch:L03}), and the automorphisms, simplicity and invariant
+forms of Chapter~\ref{ch:L04} --- together with the modules of Chapter~\ref{ch:L12} (for the
+intertwiners of Chapter~\ref{ch:09} and the Zhu-algebra arguments of Chapter~\ref{ch:12}) and the
+lattice data of Chapter~\ref{ch:L02}; the modular function $J$ enters in Chapter~\ref{ch:05}. Within Part~VII the chapters
+are in logical order.
+
+\subsection{Two reading paths}\label{ch01:sec:paths}
+
+\textbf{The Moonshine path} (to verify the construction of $\Vnat$): this chapter;
+Chapter~\ref{ch:L01} (at least formal distributions, modes, binomials and locality);
+Chapter~\ref{ch:L03} (the axioms, the Borcherds identity, Goddard uniqueness and reconstruction);
+Chapter~\ref{ch:L04} (automorphisms, ideals and simplicity, invariant forms); then
+Chapters~\ref{ch:02} to~\ref{ch:14} in order, consulting Chapter~\ref{ch:L12} for modules and Zhu's
+algebra when Chapters~\ref{ch:09} and~\ref{ch:12} use them; finally Chapter~\ref{ch:15}. A referee in
+a hurry can start from the end: Chapter~\ref{ch:14}, Section~\ref{ch14:sec:decode}, decodes the
+headline theorem clause by clause and points back to every definition it uses.
+
+\textbf{The general path} (to learn the library as a whole): Part~I in order; then the examples of
+Chapters~\ref{ch:L05} and~\ref{ch:L06}; then representation theory (Chapter~\ref{ch:L12}) and
+modularity (Chapters~\ref{ch:L14}, \ref{ch:L15}); then the remaining chapters by interest.
+Within Part~VI the Deligne series is long enough to need a route: Chapter~\ref{ch:L11}
+(Li's filtration, jets and Section~\ref{l11:sec:genwords}), Chapter~\ref{ch:L20} (the model case,
+$\mathfrak{sl}_2$), Chapter~\ref{ch:L23}, then Chapters~\ref{ch:L24}--\ref{ch:L27} in order; a referee who
+wants only the final statements and their named inputs can start from Chapter~\ref{ch:L27}. For graded
+unitarity, read Chapter~\ref{ch:L19}, then Chapters~\ref{ch:L28} and~\ref{ch:L29} (the BRST coset).
+
+\subsection{What is proved, and what is conditional, in Parts IV to VI}\label{ch01:sec:newstatus}
+
+The chapters of Parts~IV to~VI mix unconditional theorems with conditional reductions, and their
+titles do not say which is which. Table~\ref{ch01:tab:newstatus} records the status of their headline
+results as the chapters themselves state it. ``Unconditional'' means: \texttt{\#print axioms}-clean (Lean's
+three standard axioms) and no hypothesis beyond the evident parameters (Section~\ref{ch01:sec:uncond}).
+``Conditional'' means \texttt{\#print axioms}-clean with the named hypotheses listed; the conditional
+theorems are \emph{not} proofs of their conclusions.
+
+\begingroup\small
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.09\textwidth}>{\raggedright\arraybackslash}p{0.47\textwidth}>{\raggedright\arraybackslash}p{0.36\textwidth}}
+\caption{Status of the headline results of Parts~IV to~VI.}\label{ch01:tab:newstatus}\\
+\toprule
+Chapter & Headline & Status\\
+\midrule\endhead
+\ref{ch:L15} & Zhu's modularity theorem, canonical family, for $C_2$-cofinite $V$
+  (\lean{zhuModularity_canonical_of_C2Cofinite_admissiblyRational}) & unconditional, with ``rational''
+  $=$ \lean{AdmissiblyRational}; Dong--Li--Mason rationality implies it under $C_2$
+  (\lean{admissiblyRational_of_dlmRational}); converse open\\
+\ref{ch:L16} & $L_{-4/3}(\mathfrak{sl}_2)$ is not $C_2$-cofinite and has finite-dimensional zeroth Poisson
+  homology & unconditional\\
+\ref{ch:L16} & Arakawa--Kawasetsu weight grading (\lean{akWeightGrading}) & unconditional, every VOA (CFT type)\\
+\ref{ch:L16} & Arakawa--Kawasetsu MLDE (Theorem~5.1), one monic MLDE for all analytic blocks & conditional on \lean{EtingofFinite}
+  only; order unbounded; quasi-lisseness not formalised\\
+\ref{ch:L16} & the same at $L_{-4/3}(\mathfrak{sl}_2)$, vacuum insertion & unconditional; order unspecified (AK's
+  order~2 not proved)\\
+\ref{ch:L19} & positivity of graded unitarity of $M(2,2n+1)$ through filtration degree two &
+  unconditional; the full conjecture is open\\
+\ref{ch:L19} & graded unitarity of $V^k(\mathfrak{sl}_2)$, real $k<-2$ & unconditional\\
+\ref{ch:L20} & Arakawa--Dai: character, and classical freeness (Theorem~1.1,
+  \lean{arakawaDai_theorem_1_1}) & unconditional
+  ($1\le m$)\\
+\ref{ch:L20} & classical freeness of $M(2,2m+3)$ & unconditional\\
+\ref{ch:L21} & braided monoidal category of ordinary modules (strongly rational); braided tensor category
+  of logarithmic modules ($C_2$-cofinite) & unconditional\\
+\ref{ch:L21} & rigidity, Verlinde, modular category & for nice (strongly rational and pseudo-unitary)
+  VOAs only; rigidity is two-sided (\lean{rigid_ordinary}); congruence: named theorems, only the
+  kernel half of Ng--Schauenburg~6.8\\
+\ref{ch:L22} & Gannon--Rayhaun classification, forward and converse & unconditional, with
+  ``rational'' $=$ \lean{AdmissiblyRational}; carriers in \lean{Type 0}\\
+\ref{ch:L23} & $V^k(\mathfrak g)$, $L_k(\mathfrak g)$, concrete simple Lie algebras & unconditional\\
+\ref{ch:L24} & reduction of classical freeness; explicit presentation; jet surjectivity; carrier &
+  unconditional; the carrier chain is conditional on U5, U6\\
+\ref{ch:L25} & $\dim V_N\ge c_N$ for the seven Deligne types & unconditional; equality a theorem for
+  $A_2$ only\\
+\ref{ch:L26} & U6; reduction of U5 & U6 proved by construction; U5 reduced to named inputs, proved for $A_2$\\
+\ref{ch:L27} & classical freeness of the seven Deligne VOAs & $A_2$: no hypothesis (aggregate build
+  green, 2026-10-28); $D_4$: one published input, the total-dimension bound (not formalized; one step of its proof insufficient as written); the other
+  five: that bound, the Demazure realizations and the conjectural star bound\\
+\ref{ch:L28} & graded unitarity of the Lee--Yang model from that of $L_{-4/3}(\mathfrak{sl}_2)$ (BRST coset) &
+  conditional on \lean{hA} (graded unitarity of $L_{-4/3}(\mathfrak{sl}_2)$), open\\
+\ref{ch:L29} & the same for $M(2,2n+1)$, every $n\ge2$, from the boundary admissible $L_k(\mathfrak{sl}_2)$ &
+  conditional on \lean{hA} at that level, open\\
+\bottomrule
+\end{longtable}
+\endgroup
+
+\subsection{Where each basic notion is defined}
+
+Table~\ref{ch01:tab:notions} lists, for each basic notion, its Lean name and the place where it is
+defined in full, with its Lean source and fidelity check.
+
+\begingroup\small
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.33\textwidth}>{\raggedright\arraybackslash}p{0.37\textwidth}>{\raggedright\arraybackslash}p{0.22\textwidth}}
+\caption{Where the basic notions are defined.}\label{ch01:tab:notions}\\
+\toprule
+Notion & Lean name & Defined in\\
+\midrule\endhead
+formal distribution & \lean{VOA.FormalDist}, \lean{VOA.FormalDist₂} & Def.~\ref{l01:def:formaldist}, \ref{l01:def:formaldist2}\\
+modes, residue, derivative & \lean{VOA.mode}, \lean{VOA.res}, \lean{VOA.deriv} & Def.~\ref{l01:def:mode}\\
+formal delta function & \lean{VOA.formalDelta}, \lean{VOA.delta₂} & Def.~\ref{l01:def:delta}\\
+generalised binomials, signs & \lean{VOA.gBinom}, \lean{VOA.cbz}, \lean{VOA.negOnePow} & Def.~\ref{l01:def:gbinom}\\
+commutator, locality, normal ordering & \lean{VOA.bracketDist}, \lean{VOA.Local}, \lean{VOA.normalOrdered} & Def.~\ref{l01:def:bracket}\\
+locality $\iff$ delta expansion & \lean{VOA.local_iff_deltaSum} & Thm.~\ref{l01:thm:deltasum}\\
+super-locality & \lean{VOA.Localε} & Def.~\ref{l01:def:bracketeps}\\
+field (lower truncation) & \lean{VOA.IsField} & §\ref{l03:sec:conventions}\\
+Dong's lemma & \lean{VOA.dong_nonneg}, \lean{VOA.dong_neg} & Thm.~\ref{l03:thm:dong}\\
+$T$-covariance & \lean{VOA.Reconstruction.DCovariant} & Def.~\ref{l03:def:dcov}\\
+pre-vertex algebra (Gannon's axioms, no translation covariance) & \lean{VOA.PreVertexAlgebra} & Def.~\ref{l03:def:VA}\\
+vertex algebra (with translation covariance) & \lean{VOA.VertexAlgebra} & §\ref{l03:sec:intro}\\
+$n$-th product, translation & \lean{VOA.PreVertexAlgebra.smul}, \lean{VOA.PreVertexAlgebra.T} & Def.~\ref{l03:def:smulT}\\
+graded VOA (FLM/Lepowsky--Li) & \lean{VOA.GradedVertexOperatorAlgebra} & Def.~\ref{l03:def:VOA}\\
+vertex operator algebra (of CFT type) & \lean{VOA.VertexOperatorAlgebra} & Def.~\ref{l03:def:VOA}\\
+Borcherds (Jacobi) identity & \lean{VOA.VertexOperatorAlgebra.jacobi} & Thm.~\ref{l03:thm:borcherds}\\
+commutator formula & \lean{VOA.mode_commutator} & Thm.~\ref{l03:thm:comm}\\
+skew-symmetry & \lean{VOA.VertexOperatorAlgebra.skew_mode} & Thm.~\ref{l03:thm:skew}\\
+Goddard uniqueness & \lean{VOA.PreVertexAlgebra.goddard_uniqueness} & Thm.~\ref{l03:thm:goddard}\\
+reconstruction & \lean{VOA.Reconstruction.reconstruct} & Thm.~\ref{l03:thm:reconstruct}\\
+Witt and Virasoro algebras & (Chapter~\ref{ch:L02}) & Def.~\ref{l02:def:witt}, \ref{l02:def:vir}\\
+affine Lie algebra, vacuum module & (Chapter~\ref{ch:L02}) & Def.~\ref{l02:def:affine}, \ref{l02:def:vacuum}\\
+the PBW principle (a theorem) & \lean{VOA.pbw}, \lean{VOA.PBWPrinciple} & §\ref{l02:sec:axiom}\\
+zero modes; $V_1$ Lie algebra & \lean{VOA.VertexOperatorAlgebra.zeroMode} & Def.~\ref{l04:def:zeromode}; Thm.~\ref{l04:thm:lie}\\
+automorphism & \lean{VOA.Aut} & Def.~\ref{l04:def:aut}\\
+ideal, simple VOA & \lean{IsIdeal}, \lean{IsSimple} & Def.~\ref{l04:def:simple}\\
+quotient VOA & \lean{VOA.QuotVOA.quotientVOA} & Def.~\ref{l04:def:quot}\\
+VOA homomorphism & \lean{VOA.IsVOAHom} & Def.~\ref{l04:def:hom}\\
+sub-VOA, fixed-point sub-VOA & \lean{VOA.VOASubalgebra}, \lean{VOA.orbifoldVOA} & Def.~\ref{ch04:def:orbifold}\\
+generated sub-VOA & \lean{VOASubalgebra.generated} & Def.~\ref{l04:def:generated}\\
+invariant bilinear form & \lean{InvariantForm}, \lean{IsFullyInvariant} & Def.~\ref{l04:def:invform}\\
+canonical invariant form (Li) & \lean{VOA.canonicalInvariantForm} & Thm.~\ref{l04:thm:canonical}\\
+simple $\iff$ nondegenerate & \lean{VOA.LiRadical.}\allowbreak\lean{isSimple_iff_}\allowbreak\lean{leftRadical_eq_bot} & Thm.~\ref{l04:thm:lirad}\\
+weak and ordinary modules & \lean{VOA.WeakModule}, \lean{VOA.OrdVModule} & Chapter~\ref{ch:L12}, §\ref{l12:sec:recall}; Def.~\ref{ch09:def:module}\\
+admissible modules & \lean{VOA.AdmissibleModule} & Def.~\ref{l12:def:admissible}\\
+lowest weight & \lean{VOA.IsLowestWeight} & Def.~\ref{l12:def:lowest}\\
+Zhu's algebra & \lean{VOA.zhuMul}, \lean{VOA.O}, \lean{VOA.A} & §\ref{l12:sec:zhu}; Def.~\ref{ch12:def:zhumul}\\
+intertwiners, fusion coefficient & \lean{VOA.Intertwiner}, \lean{VOA.fusionCoeff} & §\ref{l12:sec:fusion}; Def.~\ref{ch09:def:intertwiner}\\
+twisted module & \lean{VOA.TwistedModule} & Def.~\ref{ch06:def:tm}\\
+super vertex algebra & \lean{VOA.SuperVertexAlgebra} & §\ref{ch01:sec:super}; Chapter~\ref{ch:L17}\\
+lattices, Leech lattice & (Chapter~\ref{ch:02}) & Def.~\ref{ch02:def:lattice}\\
+$q\,J(q)$ as a power series & \lean{VOA.JShift} & Def.~\ref{ch05:def:jshift}\\
+the carrier $\Vnat$, its vacuum and $\omega$ & \lean{Vnat}, \lean{vacNat}, \lean{omegaNat} & Def.~\ref{ch10:def:vnat}\\
+the block vertex map & \lean{Ynat} & Def.~\ref{ch10:def:Ynat}\\
+\bottomrule
+\end{longtable}
+\endgroup
+
+%======================================================================
+\section{A short physical orientation}\label{ch01:sec:physics}
+%======================================================================
+
+Vertex algebras were invented twice: by mathematicians (Borcherds, 1986; Frenkel, Lepowsky and
+Meurman, 1988), in order to construct the Monster module $\Vnat$, and --- in a less axiomatic form
+--- by physicists (Belavin, Polyakov and Zamolodchikov, 1984), as the algebraic skeleton of
+two-dimensional conformal field theory (CFT). The axioms look strange until one knows where they
+come from. Nothing in this section is used logically; it is here so that the definitions of Part~I
+look inevitable rather than arbitrary. Each chapter's physics boxes refine the picture.
+
+\textbf{Chiral fields.} A two-dimensional quantum field theory on the Euclidean plane
+$\mathbb R^2\cong\C$ assigns to each point an operator-valued field $\phi(z)$. In a conformal field
+theory the symmetries include all local holomorphic coordinate changes, and the theory splits, to a
+first approximation, into a holomorphic (\emph{chiral}) half whose fields depend only on $z$ and an
+antiholomorphic half. A vertex algebra is the algebraic structure of the chiral half. In
+\emph{radial quantisation} the radius $|z|$ plays the role of time and the space of states lives on
+a circle around the origin; a chiral field is then a Laurent series $Y(u,z) = \sum u_{(n)}z^{-n-1}$
+in operators, which is why the library's basic object is a formal series with coefficients in
+$\End(V)$.
+
+\textbf{States and fields.} Every state $u$ is created by a unique field from the vacuum,
+$u = \lim_{z\to0}Y(u,z)\chonevac$; this \emph{state--field correspondence} is the axiom
+\lean{creation}. The vacuum's own field is the identity.
+
+\textbf{Operator product expansion and locality.} Fields at different points commute in a local
+theory. In radial ordering this becomes the statement that $Y(u,z)Y(v,w)$ and $Y(v,w)Y(u,z)$ are
+expansions in two regions of one meromorphic function with a pole of finite order on the diagonal;
+the coefficients of the poles are the operator product expansion (OPE)
+$Y(u,z)Y(v,w)\sim\sum_{j\ge0}Y(u_{(j)}v,w)/(z-w)^{j+1}$. Algebraically, without analysis, this is
+expressed by \emph{locality}: $(z-w)^N[Y(u,z),Y(v,w)] = 0$ for some $N$. The products $u_{(n)}v$,
+one for each $n\in\Z$, are the OPE coefficients; a vertex algebra is a vector space with infinitely
+many bilinear products subject to the identities forced by the existence of the underlying
+meromorphic functions.
+
+\textbf{Conformal symmetry.} The stress tensor $T(z) = \sum L_nz^{-n-2}$, the field of the conformal
+vector $\omega$, has modes satisfying the Virasoro algebra with central charge $c$. $L_0$ measures
+the conformal weight (energy) of a state, $L_{-1}$ generates translations and acts as $\partial_z$ on
+fields. A vertex \emph{operator} algebra is a vertex algebra with such a stress tensor.
+
+\textbf{The free boson and $\Vnat$.} The simplest example is the chiral free boson: the Fock space
+$\C[a_{-1},a_{-2},\dots]\chonevac$ with $[a_m,a_n] = m\,\delta_{m+n,0}$ and OPE
+$a(z)a(w)\sim(z-w)^{-2}$; it has $c=1$. Twenty-four free bosons compactified on the Leech torus
+$\mathbb R^{24}/\Leech$ give the lattice VOA $V_\Leech$ (Chapter~\ref{ch:03}). The reflection
+$x\mapsto -x$ of the torus is a symmetry; gauging it --- the $\Z/2$ \emph{orbifold} --- keeps the
+reflection-invariant states of $V_\Leech$ and adds a \emph{twisted sector} of strings closed only up
+to the reflection, whose bosons have half-integer modes. Dixon, Ginsparg and Harvey recognised that
+the result is the Moonshine module $\Vnat$ of Frenkel, Lepowsky and Meurman: a \emph{holomorphic}
+CFT of central charge $24$, with partition function $J(q) = q^{-1} + 196884\,q + \cdots$, no
+weight-one states (the Leech lattice has no roots, and the orbifold removes the remaining currents),
+and the Monster group as its symmetry group. The Lean construction (Chapters~\ref{ch:02}
+to~\ref{ch:14}) follows this physical recipe step by step; its hardest part is to prove that the
+fields of the twisted sector are local with each other, the step physicists take for granted.
+
+\begin{physics}
+\textbf{Summary of the dictionary.} States $\leftrightarrow$ vectors of $V$; local operators
+$\leftrightarrow$ fields $Y(u,z)$; OPE coefficients $\leftrightarrow$ products $u_{(n)}v$; crossing
+symmetry of chiral correlators $\leftrightarrow$ locality and the Borcherds identity; stress tensor
+$\leftrightarrow$ conformal vector $\omega$; conformal weight $\leftrightarrow$ $L_0$-grading;
+internal symmetries $\leftrightarrow$ automorphisms; sectors $\leftrightarrow$ modules; chiral vertex
+operators $\leftrightarrow$ intertwining operators; orbifold $\leftrightarrow$ fixed-point subalgebra
+plus twisted modules; partition function $\leftrightarrow$ graded dimension. The correspondence is
+heuristic: a vertex algebra axiomatises the chiral operator algebra, not a full non-chiral CFT, and
+none of the physical arguments is used as a proof anywhere in the book.
+\end{physics}
+
+%======================================================================
+\section{Lean glossary}\label{ch01:sec:glossary}
+%======================================================================
+
+Table~\ref{ch01:tab:glossary} collects the symbols and idioms of this chapter, with their meaning, the
+place in this chapter where they are explained, and the first chapter (in the order of the book) in
+which they occur. Later chapters' fidelity checks point back here instead of re-explaining them.
+
+\begingroup\small
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.28\textwidth}>{\raggedright\arraybackslash}p{0.44\textwidth}>{\raggedright\arraybackslash}p{0.10\textwidth}>{\raggedright\arraybackslash}p{0.09\textwidth}}
+\caption{Lean glossary.}\label{ch01:tab:glossary}\\
+\toprule
+Symbol / idiom & Meaning & Here & First use\\
+\midrule\endhead
+\lean{x : X} & $x$ is a term of type $X$ & §\ref{ch01:sec:lean} & L01\\
+\lean{Prop}, \lean{h : P} & propositions; $h$ is a proof of $P$ & §\ref{ch01:sec:lean} & L01\\
+\lean{Type u}, \lean{Type*}, \lean{Type _} & a type (``set''), with universe level named, fresh or inferred & §\ref{ch01:sec:lean} & L01\\
+\lean{def}, \lean{theorem}, \lean{lemma} & definition; assertion with proof & §\ref{ch01:sec:lean} & L01\\
+\lean{abbrev} & definition unfolded eagerly (same logic as \lean{def}) & §\ref{ch01:sec:synonyms} & L01\\
+\lean{noncomputable} & uses choice; cannot be evaluated; no logical cost & §\ref{ch01:sec:lean} & L01\\
+\lean{structure}, \lean{extends}, fields, \lean{x.field} & bundle of data and proofs; inheritance; projection & §\ref{ch01:sec:structures} & L01\\
+\lean{class}, \lean{instance}, \lean{[C X]} & structures found by automatic search; the library declares one, \lean{FusionCategory} & §\ref{ch01:sec:lean} & L01\\
+\lean{(x : X)}, \lean{{x : X}} & explicit, implicit argument; both universally quantified & §\ref{ch01:sec:lean} & L01\\
+\lean{variable} & arguments shared by the declarations of a file & §\ref{ch01:sec:lean} & L01\\
+\lean{maxSynthPendingDepth} & depth of instance search; set to 3 by the build; audit trap & §\ref{ch01:sec:lean}, §\ref{ch01:sec:trust} & L01\\
+\lean{rfl}, \lean{Iff.rfl}, \lean{funext} & proof by unfolding definitions; same for \lean{↔}; function extensionality & §\ref{ch01:sec:synonyms} & L01\\
+\lean{@[simp]}, \lean{@[ext]}, \lean{@[inherit_doc]}, \lean{@[reducible]} & attributes: metadata for automation, no logical content; \lean{ext} applies extensionality lemmas & §\ref{ch01:sec:synonyms} & L01\\
+\lean{inferInstanceAs (C X)} & the instance of \lean{C X} found by search, transported to a synonym & §\ref{ch01:sec:synonyms} & L01\\
+\lean{⦃x : X⦄} & strict implicit argument; read ``for all $x$'' & §\ref{ch01:sec:lean} & L05\\
+\lean{inductive}, \lean{deriving}, \lean{open X in}, \lean{scoped}, \lean{_root_.} & other declaration syntax & §\ref{ch01:sec:lean} & L01\\
+\lean{where}, \lean{carrier := {x | ...}} & building a structure field by field; set-builder notation & §\ref{ch01:sec:synonyms} & L01\\
+\lean{letI}, \lean{haveI} & install a structure (or fact) locally inside a definition & §\ref{ch01:sec:algebra} & L03\\
+\lean{fun x => e}, \lean{⟨a, b⟩} & the function $x\mapsto e$; anonymous constructor (tuple) & §\ref{ch01:sec:lean} & L01\\
+\lean{if c then a else b} & case distinction (needs \lean{Decidable c}) & §\ref{ch01:sec:numbers} & L01\\
+\lean{∀}, \lean{∃}, \lean{∧}, \lean{∨}, \lean{¬}, \lean{→}, \lean{↔} & logic; order of quantifiers matters; \lean{→} associates right & §\ref{ch01:sec:lean} & L01\\
+\lean{∃ a ∈ P, ...} & $\exists a,\ a\in P\wedge\dots$ & §\ref{ch01:sec:linalg} & L01\\
+\lean{Nonempty X}, \lean{IsEmpty X} & $X$ has an element; $X$ has none & §\ref{ch01:sec:choice} & L02\\
+\lean{Function.Injective f} & $f$ is injective & §\ref{ch01:sec:choice} & L02\\
+\lean{Function.support f}, \lean{S.Finite}, \lean{S.Infinite}, \lean{Finite X} & $\{f\ne0\}$; finiteness of sets and types & §\ref{ch01:sec:sums} & L01\\
+\lean{Nat.card}, \lean{Set.ncard}, \lean{s.card} & cardinalities; the first two are $0$ for infinite sets & §\ref{ch01:sec:sums} & L12\\
+\lean{Set X}, \lean{Set.univ}, \lean{Set.range f}, \lean{∈}, \lean{⊆}, \lean{∩}, \lean{∪} & subsets and their operations & §\ref{ch01:sec:sums} & L02\\
+\lean{List X}, \lean{Finset.filter}, \lean{Finset.antidiagonal} & finite sequences; filtered finite sets; pairs with given sum & §\ref{ch01:sec:sums} & L02\\
+\lean{Module.End.eigenspace T μ}, \lean{T.maxGenEigenspace μ} & $\ker(T-\mu)$; generalised eigenspace & §\ref{ch01:sec:linalg} & L02\\
+\lean{ExactAt f g} (library) & $\ker g = \operatorname{im} f$ for module maps & §\ref{ch01:sec:linalg} & L12\\
+\lean{IsCompl P Q}, \lean{Nontrivial X} & $X = P\oplus Q$; $X$ has two distinct elements & §\ref{ch01:sec:linalg} & L02\\
+\lean{LinearIndependent}, \lean{Module.Basis}, \lean{b.repr}, \lean{Module.Finite} & independence; bases and coordinates; finite generation & §\ref{ch01:sec:linalg} & L02\\
+\lean{Submodule.Quotient.mk}, \lean{liftQ}, \lean{mkQ} & class in a quotient; induced map; quotient map & §\ref{ch01:sec:linalg} & L02\\
+\lean{LinearEquiv.of...}, \lean{LinearMap.fst}, \lean{smulRight}, \lean{compl₁₂}, \lean{IsSymm}, \lean{Nondegenerate} & standard constructions of maps and forms & §\ref{ch01:sec:linalg} & L02\\
+\lean{TensorProduct.mk}, \lean{.map}, \lean{.lift}, \lean{lTensor}, \lean{rTensor} & tensor-product constructions & §\ref{ch01:sec:linalg} & L02\\
+\lean{DirectSum.decompose}, \lean{DirectSum.toModule}, \lean{chooseDecomposition} & decomposition isomorphism; map out of a sum; chosen decomposition & §\ref{ch01:sec:linalg} & L04\\
+\lean{Finsupp.single}, \lean{Finsupp.linearCombination}, \lean{Finsupp.weight} & finitely supported constructions & §\ref{ch01:sec:linalg} & L02\\
+\lean{IsUnit}, \lean{ˣ}, \lean{⁻¹}, \lean{Commute}, \lean{algebraMap}, \lean{→ₐ[ℂ]}, \lean{→+} & units, inverses, commuting elements, algebra and additive maps & §\ref{ch01:sec:algebra} & L01\\
+\lean{Odd}, \lean{∣}, \lean{Nat.Coprime}, \lean{n.factorial}, \lean{n.choose k} & integer notions & §\ref{ch01:sec:algebra} & L01\\
+\lean{Complex.I}, \lean{Complex.exp}, \lean{Real.pi}, \lean{Real.sqrt}, \lean{CFC.sqrt} & $i$, $\exp$, $\pi$, square roots (junk $0$ for negatives) & §\ref{ch01:sec:algebra} & L02\\
+\lean{∘}, \lean{∃!}, \lean{.val}, \lean{Subtype.ext} & composition; unique existence; subtypes & §\ref{ch01:sec:algebra} & L01\\
+\lean{Polynomial.X}, \lean{C}, \lean{eval}, \lean{natDegree}, \lean{derivative}; \lean{MvPolynomial.pderiv} & polynomial vocabulary (degree $0$ for $P=0$) & §\ref{ch01:sec:algebra} & L05\\
+\lean{ModularForm}, \lean{qExpansion}, \lean{HasProd} & modular forms; $q$-expansions; convergent products & §\ref{ch01:sec:algebra}, §\ref{ch01:sec:sums} & ch02\\
+\lean{LieRing}, \lean{LieAlgebra}, \lean{→ₗ⁅ℂ⁆}, \lean{UniversalEnvelopingAlgebra}, \lean{twoCocycle} & Lie algebras, their maps, $U(L)$, cocycles & §\ref{ch01:sec:algebra} & L02\\
+\lean{Ideal}, \lean{Ideal.span}, \lean{RingHom.ker}, \lean{IsSimpleModule}, \lean{IsSemisimpleRing} & ring and module theory & §\ref{ch01:sec:algebra} & L02\\
+\lean{h.choose}, \lean{Classical.choose} & a witness chosen by the axiom of choice & §\ref{ch01:sec:choice} & L01\\
+\lean{Module.Free.chooseBasis} & an arbitrary basis of a free module & §\ref{ch01:sec:choice} & L05\\
+\lean{ℕ}, \lean{ℤ}, \lean{ℂ}, \lean{(n : ℂ)}, \lean{↑n} & number types ($0\in\N$); casts & §\ref{ch01:sec:numbers} & L01\\
+\lean{m - n} on \lean{ℕ}, \lean{x / 0}, \lean{k.toNat} & junk values: truncated, $0$, $\max(k,0)$ & §\ref{ch01:sec:junk} & L01\\
+\lean{ZMod n}, \lean{Fin n} & $\Z/n\Z$; $\{0,\dots,n-1\}$ & §\ref{ch01:sec:numbers} & L01\\
+\lean{Even n}, \lean{negOnePow n} & $n$ even; $(-1)^n$ & §\ref{ch01:sec:numbers} & L01\\
+\lean{FormalDist 𝒲}, \lean{𝒲⟦z^±⟧} & opaque synonym of \lean{ℤ → 𝒲}: formal series & §\ref{ch01:sec:synonyms} & L01\\
+\lean{mode f n}, \lean{mode (Y u) n} & $f(-n-1)$; the operator $u_{(n)}$ & Ex.~\ref{ch01:ex:mode} & L01\\
+\lean{1} on \lean{FormalDist} & the identity field & Ex.~\ref{ch01:ex:instOne} & L01\\
+\lean{odd k ↦ k/2} encoding & half-integer modes indexed by odd integers; even $k$ junk & §\ref{ch01:sec:junk} & ch06\\
+\lean{→ₗ[ℂ]}, \lean{≃ₗ[ℂ]}, \lean{LinearMap.id} & linear maps; linear isomorphisms; identity & §\ref{ch01:sec:linalg} & L01\\
+\lean{End ℂ 𝒱}, \lean{*}, \lean{⁅a, b⁆}, \lean{D ^ N} & endomorphisms; composition; commutator; power & §\ref{ch01:sec:linalg} & L01\\
+\lean{M →ₗ[ℂ] M →ₗ[ℂ] ℂ}, \lean{LinearMap.BilinForm} & bilinear (not sesquilinear) forms & §\ref{ch01:sec:linalg} & L02\\
+\lean{Module.Dual ℂ X} & dual space & §\ref{ch01:sec:linalg} & L06\\
+\lean{Basis ι ℂ X} & a basis indexed by $\iota$ & §\ref{ch01:sec:linalg} & L02\\
+\lean{Submodule ℂ 𝒱}, \lean{≤}, \lean{⊥}, \lean{⊤} & subspaces; inclusion; $0$; whole space & §\ref{ch01:sec:linalg} & L01\\
+\lean{⊓}, \lean{⊔}, \lean{⨆ i, S i} & intersection; sum; sum of a family & §\ref{ch01:sec:linalg} & L04\\
+\lean{Submodule.span}, \lean{ℂ ∙ v} & span; the line $\C v$ & §\ref{ch01:sec:linalg} & L02\\
+\lean{LinearMap.ker}, \lean{LinearMap.range}, \lean{comap}, \lean{map}, \lean{subtype} & kernel; image; preimage; image; inclusion & §\ref{ch01:sec:linalg} & L04\\
+\lean{↥S} & a subspace as a vector space (coercion) & §\ref{ch01:sec:linalg} & L04\\
+\lean{X ⧸ S} & quotient space & §\ref{ch01:sec:linalg} & L02\\
+\lean{ℤ → Submodule ℂ 𝒱}, \lean{DirectSum.IsInternal} & grading; $V = \bigoplus_n V_n$ & §\ref{ch01:sec:linalg} & L02\\
+\lean{DirectSum ℂ X} & external direct sum & §\ref{ch01:sec:linalg} & L12\\
+\lean{Module.finrank}, \lean{FiniteDimensional} & dimension ($0$ if infinite); finite-dimensionality & §\ref{ch01:sec:linalg} & L02\\
+\lean{A × B}, \lean{(a, b)}, \lean{x.1}, \lean{S.prod T} & product space; pair; projection; product subspace & §\ref{ch01:sec:linalg} & L01\\
+\lean{A ⊗[ℂ] B}, \lean{a ⊗ₜ[ℂ] b} & tensor product; pure tensor & §\ref{ch01:sec:linalg} & L02\\
+\lean{Matrix ι ι ℂ}, \lean{M.det} & square matrix; determinant & §\ref{ch01:sec:linalg} & L01\\
+\lean{∑ i ∈ s, f i}, \lean{Finset.range N}, \lean{Finset.univ} & finite sums; $\{0,\dots,N-1\}$; all elements & §\ref{ch01:sec:sums} & L01\\
+\lean{∑ᶠ i, f i} (\lean{finsum}) & sum with finite support; $0$ if support infinite & §\ref{ch01:sec:sums} & L01\\
+\lean{ι →₀ R}, \lean{μ.sum g} & finitely supported functions; sum over support & §\ref{ch01:sec:sums} & L02\\
+\lean{∑'} (\lean{tsum}) & infinite sum; $0$ if not summable & §\ref{ch01:sec:sums} & L14\\
+\lean{Polynomial ℂ}, \lean{MvPolynomial σ ℂ}, \lean{aeval} & polynomials; several variables; evaluation & §\ref{ch01:sec:algebra} & L05\\
+\lean{PowerSeries ℂ}, \lean{PowerSeries.coeff n} & $\C[[q]]$; coefficient of $q^n$ & §\ref{ch01:sec:algebra} & L05\\
+\lean{Subgroup G}, \lean{Subgroup.zpowers g} & subgroups; cyclic subgroup $\langle g\rangle$ & §\ref{ch01:sec:algebra} & ch04\\
+\lean{sorry}, \lean{sorryAx}, \lean{axiom} & unproved goal (forbidden); postulate & §\ref{ch01:sec:trust} & L01\\
+\texttt{\#print axioms} & lists the axioms a proof uses (not its hypotheses) & §\ref{ch01:sec:trust} & L01\\
+\bottomrule
+\end{longtable}
+\endgroup
+
+%======================================================================
+\section{Referee's checklist}\label{ch01:sec:checklist}
+%======================================================================
+
+This chapter quotes only a few declarations, as reading examples; their full fidelity checks are in
+the chapters indicated.
+
+\begingroup\small
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.25\textwidth}>{\raggedright\arraybackslash}p{0.33\textwidth}>{\raggedright\arraybackslash}p{0.2\textwidth}>{\raggedright\arraybackslash}p{0.12\textwidth}}
+\toprule
+Lean declaration & Intended meaning & Hypotheses / status & Check\\
+\midrule\endhead
+\lean{VOA.mode} & $f_{(m)} = f(-m-1)$ & definition; no axioms & Ex.~\ref{ch01:ex:mode}; Def.~\ref{l01:def:mode}\\
+\lean{VOA.FormalDist.instOne} & \lean{1} is the identity field & definition; no axioms & Ex.~\ref{ch01:ex:instOne}\\
+\lean{VOA.Aut} & automorphisms of a VOA & definition & Ex.~\ref{ch01:ex:aut}; Def.~\ref{l04:def:aut}\\
+\lean{VOA.VertexOperatorAlgebra}, \lean{…VertexOperatorAlgebra.L} & VOA of CFT type; $L_n = \omega_{(n+1)}$ & definition (CFT type by definition; the FLM notion is \lean{GradedVertexOperatorAlgebra}) & Ex.~\ref{ch01:ex:VOA}; Def.~\ref{l03:def:VOA}\\
+\lean{VOA.SuperVertexAlgebra} & super vertex algebra & definition & §\ref{ch01:sec:super}; Chapter~\ref{ch:L17}\\
+\lean{VOA.Moonshine.moonshine} & $\Vnat$ exists with the FLM data, $c=24$, $V_1=0$, $\dim V_2=196884$, character $J$, simple & no hypotheses; unconditional; standard axioms & §\ref{ch01:sec:headline}; §\ref{ch14:sec:decode}\\
+\lean{VOA.pbw} & two PBW consequences & theorem, unconditional (formerly a project axiom); not used by Moonshine & §\ref{ch01:sec:trust}; §\ref{l02:sec:axiom}\\
+\bottomrule
+\end{longtable}
+\endgroup
+
+%======================================================================
+\section{Notes and references}\label{ch01:sec:notes}
+%======================================================================
+
+Lean~4 is described in L.~de~Moura and S.~Ullrich, \emph{The Lean~4 theorem prover and programming
+language}, in: Automated Deduction --- CADE~28, Lecture Notes in Computer Science \textbf{12699},
+Springer, 2021, 625--635; Mathlib in The mathlib Community, \emph{The Lean mathematical library},
+Proceedings of the 9th ACM SIGPLAN International Conference on Certified Programs and Proofs (CPP
+2020), 367--381 (arXiv:1910.09336). A gentle introduction for mathematicians is J.~Avigad and
+P.~Massot, \emph{Mathematics in Lean}, available with the Lean community documentation.
+
+The definition of a vertex algebra is due to R.~E.~Borcherds, \emph{Vertex algebras, Kac--Moody
+algebras, and the Monster}, Proc.\ Nat.\ Acad.\ Sci.\ USA \textbf{83} (1986) 3068--3071. The
+definition of a vertex operator algebra and the construction of the Moonshine module are in
+I.~B.~Frenkel, J.~Lepowsky and A.~Meurman, \emph{Vertex Operator Algebras and the Monster}, Pure and
+Applied Mathematics \textbf{134}, Academic Press, 1988. Standard textbooks are V.~Kac, \emph{Vertex
+Algebras for Beginners}, University Lecture Series \textbf{10}, AMS, 2nd ed.\ 1998; E.~Frenkel and
+D.~Ben-Zvi, \emph{Vertex Algebras and Algebraic Curves}, Mathematical Surveys and Monographs
+\textbf{88}, AMS, 2nd ed.\ 2004; and J.~Lepowsky and H.~Li, \emph{Introduction to Vertex Operator
+Algebras and Their Representations}, Progress in Mathematics \textbf{227}, Birkh\"auser, 2004. The
+library's files follow, and their docstrings cite section by section, T.~Gannon, \emph{Moonshine
+beyond the Monster}, Cambridge University Press, 2006, Chapter~5.
+
+On the physics side, the founding paper of two-dimensional conformal field theory is A.~A.~Belavin,
+A.~M.~Polyakov and A.~B.~Zamolodchikov, \emph{Infinite conformal symmetry in two-dimensional quantum
+field theory}, Nucl.\ Phys.\ B \textbf{241} (1984) 333--380; a textbook account is P.~Di~Francesco,
+P.~Mathieu and D.~S\'en\'echal, \emph{Conformal Field Theory}, Springer, 1997. The orbifold
+interpretation of $\Vnat$ is due to L.~Dixon, P.~Ginsparg and J.~Harvey, \emph{Beauty and the beast:
+superconformal symmetry in a Monster module}, Commun.\ Math.\ Phys.\ \textbf{119} (1988) 221--241.
+
+The project-internal sources for this chapter are the files cited in the text, the
+repository's \texttt{README.md} (the policy on forbidden constructs, and the
+former single project axiom, now the theorem \lean{VOA.pbw}), the book's governing document \texttt{Notes/Textbook/CONSTITUTION.md}, the scripts
+\texttt{scripts/textbook/sync.py} and \texttt{scripts/textbook/cite\_paths.py}, and the catalogue of defects in Chapter~\ref{ch:15}. The
+release-audit reports \texttt{Notes/Textbook/referee/RELEASE\_AUDIT\_L16.md}, \dots, \texttt{RELEASE\_AUDIT\_L22.md} are
+the source of the corrected statements of Chapters~\ref{ch:L16}, \ref{ch:L20}, \ref{ch:L21} and~\ref{ch:L22}
+recorded in Section~\ref{ch01:sec:map}. The
+definitions that an earlier version of this chapter presented in full --- formal calculus, the
+vertex algebra axioms, the Borcherds identity, reconstruction, modules, automorphisms, ideals,
+invariant forms, Zhu's algebra and intertwiners --- are now presented in Chapters~\ref{ch:L01},
+\ref{ch:L03}, \ref{ch:L04} and~\ref{ch:L12}, and the orbifold subalgebra in Chapter~\ref{ch:04}.
+
+\endgroup

@@ -1,0 +1,370 @@
+import VOA.Commutative.WeightedInitialHilbert
+import Mathlib.RingTheory.GradedAlgebra.Basic
+import Mathlib.LinearAlgebra.Dimension.Constructions
+import Mathlib.RingTheory.Ideal.Quotient.Operations
+
+namespace VOA.WeightedInitial
+open scoped BigOperators
+noncomputable section
+variable {K σ : Type*} [Field K]
+
+private theorem component_mul_homogeneous (w : σ → ℕ) {a b : MvPolynomial σ K}
+    {i : ℕ} (ha : MvPolynomial.IsWeightedHomogeneous w a i) (n : ℕ) :
+    MvPolynomial.weightedHomogeneousComponent w n (a * b) =
+      if i ≤ n then a * MvPolynomial.weightedHomogeneousComponent w (n-i) b else 0 := by
+  letI := MvPolynomial.weightedGradedAlgebra K w
+  have h := DirectSum.coe_decompose_mul_of_left_mem
+    (MvPolynomial.weightedHomogeneousSubmodule K w) (b := b) n ha
+  change (MvPolynomial.decompose' K w (a*b) n : MvPolynomial σ K) =
+    if i ≤ n then a * (MvPolynomial.decompose' K w b (n-i) : MvPolynomial σ K) else 0 at h
+  simpa only [MvPolynomial.decompose'_apply] using h
+
+/-- Multiplication by a homogeneous polynomial shifts the actual auxiliary filtration. -/
+theorem homogeneous_mul_mem_below (w : σ → ℕ) {a b : MvPolynomial σ K} {i d : ℕ}
+    (ha : MvPolynomial.IsWeightedHomogeneous w a i) (hb : b ∈ below w d) :
+    a*b ∈ below w (i+d) := by
+  intro n hn
+  rw [component_mul_homogeneous w ha n, if_pos (by omega), hb (n-i) (by omega), mul_zero]
+
+/-- Multiplication of a top relation by a homogeneous polynomial is again a top relation. -/
+theorem homogeneous_mul_initialRelation (w : σ → ℕ) (I : Ideal (MvPolynomial σ K))
+    {a b : MvPolynomial σ K} {i d : ℕ}
+    (ha : MvPolynomial.IsWeightedHomogeneous w a i)
+    (hb : b ∈ initialRelation w (I.restrictScalars K) ⊤ d) :
+    a*b ∈ initialRelation w (I.restrictScalars K) ⊤ (i+d) := by
+  obtain ⟨f,hf⟩ := hb
+  refine ⟨⟨a*f.1, ⟨⟨I.mul_mem_left a f.2.1.1, Submodule.mem_top⟩, ?_⟩⟩, ?_⟩
+  · simpa only [Nat.add_assoc] using homogeneous_mul_mem_below w ha f.2.2
+  · change MvPolynomial.weightedHomogeneousComponent w (i+d) (a*f.1)=a*b
+    rw [component_mul_homogeneous w ha, if_pos (Nat.le_add_right _ _), Nat.add_sub_cancel_left]
+    exact congrArg (a * ·) hf
+
+/-- The homogeneous-component criterion for membership in the initial ideal. -/
+def componentInitial (w : σ → ℕ) (I : Ideal (MvPolynomial σ K)) :
+    Submodule K (MvPolynomial σ K) where
+  carrier := {f | ∀ d, MvPolynomial.weightedHomogeneousComponent w d f ∈
+    initialRelation w (I.restrictScalars K) ⊤ d}
+  zero_mem' := by intro d; rw [map_zero]; exact Submodule.zero_mem _
+  add_mem' := by intro f g hf hg d; rw [map_add]; exact Submodule.add_mem _ (hf d) (hg d)
+  smul_mem' := by intro c f hf d; rw [map_smul]; exact Submodule.smul_mem _ c (hf d)
+
+/-- Homogeneous multiplication preserves the component criterion. -/
+theorem homogeneous_mul_mem_componentInitial (w : σ → ℕ) (I : Ideal (MvPolynomial σ K))
+    {a b : MvPolynomial σ K} {i : ℕ}
+    (ha : MvPolynomial.IsWeightedHomogeneous w a i) (hb : b ∈ componentInitial w I) :
+    a*b ∈ componentInitial w I := by
+  intro n
+  rw [component_mul_homogeneous w ha]
+  split_ifs with hin
+  · have h := homogeneous_mul_initialRelation w I ha (hb (n-i))
+    simpa only [Nat.add_sub_of_le hin] using h
+  · exact Submodule.zero_mem _
+
+/-- The component criterion is closed under arbitrary polynomial multiplication. -/
+theorem mul_mem_componentInitial (w : σ → ℕ) (I : Ideal (MvPolynomial σ K))
+    (a : MvPolynomial σ K) {b : MvPolynomial σ K} (hb : b ∈ componentInitial w I) :
+    a*b ∈ componentInitial w I := by
+  classical
+  induction a using MvPolynomial.induction_on with
+  | C c => exact homogeneous_mul_mem_componentInitial w I (MvPolynomial.isWeightedHomogeneous_C w c) hb
+  | add a c ha hc => rw [add_mul]; exact Submodule.add_mem _ ha hc
+  | mul_X a j ha =>
+      rw [mul_assoc, mul_comm (MvPolynomial.X j) b, ← mul_assoc, mul_comm (a*b)]
+      exact homogeneous_mul_mem_componentInitial w I (MvPolynomial.isWeightedHomogeneous_X K w j) ha
+
+/-- The explicitly constructed component criterion forms an ideal. -/
+def componentInitialIdeal (w : σ → ℕ) (I : Ideal (MvPolynomial σ K)) :
+    Ideal (MvPolynomial σ K) where
+  carrier := componentInitial w I
+  zero_mem' := (componentInitial w I).zero_mem
+  add_mem' := (componentInitial w I).add_mem
+  smul_mem' := mul_mem_componentInitial w I
+
+/-- Every defining initial generator has the component criterion. -/
+theorem initialIdeal_le_componentInitialIdeal (w : σ → ℕ) (I : Ideal (MvPolynomial σ K)) :
+    initialIdeal w I ≤ componentInitialIdeal w I := by
+  apply Ideal.span_le.mpr
+  rintro p ⟨g,hg,d,hd,rfl⟩ n
+  have hh := MvPolynomial.weightedHomogeneousComponent_isWeightedHomogeneous (w := w) d g
+  by_cases hn : d=n
+  · subst n
+    rw [hh.weightedHomogeneousComponent_same]
+    exact ⟨⟨g,⟨⟨hg,Submodule.mem_top⟩,fun k hk => hd k (by omega)⟩⟩,rfl⟩
+  · rw [hh.weightedHomogeneousComponent_ne n (Ne.symm hn)]
+    exact Submodule.zero_mem _
+
+/-- The component ideal is exactly the ideal generated by actual top forms. -/
+theorem componentInitialIdeal_eq (w : σ → ℕ) (I : Ideal (MvPolynomial σ K)) :
+    componentInitialIdeal w I = initialIdeal w I := by
+  classical
+  apply le_antisymm _ (initialIdeal_le_componentInitialIdeal w I)
+  intro f hf
+  rw [← MvPolynomial.sum_weightedHomogeneousComponent w f,
+    finsum_eq_sum _ (MvPolynomial.weightedHomogeneousComponent_finsupp f)]
+  apply Ideal.sum_mem
+  intro d hd
+  obtain ⟨g,hg⟩ := hf d
+  apply Ideal.subset_span
+  exact ⟨g.1,g.2.1.1,d,fun k hk => g.2.2 k (by omega),hg⟩
+
+/-- Auxiliary projections commute with every other weight projection. -/
+theorem components_commute (w c : σ → ℕ) (d N : ℕ) (f : MvPolynomial σ K) :
+    MvPolynomial.weightedHomogeneousComponent c N
+      (MvPolynomial.weightedHomogeneousComponent w d f) =
+    MvPolynomial.weightedHomogeneousComponent w d
+      (MvPolynomial.weightedHomogeneousComponent c N f) := by
+  ext m
+  simp only [MvPolynomial.coeff_weightedHomogeneousComponent]
+  split_ifs <;> rfl
+
+/-- Restricting a top-form witness to a homogeneous slice preserves its top form. -/
+theorem initialRelation_restrict_slice (w c : σ → ℕ) (I : Ideal (MvPolynomial σ K))
+    (N d : ℕ)
+    (hI : ∀ f ∈ I, MvPolynomial.weightedHomogeneousComponent c N f ∈ I)
+    {f : MvPolynomial σ K} (hf : MvPolynomial.IsWeightedHomogeneous c f N)
+    (hi : f ∈ initialRelation w (I.restrictScalars K) ⊤ d) :
+    f ∈ initialRelation w (I.restrictScalars K)
+      (MvPolynomial.weightedHomogeneousSubmodule K c N) d := by
+  obtain ⟨g,hg⟩ := hi
+  refine ⟨⟨MvPolynomial.weightedHomogeneousComponent c N g.1,
+    ⟨⟨hI g.1 g.2.1.1, MvPolynomial.weightedHomogeneousComponent_mem c g.1 N⟩, ?_⟩⟩, ?_⟩
+  · intro k hk
+    rw [← components_commute, g.2.2 k hk, map_zero]
+  · change MvPolynomial.weightedHomogeneousComponent w d
+      (MvPolynomial.weightedHomogeneousComponent c N g.1) = f
+    rw [← components_commute]
+    change MvPolynomial.weightedHomogeneousComponent c N
+      ((topProjection w (I.restrictScalars K) ⊤ d) g) = f
+    rw [hg, hf.weightedHomogeneousComponent_same]
+
+/-- Auxiliary projection preserves a conformal homogeneous slice. -/
+theorem component_mem_slice (w c : σ → ℕ) (d N : ℕ) {f : MvPolynomial σ K}
+    (hf : MvPolynomial.IsWeightedHomogeneous c f N) :
+    MvPolynomial.IsWeightedHomogeneous c (MvPolynomial.weightedHomogeneousComponent w d f) N := by
+  have h : MvPolynomial.weightedHomogeneousComponent c N
+      (MvPolynomial.weightedHomogeneousComponent w d f) =
+      MvPolynomial.weightedHomogeneousComponent w d f := by
+    rw [components_commute, hf.weightedHomogeneousComponent_same]
+  rw [← h]
+  exact MvPolynomial.weightedHomogeneousComponent_isWeightedHomogeneous _ _
+
+/-- A finite slice has finite-dimensional spaces of projected relations. -/
+instance initialRelation_finite (w : σ → ℕ) (I V : Submodule K (MvPolynomial σ K))
+    [FiniteDimensional K V] (d : ℕ) : FiniteDimensional K (initialRelation w I V d) := by
+  haveI : FiniteDimensional K (relationBelow w I V (d+1)) :=
+    Submodule.finiteDimensional_of_le
+      (show relationBelow w I V (d+1) ≤ V from inf_le_left.trans inf_le_right)
+  unfold initialRelation
+  infer_instance
+
+/-- The actual map from relations of an ideal contained in the initial ideal to the
+finite family of projected original relation spaces. -/
+def sliceTopMap (w c : σ → ℕ) (I J : Ideal (MvPolynomial σ K)) (N D : ℕ)
+    (hI : ∀ f ∈ I, MvPolynomial.weightedHomogeneousComponent c N f ∈ I)
+    (hJ : J ≤ initialIdeal w I) :
+    ↥(J.restrictScalars K ⊓ MvPolynomial.weightedHomogeneousSubmodule K c N) →ₗ[K]
+      ∀ d : Fin (D+1), initialRelation w (I.restrictScalars K)
+        (MvPolynomial.weightedHomogeneousSubmodule K c N) d where
+  toFun f d := ⟨MvPolynomial.weightedHomogeneousComponent w d f.1,
+    initialRelation_restrict_slice w c I N d hI (component_mem_slice w c d N f.2.2)
+      ((initialIdeal_le_componentInitialIdeal w I (hJ f.2.1)) d)⟩
+  map_add' f g := by funext d; apply Subtype.ext; exact map_add _ _ _
+  map_smul' a f := by funext d; apply Subtype.ext; exact map_smul _ _ _
+
+/-- The finite tuple of components recovers a polynomial whenever the slice is bounded. -/
+theorem sliceTopMap_injective (w c : σ → ℕ) (I J : Ideal (MvPolynomial σ K)) (N D : ℕ)
+    (hI : ∀ f ∈ I, MvPolynomial.weightedHomogeneousComponent c N f ∈ I)
+    (hJ : J ≤ initialIdeal w I)
+    (hbound : MvPolynomial.weightedHomogeneousSubmodule K c N ≤ below w (D+1)) :
+    Function.Injective (sliceTopMap w c I J N D hI hJ) := by
+  intro f g h
+  apply Subtype.ext
+  rw [← MvPolynomial.sum_weightedHomogeneousComponent w f.1,
+    ← MvPolynomial.sum_weightedHomogeneousComponent w g.1]
+  apply finsum_congr
+  intro d
+  by_cases hd : d < D+1
+  · exact congrArg (fun z => (z ⟨d,hd⟩ : MvPolynomial σ K)) h
+  · rw [hbound f.2.2 d (by omega), hbound g.2.2 d (by omega)]
+
+/-- Initial-ideal containment bounds the number of relations in every finite bounded
+homogeneous slice. No surjectivity or degeneration equality is an input. -/
+theorem finrank_inter_le_of_le_initialIdeal (w c : σ → ℕ)
+    (I J : Ideal (MvPolynomial σ K)) (N D : ℕ)
+    [FiniteDimensional K (MvPolynomial.weightedHomogeneousSubmodule K c N)]
+    (hI : ∀ f ∈ I, MvPolynomial.weightedHomogeneousComponent c N f ∈ I)
+    (hJ : J ≤ initialIdeal w I)
+    (hbound : MvPolynomial.weightedHomogeneousSubmodule K c N ≤ below w (D+1)) :
+    Module.finrank K ↥(J.restrictScalars K ⊓ MvPolynomial.weightedHomogeneousSubmodule K c N) ≤
+      Module.finrank K ↥(I.restrictScalars K ⊓ MvPolynomial.weightedHomogeneousSubmodule K c N) := by
+  have h := LinearMap.finrank_le_finrank_of_injective
+    (sliceTopMap_injective w c I J N D hI hJ hbound)
+  rw [Module.finrank_pi_fintype] at h
+  rw [Fin.sum_univ_eq_sum_range (fun d => Module.finrank K
+    (initialRelation w (I.restrictScalars K)
+      (MvPolynomial.weightedHomogeneousSubmodule K c N) d))] at h
+  rw [sum_initialRelation_finrank_eq w (I.restrictScalars K)
+    (MvPolynomial.weightedHomogeneousSubmodule K c N) D hbound] at h
+  exact h
+
+/-- The required Hilbert comparison on actual homogeneous quotient slices. -/
+theorem quotientSlice_finrank_le (w c : σ → ℕ)
+    (I J : Ideal (MvPolynomial σ K)) (N D : ℕ)
+    [FiniteDimensional K (MvPolynomial.weightedHomogeneousSubmodule K c N)]
+    (hI : ∀ f ∈ I, MvPolynomial.weightedHomogeneousComponent c N f ∈ I)
+    (hJ : J ≤ initialIdeal w I)
+    (hbound : MvPolynomial.weightedHomogeneousSubmodule K c N ≤ below w (D+1)) :
+    Module.finrank K ((MvPolynomial.weightedHomogeneousSubmodule K c N) ⧸
+      (I.restrictScalars K).comap (MvPolynomial.weightedHomogeneousSubmodule K c N).subtype) ≤
+    Module.finrank K ((MvPolynomial.weightedHomogeneousSubmodule K c N) ⧸
+      (J.restrictScalars K).comap (MvPolynomial.weightedHomogeneousSubmodule K c N).subtype) := by
+  let V := MvPolynomial.weightedHomogeneousSubmodule K c N
+  have hi := ((I.restrictScalars K).comap V.subtype).finrank_quotient_add_finrank
+  have hj := ((J.restrictScalars K).comap V.subtype).finrank_quotient_add_finrank
+  have heI : Module.finrank K ((I.restrictScalars K).comap V.subtype) =
+      Module.finrank K ↥(I.restrictScalars K ⊓ V) := by
+    have hc : (I.restrictScalars K ⊓ V).comap V.subtype =
+        (I.restrictScalars K).comap V.subtype := by
+      ext f
+      simp only [Submodule.mem_comap, Submodule.mem_inf, Submodule.coe_subtype,
+        f.property, and_true]
+    rw [← hc]
+    exact (Submodule.comapSubtypeEquivOfLe
+      (show I.restrictScalars K ⊓ V ≤ V from inf_le_right)).finrank_eq
+  have heJ : Module.finrank K ((J.restrictScalars K).comap V.subtype) =
+      Module.finrank K ↥(J.restrictScalars K ⊓ V) := by
+    have hc : (J.restrictScalars K ⊓ V).comap V.subtype =
+        (J.restrictScalars K).comap V.subtype := by
+      ext f
+      simp only [Submodule.mem_comap, Submodule.mem_inf, Submodule.coe_subtype,
+        f.property, and_true]
+    rw [← hc]
+    exact (Submodule.comapSubtypeEquivOfLe
+      (show J.restrictScalars K ⊓ V ≤ V from inf_le_right)).finrank_eq
+  have h := finrank_inter_le_of_le_initialIdeal w c I J N D hI hJ hbound
+  rw [heI] at hi
+  rw [heJ] at hj
+  dsimp [V] at hi hj
+  omega
+
+/-- A variable-wise weight inequality bounds the entire homogeneous slice. -/
+theorem homogeneousSlice_le_below (w c : σ → ℕ) (hw : ∀ i, w i ≤ c i) (N : ℕ) :
+    MvPolynomial.weightedHomogeneousSubmodule K c N ≤ below w (N+1) := by
+  intro f hf d hd
+  ext m
+  rw [MvPolynomial.coeff_weightedHomogeneousComponent, MvPolynomial.coeff_zero]
+  split_ifs with hm
+  · by_contra hn
+    have hc := hf hn
+    have hle : Finsupp.weight w m ≤ Finsupp.weight c m := by
+      simp only [Finsupp.weight_apply, Finsupp.sum, nsmul_eq_mul]
+      exact Finset.sum_le_sum (fun i hi => Nat.mul_le_mul_left _ (hw i))
+    omega
+  · rfl
+
+/-- The quotient of a slice by its actual relations is its image in the ring quotient. -/
+theorem quotientSlice_finrank_eq_map (I : Ideal (MvPolynomial σ K))
+    (V : Submodule K (MvPolynomial σ K)) :
+    Module.finrank K (V ⧸ (I.restrictScalars K).comap V.subtype) =
+      Module.finrank K (V.map (Ideal.Quotient.mkₐ K I).toLinearMap) := by
+  let f := (Ideal.Quotient.mkₐ K I).toLinearMap.domRestrict V
+  have hk : LinearMap.ker f = (I.restrictScalars K).comap V.subtype := by
+    ext x
+    simp [f, LinearMap.mem_ker, Ideal.Quotient.eq_zero_iff_mem]
+  rw [← hk, f.quotKerEquivRange.finrank_eq]
+  rw [LinearMap.range_domRestrict]
+
+/-- Initial degeneration gives the Hilbert inequality for images in the actual polynomial
+quotients, with the auxiliary bound discharged by the variable weights. -/
+theorem quotientMap_finrank_le (w c : σ → ℕ)
+    (I J : Ideal (MvPolynomial σ K)) (N : ℕ)
+    [FiniteDimensional K (MvPolynomial.weightedHomogeneousSubmodule K c N)]
+    (hw : ∀ i, w i ≤ c i)
+    (hI : ∀ f ∈ I, MvPolynomial.weightedHomogeneousComponent c N f ∈ I)
+    (hJ : J ≤ initialIdeal w I) :
+    Module.finrank K ((MvPolynomial.weightedHomogeneousSubmodule K c N).map
+      (Ideal.Quotient.mkₐ K I).toLinearMap) ≤
+    Module.finrank K ((MvPolynomial.weightedHomogeneousSubmodule K c N).map
+      (Ideal.Quotient.mkₐ K J).toLinearMap) := by
+  rw [← quotientSlice_finrank_eq_map, ← quotientSlice_finrank_eq_map]
+  exact quotientSlice_finrank_le w c I J N N hI hJ (homogeneousSlice_le_below w c hw N)
+
+/-- Every projected relation is an actual initial-ideal element. -/
+theorem initialRelation_mem_initialIdeal (w : σ → ℕ) (I : Ideal (MvPolynomial σ K))
+    (V : Submodule K (MvPolynomial σ K)) (d : ℕ) {f : MvPolynomial σ K}
+    (hf : f ∈ initialRelation w (I.restrictScalars K) V d) : f ∈ initialIdeal w I := by
+  obtain ⟨g,hg⟩ := hf
+  exact Ideal.subset_span ⟨g.1,g.2.1.1,d,fun k hk => g.2.2 k (by omega),hg⟩
+
+/-- Every projected relation is homogeneous of its projected auxiliary degree. -/
+theorem initialRelation_homogeneous (w : σ → ℕ) (I V : Submodule K (MvPolynomial σ K))
+    (d : ℕ) {f : MvPolynomial σ K} (hf : f ∈ initialRelation w I V d) :
+    MvPolynomial.IsWeightedHomogeneous w f d := by
+  obtain ⟨g,rfl⟩ := hf
+  exact MvPolynomial.weightedHomogeneousComponent_isWeightedHomogeneous _ _
+
+/-- Every projected slice relation stays in the conformal slice. -/
+theorem initialRelation_mem_slice (w c : σ → ℕ) (I : Submodule K (MvPolynomial σ K))
+    (N d : ℕ) {f : MvPolynomial σ K}
+    (hf : f ∈ initialRelation w I (MvPolynomial.weightedHomogeneousSubmodule K c N) d) :
+    f ∈ MvPolynomial.weightedHomogeneousSubmodule K c N := by
+  obtain ⟨g,rfl⟩ := hf
+  exact component_mem_slice w c d N g.2.1.2
+
+/-- For the full initial ideal, every tuple of projected relations is attained by its sum. -/
+theorem sliceTopMap_surjective (w c : σ → ℕ) (I : Ideal (MvPolynomial σ K)) (N D : ℕ)
+    (hI : ∀ f ∈ I, MvPolynomial.weightedHomogeneousComponent c N f ∈ I) :
+    Function.Surjective (sliceTopMap w c I (initialIdeal w I) N D hI le_rfl) := by
+  classical
+  intro a
+  let f : MvPolynomial σ K := ∑ d : Fin (D+1), (a d).1
+  have hi : f ∈ initialIdeal w I := by
+    apply Ideal.sum_mem
+    intro d hd
+    exact initialRelation_mem_initialIdeal w I _ d (a d).2
+  have hv : f ∈ MvPolynomial.weightedHomogeneousSubmodule K c N := by
+    apply Submodule.sum_mem
+    intro d hd
+    exact initialRelation_mem_slice w c (I.restrictScalars K) N d (a d).2
+  refine ⟨⟨f,hi,hv⟩,?_⟩
+  funext d
+  apply Subtype.ext
+  change MvPolynomial.weightedHomogeneousComponent w d f = (a d).1
+  dsimp [f]
+  rw [map_sum]
+  rw [Finset.sum_eq_single d]
+  · exact (initialRelation_homogeneous w (I.restrictScalars K)
+      (MvPolynomial.weightedHomogeneousSubmodule K c N) d.val (a d).2).weightedHomogeneousComponent_same
+  · intro e he hed
+    have hh : MvPolynomial.IsWeightedHomogeneous w (a e).val e.val :=
+      initialRelation_homogeneous w (I.restrictScalars K)
+        (MvPolynomial.weightedHomogeneousSubmodule K c N) e.val (a e).2
+    exact hh.weightedHomogeneousComponent_ne d.val (fun h => hed (Fin.ext h.symm))
+  · simp
+
+/-- Actual initial relations decompose into the explicitly projected finite relation spaces. -/
+def initialRelationsEquiv (w c : σ → ℕ) (I : Ideal (MvPolynomial σ K)) (N D : ℕ)
+    (hI : ∀ f ∈ I, MvPolynomial.weightedHomogeneousComponent c N f ∈ I)
+    (hbound : MvPolynomial.weightedHomogeneousSubmodule K c N ≤ below w (D+1)) :
+    ↥((initialIdeal w I).restrictScalars K ⊓ MvPolynomial.weightedHomogeneousSubmodule K c N) ≃ₗ[K]
+      ∀ d : Fin (D+1), initialRelation w (I.restrictScalars K)
+        (MvPolynomial.weightedHomogeneousSubmodule K c N) d :=
+  LinearEquiv.ofBijective (sliceTopMap w c I (initialIdeal w I) N D hI le_rfl)
+    ⟨sliceTopMap_injective w c I (initialIdeal w I) N D hI le_rfl hbound,
+      sliceTopMap_surjective w c I N D hI⟩
+
+/-- The full initial ideal has exactly the original relation dimension in each bounded slice. -/
+theorem finrank_inter_initialIdeal_eq (w c : σ → ℕ) (I : Ideal (MvPolynomial σ K)) (N D : ℕ)
+    [FiniteDimensional K (MvPolynomial.weightedHomogeneousSubmodule K c N)]
+    (hI : ∀ f ∈ I, MvPolynomial.weightedHomogeneousComponent c N f ∈ I)
+    (hbound : MvPolynomial.weightedHomogeneousSubmodule K c N ≤ below w (D+1)) :
+    Module.finrank K ↥((initialIdeal w I).restrictScalars K ⊓
+      MvPolynomial.weightedHomogeneousSubmodule K c N) =
+    Module.finrank K ↥(I.restrictScalars K ⊓ MvPolynomial.weightedHomogeneousSubmodule K c N) := by
+  rw [(initialRelationsEquiv w c I N D hI hbound).finrank_eq, Module.finrank_pi_fintype,
+    Fin.sum_univ_eq_sum_range (fun d => Module.finrank K
+      (initialRelation w (I.restrictScalars K) (MvPolynomial.weightedHomogeneousSubmodule K c N) d))]
+  exact sum_initialRelation_finrank_eq w (I.restrictScalars K) _ D hbound
+
+end
+end VOA.WeightedInitial

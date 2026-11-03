@@ -1,0 +1,393 @@
+/-
+Copyright (c) 2026 Leonardo Rastelli. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Leonardo Rastelli
+-/
+import VOA.DeligneAudit.DeligneFusionUnivGSector
+
+/-!
+# Type-generic grading, quotients and the recursion step (`DeligneFusionGrade`, generically)
+
+the `DeligneFusionGrade` for `sl₃`, redone for any structure constants and any relation
+specifications (`RelSpec`):
+
+* **Every** `RelSpec` is homogeneous: tails are single words and eigen-relations involve grade-0
+  letters, so the degree projections descend to `U(R)` (`projFG_J`, `projUG`, `projUG_cyc`).
+* Quotients of current modules by invariant subspaces (`quotRepG`, `quot_cycDegG`).
+* `SpecStep R R' k` (structural, checked per family by unfolding): every tail of `R'` is a tail of
+  `R` or ends in the kernel word `k`, and the eigen-relations of `R'` are among those of `R`. Then
+  killing `k · w` turns `R` into `R'` (`sat_quotG`).
+* **The step** (generic rank–nullity), for a kernel word `k` such that `k · w` satisfies `R₀` in
+  `U(R₁)` (`hK`): `fd_stepG` and
+  `dim U(R₁)_N ≤ dim U(R')_N + [deg k ≤ N] dim U(R₀)_{N - deg k}` (`finrank_stepG`).
+* For a family `spec`, kernel words `kw` and `RavinderKernelRelG` (the **one per-type input**):
+  `univFD_all` (all pieces finite-dimensional from `a = 0`) and `McharG_rec_le`.
+* For a sector: `fusionSqueezeInputsG_of_kernel` and `fusionModuleBoundG_of_kernel`.
+-/
+
+namespace VOA.DeligneAudit.UnivG
+
+open PowerSeries VOA.DeligneAudit.SectorWeyl
+
+noncomputable section
+
+local notation "deg" => VOA.DeligneAudit.SectorGraded.wordDeg
+
+variable {n : ℕ} (f : Fin n → Fin n → Fin n → ℂ)
+
+theorem degG_cons (x : Ltr n) (l : List (Ltr n)) : deg (x :: l) = x.2 + deg l := by
+  simp [VOA.DeligneAudit.SectorGraded.wordDeg]
+
+theorem degG_nil : deg ([] : List (Ltr n)) = 0 := rfl
+
+theorem degG_append (l m : List (Ltr n)) : deg (l ++ m) = deg l + deg m := by
+  simp [VOA.DeligneAudit.SectorGraded.wordDeg]
+
+/-! ## Degree projections -/
+
+/-- The projection of formal combinations of words onto word degree `N`. -/
+def projFG (N : ℕ) : FreeW n →ₗ[ℂ] FreeW n :=
+  Finsupp.linearCombination ℂ (fun l => if deg l = N then sw l else 0)
+
+theorem projFG_sw (N : ℕ) (l : List (Ltr n)) :
+    projFG N (sw l) = if deg l = N then sw l else 0 := by
+  simp [projFG, sw]
+
+/-- **Every relation subspace is homogeneous.** -/
+theorem projFG_J (R : RelSpec n) (N : ℕ) : Jrel f R ≤ (Jrel f R).comap (projFG N) := by
+  rw [Jrel, Submodule.span_le]
+  intro g hg
+  have hmem : g ∈ Jrel f R := Submodule.subset_span hg
+  change projFG N g ∈ Jrel f R
+  rcases hg with ⟨p, ⟨s, x, y, rfl⟩ | ⟨t, ht, rfl⟩ | ⟨q, hq, rfl⟩⟩
+  · by_cases hD : deg p + (x.2 + (y.2 + deg s)) = N
+    · have h2 : deg p + (y.2 + (x.2 + deg s)) = N := by omega
+      have h3 : deg p + (x.2 + y.2 + deg s) = N := by omega
+      have : projFG N (commInst f p s x y) = commInst f p s x y := by
+        simp only [commInst, map_sub, map_sum, map_smul, projFG_sw, degG_append, degG_cons]
+        simp [hD, h2, h3]
+      rw [this]; exact hmem
+    · have h2 : ¬ deg p + (y.2 + (x.2 + deg s)) = N := by omega
+      have h3 : ¬ deg p + (x.2 + y.2 + deg s) = N := by omega
+      have : projFG N (commInst f p s x y) = 0 := by
+        simp only [commInst, map_sub, map_sum, map_smul, projFG_sw, degG_append, degG_cons]
+        simp [hD, h2, h3]
+      rw [this]; exact zero_mem _
+  · rw [projFG_sw]; split_ifs
+    · exact hmem
+    · exact zero_mem _
+  · by_cases hD : deg p = N
+    · have : projFG N (sw (p ++ [(q.1, 0)]) - q.2 • sw p) = sw (p ++ [(q.1, 0)]) - q.2 • sw p := by
+        simp only [map_sub, map_smul, projFG_sw, degG_append, degG_cons, degG_nil, add_zero]
+        simp [hD]
+      rw [this]; exact hmem
+    · have : projFG N (sw (p ++ [(q.1, 0)]) - q.2 • sw p) = 0 := by
+        simp only [map_sub, map_smul, projFG_sw, degG_append, degG_cons, degG_nil, add_zero]
+        simp [hD]
+      rw [this]; exact zero_mem _
+
+/-- The degree projection on `U(R)`. -/
+def projUG (R : RelSpec n) (N : ℕ) : UModG f R →ₗ[ℂ] UModG f R :=
+  (Jrel f R).mapQ (Jrel f R) (projFG N) (projFG_J f R N)
+
+theorem projUG_mk (R : RelSpec n) (N : ℕ) (l : List (Ltr n)) :
+    projUG f R N (Submodule.Quotient.mk (sw l)) =
+      if deg l = N then (Submodule.Quotient.mk (sw l) : UModG f R) else 0 := by
+  rw [projUG, Submodule.mapQ_apply, projFG_sw]
+  split_ifs <;> simp
+
+theorem projUG_cyc (R : RelSpec n) (N : ℕ) {x : UModG f R}
+    (hx : x ∈ cycDeg (univRepG f R) (wUG f R) N) : projUG f R N x = x := by
+  induction hx using Submodule.span_induction with
+  | mem v hv =>
+      obtain ⟨l, hl, rfl⟩ := hv
+      rw [wordOp_univG, projUG_mk, if_pos hl]
+  | zero => exact map_zero _
+  | add x y _ _ hx hy => rw [map_add, hx, hy]
+  | smul c x _ hx => rw [map_smul, hx]
+
+/-! ## Quotients of current modules -/
+
+section Quot
+
+variable {f} {V : Type} [AddCommGroup V] [Module ℂ V] (ρ : CurrentModule f V)
+
+/-- The cyclic submodule generated by `v`. -/
+def cycSubG (v : V) : Submodule ℂ V :=
+  Submodule.span ℂ (Set.range fun l : List (Ltr n) => wordOp ρ l v)
+
+theorem wordOp_mem_cycSubG (v : V) (l : List (Ltr n)) : wordOp ρ l v ∈ cycSubG ρ v :=
+  Submodule.subset_span ⟨l, rfl⟩
+
+theorem cycSubG_inv (v : V) (c : Fin n) (r : ℕ) :
+    cycSubG ρ v ≤ (cycSubG ρ v).comap (ρ.op c r) := by
+  rw [cycSubG, Submodule.span_le]
+  rintro _ ⟨l, rfl⟩
+  exact wordOp_mem_cycSubG ρ v ((c, r) :: l)
+
+variable (T : Submodule ℂ V) (hT : ∀ c r, T ≤ T.comap (ρ.op c r))
+
+/-- The quotient current module. -/
+def quotRepG : CurrentModule f (V ⧸ T) where
+  op c r := T.mapQ T (ρ.op c r) (hT c r)
+  comm c d r s x := by
+    obtain ⟨y, rfl⟩ := Submodule.mkQ_surjective T x
+    have := congrArg T.mkQ (ρ.comm c d r s y)
+    simpa [Submodule.mapQ_apply, map_sum, map_smul, map_sub] using this
+
+theorem quotRepG_op (c : Fin n) (r : ℕ) (v : V) :
+    (quotRepG ρ T hT).op c r (T.mkQ v) = T.mkQ (ρ.op c r v) := rfl
+
+theorem quot_wordOpG (v : V) : ∀ l : List (Ltr n),
+    wordOp (quotRepG ρ T hT) l (T.mkQ v) = T.mkQ (wordOp ρ l v)
+  | [] => rfl
+  | (x :: l) => by
+      change (quotRepG ρ T hT).op x.1 x.2 (wordOp (quotRepG ρ T hT) l (T.mkQ v)) = _
+      rw [quot_wordOpG v l, quotRepG_op]; rfl
+
+theorem quot_cycDegG (w : V) (N : ℕ) :
+    cycDeg (quotRepG ρ T hT) (T.mkQ w) N = (cycDeg ρ w N).map T.mkQ := by
+  rw [cycDeg, cycDeg, Submodule.map_span]
+  congr 1
+  ext x
+  constructor
+  · rintro ⟨l, hl, rfl⟩; exact ⟨_, ⟨l, hl, rfl⟩, (quot_wordOpG ρ T hT w l).symm⟩
+  · rintro ⟨u, ⟨l, hl, rfl⟩, rfl⟩; exact ⟨l, hl, (quot_wordOpG ρ T hT w l).symm⟩
+
+include hT in
+theorem wordOp_mem_of_inv {v : V} (hv : v ∈ T) : ∀ l : List (Ltr n), wordOp ρ l v ∈ T
+  | [] => hv
+  | (x :: l) => hT x.1 x.2 (wordOp_mem_of_inv hv l)
+
+end Quot
+
+/-- **Structural step condition**: every tail of `R'` is a tail of `R` or ends in the kernel word
+`k`, and the eigen-relations of `R'` are among those of `R`. -/
+structure SpecStep (R R' : RelSpec n) (k : List (Ltr n)) : Prop where
+  tail : ∀ t ∈ R'.tails, t ∈ R.tails ∨ ∃ p, t = p ++ k
+  eig : R'.eig ⊆ R.eig
+
+/-- Killing `k · w` turns `R` into `R'`. -/
+theorem sat_quotG {f} {V : Type} [AddCommGroup V] [Module ℂ V] {ρ : CurrentModule f V}
+    (T : Submodule ℂ V) (hT : ∀ c r, T ≤ T.comap (ρ.op c r)) {w : V} {R R' : RelSpec n}
+    {k : List (Ltr n)} (h : Sat f ρ w R) (hs : SpecStep R R' k) (hk : wordOp ρ k w ∈ T) :
+    Sat f (quotRepG ρ T hT) (T.mkQ w) R' where
+  tail t ht := by
+    rw [quot_wordOpG]
+    rcases hs.tail t ht with h1 | ⟨p, rfl⟩
+    · rw [h.tail t h1, map_zero]
+    · rw [wordOp_append]
+      exact (Submodule.Quotient.mk_eq_zero T).mpr (wordOp_mem_of_inv ρ T hT hk p)
+  eig q hq := by
+    rw [quotRepG_op, h.eig q (hs.eig hq), map_smul]
+
+/-! ## Rank–nullity for a submodule -/
+
+theorem finrank_le_map_add_infG {V W : Type} [AddCommGroup V] [Module ℂ V] [AddCommGroup W]
+    [Module ℂ W] (g : V →ₗ[ℂ] W) (P : Submodule ℂ V) [FiniteDimensional ℂ P] :
+    Module.finrank ℂ P ≤ Module.finrank ℂ (P.map g) +
+      Module.finrank ℂ (P ⊓ LinearMap.ker g : Submodule ℂ V) := by
+  have h := (g.domRestrict P).finrank_range_add_finrank_ker
+  rw [LinearMap.range_domRestrict, LinearMap.ker_domRestrict] at h
+  have e : Module.finrank ℂ ((LinearMap.ker g).comap P.subtype) =
+      Module.finrank ℂ (P ⊓ LinearMap.ker g : Submodule ℂ V) := by
+    rw [← Submodule.map_comap_subtype]
+    exact (Submodule.equivMapOfInjective P.subtype P.injective_subtype _).finrank_eq
+  omega
+
+/-! ## The step -/
+
+section Step
+
+variable {R₁ R₀ R' : RelSpec n} (k : List (Ltr n))
+
+/-- The kernel vector `k · w` of `U(R₁)`. -/
+def vKG (R₁ : RelSpec n) : UModG f R₁ := wordOp (univRepG f R₁) k (wUG f R₁)
+
+theorem wordOp_vKG (l : List (Ltr n)) :
+    wordOp (univRepG f R₁) l (vKG f k R₁) = Submodule.Quotient.mk (sw (l ++ k)) := by
+  rw [vKG, ← wordOp_append, wordOp_univG]
+
+/-- The submodule generated by the kernel vector. -/
+abbrev SKG (R₁ : RelSpec n) : Submodule ℂ (UModG f R₁) := cycSubG (univRepG f R₁) (vKG f k R₁)
+
+theorem projUG_SK (N : ℕ) {x : UModG f R₁} (hx : x ∈ SKG f k R₁) :
+    projUG f R₁ N x ∈ cycDeg (univRepG f R₁) (vKG f k R₁) (N - deg k) ∧
+      (N < deg k → projUG f R₁ N x = 0) := by
+  induction hx using Submodule.span_induction with
+  | mem v hv =>
+      obtain ⟨l, rfl⟩ := hv
+      dsimp only
+      rw [wordOp_vKG, projUG_mk, degG_append]
+      split_ifs with hl
+      · refine ⟨?_, fun h => by omega⟩
+        rw [← wordOp_vKG]; exact Submodule.subset_span ⟨l, by omega, rfl⟩
+      · exact ⟨zero_mem _, fun _ => rfl⟩
+  | zero => simp
+  | add x y _ _ hx hy =>
+      rw [map_add]; exact ⟨add_mem hx.1 hy.1, fun h => by rw [hx.2 h, hy.2 h, add_zero]⟩
+  | smul c x _ hx =>
+      rw [map_smul]; exact ⟨Submodule.smul_mem _ c hx.1, fun h => by rw [hx.2 h, smul_zero]⟩
+
+theorem inf_SKG_le (N : ℕ) :
+    cycDeg (univRepG f R₁) (wUG f R₁) N ⊓ SKG f k R₁ ≤
+      cycDeg (univRepG f R₁) (vKG f k R₁) (N - deg k) := by
+  rintro x ⟨hP, hS⟩
+  rw [← projUG_cyc f R₁ N hP]
+  exact (projUG_SK f k N hS).1
+
+theorem inf_SKG_bot (N : ℕ) (hN : N < deg k) :
+    cycDeg (univRepG f R₁) (wUG f R₁) N ⊓ SKG f k R₁ = ⊥ := by
+  rw [eq_bot_iff]
+  rintro x ⟨hP, hS⟩
+  rw [Submodule.mem_bot, ← projUG_cyc f R₁ N hP]
+  exact (projUG_SK f k N hS).2 hN
+
+theorem vKG_mem : vKG f k R₁ ∈ SKG f k R₁ :=
+  wordOp_mem_cycSubG (univRepG f R₁) (vKG f k R₁) []
+
+theorem quotKG_sat (hs : SpecStep R₁ R' k) :
+    Sat f (quotRepG (univRepG f R₁) (SKG f k R₁) (cycSubG_inv _ _)) ((SKG f k R₁).mkQ (wUG f R₁))
+      R' :=
+  sat_quotG _ _ (univG_sat f R₁) hs (vKG_mem f k)
+
+theorem map_cyc_mkQG (hs : SpecStep R₁ R' k) (N : ℕ) :
+    (cycDeg (univRepG f R₁) (wUG f R₁) N).map (SKG f k R₁).mkQ =
+      (cycDeg (univRepG f R') (wUG f R') N).map (univMapG (quotKG_sat f k hs)) := by
+  rw [← quot_cycDegG (univRepG f R₁) (SKG f k R₁) (cycSubG_inv _ _), map_cycDegG]
+
+theorem cyc_vKG (hK : Sat f (univRepG f R₁) (vKG f k R₁) R₀) (M : ℕ) :
+    cycDeg (univRepG f R₁) (vKG f k R₁) M =
+      (cycDeg (univRepG f R₀) (wUG f R₀) M).map (univMapG hK) :=
+  (map_cycDegG _ M).symm
+
+/-- **Finite-dimensionality propagates** from `U(R')` and `U(R₀)` to `U(R₁)`. -/
+theorem fd_stepG (hs : SpecStep R₁ R' k) (hK : Sat f (univRepG f R₁) (vKG f k R₁) R₀) (N : ℕ)
+    [FiniteDimensional ℂ (cycDeg (univRepG f R') (wUG f R') N)]
+    [FiniteDimensional ℂ (cycDeg (univRepG f R₀) (wUG f R₀) (N - deg k))] :
+    FiniteDimensional ℂ (cycDeg (univRepG f R₁) (wUG f R₁) N) := by
+  apply Module.Finite.iff_fg.mpr
+  refine Submodule.fg_of_fg_map_of_fg_inf_ker (SKG f k R₁).mkQ ?_ ?_
+  · rw [map_cyc_mkQG f k hs]
+    exact (Module.Finite.iff_fg.mp inferInstance).map _
+  · rw [Submodule.ker_mkQ, ← Module.Finite.iff_fg]
+    have h1 := inf_SKG_le f k (R₁ := R₁) N
+    rw [cyc_vKG f k hK] at h1
+    exact Submodule.finiteDimensional_of_le h1
+
+/-- **The recursion inequality, degree by degree.** -/
+theorem finrank_stepG (hs : SpecStep R₁ R' k) (hK : Sat f (univRepG f R₁) (vKG f k R₁) R₀)
+    (N : ℕ) [FiniteDimensional ℂ (cycDeg (univRepG f R') (wUG f R') N)]
+    [FiniteDimensional ℂ (cycDeg (univRepG f R₀) (wUG f R₀) (N - deg k))] :
+    Module.finrank ℂ (cycDeg (univRepG f R₁) (wUG f R₁) N) ≤
+      Module.finrank ℂ (cycDeg (univRepG f R') (wUG f R') N) +
+        if deg k ≤ N then
+          Module.finrank ℂ (cycDeg (univRepG f R₀) (wUG f R₀) (N - deg k)) else 0 := by
+  haveI := fd_stepG f k hs hK N
+  have h := finrank_le_map_add_infG (SKG f k R₁).mkQ (cycDeg (univRepG f R₁) (wUG f R₁) N)
+  rw [Submodule.ker_mkQ, map_cyc_mkQG f k hs] at h
+  have h1 : Module.finrank ℂ ((cycDeg (univRepG f R') (wUG f R') N).map
+      (univMapG (quotKG_sat f k hs))) ≤ Module.finrank ℂ (cycDeg (univRepG f R') (wUG f R') N) :=
+    Submodule.finrank_map_le _ _
+  have h2 : Module.finrank ℂ (cycDeg (univRepG f R₁) (wUG f R₁) N ⊓ SKG f k R₁ :
+      Submodule ℂ (UModG f R₁)) ≤ if deg k ≤ N then
+          Module.finrank ℂ (cycDeg (univRepG f R₀) (wUG f R₀) (N - deg k)) else 0 := by
+    split_ifs with hN
+    · have h3 := inf_SKG_le f k (R₁ := R₁) N
+      rw [cyc_vKG f k hK] at h3
+      exact (Submodule.finrank_mono h3).trans (Submodule.finrank_map_le _ _)
+    · rw [inf_SKG_bot f k N (by omega), finrank_bot]
+  omega
+
+end Step
+
+/-! ## Families -/
+
+/-- **The one per-type input (`RavinderKernelRelG`)**: for every module whose generator satisfies
+`spec (a+1) b`, the kernel vector `kw a b · w` satisfies `spec a b`. -/
+def RavinderKernelRelG (spec : ℕ → ℕ → RelSpec n) (kw : ℕ → ℕ → List (Ltr n)) : Prop :=
+  ∀ (a b : ℕ) (V : Type) [AddCommGroup V] [Module ℂ V] (ρ : CurrentModule f V) (w : V),
+    Sat f ρ w (spec (a + 1) b) → Sat f ρ (wordOp ρ (kw a b) w) (spec a b)
+
+variable {f} {spec : ℕ → ℕ → RelSpec n} {kw : ℕ → ℕ → List (Ltr n)}
+
+theorem kernel_univ (hK : RavinderKernelRelG f spec kw) (a b : ℕ) :
+    Sat f (univRepG f (spec (a + 1) b)) (vKG f (kw a b) (spec (a + 1) b)) (spec a b) :=
+  hK a b _ _ _ (univG_sat f _)
+
+/-- **All universal pieces are finite-dimensional**, from `a = 0`. -/
+theorem univFD_all (h0 : ∀ b, UnivFD f (spec 0 b))
+    (hs : ∀ a b, SpecStep (spec (a + 1) b) (spec a (b + 1)) (kw a b))
+    (hK : RavinderKernelRelG f spec kw) : ∀ a b, UnivFD f (spec a b)
+  | 0, b => h0 b
+  | a + 1, b => fun N => by
+      haveI := univFD_all h0 hs hK a (b + 1) N
+      haveI := univFD_all h0 hs hK a b (N - deg (kw a b))
+      exact fd_stepG f (kw a b) (hs a b) (kernel_univ hK a b) N
+
+/-- **The recursion inequality for the universal characters.** -/
+theorem McharG_rec_le (h0 : ∀ b, UnivFD f (spec 0 b))
+    (hs : ∀ a b, SpecStep (spec (a + 1) b) (spec a (b + 1)) (kw a b))
+    (hK : RavinderKernelRelG f spec kw) (a b : ℕ) :
+    A2.CoeffLe (McharG f (spec (a + 1) b))
+      (McharG f (spec a (b + 1)) + X ^ deg (kw a b) * McharG f (spec a b)) := by
+  intro N
+  haveI := univFD_all h0 hs hK a (b + 1) N
+  haveI := univFD_all h0 hs hK a b (N - deg (kw a b))
+  have h := finrank_stepG f (kw a b) (hs a b) (kernel_univ hK a b) N
+  rw [map_add, coeff_X_pow_mul']
+  simp only [McharG, coeff_mk]
+  split_ifs with hN
+  · rw [if_pos hN] at h; exact_mod_cast h
+  · rw [if_neg hN, add_zero] at h; rw [add_zero]; exact_mod_cast h
+
+/-! ## Sectors -/
+
+open VOA.DeligneAudit.DeligneSector VOA.DeligneAudit.DeligneCarrier
+
+variable {S : DeligneSectorData} {spec : ℕ → ℕ → RelSpec S.n} {kw : ℕ → ℕ → List (Ltr S.n)}
+
+/-- **The squeeze inputs from one per-type input**: given the family's structural conditions
+(`hspec`, `hs`, `hdeg`), `FusionTotalBoundG`, the Demazure realizations and
+`RavinderKernelRelG`. -/
+theorem fusionSqueezeInputsG_of_kernel {Dem : ℕ → PowerSeries ℚ}
+    (hspec : ∀ m, spec 0 m = lwSpec S m)
+    (hs : ∀ a b, SpecStep (spec (a + 1) b) (spec a (b + 1)) (kw a b))
+    (hdeg : ∀ a b, deg (kw a b) = 2 * a + b + 1)
+    (hF : FusionTotalBoundG S) (hK : RavinderKernelRelG S.f spec kw)
+    (hD : ∀ n, DemazureRealizationG S spec Dem n) :
+    FusionSqueezeInputsG Dem S.n (MuniG S spec) := by
+  have h0 : ∀ b, UnivFD S.f (spec 0 b) := fun b => by rw [hspec]; exact univFD_zero hF b
+  refine fusionSqueezeInputsG_of_univ hspec hF (fun a b => univFD_all h0 hs hK _ _)
+    (fun a b => ?_) hD
+  have := McharG_rec_le h0 hs hK a b
+  rwa [hdeg] at this
+
+/-- **U5 for any sector** from `FusionTotalBoundG`, `RavinderKernelRelG`, the realizations and
+the count (with the family's structural conditions). -/
+theorem fusionModuleBoundG_of_kernel {Dem : ℕ → PowerSeries ℚ}
+    (hspec : ∀ m, spec 0 m = lwSpec S m)
+    (hs : ∀ a b, SpecStep (spec (a + 1) b) (spec a (b + 1)) (kw a b))
+    (hdeg : ∀ a b, deg (kw a b) = 2 * a + b + 1)
+    (hF : FusionTotalBoundG S) (hK : RavinderKernelRelG S.f spec kw)
+    (hD : ∀ n, DemazureRealizationG S spec Dem n)
+    (hcount : ∀ m, ∃ B, (∀ b, B ≤ b → coeff b (fusionOf Dem m) = 0) ∧
+      ∑ b ∈ Finset.range B, coeff b (fusionOf Dem m) = (S.n : ℚ) ^ m) :
+    FusionModuleBoundG S (fusionOf Dem) :=
+  fusionModuleBoundG_of_squeeze S rfl
+    (fusionSqueezeInputsG_of_kernel hspec hs hdeg hF hK hD) hcount (huniv_MuniG hspec hF)
+
+end
+
+end VOA.DeligneAudit.UnivG
+
+section AxiomAudit
+#print axioms VOA.DeligneAudit.UnivG.projFG_J
+#print axioms VOA.DeligneAudit.UnivG.sat_quotG
+#print axioms VOA.DeligneAudit.UnivG.fd_stepG
+#print axioms VOA.DeligneAudit.UnivG.finrank_stepG
+#print axioms VOA.DeligneAudit.UnivG.univFD_all
+#print axioms VOA.DeligneAudit.UnivG.McharG_rec_le
+#print axioms VOA.DeligneAudit.UnivG.fusionSqueezeInputsG_of_kernel
+#print axioms VOA.DeligneAudit.UnivG.fusionModuleBoundG_of_kernel
+end AxiomAudit

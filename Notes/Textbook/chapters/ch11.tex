@@ -1,0 +1,2215 @@
+\chapter{The Golay frame and the untwisted triality}\label{ch:11}
+
+\providecommand{\chelLz}{\Lambda_0}
+\providecommand{\chelVz}{V_0^{+}}
+\providecommand{\chelVt}{V_3^{+}}
+\providecommand{\chelN}{N}
+
+At the end of Chapter~\ref{ch:10} the space
+\begin{equation*}
+  \Vnat \;=\; V_\Leech^{+}\;\oplus\;(V_\Leech^{T})^{+}
+\end{equation*}
+carried a candidate vertex map $Y^\natural$, assembled in block form from the vertex operators of
+$V_\Leech^+$ on itself, the twisted vertex operators $Y^T$ of $V_\Leech^+$ on the twisted sector, the
+skew intertwiner $W$ and its adjoint $\overline W$.  Every axiom of a vertex operator algebra had
+been verified for $Y^\natural$ except one family of locality relations: the locality of two
+operators $Y^\natural(t_1,z_1)$, $Y^\natural(t_2,z_2)$ whose \emph{states} $t_1,t_2$ both lie in the
+twisted sector, evaluated on a twisted vector.  In the numbering of Dolan, Goddard and Montague this
+is relation (4.23); in the library it is the predicate \lean{TPBlockLocal}.  This chapter begins
+the proof of that relation.  It does so by the route of Frenkel, Lepowsky and Meurman: one finds a
+hidden symmetry $\sigma$ of the would-be algebra $\Vnat$ --- the \emph{triality} --- which exchanges
+part of the untwisted sector with part of the twisted sector, so that the unknown
+twisted$\times$twisted products become conjugates of known untwisted products.  The chapter documents the release of the library named in the front matter; every Lean quotation is checked by \texttt{scripts/textbook/sync.py} to occur verbatim
+(up to whitespace and comments) in the source files of that release. Checks that were run at an earlier state of the library and not re-run for this edition are marked as such.
+
+The chapter has three parts.
+\begin{enumerate}[label=(\Roman*)]
+  \item \emph{The Golay frame} (Sections~\ref{ch11:sec:frame}--\ref{ch11:sec:twistedsplit}).
+  An index-two sublattice $\chelLz\subset\Leech$ splits each of the two halves of $\Vnat$ into two
+  pieces, so that $\Vnat$ becomes a sum of four modules over the subalgebra $\chelVz=V_{\chelLz}^+$:
+  \begin{equation*}
+    \Vnat \;=\; \chelVz\;\oplus\;\chelVt\;\oplus\;T_0^+\;\oplus\;T_3^+ .
+  \end{equation*}
+  We compute the weight-two dimensions of all four pieces.
+  \item \emph{Cyclicity} (Sections~\ref{ch11:sec:vacuumtrick}--\ref{ch11:sec:cyclictwisted}).
+  Each of the four pieces is generated, as a $\chelVz$-module, by a single explicit vector.  This
+  is what later lets one \emph{define} a $\chelVz$-equivariant map out of a piece by prescribing the
+  image of one vector.
+  \item \emph{The untwisted triality} (Sections~\ref{ch11:sec:rootexp}--\ref{ch11:sec:bridge}).
+  On the lattice vertex algebra of the Niemeier lattice $\chelN=N(A_1^{24})$ we construct an
+  explicit involution $\sigma$ out of exponentials of $\mathfrak{sl}_2$ zero modes, restrict it to
+  the subalgebra $V_\chelN^{\langle\chi,\Theta\rangle}$, and transport it, along an isomorphism of
+  vertex operator algebras $V_\chelN^{\langle\chi,\Theta\rangle}\cong\chelVz$ built from the
+  functoriality of lattice VOAs (Chapter~\ref{ch:03}), to a nontrivial involutive automorphism
+  \lean{v0Sigma} of $\chelVz$.
+\end{enumerate}
+The extension of $\sigma$ to the remaining sectors, and the identity that makes it useful, are the
+subjects of Chapters~\ref{ch:12}--\ref{ch:14}.
+
+\paragraph{Standing conventions.}  We use the conventions of the earlier chapters without change.
+For a vertex algebra $V$ (in Lean, a term \lean{V : VertexOperatorAlgebra 𝒱} on a complex vector
+space \lean{𝒱}) and states $u,v$, the \emph{$n$-th product} is
+$u_{(n)}v$, the coefficient of $z^{-n-1}$ in $Y(u,z)v$.  In Lean it is written
+\lean{V.smul u n v}; by definition (\lean{PreVertexAlgebra.smul_def}) this is
+\lean{mode (V.Y u) n v}, where the library's \lean{mode} is \lean{mode f m = f (-m - 1)}
+(Definition~\ref{l01:def:mode}, \leanpath{VOA/Foundations/FormalCalculus.lean}): a formal distribution $f(z)=\sum_k f_k z^k$ is
+stored as the function $k\mapsto f_k$, and its $m$-th mode is the coefficient of $z^{-m-1}$.
+For a twisted module of order two the library writes \lean{T.YM u k} for the operator
+$u_{(k/2)}$, half-integer modes being indexed by integers $k$ (Chapter~\ref{ch:06}).  An
+\emph{automorphism} of a vertex operator algebra $W$ is a term of the structure \lean{Aut W}
+(Definition~\ref{l04:def:aut}, \leanpath{VOA/Core/Automorphism.lean}, where it is quoted verbatim):
+a linear bijection $\alpha$ (\lean{toLinearEquiv}) with
+$\alpha(u_{(n)}v)=(\alpha u)_{(n)}(\alpha v)$ for \emph{all} $n\in\Z$ (\lean{map_smul'}),
+$\alpha\mathbf 1=\mathbf 1$ (\lean{map_vacuum}),
+$\alpha\omega=\omega$ (\lean{map_omega}).  This is exactly the textbook notion of a VOA automorphism; requiring
+the product identity for all $n$ is equivalent to $\alpha Y(u,z)\alpha^{-1}=Y(\alpha u,z)$.  For a
+subgroup $G\le\Aut W$ the \emph{orbifold} (fixed-point subalgebra) is
+\begin{leancode}
+def orbifold (G : Subgroup (Aut W)) : VOASubalgebra W where
+  carrier :=
+    { carrier := {v | ∀ g ∈ G, g v = v}
+      ...
+\end{leancode}
+(\leanpath{VOA/Modularity/Twisted.lean}; the omitted lines are the closure proofs), and
+\lean{orbifoldVOA G} is $W^G$ regarded as a vertex operator algebra with the same vacuum and
+conformal vector.  A \emph{VOA homomorphism} is a linear map $\varphi$ preserving vacua and all products,
+\lean{IsVOAHom V T φ}, with fields \lean{map_vacuum} ($\varphi\mathbf 1_V=\mathbf 1_T$) and
+\lean{map_smul} ($\varphi(u_{(n)}v)=(\varphi u)_{(n)}(\varphi v)$) (Definition~\ref{l04:def:hom},
+\leanpath{VOA/Core/SimpleImage.lean}, where it is quoted verbatim).  Note that \lean{IsVOAHom} does not mention the conformal
+vector; wherever an isomorphism of VOAs (rather than of vertex algebras) is claimed below, the
+statement $\varphi(\omega)=\omega$ is proved separately and recorded.
+
+Finally, the lattice vertex algebra $V_L$ of an even positive-definite lattice $L$ is, as in
+Chapter~\ref{ch:03}, the space
+\noindent File \leanpath{VOA/Examples/LatticeGenModule.lean}.
+\begin{leancode}
+noncomputable abbrev LatModuleGen : Type :=
+  HeisenbergN.FockN (rank L) ⊗[ℂ] (L.carrier →₀ ℂ)
+\end{leancode}
+--- the bosonic Fock space $S(\hat{\mathfrak h}^-)$ tensored with the group algebra $\C\{L\}$,
+whose basis vector at $\alpha$ we write $e^\alpha$ (\lean{eGen L α}).  A pure tensor
+$p\otimes e^\alpha$ is \lean{latStateGen L p α}; the \emph{charged vacuum} $\mathbf 1\otimes e^\alpha$
+is \lean{latChargeGen L α}; the \emph{momentum-$\gamma$ component} of a state $x$ is the Fock vector
+\lean{coordEα L γ x} (``the coefficient of $e^\gamma$''); and the \emph{momentum sector}
+$F_\gamma=S(\hat{\mathfrak h}^-)\otimes e^\gamma$ is \lean{chargeSec L γ}.  The vertex operator
+algebra structure is \lean{latticeVOAGen L hEven hPos}, the hypotheses being evenness and positive
+definiteness of $L$.  The cocycle $\varepsilon(\alpha,\beta)=\pm1$ of the vertex operators
+$Y(e^\alpha,z)e^\beta=\varepsilon(\alpha,\beta)z^{\langle\alpha,\beta\rangle}\cdots$ is
+\lean{latticeCocycle L α β}; it is bimultiplicative and satisfies
+$\varepsilon(\alpha,\beta)\varepsilon(\beta,\alpha)^{-1}=(-1)^{\langle\alpha,\beta\rangle}$.
+
+%======================================================================
+\section{Why a triality is needed}\label{ch11:sec:strategy}
+%======================================================================
+
+\subsection{The one relation that resists}
+
+Recall the shape of the problem.  Write $V=V_\Leech^+$ and $\mathcal T=(V_\Leech^T)^+$, so that
+$\Vnat=V\oplus\mathcal T$.  For $u\in V$ the operator $Y^\natural(u,z)$ is block diagonal,
+$Y^\natural(u,z)=\operatorname{diag}(Y(u,z),Y^T(u,z))$; for $t\in\mathcal T$ it is block
+off-diagonal, with $W(t,z):V\to\mathcal T$ and $\overline W(t,z):\mathcal T\to V$.  The locality
+axiom for $Y^\natural$ splits into six relations according to which blocks are involved.  Five of
+them are statements about a single module over a single vertex algebra:
+\begin{itemize}
+  \item $u,u'\in V$ on $V$: locality in the vertex algebra $V$ (Chapter~\ref{ch:04});
+  \item $u,u'\in V$ on $\mathcal T$: locality of the twisted module (Chapters~\ref{ch:06}--\ref{ch:08});
+  \item $u\in V$, $t\in\mathcal T$, in either order and on either sector: the fact that $W$ and
+  $\overline W$ are intertwining operators (Chapter~\ref{ch:09}).
+\end{itemize}
+The remaining relations have \emph{two} twisted states.  On the untwisted sector, the composite
+$\overline W(t_1,z_1)W(t_2,z_2):V\to V$ must be local with its swap; DGM call this (4.22) and the
+library proves it unconditionally (Chapter~\ref{ch:10}) from the skew symmetry of $\overline W$.
+On the twisted sector the composite $W(t_1,z_1)\overline W(t_2,z_2):\mathcal T\to\mathcal T$ must
+satisfy
+\begin{equation}\label{ch11:eq:423}
+  (z_1-z_2)^N\Big(W(t_1,z_1)\overline W(t_2,z_2)-W(t_2,z_2)\overline W(t_1,z_1)\Big)=0
+  \qquad(N\gg0).
+\end{equation}
+This is DGM (4.23).  Its physical meaning is clear: it is the statement that the four-point
+function of four twist fields of the $\Z/2$-orbifold of the Leech CFT is single valued.
+Concretely, the matrix element of \eqref{ch11:eq:423} between ground states is a theta series of
+$\Leech$ divided by $\eta^{24}$, evaluated at the modular parameter $q(x)$ of the double cover of
+the sphere branched over the four insertion points; single-valuedness in $x$ is a statement about
+the behaviour of $\Theta_\Leech$ under the full modular group, and DGM describe the condition as
+``almost a modular invariance condition'', true precisely because $\sqrt2\Leech^*$ is even.  A
+direct proof along these lines requires analytic continuation of four-point functions, which the
+formal-variable framework of the library does not support.
+
+\subsection{The idea of triality}
+
+FLM avoid any computation of twisted$\times$twisted products.  Their idea can be explained in three
+sentences.
+\begin{enumerate}
+  \item If $\Vnat$ were already known to be a vertex operator algebra and $\sigma$ were an
+  automorphism of it, then $\sigma Y^\natural(a,z)\sigma^{-1}=Y^\natural(\sigma a,z)$ for all
+  states $a$.
+  \item If moreover $\sigma$ mapped some untwisted subspace $X\subseteq V$ onto some twisted
+  subspace $\sigma(X)\subseteq\mathcal T$, then for $t,t'\in\sigma(X)$,
+  \begin{equation*}
+    Y^\natural(t,z_1)Y^\natural(t',z_2)\;=\;\sigma\,Y^\natural(\sigma^{-1}t,z_1)\,
+    Y^\natural(\sigma^{-1}t',z_2)\,\sigma^{-1},
+  \end{equation*}
+  and the right side involves only operators of \emph{untwisted} states, whose locality is
+  already known.
+  \item One therefore constructs $\sigma$ \emph{before} knowing that $\Vnat$ is a VOA, proves
+  the conjugation identity in the one case that is not automatic, and \emph{deduces} the missing
+  locality.
+\end{enumerate}
+The difficulty is concentrated in the conjugation identity of step~3; that is the content of
+Chapters~\ref{ch:12}--\ref{ch:14}.  What makes step 2 possible at all is a decomposition of $\Vnat$
+into pieces fine enough that $\sigma$ can map an untwisted piece to a twisted piece.  This is the
+Golay frame.
+
+\subsection{The frame and its four sectors}
+
+The Leech lattice contains an index-two sublattice $\chelLz$ which is simultaneously an index-two
+sublattice of the Niemeier lattice $\chelN=N(A_1^{24})$.  The discriminant group
+$\chelLz^*/\chelLz$ has order $4$ (because $[\Leech:\chelLz]=2$ and $\Leech$ is unimodular), and it
+contains two different subgroups of order two, namely $\Leech/\chelLz$ and $\chelN/\chelLz$;
+a cyclic group of order four has only one, so $\chelLz^*/\chelLz\cong(\Z/2)^2$.  Following DGM we
+label the four cosets $\Lambda_0,\Lambda_1,\Lambda_2,\Lambda_3$ so that
+\begin{equation*}
+  \chelN=\Lambda_0\sqcup\Lambda_1,\qquad \Leech=\Lambda_0\sqcup\Lambda_3 .
+\end{equation*}
+This is the origin of the subscript ``$3$'' below; in the library the two cosets of $\chelLz$ in
+$\Leech$ are indexed by $0,1\in\Z/2$, and $\chelVt$ is \lean{frameSector 1}.
+
+On the untwisted side, a state of $V_\Leech^+$ splits according to whether its momenta lie in
+$\Lambda_0$ or in $\Lambda_3$:
+\begin{equation*}
+  V_\Leech^+=\chelVz\oplus\chelVt,\qquad
+  \chelVz=V_{\Lambda_0}^+,\quad \chelVt=\big(\text{$\theta$-fixed states with momenta in }\Lambda_3\big).
+\end{equation*}
+On the twisted side, the $4096$-dimensional module $T$ of the extraspecial group splits into two
+$2048$-dimensional halves $T_0,T_3$ under a central element of the preimage of $\Lambda_0$, and
+\begin{equation*}
+  (V_\Leech^T)^+=T_0^+\oplus T_3^+,\qquad T_s^+=(S[\theta]\otimes T_s)^+ .
+\end{equation*}
+FLM (and DGM, Proposition 7.1) show that the four pieces are irreducible $\chelVz$-modules.  The
+triality is an involution of $\Vnat$ with
+\begin{equation}\label{ch11:eq:sigmapattern}
+  \sigma(\chelVz)=\chelVz,\qquad \sigma(\chelVt)=T_0^+,\qquad \sigma(T_3^+)=T_3^+ .
+\end{equation}
+At weight two the dimensions are (all proved below except the twisted ones, which come from
+Chapter~\ref{ch:08} together with the $2048+2048$ split proved here):
+\begin{center}
+\begin{tabular}{lccccc}
+\toprule
+ & $\chelVz$ & $\chelVt$ & $T_0^+$ & $T_3^+$ & total\\
+\midrule
+weight 2 & $49428$ & $49152$ & $49152$ & $49152$ & $196884$\\
+\bottomrule
+\end{tabular}
+\end{center}
+The equality $\dim(\chelVt)_2=\dim(T_0^+)_2$ is the first visible sign of the triality.  The
+coincidence $49152=24\cdot2048$ on the twisted side ($24$ oscillators $h_a(-\tfrac12)$ of weight
+$\tfrac12$ on the $2048$-dimensional ground space of weight $\tfrac32$) and $49152=\tfrac12\cdot
+24\cdot 2^{12}$ on the untwisted side (pairs $\pm\alpha$ of norm-four vectors outside $\Lambda_0$) is
+not an accident: both sides are ``$24$ copies of a $2^{11}$-dimensional representation''.
+
+\subsection{What the untwisted triality is, physically}
+
+The Niemeier lattice $\chelN$ has $48$ roots $\pm\alpha_j$, $j=0,\dots,23$, mutually orthogonal, so
+$V_\chelN$ contains the affine algebra $\widehat{\mathfrak{sl}}_2^{\,24}$ at level one; each
+$\widehat{\mathfrak{sl}}_2$ factor is the $SU(2)_1$ WZW model, the theory of a free boson at the
+self-dual radius.  The global symmetry group contains $SU(2)^{24}$, acting on the $j$-th triple of
+currents $(J^{j1},J^{j2},J^{j3})$ by rotations.  Two involutions of $V_\chelN$ are rotations by
+$\pi$ in every factor: $\chi$, about the ``Cartan'' axis $J^{j1}=\tfrac12 h_j$, and $\Theta$, about
+the axis $J^{j2}\propto e_j+f_j$.  In the bosonic language $\chi$ is a momentum sign, while
+$\Theta$ is a lift of $-1$ on the lattice (it negates the boson).  The rotation by $\pi$ about
+the \emph{bisector} of these two axes swaps them; conjugation by it swaps $\chi$ and $\Theta$.
+That rotation is the untwisted triality.  Restricted to the fixed points of both $\chi$ and
+$\Theta$ it is an automorphism of $V_\chelN^{\langle\chi,\Theta\rangle}$, and this algebra is
+$V_{\Lambda_0}^+=\chelVz$ --- the common part of $V_\chelN$ and of $\Vnat$.  On $V_\chelN$ the
+triality exchanges the $\chi$-odd part $V_{\Lambda_0}^-$ with the $\Theta$-odd part $V_{\Lambda_1}^+$;
+the analogous statement in $\Vnat$, where the roles are played by the $\theta$-twisted sector,
+is \eqref{ch11:eq:sigmapattern}.
+
+\begin{warning}
+\textbf{DGM's Section 7 is circular for this project.}  Dolan, Goddard and Montague construct $\sigma$
+on $\Vnat$ by combining the explicit triality on $V_\chelN$ with their Proposition 7.3, an
+isomorphism of twisted and untwisted realisations whose proof uses their earlier (analytic) theorem
+that the twisted construction defines a conformal field theory --- i.e.\ it uses the locality
+\eqref{ch11:eq:423} that we are trying to prove.  Only the untwisted part of their Section 7 (the
+formula for $\sigma$ on $V_\chelN$) is used in this chapter; the extension to the twisted sectors
+is done non-circularly in Chapters~\ref{ch:12}--\ref{ch:13}.  (Source: Notes/M8GluingPlan.md,
+route~(A), ``Caution''.)
+\end{warning}
+
+%======================================================================
+\section{The frame lattice \texorpdfstring{$\Lambda_0$}{Lambda0}}\label{ch11:sec:frame}
+%======================================================================
+
+\subsection{The model of the Leech lattice}
+
+The library uses Ebeling's model of the Leech lattice (Chapter~\ref{ch:02}), vendored in the file
+\leanpath{VOA/\allowbreak LatticesAndCodes/\allowbreak Leech/\allowbreak Defs.lean}.  Let $C\subset\mathbb F_2^{24}$ be the extended
+binary Golay code, $\rho:\Z^{24}\to\mathbb F_2^{24}$ reduction mod two, and
+\begin{equation*}
+  A=\Big\{a\in\Z^{24}\;:\;\rho(a)\in C,\ 4\ \Big|\ \textstyle\sum_i a_i\Big\}
+  \quad(\text{Lean: }\lean{Leech.subA}),\qquad u=(5,1,1,\dots,1).
+\end{equation*}
+Then $\Leech=2A\sqcup(u+2A)\subset\Z^{24}$ with bilinear form $\langle x,y\rangle=x\cdot y/8$.
+The Niemeier lattice is $\chelN=\rho^{-1}(C)$ with form $x\cdot y/2$ (\lean{Leech.golayLattice}); its
+roots (vectors of norm $2$) are exactly $\pm2e_j$.  The \emph{frame character} is
+\begin{equation*}
+  \beta:\Leech\to\Z/2,\qquad \beta(x)=x_0\bmod 2 ,
+\end{equation*}
+which is a homomorphism (\lean{Leech.beta}).  Since every vector of $2A$ has even coordinates and
+every vector of $u+2A$ has odd coordinates, $\ker\beta=2A$.
+
+\begin{definition}[The frame lattice]\label{ch11:def:lambda0}
+$\Lambda_0:=\ker\beta=2A\subset\Leech$, and $\Lambda_3:=\Leech\setminus\Lambda_0=u+2A$.
+\end{definition}
+
+\begin{leancode}
+/-- The Golay-frame character `β : Λ → ℤ/2`, `x ↦ x₀ mod 2`. -/
+noncomputable def frameChar : leech.carrier →+ ZMod 2 := Leech.beta.toAddMonoidHom
+
+/-- **`Λ₀`**, the index-`2` sublattice `ker β = 2A` of the Leech lattice. -/
+noncomputable def lambda0 : Submodule ℤ leech.carrier := LinearMap.ker Leech.beta
+
+theorem mem_lambda0 (α : leech.carrier) : α ∈ lambda0 ↔ frameChar α = 0 := LinearMap.mem_ker
+\end{leancode}
+(\leanpath{VOA/Moonshine/FrameSectors.lean}, \lean{VOA.Moonshine.frameChar},
+\lean{VOA.Moonshine.lambda0}.)
+
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{leech} is the Leech lattice as a \lean{VOA.IntegralLattice}
+(transported from the vendored Ebeling model, Chapter~\ref{ch:02}); \lean{leech.carrier} is its
+underlying $\Z$-module, whose elements are vectors $x\in\Z^{24}$ in $2A\cup(u+2A)$.
+\lean{→+ ZMod 2} is ``additive group homomorphism to $\Z/2$''.  \lean{Submodule ℤ} of a $\Z$-module
+is a subgroup.  \lean{LinearMap.ker} is the kernel.  So \lean{lambda0} is literally
+$\ker\beta$.  No hypotheses.  The definition could only be ``wrong'' if \lean{Leech.beta} were not
+the map $x\mapsto x_0\bmod2$; its source (displayed in Chapter~\ref{ch:02}) is
+\lean{toFun x := (((x : Fin 24 → ℤ) 0 : ℤ)) : ZMod 2)}, i.e.\ exactly that.  The next two results
+show $\Lambda_0$ is neither $\Leech$ nor trivially small.
+\end{dictionary}
+
+\begin{physics}
+The sublattice $\Lambda_0=\ker\beta$ is the set of momenta whose first coordinate is even; it is the momentum lattice of the ``frame'' sub-theory $V_{\Lambda_0}$, a rank-$24$ lattice CFT sitting inside the Leech CFT. Heuristically, the Golay code organises the $24$ chiral bosons into a frame of commuting Ising-like pieces (a code CFT / frame VOA in the sense of Dong--Griess--Miyamoto), and $\Lambda_0=\Leech\cap N$ is the part of the Leech charge lattice that this frame sees in the same way as the Niemeier lattice $N(A_1^{24})$. Charges in $\Lambda_0$ are the ones that the Leech theory and the $A_1^{24}$ theory share; the remaining Leech charges $\Lambda_3$ are the ones only Leech has. This shared subtheory is what lets the triality of the $A_1^{24}$ theory be transported to the moonshine theory. The identification with a frame is a heuristic guide; the definition is just a kernel of a map to $\Z/2$.
+\end{physics}
+
+\begin{proposition}[Index two]\label{ch11:prop:index}
+$[\Leech:\Lambda_0]=2$.
+\end{proposition}
+\begin{leancode}
+/-- `[Λ : Λ₀] = 2`. -/
+theorem card_quotient_lambda0 : Nat.card (leech.carrier ⧸ lambda0) = 2
+\end{leancode}
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{leech.carrier ⧸ lambda0} is the quotient group $\Leech/\Lambda_0$
+and \lean{Nat.card} its cardinality (with the convention that an infinite set has \lean{Nat.card}
+$0$; since the value is $2$, the quotient is finite of order exactly two).  Same as the textbook
+statement.  Not vacuous: a statement $\mathtt{Nat.card}=2$ cannot hold for the trivial quotient.
+\end{dictionary}
+
+\begin{physics}
+In charge-lattice language, $\Lambda_0$ has index two: there are only two ``frame charge'' classes, even and odd, and every Leech charge falls in exactly one. This is what makes the frame a $\Z/2$-grading of the Leech theory, the simplest possible charge decomposition, and later forces exactly two sectors $V_0^+$ and $V_3^+$. It is a counting statement about the charge lattice, with no dynamical content beyond that.
+\end{physics}
+\emph{Proof.}  $\beta$ is surjective because $\beta(u)=5\bmod2=1$, so $\Leech/\ker\beta\cong\Z/2$.
+(The library proves the equivalent statement $[\Leech:\operatorname{im}(a\mapsto2a)]=2$ for the
+model, and $\Lambda_0=\operatorname{im}(a\mapsto 2a)$.) \qed
+\begin{status}
+Unconditional; \lean{#print axioms card_quotient_lambda0} $=$ [\lean{propext},
+\lean{Classical.choice}, \lean{Quot.sound}] (re-run for this chapter, see
+Section~\ref{ch11:sec:checklist}).
+\end{status}
+
+\begin{proposition}[$\Lambda_0\cong A$ isometrically]\label{ch11:prop:lambda0equiv}
+The doubling map $a\mapsto 2a$ is an isomorphism of groups $A\to\Lambda_0$, and if $A$ carries the
+form $a\cdot b/2$ (the restriction of the form of $\chelN$), it is an isometry:
+$\langle 2a,2b\rangle_\Leech=a\cdot b/2$.
+\end{proposition}
+\begin{leancode}
+/-- `a ↦ 2a` identifies `A` with `Λ₀`. -/
+noncomputable def lambda0Equiv : ↥Leech.subA ≃ₗ[ℤ] ↥lambda0 :=
+  (LinearEquiv.ofInjective Leech.inclL Leech.inclL_injective).trans
+    (LinearEquiv.ofEq _ _ lambda0_eq_range_inclL.symm)
+
+/-- `A ≃ Λ₀` is an isometry: the Leech form on `Λ₀` is the halved Golay form on `A`. -/
+theorem lambda0Equiv_form (a b : ↥Leech.subA) :
+    leech.form (lambda0Equiv a : leech.carrier) (lambda0Equiv b : leech.carrier)
+      = Leech.subALattice.bilin a b
+\end{leancode}
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{↥Leech.subA} is the subtype of vectors in $A$; \lean{≃ₗ[ℤ]} is a
+$\Z$-linear bijection.  The map is built from \lean{Leech.inclL}, whose source is
+\lean{toFun a := ⟨(2 : ℤ) • (a : Fin 24 → ℤ), …⟩}, i.e.\ $a\mapsto 2a$; \lean{ofInjective} makes it
+a bijection onto its range and \lean{ofEq} identifies the range with \lean{lambda0}.
+\lean{Leech.subALattice} is $A$ with the form \lean{dotLattice 2 subA …}, i.e.\ $a\cdot b/2$.  The
+statement is exactly the proposition.
+\end{dictionary}
+
+\begin{physics}
+Physically this says that the frame sub-theory is the lattice CFT of $A$ with the halved Golay form: the charge lattice $\Lambda_0$ of the Leech theory is, as a Euclidean lattice, the same object that appears inside the Niemeier theory $V_N$. Isometric charge lattices give isomorphic lattice CFTs, so this identification is the first step in comparing the Leech-side and Niemeier-side descriptions of the same subtheory, which the bridges of Section~\ref{ch11:sec:bridge} make precise.
+\end{physics}
+\emph{Proof.}  $(2a)\cdot(2b)/8=4(a\cdot b)/8=a\cdot b/2$. \qed
+\begin{status}
+Unconditional; \lean{#print axioms}-clean.
+\end{status}
+
+\begin{warning}
+\textbf{$\Lambda_0$ is not $\sqrt2\,\Gamma_{\mathrm{Golay}}$.}  An early version of the project's gluing plan (\leanpath{Notes/M8GluingPlan.md})
+described $\Lambda_0$ as a rescaled Golay lattice.  That lattice has minimum $2\cdot4=8$, whereas
+$\Lambda_0$ contains norm-four vectors: for $a=(2,2,0,\dots,0)\in A$, $2a=(4,4,0,\dots,0)$ has
+$\langle 2a,2a\rangle=32/8=4$.  The correct description is $\Lambda_0=\Leech\cap\chelN$ up to the
+isometry above (Notes/M8GluingPlan.md, ``Status and corrections after M8e'', item~2).
+\end{warning}
+
+\begin{example}[Norm-four vectors]\label{ch11:ex:normfour}
+The Leech lattice has $196560$ vectors of norm $4$.  Those in $\Lambda_0=2A$ are $2a$ with
+$a\in A$, $a\cdot a=8$: either $a=\pm2e_i\pm2e_j$ ($i<j$; these have $\sum a_i\in\{0,\pm4\}$, all
+divisible by $4$), giving $4\binom{24}{2}=1104$ vectors, or $a=(\pm1)^8$ supported on an octad with
+an even number of minus signs (so that $4\mid\sum a_i$), giving $759\cdot2^7=97152$ vectors.  Thus
+$|\Lambda_0\cap\{\text{norm }4\}|=98256$ and $|\Lambda_3\cap\{\text{norm }4\}|=196560-98256=98304$.
+The second number is proved in Lean below (Theorem~\ref{ch11:thm:oddfour}); the first was checked
+numerically (the Python count recorded in \leanpath{FrameSectors.lean}) and follows from the second.
+\end{example}
+
+%======================================================================
+\section{Momentum signs and the untwisted sectors}\label{ch11:sec:sectors}
+%======================================================================
+
+\subsection{The automorphism attached to a character (recalled)}
+
+The device that splits $V_\Leech$ by cosets of $\Lambda_0$ was introduced in
+Section~\ref{ch03:sec:sign}.  For an even positive-definite lattice $L$ and a homomorphism
+$\chi:L\to\Z/2$ one has the \emph{sign automorphism}
+\begin{equation}\label{ch11:eq:gchi}
+  g_\chi(p\otimes e^\alpha)=(-1)^{\chi(\alpha)}\,p\otimes e^\alpha
+  \qquad(\text{Lean: }\lean{VOA.LatGen.chiLat L χ},\ \text{Definition~\ref{ch03:def:chiLat}}),
+\end{equation}
+where $(-1)^{\chi(\alpha)}$ is written \lean{chiSign L χ α} $=$ \lean{Extraspecial.sgn (χ α)}, the
+function $\Z/2\to\C$ sending $0\mapsto1$, $1\mapsto-1$.  Chapter~\ref{ch:03} proves
+(Theorem~\ref{ch03:thm:chiAut}) that $g_\chi$ is an automorphism of the vertex operator algebra
+$V_L$ (\lean{chiAut L χ hEven hPos : Aut (latticeVOAGen L hEven hPos)}), that $g_\chi^2=1$
+(\lean{chiAut_sq}) and that $g_\chi$ commutes with the standard lift $\theta$ of $-1$
+(\lean{chiAut_mul_thetaAut}); and (Theorem~\ref{ch03:thm:chieig}) that
+\begin{equation}\label{ch11:eq:chieig}
+  g_\chi x=x\iff x_\alpha=0\text{ whenever }\chi(\alpha)\ne0,\qquad
+  g_\chi x=-x\iff x_\alpha=0\text{ whenever }\chi(\alpha)=0,
+\end{equation}
+where $x_\alpha$ (\lean{coordEα L α x}) is the momentum-$\alpha$ Fock component of $x$
+(see \lean{chiLat_eq_self_iff} and \lean{chiLat_eq_neg_iff}).  The physical picture: $g_\chi$ is the
+operator $(-1)^{\chi(\hat p)}$ of the momentum $\hat p$, a symmetry because momentum is conserved
+in every operator product.  We use $g_\chi$ twice: with $L=\Leech$, $\chi=\beta$ (this section), and
+with $L=N$, $\chi=$ parity (Section~\ref{ch11:sec:triality}).
+
+\subsection{The sectors \texorpdfstring{$V_0^+$ and $V_3^+$}{V0+ and V3+}}
+
+Specialise to $L=\Leech$, $\chi=\beta$.  The resulting automorphism is the \emph{frame
+automorphism} $g:=g_\beta$ (\lean{frameAut : Aut leechVOA}); it commutes with $\theta$
+(\lean{frameAut_comm_leechTheta}), hence preserves $V_\Leech^+$ and restricts to an automorphism
+\lean{plusFrameAut : Aut leechVOAPlus}.  The carrier type of $V_\Leech^+$ is
+\begin{leancode}
+abbrev VPlus : Type := ↥(orbifold (Subgroup.zpowers leechTheta)).carrier
+\end{leancode}
+i.e.\ the vectors of $V_\Leech$ fixed by the cyclic group $\langle\theta\rangle$ (here
+\lean{leechVOAPlus := orbifoldVOA (Subgroup.zpowers leechTheta)}, Chapter~\ref{ch:04}).
+
+\begin{definition}[Frame sectors]\label{ch11:def:framesector}
+For $i\in\Z/2$, $V_{(i)}:=\{v\in V_\Leech^+ : g v=(-1)^i v\}$.  We write $\chelVz=V_{(0)}$ and
+$\chelVt=V_{(1)}$.
+\end{definition}
+\begin{leancode}
+/-- **The frame sectors** `V_i := {v ∈ V_Λ⁺ | g v = (-1)^i v}`; `V₀⁺ = frameSector 0`,
+`V₃⁺ = frameSector 1`. -/
+noncomputable def frameSector (i : ZMod 2) : Submodule ℂ VPlus :=
+  Module.End.eigenspace (plusFrameAut.toLinearEquiv : Module.End ℂ VPlus)
+    (Moonshine.Extraspecial.sgn i)
+
+/-- **`V₀⁺`: all momenta in `Λ₀`.** -/
+theorem mem_frameSector_zero_iff (v : VPlus) :
+    v ∈ frameSector 0 ↔ ∀ α, α ∉ lambda0 → coordEα leech α v = 0
+
+/-- **`V₃⁺`: all momenta in `Λ \ Λ₀`.** -/
+theorem mem_frameSector_one_iff (v : VPlus) :
+    v ∈ frameSector 1 ↔ ∀ α, α ∈ lambda0 → coordEα leech α v = 0
+\end{leancode}
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{Module.End.eigenspace f c} is $\ker(f-c)$, a subspace of
+\lean{VPlus}.  \lean{plusFrameAut.toLinearEquiv} is $g$ restricted to $V_\Leech^+$.  The two
+characterisation theorems say that $\chelVz$ is the set of $\theta$-fixed states with all momenta
+in $\Lambda_0$ and $\chelVt$ the set of $\theta$-fixed states with all momenta in $\Lambda_3$
+(the coercion \lean{v : VPlus} to $V_\Leech$ is implicit in \lean{coordEα leech α v}).  This is the
+intended meaning of $V_{\Lambda_0}^+$ and of ``$V_{\Lambda_3}^+$''.
+\end{dictionary}
+
+\begin{physics}
+The frame automorphism $g=(-1)^{\beta(\hat p)}$ is a $\Z/2$ charge symmetry of the Leech theory: it is the parity of the first momentum coordinate, and is a symmetry because momentum is conserved in every operator product. Its two eigenspaces on $V_\Leech^+$ are the charge sectors: $\chelVz$ (neutral under $g$, momenta in $\Lambda_0$) and $\chelVt$ (odd, momenta in $\Lambda_3$). In orbifold language one is projecting onto the $g$-even states to get the subtheory $\chelVz$, while $\chelVt$ is a ``charged module'' of it; the pair $\{\chelVz,\chelVt\}$ is the decomposition of the Leech theory under the frame $\Z/2$. The sector labels are conventions; the content is the eigenspace decomposition.
+\end{physics}
+\emph{Proof.}  The equivalences \eqref{ch11:eq:chieig} with $\chi=\beta$ and $\ker\beta=\Lambda_0$. \qed
+
+\begin{theorem}[$V_\Leech^+=\chelVz\oplus\chelVt$, and the $\Z/2$-grading of products]\label{ch11:thm:sectors}
+(i) $V_\Leech^+=V_{(0)}\oplus V_{(1)}$ (internal direct sum).
+(ii) For $u\in V_{(i)}$, $v\in V_{(j)}$ and all $n\in\Z$: $u_{(n)}v\in V_{(i+j)}$.
+(iii) Each $V_{(i)}$ is stable under the projections onto the $L_0$-weight spaces.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/FrameSectors.lean}.
+\begin{leancode}
+/-- **`V_Λ⁺ = V₀⁺ ⊕ V₃⁺`** (internal direct sum). -/
+theorem frameSector_isInternal : DirectSum.IsInternal frameSector
+
+/-- **The `ℤ/2`-grading of products**: `u ∈ V_i`, `v ∈ V_j ⇒ u₍ₙ₎v ∈ V_{i+j}`. -/
+theorem frameSector_smul_mem {i j : ZMod 2} {u v : VPlus} (hu : u ∈ frameSector i)
+    (hv : v ∈ frameSector j) (n : ℤ) : leechVOAPlus.smul u n v ∈ frameSector (i + j)
+
+/-- The sectors are graded: each is stable under the weight projections of `V_Λ⁺`. -/
+theorem frameSector_graded (i : ZMod 2) (n : ℤ) {v : VPlus} (hv : v ∈ frameSector i) :
+    piHom leechVOAPlus n v ∈ frameSector i
+\end{leancode}
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{DirectSum.IsInternal frameSector} (Mathlib) means: the canonical
+map $\bigoplus_{i\in\Z/2}V_{(i)}\to V_\Leech^+$ is a bijection, i.e.\ every vector is uniquely a sum
+of one vector from each sector.  \lean{leechVOAPlus.smul u n v} is $u_{(n)}v$ in $V_\Leech^+$.  The
+addition $i+j$ is in \lean{ZMod 2}, so $V_{(1)}\cdot V_{(1)}\subseteq V_{(0)}$, as intended.
+\lean{piHom leechVOAPlus n} is the projection onto the weight-$n$ space along the others
+(Section~\ref{l04:sec:conv}).  Same as the theorem.  Not vacuous: (i) excludes, e.g., both sectors being
+zero, and both sectors are shown nonzero below (their weight-two parts have positive dimension).
+\end{dictionary}
+
+\begin{physics}
+The theorem is the statement of a $\Z/2$ charge-conservation (fusion) rule: the odd sector times itself lands in the even sector, so the $g$-charge is additive in operator products, exactly as for any grading by a conserved quantum number. (iii) says that the energy ($L_0$-weight) commutes with the charge, as it must since $g$ is a symmetry of the stress tensor. In CFT terms $V_\Leech^+$ is an extension of the subtheory $\chelVz$ by its charged module $\chelVt$ with fusion $\chelVt\times\chelVt=\chelVz$.
+\end{physics}
+\emph{Proof.}  (i) The two eigenspaces of an involution over a field of characteristic $\ne2$ are
+complementary: $x=\tfrac12(x+gx)+\tfrac12(x-gx)$.  (ii) $g(u_{(n)}v)=(gu)_{(n)}(gv)=(-1)^{i+j}
+u_{(n)}v$ because $g$ is an automorphism.  (iii) Automorphisms preserve $\omega$, hence $L_0$, hence
+commute with the weight projections. \qed
+\begin{status}Unconditional; \lean{#print axioms frameSector_isInternal},
+\lean{frameSector_smul_mem}: [\lean{propext}, \lean{Classical.choice}, \lean{Quot.sound}].
+\end{status}
+
+\begin{theorem}[$\chelVz$ is a vertex operator algebra of central charge $24$]\label{ch11:thm:V0P}
+$\chelVz$ is a vertex subalgebra of $V_\Leech^+$ containing $\mathbf 1$ and $\omega$; with the
+induced structure it is a VOA of central charge $24$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/FrameSectors.lean}.
+\begin{leancode}
+/-- `V₀⁺ = (V_Λ⁺)^{⟨g⟩}` as a subalgebra of `V_Λ⁺`. -/
+noncomputable def V0Sub : VOASubalgebra leechVOAPlus := orbifold (Subgroup.zpowers plusFrameAut)
+
+theorem V0Sub_carrier : V0Sub.carrier = frameSector 0
+
+/-- **`V₀⁺` is a vertex operator algebra** (the `g`-fixed subVOA of `V_Λ⁺`, i.e. the
+`⟨θ, g⟩`-orbifold of `V_Λ`). -/
+noncomputable def V0P : VertexOperatorAlgebra V0Sub.carrier := V0Sub.toVOA
+
+/-- `c(V₀⁺) = 24`. -/
+theorem V0P_centralCharge : V0P.centralCharge = 24
+\end{leancode}
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{VOASubalgebra W} is a subspace containing $\mathbf 1,\omega$ and
+closed under all $n$-th products (Definition~\ref{l04:def:subalg}); \lean{toVOA} gives it the restricted
+structure.  \lean{V0Sub} is the fixed-point subalgebra of the cyclic group generated by $g$ on
+$V_\Leech^+$, and \lean{V0Sub_carrier} says that its carrier is exactly $\chelVz$.  Hence
+\lean{V0P} is $\chelVz$ with its inherited VOA structure.  The central charge is the inherited one.
+Note that \lean{V0P} is a VOA on the type \lean{V0Sub.carrier}, i.e.\ on vectors of $V_\Leech^+$
+(hence of $V_\Leech$) --- not on $V_{\Lambda_0}$ built as a lattice VOA in its own right; the
+identification with the latter is Theorem~\ref{ch11:thm:lam0plus}.
+\end{dictionary}
+
+\begin{physics}
+$\chelVz$ is the neutral subtheory under the frame $\Z/2$, i.e.\ the $\langle\theta,g\rangle$-orbifold of the Leech lattice CFT, still with the Virasoro central charge $c=24$ of $24$ free bosons (taking a fixed-point subalgebra does not change the stress tensor). It is the chiral algebra that the untwisted and twisted halves of the moonshine module share, and the natural domain of the triality: $\sigma$ is an automorphism of this subtheory that is not visible as a lattice symmetry. Central charge is read off from the stress tensor, unchanged by restricting to invariants.
+\end{physics}
+\emph{Proof.}  The fixed points of a group of automorphisms form a subalgebra containing
+$\mathbf 1,\omega$ (Chapter~\ref{ch:04}), and $c$ is read off from $\omega$, which is unchanged. \qed
+\begin{status}Unconditional; \lean{#print axioms V0P_centralCharge}-clean.\end{status}
+
+%======================================================================
+\section{Weight two of the untwisted sectors}\label{ch11:sec:weighttwo}
+%======================================================================
+
+The Leech lattice has no roots, so $(V_\Leech)_1=\mathfrak h\otimes e^0$ and $(V_\Leech)_2$ is
+spanned by $h_a(-1)h_b(-1)\mathbf 1$ ($300$ states), $h_a(-2)\mathbf 1$ ($24$ states) and $e^\alpha$
+with $\langle\alpha,\alpha\rangle=4$ ($196560$ states).  The $\theta$-fixed part $(V_\Leech^+)_2$ has
+dimension $300+98280=98580$ (Chapter~\ref{ch:04}): $\theta$ fixes the quadratic states, negates
+$h_a(-2)\mathbf 1$, and pairs $e^\alpha$ with (a multiple of) $e^{-\alpha}$.  A basis of the charged
+part is $e^\alpha+\theta e^\alpha$ with $\alpha$ running over a set $S$ of representatives of the
+pairs $\{\pm\alpha\}$ (\lean{halfFour}: those $\alpha$ preceding $-\alpha$ in a fixed well-order).
+
+\begin{theorem}[Weight two, in terms of $S$]\label{ch11:thm:wt2S}
+Let $S_i=\{\alpha\in S : \beta(\alpha)=i\}$.  Then $\dim(\chelVz)_2=300+|S_0|$,
+$\dim(\chelVt)_2=|S_1|$, and $2|S_1|=\#\{\alpha\in\Leech:\langle\alpha,\alpha\rangle=4,\ \beta(\alpha)=1\}$.
+\end{theorem}
+\begin{leancode}
+/-- `S_i = {α ∈ S | β α = i}`, `S = halfFour` the chosen half of the norm-`4` vectors. -/
+noncomputable def halfFourChi (i : ZMod 2) : Finset leech.carrier :=
+  (halfFour leech leech_posDef).filter fun α => frameChar α = i
+
+/-- **`dim (V₀⁺)₂ = 300 + #{α ∈ S | β α = 0}`.** -/
+theorem finrank_frameSector_zero_grading_two :
+    finrank ℂ ↥((frameSector 0).comap (leechVOAPlus.grading 2).subtype)
+      = 300 + (halfFourChi 0).card
+
+/-- **`dim (V₃⁺)₂ = #{α ∈ S | β α = 1} = ½ #{α ∈ Λ \ Λ₀ | ⟨α,α⟩ = 4}`.** -/
+theorem finrank_frameSector_one_grading_two :
+    finrank ℂ ↥((frameSector 1).comap (leechVOAPlus.grading 2).subtype)
+      = (halfFourChi 1).card
+
+/-- `2·#S₁ = #{α | ⟨α,α⟩ = 4, β α = 1}`. -/
+theorem two_mul_card_halfFourChi_one :
+    2 * (halfFourChi 1).card
+      = ((normFour leech leech_posDef).filter fun α => frameChar α = 1).card
+\end{leancode}
+(\leanpath{VOA/Moonshine/FrameWeightTwo.lean}.)
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{leechVOAPlus.grading 2} is the weight-$2$ subspace of $V_\Leech^+$;
+\lean{(frameSector i).comap (grading 2).subtype} is the set of weight-$2$ vectors lying in
+$V_{(i)}$, viewed as a subspace of the weight-two space, i.e.\ $(V_{(i)})_2=V_{(i)}\cap(V_\Leech^+)_2$.
+\lean{finrank ℂ} is the complex dimension (Mathlib's \lean{Module.finrank}; it would return $0$ for
+an infinite-dimensional space, but the weight spaces are finite dimensional --- this is part of the
+VOA structure --- so the value is the true dimension).  \lean{normFour leech leech_posDef} is the
+finite set of norm-four vectors, \lean{Finset.filter} restricts it, \lean{.card} counts.  The
+statement is exactly the theorem; the specific representative set $S$ is irrelevant to the
+dimensions because $\beta(-\alpha)=\beta(\alpha)$.
+\end{dictionary}
+
+\begin{physics}
+Weight two is the level of the Griess algebra: the weight-two states are $\chelVz$'s and $\chelVt$'s stress-tensor-like and charged bilinear fields (the $300$ quadratic oscillator states, plus the vertex operators of norm-four charges). The statement counts how the norm-four charges $\pm\alpha$ distribute between the two frame sectors, which is the first quantitative signature of the frame split; the $\theta$-invariance pairs $\alpha$ with $-\alpha$, hence the factor $2$.
+\end{physics}
+\emph{Proof.}  The $300$ quadratic states have momentum $0\in\Lambda_0$ and lie in $\chelVz$.  The state
+$e^\alpha+\theta e^\alpha$ has momenta $\pm\alpha$, so it lies in $\chelVz$ if $\beta(\alpha)=0$ and in
+$\chelVt$ if $\beta(\alpha)=1$.  These states together form a basis of $(V_\Leech^+)_2$; the two
+spans are therefore contained in $(\chelVz)_2$ and $(\chelVt)_2$ respectively, these two intersect
+trivially, and their dimensions add up to $98580$, which forces equality.  The last identity
+holds because negation is a fixed-point-free involution of the set of norm-four vectors with
+$\beta=1$, and $S_1$ contains exactly one vector from each orbit. \qed
+\begin{status}Unconditional; \lean{#print axioms}-clean.\end{status}
+
+\subsection{Counting norm-four vectors outside \texorpdfstring{$\Lambda_0$}{Lambda0}}
+
+\begin{lemma}[Shape of an odd norm-four vector]\label{ch11:lem:three}
+Let $y\in\Z^{24}$ have all coordinates odd and $y\cdot y=32$.  Then exactly one coordinate $y_p$
+satisfies $y_p^2=9$ and all others satisfy $y_i^2=1$.
+\end{lemma}
+\begin{leancode}
+/-- An odd vector of norm `32` has exactly one coordinate `±3`, the others `±1`. -/
+theorem exists_three {y : Fin 24 → ℤ} (hodd : ∀ i, ¬ (2 : ℤ) ∣ y i) (hy : y ⬝ᵥ y = 32) :
+    ∃ p, y p * y p = 9 ∧ ∀ i, i ≠ p → y i * y i = 1
+\end{leancode}
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{⬝ᵥ} is the dot product on $\Z^{24}$ (\lean{Fin 24 → ℤ}); the
+hypotheses are ``all coordinates odd'' and ``$y\cdot y=32$''.  The conclusion asserts existence of
+$p$ with $y_p^2=9$ and $y_i^2=1$ for $i\ne p$ (uniqueness of $p$ follows from the second clause).
+Same as the lemma.
+\end{dictionary}
+
+\begin{physics}
+This is a purely arithmetical step in the count of norm-four charges outside $\Lambda_0$: an odd-coordinate vector of the given norm looks like a single ``$3$'' among $\pm1$'s. Physically it enumerates the lowest nonzero charges (the lightest charged states, of weight $2$) of the odd frame sector.
+\end{physics}
+\emph{Proof.}  For odd $y_i$, $y_i^2-1$ is a non-negative multiple of $8$.  The $24$ numbers
+$d_i=y_i^2-1$ sum to $32-24=8$, so exactly one of them is $8$ and the rest are $0$. \qed
+
+\begin{theorem}[$98304$ norm-four vectors outside $\Lambda_0$]\label{ch11:thm:oddfour}
+$\#\{\alpha\in\Leech\setminus\Lambda_0:\langle\alpha,\alpha\rangle=4\}=24\cdot2^{12}=98304$.
+\end{theorem}
+\begin{leancode}
+/-- The norm-`4` vectors outside `Λ₀`. -/
+noncomputable def oddFour : Finset leech.carrier :=
+  (normFour leech leech_posDef).filter fun α => frameChar α = 1
+
+/-- **`#{α ∈ Λ \ Λ₀ | ⟨α,α⟩ = 4} = 98304`.** -/
+theorem card_normFour_frameChar_one : oddFour.card = 98304
+\end{leancode}
+(\leanpath{VOA/Moonshine/FrameCount.lean}.)
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{oddFour} is the set of $\alpha$ with $\langle\alpha,\alpha\rangle=4$ and
+$\beta(\alpha)=1$, i.e.\ $\alpha\notin\Lambda_0$ (by \lean{mem_lambda0}).  Same as the theorem.  The
+number is a hard-coded literal, so the only way this could mislead is if the Leech model or the
+form were wrong; the form is $x\cdot y/8$ (\lean{leech_form_eq}) and the model is Ebeling's
+(Chapter~\ref{ch:02}).
+\end{dictionary}
+
+\begin{physics}
+The count $98304=24\cdot2^{12}$ is the number of lightest ($h=2$) charged vertex operators in the odd frame sector. Heuristically it matches the $24$ ways of choosing which boson carries the odd unit of charge, times the $2^{12}$ Golay codewords, which anticipates the twisted side, where the same number appears as $24$ oscillators times a $2048$-dimensional ground space. This numerical coincidence is the first hint of the triality that exchanges the two descriptions.
+\end{physics}
+\emph{Proof.}  A vector of $u+2A$ has all coordinates odd and norm $4$ means $x\cdot x=32$; by the
+lemma it has one coordinate $\pm3$ at a position $p$ and all others $\pm1$.  Write $x=u+2a$ and
+$c=\rho(a)\in C$.  The sign pattern is determined by $(p,c)$: for $i\ne p$, $x_i=1-2c_i$, and
+$x_p=6c_p-3$ (check the four cases using $u_0=5$, $u_i=1$; e.g.\ if $p=i\neq0$ and $c_i=0$ then
+$x_i\in\{1+2a_i\}\cap\{\pm3\}$ with $a_i$ even forces $x_i=-3$).  Conversely, for every
+$(p,c)\in\{0,\dots,23\}\times C$ the vector so defined lies in $u+2A$: the corresponding $a$ has
+$\rho(a)=c$, and the condition $4\mid\sum a_i$ reduces to $4\mid\mathrm{wt}(c)$, which holds
+because the Golay code is doubly even.  So the odd norm-four vectors are in bijection with
+$\{0,\ldots,23\}\times C$, of size $24\cdot 2^{12}$. \qed
+\begin{status}Unconditional; \lean{#print axioms card_normFour_frameChar_one}-clean.\end{status}
+
+\begin{corollary}[The two untwisted weight-two dimensions]\label{ch11:cor:wt2}
+$\dim(\chelVt)_2=49152$ and $\dim(\chelVz)_2=49428$.
+\end{corollary}
+\begin{leancode}
+/-- **`dim (V₃⁺)₂ = 49152`.** -/
+theorem finrank_V3_grading_two :
+    finrank ℂ ↥((frameSector 1).comap (leechVOAPlus.grading 2).subtype) = 49152
+
+/-- **`dim (V₀⁺)₂ = 49428`.** -/
+theorem finrank_V0_grading_two :
+    finrank ℂ ↥((frameSector 0).comap (leechVOAPlus.grading 2).subtype) = 49428
+\end{leancode}
+\begin{dictionary}
+\textbf{Fidelity check.}  As in Theorem~\ref{ch11:thm:wt2S}; the subspaces are $(\chelVt)_2$ and
+$(\chelVz)_2$ inside $(V_\Leech^+)_2$.  Same as the corollary.  A check on consistency:
+$49428+49152=98580=\dim(V_\Leech^+)_2$ (\lean{finrank_frameSector_grading_two_add}).
+\end{dictionary}
+
+\begin{physics}
+These are the dimensions of the weight-two (Griess algebra) pieces of the two frame sectors: $49428$ neutral and $49152$ charged states, summing to the $98580$ weight-two states of $V_\Leech^+$. The second number equals the weight-two dimension of the twisted sector $T_0^+$; physical triality says that this is no coincidence, because $\sigma$ exchanges the two sectors. Such dimension coincidences are the partition-function signature of a hidden symmetry (a heuristic, supported by the proof of the relevant theorems later).
+\end{physics}
+\emph{Proof.}  $|S_1|=98304/2=49152$; $|S_0|+|S_1|=|S|=196560/2=98280$, so $|S_0|=49128$ and
+$\dim(\chelVz)_2=300+49128=49428$. \qed
+\begin{status}Unconditional; both \lean{#print axioms}-clean (re-run for this chapter).\end{status}
+
+%======================================================================
+\section{The twisted side: \texorpdfstring{$T=T_+\oplus T_-$}{T = T+ + T-}}\label{ch11:sec:twistedsplit}
+%======================================================================
+
+Recall from Chapter~\ref{ch:06} the module $T$ (\lean{leechT}): the unique irreducible module, of
+dimension $2^{12}=4096$, of the twisted group algebra spanned by operators $e_\alpha$ ($\alpha\in L$)
+with
+\begin{equation*}
+  e_\alpha e_\beta=\varepsilon(\alpha,\beta)\,e_{\alpha+\beta},\qquad e_{\alpha+2\gamma}=e_\alpha\ \text{on }T .
+\end{equation*}
+For a general even unimodular $L$ the operator of $e_\alpha$ on $T$ is \lean{eT L hEven hU α}, where
+\lean{hU : IsUnit (gramMat L).det} expresses unimodularity.  The library works with the type
+\lean{TT L hEven hU := Extraspecial.Rep (cocMat L) _} (definitionally the same module; the
+abbreviation avoids a slow elaboration path).
+
+\begin{lemma}[Commutation and square of $e_w$]\label{ch11:lem:ew}
+For $w,\alpha\in L$: $e_we_\alpha=(-1)^{\langle w,\alpha\rangle}e_\alpha e_w$ and
+$e_we_w=\varepsilon(w,w)\cdot 1_T$.
+\end{lemma}
+\noindent File \leanpath{VOA/Moonshine/FrameTwisted.lean}.
+\begin{leancode}
+/-- `e_w e_w = ε(w,w)`. -/
+theorem eT_mul_self (w : L.carrier) :
+    eT L hEven hU w * eT L hEven hU w = latticeCocycle L w w • (1 : End ℂ (TT L hEven hU))
+
+/-- `e_w e_α = (-1)^{⟨w,α⟩} e_α e_w`. -/
+theorem eT_comm_sign (w α : L.carrier) :
+    eT L hEven hU w * eT L hEven hU α
+      = ((-1 : ℂ) ^ (L.form w α)) • (eT L hEven hU α * eT L hEven hU w)
+\end{leancode}
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{*} on \lean{End ℂ (TT …)} is composition; \lean{•} scalar
+multiplication; \lean{(-1 : ℂ) ^ (L.form w α)} is an integer power ($\langle w,\alpha\rangle\in\Z$).
+Same as the lemma.
+\end{dictionary}
+
+\begin{physics}
+The operators $e_w$ implement shifts of the twisted-sector ground states: the ground states form a representation of the extraspecial group $2^{1+24}$ (the Heisenberg-type group of the lattice cocycle), and this lemma is the extraspecial commutation rule. Physically these are the zero-mode operators of the twisted sector, which commute or anticommute according to the pairing $\langle w,\alpha\rangle \bmod 2$, the same sign as the cocycle in the untwisted OPE.
+\end{physics}
+\emph{Proof.}  $e_we_\alpha=\varepsilon(w,\alpha)e_{w+\alpha}$ and
+$e_\alpha e_w=\varepsilon(\alpha,w)e_{w+\alpha}$, and $\varepsilon(w,\alpha)/\varepsilon(\alpha,w)=
+(-1)^{\langle w,\alpha\rangle}$.  Also $e_we_w=\varepsilon(w,w)e_{2w}=\varepsilon(w,w)e_0=\varepsilon(w,w)$.
+\qed
+
+\begin{definition}[The frame involution $J$ and the halves $T_\pm$]\label{ch11:def:frameJ}
+Fix $c\in\C$ with $c^2=\varepsilon(w,w)$ and put $J=c^{-1}e_w$.  Then $J^2=1$.  For $s\in\Z/2$,
+$T_{(s)}=\ker(J-(-1)^s)$; we write $T_+=T_{(0)}$, $T_-=T_{(1)}$.
+\end{definition}
+\noindent File \leanpath{VOA/Moonshine/FrameTwisted.lean}.
+\begin{leancode}
+/-- A square root `c` of `ε(w,w)`. -/
+noncomputable def sqrtEps (w : L.carrier) : ℂ :=
+  (IsAlgClosed.exists_eq_mul_self (latticeCocycle L w w)).choose
+
+/-- The frame involution `J = c⁻¹ e_w` on `T`. -/
+noncomputable def frameJ (w : L.carrier) : End ℂ (TT L hEven hU) :=
+  (sqrtEps L w)⁻¹ • eT L hEven hU w
+
+theorem frameJ_mul_self (w : L.carrier) : frameJ L hEven hU w * frameJ L hEven hU w = 1
+
+/-- The two frame eigenspaces `T_± = ker(J ∓ 1)` (`s = 0 ↦ T₊`, `s = 1 ↦ T₋`). -/
+noncomputable def frameT (w : L.carrier) (s : ZMod 2) : Submodule ℂ (TT L hEven hU) :=
+  Module.End.eigenspace (frameJ L hEven hU w) (Extraspecial.sgn s)
+
+/-- **`T = T₊ ⊕ T₋`.** -/
+theorem frameT_isCompl (w : L.carrier) :
+    IsCompl (frameT L hEven hU w 0) (frameT L hEven hU w 1)
+\end{leancode}
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{sqrtEps} picks, by the axiom of choice, some $c$ with $c\cdot c=
+\varepsilon(w,w)$ (it exists because $\C$ is algebraically closed).  Since $\varepsilon(w,w)=\pm1$,
+$c\in\{\pm1,\pm i\}$; the choice of sign of $c$ is \emph{not} canonical, and changing it swaps
+$T_+$ and $T_-$.  This is harmless for every statement in this chapter, which treats $s=0,1$
+symmetrically, but it means that ``$T_+$'' carries no intrinsic meaning (see the warning below).
+\lean{IsCompl P Q} (Mathlib) means $P\cap Q=0$ and $P+Q$ is everything, i.e.\ $T=T_+\oplus T_-$.
+\end{dictionary}
+
+\begin{physics}
+$J$ is the $\Z/2$ charge operator of the frame on the twisted ground states: the $4096$-dimensional ground space of the $\theta$-twisted sector is split into the $\pm1$ eigenspaces $T_\pm$ of an extraspecial group element, each $2048$-dimensional. It is the twisted-sector counterpart of the frame automorphism $g$, so $T_\pm$ are the twisted charge sectors. This is the representation-theoretic origin of the splitting into two halves that the triality will pair with the untwisted odd sector.
+\end{physics}
+
+\begin{theorem}[$e_\alpha$ and the halves; equal dimensions]\label{ch11:thm:frameT}
+Suppose $\chi:L\to\Z/2$ and $w\in L$ satisfy $(-1)^{\langle w,\alpha\rangle}=(-1)^{\chi(\alpha)}$
+for all $\alpha$.  Then $e_\alpha T_{(s)}\subseteq T_{(s+\chi(\alpha))}$, and if some $u$ has
+$\chi(u)=1$ then $\dim T_+=\dim T_-$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/FrameTwisted.lean}.
+\begin{leancode}
+/-- `e_α` maps `T_s` to `T_{s + χ α}` when `(-1)^{⟨w,·⟩} = (-1)^{χ}`. -/
+theorem eT_mem_frameT {w : L.carrier} (hw : ∀ α, (-1 : ℂ) ^ (L.form w α) = chiSign L χ α)
+    (α : L.carrier) {s : ZMod 2} {x : TT L hEven hU} (hx : x ∈ frameT L hEven hU w s) :
+    eT L hEven hU α x ∈ frameT L hEven hU w (s + χ α)
+
+/-- `T₊` and `T₋` have the same dimension, as soon as some `e_u` has `χ u ≠ 0`. -/
+theorem finrank_frameT_eq {w : L.carrier} (hw : ∀ α, (-1 : ℂ) ^ (L.form w α) = chiSign L χ α)
+    {u : L.carrier} (hu : χ u = 1) :
+    finrank ℂ (frameT L hEven hU w 0) = finrank ℂ (frameT L hEven hU w 1)
+\end{leancode}
+\begin{dictionary}
+\textbf{Fidelity check.}  Hypothesis \lean{hw} says that the character $\chi$ is ``pairing with
+$w$ mod $2$''; hypothesis \lean{hu} that $\chi$ is nontrivial.  Both are the intended hypotheses
+and both are discharged for the Leech lattice below.  Same as the theorem.
+\end{dictionary}
+
+\begin{physics}
+The vertex-operator zero modes $e_\alpha$ carry frame charge $\chi(\alpha)$: they preserve $T_\pm$ if $\chi(\alpha)=0$ and swap them if $\chi(\alpha)=1$, exactly the charge-conservation rule one expects from the frame symmetry. The equality $\dim T_+=\dim T_-$ is the statement that some operator exchanges the two charge sectors, hence they are isomorphic as vector spaces; physically, the twisted ground states are symmetric between the two frame charges.
+\end{physics}
+\emph{Proof.}  $Je_\alpha=(-1)^{\langle w,\alpha\rangle}e_\alpha J=(-1)^{\chi(\alpha)}e_\alpha J$ by the
+lemma, so $e_\alpha$ maps the $(-1)^s$-eigenspace of $J$ into the $(-1)^{s+\chi(\alpha)}$-eigenspace.
+$e_u$ is invertible ($e_u^2=\pm1$), so it maps $T_+$ injectively into $T_-$ and $T_-$ injectively into
+$T_+$; hence the dimensions agree. \qed
+
+For the Leech lattice take $w=8e_0$.  It lies in $\Lambda_0$ ($8e_0=2\cdot4e_0$, and $4e_0\in A$
+because $\rho(4e_0)=0\in C$ and $4\mid4$), and $\langle 8e_0,x\rangle=8x_0/8=x_0$, so
+$(-1)^{\langle w,x\rangle}=(-1)^{\beta(x)}$.  The vector $u=(5,1,\ldots,1)$ has $\beta(u)=1$.
+
+\begin{theorem}[The Leech frame split of $T$]\label{ch11:thm:leechT}
+For $\Leech$, $w=8e_0$: $T=T_+\oplus T_-$ with $\dim T_+=\dim T_-=2048$; $e_\alpha$ preserves $T_\pm$
+for $\alpha\in\Lambda_0$ and swaps them for $\alpha\notin\Lambda_0$; and on the twisted space
+$S[\theta]\otimes T$ the operator $\mathrm{id}\otimes J$ gives
+$S[\theta]\otimes T=(S[\theta]\otimes T_+)\oplus(S[\theta]\otimes T_-)$.
+\end{theorem}
+\begin{leancode}
+/-- The frame vector `w = 8e₀ ∈ Λ₀`. -/
+noncomputable def frameW : leech.carrier := (⟨_, eightE0_mem⟩ : ↥Leech.carrier)
+
+theorem frameW_sign (α : leech.carrier) :
+    (-1 : ℂ) ^ (leech.form frameW α) = chiSign leech frameChar α
+
+/-- **`dim T₊ = 2048`.** -/
+theorem finrank_leechFrameT_plus : finrank ℂ (leechFrameT 0) = 2048
+
+/-- **`dim T₋ = 2048`.** -/
+theorem finrank_leechFrameT_minus : finrank ℂ (leechFrameT 1) = 2048
+
+/-- `e_α` preserves `T_±` for `α ∈ Λ₀` and swaps them for `α ∉ Λ₀`. -/
+theorem eT_mem_leechFrameT (α : leech.carrier) {s : ZMod 2}
+    {x : TT leech leech_even leech_isUnit_det_gramMat} (hx : x ∈ leechFrameT s) :
+    eT leech leech_even leech_isUnit_det_gramMat α x ∈ leechFrameT (s + frameChar α)
+
+/-- The split of the twisted carrier `S[θ] ⊗ T = (S[θ] ⊗ T₊) ⊕ (S[θ] ⊗ T₋)`. -/
+theorem leechTw_frame_isCompl :
+    IsCompl (twFrame leech leech_even leech_isUnit_det_gramMat (TwistedHeisenberg.FockT 24) frameW 0)
+      (twFrame leech leech_even leech_isUnit_det_gramMat (TwistedHeisenberg.FockT 24) frameW 1)
+\end{leancode}
+(\leanpath{VOA/Moonshine/FrameTwisted.lean}.)
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{eightE0_mem} is the proof that $8e_0\in\Leech$; \lean{frameW} is
+that vector.  \lean{leechFrameT s := frameT leech … frameW s}.  \lean{twFrame … F w s} is the
+$(-1)^s$-eigenspace of $\mathrm{id}_F\otimes J$ on $F\otimes T$; here $F=$\lean{FockT 24}$=S[\theta]$,
+the twisted Fock space of Chapter~\ref{ch:07}.  The dimension $2048$ is derived from
+$\dim T=4096$ (\lean{finrank_leechT}, Chapter~\ref{ch:06}) and the equality of the halves.  Same as
+the theorem; the word ``$\Lambda_0$'' enters through \lean{frameChar α}, which is $0$ exactly on
+$\Lambda_0$.
+\end{dictionary}
+
+\begin{physics}
+For the Leech theory this gives the explicit frame decomposition of the twisted sector into two charge sectors of $2048$ ground states each, with $\Lambda_0$-charged operators preserving them and $\Lambda_3$-charged operators exchanging them. Together with the untwisted $\chelVz\oplus\chelVt$, this is the full four-sector frame decomposition of the moonshine module, the analogue on the twisted side of splitting the sector $V_\Leech^T$ by the frame charge.
+\end{physics}
+\emph{Proof.}  Theorem~\ref{ch11:thm:frameT} with $\chi=\beta$, $w=8e_0$, $u=(5,1,\ldots,1)$, and
+$\dim T_++\dim T_-=4096$.  The tensor statement is the same eigenspace argument for the involution
+$\mathrm{id}\otimes J$. \qed
+\begin{status}Unconditional; \lean{#print axioms finrank_leechFrameT_plus},
+\lean{finrank_leechFrameT_minus}: [\lean{propext}, \lean{Classical.choice}, \lean{Quot.sound}].
+\end{status}
+
+\begin{remark}[Group-theoretic meaning]
+The element $e_w$ is, up to scalar, the central element of the preimage $\hat\Lambda_0/K$ of
+$\Lambda_0$ in the extraspecial group: $\Lambda_0/2\Leech=w^\perp$ has radical $\{0,w\}$ modulo
+$2\Leech$.  So $T_\pm$ are the two eigenspaces of a central element of a subgroup, and $T$ restricted
+to $\hat\Lambda_0$ is the sum of two non-isomorphic irreducibles of dimension $2^{11}$.  None of this
+is needed in the proofs above.
+\end{remark}
+
+\begin{warning}
+\textbf{Which half is FLM's $T_0$ is not fixed by the definitions.}  The labels $T_+=$
+\lean{leechFrameT 0}, $T_-=$ \lean{leechFrameT 1} depend on the arbitrary square root \lean{sqrtEps}.
+Independently, the bridge of Section~\ref{ch11:sec:bridge} uses a character \lean{golayE} chosen
+by \lean{Classical.choose}, which is pinned only up to a further character; the alternative choice
+swaps the r\^oles of the two twisted sectors under $\sigma$ (finding \lean{golayE_not_determined},
+Notes/M8GluingPlan.md, status of 2026-10-07 ``M8g twisted half'').  The project's response is to
+state the downstream existence of $\sigma$ with an existential sector index: $\sigma$ maps $\chelVt$
+to $T_{(s+1)}^+$ and $T_{(s)}^+$ to itself \emph{for some} $s$ (Chapters~\ref{ch:12}--\ref{ch:13}).
+A reader should therefore never read ``$T_+$'' as ``$T_0$''.
+\end{warning}
+
+%======================================================================
+\section{Cyclicity I: the vacuum trick}\label{ch11:sec:vacuumtrick}
+%======================================================================
+
+\subsection{Why cyclicity}
+
+The triality on the twisted sectors will be built (Chapters~\ref{ch:12}--\ref{ch:13}) as a
+\emph{$\sigma$-twisted $\chelVz$-module map}: a linear map $\Phi$ from one sector $X$ to another,
+satisfying $\Phi(u_{(n)}x)=(\sigma u)_{(n)}\Phi(x)$ for $u\in\chelVz$.  If $X$ is spanned by the
+vectors $u_{(n)}x_0$ for a single $x_0$, such a map is \emph{determined} by $\Phi(x_0)$, and its
+existence reduces to checking that every linear relation among the $u_{(n)}x_0$ is respected.
+FLM and DGM prove more --- each sector is irreducible --- but cyclicity is what is used, and it is
+much cheaper.
+
+\begin{definition}[Cyclic module]\label{ch11:def:cyclic}
+A subspace $X$ of a module over $\chelVz$ is \emph{cyclic with cyclic vector $x_0\in X$} if
+$X=\operatorname{span}\{u_{(n)}x_0 : u\in\chelVz,\ n\in\Z\}$.
+\end{definition}
+
+\begin{physics}
+A cyclic module is one generated from a single state by the OPE with the subtheory: every state of the sector is obtained by acting on one reference state with the modes of the fields of $\chelVz$. In CFT language, the sector is a single ``conformal family'' of the chiral algebra built on one highest-weight-like state (state--operator map). Cyclicity is what lets one define a $\chelVz$-equivariant map out of the sector by specifying the image of that one state, which is how the triality will later be extended sector by sector.
+\end{physics}
+
+Note that this definition does not presuppose that the span is a submodule; but since it equals
+$X$, which is stable under $\chelVz$, it is one.
+
+\subsection{The general lemma}
+
+\begin{theorem}[The vacuum trick]\label{ch11:thm:vacuumtrick}
+Let $W$ be a vertex operator algebra and $a,b\in W$, $k\in\Z$, $c\in\C^\times$ with
+\begin{equation*}
+  a_{(k)}b=c\,\mathbf 1\qquad\text{and}\qquad a_{(j)}b=0\ \text{for all }j>k .
+\end{equation*}
+Then every $v\in W$ lies in $\operatorname{span}\{(v_{(i)}a)_{(j)}b : i,j\in\Z\}$.
+\end{theorem}
+\begin{leancode}
+/-- **The vacuum trick.**  If `a₍ₖ₎ b = c·𝟙` with `c ≠ 0` and `a₍ⱼ₎ b = 0` for `j > k`, then every
+`v` is a linear combination of the iterated products `(v₍ᵢ₎ a)₍ⱼ₎ b`. -/
+theorem mem_span_iterate_of_vacuum (W : VertexOperatorAlgebra 𝒱) {a b : 𝒱} {k : ℤ} {c : ℂ}
+    (hc : c ≠ 0) (hk : W.smul a k b = c • W.vacuum)
+    (hk' : ∀ j : ℤ, k < j → W.smul a j b = 0) (v : 𝒱) :
+    v ∈ Submodule.span ℂ {y | ∃ i j : ℤ, y = W.smul (W.smul v i a) j b}
+\end{leancode}
+(\leanpath{VOA/Moonshine/CyclicVacuumTrick.lean}, \lean{VOA.VertexOperatorAlgebra.mem_span_iterate_of_vacuum}.)
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{W.smul a k b} $=a_{(k)}b$.  The three hypotheses are: $c\ne0$;
+$a_{(k)}b=c\mathbf 1$; and $a_{(j)}b=0$ for $j>k$.  Every one is necessary for the intended use and
+none is stronger than in the statement.  The conclusion is membership of $v$ in the
+\lean{Submodule.span} (set of finite linear combinations) of the set of all $(v_{(i)}a)_{(j)}b$.
+Note the quantifier order: $v$ is fixed first, and the spanning vectors depend on $v$ --- exactly
+the statement.  It is \emph{not} the stronger (false in general) claim that a fixed finite set of
+vectors spans.
+\end{dictionary}
+
+\begin{physics}
+This is the CFT statement that the vacuum together with a ``dual pair'' of fields generates everything: if $a$ and $b$ have a pole whose coefficient is the identity (a two-point function with nonzero normalisation), then acting on the vacuum suffices to reach every state. In the state--operator correspondence it says that every state $v$ is obtained from $a$ by an OPE with $v$ followed by a contraction with $b$; this is the algebraic form of using the nondegenerate two-point function of the sector to produce the vacuum. It is a technical device that reduces cyclicity of a module to a single computation at one state.
+\end{physics}
+
+\emph{Proof.}  Recall the Borcherds identity in the library's form
+(\lean{VertexOperatorAlgebra.jacobi}, Definition~\ref{l03:def:VOA}): for all states $u,v,x$ and integers
+$\ell,m,n$,
+\begin{equation}\label{ch11:eq:borcherds}
+  \sum_{i\ge0}(-1)^i\binom{\ell}{i}\Big(u_{(\ell+m-i)}v_{(n+i)}x-(-1)^\ell v_{(\ell+n-i)}u_{(m+i)}x\Big)
+  =\sum_{i\ge0}\binom{m}{i}\big(u_{(\ell+i)}v\big)_{(m+n-i)}x .
+\end{equation}
+Apply it with $(u,v,x)=(v,a,b)$, $n=k$, $m\ge\max(N,0)$ where $v_{(p)}b=0$ for all $p\ge N$ (such
+$N$ exists by lower truncation), and $\ell=-1-m$.  On the left, consider the $i$-th term.
+\begin{itemize}
+  \item For $i>0$: $a_{(k+i)}b=0$ by hypothesis and $v_{(m+i)}b=0$ by the choice of $m$, so the term
+  vanishes.
+  \item For $i=0$: the second summand contains $v_{(m)}b=0$; the first is
+  $v_{(\ell+m)}a_{(k)}b=v_{(-1)}(c\mathbf 1)=c\,v$ (creation: $v_{(-1)}\mathbf 1=v$).
+\end{itemize}
+So the left side equals $c\,v$, while the right side is a finite combination of the vectors
+$(v_{(\ell+i)}a)_{(m+k-i)}b$.  Divide by $c$. \qed
+
+Physically: the operator product $a(z)b(0)\sim c\,z^{-k-1}\mathbf 1+\cdots$ has the identity as its
+most singular term.  Inserting $v$ and using associativity, $v=c^{-1}v_{(-1)}(a_{(k)}b)$ can be
+re-associated into products of the form $(v\cdot a)\cdot b$.
+\begin{status}Unconditional; \lean{#print axioms mem_span_iterate_of_vacuum}: [\lean{propext},
+\lean{Classical.choice}, \lean{Quot.sound}].\end{status}
+
+\subsection{\texorpdfstring{$V_0^+$ and $V_3^+$}{V0+ and V3+} are cyclic}
+
+\begin{theorem}[$\chelVz$ is cyclic over itself]\label{ch11:thm:cyclicV0}
+$\chelVz$ is cyclic with cyclic vector $\mathbf 1$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/CyclicFrameSectors.lean}.
+\begin{leancode}
+/-- **`V₀⁺` is cyclic over itself**, generated by `𝟙`. -/
+theorem cyclic_V0 : ∃ x₀ ∈ frameSector 0,
+    Submodule.span ℂ {y | ∃ u ∈ frameSector 0, ∃ n : ℤ, y = leechVOAPlus.smul u n x₀}
+      = frameSector 0
+\end{leancode}
+
+\begin{physics}
+Every state of a vertex operator algebra is obtained from the vacuum by applying a field (the state--operator map $u=u_{(-1)}\mathbf 1$), so the algebra is generated from the vacuum by its own modes. This is the most basic form of the state--operator correspondence, and it says that the neutral frame sector is a single family generated by the identity operator.
+\end{physics}
+\emph{Proof.}  $u=u_{(-1)}\mathbf 1$, and $\chelVz\cdot\chelVz\subseteq\chelVz$. \qed
+
+For $\chelVt$ choose any $\beta\in\Leech\setminus\Lambda_0$ (one exists by
+Proposition~\ref{ch11:prop:index}) and put
+\begin{equation*}
+  x_0=e^\beta+e^{-\beta}\qquad(\text{Lean: }\lean{frameX0P β}).
+\end{equation*}
+It is $\theta$-fixed (the library's $\theta$ sends $e^\gamma\mapsto e^{-\gamma}$ on charged vacua,
+\lean{thetaLat_latChargeGen}) and all its momenta are in $\Lambda_3$, so $x_0\in\chelVt$.
+
+\begin{lemma}[The pairing of $x_0$ with itself]\label{ch11:lem:x0pair}
+Let $N=\langle\beta,\beta\rangle>0$.  Then $x_{0(j)}x_0=0$ for $j\ge N$ and
+$x_{0(N-1)}x_0=\big(\varepsilon(\beta,-\beta)+\varepsilon(-\beta,\beta)\big)\mathbf 1$, and this scalar is
+nonzero.
+\end{lemma}
+\noindent File \leanpath{VOA/Moonshine/CyclicFrameSectors.lean}.
+\begin{leancode}
+/-- `x₀₍ⱼ₎x₀ = 0` for `j ≥ ⟨β,β⟩`. -/
+theorem frameX0_smul_above (β : leech.carrier) {j : ℤ} (hj : leech.form β β ≤ j) :
+    leechVOA.smul (frameX0 β) j (frameX0 β) = 0
+
+/-- `x₀₍⟨β,β⟩₋₁₎x₀ = (ε(β,-β) + ε(-β,β))·𝟙`. -/
+theorem frameX0_smul_top {β : leech.carrier} (hβ : β ≠ 0) :
+    leechVOA.smul (frameX0 β) (leech.form β β - 1) (frameX0 β)
+      = (latticeCocycle leech β (-β) + latticeCocycle leech (-β) β) • latVacuumGen leech
+
+/-- The pairing scalar `ε(β,-β) + ε(-β,β) = 2ε(-β,β)` is non-zero. -/
+theorem frameX0_scalar_ne_zero (β : leech.carrier) :
+    latticeCocycle leech β (-β) + latticeCocycle leech (-β) β ≠ 0
+\end{leancode}
+
+\begin{physics}
+The charged state $x_0=e^\beta+e^{-\beta}$ has a nonvanishing two-point function with itself: the OPE $x_0(z)x_0(0)$ contains the identity with coefficient $z^{-\langle\beta,\beta\rangle}$ times a nonzero constant, and no more singular terms. This is the lattice-CFT statement $e^{\beta}(z)e^{-\beta}(0)\sim z^{-\langle\beta,\beta\rangle}\cdot1$, with the cocycle signs checking that the two terms of $x_0$ add rather than cancel. It is the input needed to apply the vacuum trick.
+\end{physics}
+\emph{Proof.}  $Y(e^\alpha,z)e^\gamma=\varepsilon(\alpha,\gamma)z^{\langle\alpha,\gamma\rangle}
+E^-(-\alpha,z)e^{\alpha+\gamma}$ with $E^-(-\alpha,z)=1+O(z)$ a series in non-negative powers.
+Hence $e^\alpha_{(j)}e^\gamma=0$ for $j\ge-\langle\alpha,\gamma\rangle$, and for $\gamma=-\alpha$ the
+coefficient at $j=\langle\alpha,\alpha\rangle-1$ is $\varepsilon(\alpha,-\alpha)\mathbf 1$.  Expanding
+$x_{0(j)}x_0$ into four terms: the two terms $e^{\pm\beta}_{(j)}e^{\pm\beta}$ vanish for
+$j\ge-N$, and the two cross terms vanish for $j\ge N$ and give $\varepsilon(\pm\beta,\mp\beta)\mathbf
+1$ at $j=N-1$.  Finally $\varepsilon(\beta,-\beta)=(-1)^{\langle\beta,-\beta\rangle}\varepsilon(-\beta,\beta)
+=\varepsilon(-\beta,\beta)$ since $\Leech$ is even, so the scalar is $2\varepsilon(-\beta,\beta)=\pm2$. \qed
+
+\begin{theorem}[$\chelVt$ is a cyclic $\chelVz$-module]\label{ch11:thm:cyclicV3}
+For every $\beta\in\Leech\setminus\Lambda_0$,
+$\operatorname{span}\{u_{(n)}(e^\beta+e^{-\beta}) : u\in\chelVz,\ n\in\Z\}=\chelVt$.  In particular
+$\chelVt$ is cyclic.
+\end{theorem}
+\begin{leancode}
+/-- **`V₃⁺` is a cyclic `V₀⁺`-module**, generated by `x₀ = e^β + e^{-β}` for any `β ∈ Λ \ Λ₀`. -/
+theorem span_smul_frameX0 {β : leech.carrier} (hβ : β ∉ lambda0) :
+    Submodule.span ℂ {y | ∃ u ∈ frameSector 0, ∃ n : ℤ, y = leechVOAPlus.smul u n (frameX0P β)}
+      = frameSector 1
+
+/-- **M8f, untwisted half: `V₃⁺` is a cyclic `V₀⁺`-module.** -/
+theorem cyclic_V3 : ∃ x₀ ∈ frameSector 1,
+    Submodule.span ℂ {y | ∃ u ∈ frameSector 0, ∃ n : ℤ, y = leechVOAPlus.smul u n x₀}
+      = frameSector 1
+\end{leancode}
+(\leanpath{VOA/Moonshine/CyclicFrameSectors.lean}.)
+\begin{dictionary}
+\textbf{Fidelity check.}  The products are taken in \lean{leechVOAPlus}, i.e.\ $V_\Leech^+$, with
+$u$ ranging over \lean{frameSector 0} $=\chelVz$ --- so this is the module structure of $\chelVt$
+over $\chelVz$ by restriction, which is the intended one.  The span is \emph{equal} to
+\lean{frameSector 1}, so the statement includes both inclusions.  The quantifier
+\lean{∃ x₀ ∈ frameSector 1} requires $x_0\in\chelVt$; the explicit form names $x_0$.  How could this
+have been vacuous?  If \lean{frameSector 1} were $0$ the statement would be trivial with $x_0=0$;
+it is not, since $\dim(\chelVt)_2=49152$ (Corollary~\ref{ch11:cor:wt2}).  The explicit version with
+$x_0=e^\beta+e^{-\beta}\neq0$ is stronger than the existential one.
+\end{dictionary}
+
+\begin{physics}
+The odd frame sector $\chelVt$ is a single family of the neutral subtheory: any one charged state $e^\beta+e^{-\beta}$ generates it under the OPE with $\chelVz$. Physically, the charged sector is obtained from a single charged primary-like state by acting with the neutral currents; there are no independent ``families'' hidden in it. Combined with the vacuum trick (acting on the vacuum suffices once a dual pair is available), this is the mechanism that later makes a $\chelVz$-equivariant map out of $\chelVt$ determined by its value on one vector.
+\end{physics}
+\emph{Proof.}  ``$\subseteq$'': $\chelVz\cdot\chelVt\subseteq\chelVt$ by
+Theorem~\ref{ch11:thm:sectors}.  ``$\supseteq$'': let $v\in\chelVt$.  Apply the vacuum trick in
+$W=V_\Leech^+$ with $a=b=x_0$, $k=N-1$ and the lemma: $v$ is a combination of $(v_{(i)}x_0)_{(j)}x_0$.
+Each $v_{(i)}x_0$ lies in $\chelVt\cdot\chelVt\subseteq\chelVz$. \qed
+\begin{status}Unconditional; \lean{#print axioms cyclic_V3}, \lean{cyclic_V0}: [\lean{propext},
+\lean{Classical.choice}, \lean{Quot.sound}].  \textbf{Not proved:} irreducibility of $\chelVt$
+(FLM; DGM Proposition 7.1); it is not needed.  (The docstring of the file still says it is not
+wired into the \leanpath{VOA/Moonshine.lean} umbrella; that remark is stale --- the umbrella imports
+it, checked for this chapter.)
+\end{status}
+
+\begin{remark}[What this argument avoids]
+DGM prove irreducibility using, in each coordinate, the Virasoro field $:\!P^jP^j\!:$ to separate
+states.  The vacuum trick needs no Fock-space bookkeeping at all: one vector that pairs to the
+vacuum suffices for cyclicity.  For irreducibility one would need, for each nonzero $x$, a partner
+$y$ with $y_{(k)}x\in\C^\times\mathbf 1$, i.e.\ a nondegenerate invariant form on $\chelVt$ --- more
+than is needed.
+\end{remark}
+
+%======================================================================
+\section{Cyclicity II: the twisted sectors}\label{ch11:sec:cyclictwisted}
+%======================================================================
+
+\subsection{The obvious route is blocked}
+
+\begin{warning}
+\textbf{The vacuum trick for $(V_\Leech^T)^+$ would need the open relation.}  On $\mathcal
+T=(V_\Leech^T)^+$ the analogue of $x_{0(k)}x_0=c\mathbf 1$ is $\overline W(a)_{(k)}b=c\mathbf 1$ for
+$a,b\in\mathcal T$, which does hold (the anti-trap certificate \lean{leechWbar_vacuum_pairing_ne_zero}
+of Chapter~\ref{ch:10}).  But writing $t=c^{-1}W(t)_{(-1)}\overline W(a)_{(k)}b$ as a combination of
+$Y_{\mathcal T}(\overline W(t)_{(i)}a)_{(j)}b$ is the Borcherds identity \eqref{ch11:eq:borcherds} in
+$\Vnat$ for three \emph{twisted} states $(t,a,b)$:
+\begin{multline*}
+  \sum_i(-1)^i\tbinom{\ell}{i}\Big[W(t)_{(\ell+m-i)}\overline W(a)_{(n+i)}b
+   -(-1)^\ell W(a)_{(\ell+n-i)}\overline W(t)_{(m+i)}b\Big]\\
+   =\sum_i\tbinom{m}{i}\,Y_{\mathcal T}\big(\overline W(t)_{(\ell+i)}a\big)_{(m+n-i)}b .
+\end{multline*}
+This is equivalent to the twisted$\times$twisted relation \eqref{ch11:eq:423} --- the very gate the
+triality is meant to open.  The available commutator formulas for $W$ and $\overline W$ have one
+\emph{untwisted} argument and do not imply it.  So the vacuum-trick route for the twisted sectors is
+circular, and an explicit route is used instead (Notes/M8GluingPlan.md, status ``M8f COMPLETE'',
+``RECORDED DEPENDENCY'').
+\end{warning}
+
+\subsection{Orbit spans in a twisted module}
+
+Let $W$ be a VOA, $g\in\Aut W$ with $g^2=1$, and $T$ a $g$-twisted $W$-module of order two
+(\lean{TwistedModule g 2 M}, Chapter~\ref{ch:06}): operators $u_{(k/2)}$ (\lean{T.YM u k}) on $M$
+such that for $u$ in the $j$-th eigenspace $W^j$ of $g$ --- defined in the library as the
+$e^{-2\pi i j/2}$-eigenspace (\lean{Aut.twistedEigenspace g 2 j}), so $W^0=\{gu=u\}$,
+$W^1=\{gu=-u\}$ --- the operator $u_{(k/2)}$ vanishes unless $k\equiv j\pmod2$, and the twisted Jacobi
+identity
+\begin{multline*}
+  \sum_{i\ge0}(-1)^i\tbinom{\ell}{i}\Big(u_{((2\ell+k-2i)/2)}v_{((m+2i)/2)}x
+     -(-1)^\ell v_{((2\ell+m-2i)/2)}u_{((k+2i)/2)}x\Big)\\
+  =\sum_{i\ge0}\tbinom{k/2}{i}\,(u_{(\ell+i)}v)_{((k+m-2i)/2)}x
+\end{multline*}
+holds for all $v,x,\ell,m$ and all $k\equiv j\pmod 2$ (the restriction $k\equiv j$ is the repaired
+form of the library's axiom; see Chapter~\ref{ch:06} and Section~\ref{ch15:sec:twisted}: the all-indices form forces $M=0$).
+
+\begin{definition}[Orbit span]\label{ch11:def:orbitspan}
+For a subspace $A\subseteq W$ and $x\in M$,
+$Z_A(x)=\operatorname{span}\{u_{(k/2)}x : u\in A,\ k\in\Z\}$.
+\end{definition}
+\begin{leancode}
+/-- **The orbit span** `Z_A(x) = span {u₍k/2₎ x | u ∈ A, k ∈ ℤ}`. -/
+def orbitSpan (T : TwistedModule g 2 M) (A : Submodule ℂ 𝒱) (x : M) : Submodule ℂ M :=
+  Submodule.span ℂ {y | ∃ u ∈ A, ∃ k : ℤ, y = T.YM u k x}
+\end{leancode}
+(\leanpath{VOA/Moonshine/CyclicTwistedSpan.lean}, namespace \lean{VOA.TwistedCyclic}.)
+
+\begin{physics}
+$Z_A(x)$ is the span of all states reached from a ground state $x$ of the twisted module by acting with (half-integer) modes of fields drawn from $A$. It is the subspace of the twisted sector generated by $x$ using the OPE with $A$; the half-integer modes $u_{(k/2)}$ reflect the monodromy $-1$ of the $\theta$-twisted sector around the insertion of the twist field.
+\end{physics}
+
+\begin{theorem}[Orbit spans are submodules]\label{ch11:thm:orbitspan}
+Suppose $A$ is closed under all $n$-th products, $g$-stable, and $g^2=1$.  Then for every $u\in A$,
+$p\in\Z$ and $y\in Z_A(x)$: $u_{(p/2)}y\in Z_A(x)$.
+\end{theorem}
+\begin{leancode}
+variable (T : TwistedModule g 2 M) (A : Submodule ℂ 𝒱)
+  (hA : ∀ u ∈ A, ∀ (n : ℤ), ∀ v ∈ A, W.smul u n v ∈ A) (hg : ∀ u ∈ A, g u ∈ A)
+  (hgg : ∀ u, g (g u) = u)
+
+include hA hg hgg in
+/-- **`Z_A(x)` is stable under the modes of `A`.** -/
+theorem YM_mem_orbitSpan {u : 𝒱} (hu : u ∈ A) (p : ℤ) {x y : M} (hy : y ∈ orbitSpan T A x) :
+    T.YM u p y ∈ orbitSpan T A x
+\end{leancode}
+\begin{dictionary}
+\textbf{Fidelity check.}  The three hypotheses \lean{hA}, \lean{hg}, \lean{hgg} are exactly the
+three conditions of the theorem.  \lean{T.YM u p} is $u_{(p/2)}$.  Same as the theorem.  Note that
+$A$ is not required to contain $\mathbf 1$; that is needed only for $x\in Z_A(x)$
+(\lean{self_mem_orbitSpan}, hypothesis \lean{W.vacuum ∈ A}, using $\mathbf 1_{(-1)}=\mathrm{id}$,
+i.e.\ \lean{T.YM W.vacuum (-2) = 1}).
+\end{dictionary}
+
+\begin{physics}
+The orbit span is closed under the action of all of $A$: acting once more with a field of $A$ does not leave the span. Concretely, the OPE of two fields of $A$ (which is closed because $A$ is a subalgebra) re-expresses a product of two modes as a sum of single modes, so the generated subspace is stable. This is the consistency statement that generating a family from one state by the OPE gives a genuine module and not a growing subspace.
+\end{physics}
+\emph{Proof.}  Split $u=u_0+u_1$ into $g$-eigencomponents ($u_0=\tfrac12(u+gu)\in A\cap W^0$,
+$u_1=\tfrac12(u-gu)\in A\cap W^1$).  It suffices to show $u_{(p/2)}v_{(q/2)}x\in Z_A(x)$ for $u\in
+A\cap W^j$, $v\in A$.  If $p\not\equiv j$ the operator is zero.  Otherwise choose $k\equiv p\pmod 2$
+so large that $u_{((k+2i)/2)}x=0$ for all $i\ge0$, and $\ell=(p-k)/2$.  Then the twisted Jacobi
+identity reads
+\begin{equation*}
+  \sum_{i\ge0}(-1)^i\tbinom{\ell}{i}u_{((p-2i)/2)}v_{((q+2i)/2)}x
+  =\sum_i\tbinom{k/2}{i}(u_{(\ell+i)}v)_{(\cdot)}x\ \in Z_A(x),
+\end{equation*}
+since $u_{(\ell+i)}v\in A$.  The $i=0$ term is the one we want; the terms with $i\ge1$ have a larger
+second index $q+2i$, and are in $Z_A(x)$ by descending induction on $q$, the induction starting
+because $v_{(q/2)}x=0$ for $q$ large. \qed
+\begin{status}Unconditional; \lean{#print axioms YM_mem_orbitSpan}-clean.  Uses only the module
+Jacobi identity --- no twisted$\times$twisted operator.\end{status}
+
+\begin{theorem}[The $+$-projection]\label{ch11:thm:plusproj}
+Let $\theta_M$ be a lift of $g$ to $M$ (an involution with $\theta_M u_{(k/2)}\theta_M=(gu)_{(k/2)}$,
+preserving weights), $M^+=\ker(\theta_M-1)$, and $A$ as above.  If $x_0\in M^+$ and $y\in M^+\cap
+Z_A(x_0)$, then $y$ is a linear combination of the vectors $u_{(n)}x_0$ with $u\in W^g\cap A$, $n\in\Z$,
+computed in the ordinary $W^g$-module $M^+$.
+\end{theorem}
+\begin{leancode}
+include hg hgg in
+/-- **The `+`-projection.**  If `x₀ ∈ M⁺` and `y ∈ M⁺ ∩ Z_A(x₀)`, then `y` is a combination of
+the `M⁺`-modes `u₍ₙ₎ x₀` with `u ∈ 𝒱^g ∩ A`. -/
+theorem mem_span_plus_of_mem_orbitSpan (θ : ThetaLift T) (x₀ y : plusSub θ)
+    (hy : (y : M) ∈ orbitSpan T A x₀) :
+    y ∈ Submodule.span ℂ {z | ∃ u : (orbifold (Subgroup.zpowers g)).carrier, (u : 𝒱) ∈ A ∧
+      ∃ n : ℤ, z = mode ((plusModule θ).YM u) n x₀}
+\end{leancode}
+Here \lean{ThetaLift T} is the structure
+\noindent File \leanpath{VOA/Moonshine/TwistedPlusModule.lean}.
+\begin{leancode}
+structure ThetaLift (T : TwistedModule g 2 M) where
+  /-- The involution `θ_M`. -/
+  op : End ℂ M
+  op_op : ∀ x, op (op x) = x
+  conj : ∀ (u : 𝒱) (k : ℤ), T.YM (g u) k = op ∘ₗ T.YM u k ∘ₗ op
+  map_weight : ∀ (α : ℂ) (x : M), x ∈ T.weight α → op x ∈ T.weight α
+\end{leancode}
+\lean{plusSub θ := LinearMap.ker (θ.op - LinearMap.id)} is $M^+$, and \lean{plusModule θ} is $M^+$ as
+an ordinary module over $W^{\langle g\rangle}$ with $u_{(n)}=$ \lean{T.YM u (2*n)} (Chapter~\ref{ch:08}).
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{mode ((plusModule θ).YM u) n x₀} is $u_{(n)}x_0$ in the module
+$M^+$, which by construction is the integral mode $u_{(2n/2)}x_0$ of the twisted module.  The
+hypothesis \lean{hy} coerces $y$ to $M$.  The quantification \lean{∃ u : (orbifold …).carrier,
+(u : 𝒱) ∈ A} is ``$u\in W^g\cap A$''.  Same as the theorem.
+\end{dictionary}
+
+\begin{physics}
+In the orbifold, the twisted-sector states in $M^+$ are those invariant under the lift $\theta_M$ of the $\Z/2$ symmetry, obtained by the projector $\tfrac12(1+\theta_M)$. The statement is that projecting a family generated in the full twisted module onto the invariant states is the same as generating it from the invariant subtheory $W^g$ acting on $M^+$, i.e.\ the $g$-invariant states of the family come from the $g$-invariant fields. It is the usual orbifold bookkeeping of keeping only gauge-invariant operators and states.
+\end{physics}
+\emph{Proof.}  Apply $P=\tfrac12(1+\theta_M)$, which fixes $y$.  On a spanning vector,
+$P(u_{(k/2)}x_0)=\tfrac12(u_{(k/2)}+(gu)_{(k/2)})x_0=w_{(k/2)}x_0$ with $w=\tfrac12(u+gu)\in W^g\cap A$;
+if $k$ is odd this vanishes (a $g$-fixed state has only integral modes), and if $k=2n$ it is the
+$M^+$-mode $w_{(n)}x_0$. \qed
+\begin{status}Unconditional; \lean{#print axioms}-clean.\end{status}
+
+\subsection{The frame involution on the twisted module}
+
+\begin{theorem}[$\mathrm{id}\otimes J$ lifts $g_\chi$]\label{ch11:thm:YMLchi}
+Let $L$ be even, positive definite, unimodular, $\chi$ and $w$ as in Theorem~\ref{ch11:thm:frameT},
+and $P_J=\mathrm{id}_{S[\theta]}\otimes J$ on the twisted module $V_L^T=S[\theta]\otimes T$ of
+Chapter~\ref{ch:08}.  Then for every $u\in V_L$ and $k\in\Z$,
+$Y^T(g_\chi u)_{(k/2)}=P_J\,Y^T(u)_{(k/2)}\,P_J$.  For the Leech twisted module this reads
+$Y^T(gu)_{(k/2)}=(\mathrm{id}\otimes J)Y^T(u)_{(k/2)}(\mathrm{id}\otimes J)$ with $g=$\lean{frameAut}.
+\end{theorem}
+\begin{leancode}
+include hw hPos in
+/-- **`id ⊗ J` lifts `g_χ`**: `Y^T(g_χ u)₍k/2₎ = P_J ∘ Y^T(u)₍k/2₎ ∘ P_J`. -/
+theorem YML_chiLat (u : LatModuleGen L) (k : ℤ) :
+    YML L hEven hU (chiLat L χ u) k = PJ L hEven hU w ∘ₗ YML L hEven hU u k ∘ₗ PJ L hEven hU w
+
+/-- **`id ⊗ J` lifts the frame automorphism on the Leech twisted module**:
+`Y^T(g u)₍k/2₎ = (id ⊗ J) ∘ Y^T(u)₍k/2₎ ∘ (id ⊗ J)`, `g = frameAut`, `J = frameJ (8e₀)`. -/
+theorem leechTwistedModule_YM_frameAut (u : LatModuleGen leech) (k : ℤ) :
+    leechTwistedModule.YM (frameAut u) k
+      = (frameJ leech leech_even leech_isUnit_det_gramMat frameW).lTensor (FockT 24) ∘ₗ
+          leechTwistedModule.YM u k ∘ₗ
+          (frameJ leech leech_even leech_isUnit_det_gramMat frameW).lTensor (FockT 24)
+\end{leancode}
+(\leanpath{VOA/Moonshine/CyclicTwistedFrame.lean}.)
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{YML L hEven hU u k} is the twisted vertex operator mode
+$Y^T(u)_{(k/2)}$ on \lean{MT L hEven hU} $=S[\theta]\otimes T$ (Chapter~\ref{ch:08}); \lean{PJ … w}
+$=$\lean{(frameJ … w).lTensor (FockT (rank L))} is $\mathrm{id}\otimes J$ (\lean{lTensor F f} $=
+\mathrm{id}_F\otimes f$).  \lean{∘ₗ} is composition of linear maps.  Hypotheses: evenness,
+unimodularity (\lean{hU}), positive definiteness (\lean{hPos}), and \lean{hw :
+∀ α, (-1)^{⟨w,α⟩} = chiSign χ α}.  Since $P_J^2=1$, the right side is the conjugate $P_J
+Y^T(u)P_J^{-1}$.  The Leech version is the specialisation along \lean{leech_rank : rank leech = 24}
+(the Fock space is indexed by \lean{Fin 24} rather than \lean{Fin (rank leech)}).  Same as the
+theorem.
+\end{dictionary}
+
+\begin{physics}
+On the twisted sector, the frame symmetry $g_\chi$ of the untwisted theory is implemented by the extraspecial operator $J$ acting on the ground-state factor: conjugation by $\mathrm{id}\otimes J$ acts on twisted vertex operators exactly as $g_\chi$ does on untwisted states. This is the statement that the frame charge is a symmetry of the twisted theory too, which is needed for the frame decomposition of the twisted sector to be compatible with the OPE. It is the twisted analogue of $g_\chi$ being a symmetry of the lattice CFT.
+\end{physics}
+\emph{Proof.}  $P_J$ fixes the twisted Heisenberg operators (they act on the other tensor factor),
+and $P_JY^T(e^\alpha,z)P_J=(-1)^{\chi(\alpha)}Y^T(e^\alpha,z)$ because $Y^T(e^\alpha,z)$ contains the
+factor $e_\alpha$ on $T$ and $Je_\alpha J=(-1)^{\langle w,\alpha\rangle}e_\alpha$.  Twisted vertex
+operators of all other states are built from these by the twisted normal ordering of
+Chapter~\ref{ch:08}, which commutes with conjugation by an involution; hence $P_JY^T(u)P_J=
+Y^T(g_\chi u)$ for all $u$. \qed
+\begin{status}Unconditional; \lean{#print axioms YML_chiLat}-clean.\end{status}
+
+Consequently every mode of a $g$-fixed state preserves the two eigenspaces $S[\theta]\otimes T_\pm$
+(\lean{YM_mem_twFrame}).
+
+\subsection{The twisted frame sectors and their cyclicity}
+
+Recall from Chapter~\ref{ch:08} that the Leech twisted space is \lean{Tw := FockT 24 ⊗[ℂ] leechT},
+that FLM's $\theta$ on it is $\theta_T\otimes(-1)$ (\lean{thetaTwLeech}; $\theta_T$ negates every
+twisted oscillator, and $\theta$ acts by $-1$ on $T$), and that \lean{TP := plusSub leechThetaLift}
+is $(V_\Leech^T)^+$, an ordinary $V_\Leech^+$-module (\lean{Moonshine.plusModule}).
+
+\begin{definition}[Twisted frame sectors]\label{ch11:def:TPframe}
+$T_{(s)}^+:=(V_\Leech^T)^+\cap(S[\theta]\otimes T_{(s)})$, $s\in\Z/2$.
+\end{definition}
+\noindent File \leanpath{VOA/Moonshine/CyclicTwisted.lean}.
+\begin{leancode}
+/-- **The twisted frame sectors** `T_s⁺ = TP ∩ (S[θ] ⊗ T_s)` (`s = 0, 1`). -/
+noncomputable def TPframe (s : ZMod 2) : Submodule ℂ TP := (twFrameL s).comap TP.subtype
+
+/-- `TP = T₀⁺ ⊕ T₁⁺`. -/
+theorem TPframe_isCompl : IsCompl (TPframe 0) (TPframe 1)
+\end{leancode}
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{twFrameL s} is the $(-1)^s$-eigenspace of $\mathrm{id}\otimes J$ on
+\lean{Tw}; \lean{comap TP.subtype} intersects it with \lean{TP}, viewed inside \lean{TP}.  So
+\lean{TPframe s} is $T^+_{(s)}$.  The docstring's ``$T_0^+\oplus T_1^+$'' uses the Lean index $s$,
+not FLM's labels $0,3$ (see the warning in Section~\ref{ch11:sec:twistedsplit}).  \lean{IsCompl}
+is the internal direct sum of two subspaces.  Same as intended.
+\end{dictionary}
+
+\begin{physics}
+The twisted frame sectors $T_{(s)}^+$ are the $\theta$-invariant states of the twisted sector with frame charge $s$. They are the two halves ($T_0^+$, $T_3^+$) of the twisted half of the moonshine module, the twisted counterparts of the untwisted sectors $\chelVz$ and $\chelVt$; the triality will pair $T_0^+$ with $\chelVt$.
+\end{physics}
+\emph{Proof.}  $\theta=\theta_T\otimes(-1)$ commutes with $\mathrm{id}\otimes J$, so $\mathrm{id}\otimes
+J$ is an involution of $(V_\Leech^T)^+$, whose eigenspaces are complementary. \qed
+
+\begin{theorem}[Each twisted frame sector is cyclic]\label{ch11:thm:cyclicTP}
+Let $0\ne t_0\in T_{(s)}$ and $x_0=h_0(-\tfrac12)\mathbf 1\otimes t_0$ (weight $\tfrac32+\tfrac12=2$).
+Then $x_0\in T_{(s)}^+$ and
+$\operatorname{span}\{u_{(n)}x_0 : u\in\chelVz,\ n\in\Z\}=T_{(s)}^+$, where $u_{(n)}$ is the action of
+$V_\Leech^+$ on $(V_\Leech^T)^+$.  In particular each $T_{(s)}^+$ is a cyclic $\chelVz$-module.
+\end{theorem}
+\begin{leancode}
+/-- The cyclic vector `h₀(−½)𝟙 ⊗ t₀` (weight `2`). -/
+noncomputable def frameX0T (t₀ : TLeechT) : Tw := (X (0, 0) : FockT 24) ⊗ₜ t₀
+
+/-- **The explicit form**: for `0 ≠ t₀ ∈ T_s`, `x₀ = h₀(−½)𝟙 ⊗ t₀` generates `T_s⁺` over `V₀⁺`. -/
+theorem span_smul_frameX0T {s : ZMod 2} {t₀ : TLeechT} (ht₀ : t₀ ∈ leechFrameT s) (h0 : t₀ ≠ 0) :
+    Submodule.span ℂ {y | ∃ u ∈ frameSector 0, ∃ n : ℤ,
+        y = mode (Moonshine.plusModule.YM u) n (⟨frameX0T t₀, frameX0T_mem_TP t₀⟩ : TP)}
+      = TPframe s
+
+/-- **M8f, twisted half: each twisted frame sector `T_s⁺` is a cyclic `V₀⁺`-module.** -/
+theorem cyclic_TPframe (s : ZMod 2) : ∃ x₀ ∈ TPframe s,
+    Submodule.span ℂ {y | ∃ u ∈ frameSector 0, ∃ n : ℤ, y = mode (Moonshine.plusModule.YM u) n x₀}
+      = TPframe s
+\end{leancode}
+(\leanpath{VOA/Moonshine/CyclicTwisted.lean}.)
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{X (0, 0) : FockT 24} is the polynomial generator of the twisted
+Fock space $S[\theta]=\C[h_a(-\tfrac{2m+1}{2})]$ corresponding to $h_0(-\tfrac12)$ (index $(m,a)=(0,0)$,
+Chapter~\ref{ch:07}); \lean{⊗ₜ} is the pure tensor.  \lean{frameX0T_mem_TP} proves $\theta x_0=x_0$
+($\theta_T$ negates $h_0(-\tfrac12)$, and $\theta$ is $-1$ on $T$).  \lean{TLeechT} is the type of $T$.
+\lean{mode (Moonshine.plusModule.YM u) n x} is $u_{(n)}x$ in the $V_\Leech^+$-module
+$(V_\Leech^T)^+$, i.e.\ the twisted mode $u_{(2n/2)}$; $u$ ranges over \lean{frameSector 0}$=\chelVz$.
+Hypotheses \lean{ht₀}, \lean{h0}: $t_0\in T_{(s)}$, $t_0\ne0$.  Same as the theorem.  Not vacuous:
+$T_{(s)}^+\neq0$ since it contains $x_0\neq0$ (and its weight-two part has dimension $24\cdot2048$).
+\end{dictionary}
+
+\begin{physics}
+Each twisted charge sector is a single family of $\chelVz$ generated by one explicit state $x_0=h_0(-\tfrac12)\mathbf 1\otimes t_0$ of weight $2$: a twisted ground state $t_0$ (weight $\tfrac32$) with one fractional oscillator ($\tfrac12$) added to make it $\theta$-invariant. Cyclicity says that all the twisted states of that charge can be reached from this one by the OPE; it is the key technical input that allows the triality to be specified by its action on a single vector in each sector. (Physical picture heuristic; the proof is by the orbit-span and plus-projection machinery.)
+\end{physics}
+\emph{Proof.}  Work in the \emph{full} twisted $V_\Leech$-module $S[\theta]\otimes T$, with
+$A=V_\Leech^{\langle g\rangle}$ (all momenta in $\Lambda_0$; closed under products, $\theta$-stable,
+contains $\mathbf 1$).  By Theorem~\ref{ch11:thm:orbitspan}, $Z_A(x_0)$ is stable under all modes of
+$A$.
+\begin{enumerate}
+  \item The state $h_0(-1)\mathbf 1\in A$ acts by the twisted oscillators $h_0(k/2)\otimes1$.  Hence
+  $h_0(\tfrac12)x_0=\tfrac12(\mathbf 1\otimes t_0)\in Z_A(x_0)$, and applying creation operators
+  $h_b(-\tfrac{2m+1}{2})$, which span $S[\theta]$ from its vacuum, $S[\theta]\otimes t\subseteq Z_A(x_0)$
+  whenever $\mathbf 1\otimes t\in Z_A(x_0)$.
+  \item For $\alpha\in\Lambda_0$, $e^\alpha\in A$ and $Y^T(e^\alpha)_{((\langle\alpha,\alpha\rangle-2)/2)}
+  (\mathbf 1\otimes t)=2^{-\langle\alpha,\alpha\rangle}(\mathbf 1\otimes e_\alpha t)$
+  (\lean{leechTwistedModule_echg_vac}; the power of $2$ is FLM's normalisation of $Y^T(e^\alpha)$).
+  So $\mathbf 1\otimes e_\alpha t_0\in Z_A(x_0)$.
+  \item $T$ is a simple module over the twisted group algebra, so the $e_\alpha t_0$ ($\alpha\in\Leech$)
+  span $T$; those with $\alpha\notin\Lambda_0$ lie in $T_{(s+1)}$ (Theorem~\ref{ch11:thm:leechT}).
+  Projecting to $T_{(s)}$ gives $T_{(s)}=\operatorname{span}\{e_\alpha t_0:\alpha\in\Lambda_0\}$.
+  \item Hence $S[\theta]\otimes T_{(s)}\subseteq Z_A(x_0)$, and Theorem~\ref{ch11:thm:plusproj} turns
+  this into: every $y\in T^+_{(s)}$ is a combination of $u_{(n)}x_0$ with $u\in A^\theta=\chelVz$.
+  \item Conversely, modes of $\chelVz$ commute with $\mathrm{id}\otimes J$
+  (Theorem~\ref{ch11:thm:YMLchi}) and with $\theta$, so the span stays in $T^+_{(s)}$. \qed
+\end{enumerate}
+\begin{status}Unconditional; \lean{#print axioms cyclic_TPframe}: [\lean{propext},
+\lean{Classical.choice}, \lean{Quot.sound}].  Proved \emph{without} any twisted$\times$twisted input.
+\textbf{Not proved:} irreducibility of $T^+_{(s)}$ (not needed).  Which $s$ corresponds to FLM's
+$T_0^+$ is not decided here.\end{status}
+
+%======================================================================
+\section{Root exponentials and inner automorphisms}\label{ch11:sec:rootexp}
+%======================================================================
+
+The untwisted triality is a product of exponentials $\exp(c\,(e^\alpha)_{(0)})$ for roots $\alpha$.
+This section explains why such exponentials make sense and are automorphisms.
+
+\subsection{Inner automorphisms from weight-one states}
+
+If $u\in W_1$ (a weight-one state of a VOA $W$), its zero mode $u_{(0)}$ is a \emph{derivation} of
+all products: the commutator formula gives $u_{(0)}(a_{(n)}b)=(u_{(0)}a)_{(n)}b+a_{(n)}(u_{(0)}b)$.
+Physically, $u_{(0)}=\oint u(z)\,dz$ is the conserved charge of the current $u(z)$, and the
+exponential of a conserved charge is a symmetry.  The only issue is convergence of
+$\exp(u_{(0)})=\sum_k u_{(0)}^k/k!$; in pure algebra one asks for \emph{local nilpotency}.
+
+\begin{definition}[Locally nilpotent]\label{ch11:def:locnilp}
+An operator $D$ on a vector space is \emph{locally nilpotent} if for every $v$ there is $N$ with
+$D^Nv=0$.  Then $\exp(D)v=\sum_{k<N}D^kv/k!$ is a finite sum.
+\end{definition}
+\begin{leancode}
+def IsLocNilp (D : End ℂ 𝒱) : Prop := ∀ v : 𝒱, ∃ N : ℕ, (D ^ N) v = 0
+\end{leancode}
+(\leanpath{VOA/Core/Automorphism.lean}.)  The library's inner automorphism is
+\begin{leancode}
+noncomputable def inner (u : W.grading 1)
+    (hnilp : VOA.IsLocNilp (W.zeroMode (u : 𝒱) 1))
+    (homega : W.zeroMode (u : 𝒱) 1 W.conformalVector = 0) : Aut W where
+  toLinearEquiv := VOA.expEquiv hnilp
+\end{leancode}
+(\lean{VOA.VertexOperatorAlgebra.inner}, same file.)
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{W.zeroMode u 1} is the zero mode $o(u)=u_{(\wt u-1)}$ of a state of
+weight $1$, i.e.\ $u_{(0)}$.  The three inputs are: $u$ of weight one, $u_{(0)}$ locally
+nilpotent, and $u_{(0)}\omega=0$ (needed for $\exp(u_{(0)})\omega=\omega$, part of the definition of
+\lean{Aut}).  \lean{VOA.expEquiv hnilp} is $\exp(u_{(0)})$ with inverse $\exp(-u_{(0)})$.  This is
+exactly ``the exponential of a locally nilpotent derivation fixing $\omega$ is an automorphism''.
+\end{dictionary}
+
+\begin{physics}
+An operator is locally nilpotent if repeated application eventually kills any given state; this is what makes the exponential $\exp(D)$ of a charge-raising generator a well-defined symmetry transformation on the Fock space. In CFT language, the zero mode of a root current only changes the charge in the positive direction until it exceeds the cutoff of the finite-energy states, so its exponential is the group element $\exp(cJ^+)$ of $SU(2)$, a finite sum on each state.
+\end{physics}
+
+\subsection{\texorpdfstring{$(e^\alpha)_{(0)}$}{(e\^{}alpha)(0)} is locally nilpotent}
+
+Let $L$ be even positive definite, and write $Q_\alpha:=(e^\alpha)_{(0)}$ (\lean{Qscr L α}).  Every
+state of $V_L$ is a sum of states of definite \emph{bidegree} $(d,\gamma)$: boson degree $d$ (the sum
+of the mode numbers of the oscillators) and momentum $\gamma$ (\lean{bigradα L (d, γ)}).
+
+\begin{theorem}[Local nilpotency of root zero modes]\label{ch11:thm:locnilp}
+$Q_\alpha$ maps bidegree $(d,\gamma)$ to bidegree $(d-1-\langle\alpha,\gamma\rangle,\gamma+\alpha)$.
+Consequently, for every $\alpha\neq0$, $Q_\alpha$ is locally nilpotent.
+\end{theorem}
+\begin{leancode}
+/-- `Q_α` shifts the bigrading: `bigradα (d, β) → bigradα (d − 1 − ⟨α,β⟩, β + α)`. -/
+theorem Qscr_mem_bigradα (α : L.carrier) {d : ℤ} {β : L.carrier} {x : LatModuleGen L}
+    (hx : x ∈ bigradα L (d, β)) :
+    Qscr L α x ∈ bigradα L (d - 1 - L.form α β, β + α)
+
+/-- **Local nilpotency of `(e^α)₍₀₎`** for every nonzero `α` of a positive-definite lattice. -/
+theorem isLocNilp_Qscr (hPos : L.PosDef) {α : L.carrier} (hα : α ≠ 0) :
+    VOA.IsLocNilp (Qscr L α)
+\end{leancode}
+(\leanpath{VOA/Moonshine/TrialityRoot.lean}.)
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{Qscr L α} is defined as \lean{mode (Yeαvec L α) 0}, the $0$-th mode of
+$Y(e^\alpha,z)$ (Chapter~\ref{ch:03}); \lean{zeroMode_latChargeGen} confirms it is the zero mode of
+$e^\alpha$ in \lean{latticeVOAGen}.  Hypotheses: $L$ positive definite and $\alpha\neq0$ --- both
+necessary ($Q_0=\mathrm{id}_{(0)}$-type degeneracies aside, for $\langle\alpha,\alpha\rangle\le0$ the
+degree need not decrease).  Same as the theorem.
+\end{dictionary}
+
+\begin{physics}
+The zero mode $Q_\alpha=(e^\alpha)_{(0)}$ is the charge of the root current $J^+=e^\alpha$ and raises the momentum by $\alpha$ while lowering the oscillator degree (by $1+\langle\alpha,\gamma\rangle$); so repeated application eventually exhausts the oscillator degree and kills the state. Physically this is the statement that the finite-energy states form a representation of the algebraic group $SU(2)$ (or $SL_2(\C)$) integrated from the Lie algebra, on which the exponentials act by finite sums; no analytic completion is needed.
+\end{physics}
+\emph{Proof.}  $Y(e^\alpha,z)(p\otimes e^\gamma)=\varepsilon(\alpha,\gamma)z^{\langle\alpha,\gamma\rangle}
+E^-(-\alpha,z)E^+(-\alpha,z)p\otimes e^{\alpha+\gamma}$, and the coefficient of $z^{-1}$ raises the
+boson degree by exactly $-1-\langle\alpha,\gamma\rangle$.  After $k$ applications starting from
+$(d,\gamma)$ the degree is
+\begin{equation*}
+  d-k-k\langle\alpha,\gamma\rangle-\langle\alpha,\alpha\rangle\tfrac{k(k-1)}2 ,
+\end{equation*}
+a quadratic in $k$ with negative leading coefficient since $\langle\alpha,\alpha\rangle>0$.  It is
+eventually negative, and there are no states of negative boson degree. \qed
+
+\begin{definition}[Root exponential]\label{ch11:def:rootexp}
+For a root $\alpha$ ($\langle\alpha,\alpha\rangle=2$) and $c\in\C$, $\exp(cQ_\alpha)\in\Aut V_L$.
+\end{definition}
+\begin{leancode}
+/-- **The root exponential** `exp(c·(e^α)₍₀₎) ∈ Aut(V_L)` for a root `α` (`⟨α,α⟩ = 2`). -/
+noncomputable def rootExp {α : L.carrier} (hα : L.form α α = 2) (c : ℂ) :
+    Aut (latticeVOAGen L hEven hPos) :=
+  VertexOperatorAlgebra.inner ⟨c • latChargeGen L α, smul_latChargeGen_mem_grading_one L hEven hPos hα c⟩
+    (isLocNilp_zeroMode_smul L hEven hPos (form_self_ne_zero_of_two L hα) c)
+    (by
+      rw [← Screening.screening_eq_zeroMode]
+      exact Screening.screening_conformalVector _ (smul_latChargeGen_mem_grading_one L hEven hPos hα c))
+
+/-- An automorphism fixing `e^α` commutes with `exp(c·Q_α)`. -/
+theorem rootExp_comm_of_fix {α : L.carrier} (hα : L.form α α = 2) (c : ℂ)
+    (β : Aut (latticeVOAGen L hEven hPos)) (hfix : β (latChargeGen L α) = latChargeGen L α) :
+    β * rootExp L hEven hPos hα c = rootExp L hEven hPos hα c * β
+\end{leancode}
+\begin{dictionary}
+\textbf{Fidelity check.}  The definition is the one-line composition of \lean{inner} with three
+facts: $ce^\alpha$ has weight $\tfrac12\langle\alpha,\alpha\rangle=1$; its zero mode is locally
+nilpotent (Theorem~\ref{ch11:thm:locnilp}); and it kills $\omega$ (true for every weight-one
+state, \lean{screening_conformalVector}).  So \lean{rootExp hα c} is $\exp(cQ_\alpha)$ and, by
+construction, an automorphism.  \lean{rootExp_comm_of_fix}: if $\beta e^\alpha=e^\alpha$ then
+$\beta\exp(cQ_\alpha)\beta^{-1}=\exp(c\,(\beta e^\alpha)_{(0)})=\exp(cQ_\alpha)$.
+\end{dictionary}
+
+\begin{physics}
+The root exponential $\exp(cQ_\alpha)$ is a finite group element of the $SU(2)$ (or $SL_2$) that acts on the currents of the root $\alpha$: for a root $\alpha$ of $V_L$, the currents $e^{\alpha}$, $\alpha(-1)\mathbf 1$ and $e^{-\alpha}$ form the $\widehat{\mathfrak{sl}}_2$ at level one (the $SU(2)_1$ WZW model), and the exponential is a rotation by a complex angle. It is an automorphism of the VOA because $Q_\alpha$ is a derivation (the zero mode of a weight-one field) and is locally nilpotent. These inner automorphisms are the continuous symmetry that the lattice theory of a Niemeier lattice with roots has, and which the Leech theory (with no roots) lacks.
+\end{physics}
+\begin{status}Unconditional; \lean{#print axioms isLocNilp_Qscr}-clean.  \lean{rootExp} is a
+definition (its axioms are those of \lean{inner}: clean).\end{status}
+
+\subsection{The \texorpdfstring{$\mathfrak{sl}_2$}{sl2} triple of a root}
+
+Write $e=e^\alpha$, $h=\alpha(-1)\mathbf 1$ (\lean{hSt L α}), $f=e^{-\alpha}$ and
+$\varepsilon=\varepsilon(\alpha,-\alpha)=\pm1$.  For a vector $x_1e+x_2h+x_3f$ (\lean{vec3 L α x₁ x₂ x₃})
+the library computes:
+\begin{equation}\label{ch11:eq:sl2table}
+  Q_\alpha:\ e\mapsto0,\ h\mapsto-2e,\ f\mapsto\varepsilon h;\qquad
+  Q_{-\alpha}:\ e\mapsto-\varepsilon h,\ h\mapsto 2f,\ f\mapsto0,
+\end{equation}
+\begin{leancode}
+/-- `Q_β (α(−1)𝟙) = −⟨α,β⟩ e^β`. -/
+theorem Qscr_hSt (hPos : L.PosDef) (α β : L.carrier) :
+    Qscr L β (hSt L α) = -((L.form α β : ℤ) : ℂ) • latChargeGen L β
+
+/-- `Q_α e^{−α} = ε(α,−α)·α(−1)𝟙` for a root `α`. -/
+theorem Qscr_latChargeGen_neg {α : L.carrier} (hα : L.form α α = 2) :
+    Qscr L α (latChargeGen L (-α)) = latticeCocycle L α (-α) • hSt L α
+\end{leancode}
+and hence, since $Q_{\pm\alpha}^3=0$ on the triple, the exponentials act by quadratic formulas:
+\begin{leancode}
+theorem rootExp_vec3_pos {α : L.carrier} (hα : L.form α α = 2) (c x₁ x₂ x₃ : ℂ) :
+    rootExp L hEven hPos hα c (vec3 L α x₁ x₂ x₃)
+      = vec3 L α (x₁ - 2 * c * x₂ - c ^ 2 * latticeCocycle L α (-α) * x₃)
+          (x₂ + c * latticeCocycle L α (-α) * x₃) x₃
+
+theorem rootExp_vec3_neg {α : L.carrier} (hα : L.form α α = 2) (hα' : L.form (-α) (-α) = 2)
+    (c x₁ x₂ x₃ : ℂ) :
+    rootExp L hEven hPos hα' c (vec3 L α x₁ x₂ x₃)
+      = vec3 L α x₁ (x₂ - c * latticeCocycle L α (-α) * x₁)
+          (x₃ + 2 * c * x₂ - c ^ 2 * latticeCocycle L α (-α) * x₁)
+
+theorem rootExp_vec3_orth {α β : L.carrier} (hβ : L.form β β = 2) (hαβ : L.form α β = 0)
+    (c x₁ x₂ x₃ : ℂ) : rootExp L hEven hPos hβ c (vec3 L α x₁ x₂ x₃) = vec3 L α x₁ x₂ x₃
+\end{leancode}
+(\leanpath{VOA/Moonshine/TrialitySl2.lean}.)
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{vec3 L α x₁ x₂ x₃} $:=$ \lean{x₁ • latChargeGen L α + x₂ • hSt L α +
+x₃ • latChargeGen L (-α)}, i.e.\ $x_1e+x_2h+x_3f$, and \lean{hSt L α := latStateGen L (vSchur L α 1)
+0} is $\alpha(-1)\mathbf 1\otimes e^0$.  Each formula is the exponential $v+cQv+\tfrac{c^2}2Q^2v$ with
+the table \eqref{ch11:eq:sl2table}: e.g.\ for $Q_\alpha$, $Q(x_1e+x_2h+x_3f)=-2x_2e+\varepsilon x_3h$
+and $Q^2(\ldots)=-2\varepsilon x_3e$, giving the displayed coefficients.  The third statement: a
+root $\beta\perp\alpha$ acts trivially on the $\alpha$-triple.
+\end{dictionary}
+\emph{Proof of \eqref{ch11:eq:sl2table}.}  $Q_\beta h=-\langle\alpha,\beta\rangle e^\beta$: the
+zero mode of $e^\beta$ on $\alpha(-1)\mathbf 1$ is the $z^{-1}$ coefficient of
+$z^{0}E^-(-\beta,z)\alpha(-1)\mathbf 1\otimes e^\beta$, where the annihilation part $E^+$ contributes
+$-\langle\beta,\alpha\rangle z^{-1}$.  $Q_\alpha e^{-\alpha}$: $Y(e^\alpha,z)e^{-\alpha}=\varepsilon
+z^{-2}E^-(-\alpha,z)\mathbf 1=\varepsilon z^{-2}(1+\alpha(-1)z+\cdots)$, whose $z^{-1}$ coefficient is
+$\varepsilon h$.  $Q_\alpha e^\alpha=0$ because $\langle\alpha,\alpha\rangle=2\ge0$ makes the series start
+at $z^{2}$. \qed
+
+In particular $E:=Q_\alpha$, $H:=h_{(0)}$, $F:=\varepsilon Q_{-\alpha}$ satisfy the $\mathfrak{sl}_2$
+relations, and on the span of $\{e,h,f\}$ (the adjoint representation) they are the adjoint action.
+
+%======================================================================
+\section{The Niemeier lattice VOA and the triality \texorpdfstring{$\sigma$}{sigma}}\label{ch11:sec:triality}
+%======================================================================
+
+\subsection{The lattice VOA \texorpdfstring{$V_N$}{V\_N}}
+
+\begin{definition}[$V_N$]\label{ch11:def:golayVOA}
+$N=N(A_1^{24})=\rho^{-1}(C)\subset\Z^{24}$ with $\langle x,y\rangle=x\cdot y/2$; $V_N$ is its lattice VOA.
+The roots are $\alpha_j=2e_j$, with $\langle\alpha_j,\alpha_k\rangle=2\delta_{jk}$.
+\end{definition}
+\begin{leancode}
+/-- `N(A₁²⁴) = Γ_Golay` as a `VOA.IntegralLattice`. -/
+noncomputable abbrev golayN : VOA.IntegralLattice.{0} := ofEbeling Leech.golayLattice
+
+/-- **The Niemeier lattice VOA** `V_{N(A₁²⁴)}`. -/
+noncomputable def golayVOA : VertexOperatorAlgebra (LatModuleGen golayN) :=
+  latticeVOAGen golayN golayN_even golayN_posDef
+
+theorem golayVOA_centralCharge : golayVOA.centralCharge = 24
+
+/-- The root `α_j = 2e_j` of `N(A₁²⁴)`. -/
+def golayRoot (j : Fin 24) : golayN.carrier :=
+  show ↥Leech.preG from ⟨(2 : ℤ) • Pi.single j 1, two_smul_mem_preimageOfCode Code.golay _⟩
+
+theorem golayRoot_form (j k : Fin 24) :
+    golayN.form (golayRoot j) (golayRoot k) = if j = k then 2 else 0
+\end{leancode}
+(\leanpath{VOA/Moonshine/TrialityGolay.lean}, namespace \lean{VOA.Moonshine.Triality}.)
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{ofEbeling} converts the vendored lattice (Chapter~\ref{ch:02}) to the
+library's \lean{IntegralLattice}; \lean{golayN_even}, \lean{golayN_posDef} are proved from the Golay
+code being doubly even and self-orthogonal.  \lean{Pi.single j 1} is $e_j$.  Same as the definition.
+\end{dictionary}
+
+\begin{physics}
+$V_N$ is the lattice CFT of the Niemeier lattice $N(A_1^{24})$: $24$ free bosons compactified on the Niemeier torus, which contains $24$ mutually orthogonal roots, so it has a $\widehat{\mathfrak{sl}}_2^{24}$ current algebra at level one, i.e.\ $24$ copies of the $SU(2)_1$ WZW model (a free boson at self-dual radius). It has the same central charge $24$ as the Leech theory but a large non-abelian continuous symmetry $SU(2)^{24}$ (the Kac--Moody algebra of $A_1^{24}$), in contrast to the abelian $U(1)^{24}$ of the Leech theory. It is the theory in which the triality is visible as a rotation.
+\end{physics}
+
+\begin{definition}[$\chi$ and the modified centre $\chi z_0$]\label{ch11:def:chi}
+$\mathrm{par}(x)=\tfrac12\sum_i x_i\bmod2$ (\lean{golayParity}; kernel $A$), $z_l(x)=x_l\bmod 2$
+(\lean{golayCoord l}).  $\chi:=g_{\mathrm{par}}$ (\lean{golayChi}) and $\chi z_0:=g_{\mathrm{par}+z_0}$
+(\lean{golayChiMod}).
+\end{definition}
+\begin{leancode}
+/-- DGM's `χ = θ₁ = ∏_j exp(iπ H_j/2)`: the momentum sign `(−1)^{parity}`. -/
+noncomputable def golayChi : Aut golayVOA := chiAut golayN golayParity golayN_even golayN_posDef
+
+/-- The DGM (7.8)-modified rotation centre `χ z₀`. -/
+noncomputable def golayChiMod : Aut golayVOA :=
+  chiAut golayN (golayParity + golayCoord 0) golayN_even golayN_posDef
+\end{leancode}
+\begin{dictionary}
+\textbf{Fidelity check.}  Why is the momentum sign $(-1)^{\mathrm{par}}$ DGM's
+$\prod_j\exp(i\pi H_j/2)$?  $H_j=(\alpha_j(-1)\mathbf 1)_{(0)}$ acts on $F_\lambda$ by $\langle\alpha_j,\lambda\rangle
+=\lambda_j$, so $\prod_j\exp(i\pi H_j/2)$ acts by $i^{\sum_j\lambda_j}=(-1)^{\sum_j\lambda_j/2}$
+($\sum\lambda_j$ is even on $\rho^{-1}(C)$).  This is a paper identification; the Lean object is
+\emph{defined} as the momentum sign.  Likewise $z_0=(-1)^{x_0}$ is $\exp(i\pi H_0)$, the central element
+$-1\in SU(2)_0$, and $\chi z_0$ acts in coordinate $0$ as $\exp(3i\pi H_0/2)$: this is DGM's
+modification (7.8) in the coordinate $l=0$.
+\end{dictionary}
+
+\begin{physics}
+$\chi$ is the $\Z/2$ charge symmetry $(-1)^{\mathrm{par}(\hat p)}$, the rotation by $\pi$ about the Cartan axis in every $SU(2)$ factor. Its modification $\chi z_0$ changes the parity by the coordinate $z_0$ and is the involution that, after conjugation by the rotation $G$ (a rotation by an angle between axes), will become the triality $\sigma$. Both are symmetries because momentum is conserved in every operator product; the choice of $z_0$ selects the correct class among such sign automorphisms.
+\end{physics}
+
+\subsection{The rotation \texorpdfstring{$G$}{G} and the definition of \texorpdfstring{$\sigma$}{sigma}}
+
+DGM write the triality as $\sigma_{\mathrm{DGM}}=\prod_j\exp\!\big(\tfrac{i\pi}{\sqrt2}(J^{j1}_0+J^{j2}_0)\big)$
+with $J^{j1}=\tfrac12H_j$, $J^{j2}=\tfrac12(E_j+F_j)$: rotation by $\pi$ about the bisector of the
+Cartan and the $e+f$ axes.  The library instead writes $\sigma$ as a \emph{conjugate} of the
+momentum sign, which makes $\sigma^2=1$ automatic.  The key identity is in $SL_2(\C)$: with
+\begin{equation*}
+  H=\begin{pmatrix}1&0\\0&-1\end{pmatrix},\ E=\begin{pmatrix}0&1\\0&0\end{pmatrix},\
+  F=\begin{pmatrix}0&0\\1&0\end{pmatrix},\qquad
+  g=\exp\big((1-\sqrt2)E\big)\exp\big(\tfrac{\sqrt2}{4}F\big)
+  =\begin{pmatrix}1+ab&a\\ b&1\end{pmatrix},
+\end{equation*}
+$a=1-\sqrt2$, $b=\sqrt2/4$, $ab=(\sqrt2-2)/4$, one has
+\begin{equation}\label{ch11:eq:gHg}
+  gHg^{-1}=\tfrac1{\sqrt2}(H+E+F).
+\end{equation}
+\emph{Verification.}  $\det g=1$ and $g^{-1}=\begin{pmatrix}1&-a\\-b&1+ab\end{pmatrix}$, so
+$gHg^{-1}=\begin{pmatrix}1+2ab&-2a(1+ab)\\2b&-1-2ab\end{pmatrix}$.  Now $1+2ab=\sqrt2/2$;
+$-2a(1+ab)=-2(1-\sqrt2)(2+\sqrt2)/4=-(2+\sqrt2-2\sqrt2-2)/2=\sqrt2/2$; $2b=\sqrt2/2$.  So
+$gHg^{-1}=\tfrac{\sqrt2}{2}\begin{pmatrix}1&1\\1&-1\end{pmatrix}=\tfrac1{\sqrt2}(H+E+F)$. \qed
+
+Since $X=(H+E+F)/\sqrt2$ satisfies $X^2=1$, $\exp(i\pi X/2)=iX$, and therefore, as $SL_2$ matrices
+(not only up to sign),
+\begin{equation*}
+  g\exp(i\pi H/2)g^{-1}=\exp(i\pi X/2)=\exp\!\Big(\tfrac{i\pi}{\sqrt2}\big(\tfrac H2+\tfrac{E+F}2\big)\Big),
+\end{equation*}
+which is DGM's rotation in one coordinate.  With $G=\prod_jg_j$ this gives, on paper,
+$\sigma_{\mathrm{DGM}}=G\chi G^{-1}$, and DGM's (7.8)-modified triality is $G(\chi z_0)G^{-1}$.
+
+\begin{definition}[The untwisted triality]\label{ch11:def:golaySigma}
+$\varepsilon_j=\varepsilon(\alpha_j,-\alpha_j)$; $g_j=\exp((1-\sqrt2)Q_{\alpha_j})\exp(\tfrac{\sqrt2}4\varepsilon_jQ_{-\alpha_j})$;
+$G=g_0g_1\cdots g_{23}$; and
+\begin{equation*}
+  \sigma:=G\,(\chi z_0)\,G^{-1}\in\Aut V_N .
+\end{equation*}
+\end{definition}
+\noindent File \leanpath{VOA/Moonshine/TrialityGolay.lean}.
+\begin{leancode}
+/-- The cocycle sign `ε_j = ε(α_j, −α_j)` normalising `F_j = ε_j (e^{−α_j})₍₀₎`. -/
+noncomputable def golayEps (j : Fin 24) : ℂ :=
+  latticeCocycle golayN (golayRoot j) (-golayRoot j)
+
+/-- `g_j = exp((1−√2)E_j)·exp((√2/4)F_j)`: in `SL₂` it rotates the Heisenberg axis onto the
+bisector of the Heisenberg and `e+f` axes (`g H g⁻¹ = (H+E+F)/√2`). -/
+noncomputable def golayG1 (j : Fin 24) : Aut golayVOA :=
+  rootExp golayN golayN_even golayN_posDef (golayRoot_norm j) ((1 - Real.sqrt 2 : ℝ) : ℂ) *
+    rootExp golayN golayN_even golayN_posDef (golayRoot_neg_norm j)
+      (((Real.sqrt 2 / 4 : ℝ) : ℂ) * golayEps j)
+
+/-- `G = g₀ g₁ ⋯ g₂₃`. -/
+noncomputable def golayG : Aut golayVOA := (List.ofFn golayG1).prod
+
+/-- **FLM/DGM triality on `V_{N(A₁²⁴)}`**, in the (7.8)-modified form `σ = G (χ z₀) G⁻¹`. -/
+noncomputable def golaySigma : Aut golayVOA := golayG * golayChiMod * golayG⁻¹
+\end{leancode}
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{Real.sqrt 2} coerced to $\C$ is $\sqrt2$.  \lean{rootExp … hα c}
+$=\exp(cQ_\alpha)$ with $\alpha=\alpha_j$ (first factor) and $\alpha=-\alpha_j$ (second factor);
+\lean{*} in \lean{Aut} is composition, so $g_j$ applies the $Q_{-\alpha_j}$-exponential first.
+With $E_j=Q_{\alpha_j}$, $F_j=\varepsilon_jQ_{-\alpha_j}$ this is the matrix $g$ above.
+\lean{(List.ofFn golayG1).prod} is $g_0g_1\cdots g_{23}$ (the order is irrelevant: the factors
+commute because they act on orthogonal roots).  So \lean{golaySigma} is literally
+$G(\chi z_0)G^{-1}$.  \textbf{What is not asserted in Lean:} that this equals DGM's exponential
+formula --- that is the paper computation \eqref{ch11:eq:gHg}.  The evidence that the Lean $\sigma$
+is the right one is (a) Theorem~\ref{ch11:thm:sigmah} (its action on currents is DGM (7.7)), (b) the
+trace certificate in the warning below, and (c) ultimately, that it extends to $\Vnat$
+(Chapters~\ref{ch:12}--\ref{ch:14}).
+\end{dictionary}
+
+\begin{physics}
+$\sigma=G(\chi z_0)G^{-1}$ is a rotation by $\pi$ in every $SU(2)$ factor of $SU(2)^{24}$ about a new axis: the rotation $G=\prod_jg_j$ (a product of exponentials of $\mathfrak{sl}_2$ zero modes, i.e.\ an $SU(2)$ rotation in each factor) moves the Cartan axis to a bisector, and the involution about the bisector is $\sigma$. It exchanges the $\chi$-axis and the $\Theta$-axis (the rotation about the $e+f$ axis): this is the swap of Cartan with $e+f$ currents. The sector content of this swap is the heart of triality in the $A_1^{24}$ theory; in the moonshine setting the analogous $\sigma$ exchanges an untwisted sector with a twisted one, and the explicit group-element formula is the Lean-friendly way to describe it. The exponent $1-\sqrt2$ and the coefficient $\tfrac{\sqrt2}4$ are the specific angles that realise the bisector rotation.
+\end{physics}
+
+\begin{theorem}[$\sigma$ is a nontrivial involution]\label{ch11:thm:sigmasq}
+$\sigma^2=1$ and $\sigma\ne1$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/TrialityGolay.lean}.
+\begin{leancode}
+/-- `σ² = 1`. -/
+theorem golaySigma_sq : golaySigma * golaySigma = 1
+
+theorem golaySigma_ne_one : golaySigma ≠ 1
+\end{leancode}
+
+\begin{physics}
+A rotation by $\pi$ squares to the identity, which is $\sigma^2=1$; and $\sigma\ne1$ because it is a genuine, nontrivial symmetry, exchanging currents that are distinct. Physically, $\sigma$ is the $\Z/2$ element of a hidden symmetry group, an extra involution beyond the visible ones, and the triality is the order-two generator that, together with the centraliser, assembles into the Monster.
+\end{physics}
+\emph{Proof.}  $(G(\chi z_0)G^{-1})^2=G(\chi z_0)^2G^{-1}=1$ since $(\chi z_0)^2=1$.  If $\sigma=1$ then
+$\chi z_0=1$; but $\chi z_0$ negates $e^{\alpha_0}$ ($\mathrm{par}(\alpha_0)=1$, $z_0(\alpha_0)=0$). \qed
+\begin{status}Unconditional; \lean{#print axioms golaySigma_sq}-clean.\end{status}
+
+\subsection{\texorpdfstring{$\sigma$}{sigma} on the currents: DGM (7.7)}
+
+\begin{theorem}[$\sigma$ exchanges the Cartan and the $e+f$ currents]\label{ch11:thm:sigmah}
+For every $j$: $\sigma\big(\alpha_j(-1)\mathbf 1\big)=e^{\alpha_j}+\varepsilon_je^{-\alpha_j}$, and
+$\sigma\big(e^{\alpha_j}+\varepsilon_je^{-\alpha_j}\big)=\alpha_j(-1)\mathbf 1$.
+\end{theorem}
+\begin{leancode}
+/-- **DGM (7.7) on the Cartan current**: `σ (α_j(−1)𝟙) = e^{α_j} + ε_j e^{−α_j}`. -/
+theorem golaySigma_hSt (j : Fin 24) :
+    golaySigma (hSt golayN (golayRoot j)) = tri j 1 0 (golayEps j)
+
+/-- `σ (e^{α_j} + ε_j e^{−α_j}) = α_j(−1)𝟙`. -/
+theorem golaySigma_tri_ef (j : Fin 24) :
+    golaySigma (tri j 1 0 (golayEps j)) = hSt golayN (golayRoot j)
+\end{leancode}
+(\leanpath{VOA/Moonshine/TrialityCurrents.lean}.)
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{tri j x₁ x₂ x₃ := vec3 golayN (golayRoot j) x₁ x₂ x₃}, so
+\lean{tri j 1 0 (golayEps j)} $=e^{\alpha_j}+\varepsilon_je^{-\alpha_j}$.  The zero mode of this state
+is $E_j+\varepsilon_j\cdot\varepsilon_jF_j=E_j+F_j$, i.e.\ $2J^{j2}_0$; the zero mode of
+$\alpha_j(-1)\mathbf 1$ is $H_j=2J^{j1}_0$.  So the theorem says $\sigma J^{j1}\sigma^{-1}=J^{j2}$,
+DGM (7.7).  No hypotheses.
+\end{dictionary}
+
+\begin{physics}
+In each $SU(2)_1$ factor, $\sigma$ swaps the Cartan current $\alpha_j(-1)\mathbf 1$ (the $J^3$-like current) with the current $e^{\alpha_j}+\varepsilon_je^{-\alpha_j}$ (the $J^1$-like one): a rotation of the three-dimensional space of currents by $\pi$ about the bisector of two axes exchanges them. This is the concrete content of triality on the weight-one states: it relates the current that acts as a charge (free-boson momentum) with a current that acts as a charge-changing vertex operator, something invisible in the free-field description, where those currents look different. The computation takes place in the three-dimensional span of $e,h,f$ in each coordinate and is the standard $SU(2)$ adjoint rotation.
+\end{physics}
+\emph{Proof.}  Everything happens in the three-dimensional span of $e,h,f$ in coordinate $j$: the
+factors $g_k$, $k\ne j$, act trivially there (\lean{rootExp_vec3_orth}), and $g_j$ and $\chi z_0$
+act by the explicit formulas of Section~\ref{ch11:sec:rootexp} ($\chi z_0$ negates $e,f$ and fixes
+$h$).  One exhibits
+\begin{equation*}
+  y=(2-2\sqrt2)e+\tfrac{\sqrt2}2h-\tfrac{\varepsilon(1+\sqrt2)}4f,\qquad
+  y'=(2\sqrt2-2)e+\tfrac{\sqrt2}2h+\tfrac{\varepsilon(1+\sqrt2)}4f
+\end{equation*}
+and checks, using only $(\sqrt2)^2=2$ and $\varepsilon^2=1$, that $Gy=h$, $Gy'=e+\varepsilon f$ and
+$(\chi z_0)y=y'$.  Then $\sigma h=G(\chi z_0)G^{-1}Gy=Gy'=e+\varepsilon f$.  The second statement
+follows from $\sigma^2=1$. \qed
+\begin{status}Unconditional; \lean{#print axioms golaySigma_hSt}: [\lean{propext},
+\lean{Classical.choice}, \lean{Quot.sound}].\end{status}
+
+\subsection{\texorpdfstring{$\Theta=\sigma\chi\sigma$}{Theta} is a lift of \texorpdfstring{$-1$}{-1}}
+
+\begin{definition}[$\Theta$, $K$, $V_N^{\langle\chi,\Theta\rangle}$]\label{ch11:def:golayTheta}
+$\Theta:=\sigma\chi\sigma$; $K:=\langle\chi,\Theta\rangle\le\Aut V_N$; and
+$V_N^K$ is the orbifold VOA (\lean{golayV0}).
+\end{definition}
+\noindent File \leanpath{VOA/Moonshine/TrialityGolay.lean}.
+\begin{leancode}
+/-- `Θ := σ χ σ` — the inner lift `∏ exp(iπ(E_j+F_j)/2)` of `−1` (DGM's `θ`, up to a character). -/
+noncomputable def golayTheta : Aut golayVOA := golaySigma * golayChi * golaySigma
+
+/-- `K = ⟨χ, Θ⟩`. -/
+noncomputable def golayK : Subgroup (Aut golayVOA) := Subgroup.closure {golayChi, golayTheta}
+
+/-- `V_N^{⟨χ,Θ⟩}` — DGM's `V₀⁺` (modulo the open identification of `Θ` with a lift of `−1`). -/
+noncomputable def golayV0 : VertexOperatorAlgebra (orbifold golayK).carrier := orbifoldVOA golayK
+\end{leancode}
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{Subgroup.closure S} is the subgroup generated by $S$.  The
+docstring's parenthetical ``modulo the open identification'' is stale: the identification is made
+by the next theorem and by Section~\ref{ch11:sec:bridge}.  Note that $\sigma\Theta\sigma=\chi$
+(\lean{golaySigma_conj_theta}) holds by definition and $\sigma^2=1$; the content is that $\Theta$ is
+a lift of $-1$.
+\end{dictionary}
+
+\begin{physics}
+$\Theta=\sigma\chi\sigma$ is the conjugate of the Cartan rotation by the triality: a rotation by $\pi$ about the $e+f$ axis, i.e.\ the image of the sign symmetry $\chi$ under the swap. $K=\langle\chi,\Theta\rangle$ is the group generated by these two commuting involutions (a Klein four-group in each factor), and $V_N^K$ is the $K$-orbifold, the subtheory neutral under both. It is the theory that the untwisted and twisted halves of the moonshine module share, and that $\sigma$ preserves.
+\end{physics}
+
+\begin{theorem}[$\Theta$ is a lift of $-1$]\label{ch11:thm:theta}
+(i) $\Theta(\alpha_j(-1)\mathbf 1)=-\alpha_j(-1)\mathbf 1$ for all $j$; hence $\Theta$ anticommutes with
+every Heisenberg mode.  (ii) $\Theta(F_\lambda)\subseteq F_{-\lambda}$ for every $\lambda\in N$.
+\end{theorem}
+\begin{leancode}
+/-- `Θ = σχσ` acts by `−1` on the Cartan currents. -/
+theorem golayTheta_hSt (j : Fin 24) :
+    golayTheta (hSt golayN (golayRoot j)) = -hSt golayN (golayRoot j)
+
+/-- **`Θ` maps the momentum sector `F_λ` into `F_{−λ}`.** -/
+theorem golayTheta_chargeSec (lam : golayN.carrier) {x : LatModuleGen golayN}
+    (hx : x ∈ chargeSec golayN lam) : golayTheta x ∈ chargeSec golayN (-lam)
+\end{leancode}
+(\leanpath{VOA/Moonshine/TrialityCurrents.lean}, \leanpath{TrialityTheta.lean}.)
+
+\begin{physics}
+$\Theta$ negates the Heisenberg currents $\alpha_j(-1)\mathbf 1$ and maps momentum $\lambda$ to $-\lambda$, so it is a lift of the lattice involution $-1$: the same kind of symmetry as $\theta$ of the Leech theory (negating each boson). Physically, $\sigma$ conjugates the charge parity $\chi$ into an operation acting on bosons as the reflection $\partial X\mapsto-\partial X$. This is the mechanism of ``triality'': it converts a sign on charges into a sign on the bosons, so the orbifold by the former looks like the orbifold by the latter (which is how twisted sectors appear). The precise scalars (cocycle-dependent) are the content of the proof.
+\end{physics}
+\emph{Proof.}  (i) $\sigma h_j=e_j+\varepsilon_jf_j$, $\chi$ negates $e_j,f_j$, and $\sigma$ maps
+$-(e_j+\varepsilon_jf_j)$ back to $-h_j$.  An automorphism negating the state $h$ negates all modes of
+$Y(h,z)$ under conjugation.  (ii) The zero modes $H_j$ act on $F_\lambda$ by $\lambda_j$, these $24$
+numbers determine $\lambda$, and $H_j\Theta=-\Theta H_j$ by (i); so $\Theta F_\lambda$ lies in the
+joint eigenspace with eigenvalues $-\lambda_j$, which is $F_{-\lambda}$. \qed
+\begin{status}Unconditional; \lean{#print axioms golayTheta_chargeSec}-clean.  The scalars
+$c_\lambda$ with $\Theta e^\lambda=c_\lambda e^{-\lambda}$ are determined in Section~\ref{ch11:sec:bridge}
+(on $\Lambda_0$).\end{status}
+
+\begin{theorem}[$\sigma$ restricts to $V_N^K$]\label{ch11:thm:sigma0}
+$\sigma$ normalises $K$, hence restricts to an automorphism $\sigma_0$ of $V_N^K$; $\sigma_0^2=1$ and
+$\sigma_0\ne1$.  More generally, an involution normalising a subgroup $G$ restricts to an
+automorphism of $W^G$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/TrialityRoot.lean}.
+\noindent File \leanpath{VOA/Moonshine/TrialityGolay.lean}.
+\begin{leancode}
+/-- **An involution normalising `G` is an automorphism of the orbifold VOA `V^G`.** -/
+noncomputable def orbifoldInvol (G : Subgroup (Aut W)) {σ : Aut W} (hσ : σ * σ = 1)
+    (hG : ∀ g ∈ G, σ * g * σ ∈ G) : Aut (orbifoldVOA G) where
+  toLinearEquiv := LinearEquiv.ofInvolutive (orbifoldInvolMap G hσ hG) (orbifoldInvolMap_invol G hσ hG)
+  map_smul' u n v := Subtype.ext (σ.map_smul (u : 𝒱) n v)
+  map_vacuum := Subtype.ext σ.map_vacuum
+  map_omega := Subtype.ext σ.map_omega
+
+/-- **The triality `σ₀` on `V_N^{⟨χ,Θ⟩}`.** -/
+noncomputable def golaySigma0 : Aut golayV0 :=
+  orbifoldInvol golayK golaySigma_sq golaySigma_normalises
+
+/-- `σ₀² = 1`. -/
+theorem golaySigma0_sq : golaySigma0 * golaySigma0 = 1
+
+/-- **`σ₀ ≠ 1`**: the triality is a nontrivial involution of `V_N^{⟨χ,Θ⟩}`. -/
+theorem golaySigma0_ne_one : golaySigma0 ≠ 1
+\end{leancode}
+\begin{dictionary}
+\textbf{Fidelity check.}  Hypotheses of \lean{orbifoldInvol}: $\sigma^2=1$ and $\sigma G\sigma\subseteq G$.
+\lean{golaySigma_normalises} supplies the latter for $K$ (conjugation by $\sigma$ swaps the generators
+$\chi\leftrightarrow\Theta$).  The underlying map of \lean{golaySigma0} on $v\in V_N^K$ is $\sigma v$
+(\lean{golaySigma0_coe}).  The nontriviality is the important clause: an ``automorphism'' that is
+secretly the identity would make everything that follows empty.
+\end{dictionary}
+
+\begin{physics}
+Because $\sigma$ normalises $K$ (it exchanges $\chi$ and $\Theta$), it descends to the $K$-neutral subtheory $V_N^K$ as an automorphism: a symmetry that permutes the gauge group elements preserves the gauge-invariant states. It is nontrivial there. This is the general principle that an automorphism normalising the orbifold group acts on the orbifold: in the physical picture, the triality survives the projection onto $K$-neutral states, and acts as an extra symmetry of $V_N^K$ not coming from a lattice automorphism.
+\end{physics}
+\emph{Proof.}  If $v$ is $K$-fixed and $k\in K$ then $k\sigma v=\sigma(\sigma k\sigma)v=\sigma v$.
+For $\sigma_0\ne1$: the state $x=h_{0(-1)}h_1$ (i.e.\ $\alpha_0(-1)\alpha_1(-1)\mathbf 1$) is in $F_0$
+(fixed by $\chi$) and $\Theta x=(-h_0)_{(-1)}(-h_1)=x$, so $x\in V_N^K$.  But
+$\sigma x=(e_0+\varepsilon_0f_0)_{(-1)}(e_1+\varepsilon_1f_1)$ has momentum-$(\alpha_0+\alpha_1)$ component
+$e^{\alpha_0}_{(-1)}e^{\alpha_1}=\varepsilon(\alpha_0,\alpha_1)e^{\alpha_0+\alpha_1}\ne0$ (as
+$\langle\alpha_0,\alpha_1\rangle=0$), while $x$ has none. \qed
+\begin{status}Unconditional; \lean{#print axioms golaySigma0_ne_one}: [\lean{propext},
+\lean{Classical.choice}, \lean{Quot.sound}].\end{status}
+
+\begin{warning}
+\textbf{The unmodified DGM (7.5) triality is the wrong one --- the $6372$ versus $2324$ certificate.}
+For $d=24$ DGM's modification (7.8) (multiplying, in one coordinate $l$, by the central element
+$z_l=(-1)^{x_l}$) is \emph{mandatory}, because $24/8$ is odd.  The project established this by a
+trace computation (paper derivation plus Python with the real Golay code,
+\leanpath{scripts/moonshine/numerics/golay.py}, \leanpath{tri.py}; \emph{numerical evidence and paper
+argument only, not Lean}).
+
+\emph{The trace.}  $(V_N)_2$ decomposes under $SU(2)^{24}$ as $24\cdot(3+1)\oplus\binom{24}2\cdot9
+\oplus759\cdot2^8$ $(=196884)$.  Projecting onto $V_N^K$ with $\tfrac14\sum_{k\in K}k$ (legitimate
+because $\sigma$ normalises $K$), and using the $SU(2)$ traces of the rotations involved, one finds
+\begin{equation*}
+  \tr\big(\sigma\,|\,(V_N^K)_2\big)=300+8\sum_{\text{octads }c}(-1)^{c\cdot u},
+\end{equation*}
+where $u\in\mathbb F_2^{24}/C$ encodes the modification: $u=0$ for (7.5), $u=e_l$ for (7.8).  The
+sum over the $759$ octads is $759$ for $u=0$ and $506-253=253$ for $u=e_l$ ($253$ octads contain a
+given point).  Hence
+\begin{equation*}
+  \tr\sigma_{(7.5)}=300+8\cdot759=6372,\qquad \tr\sigma_{(7.8)}=300+8\cdot253=2324 .
+\end{equation*}
+
+\emph{Why $6372$ is impossible} (a paper argument, using $\Aut\Vnat=\mathbb M$ and the Monster
+character table from the literature; neither is formalized).  If $\sigma$ extended to $\tilde\sigma\in\Aut\Vnat=\mathbb M$ with
+$\chelVz=(\Vnat)^E$ for a Klein four-group $E$, then $\tilde\sigma$ normalises $E$, fixes one
+$k_0\in E\setminus1$ and swaps the other two, and
+$\tr(\sigma|(\chelVz)_2)=\tfrac14(\tr\tilde\sigma+\tr\tilde\sigma k_0+2\tr\tilde\sigma k_1)$ on
+$\Vnat_2=1+196883$, with $\tilde\sigma,\tilde\sigma k_0$ involutions and $\tilde\sigma k_1$ of order
+four.  From the Monster character table the largest possible value is
+$\tfrac14(4372+4372+2\cdot276)=2324$ (classes 2A, 2A, 4A).  So $6372$ cannot be the trace of a Monster
+element: the unmodified $\sigma$ is \emph{not} the restriction of FLM's triality.  The modified value
+saturates the bound.  The library therefore defines $\sigma$ with $\chi z_0$, not $\chi$
+(a recorded dead end, Section~\ref{ch15:sec:6372}; Notes/M8GluingPlan.md, correction~6).  At module level the
+project also found numerically that the (7.5) $\sigma$ maps $\chelVt$ to the wrong twisted summand,
+while (7.8) gives a residual of $4\cdot10^{-15}$ over $15000$ identities (status ``M8g twisted half'').
+\end{warning}
+
+%======================================================================
+\section{The bridge \texorpdfstring{$V_N^K\cong V_0^+$}{V\_N\^{}K = V0+} and the triality on \texorpdfstring{$V_0^+$}{V0+}}\label{ch11:sec:bridge}
+%======================================================================
+
+$\sigma_0$ lives on $V_N^K$, a subalgebra of the lattice VOA of $N$; $\chelVz$ is a subalgebra of the
+lattice VOA of $\Leech$.  The two ambient algebras have different lattices, different cocycles and
+different Fock coordinates.  Both contain a copy of $V_{\Lambda_0}$, and the functoriality theorem of
+Chapter~\ref{ch:03} (Theorem~\ref{ch03:thm:latMorph}) produces both copies from one abstract
+$V_{\Lambda_0}$.
+
+\subsection{The abstract \texorpdfstring{$\Lambda_0$}{Lambda0} and its two embeddings}
+
+\begin{leancode}
+/-- `Λ₀ ≅ A` as a `VOA.IntegralLattice`. -/
+noncomputable abbrev lam0 : VOA.IntegralLattice.{0} := ofEbeling Leech.subALattice
+
+/-- `A ⊆ N(A₁²⁴)`. -/
+noncomputable def inclN : lam0.carrier →ₗ[ℤ] golayN.carrier := Leech.inclG
+
+/-- `A → Λ`, `a ↦ 2a` (image `Λ₀`). -/
+noncomputable def inclΛ : lam0.carrier →ₗ[ℤ] leech.carrier := Leech.inclL
+
+/-- The lattice VOA `V_{Λ₀}`. -/
+noncomputable def lam0VOA : VertexOperatorAlgebra (LatModuleGen lam0) :=
+  latticeVOAGen lam0 lam0_even lam0_posDef
+
+/-- `bridgeΛ : V_{Λ₀} → V_Λ`. -/
+noncomputable def bridgeΛ : LatModuleGen lam0 →ₗ[ℂ] LatModuleGen leech := latMorph lam0 leech inclΛ
+
+/-- `bridgeN : V_{Λ₀} → V_N`. -/
+noncomputable def bridgeN : LatModuleGen lam0 →ₗ[ℂ] LatModuleGen golayN := latMorph lam0 golayN inclN
+\end{leancode}
+(\leanpath{VOA/Moonshine/FrameBridge.lean}.)
+
+\begin{theorem}[The two bridges]\label{ch11:thm:bridges}
+\lean{bridgeΛ} and \lean{bridgeN} are injective VOA homomorphisms sending $\omega$ to $\omega$; the image
+of \lean{bridgeΛ} consists of the states of $V_\Leech$ with all momenta in $\Lambda_0$, and the image of
+\lean{bridgeN} is $V_N^\chi$; and \lean{bridgeΛ} intertwines the standard involutions $\theta$.
+\end{theorem}
+\begin{leancode}
+theorem bridgeΛ_isVOAHom : IsVOAHom lam0VOA leechVOA bridgeΛ :=
+  latMorph_isVOAHom lam0 leech inclΛ lam0_posDef leech_posDef inclΛ_form lam0_even leech_even
+
+theorem bridgeN_isVOAHom : IsVOAHom lam0VOA golayVOA bridgeN :=
+  latMorph_isVOAHom lam0 golayN inclN lam0_posDef golayN_posDef inclN_form lam0_even golayN_even
+
+theorem bridgeΛ_omega : bridgeΛ lam0VOA.conformalVector = leechVOA.conformalVector :=
+  latMorph_omega lam0 leech inclΛ lam0_posDef leech_posDef inclΛ_form rank_lam0_leech
+
+theorem bridgeΛ_injective : Function.Injective bridgeΛ :=
+  latMorph_injective lam0 leech inclΛ lam0_posDef leech_posDef inclΛ_form rank_lam0_leech
+
+/-- The image of `bridgeΛ` is the space of states with all momenta in `Λ₀`. -/
+theorem mem_range_bridgeΛ_iff (x : LatModuleGen leech) :
+    x ∈ LinearMap.range bridgeΛ ↔ ∀ γ, γ ∉ lambda0 → coordEα leech γ x = 0
+
+/-- The image of `bridgeN` is the `χ`-fixed subspace `V_N^χ`. -/
+theorem mem_range_bridgeN_iff (x : LatModuleGen golayN) :
+    x ∈ LinearMap.range bridgeN ↔ golayChi x = x
+
+theorem bridgeΛ_thetaLat (x : LatModuleGen lam0) :
+    bridgeΛ (thetaLat lam0 x) = thetaLat leech (bridgeΛ x)
+\end{leancode}
+\begin{dictionary}
+\textbf{Fidelity check.}  The proofs shown are one-line instantiations of the functoriality theorem
+of Chapter~\ref{ch:03} (Theorem~\ref{ch03:thm:latMorph}), whose hypotheses --- both lattices positive
+definite and even, the map an isometry (\lean{inclΛ_form}, \lean{inclN_form}), and equal ranks for
+$\omega$ and injectivity (\lean{rank_lam0_leech}: $24=24$) --- are all discharged here.  The
+analogous \lean{bridgeN_omega}, \lean{bridgeN_injective}, \lean{bridgeN_thetaLat} hold too.
+\lean{latMorph} includes a cocycle-comparison coboundary with values in $\Z/4$
+(Remark~\ref{ch03:rem:Z4}); a $\pm1$-valued one would commute with $\theta$ only up to a
+character, and then \lean{bridgeΛ_thetaLat} would fail.
+\end{dictionary}
+
+\begin{physics}
+The two bridges embed the frame subtheory $V_{\Lambda_0}$ into both the Leech theory (the states with all momenta in $\Lambda_0$) and the Niemeier theory (the $\chi$-neutral states of $V_N$). They realise the statement that the Leech and $A_1^{24}$ theories share a common subtheory, the frame theory $V_{\Lambda_0}$; the $\theta$-involutions agree under the Leech bridge. This is what allows the triality, first constructed on the $A_1^{24}$ side, to be moved to the Leech side.
+\end{physics}
+
+\begin{theorem}[$V_{\Lambda_0}^+\cong\chelVz$]\label{ch11:thm:lam0plus}
+\lean{bridgeΛ} induces a linear bijection $V_{\Lambda_0}^+=V_{\Lambda_0}^{\langle\theta\rangle}\to\chelVz$
+which is a VOA homomorphism preserving $\omega$.
+\end{theorem}
+\begin{leancode}
+/-- **`V_{Λ₀}⁺ ≃ V₀⁺`** as vector spaces (a VOA isomorphism by `lam0PlusEquiv_isVOAHom`). -/
+noncomputable def lam0PlusEquiv : Lam0PlusCarrier ≃ₗ[ℂ] V0Sub.carrier :=
+  LinearEquiv.ofBijective lam0PlusToV0 ⟨lam0PlusToV0_injective, lam0PlusToV0_surjective⟩
+
+/-- `lam0PlusEquiv` is a homomorphism of VOAs `V_{Λ₀}⁺ → V₀⁺`. -/
+theorem lam0PlusEquiv_isVOAHom : IsVOAHom lam0Plus V0P lam0PlusEquiv.toLinearMap
+
+theorem lam0PlusEquiv_omega : lam0PlusEquiv lam0Plus.conformalVector = V0P.conformalVector
+\end{leancode}
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{Lam0PlusCarrier} is the carrier of $V_{\Lambda_0}^+$
+(the $\langle\theta\rangle$-orbifold \lean{lam0Plus} of \lean{lam0VOA}); \lean{V0Sub.carrier} that of
+\lean{V0P}.  \lean{lam0PlusEquiv_coe} records that the map is \lean{bridgeΛ}.  Bijective $+$
+\lean{IsVOAHom} $+$ $\omega$-preserving $=$ isomorphism of VOAs.  This settles the open item
+``identify \lean{V0P} with the $\theta$-orbifold of $V_{\Lambda_0}$'' recorded in the docstring of
+\leanpath{FrameSectors.lean} (stale there).
+\end{dictionary}
+
+\begin{physics}
+The $\theta$-invariant part of the abstract frame lattice theory $V_{\Lambda_0}$ is isomorphic, as a vertex operator algebra with the same stress tensor, to the neutral frame sector $\chelVz$ of the Leech theory: ``the common subtheory'' is the same on both sides. In CFT terms, the neutral sector of the Leech theory is an orbifold of a smaller lattice theory, identified through the isomorphism of charge lattices.
+\end{physics}
+\emph{Proof.}  \lean{bridgeΛ} is injective with image the momentum-$\Lambda_0$ states, and commutes with
+$\theta$; so it maps $\theta$-fixed states of $V_{\Lambda_0}$ bijectively onto $\theta$-fixed states of
+$V_\Leech$ with momenta in $\Lambda_0$, which is $\chelVz$. \qed
+\begin{status}Unconditional; \lean{#print axioms lam0PlusEquiv_isVOAHom}-clean.\end{status}
+
+\subsection{Pulling back \texorpdfstring{$\Theta$}{Theta}: the scalars \texorpdfstring{$c_\lambda$}{c\_lambda}}
+
+On the $N$ side the situation is subtler: $V_N^K=(V_N^\chi)^\Theta=\mathrm{bridgeN}(V_{\Lambda_0})^\Theta$,
+and $\Theta$ is \emph{some} lift of $-1$, not obviously the standard $\theta$.
+
+\begin{theorem}[$\Theta$ on $V_{\Lambda_0}$ is conjugate to $\theta$]\label{ch11:thm:psi}
+$\chi\Theta=\Theta\chi$, so $\Theta$ preserves $\mathrm{bridgeN}(V_{\Lambda_0})$ and pulls back to
+$\psi\in\Aut V_{\Lambda_0}$.  There is a character $e:\Lambda_0\to\C^\times$ with
+$\psi=g_e\theta g_e^{-1}$, where $g_e(p\otimes e^\lambda)=e(\lambda)p\otimes e^\lambda$; consequently
+$\Theta e^\lambda=e(-\lambda)e(\lambda)^{-1}e^{-\lambda}$ on $V_{\Lambda_0}$ (in the \lean{bridgeN}
+normalisation).
+\end{theorem}
+\begin{leancode}
+/-- `ψ = bridgeN⁻¹ Θ bridgeN ∈ Aut(V_{Λ₀})`. -/
+noncomputable def lam0Psi : Aut lam0VOA :=
+  Aut.pullback bridgeN bridgeN_injective golayTheta golayTheta_range_bridgeN bridgeN_isVOAHom
+    bridgeN_omega
+
+theorem exists_golayE :
+    ∃ e : lam0.carrier →+ Additive ℂˣ,
+      ∀ x, lam0Psi x = charLat lam0 e (thetaLat lam0 (charLat lam0 (-e) x)) :=
+  lift_eq_conj_theta' lam0 lam0_even lam0_posDef lam0Psi lam0Psi_hSt lam0Psi_chargeSec
+
+/-- **The character conjugating `θ` to `ψ`** (chosen). -/
+noncomputable def golayE : lam0.carrier →+ Additive ℂˣ := exists_golayE.choose
+
+/-- **The scalars `c_λ`**: `Θ` acts on the charged vacua of `V_{Λ₀} ⊆ V_N` by
+`Θ e^λ = e(λ)⁻² e^{−λ}` (in the `bridgeN` normalisation). -/
+theorem lam0Psi_latChargeGen (γ : lam0.carrier) :
+    lam0Psi (latChargeGen lam0 γ)
+      = (charVal lam0 golayE (-γ) * charVal lam0 (-golayE) γ) • latChargeGen lam0 (-γ)
+\end{leancode}
+(\leanpath{VOA/Moonshine/FrameBridgeGolay.lean}.)
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{Aut.pullback} (Chapter~\ref{ch:03}) turns an automorphism preserving the
+image of an injective VOA homomorphism into an automorphism of the source; its inputs here are
+injectivity of \lean{bridgeN}, the fact that $\Theta$ maps its image onto itself
+(\lean{golayTheta_range_bridgeN}, from $\chi\Theta=\Theta\chi$), and the homomorphism and $\omega$
+properties.  \lean{lam0.carrier →+ Additive ℂˣ} is a homomorphism $\Lambda_0\to\C^\times$ written
+additively; \lean{charLat lam0 e} is $g_e$ (Definition~\ref{ch03:def:charAut}) and \lean{charVal lam0 e λ}
+$=e(\lambda)$.  The rigidity theorem \lean{lift_eq_conj_theta'} (Theorem~\ref{ch03:thm:rigidity})
+requires exactly that $\psi$ negate every $\alpha(-1)\mathbf 1$ (\lean{lam0Psi_hSt}) and map $F_\lambda$ to
+$F_{-\lambda}$ (\lean{lam0Psi_chargeSec}); both come from Theorem~\ref{ch11:thm:theta} (for general
+$\mu$ one writes $2\mu=\sum_j\mu_j\alpha_j$).  The scalar in \lean{lam0Psi_latChargeGen} is
+$e(-\lambda)\cdot e(\lambda)^{-1}=e(\lambda)^{-2}$, matching the docstring.  \lean{golayE} is chosen by
+\lean{Classical.choose}: an existence statement, not a computation.
+\end{dictionary}
+
+\begin{physics}
+On the common subtheory $V_{\Lambda_0}$, the lattice involution $\Theta$ coming from the $A_1^{24}$ side differs from the standard $\theta$ by a rescaling of the charged states by phases $e(\lambda)$, i.e.\ by a gauge transformation $g_e$ (a momentum-dependent phase, a conjugation by $e^{i\hat p\cdot\phi}$ in the free-field language). This is exactly the statement that $\Theta$ and $\theta$ are the same symmetry in different cocycle gauges, so their orbifolds are isomorphic; it is what allows the $K$-orbifold of $V_N$ to be identified with $V_{\Lambda_0}^+$ (cocycle bookkeeping, not new physics).
+\end{physics}
+\emph{Proof.}  $\chi\Theta=\Theta\chi$ because $\Theta F_\lambda\subseteq F_{-\lambda}$ and
+$\mathrm{par}(-\lambda)=\mathrm{par}(\lambda)$.  For the conjugacy, $\psi\theta$ fixes every Heisenberg
+state and every momentum sector, hence acts on $F_\lambda$ by a scalar $d(\lambda)$ (a VOA automorphism
+fixing the Heisenberg subalgebra and preserving $F_\lambda$ is a scalar there, $F_\lambda$ being an
+irreducible Heisenberg module generated by $e^\lambda$); multiplicativity of products makes $d$ a
+character, and over $\C$ a character $d$ has a ``square root'' character $e$ with $d(\lambda)=
+e(\lambda)e(-\lambda)^{-1}$, which gives $\psi=g_e\theta g_e^{-1}$ (details in
+Section~\ref{ch03:sec:rigidity}). \qed
+\begin{status}Unconditional; \lean{#print axioms lam0Psi_eq}: [\lean{propext}, \lean{Classical.choice},
+\lean{Quot.sound}].\end{status}
+
+\subsection{The isomorphism and the transported triality}
+
+\begin{theorem}[$V_N^K\cong\chelVz$]\label{ch11:thm:golayToV0}
+The map $z\mapsto\mathrm{bridgeN}(g_ez)$ is a VOA isomorphism $V_{\Lambda_0}^+\to V_N^K$; composing its
+inverse with Theorem~\ref{ch11:thm:lam0plus} gives a VOA isomorphism $V_N^K\to\chelVz$ preserving $\omega$.
+\end{theorem}
+\begin{leancode}
+/-- **`golayV0 ≃ V0P`** (`V_N^{⟨χ,Θ⟩} ≅ V₀⁺`). -/
+noncomputable def golayToV0 : (orbifold golayK).carrier ≃ₗ[ℂ] V0Sub.carrier :=
+  lam0PlusGolayEquiv.symm.trans lam0PlusEquiv
+
+/-- `golayToV0` is a homomorphism of vertex operator algebras. -/
+theorem golayToV0_isVOAHom : IsVOAHom golayV0 V0P golayToV0.toLinearMap
+
+theorem golayToV0_omega : golayToV0 golayV0.conformalVector = V0P.conformalVector
+\end{leancode}
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{lam0PlusGolayEquiv} is the bijection $V_{\Lambda_0}^+\to V_N^K$,
+$z\mapsto\mathrm{bridgeN}(g_ez)$; \lean{.symm.trans} composes its inverse with \lean{lam0PlusEquiv}.
+Linear bijection $+$ \lean{IsVOAHom} $+$ $\omega$ $=$ VOA isomorphism.  Exactly the theorem.
+\end{dictionary}
+
+\begin{physics}
+The orbifold $V_N^K$ of the Niemeier theory is isomorphic to the neutral frame sector $\chelVz$ of the Leech theory, as vertex operator algebras with the same stress tensor: two different-looking lattice-CFT orbifolds (one from $A_1^{24}$, one from Leech) are the same chiral algebra. This is the physical content of the statement that the two theories are connected by orbifolding, and sets up the transport of $\sigma$ to the Leech side. Physical expectations (orbifold equivalence) are heuristics; the isomorphism is established by composing the explicit bridges and gauge transformation.
+\end{physics}
+\emph{Proof.}  $\mathrm{bridgeN}(g_ez)$ is $\chi$-fixed (in the image of \lean{bridgeN}) and
+$\Theta\,\mathrm{bridgeN}(g_ez)=\mathrm{bridgeN}(\psi g_ez)=\mathrm{bridgeN}(g_e\theta z)=\mathrm{bridgeN}(g_ez)$
+for $\theta z=z$; conversely every element of $V_N^K$ arises so.  $g_e$ is an automorphism of
+$V_{\Lambda_0}$ and \lean{bridgeN} a VOA homomorphism, so the composite is one. \qed
+
+\begin{definition}[Transport of automorphisms]\label{ch11:def:transport}
+For a VOA isomorphism $E:V\to W$ (linear bijection, \lean{IsVOAHom}, $E\omega=\omega$) and $g\in\Aut V$,
+$\mathrm{transport}_E(g)=EgE^{-1}\in\Aut W$.
+\end{definition}
+\begin{leancode}
+/-- **Transport of automorphisms** along a VOA isomorphism `E`: `g ↦ E g E⁻¹`. -/
+noncomputable def Aut.transport (E : 𝒱 ≃ₗ[ℂ] 𝒲) (hE : IsVOAHom V W E.toLinearMap)
+    (hω : E V.conformalVector = W.conformalVector) (g : Aut V) : Aut W where
+  toLinearEquiv := E.symm.trans (g.toLinearEquiv.trans E)
+\end{leancode}
+
+\begin{physics}
+Transport of structure: given an isomorphism of chiral algebras, a symmetry of one side becomes a symmetry of the other by conjugation. Physically this is a change of description (``relabelling the fields'') under which the symmetry acts identically, and is needed here to turn the symmetry $\sigma_0$ of the $A_1^{24}$-side orbifold into a symmetry of the Leech-side $\chelVz$.
+\end{physics}
+It is multiplicative, sends $1$ to $1$ and is injective (\lean{Aut.transport_mul}, \lean{Aut.transport_one} and
+\lean{Aut.transport_injective}) --- immediate from $E(gh)E^{-1}=
+(EgE^{-1})(EhE^{-1})$.
+
+\begin{theorem}[The triality on $\chelVz$]\label{ch11:thm:v0Sigma}
+$\sigma_{\chelVz}:=\mathrm{transport}(\sigma_0)$ is an automorphism of the VOA $\chelVz$ with
+$\sigma_{\chelVz}^2=1$, $\sigma_{\chelVz}\ne1$, and $\mathrm{golayToV0}\circ\sigma_0=\sigma_{\chelVz}\circ\mathrm{golayToV0}$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/FrameBridgeGolay.lean}.
+\begin{leancode}
+/-- **The FLM/DGM triality on `V₀⁺ = V0P`**, transported from `golaySigma0`. -/
+noncomputable def v0Sigma : Aut V0P :=
+  Aut.transport golayToV0 golayToV0_isVOAHom golayToV0_omega golaySigma0
+
+/-- `golayToV0 ∘ σ₀ = v0Sigma ∘ golayToV0`. -/
+theorem golayToV0_sigma (x : (orbifold golayK).carrier) :
+    golayToV0 (golaySigma0 x) = v0Sigma (golayToV0 x)
+
+/-- `v0Sigma² = 1`. -/
+theorem v0Sigma_sq : v0Sigma * v0Sigma = 1
+
+/-- `v0Sigma ≠ 1`. -/
+theorem v0Sigma_ne_one : v0Sigma ≠ 1
+\end{leancode}
+\begin{dictionary}
+\textbf{Fidelity check.}  \lean{Aut V0P} is the group of automorphisms of the VOA $\chelVz$ (all products,
+$\mathbf 1$, $\omega$).  The definition is a one-line transport and is shown in full.  The three
+theorems are exactly the involution, nontriviality and intertwining clauses.  How could this have been
+vacuous?  (a) If $\sigma_0$ were $1$ --- excluded by \lean{golaySigma0_ne_one} and injectivity of
+transport.  (b) If the isomorphism \lean{golayToV0} were not a VOA isomorphism --- it is
+(Theorem~\ref{ch11:thm:golayToV0}).  (c) If $\sigma$ were the wrong involution (e.g.\ DGM (7.5)) ---
+not excluded by any Lean statement of this chapter; the warning above explains the choice, and
+Chapters~\ref{ch:12}--\ref{ch:14} confirm it by actually extending $\sigma$ to $\Vnat$.
+\end{dictionary}
+
+\begin{physics}
+This is the untwisted triality: an order-two automorphism of the frame subtheory $\chelVz$ of the moonshine module that is not visible from the lattice description, being built from an $SU(2)$ rotation on the $A_1^{24}$ side. It is the hidden symmetry that the Monster requires: the centraliser $2^{1+24}.Co_1$ of the $2B$ involution is visible in the Leech-lattice construction, and adjoining $\sigma$ generates the full Monster; consistency of the moonshine module as a vertex operator algebra demands the extension of $\sigma$ to the twisted sectors, which exchanges the odd untwisted sector with the twisted sector $T_0^+$ (the exchange of untwisted and twisted sectors of the orbifold by $\theta$). This chapter constructs only its action on $\chelVz$; that the extension exists and that it gives the missing locality are shown in Chapters~\ref{ch:12}--\ref{ch:14}. The identification of this $\sigma$ with a Monster element is part of the physical (heuristic) picture, not of what is proved here.
+\end{physics}
+\begin{status}Unconditional; \lean{#print axioms v0Sigma_sq}, \lean{v0Sigma_ne_one}: [\lean{propext},
+\lean{Classical.choice}, \lean{Quot.sound}] (re-run for this chapter).  No \lean{VOA.pbw}.
+\textbf{Not stated here:} what $\sigma$ does to the sectors of $V_\Leech^+$ outside $\chelVz$ --- those
+are not in $\chelVz$; the twisted extension is Chapters~\ref{ch:12}--\ref{ch:13}.\end{status}
+
+\begin{warning}
+\textbf{\lean{golayE} is not determined, and with it the sector pattern.}  The character \lean{golayE}
+is chosen by \lean{Classical.choose} and is pinned only up to a character of the form $e_\beta$;
+replacing it changes the isomorphism \lean{golayToV0} by an automorphism of $\chelVz$, hence
+\lean{v0Sigma} by a conjugation, and swaps which twisted frame sector $T^+_{(s)}$ is paired with
+$\chelVt$ by the extended $\sigma$ (finding \lean{golayE_not_determined}, Notes/M8GluingPlan.md).
+Downstream statements are therefore formulated with $\exists\,s$.  This is a feature of the
+definitions, not an error, but it means no Lean statement asserts ``$T^+_{(0)}$ is FLM's $T_0^+$''.
+\end{warning}
+
+%======================================================================
+\section{Summary: what this chapter gives the rest of the proof}\label{ch11:sec:summary}
+%======================================================================
+
+\begin{enumerate}
+  \item A decomposition $\Vnat=\chelVz\oplus\chelVt\oplus T^+_{(0)}\oplus T^+_{(1)}$ into
+  $\chelVz$-modules, with $\Z/2$-graded products on the untwisted side
+  (Theorems~\ref{ch11:thm:sectors}, \ref{ch11:thm:leechT}, \ref{ch11:thm:cyclicTP}), and weight-two
+  dimensions $49428$, $49152$, $24\cdot2048$, $24\cdot2048$.
+  \item Explicit cyclic vectors: $\mathbf 1$, $e^\beta+e^{-\beta}$, $h_0(-\tfrac12)\mathbf 1\otimes t_0$
+  (Theorems~\ref{ch11:thm:cyclicV0}, \ref{ch11:thm:cyclicV3}, \ref{ch11:thm:cyclicTP}).  These make
+  $\sigma$-twisted module maps out of each sector determined by one value.
+  \item A nontrivial involutive automorphism \lean{v0Sigma} of $\chelVz$, built from the explicit
+  (7.8)-modified triality of $V_N$ (Theorem~\ref{ch11:thm:v0Sigma}).
+\end{enumerate}
+Chapter~\ref{ch:12} uses these to reduce the existence of $\sigma$ on $\chelVt\to T^+$ and on $T^+\to T^+$
+to finite top-level statements; Chapter~\ref{ch:13} proves them; Chapter~\ref{ch:14} proves the
+conjugation identity and deduces \eqref{ch11:eq:423}.
+
+%======================================================================
+\section{Referee's checklist}\label{ch11:sec:checklist}
+%======================================================================
+
+All headline declarations below were re-audited for this chapter: \texttt{lake build} of the chapter's
+modules completed successfully (4205 jobs), and \texttt{\#print axioms} run through \texttt{lake env lean
+-DmaxSynthPendingDepth=3} on a scratch file importing them reported, for each of the 27 names
+audited,
+\begin{plaincode}
+'VOA.Moonshine.v0Sigma_ne_one' depends on axioms: [propext, Classical.choice, Quot.sound]
+\end{plaincode}
+(and identically for the others).  None uses \lean{VOA.pbw}.
+
+\begingroup\small\sloppy
+\begin{longtable}{>{\raggedright\arraybackslash}p{3.6cm}>{\raggedright\arraybackslash}p{5.2cm}
+>{\raggedright\arraybackslash}p{3.0cm}>{\raggedright\arraybackslash}p{2.2cm}}
+\toprule
+Lean declaration & Intended meaning & Hypotheses & Status / check\\
+\midrule\endhead
+\lean{lambda0}, \lean{card_quotient_lambda0} & $\Lambda_0=\ker\beta$, index $2$ & -- & def.; uncond.;
+Prop.~\ref{ch11:prop:index}\\
+\lean{lambda0Equiv(_form)} & $a\mapsto2a$, $A\cong\Lambda_0$ isometric & -- & uncond.;
+Prop.~\ref{ch11:prop:lambda0equiv}\\
+\lean{frameSector}, \lean{mem_frameSector_zero_iff}, \lean{mem_frameSector_one_iff} & $\chelVz$, $\chelVt$ by momenta & -- &
+def.; uncond.; Def.~\ref{ch11:def:framesector}\\
+\lean{frameSector_isInternal}, \lean{frameSector_smul_mem} & $V_\Leech^+=\chelVz\oplus\chelVt$, $\Z/2$-graded
+products & -- & uncond.; Thm~\ref{ch11:thm:sectors}\\
+\lean{V0P}, \lean{V0P_centralCharge} & $\chelVz$ is a VOA, $c=24$ & -- & uncond.; Thm~\ref{ch11:thm:V0P}\\
+\lean{finrank_V0_grading_two}, \lean{finrank_V3_grading_two} & $49428$, $49152$ & -- & uncond.;
+Cor.~\ref{ch11:cor:wt2}\\
+\lean{card_normFour_frameChar_one} & $98304$ odd norm-4 vectors & -- & uncond.; Thm~\ref{ch11:thm:oddfour}\\
+\lean{frameJ}, \lean{frameT_isCompl}, \lean{eT_mem_frameT}, \lean{finrank_frameT_eq} & $J=c^{-1}e_w$,
+$T=T_+\oplus T_-$, $e_\alpha$ shifts by $\chi(\alpha)$ & \lean{hw}, \lean{hu} & uncond.;
+Thm~\ref{ch11:thm:frameT}\\
+\lean{finrank_leechFrameT_plus}, \lean{finrank_leechFrameT_minus} & $\dim T_\pm=2048$ & -- & uncond.; Thm~\ref{ch11:thm:leechT}\\
+\lean{mem_span_iterate_of_vacuum} & vacuum trick & $c\ne0$, $a_{(k)}b=c\mathbf 1$, $a_{(j)}b=0$ ($j>k$) &
+uncond.; Thm~\ref{ch11:thm:vacuumtrick}\\
+\lean{cyclic_V0}, \lean{span_smul_frameX0}, \lean{cyclic_V3} & $\chelVz$, $\chelVt$ cyclic & $\beta\notin\Lambda_0$
+& uncond.; Thms~\ref{ch11:thm:cyclicV0}, \ref{ch11:thm:cyclicV3}\\
+\lean{orbitSpan}, \lean{YM_mem_orbitSpan} & orbit spans are $A$-stable & \lean{hA}, \lean{hg},
+\lean{hgg} & uncond.; Thm~\ref{ch11:thm:orbitspan}\\
+\lean{mem_span_plus_of_mem_orbitSpan} & $+$-projection & \lean{hg}, \lean{hgg}, \lean{ThetaLift} &
+uncond.; Thm~\ref{ch11:thm:plusproj}\\
+\lean{YML_chiLat}, \lean{leechTwistedModule_YM_frameAut} & $\mathrm{id}\otimes J$ lifts $g_\chi$ &
+\lean{hw}, \lean{hPos}, \lean{hU} & uncond.; Thm~\ref{ch11:thm:YMLchi}\\
+\lean{TPframe}, \lean{TPframe_isCompl} & $T^+_{(s)}$, $\mathcal T=T^+_{(0)}\oplus T^+_{(1)}$ & -- & def.;
+uncond.; Def.~\ref{ch11:def:TPframe}\\
+\lean{span_smul_frameX0T}, \lean{cyclic_TPframe} & $T^+_{(s)}$ cyclic, explicit vector &
+$0\ne t_0\in T_{(s)}$ & uncond.; Thm~\ref{ch11:thm:cyclicTP}\\
+\lean{isLocNilp_Qscr}, \lean{rootExp} & $Q_\alpha$ loc.\ nilpotent; $\exp(cQ_\alpha)\in\Aut$ &
+$\alpha\ne0$; $\langle\alpha,\alpha\rangle=2$ & uncond.; Thm~\ref{ch11:thm:locnilp}\\
+\lean{golaySigma}, \lean{golaySigma_sq}, \lean{golaySigma_ne_one} & $\sigma=G(\chi z_0)G^{-1}$, involution
+& -- & def.; uncond.; Thm~\ref{ch11:thm:sigmasq}\\
+\lean{golaySigma_hSt} & DGM (7.7) & -- & uncond.; Thm~\ref{ch11:thm:sigmah}\\
+\lean{golayTheta_hSt}, \lean{golayTheta_chargeSec} & $\Theta$ lifts $-1$ & -- & uncond.;
+Thm~\ref{ch11:thm:theta}\\
+\lean{orbifoldInvol}, \lean{golaySigma0}, \lean{golaySigma0_ne_one} & $\sigma_0\in\Aut V_N^K$, $\ne1$ &
+$\sigma^2=1$, normalises & uncond.; Thm~\ref{ch11:thm:sigma0}\\
+\lean{bridgeΛ}, \lean{bridgeN}, \lean{mem_range_bridge*_iff} & two copies of $V_{\Lambda_0}$ & -- & uncond.;
+Thm~\ref{ch11:thm:bridges}\\
+\lean{lam0PlusEquiv(_isVOAHom)} & $V_{\Lambda_0}^+\cong\chelVz$ & -- & uncond.; Thm~\ref{ch11:thm:lam0plus}\\
+\lean{lam0Psi}, \lean{lam0Psi_eq}, \lean{lam0Psi_latChargeGen} & $\Theta|_{V_{\Lambda_0}}=g_e\theta g_e^{-1}$
+& (\lean{golayE} chosen) & uncond.; Thm~\ref{ch11:thm:psi}\\
+\lean{golayToV0(_isVOAHom,_omega)} & $V_N^K\cong\chelVz$ & -- & uncond.; Thm~\ref{ch11:thm:golayToV0}\\
+\lean{v0Sigma}, \lean{v0Sigma_sq}, \lean{v0Sigma_ne_one} & triality on $\chelVz$ & -- & uncond.;
+Thm~\ref{ch11:thm:v0Sigma}\\
+\bottomrule
+\end{longtable}
+\endgroup
+
+Evidence that is \emph{not} Lean: the $6372$/$2324$ trace certificate and the Monster bound (paper and
+Python), the count $98256$ of norm-four vectors in $\Lambda_0$ (Python; implied by the Lean count of the
+complement), and the identification of the Lean $\sigma$ with DGM's exponential formula (the $SL_2$
+identity \eqref{ch11:eq:gHg}, verified by hand above).
+
+%======================================================================
+\section*{Notes and references}\addcontentsline{toc}{section}{Notes and references}\label{ch11:sec:notes}
+%======================================================================
+
+The triality strategy is due to I.~Frenkel, J.~Lepowsky and A.~Meurman, \emph{Vertex Operator Algebras
+and the Monster}, Pure and Applied Mathematics 134, Academic Press, 1988; Chapter~10 treats the
+$\Z/2$-orbifold structure and the Golay-code frame of the Leech lattice, Chapter~11 the triality, and
+Chapters~12--13 the main theorem and the completion of the proof.  The restatement used throughout this
+chapter, including the formulas (7.5)--(7.8) for $\sigma$ on $V_{N(A_1^{24})}$, the necessity of the
+modification (7.8) when $d/8$ is odd, and the circularity caveat, is L.~Dolan, P.~Goddard and
+P.~Montague, ``Conformal field theories, representations and lattice constructions'', Comm.\ Math.\
+Phys.\ 179 (1996) 61--120, arXiv:hep-th/9410029 (Sections 4--7; relation (4.23), Propositions 7.1--7.3).
+The framed point of view --- $\Vnat$ as an extension of a code VOA, with $\Lambda_0$-type frames --- is
+developed in C.~Dong, R.~L.~Griess Jr.\ and G.~H\"ohn, ``Framed vertex operator algebras, codes and the
+Moonshine module'', Comm.\ Math.\ Phys.\ 193 (1998) 407--448, arXiv:q-alg/9707008, and in M.~Miyamoto,
+``A new construction of the Moonshine vertex operator algebra over the real number field'', Ann.\ of
+Math.\ 159 (2004) 535--596, arXiv:q-alg/9701012.  Ebeling's model of the Leech lattice used here is in
+W.~Ebeling, \emph{Lattices and Codes}, 3rd ed., Springer Spektrum, 2013, Section~2.8; the Golay code,
+octads and the Niemeier lattice $N(A_1^{24})$ are in J.~H.~Conway and N.~J.~A.~Sloane, \emph{Sphere
+Packings, Lattices and Groups}, 3rd ed., Grundlehren 290, Springer, 1999, Chapters 4, 10, 16 and 18.
+The Monster character values $4372=1+4371$ (2A) and $276=1+275$ (4A) used in the trace bound are from the
+ATLAS of Finite Groups (Conway, Curtis, Norton, Parker, Wilson, Oxford, 1985).  The project-internal
+record of the decisions, corrections and dead ends of this chapter is Notes/M8GluingPlan.md (``Status
+and corrections'' after M8e, M8g-0, the functoriality bridge and M8f); the dead ends are collected in
+Section~\ref{ch15:sec:deadends}.

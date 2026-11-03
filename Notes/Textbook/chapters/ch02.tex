@@ -1,0 +1,1948 @@
+\chapter{Lattices, codes and the Leech lattice}\label{ch:02}
+
+\providecommand{\chtwoG}{\mathcal{G}}
+\providecommand{\chtwoF}{\mathbb{F}_2}
+\providecommand{\chtwowt}{\operatorname{wt}}
+\providecommand{\chtworank}{\operatorname{rank}}
+
+This chapter builds the combinatorial raw material of the Moonshine module: the extended binary
+Golay code $\chtwoG$, the Niemeier lattice $N(A_1^{24})$ obtained from it, and the Leech lattice
+$\Leech$.  Everything in the later chapters of the Moonshine Part rests on four facts about
+$\Leech$, and the referee should keep them in view from the start:
+\begin{enumerate}[label=($\Lambda$\arabic*)]
+  \item $\Leech$ is an \emph{even} lattice of rank $24$ (so the lattice vertex operator algebra
+        $V_\Leech$ of Chapter~\ref{ch:03} exists and has central charge $24$);
+  \item $\Leech$ is \emph{positive definite} (so the weight spaces of $V_\Leech$ are
+        finite-dimensional);
+  \item $\Leech$ is \emph{unimodular} (so the extraspecial group of Chapter~\ref{ch:06} has a
+        unique irreducible faithful module $T$, of dimension $2^{12}$, and the theta function of
+        $\Leech$ is a modular form for the full modular group);
+  \item $\Leech$ has \emph{no roots}, i.e.\ no vectors of norm $2$ (so $V_\Leech$ has no
+        weight-one states of the form $e^\alpha$, which is the origin of $\Vnat_1=0$).
+\end{enumerate}
+In addition the chapter proves the two counts $|\{x\in\Leech:\langle x,x\rangle=4\}|=196560$ and
+$|\{x\in\Leech:\langle x,x\rangle=6\}|=16773120$, which enter the graded dimension computations
+of Chapter~\ref{ch:05} (for instance $\dim (V_\Leech)_2 = 196884 = 300+24+196560$).
+
+All results of this chapter are proved in Lean \emph{unconditionally}: no hypotheses are left
+open, and every \lean{#print axioms} report quoted below lists only Lean's three standard axioms
+\lean{propext}, \lean{Classical.choice}, \lean{Quot.sound}.  \lean{VOA.pbw}
+(Chapter~\ref{ch:L02}; formerly the library's only axiom, now a theorem) does not occur anywhere
+in this chapter.
+
+\section{Why lattices? The physical picture}\label{ch02:sec:physics}
+
+Before any definitions, let us say why a conformal field theorist cares about even unimodular
+lattices.  Consider $d$ free chiral bosons $X^1,\dots,X^d$ in two dimensions, compactified on a
+torus $\mathbb{R}^d/L$ for some lattice $L\subset\mathbb{R}^d$.  A state of the theory carries a
+momentum $p$, and single-valuedness of the wave function $e^{i p\cdot X}$ on the torus forces $p$
+to lie in a lattice (for a purely chiral theory, in $L$ itself after suitable normalisation).  The
+state $e^{ip\cdot X}$ has conformal weight $\tfrac12 p\cdot p$, and the operator product of two
+such vertex operators contains the factor $(z-w)^{p\cdot q}$.  Three requirements on the lattice
+then appear naturally:
+\begin{itemize}
+  \item \textbf{Integrality} $p\cdot q\in\Z$: the operator product expansion has integral powers,
+        so the fields are \emph{local} (Definition~\ref{l01:def:bracket}).
+  \item \textbf{Evenness} $p\cdot p\in2\Z$: the weights $\tfrac12 p\cdot p$ are integers, so the
+        fields are \emph{bosonic} (they commute, rather than anticommute, at separated points).
+  \item \textbf{Unimodularity} $L=L^*$: the theory has a single sector; its partition function
+        is then modular invariant by itself (a \emph{holomorphic} conformal field theory).
+\end{itemize}
+Positive definiteness is the requirement that the energy $\tfrac12 p\cdot p$ is bounded below
+and that only finitely many momenta have a given energy.  Finally, \emph{rootlessness} --- no $p$
+with $p\cdot p=2$ --- means that no momentum state has weight $1$.  Weight-one states generate a
+Lie algebra of symmetries (the currents of the theory), so a rootless lattice gives the smallest
+possible current algebra, namely the $d$ abelian currents $\partial X^i$; the orbifold of
+Chapter~\ref{ch:04} will remove even those.  This is the mechanism behind $\Vnat_1=0$.
+
+Even unimodular positive definite lattices exist only in ranks divisible by $8$ (we prove this
+below, Theorem~\ref{ch02:thm:eightdvd}).  In rank $8$ there is one, $E_8$; in rank $16$ two; in
+rank $24$ there are exactly $24$ (the \emph{Niemeier lattices}), and exactly one of them has no
+roots: the Leech lattice.  The uniqueness statements are classical and are \emph{not} part of the
+Lean library (see Warning~\ref{ch02:warn:uniqueness}); the existence and properties of $\Leech$
+are.
+
+\section{Integral lattices: the mathematics}\label{ch02:sec:lattices}
+
+\begin{definition}[Integral lattice]\label{ch02:def:lattice}
+An \emph{integral lattice} is a pair $(L,\langle\cdot,\cdot\rangle)$ where $L$ is a free
+$\Z$-module of finite rank $n$ (so $L\cong\Z^n$ as an abelian group) and
+$\langle\cdot,\cdot\rangle:L\times L\to\Z$ is a symmetric $\Z$-bilinear form.  The number $n$ is
+the \emph{rank} of $L$.  For $x\in L$ we call $\langle x,x\rangle$ the \emph{norm} of $x$.
+\end{definition}
+\begin{physics}
+A lattice $L\cong\Z^n$ with its bilinear form is the momentum lattice of $n$ compactified chiral bosons: the chiral algebra of the free bosons $\partial X^i$ has Fock modules labelled by a momentum $\alpha\in\mathbb{R}^n$, and the vertex operator $e^{i\alpha\cdot X}$ has conformal weight $h=\langle\alpha,\alpha\rangle/2$. Taking $\alpha$ to run over a lattice means the target is the torus $\mathbb{R}^n/L$ (up to normalisation). Integrality of $\langle\cdot,\cdot\rangle$ makes the operator product of two such vertex operators have integer-power (single-valued up to a sign) monodromy, so that the $e^{i\alpha\cdot X}$ can be local with respect to each other. The rank $n$ becomes the central charge $c=n$ of the resulting chiral algebra.
+\end{physics}
+
+Two remarks on terminology.  First, the word ``norm'' here means the \emph{square} of the
+Euclidean length, as is universal in lattice theory: in $\Z^n$ with the dot product the vector
+$(1,1,0,\dots,0)$ has norm $2$.  Second, many books define a lattice as a discrete subgroup of a
+Euclidean space $\mathbb{R}^n$.  The abstract definition used here is equivalent for positive
+definite forms (one can always realise a positive definite $L$ inside $\mathbb{R}^n$, see
+Remark~\ref{ch02:rem:euclid}) and has the advantage that indefinite lattices and lattices with
+irrational embeddings need no special treatment.
+
+\begin{definition}[Gram matrix and determinant]\label{ch02:def:gram}
+If $b_1,\dots,b_n$ is a $\Z$-basis of $L$, the \emph{Gram matrix} is
+$G=(\langle b_i,b_j\rangle)_{i,j}\in M_n(\Z)$.  The \emph{determinant} (or discriminant) of $L$ is
+$\det L=\det G$.
+\end{definition}
+\begin{physics}
+The Gram matrix is the matrix of inner products $\langle b_i,b_j\rangle$ of the basic momenta, that is, the metric on the compactification torus in the basis of the lattice. Its determinant measures the squared covolume of the lattice, hence the volume of the target torus $\mathbb{R}^n/L$. Basis independence is the statement that relabelling the momentum quantum numbers by $GL_n(\Z)$ is a change of coordinates, not new physics.
+\end{physics}
+
+The determinant does not depend on the basis: if $b'_j=\sum_i P_{ij}b_i$ is another basis, then
+$P\in GL_n(\Z)$ has $\det P=\pm1$ and $G'=P^{\mathsf T}GP$, so $\det G'=(\det P)^2\det G=\det G$.
+
+\begin{definition}[Even, positive definite, unimodular, roots]\label{ch02:def:props}
+An integral lattice $L$ is
+\begin{itemize}
+\item \emph{even} if $\langle x,x\rangle\in2\Z$ for every $x\in L$ (otherwise \emph{odd});
+\item \emph{positive definite} if $\langle x,x\rangle>0$ for every $x\neq0$;
+\item \emph{unimodular} if $\det L=\pm1$.
+\end{itemize}
+A \emph{root} of an even lattice is a vector of norm $2$.  The set of roots is denoted $R(L)$.
+\end{definition}
+\begin{physics}
+Evenness, $\langle\alpha,\alpha\rangle\in2\Z$, says that every vertex operator $e^{i\alpha\cdot X}$ has integer conformal weight $h=\langle\alpha,\alpha\rangle/2$ and is bosonic; odd lattices give half-integer weights and fermionic (spin-statistics-twisted) operators, as for the free fermion lattice $\Z^n$. Positive definiteness is unitarity: all weights are positive. Unimodularity is the condition that the theory has no other sectors, which is tied to modular invariance of the holomorphic partition function (see the dual lattice and Theorem~\ref{ch02:thm:eightdvd}). A root, a vector of norm $2$, gives a weight-one field $e^{i\alpha\cdot X}$, hence a conserved current; the roots together with the Cartan currents $\partial X^i$ generate a Kac--Moody (affine) algebra whose finite part is the simply laced Lie algebra with that root system.
+\end{physics}
+
+\begin{definition}[Dual lattice]\label{ch02:def:dual}
+Let $L_{\mathbb{R}}=\mathbb{R}\otimes_{\Z} L$ with the $\mathbb{R}$-bilinear extension of the form.
+The \emph{dual lattice} is $L^*=\{y\in L_{\mathbb{R}}:\langle y,x\rangle\in\Z\text{ for all }x\in
+L\}$.  Integrality says precisely that $L\subseteq L^*$.  $L$ is called \emph{self-dual} if
+$L=L^*$.
+\end{definition}
+\begin{physics}
+The dual lattice $L^*$ is the set of momenta that can be added to a state with trivial monodromy against all vertex operators $e^{i\alpha\cdot X}$ with $\alpha\in L$, that is, the set of labels of the (twisted) modules of the lattice chiral algebra: the module category is governed by the discriminant group $L^*/L$. The self-dual case $L=L^*$ means that the chiral algebra has exactly one irreducible module, itself, so the partition function is a single holomorphic character, invariant under $\tau\mapsto-1/\tau$ up to a possible phase. This is the sense in which the lattice gives a holomorphic CFT (Heuristic: the full proof of the module statement is in the VOA theory of later chapters, not here).
+\end{physics}
+
+For a nondegenerate lattice, the dual basis $b_1^*,\dots,b_n^*$ (defined by $\langle
+b_i^*,b_j\rangle=\delta_{ij}$) is a $\Z$-basis of $L^*$, and $b_i^*=\sum_j (G^{-1})_{ij}b_j$.  So
+$L^*/L$ is a finite abelian group of order $|\det G|$, and
+\begin{equation}\label{ch02:eq:selfdual}
+L \text{ is self-dual}\iff |\det L|=1 \iff L\text{ is unimodular}.
+\end{equation}
+Indeed, if $\det G=\pm1$ then $G^{-1}$ has integer entries, so each $b_i^*$ lies in $L$.  This
+one-line argument will reappear in the proof that the theta function of a unimodular lattice is
+modular (\S\ref{ch02:sec:theta}).
+
+\begin{example}\label{ch02:ex:basic}
+\begin{enumerate}
+\item $\Z^n$ with the dot product: odd, positive definite, unimodular ($G=I$).
+\item $A_1=\Z$ with $\langle x,y\rangle=2xy$: even, positive definite, $\det=2$; its two roots are
+      $\pm1$.  Its dual is $\tfrac12\Z$ and $A_1^*/A_1\cong\Z/2$.
+\item The hyperbolic plane $U=\Z^2$ with Gram matrix $\begin{pmatrix}0&1\\1&0\end{pmatrix}$:
+      even, unimodular ($\det=-1$), indefinite ($\langle(1,0),(1,0)\rangle=0$).  It shows that
+      evenness and unimodularity do not force definiteness.
+\item $\Z$ with $\langle x,y\rangle=xy$ is unimodular but odd, so unimodularity does not force
+      evenness either.
+\end{enumerate}
+\end{example}
+
+Two elementary facts about positive definite lattices are used constantly.
+
+\begin{lemma}[Cauchy--Schwarz over $\Z$]\label{ch02:lem:cs}
+If $L$ is positive definite then $\langle x,y\rangle^2\le\langle x,x\rangle\langle y,y\rangle$ for
+all $x,y\in L$.
+\end{lemma}
+\begin{physics}
+A technical lemma. It is the elementary bound $|\langle\alpha,\beta\rangle|\le|\alpha||\beta|$ on momenta, used to control the exponents $\langle\alpha,\beta\rangle$ in the operator product $e^{i\alpha\cdot X}(z)\,e^{i\beta\cdot X}(w)\sim(z-w)^{\langle\alpha,\beta\rangle}$ in terms of the conformal weights of the two operators.
+\end{physics}
+\begin{proof}
+If $x=0$ there is nothing to show.  Otherwise put $a=\langle x,x\rangle>0$, $b=\langle x,y\rangle$,
+$c=\langle y,y\rangle$ and expand the norm of the lattice vector $a y-b x$:
+$\langle ay-bx,ay-bx\rangle=a(ac-b^2)\ge0$.  Dividing by $a>0$ gives $b^2\le ac$.  Note that no
+real numbers were needed: the argument stays inside $\Z$.
+\end{proof}
+
+\begin{lemma}[Finiteness]\label{ch02:lem:finite}
+If $L$ is positive definite then for every $N$ the set $\{x\in L:\langle x,x\rangle\le N\}$ is
+finite.
+\end{lemma}
+\begin{physics}
+A technical lemma with a direct physical meaning: each conformal-weight level of the lattice theory has finitely many momentum states. This is what makes the graded dimensions $\dim V_n$ finite and the partition function $\sum_\alpha q^{\langle\alpha,\alpha\rangle/2}/\eta^n$ a well-defined formal series, for positive definite (unitary) lattices.
+\end{physics}
+\begin{proof}
+Fix a basis $b_1,\dots,b_n$.  The map $x\mapsto(\langle b_i,x\rangle)_i\in\Z^n$ is injective
+(if $\langle b_i,x\rangle=0$ for all $i$ then $\langle x,x\rangle=0$, so $x=0$).  By
+Lemma~\ref{ch02:lem:cs}, $|\langle b_i,x\rangle|\le\langle b_i,b_i\rangle N$ when $\langle
+x,x\rangle\le N$, so the image lies in a finite box.
+\end{proof}
+
+Lemma~\ref{ch02:lem:finite} makes the \emph{representation numbers}
+$r_L(m)=|\{x\in L:\langle x,x\rangle=m\}|$ finite; their generating function is the theta series
+of \S\ref{ch02:sec:theta}.
+
+\begin{remark}[Euclidean realisation]\label{ch02:rem:euclid}
+A positive definite $L$ of rank $n$ embeds isometrically in $\mathbb{R}^n$: the real Gram matrix
+$G$ is positive definite, so $G=B^{\mathsf T}B$ for a real matrix $B$, and $x=\sum c_ib_i\mapsto
+Bc$ is the embedding.  Its image is a discrete subgroup of full rank (a ``$\Z$-lattice'' in
+Mathlib's terminology) of covolume $\sqrt{\det L}$.  This realisation is needed only for the
+analytic part of the chapter (Poisson summation).  Note also that positivity on the integral
+points implies positivity on all of $L_{\mathbb{R}}$: by scaling it holds on $L_{\Q}$, by continuity
+the real form is positive semidefinite, and a positive semidefinite rational form with a real
+null vector has a rational null vector (its kernel is defined over $\Q$).
+\end{remark}
+
+\section{Two Lean encodings of an integral lattice}\label{ch02:sec:twoencodings}
+
+The library contains \emph{two} structures called \lean{IntegralLattice}.  This is the single
+most confusing point of the chapter for a newcomer, so we explain it first.
+
+\begin{itemize}
+\item \lean{VOA.IntegralLattice}, in \leanpath{VOA/Foundations/Lattices.lean}, is the structure
+the VOA library uses: the lattice VOA $V_L$ of Chapter~\ref{ch:03} is built from it.
+\item \lean{_root_.IntegralLattice}, in \leanpath{VOA/LatticesAndCodes/Lattice/Defs.lean}, comes
+from a separate formalisation of Ebeling's book \emph{Lattices and Codes}, written by the same
+authors and \emph{vendored} (copied) into this repository.  The Leech lattice is constructed and
+studied there.
+\end{itemize}
+Inside the Lean namespace \lean{VOA} the bare name \lean{IntegralLattice} refers to the first one;
+the second must be written \lean{_root_.IntegralLattice}.  A bridge
+\lean{VOA.IntegralLattice.ofEbeling} (\S\ref{ch02:sec:bridge}) transports a lattice from the
+second encoding to the first.
+
+\subsection{Why the companion library was vendored}\label{ch02:sec:vendored}
+
+The 25 files under \leanpath{VOA/LatticesAndCodes/} are, according to the umbrella file
+\leanpath{VOA/LatticesAndCodes.lean}, ``copied verbatim from the companion formalization of
+Ebeling, \emph{Lattices and Codes} (repository \texttt{Fedor-Popov/LatticeAndCodes}, commit
+\texttt{da62b9e2f44a04888abf6f797a429aa8ecc1d6dd}), so that this package depends on Mathlib
+alone.  The ONLY edit is the module prefix \texttt{LatticesAndCodes.} $\to$
+\texttt{VOA.LatticesAndCodes.} in \texttt{import} lines.''  The project's working records state that the copy was verified byte-for-byte with \texttt{cmp}; this
+verification is a claim of the source, not something the Lean kernel checks.  The decision was
+that the package should have exactly one external dependency, Mathlib, so that a referee needs to
+trust only Lean, Mathlib and this repository.  The 25 files are precisely the import closure of
+the three files the Moonshine construction needs: \leanpath{Leech/Defs.lean} (the Leech lattice
+and its four properties), \leanpath{Leech/RepCount.lean} ($196560$) and
+\leanpath{Leech/RepCountHigher.lean} ($16773120$).  They comprise:
+\begin{center}
+\begin{tabular}{@{}ll@{}}
+\toprule
+directory & content \\
+\midrule
+\leanpath{Lattice/} & the structure, sublattices, index--determinant relation, Euclidean realisation\\
+\leanpath{Roots/} & roots, reflections, Weyl group, root lattices\\
+\leanpath{Codes/} & linear codes, weight enumerators, MacWilliams identity, the Golay code\\
+\leanpath{Construction/} & the lattice of a binary code (Construction A)\\
+\leanpath{Leech/} & the Leech lattice and its representation numbers\\
+\leanpath{Theta/} & theta functions, their modularity and $q$-expansions\\
+\leanpath{ModularForms/} & level-one modular forms, $M_*=\C[E_4,E_6]$\\
+\leanpath{ForMathlib/} & multivariable Poisson summation and Gaussian sums\\
+\bottomrule
+\end{tabular}
+\end{center}
+Declaration names and namespaces were not changed (\lean{_root_.IntegralLattice}, \lean{Leech},
+\lean{Code}, \lean{ModularForm}, \lean{EuclideanTheta}, \lean{ZLattice}, \dots).
+
+\begin{warning}[title={Trap: what was \emph{not} vendored}]\label{ch02:warn:uniqueness}
+The companion library also proves the uniqueness of the Leech lattice (\lean{Leech.unique}) and
+related classification results.  These are \emph{not} in the import closure and were \emph{not}
+copied (recorded in \leanpath{Notes/MonsterRoadmap.md}, ``Known traps'').  Likewise no uniqueness
+theorem for the Golay code is present in the vendored files: the file
+\leanpath{Codes/GolayEnumerator.lean} mentions that the octad count is ``half of the input to the
+uniqueness of the Golay code'', but the uniqueness itself is not there.  Consequently nothing in
+this book's Lean development says that \emph{the} Leech lattice has been constructed in the sense
+of ``the unique rootless even unimodular lattice of rank $24$''; what is proved is that a
+\emph{specific, explicitly defined} lattice \lean{Leech.lattice} has all the properties needed.
+For the construction of $\Vnat$ this is all that matters.  (The roadmap's ``Inputs'' table says
+``unique'' for both objects; read it as a statement about the upstream library, not about this
+repository.)  Some docstrings of vendored files also refer to upstream files that were not copied
+(e.g.\ \leanpath{ModularForms/ValenceFormula.lean}, \leanpath{ModularForms/Eisenstein.lean});
+nothing in this repository depends on them.
+\end{warning}
+
+\subsection{The VOA library's lattice}\label{ch02:sec:voalattice}
+
+\begin{definition}[\lean{VOA.IntegralLattice}]\label{ch02:def:voalattice}
+\leanpath{VOA/Foundations/Lattices.lean}.  An integral lattice consists of a type $L$ (the
+carrier) with an abelian group structure that is a free and finitely generated $\Z$-module,
+together with a symmetric $\Z$-bilinear form.
+\end{definition}
+\begin{leancode}
+structure IntegralLattice where
+  /-- The underlying `ℤ`-module. -/
+  carrier : Type u
+  [addCommGroup : AddCommGroup carrier]
+  [free : Module.Free ℤ carrier]
+  [finite : Module.Finite ℤ carrier]
+  /-- The bilinear (Gram) form `⟨·,·⟩`. -/
+  form : LinearMap.BilinForm ℤ carrier
+  /-- The form is symmetric. -/
+  isSymm : form.IsSymm
+\end{leancode}
+
+\begin{dictionary}
+\begin{itemize}
+\item A Lean \lean{structure} is a record: an element \lean{L : IntegralLattice} is a tuple of
+  the listed fields.  Fields in square brackets are \emph{instances} that Lean will find
+  automatically; here they say that \lean{carrier} is an additive commutative group
+  (\lean{AddCommGroup}), that as a $\Z$-module it is free (\lean{Module.Free ℤ}, i.e.\ has a
+  basis) and finitely generated (\lean{Module.Finite ℤ}).  Free plus finitely generated is
+  exactly ``$\cong\Z^n$ for some $n$''.
+\item \lean{LinearMap.BilinForm ℤ carrier} is Mathlib's type of $\Z$-bilinear maps $L\times
+  L\to\Z$, written in curried form: \lean{L.form x y} is $\langle x,y\rangle$.
+  \lean{form.IsSymm} means $\langle x,y\rangle=\langle y,x\rangle$ for all $x,y$.
+\item \lean{Type u} is a universe-polymorphic type; the universe level plays no mathematical
+  role (the lattices used later live in the lowest universe, \lean{Type} $=$ \lean{Type 0}).
+\item Fidelity: this is Definition~\ref{ch02:def:lattice} exactly.  No definiteness or
+  evenness is built in; those are separate predicates below.  The structure is clearly
+  satisfiable (the examples $\Z^n$ and $\sqrt2\Z$ below are terms of it), so it is not vacuous.
+\end{itemize}
+\end{dictionary}
+\begin{physics}
+This is the datum of the chiral boson CFT: the free abelian group of charges $\alpha$ (momenta) of the vertex operators together with the pairing that governs their operator product $e^{\alpha}(z)e^{\beta}(w)\sim(z-w)^{\langle\alpha,\beta\rangle}$. It is exactly the input from which the lattice vertex algebra $V_L$ of Chapter~\ref{ch:03} is built. No unitarity or locality is imposed yet; these correspond to the later predicates.
+\end{physics}
+
+\begin{definition}[Even and positive definite, VOA library]\label{ch02:def:voaevenposdef}
+\leanpath{VOA/Foundations/Lattices.lean}, namespace \lean{VOA.IntegralLattice}.
+\end{definition}
+\begin{leancode}
+def Even : Prop := ∀ v : L.carrier, 2 ∣ L.form v v
+
+def PosDef : Prop := ∀ v : L.carrier, v ≠ 0 → 0 < L.form v v
+\end{leancode}
+\begin{dictionary}
+\lean{2 ∣ n} is divisibility in $\Z$: ``there is an integer $k$ with $n=2k$''.  The symbol
+\lean{∣} is Unicode U+2223 DIVIDES, typed differently from the ASCII bar \lean{|}, which Lean uses
+for other purposes; in print they may look alike.
+So \lean{L.Even} is ``$\langle v,v\rangle\in2\Z$ for all $v$'' and \lean{L.PosDef} is ``$\langle
+v,v\rangle>0$ for all $v\neq0$'', exactly Definition~\ref{ch02:def:props}.  Positivity is
+demanded only on lattice points; by Remark~\ref{ch02:rem:euclid} this is equivalent to positive
+definiteness of the real form, so nothing is lost.  (The library proves the consequence it
+actually needs --- finiteness of the vectors of bounded norm --- directly from \lean{PosDef}, in
+\leanpath{VOA/Foundations/LatticeFinite.lean}.)
+\end{dictionary}
+\begin{physics}
+\lean{Even} is locality with integer conformal weights for the vertex operators $e^{i\alpha\cdot X}$: $h=\langle\alpha,\alpha\rangle/2\in\Z$. \lean{PosDef} is unitarity (positive energies; the Hermitian form on $V_L$ is positive). Together they are the conditions under which $V_L$ is an honest unitary $\Z$-graded vertex operator algebra rather than a vertex operator superalgebra or a non-unitary theory.
+\end{physics}
+
+\begin{definition}[Rank, VOA library]\label{ch02:def:voarank}
+\leanpath{VOA/Foundations/LatticeCocycle.lean}, namespace \lean{VOA.IntegralLattice}.
+\end{definition}
+\begin{leancode}
+noncomputable def rank : ℕ := Module.finrank ℤ L.carrier
+\end{leancode}
+\begin{dictionary}
+\lean{Module.finrank ℤ M} is Mathlib's rank of a finite free module (the common cardinality of
+its bases; it is defined to be $0$ for modules that are not finite free, which cannot happen
+here).  The word \lean{noncomputable} only means that Lean cannot evaluate this number by running
+a program; it has no mathematical content.  The central charge of $V_L$ will be \lean{rank L}.
+\end{dictionary}
+\begin{physics}
+The rank is the number of free bosons and therefore the Virasoro central charge $c=\operatorname{rank}L$ of the lattice theory (Sugawara stress tensor $T=\tfrac12\sum_i(\partial X^i)^2$). It is also the dimension of the Cartan subalgebra of currents, the dimension of the target torus, and the number of left-moving gauge $U(1)$'s.
+\end{physics}
+
+\begin{definition}[Dual lattice and self-duality, VOA library]\label{ch02:def:voadual}
+With $L_{\mathbb{R}}=\mathbb{R}\otimes_{\Z} L$, the real form \lean{formℝ} is the base change of
+\lean{form}, \lean{toReal} is $v\mapsto1\otimes v$, and:
+\end{definition}
+\begin{leancode}
+noncomputable def formℝ : LinearMap.BilinForm ℝ (ℝ ⊗[ℤ] L.carrier) := L.form.baseChange ℝ
+
+noncomputable def toReal : L.carrier →ₗ[ℤ] ℝ ⊗[ℤ] L.carrier :=
+  (TensorProduct.mk ℤ ℝ L.carrier) 1
+
+noncomputable def dual : AddSubgroup (ℝ ⊗[ℤ] L.carrier) where
+  carrier := {x | ∀ v : L.carrier, ∃ k : ℤ, L.formℝ x (L.toReal v) = (k : ℝ)}
+
+theorem le_dual (v : L.carrier) : L.toReal v ∈ L.dual
+
+def SelfDual : Prop := ∀ x : ℝ ⊗[ℤ] L.carrier, x ∈ L.dual ↔ ∃ v : L.carrier, L.toReal v = x
+\end{leancode}
+(The three closure proofs in the definition of \lean{dual}, and the proof of \lean{le_dual}, are
+omitted.)
+\begin{dictionary}
+\lean{ℝ ⊗[ℤ] L.carrier} is the tensor product $\mathbb{R}\otimes_{\Z} L=L_{\mathbb{R}}$;
+\lean{→ₗ[ℤ]} denotes a $\Z$-linear map; \lean{baseChange ℝ} extends a $\Z$-bilinear form
+$\mathbb{R}$-bilinearly.  \lean{dual} is the additive subgroup of $L_{\mathbb{R}}$ of vectors $x$
+with $\langle x,v\rangle\in\Z$ for all $v\in L$ (``there is an integer $k$ equal to the
+pairing''), i.e.\ $L^*$.  \lean{le_dual} is $L\subseteq L^*$.  \lean{SelfDual} says: $x\in L^*$
+iff $x$ is (the image of) a lattice vector, i.e.\ $L^*=L$.  This is Definition~\ref{ch02:def:dual}
+verbatim.  The library checks it on an example: \lean{VOA.stdLattice_selfDual} proves $\Z^n$
+self-dual (\lean{#print axioms}: standard three).
+\end{dictionary}
+\begin{physics}
+In physical language, \lean{SelfDual} states that the lattice theory has a unique module: the dual lattice $L^*$ of allowed charges coincides with $L$ itself, so every charge that is local with respect to all of $L$ already belongs to $L$. For rank divisible by $8$ and even $L$ this makes the partition function modular invariant, a holomorphic CFT. The Lean library formulates this over $\mathbb{R}\otimes L$ to avoid choosing an embedding; physically that is the choice of Cartan subspace of the momenta.
+\end{physics}
+
+\begin{warning}[title={Trap: \lean{SelfDual} is never connected to the Leech lattice}]
+The VOA library's \lean{SelfDual} and the vendored \lean{IsUnimodular} (below) are equivalent by
+\eqref{ch02:eq:selfdual}, but \emph{that equivalence is not proved in Lean}, and
+\lean{SelfDual} is never established for $\Leech$.  This is harmless: no later theorem uses
+\lean{VOA.IntegralLattice.SelfDual}.  Where unimodularity of $\Leech$ is needed downstream (the
+extraspecial module $T$, Chapter~\ref{ch:06}; the theta function, Chapter~\ref{ch:05}), the
+vendored statement \lean{Leech.lattice_isUnimodular} ($\det=1$) is used directly, transported to
+the VOA side as invertibility of the Gram determinant (\lean{VOA.Moonshine.leech_isUnit_det_gramMat}
+in \leanpath{VOA/Moonshine/ExtraspecialModule.lean}).  A referee should therefore read ``$\Leech$
+unimodular'' everywhere in the Moonshine Part as ``$\det\Leech=1$''.
+\end{warning}
+
+\subsection{The vendored lattice of \emph{Lattices and Codes}}\label{ch02:sec:ebelinglattice}
+
+\begin{definition}[\lean{_root_.IntegralLattice}]\label{ch02:def:ebelattice}
+\leanpath{VOA/LatticesAndCodes/Lattice/Defs.lean}.
+\end{definition}
+\begin{leancode}
+structure IntegralLattice : Type 1 where
+  /-- The underlying `ℤ`-module. -/
+  carrier : Type
+  [addCommGroup : AddCommGroup carrier]
+  [free : Module.Free ℤ carrier]
+  [finite : Module.Finite ℤ carrier]
+  /-- The bilinear form. -/
+  bilin : carrier →ₗ[ℤ] carrier →ₗ[ℤ] ℤ
+  /-- The form is symmetric. -/
+  bilin_symm : ∀ x y, bilin x y = bilin y x
+
+instance : CoeSort IntegralLattice Type := ⟨carrier⟩
+\end{leancode}
+\begin{dictionary}
+The same mathematical object as Definition~\ref{ch02:def:voalattice}, with three cosmetic
+differences: the form is called \lean{bilin} and has the type \lean{carrier →ₗ[ℤ] carrier →ₗ[ℤ] ℤ}
+(a linear map into linear maps; this is literally the same type as
+\lean{LinearMap.BilinForm ℤ carrier}); symmetry is stated pointwise; and the carrier lives in
+the lowest universe \lean{Type}.  The \lean{CoeSort} line lets one write \lean{x : Γ} for
+\lean{x : Γ.carrier}.  Definiteness is deliberately not part of the structure, so that
+indefinite lattices (such as $U$ of Example~\ref{ch02:ex:basic}) are covered.
+\end{dictionary}
+\begin{physics}
+The same physical datum as before, now in the form used for the classification of Niemeier-type lattices: a lattice of charges with a pairing. Its Lean encoding differs from the VOA one, but both describe the lattice of momenta of compact chiral bosons; Section~\ref{ch02:sec:bridge} translates between them.
+\end{physics}
+
+\begin{definition}[Norm, rank, Gram matrix, determinant]\label{ch02:def:ebenorm}
+\leanpath{VOA/LatticesAndCodes/Lattice/Defs.lean}.
+\end{definition}
+\begin{leancode}
+def normSq {Γ : IntegralLattice} (x : Γ) : ℤ := Γ.bilin x x
+
+noncomputable def rank : ℕ := finrank ℤ Γ
+
+noncomputable def chooseBasis : Basis (Fin Γ.rank) ℤ Γ := finBasis ℤ Γ
+
+noncomputable def gram {ι : Type*} (b : Basis ι ℤ Γ) : Matrix ι ι ℤ :=
+  Matrix.of fun i j => Γ.bilin (b i) (b j)
+
+noncomputable def det : ℤ := (Γ.gram Γ.chooseBasis).det
+
+@[simp] theorem det_eq_gram_det {ι : Type*} [Fintype ι] [DecidableEq ι] (b : Basis ι ℤ Γ) :
+    (Γ.gram b).det = Γ.det
+\end{leancode}
+\begin{dictionary}
+\lean{normSq x} is $\langle x,x\rangle$ (Ebeling writes $x^2$).  \lean{Basis ι ℤ Γ} is a
+$\Z$-basis indexed by the type \lean{ι}; \lean{Fin n} is $\{0,\dots,n-1\}$.  \lean{det} is
+defined by an arbitrary chosen basis; the theorem \lean{det_eq_gram_det} says that \emph{any}
+basis, indexed by any finite type, gives the same determinant --- the basis-independence argument
+after Definition~\ref{ch02:def:gram}.  So \lean{Γ.det} is $\det L$ as in the textbook.
+\end{dictionary}
+\begin{physics}
+The norm of a lattice vector $\alpha$ is twice the conformal weight of $e^{i\alpha\cdot X}$, the rank is the central charge, and the Gram matrix and determinant describe the metric and volume of the target torus. The determinant of the lattice also counts the number of modules, $|L^*/L|$.
+\end{physics}
+
+\begin{definition}[Even, unimodular, positive definite; Ebeling's convention]\label{ch02:def:ebeprops}
+\end{definition}
+\begin{leancode}
+def IsEven : Prop := ∀ x : Γ, (2 : ℤ) ∣ normSq x
+
+def IsUnimodular : Prop := IsUnit Γ.det
+
+def IsPosDef : Prop := ∀ x : Γ, x ≠ 0 → 0 < normSq x
+\end{leancode}
+\begin{dictionary}
+\lean{IsUnit d} for an integer $d$ means $d$ is invertible in $\Z$, i.e.\ $d=\pm1$
+(\lean{isUnimodular_iff} in the same file states exactly this).  \lean{IsEven} and
+\lean{IsPosDef} are word for word the VOA library's \lean{Even} and \lean{PosDef}, written with
+\lean{normSq}.  Unimodularity is defined through the determinant rather than through
+self-duality; by \eqref{ch02:eq:selfdual} the two agree.  For a positive definite lattice
+$\det>0$, so unimodular means $\det=1$ (\lean{IntegralLattice.det_eq_one} in
+\leanpath{Theta/ModularForm.lean}).
+\end{dictionary}
+\begin{physics}
+Even, unimodular and positive definite are the three properties that together say: the lattice chiral algebra is local with integer weights (even), has a single sector (unimodular), and is unitary (positive definite). The even unimodular lattices are exactly the lattices that give holomorphic lattice CFTs, with partition function a modular function; the Lean file records the convention in which these predicates are phrased.
+\end{physics}
+
+\begin{definition}[Isometries, sublattices, roots, representation numbers]\label{ch02:def:ebemisc}
+\end{definition}
+\noindent Files \leanpath{VOA/LatticesAndCodes/Lattice/Sublattice.lean}, \leanpath{VOA/LatticesAndCodes/Theta/Counting.lean}.
+\begin{leancode}
+structure Isom (Γ Λ : IntegralLattice) extends Γ ≃ₗ[ℤ] Λ where
+  map_bilin' : ∀ x y : Γ, Λ.bilin (toLinearEquiv x) (toLinearEquiv y) = Γ.bilin x y
+
+def ofSubmodule (N : Submodule ℤ Γ) : IntegralLattice where
+  carrier := ↥N
+  bilin := Γ.bilin.compl₁₂ N.subtype N.subtype
+  bilin_symm _ _ := Γ.bilin_symm _ _
+
+def rootSet (Γ : IntegralLattice) : Set Γ := {x : Γ | normSq x = 2}
+
+noncomputable def repCount (Γ : IntegralLattice) (m : ℤ) : ℕ := {x : Γ | normSq x = m}.ncard
+\end{leancode}
+\begin{dictionary}
+\begin{itemize}
+\item \lean{Γ ≃ₗ[ℤ] Λ} is a $\Z$-linear isomorphism; an \lean{Isom} (notation \lean{Γ ≃ₗᵢ Λ})
+  is one that preserves the forms.  Isometries preserve rank, determinant, evenness,
+  definiteness and unimodularity (\lean{Isom.rank_eq}, \lean{Isom.det_eq}, \dots), and
+  representation numbers (\lean{Isom.repCount_eq}).
+\item \lean{Submodule ℤ Γ} is a subgroup (every subgroup of an abelian group is a $\Z$-submodule);
+  \lean{↥N} is the type of its elements; \lean{compl₁₂ N.subtype N.subtype} restricts the form to
+  $N$.  So \lean{ofSubmodule N} is $N$ with the induced form; it is again free of finite rank
+  because subgroups of $\Z^n$ are.
+\item \lean{rootSet} is $R(L)$ (meaningful for even lattices).  \lean{repCount Γ m} is $r_L(m)$,
+  computed with \lean{Set.ncard}, the cardinality of a set as a natural number, \emph{with the
+  convention that an infinite set has \lean{ncard} $0$}.  For a positive definite lattice the set
+  is finite (Lemma~\ref{ch02:lem:finite}, Lean: \lean{IsPosDef.finite_setOf_normSq_le} in
+  \leanpath{Roots/RootLattice.lean}), so the convention never bites; but a referee should note
+  that a statement ``\lean{repCount Γ m = 0}'' would be vacuous for an indefinite lattice.  All
+  uses below carry \lean{IsPosDef}.
+\end{itemize}
+\end{dictionary}
+\begin{physics}
+An isometry is a symmetry of the momentum lattice and hence an automorphism of the chiral algebra (a Weyl-group or discrete symmetry of the target torus). A sublattice $M\subseteq L$ corresponds to a subalgebra, for instance the one generated by a smaller set of currents; the index relation is conservation of the lattice volume. Roots are the weight-one currents generating the Kac--Moody algebra, and the representation numbers $r_L(m)$ count the states of conformal weight $m/2$ in the momentum part of the Hilbert space.
+\end{physics}
+
+\begin{theorem}[Index--determinant relation]\label{ch02:thm:index}
+Let $f:M\to L$ be an injective isometric map of integral lattices whose image has the same rank
+as $L$, and let $k=[L:f(M)]$.  Then $\det M=k^2\det L$.
+\end{theorem}
+\begin{leancode}
+theorem det_of_injective_index (f : Γ →ₗ[ℤ] Λ) (hf : Function.Injective f)
+    (hform : ∀ x y : Γ, Λ.bilin (f x) (f y) = Γ.bilin x y)
+    (hrank : finrank ℤ (LinearMap.range f) = Λ.rank)
+    {k : ℕ} (hk : Nat.card (Λ ⧸ LinearMap.range f) = k) :
+    Γ.det = (k : ℤ) ^ 2 * Λ.det
+\end{leancode}
+\begin{dictionary}
+File \leanpath{Lattice/Index.lean}, name \lean{IntegralLattice.det_of_injective_index}.
+Here $\Gamma=M$ and $\Lambda=L$ (Lean's letters, not to be confused with the Leech lattice).
+Hypotheses: \lean{hf} injectivity; \lean{hform} isometry; \lean{hrank} the image has full rank;
+\lean{hk} the quotient group $\Lambda/f(\Gamma)$ has \lean{Nat.card} equal to $k$.
+\lean{Nat.card} is the cardinality of a type as a natural number, $0$ if infinite; the full-rank
+hypothesis guarantees the quotient is finite, so $k$ is the honest index.  Same as the textbook
+statement.
+\end{dictionary}
+\begin{physics}
+For a sublattice $M\subseteq L$ of finite index one has $\det M=[L:M]^2\det L$. Physically this is the statement that the torus $\mathbb{R}^n/M$ is an $[L:M]$-fold cover of $\mathbb{R}^n/L$ (heuristically): extending a chiral algebra by adding sectors of simple currents, as in the passage from the root lattice $A_1^{24}$, of determinant $2^{24}$, to the unimodular Golay lattice, an extension of index $2^{12}$. The Lean theorem itself is purely lattice-theoretic.
+\end{physics}
+\emph{Proof on paper.}  Choose bases $b$ of $L$ and $b'$ of $f(M)$, and let $T$ be the integer
+matrix expressing $b'$ in terms of $b$.  Then the Gram matrix of $f(M)\cong M$ is $T^{\mathsf
+T}G_LT$, so $\det M=(\det T)^2\det L$.  The theory of finitely generated abelian groups (Smith
+normal form) gives $|\det T|=[L:f(M)]$.  \qed
+\begin{status}
+Unconditional.  \lean{#print axioms IntegralLattice.det_of_injective_index}: \lean{propext},
+\lean{Classical.choice}, \lean{Quot.sound}.
+\end{status}
+
+\section{Binary codes}\label{ch02:sec:codes}
+
+\subsection{Definitions}
+
+A \emph{binary linear code of length $n$} is a linear subspace $C\subseteq\chtwoF^n$, where
+$\chtwoF=\Z/2$.  Its elements are \emph{codewords}.  The \emph{(Hamming) weight}
+$\chtwowt(c)$ of a word $c$ is the number of nonzero coordinates; the \emph{support}
+$\operatorname{supp}(c)\subseteq\{0,\dots,n-1\}$ is the set of those coordinates.  Thinking of a
+binary word as the indicator function of its support is often the best intuition: addition of
+words is symmetric difference of supports, and
+\begin{equation}\label{ch02:eq:weightsum}
+\chtwowt(x+y)=\chtwowt(x)+\chtwowt(y)-2\,|\operatorname{supp}x\cap\operatorname{supp}y| .
+\end{equation}
+The \emph{standard inner product} is $x\cdot y=\sum_i x_iy_i\in\chtwoF$, which equals
+$|\operatorname{supp}x\cap\operatorname{supp}y|\bmod2$, because $x_iy_i=1$ exactly when $i$ is in
+both supports.  (Example: $x=(1,1,0)$, $y=(1,0,1)$; the supports meet in $\{0\}$, and $x\cdot
+y=1+0+0=1$.)  The \emph{dual code} is
+$C^\perp=\{x:x\cdot c=0\ \forall c\in C\}$.  $C$ is \emph{self-orthogonal} if $C\subseteq
+C^\perp$ and \emph{self-dual} if $C=C^\perp$.  It is \emph{even} if all weights are even and
+\emph{doubly even} if all weights are divisible by $4$.  The \emph{minimum distance} $d(C)$ is the
+smallest weight of a nonzero codeword; a code of dimension $k$ and minimum distance $d$ is an
+$[n,k,d]$ code.  Since $\dim C+\dim C^\perp=n$ (the standard form is nondegenerate), a
+self-dual code has $\dim C=n/2$, and a self-orthogonal code of dimension $n/2$ is self-dual.
+
+\begin{lemma}\label{ch02:lem:doublyeven}
+A doubly even binary code is self-orthogonal.
+\end{lemma}
+\begin{physics}
+A doubly even code is self-orthogonal, which by the discussion of Construction A is exactly what makes $\Gamma_C$ an integral lattice. Under the dictionary codeword weight $w$ $\leftrightarrow$ squared length $w/2$, doubly even weights become even norms, hence integer conformal weights for the vertex operators of the code CFT. In quantum information, this is the classical-code condition (heuristically) for CSS-type stabiliser codes to be well defined.
+\end{physics}
+\begin{proof}
+For $x,y\in C$, \eqref{ch02:eq:weightsum} gives
+$2|\operatorname{supp}x\cap\operatorname{supp}y|=\chtwowt x+\chtwowt y-\chtwowt(x+y)\equiv0
+\pmod4$, so the intersection has even size and $x\cdot y=0$.
+\end{proof}
+
+\begin{lemma}\label{ch02:lem:allones}
+If $C$ is self-dual and even, the all-ones word $\mathbf 1$ lies in $C$.  Hence
+$c\mapsto c+\mathbf 1$ is a bijection of $C$ exchanging weights $j$ and $n-j$.
+\end{lemma}
+\begin{physics}
+A technical lemma on codes: an even self-dual code contains the all-ones word, and complementation exchanges weights $j$ and $n-j$. In the code lattice $\Gamma_C$ the all-ones word gives the glue vector $(1,\dots,1)/\sqrt2$ of norm $n/2$, and the weight symmetry $j\leftrightarrow n-j$ is what makes the weight enumerator palindromic in the computation of the Golay distribution.
+\end{physics}
+\begin{proof}
+$\mathbf 1\cdot c=\sum_ic_i\equiv\chtwowt(c)\equiv0$ for all $c\in C$, so $\mathbf 1\in
+C^\perp=C$.
+\end{proof}
+
+\subsection{The Lean definitions}
+
+All of the following are in \leanpath{VOA/LatticesAndCodes/Codes/Defs.lean}, namespace
+\lean{Code}.  The library treats codes over $\Z/q$ in general; only $q=2$ is used in this book.
+\begin{leancode}
+abbrev Code (q n : ℕ) : Type := Submodule (ZMod q) (Fin n → ZMod q)
+
+def weight (c : Fin n → ZMod q) : ℕ := hammingNorm c
+
+def support (c : Fin n → ZMod q) : Finset (Fin n) := {i | c i ≠ 0}
+
+def stdBilin (q n : ℕ) : LinearMap.BilinForm (ZMod q) (Fin n → ZMod q) := Matrix.toBilin' 1
+
+def dual (C : Code q n) : Code q n := (stdBilin q n).orthogonal C
+
+@[simp] theorem mem_dual {C : Code q n} {x : Fin n → ZMod q} :
+    x ∈ C.dual ↔ ∀ y ∈ C, y ⬝ᵥ x = 0
+
+noncomputable def rank (C : Code q n) : ℕ := finrank (ZMod q) C
+
+def IsSelfOrthogonal (C : Code q n) : Prop := C ≤ C.dual
+
+def IsSelfDual (C : Code q n) : Prop := C.dual = C
+
+def IsEven (C : Code 2 n) : Prop := ∀ c ∈ C, 2 ∣ weight c
+
+def IsDoublyEven (C : Code 2 n) : Prop := ∀ c ∈ C, 4 ∣ weight c
+
+noncomputable def minDist (C : Code q n) : ℕ := sInf {w | ∃ c ∈ C, c ≠ 0 ∧ weight c = w}
+\end{leancode}
+\begin{dictionary}
+\begin{itemize}
+\item \lean{ZMod q} is $\Z/q$; \lean{Fin n → ZMod q} is the space of words of length $n$.  A
+  \lean{Code q n} is literally a \lean{Submodule}, i.e.\ a linear subspace for $q=2$.  So
+  \lean{c ∈ C} means $c$ is a codeword.
+\item \lean{hammingNorm c} is Mathlib's number of nonzero coordinates: the Hamming weight.
+\item \lean{Matrix.toBilin' 1} is the bilinear form with identity Gram matrix, $x\cdot y=\sum
+  x_iy_i$; \lean{x ⬝ᵥ y} is Mathlib's notation for this dot product of vectors (the subscript
+\lean{ᵥ} stands for ``vector''; the same symbol is used below for the dot product of integer
+vectors in $\Z^n$).
+  \lean{orthogonal C} is $\{x:\ \langle c,x\rangle=0\ \forall c\in C\}$; \lean{mem_dual} confirms
+  this unfolding.  So \lean{C.dual} $=C^\perp$.
+\item \lean{C ≤ C.dual} is inclusion of subspaces.  \lean{rank} is $\dim_{\chtwoF}C$.
+\item \lean{minDist} is the infimum (\lean{sInf}) of the set of weights of nonzero codewords.
+  Lean's convention $\inf\emptyset=0$ means \lean{minDist} of the zero code is $0$; for a nonzero
+  code it is the textbook minimum distance.  The Golay code is nonzero
+  (\lean{Code.golay_ne_bot}), so the convention is irrelevant below.
+\end{itemize}
+All definitions are the textbook ones.
+\end{dictionary}
+
+The two lemmas above are in Lean as \lean{Code.IsDoublyEven.isSelfOrthogonal} and
+\lean{Code.one_mem_of_isSelfDual_of_isEven}; and the dimension criterion as
+\begin{leancode}
+theorem isSelfDual_iff {C : Code q n} :
+    C.IsSelfDual ↔ C.IsSelfOrthogonal ∧ 2 * C.rank = n
+\end{leancode}
+(under the standing hypothesis \lean{[Fact (Nat.Prime q)]}, i.e.\ $\Z/q$ is a field).
+
+\subsection{Weight enumerators and the MacWilliams identity}\label{ch02:sec:macwilliams}
+
+\begin{definition}[Weight enumerator]
+For a code $C$ of length $n$, let $A_i=|\{c\in C:\chtwowt c=i\}|$ (the \emph{weight
+distribution}), and
+\begin{equation*}
+W_C(X,Y)=\sum_{c\in C}X^{n-\chtwowt c}Y^{\chtwowt c}=\sum_{i=0}^nA_iX^{n-i}Y^i .
+\end{equation*}
+\end{definition}
+\begin{leancode}
+noncomputable def toFinset (C : Code q n) : Finset (Fin n → ZMod q) :=
+  (Set.toFinite (C : Set (Fin n → ZMod q))).toFinset
+
+noncomputable def hammingEnumerator (C : Code q n) : MvPolynomial (Fin 2) ℂ :=
+  ∑ c ∈ C.toFinset, X 0 ^ (n - weight c) * X 1 ^ weight c
+
+noncomputable def weightCount (C : Code q n) (i : ℕ) : ℕ :=
+  (C.toFinset.filter fun c => weight c = i).card
+\end{leancode}
+\begin{dictionary}
+File \leanpath{Codes/Enumerator.lean}.  \lean{toFinset} is the (finite) set of codewords, as a
+\lean{Finset} so that one may sum over it.  \lean{MvPolynomial (Fin 2) ℂ} is the polynomial ring
+$\C[X_0,X_1]$; \lean{X 0} is $X$ and \lean{X 1} is $Y$.  The subtraction \lean{n - weight c} is
+natural-number subtraction, which is honest because $\chtwowt c\le n$.  \lean{weightCount C i} is
+$A_i$.  Same as the textbook.
+\end{dictionary}
+\begin{physics}
+The weight enumerator is the generating function of the code by Hamming weight. Under Construction A the minimal lattice vector over a codeword of weight $w$ has norm $w/2$, i.e. conformal weight $w/4$, so the enumerator is the code-theoretic shadow of the partition function: it counts the lowest momentum states in each coset. Its transformation under the MacWilliams substitution is the finite analogue of the $S$ transformation.
+\end{physics}
+
+\begin{theorem}[MacWilliams identity]\label{ch02:thm:macwilliams}
+For a linear code $C\subseteq(\Z/q)^n$,
+$|C|\,W_{C^\perp}(X,Y)=W_C\bigl(X+(q-1)Y,\;X-Y\bigr)$.
+\end{theorem}
+\begin{leancode}
+theorem macWilliams_eval (C : Code q n) (A B : ℂ) :
+    (C.toFinset.card : ℂ) * eval ![A, B] C.dual.hammingEnumerator
+      = eval ![A + ((q : ℂ) - 1) * B, A - B] C.hammingEnumerator
+
+theorem macWilliams (C : Code q n) :
+    (C.toFinset.card : ℂ) • C.dual.hammingEnumerator
+      = bind₁ ![X 0 + MvPolynomial.C ((q : ℂ) - 1) * X 1, X 0 - X 1] C.hammingEnumerator
+\end{leancode}
+\begin{dictionary}
+File \leanpath{Codes/MacWilliams.lean}, standing hypothesis \lean{[NeZero q]} ($q\ge1$).
+\lean{eval ![A, B] p} evaluates the polynomial $p$ at $X=A$, $Y=B$ (\lean{![A, B]} is the vector
+$(A,B)$).  \lean{bind₁ ![u, v] p} substitutes the polynomials $u,v$ for $X,Y$ in $p$.  The first
+form is the identity at every complex point, the second the polynomial identity; over $\C$ they
+are equivalent.  Exactly Theorem~\ref{ch02:thm:macwilliams}; no primality of $q$ is needed.
+\end{dictionary}
+\begin{physics}
+MacWilliams' identity relates the weight enumerator of $C$ to that of $C^\perp$. It is a finite Fourier (Poisson summation) transform on the code, the same operation that gives $\tau\mapsto-1/\tau$ for the theta function of $\Gamma_C$; heuristically it is the code-level T-duality exchanging the sectors labelled by $C$ and $C^\perp$. In quantum error correction it relates the weight distributions of a stabiliser code and its normaliser, the starting point of the linear-programming bounds.
+\end{physics}
+\emph{Proof on paper.}  Let $\chi(a)=e^{2\pi ia/q}$, a character of $\Z/q$, and put
+$f(v)=X^{n-\chtwowt v}Y^{\chtwowt v}$ for $v\in(\Z/q)^n$.  Its Fourier transform factorises over
+coordinates: $\hat f(u)=\sum_v\chi(u\cdot v)f(v)=\prod_i\bigl(\sum_{a}\chi(u_ia)X^{[a=0]}
+Y^{[a\ne0]}\bigr)$, and the $i$-th factor is $X+(q-1)Y$ if $u_i=0$ and $X-Y$ otherwise (the sum of
+$\chi$ over the nonzero elements is $-1$).  So $\hat f(u)=(X+(q-1)Y)^{n-\chtwowt u}(X-Y)^{\chtwowt
+u}$.  Summing over $u\in C$ and exchanging sums, $\sum_{u\in C}\chi(u\cdot v)$ equals $|C|$ if
+$v\in C^\perp$ and $0$ otherwise (orthogonality of characters on the group $C$).  Hence
+$\sum_{u\in C}\hat f(u)=|C|\sum_{v\in C^\perp}f(v)$, which is the identity.  \qed
+
+\begin{corollary}\label{ch02:cor:gleason}
+If $C$ is a binary self-dual code of dimension $k$, then
+$W_C(X+Y,X-Y)=2^kW_C(X,Y)$.
+\end{corollary}
+\begin{leancode}
+theorem enumerator_invariant {n : ℕ} (C : Code 2 n) (h : C.IsSelfDual) :
+    bind₁ ![X 0 + X 1, X 0 - X 1] C.hammingEnumerator
+      = ((2 ^ C.rank : ℕ) : ℂ) • C.hammingEnumerator
+\end{leancode}
+\begin{physics}
+For a self-dual code the enumerator is invariant, up to the factor $2^k$, under $(X,Y)\mapsto(X+Y,X-Y)$. This is the code-level analogue of modular invariance of the holomorphic partition function: a self-dual code gives a single-sector code CFT whose genus-one counting function is invariant under $S$. It is also the starting point of Gleason's theorem and of the classification of self-dual codes.
+\end{physics}
+This is the code-theoretic shadow of the modular transformation $\tau\mapsto-1/\tau$ of
+\S\ref{ch02:sec:theta}: the theta function of the lattice of a code is obtained from $W_C$ by
+substituting Jacobi theta constants, and the substitution $(X,Y)\mapsto((X+Y)/\sqrt2,(X-Y)/\sqrt2)$
+corresponds to $S$.
+\begin{status}
+\lean{Code.macWilliams}, \lean{Code.enumerator_invariant}: unconditional; \lean{#print axioms}:
+\lean{propext}, \lean{Classical.choice}, \lean{Quot.sound}.
+\end{status}
+
+\section{The extended binary Golay code}\label{ch02:sec:golay}
+
+\subsection{Construction}
+
+The extended Golay code $\chtwoG$ is the unique (up to coordinate permutation) $[24,12,8]$ binary
+code; we use one explicit model, the \emph{Paley construction}.  Index the $24$ coordinates as two
+blocks of $12$, and the $12$ coordinates of each block by the projective line
+$\mathbb{P}^1(\mathbb{F}_{11})=\{0,1,\dots,10,\infty\}$ (Lean label $11$ is $\infty$).  The
+nonzero squares mod $11$ are $Q=\{1,3,4,5,9\}$ (indeed $1^2,2^2,3^2,4^2,5^2\equiv1,4,9,5,3$).
+The idea of the Paley construction is that the pattern ``$j-i$ is a square'' is very regular ---
+it is invariant under the shifts $i\mapsto i+1$ and, since $-1$ is \emph{not} a square mod $11$,
+it is antisymmetric off the diagonal --- and this regularity is what makes $BB^{\mathsf T}=I$
+come out.  Define the $12\times12$ matrix $B$ over $\chtwoF$
+by
+\begin{equation*}
+B_{ij}=\begin{cases}
+0&i=j=\infty,\\ 1&\text{exactly one of }i,j\text{ is }\infty,\\
+1&i,j\neq\infty\text{ and }j-i\in\{0\}\cup Q\pmod{11},\\ 0&\text{otherwise,}
+\end{cases}
+\end{equation*}
+and let $\chtwoG$ be the row space of the $12\times24$ matrix $[\,I_{12}\mid B\,]$, i.e.\ the image
+of $x\mapsto(x,xB)$.  For instance row $0$ of $B$ is
+$(1,1,0,1,1,1,0,0,0,1,0,1)$ (columns $0,\dots,10,\infty$: ones at $0$, at the squares
+$1,3,4,5,9$, and at $\infty$), and every row $i\le10$ is obtained by shifting the first eleven
+entries cyclically by $i$.  Rows $0,\dots,10$ of $B$ have $1+5+1=7$ ones and the row $\infty$ has $11$,
+so the generators of $\chtwoG$ have weight $8$ or $12$.
+
+\begin{definition}[\lean{Code.golayB}, \lean{Code.golayEnc}, \lean{Code.golay}]\label{ch02:def:golay}
+\leanpath{VOA/LatticesAndCodes/Codes/Golay.lean}.
+\end{definition}
+\begin{leancode}
+def golayB (i j : Fin 12) : ZMod 2 :=
+  if (i : ℕ) = 11 then (if (j : ℕ) = 11 then 0 else 1)
+  else if (j : ℕ) = 11 then 1
+  else if (i : ℕ) = (j : ℕ) then 1
+  else
+    let d := ((j : ℕ) + 11 - (i : ℕ)) % 11
+    if d = 1 ∨ d = 3 ∨ d = 4 ∨ d = 5 ∨ d = 9 then 1 else 0
+
+def golayEnc : (Fin 12 → ZMod 2) →ₗ[ZMod 2] (Fin 24 → ZMod 2) where
+  toFun x := Fin.append x (fun k => ∑ i, x i * golayB i k)
+
+def golay : Code 2 24 := LinearMap.range golayEnc
+\end{leancode}
+(The two linearity proofs in \lean{golayEnc} are omitted.)
+\begin{dictionary}
+Line by line: \lean{(i : ℕ)} is the index $i\in\{0,\dots,11\}$ viewed as a natural number.
+The first line treats the row $i=\infty$ (label $11$): entry $0$ in column $\infty$, $1$
+elsewhere.  The second treats the column $\infty$ in the other rows: $1$.  The third puts $1$ on
+the diagonal ($j-i=0$).  The last two lines handle $i\ne j$, both in $\{0,\dots,10\}$: in Lean the
+subtraction of natural numbers is truncated ($3-5=0$), so $j-i$ cannot be computed directly when
+$j<i$.  Adding $11$ first gives $j+11-i\in\{1,\dots,21\}$, which is a genuine natural number,
+congruent to $j-i$ modulo $11$; reducing by \texttt{\% 11} gives the representative $d\in\{0,\dots,10\}$
+of $(j-i)\bmod 11$.  (Example: $i=5$, $j=3$: $d=(3+11-5)\bmod11=9\equiv-2$, and $-2\equiv9$ is a
+square mod $11$ since $3^2=9$, so $B_{5,3}=1$.)  The entry is $1$ iff $d\in Q=\{1,3,4,5,9\}$.  So
+\lean{golayB} is the matrix $B$ above.  \lean{Fin.append x y} concatenates two words of length $12$ into one of length
+$24$, and \lean{fun k => ∑ i, x i * golayB i k} is the row vector $xB$.  \lean{LinearMap.range}
+is the image.  So \lean{golay} is the row space of $[I\mid B]$, as in the text.
+\end{dictionary}
+\begin{physics}
+The extended binary Golay code is a $[24,12,8]$ code; up to equivalence it is the unique doubly even self-dual code of length $24$ with minimum distance $8$ (the uniqueness is classical and is not in the Lean library). As a code CFT it supplies the $24$ bosons of the Leech setup: Construction A applied to it gives the Niemeier lattice $N(A_1^{24})$, and the automorphism group $M_{24}$ of the code permutes the $24$ bosons. In quantum information its puncturing is the perfect $[23,12,7]$ Golay code, which yields a $[[23,1,7]]$ CSS quantum code.
+\end{physics}
+
+\subsection{The basic properties}
+
+\begin{theorem}[{$\chtwoG$ is a doubly even self-dual $[24,12,8]$ code}]\label{ch02:thm:golay}
+$\dim\chtwoG=12$, $\chtwoG$ is self-dual and doubly even, and its minimum distance is $8$.
+\end{theorem}
+\begin{leancode}
+theorem golay_rank : golay.rank = 12
+
+theorem golay_isSelfDual : golay.IsSelfDual
+
+theorem golay_isDoublyEven : golay.IsDoublyEven
+
+theorem golay_minDist : golay.minDist = 8
+\end{leancode}
+\begin{dictionary}
+All in namespace \lean{Code}; no hypotheses.  Each term is defined above.  The conjunction is
+Ebeling's Theorem 2.6 (existence half).  Non-vacuity: \lean{minDist} could have been $0$ only for
+the zero code, and \lean{golay_minDist} itself rules that out (it says $8$, and the proof
+exhibits a codeword of weight $8$).
+\end{dictionary}
+\begin{physics}
+Doubly even and self-dual are the two conditions under which Construction A gives an even unimodular lattice, that is, a holomorphic lattice CFT with $c=24$. Minimum distance $8$ means that a codeword of weight $w$ contributes lattice vectors of norm $w/2\ge4$, so no new roots arise from the code: the only roots of $N(A_1^{24})$ are the $48$ vectors $\pm\sqrt2\,e_j$ coming from $\sqrt2\Z^{24}$, giving the $A_1^{24}$ currents. In quantum information the distance $8$ is the error-detecting power of the Golay code.
+\end{physics}
+\emph{Proof on paper.}
+\begin{enumerate}
+\item \emph{Dimension.}  $x\mapsto(x,xB)$ is injective (the first block recovers $x$), so the image
+has dimension $12$.
+\item \emph{Self-orthogonality.}  A direct check on the $12\times12$ matrix gives $BB^{\mathsf
+T}=I$ over $\chtwoF$ (a finite computation over $144$ pairs of indices; in Lean it is
+\lean{golayB_mul_transpose}, closed by \lean{decide}).  Then $(x,xB)\cdot(y,yB)=x\cdot
+y+xBB^{\mathsf T}y^{\mathsf T}=2\,x\cdot y=0$.  With dimension $12=24/2$ this gives
+self-duality.
+\item \emph{Double evenness.}  The generators have weight $8$ or $12$; if $u,v$ are doubly even
+and $u\cdot v=0$, then by \eqref{ch02:eq:weightsum} $\chtwowt(u+v)=\chtwowt u+\chtwowt v-2|u\cap
+v|$ with $|u\cap v|$ even, so $u+v$ is doubly even.  Induct over sums of generators.
+\item \emph{No weight $4$.}  By double evenness, a nonzero codeword $(x,xB)$ of weight $<8$ has
+weight exactly $4$, so $\chtwowt x+\chtwowt(xB)=4$.  Since $BB^{\mathsf T}=I$, $x=(xB)B^{\mathsf
+T}$, so the situation is symmetric between the halves.  Check the cases: $\chtwowt x=1$ gives
+$\chtwowt(xB)\in\{7,11\}$; $\chtwowt x=2$ gives $\chtwowt(xB)=\chtwowt(B_i+B_j)\ge6$ (a finite
+check on pairs of rows); $\chtwowt x=3$ forces $\chtwowt(xB)=1$, so $x$ is a column of $B$, of
+weight $\ge7$; $\chtwowt x=4$ forces $xB=0$, so $x=0$.  All cases are contradictory.  The first
+generator has weight $1+7=8$, so $d=8$.  \qed
+\end{enumerate}
+Note the design choice recorded in the source: a brute-force check over all $2^{12}=4096$
+codewords by \lean{decide} does not terminate in reasonable time in the Lean kernel, so only the
+statements quantified over $12$ or $12\times12$ indices are decided by computation, and everything
+else is argued.
+
+\begin{status}
+\lean{Code.golay_rank}, \lean{Code.golay_isSelfDual}, \lean{Code.golay_isDoublyEven},
+\lean{Code.golay_minDist}: unconditional; \lean{#print axioms} (checked for this chapter):
+\lean{propext}, \lean{Classical.choice}, \lean{Quot.sound}.  The finite checks use
+\lean{decide} (kernel evaluation), not \lean{native_decide}.
+\end{status}
+
+\subsection{The weight distribution; octads}\label{ch02:sec:octads}
+
+\begin{theorem}[Weight enumerator of $\chtwoG$]\label{ch02:thm:golayenum}
+$W_{\chtwoG}(X,Y)=X^{24}+759X^{16}Y^8+2576X^{12}Y^{12}+759X^8Y^{16}+Y^{24}$.  In particular
+$\chtwoG$ has $759$ codewords of weight $8$, $2576$ of weight $12$ and $759$ of weight $16$.
+\end{theorem}
+\begin{leancode}
+theorem golay_weightCount_eight : golay.weightCount 8 = 759
+
+theorem golay_weightCount_twelve : golay.weightCount 12 = 2576
+
+theorem golay_weightCount_sixteen_eq : golay.weightCount 16 = 759
+
+theorem golay_hammingEnumerator :
+    golay.hammingEnumerator
+      = X 0 ^ 24 + MvPolynomial.C 759 * (X 0 ^ 16 * X 1 ^ 8)
+        + MvPolynomial.C 2576 * (X 0 ^ 12 * X 1 ^ 12)
+        + MvPolynomial.C 759 * (X 0 ^ 8 * X 1 ^ 16) + X 1 ^ 24
+\end{leancode}
+\begin{dictionary}
+File \leanpath{Codes/GolayEnumerator.lean}.  \lean{MvPolynomial.C a} is the constant polynomial
+$a$.  Read with \lean{X 0} $=X$, \lean{X 1} $=Y$ this is Theorem~\ref{ch02:thm:golayenum}
+verbatim.
+\end{dictionary}
+\begin{physics}
+The weight distribution $1,759,2576,759,1$ (weights $0,8,12,16,24$) records, at the level of codewords, how the momentum states of the code CFT are distributed. By Gleason-type invariance (Corollary~\ref{ch02:cor:gleason}) it is determined by the single number $759$ of octads. The $759$ octads and $2576$ dodecads are the combinatorial data reappearing in the Leech lattice, in vectors of shape $(\pm2^8,0^{16})$, of which there are $759\cdot2^7$.
+\end{physics}
+\emph{Proof on paper.}  Let $A_j$ be the weight distribution.  Double evenness kills $A_j$ for
+$4\nmid j$; minimum distance $8$ kills $A_4$; Lemma~\ref{ch02:lem:allones} gives $A_j=A_{24-j}$,
+hence $A_{24}=A_0=1$, $A_{20}=A_4=0$, $A_{16}=A_8$.  Two unknowns remain, $A_8$ and $A_{12}$.
+Counting codewords: $2+2A_8+A_{12}=2^{12}$.  The MacWilliams identity for the self-dual code at
+the single point $(X,Y)=(1,2)$ reads $4096\,W(1,2)=W(3,-1)$, i.e.
+\begin{equation*}
+4096\bigl(1+2^8A_8+2^{12}A_{12}+2^{16}A_8+2^{24}\bigr)=3^{24}+3^{16}A_8+3^{12}A_{12}+3^8A_8+1,
+\end{equation*}
+which simplifies to $226430750\,A_8+16245775\,A_{12}=213710055650$.  Substituting
+$A_{12}=4094-2A_8$ gives $193939200\,A_8=147199852800$, so $A_8=759$ and $A_{12}=2576$.  \qed
+
+\begin{definition}[Octads, dodecads]
+The supports of the $759$ weight-$8$ codewords are the \emph{octads}; those of the $2576$
+weight-$12$ codewords the \emph{dodecads}.
+\end{definition}
+\begin{physics}
+The octads are the $759$ eight-element subsets that support weight-$8$ codewords. In the Leech lattice they label the minimal vectors of shape $(\pm2^8,0^{16})/\sqrt8$, there are $759\cdot2^7$ of them, a part of the $196560$. The Steiner-system property $S(5,8,24)$ is the combinatorial reflection of the large symmetry group $M_{24}$ of the code CFT.
+\end{physics}
+The octads form the Steiner system $S(5,8,24)$: every $5$-subset of the $24$ coordinates lies in
+exactly one octad.  The existence half is proved in the library by counting
+(\lean{VOA.Moonshine.GroundLat.steiner} in \leanpath{VOA/Moonshine/GroundLatticeGolay.lean}): two
+distinct octads meet in at most $4$ points (their sum is a nonzero codeword, of weight $\ge8$), so
+the $759\binom85=42504$ five-subsets of octads are distinct, and $\binom{24}5=42504$.  That
+theorem, and the other octad combinatorics used by the triality, are presented in
+Chapter~\ref{ch:12}.  The automorphism group of $\chtwoG$ is the Mathieu group $M_{24}$; it does
+not appear in the Lean library.
+
+\begin{remark}[The perfect Golay code]
+Deleting the last coordinate gives the $[23,12,7]$ \emph{perfect} Golay code
+(\lean{Code.golay23}, \lean{Code.golay23_rank}, \lean{Code.golay23_minDist}).  It is not used in
+the Moonshine construction.
+\end{remark}
+
+\begin{status}
+\lean{Code.golay_weightCount_eight}, \lean{Code.golay_weightCount_twelve},
+\lean{Code.golay_weightCount_sixteen_eq}, \lean{Code.golay_hammingEnumerator}: unconditional,
+standard axioms only.
+\end{status}
+
+\section{From codes to lattices: Construction A}\label{ch02:sec:constructionA}
+
+\subsection{The construction}
+
+Let $\rho:\Z^n\to\chtwoF^n$ be reduction mod $2$.  For a binary code $C$, Ebeling (following
+Leech and Sloane, ``Construction A'') puts
+\begin{equation*}
+\Gamma_C=\tfrac1{\sqrt2}\,\rho^{-1}(C)\subseteq\mathbb{R}^n .
+\end{equation*}
+So $\Gamma_C$ consists of the vectors $x/\sqrt2$ with $x\in\Z^n$ and $x\bmod2\in C$.  The
+$\tfrac1{\sqrt2}$ is irrational and would force real coordinates; the library instead keeps
+the honest integer vectors $x\in\rho^{-1}(C)$ and \emph{halves the form}:
+\begin{equation}\label{ch02:eq:halved}
+\langle x,y\rangle_C=\tfrac12\,x\cdot y\qquad(x,y\in\rho^{-1}(C)).
+\end{equation}
+The map $\phi:x\mapsto x/\sqrt2$ is an isometry from $(\rho^{-1}(C),\langle,\rangle_C)$ onto
+$\Gamma_C$ (with the dot product of $\mathbb{R}^n$): it is $\Z$-linear, bijective by the very
+definition of $\Gamma_C$, and
+$\phi(x)\cdot\phi(y)=\tfrac1{\sqrt2}x\cdot\tfrac1{\sqrt2}y=\tfrac12\,x\cdot y=\langle
+x,y\rangle_C$.  An isometric isomorphism transports rank, Gram matrices, determinant, evenness,
+definiteness and representation numbers, so for every purpose of this book the two are the same
+lattice.  The same trick --- move a scale factor from the vectors into the form --- is used for
+the Leech lattice below, where $\tfrac1{\sqrt8}$ becomes division of the form by $8$.  The form \eqref{ch02:eq:halved} is integer-valued
+exactly when $C$ is self-orthogonal: $x\cdot y\equiv\rho(x)\cdot\rho(y)\pmod 2$.
+
+\begin{definition}[\lean{latticeOfCode}]\label{ch02:def:latticeOfCode}
+\leanpath{VOA/LatticesAndCodes/Construction/CodeToLattice.lean} (root namespace).
+\end{definition}
+\begin{leancode}
+def reduceMod (q n : ℕ) : (Fin n → ℤ) →ₗ[ℤ] (Fin n → ZMod q) where
+  toFun x := fun i => ((x i : ℤ) : ZMod q)
+
+def preimageOfCode {q : ℕ} (C : Code q n) : Submodule ℤ (Fin n → ℤ) :=
+  Submodule.comap (reduceMod q n) (C.restrictScalars ℤ)
+
+noncomputable def latticeOfCode (C : Code 2 n) (hC : C ≤ C.dual) : IntegralLattice where
+  carrier := ↥(preimageOfCode C)
+  bilin := LinearMap.mk₂ ℤ
+    (fun x y => ((x : Fin n → ℤ) ⬝ᵥ (y : Fin n → ℤ)) / 2)
+
+@[simp] theorem latticeOfCode_bilin (C : Code 2 n) (hC : C ≤ C.dual)
+    (x y : preimageOfCode C) :
+    (latticeOfCode C hC).bilin x y = ((x : Fin n → ℤ) ⬝ᵥ (y : Fin n → ℤ)) / 2
+\end{leancode}
+(Linearity proofs omitted.)
+\begin{dictionary}
+\lean{reduceMod 2 n} is $\rho$.  \lean{comap} is the preimage of a submodule under a linear map;
+\lean{restrictScalars ℤ} views the $\chtwoF$-subspace $C$ as a subgroup.  So \lean{preimageOfCode C}
+$=\rho^{-1}(C)$.  The hypothesis \lean{hC : C ≤ C.dual} is self-orthogonality, needed for
+integrality.  The form is $(x\cdot y)/2$ with \lean{/} \emph{integer} division (rounding toward
+$-\infty$).  Because $x\cdot y$ is even for $x,y\in\rho^{-1}(C)$, the division leaves no
+remainder, so no rounding ever occurs and \lean{(x ⬝ᵥ y) / 2} is the rational number
+$\tfrac12x\cdot y$, which happens to be an integer.  A referee might
+worry that integer division could silently produce a non-bilinear ``form''; it cannot, because
+the omitted linearity proofs use precisely the divisibility $2\mid x\cdot y$ (lemma
+\lean{two_dvd_dotProduct_of_mem}), and the theorem \lean{two_mul_latticeOfCode_bilin} states
+$2\langle x,y\rangle_C=x\cdot y$ exactly.
+\end{dictionary}
+\begin{physics}
+Construction A turns a binary code $C\subseteq\mathbb{F}_2^n$ into a lattice $\Gamma_C=\{x\in\Z^n:x\bmod2\in C\}/\sqrt2$, that is, into a momentum lattice. In CFT language this builds a lattice chiral algebra from a code by gluing the weight-one vertex operators $e^{i\sqrt2 e_j\cdot X}$ (the $A_1^n$ currents) with the vertex operators labelled by codewords, as in the code CFT constructions of Dolan--Goddard--Montague, Gaberdiel et al. and Dymarsky et al. Self-dual doubly even codes thereby give holomorphic CFTs.
+\end{physics}
+
+\begin{theorem}[Properties of $\Gamma_C$]\label{ch02:thm:constructionA}
+Let $C\subseteq\chtwoF^n$ be self-orthogonal of dimension $k$.  Then $\Gamma_C$ is positive
+definite of rank $n$; $\det\Gamma_C=2^{n-2k}$; $\Gamma_C$ is even iff $C$ is doubly even; and
+$\Gamma_C$ is unimodular iff $C$ is self-dual.
+\end{theorem}
+\begin{leancode}
+theorem latticeOfCode_isPosDef (C : Code 2 n) (hC : C ≤ C.dual) :
+    (latticeOfCode C hC).IsPosDef
+
+@[simp] theorem latticeOfCode_rank (C : Code 2 n) (hC : C ≤ C.dual) :
+    (latticeOfCode C hC).rank = n
+
+theorem latticeOfCode_isEven (C : Code 2 n) (hC : C ≤ C.dual) :
+    (latticeOfCode C hC).IsEven ↔ C.IsDoublyEven
+
+theorem latticeOfCode_det (C : Code 2 n) (hC : C ≤ C.dual) :
+    (latticeOfCode C hC).det = 2 ^ (n - 2 * C.rank)
+
+theorem latticeOfCode_isUnimodular (C : Code 2 n) (hC : C ≤ C.dual) :
+    (latticeOfCode C hC).IsUnimodular ↔ C.IsSelfDual
+\end{leancode}
+\begin{dictionary}
+The only hypothesis is self-orthogonality, required for the lattice to exist.  \lean{n - 2 *
+C.rank} is natural subtraction; it is honest since $2k\le n$ for a self-orthogonal code.  These
+are Ebeling's Propositions 1.3 and 1.4, exactly.
+\end{dictionary}
+\begin{physics}
+The properties of $\Gamma_C$ are the dictionary between code and CFT: $\Gamma_C$ is integral/even exactly when $C$ is (doubly even), and unimodular exactly when $C$ is self-dual. Thus a doubly even self-dual code gives an even unimodular lattice, hence a holomorphic lattice CFT with $c=n$. It is also the observation that error-correcting codes and rational CFTs of Narain type share the same underlying algebraic structure.
+\end{physics}
+\emph{Proof on paper.}  Positive definiteness: $\tfrac12x\cdot x>0$ for $x\ne0$.  Rank:
+$2\Z^n\subseteq\rho^{-1}(C)\subseteq\Z^n$.  Evenness: for an integer $a$, $a^2\equiv0\pmod4$ if
+$a$ is even and $\equiv1\pmod 4$ if odd, so $x\cdot x\equiv\chtwowt(\rho x)\pmod4$; hence
+$\tfrac12x\cdot x$ is even for all $x$ iff all codeword weights are divisible by $4$.
+Determinant: $\Z^n/\rho^{-1}(C)\cong\chtwoF^n/C$ has order $2^{n-k}$, so a basis matrix $P$ of
+$\rho^{-1}(C)$ has $|\det P|=2^{n-k}$; the Gram matrix of $\Gamma_C$ is $\tfrac12P^{\mathsf T}P$,
+with determinant $2^{-n}2^{2(n-k)}=2^{n-2k}$.  Unimodularity: $2^{n-2k}=1$ iff $2k=n$ iff $C$ is
+self-dual (given self-orthogonality).  \qed
+\begin{status}
+All five unconditional (given the stated hypothesis \lean{hC}); \lean{#print axioms} for
+\lean{latticeOfCode_det}, \lean{latticeOfCode_isEven}, \lean{latticeOfCode_isUnimodular}:
+standard three.
+\end{status}
+
+\begin{example}[$E_8$ from the Hamming code; paper only]\label{ch02:ex:e8}
+The extended Hamming code $H_8\subseteq\chtwoF^8$ is the $[8,4,4]$ code spanned by the rows of
+\begin{equation*}
+\begin{pmatrix}
+1&1&1&1&0&0&0&0\\ 0&0&1&1&1&1&0&0\\ 0&0&0&0&1&1&1&1\\ 0&1&0&1&0&1&0&1
+\end{pmatrix}.
+\end{equation*}
+Its nonzero weights are $4$ (fourteen words) and $8$ (one word), so it is doubly even; it has
+dimension $4=8/2$ and is self-orthogonal (Lemma~\ref{ch02:lem:doublyeven}), hence self-dual.  By
+Theorem~\ref{ch02:thm:constructionA}, $\Gamma_{H_8}$ is an even unimodular positive definite
+lattice of rank $8$: it is the $E_8$ lattice.  Its roots are $\tfrac12x\cdot x=2$, i.e.\ $x\cdot
+x=4$: the $2\cdot8=16$ vectors $\pm2e_i$, and the $14\cdot2^4=224$ vectors with entries $\pm1$ on
+the support of a weight-$4$ codeword; $16+224=240$, the coefficient of $q$ in $\vartheta_{E_8}=E_4$
+(the only modular form of weight $4$ with constant term $1$).  This example is not formalised in
+the vendored files used here; it is included to let the reader test the definitions on a small
+case.  It also illustrates why Construction A alone never produces a rootless lattice: the
+vectors $\pm2e_i$ always have norm $\tfrac12\cdot4=2$.  To kill them one needs the twist by $u$ of
+\S\ref{ch02:sec:leech}.
+\end{example}
+
+\subsection{\texorpdfstring{The Golay lattice $N(A_1^{24})$}{The Golay lattice N(A1^24)}}\label{ch02:sec:golaylattice}
+
+\begin{definition}[\lean{Leech.preG}, \lean{Leech.golayLattice}]
+\leanpath{VOA/LatticesAndCodes/Leech/Defs.lean}, namespace \lean{Leech}.
+\end{definition}
+\begin{leancode}
+def preG : Submodule ℤ (Fin 24 → ℤ) := preimageOfCode Code.golay
+
+theorem golay_le_dual : Code.golay ≤ Code.golay.dual := Code.golay_isSelfOrthogonal
+
+def golayLattice : IntegralLattice := latticeOfCode Code.golay golay_le_dual
+
+theorem golayLattice_det : golayLattice.det = 1
+
+theorem golayLattice_rank : golayLattice.rank = 24
+\end{leancode}
+\begin{dictionary}
+\lean{preG} $=\rho^{-1}(\chtwoG)\subseteq\Z^{24}$, and \lean{golayLattice} is
+$\Gamma_{\chtwoG}$ with the halved form.  By Theorem~\ref{ch02:thm:constructionA} and
+Theorem~\ref{ch02:thm:golay} it is even, positive definite, unimodular ($\det=2^{24-24}=1$) and of
+rank $24$.
+\end{dictionary}
+\begin{physics}
+The Golay lattice $N(A_1^{24})$ is the Niemeier lattice obtained from the Golay code by Construction A: a $c=24$ holomorphic lattice CFT. Its $48$ roots $\pm\sqrt2 e_j$ give weight-one currents forming $A_1^{24}$ (dimension $24\cdot3=72$, i.e. $48$ root currents plus $24$ Cartan currents). In the Leech construction this lattice is modified by a change of the glue to remove all roots, so it is the starting point of the passage to the rootless theory.
+\end{physics}
+
+$\Gamma_{\chtwoG}$ is one of the $24$ Niemeier lattices.  Its roots are easy to find: $\tfrac12
+x\cdot x=2$ means $x\cdot x=4$, so either $x=\pm2e_i$ (reducing to the zero codeword) or $x$ has
+four entries $\pm1$ (reducing to a weight-$4$ word, impossible since $d(\chtwoG)=8$).  So the root
+system is $48$ roots $\pm2e_i$, i.e.\ $24$ orthogonal copies of $A_1$, and the lattice is the
+Niemeier lattice $N(A_1^{24})$.  The roots $\pm2e_i$ are the reason this lattice is
+\emph{not} the Leech lattice, and the reason it is useful: its lattice VOA contains $24$ commuting
+copies of $\widehat{sl}_2$ at level $1$, on which the triality automorphism of
+Chapters~\ref{ch:11}--\ref{ch:13} is built.  In the VOA library the Golay lattice appears as
+\lean{VOA.Moonshine.Triality.golayN} (via the bridge of \S\ref{ch02:sec:bridge}).
+
+\section{The Leech lattice}\label{ch02:sec:leech}
+
+\subsection{Ebeling's construction, and the doubled model}
+
+Let $\Gamma=\Gamma_{\chtwoG}$, realised as $\rho^{-1}(\chtwoG)$ with the halved form.  For
+$x\in\rho^{-1}(\chtwoG)$ the coordinate sum $\sum_ix_i$ is even (it is $\equiv\chtwowt\rho(x)$,
+which is divisible by $4$).  So
+\begin{equation*}
+\pi:\rho^{-1}(\chtwoG)\to\Z/2,\qquad \pi(x)=\tfrac12\textstyle\sum_ix_i\bmod2
+\end{equation*}
+is a homomorphism (``parity''); it is surjective ($\pi(2e_0)=1$).  Its kernel
+\begin{equation*}
+A=\{x\in\rho^{-1}(\chtwoG):\ 4\mid\textstyle\sum_ix_i\}
+\end{equation*}
+has index $2$ in $\Gamma$.  Ebeling's description of the Leech lattice (\S2.8) is
+$\Leech=A\cup(\tfrac12\mathbf 1+(\Gamma\setminus A))$, the half-integral shift by $\tfrac12\mathbf
+1$ being what kills the roots.  To avoid the $\tfrac12$, the library \emph{doubles all vectors}
+and divides the form by $8$ instead of $2$: with
+\begin{equation*}
+u=(5,1,1,\dots,1)=\mathbf 1+4e_0\in\Z^{24},
+\end{equation*}
+it defines
+\begin{equation}\label{ch02:eq:leech}
+\Leech=2A\ \cup\ (u+2A)\ \subseteq\Z^{24},\qquad \langle x,y\rangle=\tfrac18\,x\cdot y .
+\end{equation}
+Doubling is an isometry: for $a,b\in A$, $\tfrac18(2a)\cdot(2b)=\tfrac12a\cdot b$.  The vector
+$u$ reduces to the all-ones word, which lies in $\chtwoG$ (Lemma~\ref{ch02:lem:allones}), and
+$\sum u_i=28\equiv0\pmod4$, so $u\in A$; in particular $2u\in2A$ and $2A\cup(u+2A)$ is closed
+under addition --- it is a subgroup.
+
+\begin{remark}[Comparison with Conway--Sloane]\label{ch02:rem:cs}
+The model \eqref{ch02:eq:leech} is the classical description of the Leech lattice in
+\emph{Sphere Packings, Lattices and Groups}, Chapter 4, \S11: the vectors $x\in\Z^{24}$
+(scaled by $1/\sqrt8$) such that either all $x_i$ are even, $\tfrac12x\bmod2\in\chtwoG$ and
+$\sum x_i\equiv0\pmod 8$; or all $x_i$ are odd, $\tfrac12(x-\mathbf1)\bmod2\in\chtwoG$ and $\sum
+x_i\equiv4\pmod8$.  Indeed $2A$ is the first set (with $x=2a$: $a\bmod2\in\chtwoG$, $\sum
+x_i=2\sum a_i\equiv0\pmod8$), and $u+2A$ is the second (with $x=u+2a$: $\tfrac12(x-\mathbf
+1)=2e_0+a\equiv a$, $\sum x_i=28+2\sum a_i\equiv4\pmod 8$).  Conway--Sloane use
+$(-3,1,\dots,1)$ instead of $u$; the two differ by $8e_0=2\cdot4e_0\in2A$, so they define the
+same coset.  In this normalisation the norm-$4$ vectors are the vectors with $x\cdot x=32$.  A
+\emph{shape} such as $(\pm4,\pm4,0^{22})$ means: the multiset of absolute values of the
+coordinates is $\{4,4,0,\dots,0\}$ (twenty-two zeros), in any positions and with the indicated
+signs.  There are three shapes $(\pm4,\pm4,0^{22})$ ($1104$ of them), $(\pm2^8,0^{16})$ on an octad with an even
+number of minus signs ($759\cdot2^7=97152$), and $(\mp3,\pm1^{23})$ ($24\cdot2^{12}=98304$),
+totalling $196560$.  This shape count is classical; the Lean proof of $196560$
+(\S\ref{ch02:sec:repcounts}) does \emph{not} enumerate shapes but uses modular forms.
+\end{remark}
+
+\subsection{The Lean definitions}
+
+\begin{definition}[\lean{IntegralLattice.dotLattice}]
+\leanpath{VOA/LatticesAndCodes/Leech/Defs.lean}.  Given a submodule $N\subseteq\Z^n$ such that
+the dot product of any two elements of $N$ is divisible by $d$, this is $N$ with the form
+$x\cdot y/d$:
+\end{definition}
+\begin{leancode}
+def dotLattice {n : ℕ} (d : ℤ) (N : Submodule ℤ (Fin n → ℤ))
+    (hdvd : ∀ x ∈ N, ∀ y ∈ N, d ∣ (x ⬝ᵥ y)) : IntegralLattice where
+  carrier := ↥N
+  bilin := LinearMap.mk₂ ℤ
+    (fun x y => ((x : Fin n → ℤ) ⬝ᵥ (y : Fin n → ℤ)) / d)
+\end{leancode}
+\begin{physics}
+This is a bookkeeping device: rescaling the form by $1/d$ is the rescaling of the radius of the compactification torus. It corresponds to the choice of normalisation for the momentum so that $\sqrt2$ factors in the Golay lattice become integer norms in the Leech lattice.
+\end{physics}
+(Linearity proofs omitted.  As for \lean{latticeOfCode}, the hypothesis \lean{hdvd} says $d$
+divides every dot product, so the integer division by $d$ leaves no remainder and equals the
+rational number $x\cdot y/d$.)
+
+\begin{definition}[$A$, $u$, $2A$ and the Leech carrier]\label{ch02:def:leechcarrier}
+Namespace \lean{Leech}.
+\end{definition}
+\begin{leancode}
+def subA : Submodule ℤ (Fin 24 → ℤ) where
+  carrier := {x | x ∈ preG ∧ (4 : ℤ) ∣ ∑ i, x i}
+
+def uVec : Fin 24 → ℤ := fun i => if i = 0 then 5 else 1
+
+def subA2 : Submodule ℤ (Fin 24 → ℤ) := subA.map ((2 : ℤ) • LinearMap.id)
+
+def carrier : Submodule ℤ (Fin 24 → ℤ) where
+  carrier := {x | x ∈ subA2 ∨ x - uVec ∈ subA2}
+
+def lattice : IntegralLattice := dotLattice 8 carrier (fun x hx y hy => eight_dvd_dot hx hy)
+
+@[simp] theorem lattice_bilin (x y : carrier) :
+    lattice.bilin x y = ((x : Fin 24 → ℤ) ⬝ᵥ (y : Fin 24 → ℤ)) / 8
+\end{leancode}
+(The closure proofs of the submodules \lean{subA} and \lean{carrier} are omitted.)
+\begin{dictionary}
+\begin{itemize}
+\item \lean{subA} $=A$: vectors of $\rho^{-1}(\chtwoG)$ with $4\mid\sum_ix_i$.
+\item \lean{uVec} $=u=(5,1,\dots,1)$ (coordinate $0$ is $5$).
+\item \lean{subA2} $=2A$, the image of $A$ under multiplication by $2$ (\lean{map} is the image of
+  a submodule).
+\item \lean{carrier} $=\{x: x\in2A\text{ or }x-u\in2A\}=2A\cup(u+2A)$.  That this set is a
+  subgroup is the (omitted, and proved) closure argument sketched above; in particular the
+  definition could not silently fail to be a lattice.
+\item \lean{eight_dvd_dot} is the theorem that $8\mid x\cdot y$ on the carrier, so the form
+  $x\cdot y/8$ is integral and the division exact; \lean{lattice_bilin} records the form.
+\item So \lean{Leech.lattice} is \eqref{ch02:eq:leech} exactly.  It is a lattice in the vendored
+  encoding (\lean{_root_.IntegralLattice}).
+\end{itemize}
+\end{dictionary}
+\begin{physics}
+This is the explicit description of the carrier of the Leech lattice in the doubled model, the lattice of $24$ chiral bosons on the torus $\mathbb{R}^{24}/\Leech$. Its elements are the allowed momentum vectors, with weights $\langle x,x\rangle/2$. The Leech lattice is the unique rootless one among the $24$ Niemeier lattices, and its automorphism group $\mathrm{Co}_0$ is the symmetry of this momentum lattice.
+\end{physics}
+
+\emph{Why $8\mid x\cdot y$.}  For $a,b\in A$: $(2a)\cdot(2b)=4\,a\cdot b$ and $a\cdot b$ is even
+(self-orthogonality), so $8\mid(2a)\cdot(2b)$.  For $a\in A$: $(2a)\cdot u=2(\sum a_i+4a_0)$,
+and $4\mid\sum a_i$, so $4\mid\sum a_i+4a_0$ and hence $8\mid(2a)\cdot u$.  Finally
+$u\cdot u=25+23=48$ is divisible by $8$.  Since every element of the carrier is of the form $2a$
+or $u+2a$, bilinearity gives $8\mid x\cdot y$ for all $x,y$ in the carrier.
+
+\subsection{The four properties}
+
+\begin{theorem}[$\Leech$: rank $24$, positive definite, even]\label{ch02:thm:leechbasic}
+\end{theorem}
+\begin{leancode}
+theorem lattice_rank : lattice.rank = 24 := finrank_carrier
+
+theorem lattice_isPosDef : lattice.IsPosDef
+
+theorem lattice_isEven : lattice.IsEven
+\end{leancode}
+\begin{dictionary}
+Namespace \lean{Leech}; no hypotheses; vendored predicates of
+Definition~\ref{ch02:def:ebeprops}.  \lean{finrank_carrier} is the statement that the submodule
+\lean{carrier} of $\Z^{24}$ has rank $24$.
+\end{dictionary}
+\begin{physics}
+Rank $24$, even and positive definite mean that the Leech lattice defines a unitary lattice CFT with $c=24$, integer conformal weights and positive energies. The rank $24$ recalls the $24$ transverse directions of the light-cone bosonic string, and the Leech lattice is the momentum lattice of the compactification of $24$ chiral bosons used in the Monster construction. Together with unimodularity (next theorem) the theory is holomorphic.
+\end{physics}
+\emph{Proof on paper.}  Rank: $8\Z^{24}\subseteq2A\subseteq\Leech\subseteq\Z^{24}$ (for $x\in\Z^{24}$,
+$4x$ reduces to $0$ and has coordinate sum divisible by $4$, so $4x\in A$ and $8x\in2A$).
+Positivity: $x\cdot x/8>0$ for $x\ne0$.  Evenness: we need $16\mid x\cdot x$.  For $x=2a$,
+$x\cdot x=4a\cdot a$ and $4\mid a\cdot a$ because $\Gamma_{\chtwoG}$ is even
+($\tfrac12a\cdot a\in2\Z$).  For $x=u+2a$,
+\begin{equation*}
+x\cdot x=4\,a\cdot a+4\Bigl(\textstyle\sum_ia_i+4a_0\Bigr)+48,
+\end{equation*}
+and each of the three terms is divisible by $16$ ($4\mid a\cdot a$; $4\mid\sum a_i$; $16\mid48$).
+This is where the choice of $u$, with $u\cdot u=48$ and coordinate sum $28$, is used. \qed
+
+\begin{theorem}[$\Leech$ is unimodular]\label{ch02:thm:leechdet}
+$\det\Leech=1$.
+\end{theorem}
+\noindent File \leanpath{VOA/LatticesAndCodes/Leech/Defs.lean}.
+\begin{leancode}
+theorem lattice_det : lattice.det = 1
+
+theorem lattice_isUnimodular : lattice.IsUnimodular
+\end{leancode}
+\emph{Proof on paper.}  The proof applies the index--determinant relation
+(Theorem~\ref{ch02:thm:index}) twice to the same lattice $A$ (with the halved form
+$\tfrac12a\cdot b$; in Lean \lean{Leech.subALattice}).
+\begin{enumerate}
+\item The inclusion $A\hookrightarrow\Gamma_{\chtwoG}$ is isometric with index $2$ ($A$ is the
+kernel of the surjection $\pi$).  So $\det A=4\det\Gamma_{\chtwoG}=4$.
+\item The doubling map $A\to\Leech$, $a\mapsto2a$, is isometric (shown above) with image $2A$.
+The image has index $2$ in $\Leech$: the homomorphism $\beta:\Leech\to\Z/2$, $x\mapsto
+x_0\bmod2$, is surjective ($\beta(u)=1$) and its kernel is exactly $2A$ (vectors of $u+2A$ have
+$x_0=5+2a_0$ odd, vectors of $2A$ have $x_0$ even).  So $4=\det A=4\det\Leech$, whence
+$\det\Leech=1$.
+\end{enumerate}
+No determinant inside $\Z^{24}$ has to be computed.  \qed
+
+The two index-$2$ statements are themselves Lean theorems, recorded because they are reused:
+\noindent File \leanpath{VOA/LatticesAndCodes/Leech/Defs.lean}.
+\begin{leancode}
+def inclG : (↥subA) →ₗ[ℤ] (↥preG) := Submodule.inclusion subA_le_preG
+
+def inclL : (↥subA) →ₗ[ℤ] (↥carrier) := inclLaux
+
+theorem inclL_bilin (x y : ↥subA) :
+    lattice.bilin (inclL x) (inclL y) = subALattice.bilin x y
+
+def parity : (↥preG) →ₗ[ℤ] ZMod 2 where
+  toFun x := ((((∑ i, (x : Fin 24 → ℤ) i) / 2 : ℤ)) : ZMod 2)
+
+theorem range_inclG : LinearMap.range inclG = LinearMap.ker parity
+
+def beta : (↥carrier) →ₗ[ℤ] ZMod 2 where
+  toFun x := ((((x : Fin 24 → ℤ) 0 : ℤ)) : ZMod 2)
+
+theorem range_inclL : LinearMap.range inclL = LinearMap.ker beta
+
+theorem card_quotient_inclL :
+    Nat.card (lattice ⧸ LinearMap.range inclL) = 2
+
+theorem subALattice_det : subALattice.det = 4
+\end{leancode}
+(For \lean{parity} and \lean{beta} only the \lean{toFun} field is shown; the linearity proofs are omitted.)
+\begin{dictionary}
+\lean{inclLaux} sends $a$ to $2a$ (its definition: \lean{toFun a := ⟨(2 : ℤ) • (a : Fin 24 → ℤ), …⟩}).
+\lean{parity} is $\pi$ and \lean{beta} is $\beta$; the casts \lean{(… : ZMod 2)} reduce an
+integer mod $2$.  \lean{range_inclL} says the image of doubling is $\ker\beta$, i.e.\ $2A=\ker\beta$.
+These are precisely the statements used in the paper proof.
+\end{dictionary}
+\begin{physics}
+Unimodularity of the Leech lattice means the theory has a single sector: its partition function is invariant under $S$, $\tau\mapsto-1/\tau$, up to the Dedekind eta factor $\eta^{-24}$. It guarantees that the lattice CFT is holomorphic, in the sense that no other module exists, and is one of the inputs for the argument that $V_\Leech$ is a $c=24$ holomorphic VOA.
+\end{physics}
+
+\begin{theorem}[$\Leech$ has no roots]\label{ch02:thm:noroots}
+No $x\in\Leech$ has $\langle x,x\rangle=2$.
+\end{theorem}
+\noindent File \leanpath{VOA/LatticesAndCodes/Leech/Defs.lean}.
+\begin{leancode}
+theorem lattice_no_roots (x : lattice) : normSq x ≠ 2 := lattice_normSq_ne_two x
+\end{leancode}
+\begin{dictionary}
+\lean{x : lattice} means $x$ is an element of the carrier (via \lean{CoeSort}).  Universally
+quantified over all lattice vectors; equivalent to $R(\Leech)=\emptyset$.  This is the statement
+that could most easily have been made vacuous (e.g.\ by a form that never takes the value $2$
+because it is identically $0$); it is not, since the same lattice is positive definite and has
+$196560$ vectors of norm $4$ (\S\ref{ch02:sec:repcounts}).
+\end{dictionary}
+\begin{physics}
+No vectors of norm $2$ means that the lattice VOA $V_\Leech$ has no weight-one states of the form $e^\alpha$, so the only weight-one currents are the $24$ Cartan currents $\partial X^i$ of the abelian algebra $\mathfrak{u}(1)^{24}$. The absence of roots is what makes the Leech theory distinguished among the $24$ Niemeier theories: no non-abelian Kac--Moody symmetry on the lattice side. After the $\Z_2$ orbifold that produces $\Vnat$, even the Cartan currents are projected out and $\Vnat_1=0$, the defining property of the Moonshine module.
+\end{physics}
+\emph{Proof on paper.}  Norm $2$ means $x\cdot x=16$.  If $x=2a\in2A$ then $a\cdot a=4$.  The
+number of odd coordinates of $a$ is $\chtwowt(\rho a)\le a\cdot a=4$, but $\rho a\in\chtwoG$ has
+weight $0$ or $\ge8$; so all coordinates of $a$ are even, $a=2b$ with $b\cdot b=1$, i.e.\
+$b=\pm e_i$.  Then $\sum a_i=\pm2$, contradicting $4\mid\sum a_i$.  If $x=u+2a$, every coordinate
+of $x$ is odd, so $x\cdot x\ge24>16$.  \qed
+
+\begin{status}
+\lean{Leech.lattice_rank}, \lean{Leech.lattice_isPosDef}, \lean{Leech.lattice_isEven},
+\lean{Leech.lattice_det}, \lean{Leech.lattice_isUnimodular}, \lean{Leech.lattice_no_roots},
+\lean{Leech.range_inclL}, \lean{Leech.subALattice_det}: all unconditional; \lean{#print axioms}
+(re-run for this chapter): \lean{propext}, \lean{Classical.choice}, \lean{Quot.sound}.
+\end{status}
+
+\begin{example}[Some vectors of $\Leech$ in the doubled model]\label{ch02:ex:leechvectors}
+\begin{enumerate}
+\item $u=(5,1^{23})$ lies in $u+2A$ (take $a=0$) and has $\langle u,u\rangle=48/8=6$.
+\item $8e_0=2\cdot(4e_0)$ lies in $2A$: $4e_0$ reduces to the zero word and has coordinate sum
+      $4$.  It has norm $64/8=8$.
+\item Hence $u-8e_0=(-3,1^{23})\in u+2A$, of norm $(9+23)/8=4$: a minimal vector of the odd
+      shape of Remark~\ref{ch02:rem:cs}.
+\item $(4,4,0^{22})=2\cdot(2,2,0^{22})$: $(2,2,0,\dots)$ reduces to $0$ and has sum $4$, so the
+      vector is in $2A$, with norm $32/8=4$.  But $(4,0^{23})=2\cdot(2,0^{23})$ is \emph{not} in
+      $\Leech$: $(2,0,\dots)$ has coordinate sum $2$, not divisible by $4$.  Its norm would have been
+      $16/8=2$: the parity condition $4\mid\sum a_i$ is exactly what removes the would-be roots
+      $\pm4e_i$, as in the proof of Theorem~\ref{ch02:thm:noroots}.
+\item If $c$ is an octad, the vector $2\cdot\mathbf 1_c$ (entries $2$ on $c$) is in $2A$ (it is
+      $2a$ with $a=\mathbf 1_c$, $\sum a_i=8$), of norm $32/8=4$.
+\end{enumerate}
+\end{example}
+
+\section{Theta series and modular forms}\label{ch02:sec:theta}
+
+The two numbers $r_\Leech(4)=196560$ and $r_\Leech(6)=16773120$ are obtained, in Lean as on paper,
+from the theory of modular forms.  The argument is a model of how analysis enters a combinatorial
+problem, and it is the same argument that in Chapter~\ref{ch:05} identifies the character of
+$\Vnat$ with $J$; we therefore give it in full.
+
+\subsection{The theta function}
+
+\begin{definition}[Theta function]\label{ch02:def:theta}
+For a positive definite integral lattice $L$ and $\tau$ in the upper half plane
+$\mathbb{H}=\{\tau\in\C:\operatorname{Im}\tau>0\}$,
+\begin{equation*}
+\vartheta_L(\tau)=\sum_{x\in L}e^{\pi i\tau\langle x,x\rangle}.
+\end{equation*}
+If $L$ is even, writing $q=e^{2\pi i\tau}$ and grouping terms by norm,
+\begin{equation}\label{ch02:eq:qexp}
+\vartheta_L(\tau)=\sum_{m\ge0}r_L(2m)\,q^m=1+r_L(2)\,q+r_L(4)\,q^2+\cdots .
+\end{equation}
+\end{definition}
+Physically, $\vartheta_L(\tau)/\eta(\tau)^n$ is the partition function of the chiral boson on the
+torus $\mathbb{R}^n/L$: each momentum $x$ contributes $q^{\langle x,x\rangle/2}$, the oscillators
+contribute $\eta^{-n}$ (up to the factor $q^{-n/24}$).  Here
+$\eta(\tau)=q^{1/24}\prod_{m\ge1}(1-q^m)$ is Dedekind's eta function.  A torus partition function
+should not depend on how the torus $\C/(\Z+\Z\tau)$ is described, and the descriptions differ by
+the substitutions $\tau\mapsto\frac{a\tau+b}{c\tau+d}$ with $\begin{pmatrix}a&b\\c&d\end{pmatrix}\in
+SL_2(\Z)$; ``modular invariance'' is the statement that the partition function transforms
+simply (here: up to an explicit factor) under these substitutions.  Since $SL_2(\Z)$ is generated
+by $T:\tau\mapsto\tau+1$ and $S:\tau\mapsto-1/\tau$, it suffices to treat these two;
+Theorems~\ref{ch02:thm:thetaS} and~\ref{ch02:thm:thetaT} below do exactly that for
+$\vartheta_L$, and Theorem~\ref{ch02:thm:eightdvd} packages the result as the statement that
+$\vartheta_L$ is a \emph{modular form} (defined there).
+
+\begin{leancode}
+noncomputable def thetaTerm (Γ : IntegralLattice) (x : Γ) (τ : ℂ) : ℂ :=
+  Complex.exp ((Real.pi : ℂ) * Complex.I * τ * ((normSq x : ℤ) : ℂ))
+
+noncomputable def theta (Γ : IntegralLattice) (τ : ℂ) : ℂ := ∑' x : Γ, Γ.thetaTerm x τ
+
+theorem summable_thetaTerm (h : Γ.IsPosDef) {τ : ℂ} (hτ : 0 < τ.im) :
+    Summable (fun x : Γ => Γ.thetaTerm x τ)
+
+theorem theta_holomorphic (h : Γ.IsPosDef) {τ : ℂ} (hτ : 0 < τ.im) :
+    DifferentiableAt ℂ Γ.theta τ
+
+theorem hasSum_theta (h : Γ.IsPosDef) (he : Γ.IsEven) {τ : ℂ} (hτ : 0 < τ.im) :
+    HasSum (fun m : ℕ =>
+        (Γ.repCount (2 * (m : ℤ)) : ℂ) * Complex.exp (2 * (Real.pi : ℂ) * Complex.I * τ) ^ m)
+      (Γ.theta τ)
+\end{leancode}
+\begin{dictionary}
+Files \leanpath{Theta/Defs.lean} and \leanpath{Theta/QExpansion.lean}, namespace
+\lean{IntegralLattice} (vendored).  \lean{∑'} is Mathlib's \lean{tsum}, the sum of an
+unconditionally summable family, \emph{defined to be $0$ if the family is not summable} --- which
+is why \lean{summable_thetaTerm} matters: for positive definite $\Gamma$ and $\operatorname{Im}\tau>0$
+the family is summable, so \lean{theta} is the genuine series.  \lean{DifferentiableAt ℂ} is
+complex differentiability (holomorphy).  \lean{HasSum f s} says the family $f$ sums
+(unconditionally) to $s$; so \lean{hasSum_theta} is \eqref{ch02:eq:qexp}, with
+$q^m=\exp(2\pi i\tau)^m$ and coefficient $r_\Gamma(2m)$.
+\end{dictionary}
+\begin{physics}
+The theta function $\vartheta_L(\tau)=\sum_{x\in L}q^{\langle x,x\rangle/2}$ with $q=e^{2\pi i\tau}$ is the momentum part of the partition function of the lattice CFT: $Z(\tau)=\vartheta_L(\tau)/\eta(\tau)^n$, where $\eta^{-n}$ counts the oscillator (Fock space) contributions of the $n$ free bosons. The coefficient of $q^m$ counts lattice vectors of conformal weight $m$, that is, the primary states of weight $m$ in the momentum sector. The modular properties of $\vartheta_L$ encode the consistency of the CFT on the torus.
+\end{physics}
+\emph{Proof on paper.}  Summability: by Remark~\ref{ch02:rem:euclid}, $L$ is a discrete subgroup of
+full rank in $\mathbb{R}^n$, and $|e^{\pi i\tau\langle x,x\rangle}|=e^{-\pi v|x|^2}$ with
+$v=\operatorname{Im}\tau$.  From $e^{-t}\le k!/t^k$ (one term of the exponential series) we get
+$e^{-\pi v|x|^2}\le C|x|^{-2k}$, and $\sum_{x\ne0}|x|^{-2k}<\infty$ for $2k>n$ (compare with an
+integral, or count lattice points in shells).  Holomorphy: the convergence is uniform on every
+half plane $\operatorname{Im}\tau>v_0>0$, and a locally uniform limit of holomorphic functions is
+holomorphic.  The $q$-expansion: on the finite set of vectors of norm $2m$ every term equals
+$q^m$; summing first over each such set and then over $m$ is legitimate for an absolutely
+summable family.  \qed
+
+\subsection{The two transformation laws}
+
+\begin{theorem}[Poisson summation for theta functions; Ebeling, Prop.~2.1]\label{ch02:thm:thetaS}
+For a positive definite lattice $L$ of rank $n$ and $\tau\in\mathbb{H}$,
+\begin{equation*}
+\vartheta_L(-1/\tau)=\Bigl(\frac\tau i\Bigr)^{n/2}\frac1{\sqrt{\det L}}\,\vartheta_{L^*}(\tau).
+\end{equation*}
+In particular, if $L$ is unimodular, $\vartheta_L(-1/\tau)=(\tau/i)^{n/2}\vartheta_L(\tau)$.
+\end{theorem}
+\begin{leancode}
+theorem theta_neg_inv (h : Γ.IsPosDef) {τ : ℂ} (hτ : 0 < τ.im) :
+    Γ.theta (-1 / τ)
+      = (τ / Complex.I) ^ ((Γ.rank : ℂ) / 2)
+        * ((Real.sqrt ((Γ.det : ℤ) : ℝ) : ℝ) : ℂ)⁻¹
+        * EuclideanTheta.theta
+            (ZLattice.dual (EuclideanSpace ℝ (Fin Γ.rank))
+              (LinearMap.range (Γ.toEuclidean h))) τ
+
+theorem theta_neg_inv_self (h : Γ.IsPosDef) (hu : Γ.IsUnimodular) {τ : ℂ} (hτ : 0 < τ.im) :
+    Γ.theta (-1 / τ) = (τ / Complex.I) ^ ((Γ.rank : ℂ) / 2) * Γ.theta τ
+\end{leancode}
+\begin{dictionary}
+Files \leanpath{Theta/Transformation.lean} and \leanpath{Theta/ModularForm.lean}.
+\begin{itemize}
+\item Why a second theta function at all: the dual lattice $L^*$ has a rational-valued, not
+  integer-valued, form, so it is not an \lean{IntegralLattice} and \lean{IntegralLattice.theta}
+  cannot be applied to it.  The statement therefore passes through concrete vectors in
+  $\mathbb{R}^n$.  Reading the right-hand side from the inside out:
+  \begin{itemize}
+  \item \lean{EuclideanSpace ℝ (Fin Γ.rank)} is $\mathbb{R}^n$ ($n=\operatorname{rank}\Gamma$)
+    with its usual inner product and length $|v|$.
+  \item \lean{Γ.toEuclidean h} is a $\Z$-linear map $\Gamma\to\mathbb{R}^n$ with
+    $\langle x,y\rangle=\iota(x)\cdot\iota(y)$ (it is the map $\iota:x=\sum c_ib_i\mapsto Bc$ of
+    Remark~\ref{ch02:rem:euclid}, where $G=B^{\mathsf T}B$; the hypothesis \lean{h} of positive
+    definiteness is needed to find $B$).  The library proves it is injective and form-preserving
+    (\lean{toEuclidean_injective}, \lean{inner_toEuclidean}).
+  \item \lean{LinearMap.range (Γ.toEuclidean h)} is its image $\iota(\Gamma)\subseteq\mathbb{R}^n$,
+    a subgroup isometric to $\Gamma$: the lattice $\Gamma$ drawn in $\mathbb{R}^n$.
+  \item \lean{ZLattice.dual (EuclideanSpace ℝ (Fin n)) M} is Mathlib's dual of a subgroup
+    $M\subseteq\mathbb{R}^n$: $\{y\in\mathbb{R}^n:\ y\cdot m\in\Z\ \forall m\in M\}$.  For
+    $M=\iota(\Gamma)$ this is $\iota$ applied to Definition~\ref{ch02:def:dual}, i.e.\ $L^*$
+    drawn in $\mathbb{R}^n$.
+  \item \lean{EuclideanTheta.theta M τ} (vendored, \leanpath{ForMathlib/EuclideanTheta.lean}) is
+    $\sum_{v\in M}e^{\pi i\tau|v|^2}$ for any subgroup $M\subseteq\mathbb{R}^n$ --- the same series
+    as Definition~\ref{ch02:def:theta}, with $|v|^2$ in place of $\langle x,x\rangle$.
+    \lean{IntegralLattice.theta_eq_euclidean} proves that for $M=\iota(\Gamma)$ it equals
+    \lean{Γ.theta}, as it must since $\iota$ preserves norms.
+  \end{itemize}
+  So the right side is $(\tau/i)^{n/2}(\det L)^{-1/2}\vartheta_{L^*}(\tau)$, where
+  \lean{Real.sqrt ((Γ.det : ℤ) : ℝ)} is $\sqrt{\det L}$ (the covolume of $\iota(\Gamma)$).
+\item \lean{(τ / Complex.I) ^ ((Γ.rank : ℂ) / 2)} is a \emph{complex} power, defined via the
+  principal branch of the logarithm: $z^s=e^{s\log z}$.  For $\tau\in\mathbb{H}$, $\tau/i$ has
+  positive real part, so this is the branch on which $(\tau/i)^{n/2}>0$ for $\tau=it$, $t>0$: the
+  standard choice.
+\item In \lean{theta_neg_inv_self} unimodularity has been used to replace $L^*$ by $L$ and $\det$
+  by $1$.
+\end{itemize}
+\end{dictionary}
+\begin{physics}
+This is the $S$-transformation $\vartheta_L(-1/\tau)=(\tau/i)^{n/2}\,[L^*:L]^{-1/2}\sum_{y\in L^*}q^{\langle y,y\rangle/2}$ of the lattice partition function, which is Poisson resummation of the momentum sum, the T-duality of the compactified bosons $L\to L^*$. For $L=L^*$ the theta function is covariant of weight $n/2$ under $S$, which is how modular invariance of the holomorphic CFT is realised. It is the central analytic step in the physical argument for the constraint $c\equiv0\bmod8$.
+\end{physics}
+\emph{Proof on paper.}  The Poisson summation formula for a full-rank lattice $L\subset\mathbb{R}^n$
+and a sufficiently decaying function $f$ reads
+\begin{equation*}
+\sum_{x\in L}f(x)=\frac1{\operatorname{covol}L}\sum_{y\in L^*}\hat f(y),\qquad
+\hat f(y)=\int_{\mathbb{R}^n}f(x)e^{-2\pi i\,x\cdot y}\,dx .
+\end{equation*}
+(It is proved by expanding the $L$-periodic function $\sum_{x\in L}f(x+\cdot)$ in a Fourier series
+and evaluating at $0$; $\operatorname{covol}L=\sqrt{\det L}$.)  Apply it to the Gaussian
+$f(x)=e^{\pi i(-1/\tau)|x|^2}$.  The Fourier transform of a Gaussian is a Gaussian:
+$\hat f(y)=(\tau/i)^{n/2}e^{\pi i\tau|y|^2}$, valid for complex $\tau$ with
+$\operatorname{Im}\tau>0$ by analytic continuation of the real case (or directly, since the
+Gaussian parameter has positive real part).  This gives the formula.  For unimodular $L$, the
+dual basis vectors are integral combinations of the basis (the inverse Gram matrix is integral,
+\eqref{ch02:eq:selfdual}), so the realised lattice equals its dual, and the covolume is $1$. \qed
+
+\begin{warning}[title={What had to be built: multivariable Poisson summation}]
+Mathlib (at the pinned version) has Poisson summation only in one variable.  The vendored file
+\leanpath{ForMathlib/PoissonSummation.lean} proves the $n$-variable formula for $\Z^n$, and then
+for an arbitrary full-rank lattice by a linear change of variables (\lean{ZLattice.poissonSummation}).
+The hypotheses of that theorem (local uniform summability of translates, summability of the
+Fourier transform over the dual lattice) are discharged for the Gaussian by explicit
+estimates.  These are honest analytic theorems, \lean{#print axioms}-clean
+(\lean{ZLattice.poissonSummation}: standard three).
+\end{warning}
+
+\begin{theorem}[$T$-invariance]\label{ch02:thm:thetaT}
+If $L$ is even, $\vartheta_L(\tau+1)=\vartheta_L(\tau)$ for all $\tau$.
+\end{theorem}
+\noindent File \leanpath{VOA/LatticesAndCodes/Theta/ModularForm.lean}.
+\begin{leancode}
+theorem theta_add_one (he : Γ.IsEven) (τ : ℂ) : Γ.theta (τ + 1) = Γ.theta τ
+\end{leancode}
+\begin{physics}
+$T$-invariance of the theta function says that $\vartheta_L(\tau+1)=\vartheta_L(\tau)$ for even $L$, a statement that all conformal weights $h=\langle x,x\rangle/2$ are integers and hence that the spin $h-\bar h$ is integral. Together with $S$, it gives modular covariance under the full group $SL_2(\Z)$, the group of large diffeomorphisms of the torus.
+\end{physics}
+\emph{Proof.}  Termwise: $e^{\pi i(\tau+1)\cdot2j}=e^{\pi i\tau\cdot 2j}e^{2\pi ij}$. \qed
+(The statement holds for all complex $\tau$, including where the series diverges, because then
+both sides are $0$ by the \lean{tsum} convention --- a harmless artefact.)
+
+\begin{theorem}[Rank divisible by $8$; Ebeling, Thm.~2.1]\label{ch02:thm:eightdvd}
+If $L$ is even, unimodular and positive definite, then $8\mid\operatorname{rank}L$, and
+$\vartheta_L$ is a modular form of weight $\operatorname{rank}L/2$ for $SL_2(\Z)$.
+\end{theorem}
+\noindent File \leanpath{VOA/LatticesAndCodes/Theta/ModularForm.lean}.
+\begin{leancode}
+theorem eight_dvd_rank (h : Γ.IsPosDef) (he : Γ.IsEven) (hu : Γ.IsUnimodular) : 8 ∣ Γ.rank
+
+def thetaModularForm (Γ : IntegralLattice) (h : Γ.IsPosDef) (he : Γ.IsEven)
+    (hu : Γ.IsUnimodular) : ModularForm 𝒮ℒ ((Γ.rank / 2 : ℕ) : ℤ) where
+  toFun := Γ.thetaFun
+
+theorem theta_isModularForm (h : Γ.IsPosDef) (he : Γ.IsEven) (hu : Γ.IsUnimodular) :
+    8 ∣ Γ.rank ∧
+      ∃ f : ModularForm 𝒮ℒ ((Γ.rank / 2 : ℕ) : ℤ), ∀ z : ℍ, f z = Γ.theta (z : ℂ)
+\end{leancode}
+\begin{dictionary}
+\begin{itemize}
+\item \lean{ℍ} is Mathlib's upper half plane and \lean{thetaFun} is $\vartheta_\Gamma$ restricted
+  to it.
+\item \lean{ModularForm 𝒮ℒ k} is Mathlib's space $M_k(SL_2(\Z))$ of (holomorphic) modular forms of
+  weight $k$ for the full modular group: functions $f:\mathbb{H}\to\C$, holomorphic, with
+  $f(\frac{a\tau+b}{c\tau+d})=(c\tau+d)^kf(\tau)$ for all $\begin{pmatrix}a&b\\c&d\end{pmatrix}\in
+  SL_2(\Z)$, and bounded as $\operatorname{Im}\tau\to\infty$ (at all cusps).  \lean{𝒮ℒ} denotes
+  $SL_2(\Z)$ viewed as a subgroup of $GL_2(\mathbb{R})$.  An element of this type is a bundled
+  function together with proofs of these properties; constructing \lean{thetaModularForm}
+  therefore \emph{is} the proof of modularity (the omitted fields are the proofs of slash
+  invariance, holomorphy and boundedness).
+\item The weight is \lean{Γ.rank / 2}, natural-number division; since $8\mid\operatorname{rank}$
+  it is exact.
+\end{itemize}
+Same as the textbook (Ebeling's Theorem 2.1).
+\end{dictionary}
+\begin{physics}
+This is the classical argument that $c=\operatorname{rank}L\equiv0\pmod8$ for a holomorphic lattice CFT. The partition function $\vartheta_L/\eta^n$ must transform correctly under both $S$ and $T$; $T$ produces the phase $e^{-2\pi ic/24}$ and the relation $(ST)^3=S^2$ in $SL_2(\Z)$ then forces $e^{2\pi ic/8}=1$. For $c=8$ there is a single such lattice, $E_8$; for $c=16$ there are two ($E_8^2$ and $D_{16}^+$, the heterotic gauge-group lattices); for $c=24$ there are $24$, the Niemeier lattices, and exactly one of them, the Leech lattice, has no roots.
+\end{physics}
+\emph{Proof on paper.}  $SL_2(\Z)$ is generated by $T:\tau\mapsto\tau+1$ and $S:\tau\mapsto-1/\tau$,
+so modularity follows from Theorems~\ref{ch02:thm:thetaS} and~\ref{ch02:thm:thetaT} once we know
+$(\tau/i)^{n/2}=\tau^{n/2}$, i.e.\ $i^{n/2}=1$, i.e.\ $8\mid n$.  For the divisibility use the
+relation $(ST)^3=\pm1$ starting at $\tau=i$: the chain $i\mapsto i+1\mapsto-1/(i+1)=\tfrac{-1+i}2
+\mapsto\tfrac{1+i}2\mapsto-1/\tfrac{1+i}2=-1+i\mapsto i$ returns to $i$, and applying the two
+laws along it gives
+\begin{equation*}
+\vartheta_L(i)=\Bigl(\tfrac{1-i}2\Bigr)^{n/2}(1-i)^{n/2}\vartheta_L(i).
+\end{equation*}
+Now $\vartheta_L(i)=\sum_xe^{-\pi\langle x,x\rangle}>0$, so the factor is $1$.  Squaring (to avoid
+branch issues) gives $(-i)^n=1$, so $4\mid n$; then $n/2$ is even and the unsquared identity reads
+$(-1)^{n/4}=1$, so $8\mid n$.  Boundedness at infinity: $|\vartheta_L(\tau)|\le\vartheta_L(i)$ for
+$\operatorname{Im}\tau\ge1$. \qed
+
+\begin{status}
+\lean{IntegralLattice.theta_neg_inv}, \lean{IntegralLattice.eight_dvd_rank},
+\lean{IntegralLattice.thetaModularForm}, \lean{IntegralLattice.hasSum_theta}: unconditional;
+\lean{#print axioms}: standard three.
+\end{status}
+
+\subsection{Level-one modular forms}
+
+The dimension of $M_k=M_k(SL_2(\Z))$ is $\lfloor k/12\rfloor+1$ for even $k\ge0$,
+$k\not\equiv2\pmod{12}$, and $\lfloor k/12\rfloor$ for $k\equiv2\pmod{12}$ (and $0$ for odd $k$).
+The Eisenstein series
+\begin{equation*}
+E_4=1+240\sum_{m\ge1}\sigma_3(m)q^m=1+240q+2160q^2+6720q^3+17520q^4+\cdots,
+\end{equation*}
+\begin{equation*}
+E_6=1-504\sum_{m\ge1}\sigma_5(m)q^m=1-504q-16632q^2-122976q^3-532728q^4-\cdots
+\end{equation*}
+($\sigma_r(m)=\sum_{d\mid m}d^r$) lie in $M_4$, $M_6$, and the discriminant
+$\Delta=(E_4^3-E_6^2)/1728=q-24q^2+252q^3-1472q^4+\cdots$ spans the cusp forms of weight $12$.  The
+fundamental structure theorem is:
+
+\begin{theorem}[{$M_*=\C[E_4,E_6]$; Ebeling, Cor.~2.2}]\label{ch02:thm:polynomial}
+For every even $k$, the monomials $E_4^aE_6^b$ with $4a+6b=k$ form a basis of $M_k$.
+\end{theorem}
+\begin{leancode}
+def wtIdx (k : ℕ) : Finset (ℕ × ℕ) :=
+  (Finset.range (k + 1) ×ˢ Finset.range (k + 1)).filter fun p => 4 * p.1 + 6 * p.2 = k
+
+theorem levelOne_eq_polynomial {k : ℕ} (hk : Even k) :
+    ∃ B : Module.Basis (wtIdx k) ℂ (ModularForm 𝒮ℒ (k : ℤ)),
+      ∀ p : wtIdx k, ((B p : ModularForm 𝒮ℒ (k : ℤ)) : ℍ → ℂ)
+        = fun z => E₄ z ^ (p : ℕ × ℕ).1 * E₆ z ^ (p : ℕ × ℕ).2
+\end{leancode}
+\begin{dictionary}
+File \leanpath{ModularForms/LevelOne.lean}, namespace \lean{ModularForm}.  \lean{wtIdx k} is the
+finite set of pairs $(a,b)$ with $4a+6b=k$.  The theorem asserts a basis indexed by \lean{wtIdx k}
+whose element for $(a,b)$ is the function $E_4^aE_6^b$.  \lean{E₄}, \lean{E₆} are Mathlib's
+normalised Eisenstein series (constant term $1$); their $q$-coefficients are obtained from
+Mathlib's formula \lean{EisensteinSeries.E_qExpansion_coeff} ($-\tfrac{2k}{B_k}\sigma_{k-1}(m)$ with
+the Bernoulli numbers $B_4=-\tfrac1{30}$, $B_6=\tfrac1{42}$), restated as
+\lean{ModularForm.eisenstein_qExpansion}.  The dimension formula is Mathlib's
+\lean{ModularForm.dimension_level_one}, restated as \lean{ModularForm.rank_levelOne}.  Same as
+the textbook.
+\end{dictionary}
+\begin{physics}
+The ring of level-one modular forms is generated by the Eisenstein series $E_4$ and $E_6$, with $M_{12}$ two-dimensional. Physically, this is the modular bootstrap for holomorphic lattice CFTs: the theta function $\vartheta_L$ of an even unimodular lattice of rank $24$ lies in $M_{12}$ and is therefore determined by its first two coefficients, that is, by the number of weight-one currents ($r_L(2)$ roots). All higher degeneracies then follow, as made explicit in Equations~\eqref{ch02:eq:c2}--\eqref{ch02:eq:c4}.
+\end{physics}
+\emph{Proof on paper.}  Spanning, by induction on $k$: given $f\in M_k$ ($k\ne2$ even), pick one
+monomial $\mu$ of weight $k$ (it has constant term $1$) and subtract $c_0(f)\mu$; the difference
+is a cusp form, hence $\Delta g$ with $g\in M_{k-12}$ (division by $\Delta$, which has no zeros on
+$\mathbb{H}$ and a simple zero at the cusp); $g$ is a polynomial in $E_4,E_6$ by induction, and
+$\Delta$ is one too.  Independence: the number of pairs $(a,b)$ with $4a+6b=k$ equals the
+dimension formula above (count with step $12$), so a spanning family of that size is a basis.
+\qed
+
+Weight $12$ is the case relevant to rank-$24$ lattices: $M_{12}$ is two-dimensional with basis
+$E_4^3,E_6^2$ (equivalently $E_4^3,\Delta$).  A form $f=\sum c_nq^n\in M_{12}$ is therefore
+determined by $c_0,c_1$: writing $f=c_0E_4^3+(c_1-720c_0)\Delta$ and using
+$E_4^3=1+720q+179280q^2+16954560q^3+396974160q^4+\cdots$ and the coefficients
+$1,-24,252,-1472$ of $\Delta$,
+\begin{align}
+c_2&=196560\,c_0-24\,c_1,\label{ch02:eq:c2}\\
+c_3&=16773120\,c_0+252\,c_1,\label{ch02:eq:c3}\\
+c_4&=398034000\,c_0-1472\,c_1.\label{ch02:eq:c4}
+\end{align}
+(For example $c_2=179280c_0+(-24)(c_1-720c_0)=196560c_0-24c_1$.)  The large constants
+$196560$, $16773120$, $398034000$ are the coefficients of $q^2,q^3,q^4$ in $E_4^3-720\Delta$, the
+unique form in $M_{12}$ with $c_0=1$, $c_1=0$; that form will turn out to be the theta function
+of the Leech lattice, so these numbers are its representation numbers $r(4),r(6),r(8)$
+(Theorem~\ref{ch02:thm:196560}).
+
+\begin{leancode}
+theorem coeff_two_of_weight_twelve (f : ModularForm 𝒮ℒ ((12 : ℕ) : ℤ)) :
+    (qExpansion 1 (f : ℍ → ℂ)).coeff 2
+      = 196560 * (qExpansion 1 (f : ℍ → ℂ)).coeff 0
+        - 24 * (qExpansion 1 (f : ℍ → ℂ)).coeff 1
+
+theorem coeff_three_of_weight_twelve (f : ModularForm 𝒮ℒ ((12 : ℕ) : ℤ)) :
+    (qExpansion 1 (f : ℍ → ℂ)).coeff 3
+      = 16773120 * (qExpansion 1 (f : ℍ → ℂ)).coeff 0
+        + 252 * (qExpansion 1 (f : ℍ → ℂ)).coeff 1
+
+theorem coeff_four_of_weight_twelve (f : ModularForm 𝒮ℒ ((12 : ℕ) : ℤ)) :
+    (qExpansion 1 (f : ℍ → ℂ)).coeff 4
+      = 398034000 * (qExpansion 1 (f : ℍ → ℂ)).coeff 0
+        - 1472 * (qExpansion 1 (f : ℍ → ℂ)).coeff 1
+\end{leancode}
+\begin{dictionary}
+Files \leanpath{Leech/RepCount.lean} and \leanpath{Leech/RepCountHigher.lean}, namespace
+\lean{ModularForm}.  \lean{qExpansion 1 f} is Mathlib's $q$-expansion of a function of period $1$,
+a formal power series in $q=e^{2\pi i\tau}$; \lean{.coeff n} its $n$-th coefficient $c_n$.  These
+are \eqref{ch02:eq:c2}--\eqref{ch02:eq:c4} for every $f\in M_{12}$.  The proof in Lean checks the
+relations on the basis $E_4^3,E_6^2$ (whose coefficients come from those of $E_4,E_6$ above) and
+extends by linearity --- the same as the paper argument, with $E_6^2$ in place of $\Delta$.
+\end{dictionary}
+
+\subsection{\texorpdfstring{The bridge from $q$-coefficients to lattice vectors}{The bridge from q-coefficients to lattice vectors}}
+
+\begin{theorem}[$q$-expansion of $\vartheta_L$ as a modular form]\label{ch02:thm:bridgeq}
+For $L$ even unimodular positive definite, the $m$-th $q$-coefficient of the modular form
+$\vartheta_L$ is $r_L(2m)$.
+\end{theorem}
+\noindent File \leanpath{VOA/LatticesAndCodes/Theta/QExpansion.lean}.
+\begin{leancode}
+theorem coeff_qExpansion_thetaModularForm (h : Γ.IsPosDef) (he : Γ.IsEven) (hu : Γ.IsUnimodular)
+    (m : ℕ) :
+    (qExpansion 1 (Γ.thetaModularForm h he hu)).coeff m = (Γ.repCount (2 * (m : ℤ)) : ℂ)
+\end{leancode}
+\begin{dictionary}
+This connects Mathlib's abstract \lean{qExpansion} (defined as a Taylor series of the function
+$f$ written in the variable $q$) with the combinatorial \lean{repCount}.  The point is that
+\lean{hasSum_theta} exhibits a convergent $q$-series for $\vartheta_L$, and a convergent
+$q$-series is unique (Mathlib's \lean{ModularFormClass.qExpansion_coeff_unique}): two power
+series in $q$ converging to the same function on a punctured disc $0<|q|<1$ have the same
+coefficients, by the identity theorem for holomorphic functions.  This is a theorem of Mathlib,
+proved there, not an assumption; the referee who trusts Mathlib need not re-check it.  Same as
+the textbook.
+\end{dictionary}
+\begin{physics}
+This theorem identifies the $q$-expansion of the theta function (as a modular form in Mathlib's sense) with the generating series of the representation numbers $r_L(m)$. Physically it identifies the coefficients of the partition function with the degeneracies of momentum states at each conformal weight, the bridge that permits applying modular-form identities to state counting.
+\end{physics}
+
+\subsection{\texorpdfstring{The representation numbers of $\Leech$}{The representation numbers of the Leech lattice}}\label{ch02:sec:repcounts}
+
+\begin{theorem}[Ebeling, Prop.~2.8, and its extensions]\label{ch02:thm:rank24}
+Let $L$ be an even unimodular positive definite lattice of rank $24$.  Then
+\begin{equation*}
+r_L(4)+24\,r_L(2)=196560,\qquad r_L(6)=16773120+252\,r_L(2),\qquad
+r_L(8)+1472\,r_L(2)=398034000 .
+\end{equation*}
+\end{theorem}
+\begin{leancode}
+theorem repCount_four_of_rank_24 (h : Γ.IsPosDef) (he : Γ.IsEven) (hu : Γ.IsUnimodular)
+    (hrk : Γ.rank = 24) : Γ.repCount 4 + 24 * Γ.repCount 2 = 196560
+
+theorem repCount_six_of_rank_24 (h : Γ.IsPosDef) (he : Γ.IsEven) (hu : Γ.IsUnimodular)
+    (hrk : Γ.rank = 24) : Γ.repCount 6 = 16773120 + 252 * Γ.repCount 2
+
+theorem repCount_eight_of_rank_24 (h : Γ.IsPosDef) (he : Γ.IsEven) (hu : Γ.IsUnimodular)
+    (hrk : Γ.rank = 24) : Γ.repCount 8 + 1472 * Γ.repCount 2 = 398034000
+\end{leancode}
+\begin{dictionary}
+Namespace \lean{IntegralLattice}.  Four hypotheses, each a defined predicate of
+\S\ref{ch02:sec:ebelinglattice}: positive definite, even, unimodular, rank $24$.  All quantities
+are natural numbers; the third identity is written additively to stay inside $\N$.  Exactly the
+textbook statements.
+\end{dictionary}
+\begin{physics}
+For any holomorphic $c=24$ lattice CFT the number of states at weights $2,3,4$ is determined by the number of weight-one currents. This is the modular bootstrap of the Niemeier theories: since $\vartheta_L=E_4^3+(r_L(2)-720)\Delta$, all dimensions follow from $r_L(2)$ (the number of roots, i.e. the dimension of the Kac--Moody algebra minus its Cartan). For the Leech lattice, $r(2)=0$ and the above gives the $196560$ and $16773120$ values, which enter the Monster dimension count $196884=1+196883$.
+\end{physics}
+\emph{Proof on paper.}  By Theorem~\ref{ch02:thm:eightdvd}, $\vartheta_L\in M_{12}$; by
+Theorem~\ref{ch02:thm:bridgeq} its coefficients are $c_0=r_L(0)=1$, $c_1=r_L(2)$, $c_2=r_L(4)$,
+$c_3=r_L(6)$, $c_4=r_L(8)$.  Insert into \eqref{ch02:eq:c2}--\eqref{ch02:eq:c4}.  \qed
+
+For the Golay lattice $N(A_1^{24})$, $r(2)=48$ and the theorem predicts $r(4)=196560-1152=195408$;
+for the Leech lattice, $r(2)=0$:
+
+\begin{theorem}[Minimal vectors of $\Leech$]\label{ch02:thm:196560}
+$r_\Leech(2)=0$, $r_\Leech(4)=196560$, $r_\Leech(6)=16773120$, $r_\Leech(8)=398034000$.
+\end{theorem}
+\noindent Files \leanpath{VOA/LatticesAndCodes/Leech/RepCount.lean}, \leanpath{VOA/LatticesAndCodes/Leech/RepCountHigher.lean}.
+\begin{leancode}
+theorem lattice_repCount_two : Leech.lattice.repCount 2 = 0
+
+theorem repCount_four : Leech.lattice.repCount 4 = 196560
+
+theorem repCount_six : Leech.lattice.repCount 6 = 16773120
+
+theorem repCount_eight : Leech.lattice.repCount 8 = 398034000
+\end{leancode}
+\begin{dictionary}
+Namespace \lean{Leech}; no hypotheses.  Since \lean{Leech.lattice} is positive definite, the sets
+counted by \lean{repCount} are finite, so the \lean{ncard} convention (infinite sets count as $0$)
+does not intervene; in particular \lean{lattice_repCount_two} is a genuine statement (it follows
+from \lean{lattice_no_roots}), not an artefact of an infinite set.  Equivalently,
+$\vartheta_\Leech=E_4^3-720\Delta=1+196560q^2+16773120q^3+\cdots$; that identity of formal
+$q$-series is proved as \lean{VOA.Moonshine.CharacterDelta.leechThetaIdentity} and used in
+Chapter~\ref{ch:05}.
+\end{dictionary}
+\begin{physics}
+The $196560$ minimal vectors of norm $4$ of the Leech lattice give the $196560$ weight-two momentum states $e^{\alpha}$ of the Leech CFT. In the Moonshine module they supply the largest piece of the Griess algebra, $196884=300+24+196560$, whose automorphism group is the Monster; the kissing number $196560$ is the number of ways of touching one sphere with others in the optimal $24$-dimensional sphere packing. The automorphism group of the lattice, the Conway group $\mathrm{Co}_0$, acts transitively on these vectors.
+\end{physics}
+\begin{status}
+\lean{Leech.repCount_four}, \lean{Leech.repCount_six}, \lean{Leech.repCount_eight},
+\lean{IntegralLattice.repCount_four_of_rank_24}, \lean{ModularForm.coeff_two_of_weight_twelve},
+\lean{IntegralLattice.coeff_qExpansion_thetaModularForm}: unconditional; \lean{#print axioms}
+(re-run for this chapter): \lean{propext}, \lean{Classical.choice}, \lean{Quot.sound}.  The source
+file \leanpath{Leech/RepCountHigher.lean} ends with \lean{#print axioms} commands for its theorems,
+which print the same list at every build.
+\end{status}
+
+\begin{remark}
+\leanpath{Leech/RepCountHigher.lean} also proves \lean{IntegralLattice.exists_normSq_eq_eight}: a
+rootless even unimodular positive definite lattice of rank $24$ has a vector of norm $8$ (because
+$r(8)=398034000\ne0$).  This is the first step of the uniqueness proof of the Leech lattice in the
+companion library; the remainder was not vendored (Warning~\ref{ch02:warn:uniqueness}).
+\end{remark}
+
+\section{The bridge into the VOA library}\label{ch02:sec:bridge}
+
+The lattice VOA construction of Chapter~\ref{ch:03} takes a \lean{VOA.IntegralLattice}.  The
+Leech lattice lives in the vendored encoding.  Because both encodings model the same object
+(\S\ref{ch02:sec:twoencodings}), the transport is a field-by-field repackaging.
+
+\begin{definition}[\lean{VOA.IntegralLattice.ofEbeling}]\label{ch02:def:ofEbeling}
+\leanpath{VOA/Moonshine/LeechLatticeVOA.lean}.
+\end{definition}
+\begin{leancode}
+noncomputable def ofEbeling (Γ : _root_.IntegralLattice) : VOA.IntegralLattice.{0} where
+  carrier := Γ.carrier
+  form := Γ.bilin
+  isSymm := ⟨fun x y => Γ.bilin_symm x y⟩
+
+@[simp] theorem ofEbeling_form (x y : Γ.carrier) : (ofEbeling Γ).form x y = Γ.bilin x y := rfl
+
+theorem ofEbeling_even (h : Γ.IsEven) : (ofEbeling Γ).Even := fun v => h v
+
+theorem ofEbeling_posDef (h : Γ.IsPosDef) : (ofEbeling Γ).PosDef := fun v hv => h v hv
+
+theorem ofEbeling_rank : rank (ofEbeling Γ) = Γ.rank := rfl
+\end{leancode}
+\begin{dictionary}
+\begin{itemize}
+\item \lean{.{0}} fixes the universe level to $0$.  The carrier, its group/module instances and
+  the form are taken over unchanged; only the symmetry proof is repackaged.
+\item The four one-line proofs are informative: \lean{rfl} means ``true by definition'', and
+  \lean{fun v => h v} means the two predicates are literally the same formula.  So the bridge
+  cannot distort anything: evenness, positive definiteness, rank and the form itself are
+  \emph{definitionally} preserved.
+\item What does \emph{not} transfer automatically is unimodularity, because the VOA library has
+  no determinant-based predicate (only \lean{SelfDual}); see the warning in
+  \S\ref{ch02:sec:voalattice}.
+\end{itemize}
+\end{dictionary}
+\begin{physics}
+This is the bridge from the vendored lattice to the lattice in the VOA library, so that the Leech lattice becomes the momentum lattice of the chiral bosons in the construction of $V_\Leech$. It makes no new physical statement; it only moves the same $24$-dimensional torus data between two Lean encodings.
+\end{physics}
+
+\begin{theorem}[The Leech lattice in the VOA library]\label{ch02:thm:leechVOAlattice}
+The lattice $\Leech$, viewed in the VOA library, is even, positive definite, of rank $24$, and has
+no vectors of norm $2$.
+\end{theorem}
+\begin{leancode}
+noncomputable abbrev leech : VOA.IntegralLattice.{0} := ofEbeling Leech.lattice
+
+theorem leech_even : leech.Even := ofEbeling_even _ Leech.lattice_isEven
+
+theorem leech_posDef : leech.PosDef := ofEbeling_posDef _ Leech.lattice_isPosDef
+
+theorem leech_rank : rank leech = 24 := Leech.lattice_rank
+
+theorem leech_no_roots (v : leech.carrier) : leech.form v v ≠ 2 := Leech.lattice_no_roots v
+\end{leancode}
+\begin{dictionary}
+Namespace \lean{VOA.Moonshine}.  \lean{abbrev} makes \lean{leech} a transparent abbreviation: it
+\emph{is} \lean{ofEbeling Leech.lattice}.  Each theorem is the corresponding vendored theorem of
+\S\ref{ch02:sec:leech}, transported by the definitional bridge (the proof terms shown are the
+whole proofs).  \lean{leech.form v v ≠ 2} is $\langle v,v\rangle\ne2$, i.e.\ (with evenness and
+positivity) $R(\Leech)=\emptyset$.  These four statements are exactly properties
+(\(\Lambda\)1), (\(\Lambda\)2), (\(\Lambda\)4) of the introduction in the form consumed by
+Chapter~\ref{ch:03}; property (\(\Lambda\)3) is consumed in the vendored form
+\lean{Leech.lattice_isUnimodular}.
+\end{dictionary}
+\begin{physics}
+Once transported, the Leech lattice is an even, unimodular, positive definite, rootless lattice of rank $24$ in the VOA library's own sense, so the lattice VOA $V_\Leech$ is a unitary $c=24$ theory with a single sector and no weight-one states of the form $e^\alpha$. It is the input to the $\Z_2$ orbifold that builds $\Vnat$. The symmetry group of the lattice itself is the Conway group $\mathrm{Co}_0$ acting on the momenta.
+\end{physics}
+\begin{status}
+\lean{VOA.Moonshine.leech_even}, \lean{leech_posDef}, \lean{leech_rank}, \lean{leech_no_roots}:
+unconditional; \lean{#print axioms}: \lean{propext}, \lean{Classical.choice}, \lean{Quot.sound}.
+\end{status}
+
+The same file defines the Leech lattice VOA \lean{VOA.Moonshine.leechVOA} and proves its central
+charge is $24$ and that its weight-one space consists of Heisenberg states only; those statements
+are presented in Chapter~\ref{ch:03}, after lattice VOAs have been defined.
+
+\section{Looking ahead: the frame sublattice and the Golay code}\label{ch02:sec:ahead}
+
+Two objects introduced in this chapter return much later.
+
+\paragraph{The index-two sublattice $\Leech_0$.}  The homomorphism $\beta:\Leech\to\Z/2$,
+$x\mapsto x_0\bmod2$, of the determinant proof has kernel $\Leech_0=2A$, of index $2$.  The
+doubling map identifies $A$ (with the halved Golay form) isometrically with $\Leech_0$, and $A$ is
+also of index $2$ in the Golay lattice $N(A_1^{24})$.  So $\Leech_0\cong A$ is a \emph{common}
+index-$2$ sublattice of the Leech lattice and of the Niemeier lattice $N(A_1^{24})$ --- this is
+the sublattice $\Leech\cap N(A_1^{24})$ of Frenkel--Lepowsky--Meurman.  In the VOA library:
+\begin{leancode}
+noncomputable def lambda0 : Submodule ℤ leech.carrier := LinearMap.ker Leech.beta
+
+theorem lambda0_eq_range_inclL : lambda0 = LinearMap.range Leech.inclL := Leech.range_inclL.symm
+
+noncomputable def lambda0Equiv : ↥Leech.subA ≃ₗ[ℤ] ↥lambda0
+
+theorem lambda0Equiv_form (a b : ↥Leech.subA) :
+    leech.form (lambda0Equiv a : leech.carrier) (lambda0Equiv b : leech.carrier)
+      = Leech.subALattice.bilin a b
+\end{leancode}
+(\leanpath{VOA/Moonshine/FrameSectors.lean}, namespace \lean{VOA.Moonshine}.)
+\begin{warning}[title={Trap: $\Leech_0$ is not $\sqrt2\,N(A_1^{24})$}]
+The source (\leanpath{FrameSectors.lean}) warns against a tempting misidentification:
+$\Leech_0$ is \emph{not} a rescaling of the whole Golay lattice, such as $\sqrt2\,\Gamma_{\chtwoG}$.
+The doubling $a\mapsto2a$ looks like ``multiplication by $\sqrt2$'' because it changes the
+denominator of the form from $2$ to $8$, but it is an \emph{isometry} from $A$ (with the halved
+form, unchanged) onto $\Leech_0$, and $A$ is only an index-$2$ sublattice of $\Gamma_{\chtwoG}$.  A
+determinant certificate separates the two candidates: $\det\Leech_0=[\Leech:\Leech_0]^2\det\Leech=4$,
+whereas $\det(\sqrt2\,\Gamma_{\chtwoG})=2^{24}\det\Gamma_{\chtwoG}=2^{24}$.  Concretely, $\Leech_0$
+contains the norm-$4$ vectors $2a$ with $a=(\pm2,\pm2,0,\dots,0)$.  A numerical check recorded in the source
+(Python, not Lean) finds that of the $196560$ norm-$4$ vectors of $\Leech$, $98256=1104+97152$ lie
+in $\Leech_0$ and $98304=24\cdot2^{12}$ in $\Leech\setminus\Leech_0$; the resulting dimensions
+$49428$ and $49152$ of the two weight-$2$ frame sectors are proved in Lean (Chapter~\ref{ch:11}).
+\end{warning}
+The decomposition of $V_\Leech^+$ according to $\Leech_0$ (the ``Golay frame'') and the passage
+between $\Leech$ and $N(A_1^{24})$ through $\Leech_0$ are the subject of Chapter~\ref{ch:11}.
+
+\paragraph{The Golay code and octads.}  The Golay code enters the triality construction twice:
+through the Niemeier lattice $N(A_1^{24})$, whose $24$ roots $\pm2e_i$ give $24$ copies of
+$\widehat{sl}_2$, and through the combinatorics of octads (the Steiner system $S(5,8,24)$, and
+statements such as ``every codeword of weight $12$ or $16$ meets some octad in exactly $6$
+points''), proved in \leanpath{VOA/Moonshine/GroundLatticeGolay.lean} and presented in
+Chapter~\ref{ch:12}.  All of them rest only on Theorems~\ref{ch02:thm:golay}
+and~\ref{ch02:thm:golayenum}.
+
+\section{Referee's checklist}\label{ch02:sec:checklist}
+
+All entries are unconditional (no hypotheses beyond those displayed, which are the intended
+mathematical hypotheses), and every \lean{#print axioms} report is \lean{[propext,
+Classical.choice, Quot.sound]}; none uses \lean{VOA.pbw}.
+
+{\small
+\begin{longtable}{@{}p{0.30\textwidth}p{0.36\textwidth}p{0.16\textwidth}p{0.10\textwidth}@{}}
+\toprule
+Lean declaration & intended meaning & hypotheses & check\\
+\midrule
+\endhead
+\lean{VOA.IntegralLattice} & integral lattice (VOA side) & -- & \S\ref{ch02:sec:voalattice}\\
+\lean{_root_.IntegralLattice} & integral lattice (vendored) & -- & \S\ref{ch02:sec:ebelinglattice}\\
+\lean{IntegralLattice.IsEven/IsPosDef/IsUnimodular} & even; positive definite; $\det=\pm1$ & -- & Def.~\ref{ch02:def:ebeprops}\\
+\lean{IntegralLattice.repCount} & $r_L(m)$ & -- & Def.~\ref{ch02:def:ebemisc}\\
+\lean{IntegralLattice.det_of_injective_index} & $\det M=[L:M]^2\det L$ & isometric, full rank & Thm.~\ref{ch02:thm:index}\\
+\lean{Code.macWilliams} & MacWilliams identity & $q\ge1$ & Thm.~\ref{ch02:thm:macwilliams}\\
+\lean{Code.golay} & extended Golay code (Paley model) & -- & Def.~\ref{ch02:def:golay}\\
+\lean{Code.golay_rank}, \lean{golay_isSelfDual}, \lean{golay_isDoublyEven}, \lean{golay_minDist} & $[24,12,8]$, self-dual, doubly even & none & Thm.~\ref{ch02:thm:golay}\\
+\lean{Code.golay_hammingEnumerator} & $W=X^{24}+759\cdots+Y^{24}$ & none & Thm.~\ref{ch02:thm:golayenum}\\
+\lean{latticeOfCode} and its five properties & Construction A & $C\subseteq C^\perp$ & Thm.~\ref{ch02:thm:constructionA}\\
+\lean{Leech.golayLattice} & $N(A_1^{24})$, $\det1$, rank $24$ & none & \S\ref{ch02:sec:golaylattice}\\
+\lean{Leech.lattice} & $2A\cup(u+2A)$, form $x\cdot y/8$ & -- & Def.~\ref{ch02:def:leechcarrier}\\
+\lean{Leech.lattice_rank}, \lean{lattice_isPosDef}, \lean{lattice_isEven} & rank $24$, pos.\ def., even & none & Thm.~\ref{ch02:thm:leechbasic}\\
+\lean{Leech.lattice_det}, \lean{lattice_isUnimodular} & $\det\Leech=1$ & none & Thm.~\ref{ch02:thm:leechdet}\\
+\lean{Leech.lattice_no_roots} & no norm-$2$ vectors & none & Thm.~\ref{ch02:thm:noroots}\\
+\lean{IntegralLattice.thetaModularForm} & $\vartheta_L\in M_{n/2}$ & even, unimod., pos.\ def. & Thm.~\ref{ch02:thm:eightdvd}\\
+\lean{IntegralLattice.eight_dvd_rank} & $8\mid n$ & same & Thm.~\ref{ch02:thm:eightdvd}\\
+\lean{ModularForm.levelOne_eq_polynomial} & $M_*=\C[E_4,E_6]$ & $k$ even & Thm.~\ref{ch02:thm:polynomial}\\
+\lean{IntegralLattice.coeff_qExpansion_thetaModularForm} & $c_m(\vartheta_L)=r_L(2m)$ & even, unimod., pos.\ def. & Thm.~\ref{ch02:thm:bridgeq}\\
+\lean{IntegralLattice.repCount_four_of_rank_24} (and \lean{_six}, \lean{_eight}) & $r(4)+24r(2)=196560$, etc. & as above, rank $24$ & Thm.~\ref{ch02:thm:rank24}\\
+\lean{Leech.repCount_four}, \lean{repCount_six} & $196560$, $16773120$ & none & Thm.~\ref{ch02:thm:196560}\\
+\lean{VOA.IntegralLattice.ofEbeling} & transport (definitional) & -- & Def.~\ref{ch02:def:ofEbeling}\\
+\lean{VOA.Moonshine.leech}, \lean{leech_even}, \lean{leech_posDef}, \lean{leech_rank}, \lean{leech_no_roots} & $\Leech$ on the VOA side & none & Thm.~\ref{ch02:thm:leechVOAlattice}\\
+\lean{VOA.Moonshine.lambda0} & $\Leech_0=\ker\beta=2A$ & -- & \S\ref{ch02:sec:ahead}\\
+\bottomrule
+\end{longtable}
+}
+
+\noindent Points for the referee's particular attention:
+\begin{enumerate}
+\item The two \lean{IntegralLattice} structures (\S\ref{ch02:sec:twoencodings}) and the definitional
+bridge between them.
+\item Unimodularity is the vendored determinant statement; the VOA library's \lean{SelfDual} is
+never proved for $\Leech$ and never used.
+\item Uniqueness of $\Leech$ and of $\chtwoG$ is not part of this repository
+(Warning~\ref{ch02:warn:uniqueness}); only the explicit models are used.
+\item Conventions that could have made statements vacuous --- \lean{ncard} of infinite sets,
+\lean{tsum} of non-summable families, $\inf\emptyset=0$ in \lean{minDist}, integer division in the
+forms --- are each neutralised by an accompanying theorem (finiteness, summability, nonzero code,
+exact divisibility).
+\item The vendored files are claimed byte-identical to upstream commit \texttt{da62b9e} except for
+import prefixes; this is a repository claim checked with \texttt{cmp}, not a kernel-checked fact.
+\end{enumerate}
+
+\section{Notes and references}\label{ch02:sec:notes}
+
+The vendored library follows W.~Ebeling, \emph{Lattices and Codes: A Course Partially Based on
+Lectures by Friedrich Hirzebruch}, 3rd edition, Advanced Lectures in Mathematics, Springer
+Spektrum, 2013: Chapter~1 (lattices, codes, Construction A: Propositions 1.3, 1.4), Chapter~2
+(theta functions, Poisson summation, modular forms, the Golay code and the Leech lattice:
+Theorem 2.1, Proposition 2.1, Theorem 2.6, Proposition 2.8, \S2.8).  The standard encyclopaedic
+reference is J.~H.~Conway and N.~J.~A.~Sloane, \emph{Sphere Packings, Lattices and Groups}, 3rd
+edition, Grundlehren der mathematischen Wissenschaften 290, Springer, 1999; Chapter~4 \S11 contains
+the coordinate description of $\Leech$ in Remark~\ref{ch02:rem:cs}, and Chapters~16--18 the
+Niemeier classification.  The Leech lattice was discovered by J.~Leech, ``Notes on sphere
+packings'', \emph{Canadian J. Math.} 19 (1967) 251--267; its uniqueness was proved by J.~H.~Conway,
+``A characterisation of Leech's lattice'', \emph{Invent. Math.} 7 (1969) 137--142; the Niemeier
+lattices are from H.-V.~Niemeier, ``Definite quadratische Formen der Dimension 24 und
+Diskriminante 1'', \emph{J. Number Theory} 5 (1973) 142--178.  The Golay code is from M.~J.~E.~Golay,
+``Notes on digital coding'', \emph{Proc. IRE} 37 (1949) 657; the MacWilliams identity from
+F.~J.~MacWilliams, ``A theorem on the distribution of weights in a systematic code'', \emph{Bell
+System Tech. J.} 42 (1963) 79--94; a textbook treatment of both is F.~J.~MacWilliams and
+N.~J.~A.~Sloane, \emph{The Theory of Error-Correcting Codes}, North-Holland, 1977.  For modular
+forms see J.-P.~Serre, \emph{A Course in Arithmetic}, Graduate Texts in Mathematics 7, Springer,
+1973, Chapter VII (which also proves $8\mid n$ and $r(4)=196560$ in this way).  The role of the
+Leech lattice, the sublattice $\Leech\cap N(A_1^{24})$ and the Golay code in the Moonshine module
+is from I.~Frenkel, J.~Lepowsky and A.~Meurman, \emph{Vertex Operator Algebras and the Monster},
+Pure and Applied Mathematics 134, Academic Press, 1988 (Chapters 10--12), and, for the triality
+via $N(A_1^{24})$, L.~Dolan, P.~Goddard and P.~Montague, ``Conformal field theories, representations and
+lattice constructions'', \emph{Comm. Math. Phys.} 179 (1996) 61--120, arXiv:hep-th/9410029.  Mathlib's
+modular forms library (dimension formula, Eisenstein $q$-expansions, $\Delta=(E_4^3-E_6^2)/1728$)
+is used as a black box and is documented in the Mathlib sources at the pinned version v4.30.0.

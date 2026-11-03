@@ -1,0 +1,3291 @@
+\chapter{Formal calculus and locality}\label{ch:L01}
+\begingroup\setlength{\emergencystretch}{3em}
+
+\providecommand{\loneW}{\mathcal{W}}
+\providecommand{\loneV}{V}
+\providecommand{\loneiota}[2]{\iota_{#1,#2}}
+\providecommand{\lonedelta}{\delta(z_1,z_2)}
+\providecommand{\lonecoef}[1]{\big[#1\big]}
+\providecommand{\lonebinom}[2]{\binom{#1}{#2}}
+\providecommand{\lonewarn}[1]{the trap box on p.~\pageref{#1}}
+
+This chapter documents the release of the LeanVOA library named in the front matter. Every Lean quotation below is checked by \texttt{scripts/\allowbreak textbook/\allowbreak sync.py}
+to occur verbatim (up to whitespace and comments) in the source files of that release. Checks that were run at an earlier state of the library and not re-run
+for this edition are marked as such. The chapter covers the thirteen files assigned to it in
+\texttt{Notes/\allowbreak Textbook/\allowbreak assignment.txt}, all in the directory
+\leanpath{VOA/\allowbreak Foundations/}: \leanpath{FormalSeries.lean}, \leanpath{FormalCalculus.lean},
+\leanpath{Locality.lean}, \leanpath{Expansion.lean}, \leanpath{IteratedLaurent.lean},
+\leanpath{Substitution.lean}, \leanpath{DeltaJump.lean}, \leanpath{IotaZExpansion.lean},
+\leanpath{FormalDist3.lean}, \leanpath{FormalDist4.lean}, \leanpath{FormalDist4Delta.lean},
+\leanpath{FormalDist4DeltaContract.lean} and \leanpath{FormalDist4DeltaSupport.lean}.
+
+Chapter~\ref{ch:01} (Section~\ref{ch01:sec:synonyms}) already introduced, briefly, some of the objects
+that every later chapter uses: formal distributions, modes, the residue, locality and the
+structure theorem for local pairs. The present chapter is the full treatment. It presents
+\emph{every} definition and every substantive theorem of the thirteen files, with the complete
+fidelity protocol of the Constitution, and it works out by hand the examples that a student
+should have computed once in their life: the two expansions of $(z_1-z_2)^{-1}$ and
+$(z_1-z_2)^{-2}$, the jump between them, the delta function and its derivatives, the free boson
+and free fermion as local pairs, and the substitution $z_1\mapsto z_0+z_2$ applied to an
+explicit series. Where Chapter~\ref{ch:01} already printed a Lean declaration we print it
+again, because the referee should be able to check this chapter on its own.
+
+\paragraph{What is proved, in one paragraph.} Everything in this chapter is
+\emph{unconditional} formal algebra. The headline results are:
+the structure theorem for distributions annihilated by a power of $z_1-z_2$
+(\lean{VOA.local_iff_deltaSum}, Gannon's Proposition~5.1.2, Kac's Theorem~2.3);
+the delta-function jump $\loneiota{z_1}{z_2}(z_1-z_2)^{-1}-\loneiota{z_2}{z_1}(z_1-z_2)^{-1} = \lonedelta$
+(\lean{VOA.expand_jump}) and its all-order generalisation to $(z_1-z_2)^{-k-1}$
+(\lean{VOA.negPowJump_eq_deltaDeriv});
+multiplicativity of the expansions (\lean{VOA.expandPos_mul}, \lean{VOA.expandNeg_mul}), whose
+engine is the generalised Chu--Vandermonde identity (\lean{VOA.cbz_vandermonde});
+the cancellation theorem saying that $z_1-z_2$ is not a zero-divisor on lower-truncated
+distributions (\lean{VOA.eq_zero_of_mulBySubPow_of_bddBelow}), which is the irreducible core of
+Goddard uniqueness and of the reconstruction theorem;
+the multiplicativity of the substitution $z_1\mapsto z_0+z_2$ (\lean{VOA.subst_mulBySub});
+the sign-twisted (super) versions of locality (\lean{VOA.localε_iff_deltaSum},
+\lean{VOA.localε_of_car}); and a four-variable double-delta calculus
+(\lean{VOA.FormalDist₄Delta.kernelContract₁₂_doubleDelta_eq_zero_of_local}) intended for Li's
+local-system theorem. We ran \texttt{\#print axioms} on sixty declarations of these files; every
+one depends only on \lean{[propext, Classical.choice, Quot.sound]}
+(Section~\ref{l01:sec:verification}). The PBW theorem \lean{VOA.pbw} (Chapter~\ref{ch:L02}; formerly a project axiom, now a theorem) does not occur. The only
+\emph{hypotheses} that appear are finite-support hypotheses that make infinite sums meaningful;
+each is discussed in its fidelity check, and one of them (\lean{ShiftContractFinite}) is,
+at this commit, not yet discharged for the payloads it is intended for
+(\lonewarn{l01:warn:shiftfinite}).
+
+\paragraph{How to read this chapter.} Sections~\ref{l01:sec:physics}--\ref{l01:sec:binomial}
+are the one-variable theory and the combinatorics of binomial coefficients. Sections
+\ref{l01:sec:twovar}--\ref{l01:sec:operators} are the heart: two-variable distributions, the
+structure theorem, the two expansions and their jump, and locality of operator-valued
+distributions. Sections~\ref{l01:sec:truncation}--\ref{l01:sec:substitution} are the tools for
+the reconstruction programme (lower truncation, cancellation, substitution). Sections
+\ref{l01:sec:three}--\ref{l01:sec:four} are the three- and four-variable layers. The chapter ends
+with the verification record, the referee's checklist and the notes.
+
+%======================================================================
+\section{The physical picture: fields, contours and radial ordering}\label{l01:sec:physics}
+%======================================================================
+
+Nothing in this section is used in a proof; it explains why the definitions that follow are the
+right ones. Chapter~\ref{ch:01}, Section~\ref{ch01:sec:physics}, gives a longer account; here we
+concentrate on the four facts that formal calculus encodes.
+
+\subsection{Fields are Laurent series of operators}
+
+In a two-dimensional conformal field theory on the Riemann sphere one chooses a coordinate $z$
+centred at the origin and \emph{radially quantises}: circles $|z| = r$ are the equal-time slices,
+$r = e^{\tau}$ with $\tau$ the Euclidean time of the cylinder. A chiral (holomorphic) field
+$a(z)$ of conformal weight $h$ is expanded in modes,
+\begin{equation*}
+  a(z) = \sum_{n\in\Z} a_n\, z^{-n-h},\qquad a_n = \oint_{|z| = r}\frac{dz}{2\pi i}\,z^{n+h-1}a(z).
+\end{equation*}
+The modes $a_n$ are operators on the space of states. Vertex-algebra conventions absorb the
+weight: one writes $a(z) = \sum_n a_{(n)} z^{-n-1}$, so that $a_{(n)} = \oint z^{n}a(z)\,dz/2\pi i$
+for \emph{every} field, whatever its weight. The library adopts exactly this convention (the
+function \lean{VOA.mode} of Definition~\ref{l01:def:mode}). The expression $a(z)$ itself is
+never a convergent series of operators: it only makes sense inside correlation functions, or
+applied to a state. Formal calculus keeps the series as a \emph{list of coefficients} and never
+asks it to converge. This is the content of Definition~\ref{l01:def:formaldist}.
+
+\subsection{Contour integrals are residues}
+
+The contour integral $\oint z^{n}a(z)\,dz/2\pi i$ picks out the coefficient of $z^{-1}$ in
+$z^na(z)$. In formal calculus this \emph{is} the definition: $\Res_z f(z)$ is the coefficient of
+$z^{-1}$. Two facts of complex analysis survive verbatim: the integral of a total derivative over
+a closed contour vanishes ($\Res_z\partial_zf = 0$, Proposition~\ref{l01:prop:moderes}), and one
+may integrate by parts (Theorem~\ref{l01:thm:byparts}). The \emph{conserved charge} associated
+with a current $J(z)$ is $Q = \oint J(z)\,dz/2\pi i = J_{(0)}$: a residue.
+
+\subsection{Two orderings, one function: why there are two expansions}
+
+The basic object of the theory is a correlation function such as
+$\langle a(z_1)b(z_2)\rangle$, which is a meromorphic function of $z_1,z_2$ with poles at
+$z_1 = z_2$ (and at $0,\infty$). In radial quantisation, operator products must be
+\emph{radially ordered}: the product $a(z_1)b(z_2)$ of operators is defined when $|z_1|>|z_2|$,
+the product $b(z_2)a(z_1)$ when $|z_2|>|z_1|$, and both are expansions of the \emph{same}
+meromorphic function in two different annuli. The prototype is the function $1/(z_1-z_2)$:
+\begin{align*}
+  \frac{1}{z_1-z_2} &= \sum_{k\ge0} z_1^{-k-1}z_2^{k}\qquad (|z_1|>|z_2|),\\
+  \frac{1}{z_1-z_2} &= -\sum_{k\ge0} z_1^{k}z_2^{-k-1}\qquad (|z_2|>|z_1|).
+\end{align*}
+These are the two expansions $\loneiota{z_1}{z_2}$ and $\loneiota{z_2}{z_1}$ of
+Definition~\ref{l01:def:expand}. Their difference is
+$\sum_{k\in\Z}z_1^{k}z_2^{-k-1}$, which is the formal delta function $\lonedelta$: in complex
+analysis, the difference of the contour integrals over $|z_1| = R$ and $|z_1| = r<|z_2|<R$ is the
+integral over a small circle around $z_1 = z_2$, which evaluates a test function at $z_1 = z_2$.
+So \emph{the delta function is the difference of the two radial orderings}, and it is supported
+at coincident points: this is the contact term. Theorem~\ref{l01:thm:jump} is the formal
+statement, and Theorem~\ref{l01:thm:alljump} the version for higher poles.
+
+\subsection{Locality is commutativity up to contact terms}
+
+Suppose the operator product expansion of $a$ with $b$ has a pole of order at most $N$:
+$a(z_1)b(z_2) = \sum_{j<N}c^j(z_2)(z_1-z_2)^{-j-1} + \text{regular}$. Then
+$(z_1-z_2)^{N}a(z_1)b(z_2)$ is regular at $z_1 = z_2$, and (for bosonic fields) it is the same
+function as $(z_1-z_2)^{N}b(z_2)a(z_1)$: the two orderings agree once the pole is cancelled. In
+formal language,
+\begin{equation*}
+  (z_1-z_2)^N\,[a(z_1),b(z_2)] = 0 .
+\end{equation*}
+This is \emph{mutual locality}. In Minkowski signature it becomes the statement that the fields
+commute at spacelike separation; in the Euclidean, radially ordered picture it says that the
+commutator is a contact term. The structure theorem (Theorem~\ref{l01:thm:deltasum}) makes this
+precise: a distribution killed by $(z_1-z_2)^N$ is exactly a sum
+$\sum_{j<N}c^j(z_2)\,\partial_{z_2}^j\lonedelta$ of derivatives of the delta function. Taking
+residues then gives the familiar commutator formula of modes, $[a_{(m)},b_{(n)}] =
+\sum_j\binom mj (a_{(j)}b)_{(m+n-j)}$, which is how physicists derive the Virasoro and current
+algebras from the singular parts of OPEs.
+
+For fermionic fields the second ordering carries a sign, $b(z_2)a(z_1)\mapsto -b(z_2)a(z_1)$, and
+locality is a statement about the \emph{anti}commutator; the library handles both cases with a
+scalar parameter $\varepsilon$ (Section~\ref{l01:sec:super}).
+
+\subsection{What the formal theory must avoid}
+
+Two series in the same variable cannot in general be multiplied: $\delta(z)\cdot\delta(z)$ would
+have every coefficient equal to $\sum_{k\in\Z}1$. The formal theory must therefore be
+\emph{disciplined about infinite sums}: a product or a sum is allowed only when every coefficient
+of the result is a finite sum. This discipline appears in the library in three forms:
+(i) \lean{FormalDist} carries no multiplication at all (Definition~\ref{l01:def:formaldist});
+(ii) sums are taken with Mathlib's \lean{finsum}, and every theorem that manipulates such a sum
+carries a finite-support hypothesis; (iii) a definition whose coefficient is a \lean{finsum} may be
+\emph{written down} for any input, but is meaningful only on inputs for which the sum is finite.
+Point (iii) is a standing trap, explained in \lonewarn{l01:warn:finsum}.
+
+%======================================================================
+\section{One-variable formal distributions}\label{l01:sec:onevar}
+%======================================================================
+
+\subsection{The space of formal distributions}
+
+\begin{definition}[Formal distribution]\label{l01:def:formaldist}
+Let $\loneW$ be a set. A \emph{formal distribution} in one variable $z$ with coefficients in
+$\loneW$ is a function $f:\Z\to\loneW$, written as the doubly infinite formal series
+\begin{equation*}
+  f(z) = \sum_{n\in\Z} f_n\,z^n,\qquad f_n := f(n)\in\loneW .
+\end{equation*}
+The set of formal distributions is denoted $\loneW[[z^{\pm1}]]$. When $\loneW$ is an abelian group,
+respectively a module over a semiring $R$, $\loneW[[z^{\pm1}]]$ is an abelian group, respectively an
+$R$-module, under coefficientwise addition and scalar multiplication. Two formal distributions are
+equal iff all their coefficients agree. No product of two formal distributions is defined.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalSeries.lean}.
+\begin{leancode}
+def FormalDist (𝒲 : Type*) : Type _ := ℤ → 𝒲
+
+@[inherit_doc] notation:max 𝒲 "⟦z^±⟧" => FormalDist 𝒲
+
+instance instAddCommGroup [AddCommGroup 𝒲] : AddCommGroup (FormalDist 𝒲) :=
+  inferInstanceAs (AddCommGroup (ℤ → 𝒲))
+
+instance instModule {R : Type*} [Semiring R] [AddCommGroup 𝒲] [Module R 𝒲] :
+    Module R (FormalDist 𝒲) := inferInstanceAs (Module R (ℤ → 𝒲))
+
+@[ext]
+theorem ext {f g : FormalDist 𝒲} (h : ∀ n, f n = g n) : f = g := funext h
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Decoding.} \lean{Type*} means ``some type'' (a set, for our purposes). \lean{ℤ → 𝒲} is the
+type of functions from the integers to $\loneW$. So \lean{f : FormalDist 𝒲} is a function and
+\lean{f n} is its value at $n$, \emph{which we read as the coefficient of $z^n$}. This is the
+first convention to memorise: \lean{f n} is the coefficient of $z^{n}$, not a mode. Modes are
+introduced in Definition~\ref{l01:def:mode} and are shifted by one. The notation
+\lean{𝒲⟦z^±⟧} is a pure abbreviation for \lean{FormalDist 𝒲}.
+
+\textbf{The two instances.} \lean{instance ... : AddCommGroup (FormalDist 𝒲)} says: if $\loneW$ is an
+abelian group, so is \lean{FormalDist 𝒲}, and \lean{inferInstanceAs (AddCommGroup (ℤ → 𝒲))} says that
+the group structure is the one of the function space, i.e.\ coefficientwise. Likewise for the
+module structure over any semiring $R$ (in practice $R = \C$ or $R = \Z$). The
+\lean{@[ext]} theorem is the statement ``equal coefficients imply equal distributions'', registered
+so that Lean's \lean{ext} tactic uses it.
+
+\textbf{Why a \lean{def} and not the bare function type.} If $\loneW$ is a ring, the function type
+\lean{ℤ → 𝒲} carries the pointwise product $(fg)_n = f_ng_n$, which has nothing to do with the
+product of series. Because \lean{FormalDist} is a separate definition (Lean does not unfold it
+when searching for instances), the pointwise product is never found. The file header says this
+explicitly: there is ``deliberately \textbf{no} ring structure''. No multiplication of
+distributions is defined anywhere in the library; products are formed by explicit, separately
+justified constructions (Definitions~\ref{l01:def:lpsmul}, \ref{l01:def:convol},
+\ref{l01:def:subst}).
+
+\textbf{Fidelity.} Same as Kac (\emph{Vertex algebras for beginners}, §2.1), Gannon (§5.1.2,
+the space $\mathcal W[[z^{\pm}]]$) and Lepowsky--Li (§2.1). \textbf{Could it be vacuous?} No: it is
+the full space of $\Z$-indexed families.
+\end{dictionary}
+
+\begin{physics}
+A formal distribution with values in $\End(V)$ is the mode expansion of a quantum field, kept as
+the list of its Fourier--Laurent modes; a distribution with values in $V$ is a field applied to a
+state, $a(z)v$; a distribution with values in $\C$ is a correlation function expanded around a
+point. No convergence is ever claimed, because in quantum field theory none is available at the
+level of operators: only matrix elements and their Laurent coefficients (OPE coefficients) are
+meaningful. The refusal to define a product mirrors the physical fact that two operators at the
+\emph{same} point cannot simply be multiplied: their product is singular and must be regularised
+(normal ordering, Definition~\ref{l01:def:bracket}).
+\end{physics}
+
+\begin{status}
+A definition with two instances and an extensionality lemma; no proof obligation beyond
+type-checking. Compiled as part of the built tree at an earlier commit, when this chapter was first written (not re-run for this edition).
+\end{status}
+
+\subsection{Laurent polynomials and algebraically summable families}
+
+The \emph{test functions} of the theory are the Laurent polynomials. Pairing a distribution with
+a test function, $\Res_z\, g(z)f(z)$, is always a finite sum: this is the sense in which formal
+distributions are ``distributions''.
+
+\begin{definition}[Laurent polynomials]\label{l01:def:laurent}
+Let $\loneW$ be a complex vector space. A formal distribution $f\in\loneW[[z^{\pm1}]]$ is a
+\emph{Laurent polynomial} if its support $\{n\in\Z : f_n\neq0\}$ is finite. Laurent
+polynomials form a $\C$-linear subspace $\loneW[z^{\pm1}]\subseteq\loneW[[z^{\pm1}]]$.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalSeries.lean}.
+\begin{leancode}
+def LaurentPoly (𝒲 : Type*) [AddCommGroup 𝒲] [Module ℂ 𝒲] : Submodule ℂ (FormalDist 𝒲) where
+  carrier := {f | (Function.support f).Finite}
+
+theorem mem_laurentPoly [AddCommGroup 𝒲] [Module ℂ 𝒲] {f : FormalDist 𝒲} :
+    f ∈ LaurentPoly 𝒲 ↔ (Function.support f).Finite := Iff.rfl
+\end{leancode}
+
+\begin{dictionary}
+\lean{Submodule ℂ M} is Mathlib's notion of a $\C$-linear subspace of $M$; it is a structure
+consisting of a carrier set together with proofs that it contains $0$ and is closed under
+addition and scalar multiplication (those three proofs are in the file and are omitted here).
+\lean{Function.support f} is $\{n : f(n)\neq0\}$ and \lean{.Finite} says this set is finite.
+\lean{mem_laurentPoly} records that membership is literally finiteness of the support
+(\lean{Iff.rfl}: the two sides are the same statement). \textbf{Fidelity:} same as Gannon §5.1.2
+(the ``test functions'' $\mathcal W[z^{\pm}]$). In the library, theorems that need a Laurent
+polynomial usually ask directly for \lean{(Function.support g).Finite} rather than
+\lean{g ∈ LaurentPoly ℂ}; the two are interchangeable by \lean{mem_laurentPoly}.
+\end{dictionary}
+
+\begin{physics}
+Laurent polynomials are the smearing functions of chiral CFT: the mode $a_{(n)} = \Res_z z^na(z)$ is
+the field smeared against the test function $z^n$, and a general smeared field
+$\Res_z g(z)a(z)$ is a finite linear combination of modes. Physically, one never measures a field
+at a point, only smeared against a test function; for chiral fields on the circle the natural test
+functions are trigonometric polynomials $e^{in\sigma}$, i.e.\ Laurent polynomials in $z = e^{i\sigma}$.
+\end{physics}
+
+\begin{status}
+Definition. The closure proofs (\lean{add_mem'}, \lean{zero_mem'}, \lean{smul_mem'}) are in the file and
+compile; no hypotheses. The structure \lean{LaurentPoly} is used downstream in
+\leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroKacLaurent.lean}.
+\end{status}
+
+\begin{definition}[Algebraically summable family; algebraic sum]\label{l01:def:algsum}
+Let $\loneW$ be an abelian group and $I$ any index set. A family
+$(f^{(i)})_{i\in I}$ in $\loneW[[z^{\pm1}]]$ is \emph{algebraically summable} if for every $n\in\Z$
+the set $\{i\in I : f^{(i)}_n\neq0\}$ is finite. Its \emph{algebraic sum} is the distribution
+\begin{equation*}
+  \Big(\sum_{i\in I}f^{(i)}\Big)_n := \sum_{i\,:\,f^{(i)}_n\neq0} f^{(i)}_n ,
+\end{equation*}
+a finite sum for each $n$.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalSeries.lean}.
+\begin{leancode}
+def AlgSummable {ι : Type*} (f : ι → FormalDist 𝒲) : Prop := ∀ n, {i | f i n ≠ 0}.Finite
+
+noncomputable def algSum {ι : Type*} (f : ι → FormalDist 𝒲) (_h : AlgSummable f) :
+    FormalDist 𝒲 := fun n => ∑ᶠ i, f i n
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Decoding.} \lean{ι} is the index type $I$; \lean{f : ι → FormalDist 𝒲} is the family;
+\lean{f i n} is $f^{(i)}_n$. \lean{AlgSummable f} is a proposition (\lean{Prop}): ``for all $n$, the set of
+$i$ with $f^{(i)}_n\neq0$ is finite''. \lean{∑ᶠ i, f i n} is Mathlib's \lean{finsum}: the sum of a
+family over its support \emph{if the support is finite}, and $0$ otherwise
+(\lonewarn{l01:warn:finsum}).
+
+\textbf{Every hypothesis.} \lean{algSum} takes the summability proof \lean{_h} as an argument. It is not
+used in the formula (hence the underscore), but its presence means that one cannot even write
+\lean{algSum f h} without having proved that every coefficient is a finite sum. This is exactly the
+discipline that rules out the junk value of \lean{finsum}: with \lean{_h} available, \lean{∑ᶠ i, f i n} is
+a genuine finite sum.
+
+\textbf{Fidelity.} Same as Gannon p.~315 (``a sum is algebraically defined iff for each fixed $n$ the
+coefficient is a finite sum''). \lean{noncomputable} only means that Lean cannot run the definition as a
+program, because \lean{finsum} decides finiteness by classical logic; it has no mathematical content.
+\end{dictionary}
+
+\begin{physics}
+Algebraic summability is the formal version of the energy bound that makes operator products well
+defined on states. For example $Y(u,z)Y(v,w)x = \sum_{m,n}u_{(m)}v_{(n)}x\,z^{-m-1}w^{-n-1}$
+is a meaningful formal series because each coefficient is a single vector; but the same-point
+product $\sum_m u_{(m)}v_{(s-m)}x$ needed for a normal-ordered product is an infinite sum over $m$,
+and is meaningful only because, on a fixed state of bounded energy, all but finitely many terms vanish.
+\end{physics}
+
+\begin{status}
+Definitions; no proof obligations. Not used outside \leanpath{FormalSeries.lean} at this commit
+(later layers use \lean{finsum} directly, with explicit support hypotheses).
+\end{status}
+
+\begin{proposition}[Algebraic sums are linear]\label{l01:prop:algsum}
+Every family indexed by a finite set is algebraically summable, and its algebraic sum is the
+ordinary finite sum. If $(f^{(i)})$ and $(g^{(i)})$ are algebraically summable, so are
+$(f^{(i)}+g^{(i)})$ and $(c f^{(i)})$ for $c\in\C$, and
+$\sum_i (f^{(i)}+g^{(i)}) = \sum_if^{(i)}+\sum_ig^{(i)}$, $\sum_i cf^{(i)} = c\sum_if^{(i)}$.
+\end{proposition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalSeries.lean}.
+\begin{leancode}
+theorem algSummable_of_finite {ι : Type*} [Finite ι] (f : ι → FormalDist 𝒲) :
+    AlgSummable f := fun _ => Set.toFinite _
+
+theorem algSum_apply_fintype {ι : Type*} [Fintype ι] (f : ι → FormalDist 𝒲)
+    (h : AlgSummable f) (n : ℤ) : algSum f h n = ∑ i, f i n := by
+
+theorem AlgSummable.add {ι : Type*} {f g : ι → FormalDist 𝒲}
+    (hf : AlgSummable f) (hg : AlgSummable g) : AlgSummable (fun i => f i + g i) := by
+
+theorem algSum_add {ι : Type*} {f g : ι → FormalDist 𝒲}
+    (hf : AlgSummable f) (hg : AlgSummable g) :
+    algSum (fun i => f i + g i) (hf.add hg) = algSum f hf + algSum g hg := by
+
+theorem algSum_smul {ι : Type*} (c : ℂ) {f : ι → FormalDist 𝒲} (hf : AlgSummable f) :
+    algSum (fun i => c • f i) (hf.smul c) = c • algSum f hf := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{[Finite ι]} and \lean{[Fintype ι]} are the hypotheses ``$I$ is finite'' (the second also supplies an
+enumeration, needed to write the ordinary sum \lean{∑ i, f i n}). \lean{hf.add hg} is the proof that the
+sum family is summable (the theorem \lean{AlgSummable.add}); it has to be supplied because \lean{algSum}
+requires a summability proof. \lean{c • f i} is scalar multiplication. All statements are the expected
+ones; nothing is weaker or stronger.
+\end{dictionary}
+
+\begin{physics}
+Technical bookkeeping: it says that the space of well-defined (energy-bounded) infinite sums of
+fields is a vector space, so that one may add and rescale OPEs and mode expansions freely.
+\end{physics}
+
+\textbf{Proof on paper.} For each $n$ the support of $(f^{(i)}_n+g^{(i)}_n)_i$ is contained in the
+union of the two finite supports; the identity is then the additivity of finite sums. Scaling can
+only shrink supports. For finite $I$ there is nothing to prove. \qed
+
+\begin{status}
+Unconditional. \texttt{\#print axioms VOA.algSum\_add} $=$ \lean{[propext, Classical.choice, Quot.sound]}
+(Section~\ref{l01:sec:verification}).
+\end{status}
+
+\begin{warning}\label{l01:warn:finsum}
+\textbf{The junk value of \texttt{finsum}.} Mathlib defines \lean{∑ᶠ i, F i} to be the sum over the support
+of \lean{F} when that support is finite, and \emph{zero} when it is infinite. This is a convention, chosen
+so that \lean{finsum} is a total function; it is not a theorem about convergence. Consequently a Lean
+definition whose coefficients are \lean{finsum}s can be applied to \emph{any} input, and on an input for
+which the intended sum is infinite it silently returns $0$, a meaningless value. Three definitions of
+this chapter are of this kind: \lean{lpSMul} (Definition~\ref{l01:def:lpsmul}), \lean{subst}
+(Definition~\ref{l01:def:subst}), and the contractions of Section~\ref{l01:sec:four}. In each case the
+\emph{theorems} carry the finite-support hypothesis that makes the sum genuine, and the fidelity check
+below verifies this for every theorem. A reader who meets such a definition applied to an
+unconstrained input should be suspicious. The authors of \leanpath{FormalDist4.lean} record the same
+point in their header: finite-support hypotheses ``prevent an infinite-support \lean{finsum} from silently
+collapsing to zero''.
+\end{warning}
+
+\subsection{Multiplication by a monomial}
+
+\begin{definition}[Multiplication by $z^k$]\label{l01:def:monomial}
+For $k\in\Z$, multiplication by the monomial $z^k$ is the $\C$-linear map
+$\loneW[[z^{\pm1}]]\to\loneW[[z^{\pm1}]]$, $(z^kf)_n = f_{n-k}$.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalSeries.lean}.
+\begin{leancode}
+def mulByMonomial (k : ℤ) : FormalDist 𝒲 →ₗ[ℂ] FormalDist 𝒲 where
+  toFun f := fun n => f (n - k)
+\end{leancode}
+
+\begin{dictionary}
+\lean{M →ₗ[ℂ] N} is the type of $\C$-linear maps from $M$ to $N$; a term of it is a function
+(\lean{toFun}) together with proofs of additivity and homogeneity (\lean{map_add'}, \lean{map_smul'}, both
+\lean{rfl} in the file and omitted here). The coefficient of $z^n$ in $z^k\sum_mf_mz^m$ is $f_{n-k}$, which is
+the formula. Same as the textbook.
+\end{dictionary}
+
+\begin{physics}
+Multiplying a field by $z^k$ shifts its modes: $(z^ka)_{(m)} = a_{(m+k)}$. In radial quantisation,
+$z^k$ is the eigenfunction of the dilatation $L_0$ with eigenvalue $k$, so this operation shifts the
+energy carried by each mode.
+\end{physics}
+
+\begin{status}
+Definition; linearity is by \lean{rfl}. No hypotheses.
+\end{status}
+
+%======================================================================
+\section{Delta function, residue, derivative and modes}\label{l01:sec:delta}
+%======================================================================
+
+\begin{definition}[Formal delta functions]\label{l01:def:delta}
+The \emph{formal delta function} in one variable is $\delta(z) := \sum_{n\in\Z}z^n\in\C[[z^{\pm1}]]$.
+The two-variable delta function in multiplicative normalisation is
+\begin{equation*}
+  \delta(z_1/z_2) := \sum_{k\in\Z}z_1^{k}z_2^{-k},\qquad\text{coefficient of }z_1^mz_2^n = [m+n = 0].
+\end{equation*}
+\emph{Notation for the rest of the chapter:} the symbol $\delta(z_1,z_2)$ (with a comma) always denotes the
+\emph{additive} normalisation $z_2^{-1}\delta(z_1/z_2) = \sum_kz_1^kz_2^{-k-1}$, coefficient $[m+n+1 = 0]$, which is
+Kac's $\delta(z-w)$ and the only one used in the locality theorems (Lean: \lean{deltaForm}, or
+\lean{deltaDeriv 0 c}). The multiplicative $\delta(z_1/z_2)$ above (Lean: \lean{delta₂}) is not used again.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalCalculus.lean}.
+\begin{leancode}
+def formalDelta : FormalDist ℂ := fun _ => 1
+
+def delta₂ : FormalDist₂ ℂ := fun m n => if m + n = 0 then 1 else 0
+\end{leancode}
+
+\begin{dictionary}
+\lean{fun _ => 1} is the constant function $1$: every coefficient of $\delta(z)$ is $1$. \lean{FormalDist₂ ℂ}
+(Definition~\ref{l01:def:formaldist2}) is the type of two-variable distributions, \lean{f m n} being the
+coefficient of $z_1^mz_2^n$; \lean{if m + n = 0 then 1 else 0} is the Iverson bracket $[m+n=0]$.
+
+\textbf{Two normalisations of the two-variable delta.} The library contains \emph{two} two-variable deltas
+and the referee must keep them apart. \lean{delta₂} is $\delta(z_1/z_2) = \sum_kz_1^kz_2^{-k}$
+(coefficient $[m+n=0]$). The delta used in all the locality theorems is
+$\lonedelta := z_2^{-1}\delta(z_1/z_2) = \sum_kz_1^kz_2^{-k-1}$ (coefficient $[m+n+1=0]$), which appears
+as \lean{deltaDeriv 0 c} (Definition~\ref{l01:def:deltaderiv}) and as \lean{deltaForm}
+(Definition~\ref{l01:def:expand}); it is Kac's $\delta(z-w)$. The two differ by the factor $z_2^{-1}$, a
+shift of the second index by one. \lean{formalDelta} and \lean{delta₂} are not used outside
+\leanpath{FormalCalculus.lean}; they are faithful to Gannon (5.1.2), where $\delta(z) = \sum_nz^n$ is ``the
+Dirac delta centred at $z = 1$'' in multiplicative notation.
+\end{dictionary}
+
+\begin{physics}
+On the unit circle $z = e^{i\sigma}$, $\delta(z) = \sum_n e^{in\sigma} = 2\pi\,\delta_{\mathrm{Dirac}}(\sigma)$:
+the formal delta is the Fourier series of the Dirac delta at $\sigma = 0$, i.e.\ at $z = 1$. The two-variable
+version $\delta(z_1/z_2)$ is supported at $z_1 = z_2$: it is the \emph{contact term} that appears in
+equal-time commutators $[a(\sigma_1),b(\sigma_2)]\propto\delta(\sigma_1-\sigma_2)$ of canonical quantisation.
+\end{physics}
+
+\begin{status}
+Definitions. A smoke test in the file checks \lean{res formalDelta = 1} by \lean{rfl}, and that
+\lean{mulBySubPow 1 delta₂ = 0}, i.e.\ $(z_1-z_2)\delta(z_1/z_2) = 0$.
+\end{status}
+
+\begin{definition}[Modes, residue, derivative]\label{l01:def:mode}
+Let $f\in\loneW[[z^{\pm1}]]$.
+\begin{enumerate}[label=(\roman*)]
+\item The \emph{$m$-th mode} of $f$ ($m\in\Z$) is $f_{(m)} := f_{-m-1}$, so that
+  $f(z) = \sum_{m\in\Z}f_{(m)}\,z^{-m-1}$.
+\item If $\loneW$ is a complex vector space, the \emph{residue} is the linear functional
+  $\Res_z f := f_{-1}$, the coefficient of $z^{-1}$.
+\item The \emph{formal derivative} is the linear map $\partial_z$ with
+  $(\partial_zf)_n := (n+1)f_{n+1}$, i.e.\ $\partial_z\sum_n f_nz^n = \sum_n nf_nz^{n-1}$.
+\end{enumerate}
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalCalculus.lean}.
+\begin{leancode}
+def mode (f : FormalDist 𝒲) (m : ℤ) : 𝒲 := f (-m - 1)
+
+def res : FormalDist 𝒲 →ₗ[ℂ] 𝒲 where
+  toFun f := f (-1)
+
+def deriv : FormalDist 𝒲 →ₗ[ℂ] FormalDist 𝒲 where
+  toFun f := fun n => (n + 1 : ℤ) • f (n + 1)
+\end{leancode}
+
+\begin{dictionary}
+\textbf{The single most important convention of the library:} \lean{mode f m = f (-m - 1)}. If
+\lean{Y u : FormalDist (Module.End ℂ V)} is the vertex operator of a state $u$, then \lean{mode (Y u) n} is
+$u_{(n)}$, the coefficient of $z^{-n-1}$, whereas \lean{Y u n} is the coefficient of $z^n$, i.e.\
+$u_{(-n-1)}$. Calibration: \lean{Y u 0} $= u_{(-1)}$, \lean{Y u (-1)} $= u_{(0)}$, \lean{Y u (-2)} $= u_{(1)}$.
+Both forms occur in later chapters, and every fidelity check there must decode them.
+
+\textbf{\lean{res}} is defined only when $\loneW$ is a complex vector space (the ambient section of the file
+assumes \lean{[AddCommGroup 𝒲] [Module ℂ 𝒲]}), because it is packaged as a $\C$-linear map; the formula is
+\lean{f (-1)}. \textbf{\lean{deriv}}: \lean{(n + 1 : ℤ) • f (n + 1)} is the integer $n+1$ acting on the vector
+$f_{n+1}$ (repeated addition), which agrees with the complex scalar $n+1$. The name \lean{VOA.deriv} lives in
+the namespace \lean{VOA} and is unrelated to Mathlib's analytic \lean{deriv}.
+
+\textbf{Fidelity.} Same as Kac §2.1 ($a(z) = \sum a_{(n)}z^{-n-1}$), Gannon (5.1.3a,c), Frenkel--Ben-Zvi
+§1.1 and Lepowsky--Li §2.1. In modes, $(\partial f)_{(m)} = (\partial f)_{-m-1} = -m f_{-m} = -m f_{(m-1)}$.
+\end{dictionary}
+
+\begin{physics}
+$f_{(m)} = \oint z^mf(z)\,dz/2\pi i$ is the contour integral that defines a mode; for a current $J$ the zero
+mode $J_{(0)} = \oint J$ is the conserved charge, and for the stress tensor $T$ the modes $T_{(m+1)} = L_m$ are
+the Virasoro generators ($L_{-1} = T_{(0)}$ generates translations, $L_0 = T_{(1)}$ dilatations). For a state
+$u$, the coefficients $u_{(n)}v$ of $Y(u,z)v$ are the OPE coefficients: $n\ge0$ the singular terms, $n = -1$
+the normal-ordered product, $n\le-2$ the descendants. The derivative $\partial_z$ is translation of the
+insertion point.
+\end{physics}
+
+\begin{status}
+Definitions; linearity proofs by \lean{rfl} and by \lean{smul_add}/\lean{smul_comm}. No hypotheses.
+\end{status}
+
+\begin{proposition}[Modes are residues; residues of derivatives vanish]\label{l01:prop:moderes}
+For every $f\in\loneW[[z^{\pm1}]]$ and $m\in\Z$,
+\begin{equation*}
+  f_{(m)} = \Res_z\big(z^mf(z)\big),\qquad \Res_z\big(\partial_zf\big) = 0 .
+\end{equation*}
+\end{proposition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalCalculus.lean}.
+\begin{leancode}
+theorem mode_eq_res (f : FormalDist 𝒲) (m : ℤ) : mode f m = res (mulByMonomial m f) := by
+
+@[simp] theorem res_deriv (f : FormalDist 𝒲) : res (deriv f) = 0 := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{mulByMonomial m f} is $z^mf$ (Definition~\ref{l01:def:monomial}). \lean{@[simp]} registers the second
+identity as a rewriting rule for Lean's simplifier; it has no mathematical content. Same as Gannon
+(5.1.3c) and the first identity of (5.1.3b). No hypotheses beyond $\loneW$ being a complex vector space.
+\end{dictionary}
+
+\begin{physics}
+The first identity is the contour-integral formula for a mode. The second is Cauchy's theorem for
+exact forms: the integral of a total derivative around a closed contour vanishes. In CFT it is the
+reason that $\partial a$ has no conserved charge, $\oint\partial a = 0$, and that total derivatives can
+be dropped from currents without changing charges.
+\end{physics}
+
+\textbf{Proof on paper.} $(z^mf)_{-1} = f_{-1-m} = f_{(m)}$. And $(\partial f)_{-1} = (-1+1)f_0 = 0$. \qed
+
+\begin{status}
+Unconditional; axioms \lean{[propext, Classical.choice, Quot.sound]} for both.
+\end{status}
+
+\begin{example}[Calibrating the conventions]\label{l01:ex:calibrate}
+Let $f = \sum_{n}f_nz^n$ and $m\in\Z$.
+(a) $\Res_z\delta(z) = 1$, since every coefficient of $\delta$ is $1$.
+(b) $(\partial_z z^{k})_n = (n+1)[n+1 = k]$, so $\partial_zz^k = kz^{k-1}$; in particular
+$\partial_zz^{0} = 0$ and $\partial_z z^{-1} = -z^{-2}$, and $\Res_z\partial_z z^{0} = 0$ although
+$z^{-1}$ is the only monomial with nonzero residue: $z^{-1}$ is not a derivative, which is why the residue
+is a nontrivial functional.
+(c) $\partial_z\delta(z) = \sum_n(n+1)z^n$; its residue is $0\cdot1 = 0$, as
+Proposition~\ref{l01:prop:moderes} demands.
+(d) In modes, a field with $a(z) = \sum_na_{(n)}z^{-n-1}$ has $(\partial a)_{(n)} = -n\,a_{(n-1)}$; e.g.\ for
+$a = J$ a current, $(\partial J)_{(0)} = 0$: total derivatives carry no charge.
+\end{example}
+
+\subsection{The Laurent-polynomial action and integration by parts}
+
+\begin{definition}[Action of a Laurent polynomial]\label{l01:def:lpsmul}
+For $g\in\C[[z^{\pm1}]]$ and $f\in\loneW[[z^{\pm1}]]$ define $g\cdot f$ by
+\begin{equation*}
+  (g\cdot f)_n := \sum_{k\in\Z}g_k\,f_{n-k}.
+\end{equation*}
+If $g$ is a Laurent polynomial, each coefficient is a finite sum, and $g\cdot f$ is the product of the
+Laurent polynomial $g$ with the distribution $f$.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalCalculus.lean}.
+\begin{leancode}
+noncomputable def lpSMul (g : FormalDist ℂ) (f : FormalDist 𝒲) : FormalDist 𝒲 :=
+  fun n => ∑ᶠ k, g k • f (n - k)
+
+theorem support_smul_left_finite (g : FormalDist ℂ) (hg : (Function.support g).Finite)
+    (F : ℤ → 𝒲) : (Function.support (fun k => g k • F k)).Finite := by
+\end{leancode}
+
+\begin{dictionary}
+\textbf{The junk-value trap applies here} (\lonewarn{l01:warn:finsum}). \lean{lpSMul g f} is defined for
+every $g$, but if $g$ has infinite support the sum \lean{∑ᶠ k, g k • f (n - k)} may have infinite support and
+then evaluates to $0$. Example: $g = f = \delta$ gives the ``product'' $\delta\cdot\delta$, which Lean
+evaluates to the zero distribution, whereas the mathematical product is undefined (Gannon's Paradox~5.1).
+The lemma \lean{support_smul_left_finite} says: if $g$ has finite support, then for \emph{any} $F$ the summand
+$k\mapsto g_kF_k$ has finite support. Every theorem about \lean{lpSMul} below carries the hypothesis
+\lean{hg : (Function.support g).Finite}, which puts us in the meaningful case. Under it, the definition is
+the textbook product (Gannon p.~315: $\mathcal W[[z^{\pm}]]$ is a $\C[z^{\pm}]$-module).
+\end{dictionary}
+
+\begin{physics}
+Multiplying a field by a Laurent polynomial $g(z)$ is smearing with a test function: the modes of
+$g(z)a(z)$ are finite combinations of modes of $a$. This is the operation used in every contour
+manipulation, e.g.\ $\oint (z-w)^k a(z)\,dz$ for a polynomial $(z-w)^k$ in $z$.
+\end{physics}
+
+\begin{status}
+Definition and support lemma; the lemma is unconditional. \lean{lpSMul} is not used outside
+\leanpath{FormalCalculus.lean}.
+\end{status}
+
+\begin{theorem}[Leibniz rule]\label{l01:thm:leibniz}
+If $g\in\C[z^{\pm1}]$ is a Laurent polynomial and $f\in\loneW[[z^{\pm1}]]$, then
+\begin{equation*}
+  \partial_z(g\cdot f) = (\partial_zg)\cdot f + g\cdot(\partial_zf).
+\end{equation*}
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalCalculus.lean}.
+\begin{leancode}
+theorem deriv_lpSMul (g : FormalDist ℂ) (hg : (Function.support g).Finite) (f : FormalDist 𝒲) :
+    deriv (lpSMul g f) = lpSMul (deriv g) f + lpSMul g (deriv f) := by
+\end{leancode}
+
+\begin{dictionary}
+The one hypothesis \lean{hg} is ``$g$ is a Laurent polynomial''. It is necessary for the statement to be
+meaningful (\lonewarn{l01:warn:finsum}); note that $\partial_zg$ is then also a Laurent polynomial, so all
+three products are genuine. $f$ is arbitrary. Same as Gannon §5.1.2.
+\end{dictionary}
+
+\begin{physics}
+The product rule for smeared fields; it is what makes the translation operator $L_{-1}$ act as a
+derivation on products of fields and test functions.
+\end{physics}
+
+\textbf{Proof on paper.} Compare the coefficients of $z^n$. On the left,
+$(n+1)\sum_k g_kf_{n+1-k}$. On the right, $\sum_k (k+1)g_{k+1}f_{n-k} + \sum_kg_k(n-k+1)f_{n-k+1}$;
+shifting $k\mapsto k-1$ in the first sum turns it into $\sum_k k\,g_kf_{n-k+1}$, and adding gives
+$\sum_k(k+n-k+1)g_kf_{n+1-k}$. All sums are finite because $g$ has finite support; the index shift is a
+bijection of $\Z$. \qed
+
+\begin{status}
+Unconditional (the hypothesis is the meaningfulness condition). Axioms
+\lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\begin{theorem}[Integration by parts; Gannon (5.1.3b)]\label{l01:thm:byparts}
+If $g\in\C[z^{\pm1}]$ is a Laurent polynomial and $f\in\loneW[[z^{\pm1}]]$, then
+\begin{equation*}
+  \Res_z\big(g\cdot\partial_zf\big) = -\Res_z\big((\partial_zg)\cdot f\big).
+\end{equation*}
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalCalculus.lean}.
+\begin{leancode}
+theorem res_lpSMul_deriv (g : FormalDist ℂ) (hg : (Function.support g).Finite)
+    (f : FormalDist 𝒲) : res (lpSMul g (deriv f)) = - res (lpSMul (deriv g) f) := by
+\end{leancode}
+
+\begin{dictionary}
+Same hypothesis as Theorem~\ref{l01:thm:leibniz}. The file header writes the identity as
+``$\Res_z(g\cdot\partial_zf) = -\Res_z(f\cdot\partial_zg)$''; since \lean{lpSMul} is the commutative product of a
+scalar series with a vector series, these are the same statement. Exactly Gannon (5.1.3b).
+\end{dictionary}
+
+\begin{physics}
+Integration by parts on a closed contour, with no boundary term. In mode language with $g = z^{m}$:
+$(\partial f)_{(m)} = -m f_{(m-1)}$, the familiar rule for modes of derivative fields.
+\end{physics}
+
+\textbf{Proof on paper.} Apply $\Res_z$ to the Leibniz rule: the left side is the residue of a derivative,
+which vanishes (Proposition~\ref{l01:prop:moderes}). \qed
+
+\begin{example}
+Take $g = z^m$. Then $(g\cdot\partial f)_{-1} = (\partial f)_{-1-m} = -m f_{-m}$ and
+$((\partial g)\cdot f)_{-1} = m\,(z^{m-1}f)_{-1} = mf_{-m}$, confirming the theorem by direct computation.
+\end{example}
+
+\begin{status}
+Unconditional; axioms \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+%======================================================================
+\section{Binomial coefficients with integer upper index}\label{l01:sec:binomial}
+%======================================================================
+
+Expanding $(z_1-z_2)^n$ for negative $n$ requires binomial coefficients $\binom nk$ with $n<0$.
+This section collects the library's definitions and the three identities used later: the values at
+$n = -1$, Pascal's rule, and the Chu--Vandermonde convolution.
+
+\begin{definition}[Generalised binomial coefficients, signs, the binomial convention]\label{l01:def:gbinom}
+\leavevmode
+\begin{enumerate}[label=(\roman*)]
+\item For $n\in\Z$ and $k\in\N$,
+  $\displaystyle\binom nk := \frac{n(n-1)\cdots(n-k+1)}{k!} = \frac1{k!}\prod_{i=0}^{k-1}(n-i)$
+  (the empty product, $k = 0$, gives $\binom n0 = 1$).
+\item For $n,k\in\Z$, $C(n,k) := \binom nk$ if $k\ge0$ and $C(n,k) := 0$ if $k<0$.
+\item For $n\in\Z$, $(-1)^n := 1$ if $n$ is even and $-1$ if $n$ is odd.
+\item (Gannon (5.1.4), the \emph{binomial convention}.) For $n\in\Z$,
+  $\displaystyle(z_1+z_2)^n := \sum_{k\ge0}\binom nk z_1^{n-k}z_2^{k}$, always expanded in
+  \emph{nonnegative powers of the second variable}.
+\end{enumerate}
+\end{definition}
+
+\noindent Files (all in \leanpath{VOA/\allowbreak Foundations/}): \leanpath{FormalCalculus.lean}
+(\lean{gBinom}, \lean{binomialExpand}), \leanpath{Substitution.lean} (\lean{cbz}), \leanpath{Expansion.lean}
+(\lean{negOnePow}).
+\begin{leancode}
+noncomputable def gBinom (n : ℤ) (k : ℕ) : ℂ :=
+  (∏ i ∈ Finset.range k, ((n : ℂ) - (i : ℂ))) / (k.factorial : ℂ)
+
+noncomputable def binomialExpand (n : ℤ) : FormalDist₂ ℂ :=
+  fun a b => if 0 ≤ b ∧ a = n - b then gBinom n b.toNat else 0
+
+noncomputable def cbz (n k : ℤ) : ℂ := if 0 ≤ k then gBinom n k.toNat else 0
+
+def negOnePow (n : ℤ) : ℂ := if Even n then 1 else -1
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Decoding.} \lean{Finset.range k} is $\{0,1,\dots,k-1\}$, so the product is
+$\prod_{i=0}^{k-1}(n-i)$, computed in $\C$ after the casts \lean{(n : ℂ)}, \lean{(i : ℂ)}; \lean{k.factorial}
+is $k!$. \lean{b.toNat} converts an integer $b$ to a natural number (it returns $0$ for $b<0$, but it is only
+ever evaluated under the guard $0\le b$, so no junk value is used). \lean{binomialExpand n a b} is the
+coefficient of $z_1^az_2^b$ in $(z_1+z_2)^n$: it is $\binom nb$ when $b\ge0$ and $a = n-b$, else $0$. This
+is (iv) verbatim. \lean{cbz} is (ii), and \lean{negOnePow} is (iii) (it avoids the integer power
+\lean{zpow}, whose sign conventions are a nuisance in Lean).
+
+\textbf{Fidelity.} (i) agrees with the usual binomial coefficient for $n\ge0$ (e.g.\ $\binom 52 = 10$,
+$\binom 27 = 0$ since the product contains the factor $2-2$), and is the standard extension to negative
+$n$ (Kac §2.1, Gannon (5.1.4a), Lepowsky--Li §2.1). The convention (iv) is genuinely a
+\emph{convention}: the same symbol $(z_1+z_2)^n$ with the variables written in the other order means a
+different series (Example~\ref{l01:ex:paradox}).
+
+\textbf{Usage.} \lean{binomialExpand} is not used elsewhere at this commit: the library works instead
+with the expansions \lean{expandPos}/\lean{expandNeg} of $(z_1-z_2)^n$ (Definition~\ref{l01:def:expand}),
+which build in the sign. \lean{cbz} is used heavily (substitution, Vandermonde, the Borcherds identity in
+\leanpath{VOA/\allowbreak Core/\allowbreak Skew.lean}; the Borcherds identity is a theorem for
+\lean{VertexOperatorAlgebra} only, Chapter~\ref{ch:L03}).
+\end{dictionary}
+
+\begin{physics}
+Generalised binomials are the Taylor coefficients of $(1+x)^n$ for negative $n$: they are what one gets
+by expanding an OPE singularity $(z-w)^{-k}$ in one of the two radial orderings. The convention
+``nonnegative powers of the second variable'' fixes, once and for all, which region of the
+$(z_1,z_2)$-plane a formula refers to; in a physics computation the region is fixed by the radial
+ordering of the operators, and forgetting it is the most common source of sign errors in mode
+calculations.
+\end{physics}
+
+\begin{status}
+Definitions. No hypotheses.
+\end{status}
+
+\begin{example}[Values with negative upper index]\label{l01:ex:negbinom}
+For $r\ge1$, $\binom{-r}{k} = \frac{(-r)(-r-1)\cdots(-r-k+1)}{k!} = (-1)^k\binom{r+k-1}{k}$. Thus
+$\binom{-1}{k} = (-1)^k$, $\binom{-2}{k} = (-1)^k(k+1)$, $\binom{-3}{k} = (-1)^k\binom{k+2}{2}$. In
+particular $\binom nk\neq0$ for every $k\ge0$ when $n<0$: binomial sums with negative upper index are
+infinite, which is why the expansions of $(z_1-z_2)^{n}$, $n<0$, are infinite series and must be
+controlled by truncation.
+\end{example}
+
+\begin{example}[The convention determines the series (Gannon's ``Paradox 5.2'')]\label{l01:ex:paradox}
+By (iv), $(z_1+z_2)^{-1} = \sum_{k\ge0}(-1)^kz_1^{-1-k}z_2^{k}$, while
+$(z_2+z_1)^{-1} = \sum_{k\ge0}(-1)^kz_2^{-1-k}z_1^{k}$. The two formal series are different although the
+rational functions are equal. There is no contradiction (Gannon's word ``paradox'' is rhetorical): the
+convention attaches to the \emph{ordered} expression a unique series, and the two orders are two different
+expansions of one rational function. Their difference is
+\begin{equation*}
+  (z_1+z_2)^{-1}-(z_2+z_1)^{-1} = \sum_{k\in\Z}(-1)^kz_1^{-1-k}z_2^{k} = z_1^{-1}\delta(-z_2/z_1),
+\end{equation*}
+a delta function supported at $z_1 = -z_2$, the pole of the rational function. In the library this
+phenomenon, for $(z_1-z_2)^{-1}$, is Theorem~\ref{l01:thm:jump}.
+\end{example}
+
+\begin{proposition}[Basic values and sign rules]\label{l01:prop:binomvals}
+For all $n\in\Z$, $k\in\N$: $\binom n0 = 1$; $\binom{-1}k = (-1)^k$; $k!\binom nk = \prod_{i<k}(n-i)$;
+$(-1)^{n+1} = -(-1)^n$; $(-1)^{k} $ (as an integer exponent) equals $(-1)^k$ computed as a power in $\C$;
+and $(-1)^{x+y} = (-1)^x(-1)^y$ for $x,y\in\Z$.
+\end{proposition}
+
+\noindent Files \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalCalculus.lean},
+\leanpath{VOA/\allowbreak Foundations/\allowbreak Expansion.lean},
+\leanpath{VOA/\allowbreak Foundations/\allowbreak Substitution.lean},
+\leanpath{VOA/\allowbreak Foundations/\allowbreak IotaZExpansion.lean}.
+\begin{leancode}
+@[simp] theorem gBinom_zero (n : ℤ) : gBinom n 0 = 1 := by
+
+theorem gBinom_neg_one (k : ℕ) : gBinom (-1) k = (-1 : ℂ) ^ k := by
+
+theorem gBinom_mul_factorial (n : ℤ) (k : ℕ) :
+    (k.factorial : ℂ) * gBinom n k = ∏ i ∈ Finset.range k, ((n : ℂ) - (i : ℂ)) := by
+
+theorem negOnePow_succ (n : ℤ) : negOnePow (n + 1) = - negOnePow n := by
+
+theorem negOnePow_natCast (k : ℕ) : negOnePow (k : ℤ) = (-1 : ℂ) ^ k := by
+
+theorem negOnePow_add (x y : ℤ) : negOnePow (x + y) = negOnePow x * negOnePow y := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{(-1 : ℂ) ^ k} is the natural-number power in $\C$. \lean{(k : ℤ)} is $k$ viewed as an integer. All six
+are the stated identities, with no hypotheses.
+\end{dictionary}
+
+\begin{physics}
+Bookkeeping for signs; $\binom{-1}{k} = (-1)^k$ is the geometric series $1/(1+x) = \sum(-x)^k$ behind the
+expansion of the simple pole $1/(z-w)$.
+\end{physics}
+
+\textbf{Proof on paper.} $\prod_{i<k}(-1-i) = (-1)^k k!$. The sign rules follow by induction on $y$ in
+both directions. \qed
+
+\begin{status}
+All unconditional; \texttt{\#print axioms VOA.gBinom\_neg\_one} $=$
+\lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\begin{proposition}[Pascal's rule]\label{l01:prop:pascal}
+For all $n\in\Z$ and $j\in\N$, $\binom n{j+1} = \binom{n-1}{j+1}+\binom{n-1}{j}$. Equivalently, for all
+$n,k\in\Z$, $C(n,k) = C(n-1,k)+C(n-1,k-1)$.
+\end{proposition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak Substitution.lean}.
+\begin{leancode}
+theorem gBinom_succ_pascal (n : ℤ) (j : ℕ) :
+    gBinom n (j + 1) = gBinom (n - 1) (j + 1) + gBinom (n - 1) j := by
+
+theorem cbz_pascal (n k : ℤ) : cbz n k = cbz (n - 1) k + cbz (n - 1) (k - 1) := by
+\end{leancode}
+
+\begin{dictionary}
+The integer-indexed form \lean{cbz_pascal} holds for \emph{all} $k\in\Z$, including $k = 0$ (where it
+reads $1 = 1+0$) and $k<0$ (where it reads $0 = 0+0$); this uniformity is what lets later proofs shift
+summation indices over all of $\Z$ without case distinctions. Same as the classical rule.
+\end{dictionary}
+
+\begin{physics}
+Pascal's rule is the coefficient form of $(1+x)^n = (1+x)^{n-1}(1+x)$; in the formal calculus it is the
+identity $(z_0+z_2)^{m} = (z_0+z_2)^{m-1}z_0 + (z_0+z_2)^{m-1}z_2$, used to move a factor
+$z_1-z_2 = z_0$ through the substitution $z_1 = z_0+z_2$ (Theorem~\ref{l01:thm:subst}).
+\end{physics}
+
+\textbf{Proof on paper.} Multiply by $(j+1)!$:
+$\prod_{i\le j}(n-i) = n\prod_{i<j}(n-1-i)$, and
+$(n-1-j)\prod_{i<j}(n-1-i) + (j+1)\prod_{i<j}(n-1-i) = n\prod_{i<j}(n-1-i)$. \qed
+
+\begin{status}
+Unconditional; axioms \lean{[propext, Classical.choice, Quot.sound]} (both checked).
+\end{status}
+
+\begin{theorem}[Generalised Chu--Vandermonde identity]\label{l01:thm:vandermonde}
+For all integers $m,n,k$,
+\begin{equation*}
+  \sum_{i\in\Z}C(m,i)\,C(n,k-i) = C(m+n,k),
+\end{equation*}
+the sum having finitely many nonzero terms ($0\le i\le k$).
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak IotaZExpansion.lean}.
+\begin{leancode}
+theorem cbz_convol_support_finite (m n k : ℤ) :
+    (Function.support (fun i : ℤ => cbz m i * cbz n (k - i))).Finite := by
+
+noncomputable def cbzConvol (m n k : ℤ) : ℂ := ∑ᶠ i : ℤ, cbz m i * cbz n (k - i)
+
+theorem cbz_vandermonde (m n k : ℤ) : cbzConvol m n k = cbz (m + n) k := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{cbzConvol} is a \lean{finsum}, but the preceding lemma shows that its support is finite for every
+$m,n,k$, so here the junk value never occurs and \lean{cbzConvol m n k} is the genuine finite sum. The
+theorem holds for \emph{all} integers $m,n,k$, including negative ones; for $k<0$ both sides are $0$.
+This is the full generalised Vandermonde identity, i.e.\ the coefficient form of
+$(1+x)^m(1+x)^n = (1+x)^{m+n}$ in $\C[[x]]$ for integer exponents.
+\end{dictionary}
+
+\begin{physics}
+Coefficientwise, this is the statement that singular OPE factors multiply as functions:
+$(z-w)^m(z-w)^n = (z-w)^{m+n}$ inside a fixed radial ordering. It is the bookkeeping behind the
+lattice vertex operators, whose OPEs carry the factor $(z-w)^{\langle\alpha,\beta\rangle}$, and which must
+satisfy $(z-w)^{\langle\alpha,\beta\rangle}(z-w)^{\langle\alpha,\gamma\rangle} = (z-w)^{\langle\alpha,\beta+\gamma\rangle}$
+(Theorem~\ref{l01:thm:mult}).
+\end{physics}
+
+\textbf{Proof on paper.} Fix $k\ge0$ (for $k<0$ both sides vanish). Both sides are polynomials in
+$(m,n)$: the left is $\sum_{i=0}^{k}\binom mi\binom n{k-i}$, the right $\binom{m+n}k$. For natural
+$m,n$ the identity is classical (choose $k$ objects from $m+n$ by deciding how many come from the first
+$m$). Two polynomials in two variables that agree on $\N\times\N$ are equal, so the identity holds for all
+integers. An alternative argument, closer to the library's, is to note that both sides satisfy the
+recursion $V(m+1) = V(m)+V(m)|_{k\mapsto k-1}$ in $m$ (Pascal's rule) and agree at $m = 0$; this determines
+them for $m\ge0$, and running the recursion backwards (using that both vanish for $k<0$) determines them
+for $m<0$. The library formalises this second argument by integer induction on $m$ with an inner
+induction on $k$. \qed
+
+\begin{example}
+$m = n = -1$, $k = 2$: $\sum_{i=0}^2\binom{-1}{i}\binom{-1}{2-i} = 1+1+1 = 3$ and $\binom{-2}{2} = 3$. And
+$m = 2$, $n = -1$, $k = 3$: $\binom20\binom{-1}3+\binom21\binom{-1}2+\binom22\binom{-1}1 = -1+2-1 = 0 =
+\binom13$, as it must be since $(1+x)^2(1+x)^{-1} = 1+x$.
+\end{example}
+
+\begin{status}
+Unconditional; \texttt{\#print axioms VOA.cbz\_vandermonde} $=$ \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+%======================================================================
+\section{Two-variable distributions and the structure theorem}\label{l01:sec:twovar}
+%======================================================================
+
+\subsection{Two-variable distributions and multiplication by \texorpdfstring{$z_1-z_2$}{z1-z2}}
+
+\begin{definition}[Two-variable distributions; $(z_1-z_2)^N$]\label{l01:def:formaldist2}
+A \emph{two-variable formal distribution} is a function $f:\Z\times\Z\to\loneW$, written
+$f(z_1,z_2) = \sum_{m,n\in\Z}f_{m,n}z_1^mz_2^n$; the space is $\loneW[[z_1^{\pm1},z_2^{\pm1}]]$, a vector space
+under coefficientwise operations. Multiplication by $z_1$, by $z_2$ and by $z_1-z_2$ are the linear maps
+\begin{equation*}
+  (z_1f)_{m,n} = f_{m-1,n},\qquad (z_2f)_{m,n} = f_{m,n-1},\qquad
+  ((z_1-z_2)f)_{m,n} = f_{m-1,n}-f_{m,n-1},
+\end{equation*}
+and $(z_1-z_2)^N$ ($N\in\N$) is the $N$-fold iterate of the last, $(z_1-z_2)^0 = \mathrm{id}$.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalSeries.lean}.
+\begin{leancode}
+def FormalDist₂ (𝒲 : Type*) : Type _ := ℤ → ℤ → 𝒲
+
+@[inherit_doc] notation:max 𝒲 "⟦z₁^±,z₂^±⟧" => FormalDist₂ 𝒲
+
+def shiftZ₁ : FormalDist₂ 𝒲 →ₗ[ℂ] FormalDist₂ 𝒲 where
+  toFun f := fun m n => f (m - 1) n
+
+def shiftZ₂ : FormalDist₂ 𝒲 →ₗ[ℂ] FormalDist₂ 𝒲 where
+  toFun f := fun m n => f m (n - 1)
+
+def mulBySub : FormalDist₂ 𝒲 →ₗ[ℂ] FormalDist₂ 𝒲 := shiftZ₁ - shiftZ₂
+
+def mulBySubPow : ℕ → (FormalDist₂ 𝒲 →ₗ[ℂ] FormalDist₂ 𝒲)
+  | 0 => LinearMap.id
+  | (N + 1) => mulBySub.comp (mulBySubPow N)
+\end{leancode}
+
+\begin{dictionary}
+\lean{ℤ → ℤ → 𝒲} is the curried form of $\Z\times\Z\to\loneW$: \lean{f m n} is $f_{m,n}$, the coefficient of
+$z_1^mz_2^n$. As for one variable, \lean{FormalDist₂} is an opaque \lean{def} with only the additive and module
+structure (instances in the file, analogous to Definition~\ref{l01:def:formaldist}). \lean{shiftZ₁ - shiftZ₂}
+is the difference of two linear maps, and the file proves
+\lean{mulBySub_apply : mulBySub f m n = f (m - 1) n - f m (n - 1)}. \lean{mulBySubPow} is defined by
+recursion on $N$: \lean{mulBySubPow (N + 1) = mulBySub ∘ mulBySubPow N}. Same as Gannon p.~314. Note
+that multiplication by a polynomial in two \emph{different} variables is always defined coefficientwise
+by a finite formula; no truncation is needed.
+\end{dictionary}
+
+\begin{physics}
+Two-variable distributions are operator products $a(z_1)b(z_2)$ and four-point-like correlators
+expanded in two insertion points. Multiplying by $(z_1-z_2)^N$ is multiplying by the function that
+vanishes to order $N$ where the two operators collide; it is the operation that removes the OPE
+singularity of order $\le N$.
+\end{physics}
+
+\begin{status}
+Definitions; no hypotheses. \lean{mulBySubPow_one : mulBySubPow 1 = mulBySub} is proved in the file.
+\end{status}
+
+\begin{lemma}[The two factorisations of $(z_1-z_2)^{N+1}$]\label{l01:lem:subpowcomm}
+For every $N$ and $f$, $(z_1-z_2)^{N+1}f = (z_1-z_2)^N\big((z_1-z_2)f\big)$.
+\end{lemma}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak Locality.lean}.
+\begin{leancode}
+theorem mulBySubPow_succ' (N : ℕ) (f : FormalDist₂ 𝒲) :
+    mulBySubPow (N + 1) f = mulBySubPow N (mulBySub f) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{mulBySubPow} was defined by \emph{post}-composition, $(z_1-z_2)^{N+1} = (z_1-z_2)\circ(z_1-z_2)^N$; the
+lemma gives the \emph{pre}-composition form. It is the associativity of iterated composition, needed to
+peel factors off on either side.
+\end{dictionary}
+
+\begin{physics}
+Technical: one may strip the factors $(z_1-z_2)$ one at a time from either end when cancelling an OPE
+pole.
+\end{physics}
+
+\textbf{Proof on paper.} Induction on $N$. \qed
+
+\begin{status}
+Unconditional.
+\end{status}
+
+\subsection{Derivatives of the delta function}
+
+From now on
+\begin{equation*}
+  \lonedelta := \sum_{k\in\Z}z_1^{k}z_2^{-k-1} = z_2^{-1}\delta(z_1/z_2),
+\end{equation*}
+the delta function in Kac's normalisation ($\delta(z-w)$ in his notation). It is symmetric:
+$\delta(z_1,z_2) = \delta(z_2,z_1)$ (substitute $k\mapsto -k-1$). Its key property is
+\begin{equation*}
+  (z_1-z_2)\lonedelta = \sum_kz_1^{k+1}z_2^{-k-1}-\sum_kz_1^{k}z_2^{-k} = 0,
+\end{equation*}
+the two sums being equal after $k\mapsto k-1$. Consequently, for every Laurent polynomial $g$,
+$g(z_1)\lonedelta = g(z_2)\lonedelta$: the delta function ``sets $z_1 = z_2$''.
+
+\begin{definition}[$c(z_2)\,\partial_{z_2}^j\delta(z_1,z_2)$; recovered coefficients]\label{l01:def:deltaderiv}
+For $j\in\N$ and $c\in\loneW[[z^{\pm1}]]$ let $c(z_2)\,\partial_{z_2}^j\lonedelta$ be the two-variable distribution
+with coefficients
+\begin{equation*}
+  \big(c(z_2)\,\partial_{z_2}^j\lonedelta\big)_{m,n} = \Big(\prod_{i=0}^{j-1}(-m-1-i)\Big)\,c_{m+n+1+j}.
+\end{equation*}
+For $f\in\loneW[[z_1^{\pm1},z_2^{\pm1}]]$ and $j\in\N$, the \emph{$j$-th recovered coefficient} is the
+one-variable distribution $\Res_{z_1}\big((z_1-z_2)^jf\big)$, with $z_2^n$-coefficient
+$\big((z_1-z_2)^jf\big)_{-1,n}$.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak Locality.lean}.
+\begin{leancode}
+def deltaDeriv (j : ℕ) : FormalDist 𝒲 →ₗ[ℂ] FormalDist₂ 𝒲 where
+  toFun c := fun m n => (∏ i ∈ Finset.range j, (-m - 1 - (i : ℤ))) • c (m + n + 1 + j)
+
+def cCoeff (j : ℕ) (f : FormalDist₂ 𝒲) : FormalDist 𝒲 := fun n => mulBySubPow j f (-1) n
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Why this formula is $c(z_2)\partial_{z_2}^j\delta(z_1,z_2)$.} Differentiating $z_2^{-k-1}$ $j$ times gives
+$(-k-1)(-k-2)\cdots(-k-j)\,z_2^{-k-1-j} = \prod_{i<j}(-k-1-i)\,z_2^{-k-1-j}$. So
+$\partial_{z_2}^j\lonedelta = \sum_k\prod_{i<j}(-k-1-i)\,z_1^kz_2^{-k-1-j}$, whose $z_1^m$-part has $k = m$.
+Multiplying by $c(z_2) = \sum_rc_rz_2^r$, the coefficient of $z_2^n$ needs $r-m-1-j = n$, i.e.\
+$r = m+n+1+j$. This is the Lean formula. The product is an \emph{integer}, acting on the vector
+$c_{m+n+1+j}$ by \lean{•}. The product of $c(z_2)$ with $\partial^j\delta$ is well defined because for fixed
+$(m,n)$ only one coefficient of $c$ contributes. \lean{deltaDeriv j} is packaged as a $\C$-linear map in $c$.
+
+\textbf{Plain versus divided derivatives.} Kac and Frenkel--Ben-Zvi use divided powers
+$\partial^{(j)} = \partial^j/j!$; the library uses the plain $\partial^j$. The only effect is a rescaling of the
+coefficients $c^j$ by $j!$; the docstring of \lean{cCoeff} records this (``up to the $j!$ of the
+plain-power convention''). \lean{cCoeff j f n} is the coefficient of $z_1^{-1}z_2^{n}$ in $(z_1-z_2)^jf$, i.e.\
+$\Res_{z_1}(z_1-z_2)^jf$. For $f = [a(z_1),b(z_2)]$ this is the OPE coefficient $(a_{(j)}b)(z_2)$
+(Kac (2.2.4)); Chapter~\ref{ch:L03} uses it in Dong's lemma (Theorem~\ref{l03:thm:dong}).
+
+\textbf{Which delta.} \lean{deltaDeriv 0 c} has coefficient $c_{m+n+1}$: it is $c(z_2)\delta(z_1,z_2)$ with the
+$z_2^{-1}$-normalised delta, \emph{not} with \lean{delta₂} of Definition~\ref{l01:def:delta}.
+\end{dictionary}
+
+\begin{physics}
+$c(w)\,\partial_w^j\delta(z,w)$ is a contact term of order $j$: paired with a test function $g(z)$ it gives
+$\Res_z g(z)c(w)\partial_w^j\delta(z,w) = c(w)\,\partial_w^jg(w)$, a derivative of the test function at the
+coincident point. These are precisely the terms that the singular part $c(w)\,j!/(z-w)^{j+1}$ of an OPE
+contributes to a commutator (Theorem~\ref{l01:thm:alljump}). The recovered coefficient
+$\Res_z(z-w)^j[a(z),b(w)]$ is the contour integral $\oint_w (z-w)^ja(z)b(w)\,dz/2\pi i$ around $w$, which
+extracts the coefficient of the pole of order $j+1$: the $j$-th product $a_{(j)}b$.
+\end{physics}
+
+\begin{status}
+Definitions; linearity of \lean{deltaDeriv j} proved in the file. No hypotheses.
+\end{status}
+
+\begin{example}[The first two derivatives]\label{l01:ex:deltaderiv}
+Let $\mathbf 1_0\in\C[[z^{\pm1}]]$ be the constant series $1$ (coefficient $[t = 0]$; the library calls it
+\lean{deltaCoeff}, Definition~\ref{l01:def:negpowjump}). Then \lean{deltaDeriv 0 deltaCoeff} has coefficient
+$[m+n+1 = 0]$, which is $\lonedelta$. \lean{deltaDeriv 1 deltaCoeff} has coefficient $(-m-1)[m+n+2 = 0]$, i.e.
+\begin{equation*}
+  \partial_{z_2}\lonedelta = \sum_{m\in\Z}(-m-1)\,z_1^{m}z_2^{-m-2} = \sum_{k\in\Z}(k+1)z_1^{-k-2}z_2^{k}.
+\end{equation*}
+Check against the definition: $\partial_{z_2}z_2^{-m-1} = (-m-1)z_2^{-m-2}$. The coefficient
+$(-m-1)$ vanishes at $m = -1$: $\Res_{z_1}\partial_{z_2}\lonedelta = 0$, whereas $\Res_{z_1}\lonedelta = 1$.
+Similarly \lean{deltaDeriv 2 deltaCoeff} has coefficient $(m+1)(m+2)[m+n+3 = 0]$.
+\end{example}
+
+\begin{proposition}[Peeling identities]\label{l01:prop:peel}
+For $j,N\in\N$ and $c\in\loneW[[z^{\pm1}]]$, writing $\partial = \partial_{z_2}$ and $\delta = \lonedelta$:
+\begin{enumerate}[label=(\alph*)]
+\item $(z_1-z_2)\,c\,\delta = 0$;
+\item $(z_1-z_2)\,c\,\partial^{j+1}\delta = (j+1)\,c\,\partial^j\delta$;
+\item $(z_1-z_2)^N\,c\,\partial^N\delta = N!\,c\,\delta$;
+\item $(z_1-z_2)^N\,c\,\partial^j\delta = 0$ whenever $j+1\le N$.
+\end{enumerate}
+The engine is the finite-difference identity for falling factorials:
+$\prod_{i\le j}(y+1-i)-\prod_{i\le j}(y-i) = (j+1)\prod_{i<j}(y-i)$ for $y\in\Z$.
+\end{proposition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak Locality.lean}.
+\begin{leancode}
+theorem fallingDiff (y : ℤ) (j : ℕ) :
+    (∏ i ∈ Finset.range (j + 1), (y + 1 - (i : ℤ))) - ∏ i ∈ Finset.range (j + 1), (y - (i : ℤ))
+      = ((j : ℤ) + 1) * ∏ i ∈ Finset.range j, (y - (i : ℤ)) := by
+
+theorem mulBySub_deltaDeriv (j : ℕ) (c : FormalDist 𝒲) :
+    mulBySub (deltaDeriv (j + 1) c) = ((j : ℤ) + 1) • deltaDeriv j c := by
+
+theorem mulBySub_deltaDeriv_zero (c : FormalDist 𝒲) : mulBySub (deltaDeriv 0 c) = 0 := by
+
+theorem mulBySubPow_deltaDeriv_self (N : ℕ) (c : FormalDist 𝒲) :
+    mulBySubPow N (deltaDeriv N c) = (N.factorial : ℤ) • deltaDeriv 0 c := by
+
+theorem mulBySubPow_succ_deltaDeriv (j : ℕ) (c : FormalDist 𝒲) :
+    mulBySubPow (j + 1) (deltaDeriv j c) = 0 := by
+
+theorem mulBySubPow_deltaDeriv_eq_zero {j N : ℕ} (h : j + 1 ≤ N) (c : FormalDist 𝒲) :
+    mulBySubPow N (deltaDeriv j c) = 0 := by
+\end{leancode}
+
+\begin{dictionary}
+Statements (a)--(d) are, in order, \lean{mulBySub_deltaDeriv_zero}, \lean{mulBySub_deltaDeriv},
+\lean{mulBySubPow_deltaDeriv_self} and \lean{mulBySubPow_deltaDeriv_eq_zero} (with the special case $N = j+1$
+named \lean{mulBySubPow_succ_deltaDeriv}). The scalars \lean{((j : ℤ) + 1)} and \lean{(N.factorial : ℤ)} act by
+integer scalar multiplication. The hypothesis \lean{h : j + 1 ≤ N} in (d) is the natural one. With divided
+powers, (b) would read $(z_1-z_2)\partial^{(j+1)}\delta = \partial^{(j)}\delta$ (Kac §2.1); the library's (b) is
+that identity multiplied by $(j+1)!$.
+\end{dictionary}
+
+\begin{physics}
+Multiplying a contact term of order $j+1$ by $(z_1-z_2)$ lowers its order by one; $N$ such factors kill
+every contact term of order $<N$. This is the formal version of the statement that $(z-w)^N$ cancels an
+OPE pole of order $\le N$.
+\end{physics}
+
+\textbf{Proof on paper.} Coefficientwise,
+$((z_1-z_2)F)_{m,n} = F_{m-1,n}-F_{m,n-1}$. For $F = c\,\partial^{j+1}\delta$ both terms involve the same
+coefficient of $c$, namely $c_{m+n+1+j}$, because $(m-1)+n+1+(j+1) = m+(n-1)+1+(j+1) = m+n+1+j$; they are multiplied by the falling products at $y = -m-1$ shifted by one
+and not shifted; \lean{fallingDiff} with $y = -m-1$ turns their difference into $(j+1)\prod_{i<j}(-m-1-i)$,
+which is the coefficient of $(j+1)c\,\partial^j\delta$. For (a) the two terms are equal. (c) is (b) iterated
+$N$ times, and (d) follows from (c) and (a). \qed
+
+\begin{status}
+All unconditional; axioms \lean{[propext, Classical.choice, Quot.sound]} (checked for (b), (c), (d)).
+\end{status}
+
+\begin{proposition}[The case $N = 1$]\label{l01:prop:Neq1}
+If $(z_1-z_2)f = 0$, then $f = c(z_2)\lonedelta$ with $c = \Res_{z_1}f$, i.e.\ $c_n = f_{-1,n}$.
+\end{proposition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak Locality.lean}.
+\begin{leancode}
+theorem eq_deltaDeriv_zero_of_mulBySub_eq_zero {f : FormalDist₂ 𝒲} (hf : mulBySub f = 0) :
+    f = deltaDeriv 0 (fun n => f (-1) n) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{fun n => f (-1) n} is the one-variable distribution $n\mapsto f_{-1,n}$, i.e.\ $\Res_{z_1}f$. The
+conclusion \lean{deltaDeriv 0 (...)} has coefficient $f_{-1,m+n+1}$ at $(m,n)$. So the theorem says
+$f_{m,n} = f_{-1,m+n+1}$ for all $m,n$: $f$ is constant along each antidiagonal $m+n = \text{const}$. The
+hypothesis is the only one, and it is used. Same as the $N = 1$ case of Gannon Prop.~5.1.2.
+\end{dictionary}
+
+\begin{physics}
+A distribution killed by $(z_1-z_2)$ is supported at $z_1 = z_2$ with no derivatives: a pure contact
+term, like the commutator $[\psi(z),\psi^*(w)] = \delta(z,w)$ of a free fermion pair (Section~\ref{l01:sec:super}).
+\end{physics}
+
+\textbf{Proof on paper.} $(z_1-z_2)f = 0$ says $f_{m-1,n} = f_{m,n-1}$ for all $m,n$, i.e.\
+$f_{m,n} = f_{m-1,n+1}$. Iterating in both directions, $f_{m,n} = f_{m-d,n+d}$ for all $d\in\Z$; with
+$d = m+1$ this is $f_{m,n} = f_{-1,m+n+1}$. \qed
+
+\begin{status}
+Unconditional; axioms \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\subsection{The structure theorem for local distributions}
+
+\begin{theorem}[Structure theorem; Gannon Prop.~5.1.2, Kac Thm.~2.3]\label{l01:thm:deltasum}
+Let $\loneW$ be a complex vector space, $f\in\loneW[[z_1^{\pm1},z_2^{\pm1}]]$ and $N\in\N$. Then
+\begin{equation*}
+  (z_1-z_2)^Nf = 0\quad\Longleftrightarrow\quad
+  \exists\,c^0,\dots,c^{N-1}\in\loneW[[z^{\pm1}]]:\ f(z_1,z_2) = \sum_{j=0}^{N-1}c^j(z_2)\,\partial_{z_2}^j\lonedelta .
+\end{equation*}
+Moreover, in the forward direction the coefficients can be taken to be
+$c^j = \frac1{j!}\Res_{z_1}(z_1-z_2)^jf$ (Corollary~\ref{l01:cor:unique}).
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak Locality.lean}.
+\begin{leancode}
+theorem exists_deltaSum_of_mulBySubPow_eq_zero (N : ℕ) (f : FormalDist₂ 𝒲)
+    (hf : mulBySubPow N f = 0) :
+    ∃ c : Fin N → FormalDist 𝒲, f = ∑ j : Fin N, deltaDeriv (j : ℕ) (c j) := by
+
+theorem local_iff_deltaSum (f : FormalDist₂ 𝒲) (N : ℕ) :
+    mulBySubPow N f = 0 ↔
+      ∃ c : Fin N → FormalDist 𝒲, f = ∑ j : Fin N, deltaDeriv (j : ℕ) (c j) := by
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Decoding.} \lean{Fin N} is the type $\{0,1,\dots,N-1\}$; \lean{c : Fin N → FormalDist 𝒲} is the tuple
+$(c^0,\dots,c^{N-1})$; \lean{(j : ℕ)} views $j\in$ \lean{Fin N} as a natural number;
+\lean{∑ j : Fin N, deltaDeriv (j : ℕ) (c j)} is $\sum_{j<N}c^j(z_2)\partial^j_{z_2}\lonedelta$ by
+Definition~\ref{l01:def:deltaderiv}. \lean{↔} is ``if and only if''.
+
+\textbf{Quantifiers.} In Lean, arguments written before the colon of a theorem, here
+\lean{(f : FormalDist₂ 𝒲) (N : ℕ)}, are universally quantified inputs: the theorem holds for \emph{every} $f$ and
+every $N$ (as do the implicit ambient $\loneW$ and its vector-space structure). The tuple $c$ appears only inside the
+\lean{∃} on the right-hand side of the \lean{↔}, so it is existentially quantified \emph{after} $f$ and $N$, so it may depend on $f$ and $N$, as it must. The bound $N$ is the same on
+both sides: a distribution killed by $(z_1-z_2)^N$ involves derivatives of order $<N$ only, and
+conversely. This is the sharp form.
+
+\textbf{Hypotheses.} Only the ambient \lean{[AddCommGroup 𝒲] [Module ℂ 𝒲]}: $\loneW$ is a complex vector space.
+The division by $j!$ in the construction is why the field must contain $\Q$; over $\C$ this is automatic.
+
+\textbf{Same, stronger or weaker?} Same as Kac Thm.~2.3 (i)$\Leftrightarrow$(ii), up to the
+plain-versus-divided-derivative rescaling of $c^j$. Gannon assumes $N\ge1$; the library allows $N = 0$, where
+both sides say $f = 0$ (an empty sum). Kac's theorem also contains the formula for $c^j$ and uniqueness;
+the Lean theorem states existence only, but uniqueness and the formula are an immediate consequence of
+Proposition~\ref{l01:prop:peel} (Corollary~\ref{l01:cor:unique}), and the existence proof in the file constructs
+exactly those $c^j$.
+
+\textbf{Could it be vacuous?} No: both sides are inhabited by nonzero examples (e.g.\ $f = \lonedelta$, $N = 1$),
+and the right side is not trivially implied by the left (for $N = 1$ it forces constancy along antidiagonals).
+\end{dictionary}
+
+\begin{physics}
+This is the theorem behind the slogan ``the commutator of local fields is a finite sum of contact
+terms''. Applied to $f = [a(z),b(w)]$ for mutually local $a,b$ it gives
+$[a(z),b(w)] = \sum_{j<N}(a_{(j)}b)(w)\,\partial_w^{(j)}\delta(z,w)$ with $a_{(j)}b = \Res_z(z-w)^j[a(z),b(w)]$:
+the commutator is determined by the singular part of the OPE, $a(z)b(w)\sim\sum_j(a_{(j)}b)(w)/(z-w)^{j+1}$.
+Taking $\Res_z z^m$ and the $w^{-n-1}$ coefficient yields the commutator formula of modes,
+$[a_{(m)},b_{(n)}] = \sum_{j\ge0}\binom mj(a_{(j)}b)_{(m+n-j)}$. For the stress tensor this is the
+Virasoro algebra; for currents, the affine Kac--Moody algebra. The theorem is pure formal calculus.
+\end{physics}
+
+\textbf{Proof on paper.} ($\Leftarrow$) By Proposition~\ref{l01:prop:peel}(d), $(z_1-z_2)^N$ kills each
+summand $c^j\partial^j\delta$ with $j<N$, and it is linear.
+
+($\Rightarrow$) Induction on $N$. For $N = 0$, $f = (z_1-z_2)^0f = 0$ is the empty sum. Suppose the claim
+holds for $N = k$ and let $(z_1-z_2)^{k+1}f = 0$. Put $g := (z_1-z_2)^kf$. Then $(z_1-z_2)g = 0$, so by
+Proposition~\ref{l01:prop:Neq1}, $g = d(z_2)\delta$ with $d = \Res_{z_1}g$. Let
+$c^k := \frac1{k!}d$. By Proposition~\ref{l01:prop:peel}(c),
+$(z_1-z_2)^k\big(c^k\partial^k\delta\big) = k!\,c^k\delta = d\,\delta = g = (z_1-z_2)^kf$. Hence
+$f' := f-c^k\partial^k\delta$ satisfies $(z_1-z_2)^kf' = 0$, and by induction
+$f' = \sum_{j<k}c^j\partial^j\delta$. Then $f = \sum_{j\le k}c^j\partial^j\delta$. \qed
+
+\begin{corollary}[Uniqueness and recovery of the coefficients]\label{l01:cor:unique}
+If $f = \sum_{j<N}c^j(z_2)\partial^j_{z_2}\lonedelta$, then $c^j = \frac1{j!}\Res_{z_1}\big((z_1-z_2)^jf\big)$ for
+each $j<N$; in particular the $c^j$ are unique.
+\end{corollary}
+
+\begin{dictionary}
+This corollary is \emph{not} a separate Lean theorem; we state it because Kac's theorem includes it and a
+referee should know it is a two-line consequence of results that \emph{are} in Lean. Its ingredients are
+Proposition~\ref{l01:prop:peel} and the vanishing of $\Res_{z_1}$ on $c\,\partial^{r}\delta$ for $r\ge1$, which is
+(for scalar-valued $c$; the one-line argument is the same for vector-valued $c$) the Lean lemma
+\lean{deltaDeriv_succ_residue_zero} in \leanpath{VOA/\allowbreak Foundations/\allowbreak DeltaJump.lean}. The
+recovered coefficient $\Res_{z_1}(z_1-z_2)^jf$ is \lean{cCoeff j f} (Definition~\ref{l01:def:deltaderiv}).
+\end{dictionary}
+
+\begin{physics}
+The OPE coefficients of two local fields are uniquely determined by their commutator: the singular
+part of $a(z)b(w)$ can be read off from $[a(z),b(w)]$ by contour integrals.
+\end{physics}
+
+\textbf{Proof on paper.} Apply $(z_1-z_2)^j$: by Proposition~\ref{l01:prop:peel}, the terms with $i<j$ die, the
+term $i = j$ becomes $j!\,c^j\delta$, and the terms $i>j$ become multiples of $c^i\partial^{i-j}\delta$ with
+$i-j\ge1$. Now take $\Res_{z_1}$: $\Res_{z_1}c\,\delta = c$, while $\Res_{z_1}c\,\partial^r\delta = 0$ for $r\ge1$
+(the coefficient at $m = -1$ contains the factor $-m-1 = 0$). \qed
+
+\begin{status}
+Theorem~\ref{l01:thm:deltasum}: \texttt{\#print axioms VOA.local\_iff\_deltaSum} $=$
+\lean{[propext, Classical.choice, Quot.sound]}; likewise for
+\lean{exists_deltaSum_of_mulBySubPow_eq_zero}. Unconditional. Corollary~\ref{l01:cor:unique}: \textbf{not a Lean
+theorem}; it is a paper consequence of Proposition~\ref{l01:prop:peel} and the Lean lemma
+\lean{deltaDeriv_succ_residue_zero}. The existence proof of Theorem~\ref{l01:thm:deltasum} constructs exactly these
+$c^j$, but the uniqueness statement itself is not formalised.
+\end{status}
+
+\begin{example}[The free boson]\label{l01:ex:boson}
+Let $\alpha(z) = \sum_n\alpha_{(n)}z^{-n-1}$ be a field with $[\alpha_{(p)},\alpha_{(q)}] = p\,\delta_{p+q,0}$ (the
+Heisenberg algebra; Chapter~\ref{ch:03}). In the library's indexing the coefficient of $z_1^mz_2^n$ in
+$[\alpha(z_1),\alpha(z_2)]$ is $[\alpha_{(-m-1)},\alpha_{(-n-1)}] = (-m-1)\,[m+n+2 = 0]$. By
+Example~\ref{l01:ex:deltaderiv} this is the coefficient of $\partial_{z_2}\lonedelta$:
+\begin{equation*}
+  [\alpha(z_1),\alpha(z_2)] = \partial_{z_2}\lonedelta,
+\end{equation*}
+which is \lean{deltaDeriv 1 deltaCoeff}. Hence $(z_1-z_2)^2[\alpha(z_1),\alpha(z_2)] = 0$ but
+$(z_1-z_2)[\alpha(z_1),\alpha(z_2)] = \lonedelta\neq0$: the free boson is local of order exactly $2$, matching the
+double pole of $\alpha(z)\alpha(w)\sim1/(z-w)^2$. Running the proof of Theorem~\ref{l01:thm:deltasum} with
+$N = 2$: $g = (z_1-z_2)f = \delta$, $d = \Res_{z_1}\delta = \mathbf 1_0$, $c^1 = d/1! = \mathbf 1_0$, and
+$f-c^1\partial\delta = 0$, so $c^0 = 0$. In OPE language: $\alpha_{(1)}\alpha = \mathbf 1$ (the double pole) and
+$\alpha_{(0)}\alpha = 0$ (no simple pole).
+\end{example}
+
+%======================================================================
+\section{The two expansions and the delta-function jump}\label{l01:sec:expansions}
+%======================================================================
+
+\subsection{The expansions \texorpdfstring{$\iota_{z_1,z_2}$ and $\iota_{z_2,z_1}$}{iota12 and iota21}}
+
+\begin{definition}[The two expansions of $(z_1-z_2)^n$]\label{l01:def:expand}
+For $n\in\Z$ define two elements of $\C[[z_1^{\pm1},z_2^{\pm1}]]$:
+\begin{align*}
+  \loneiota{z_1}{z_2}(z_1-z_2)^n &:= \sum_{k\ge0}(-1)^k\binom nk\,z_1^{n-k}z_2^{k}
+  &&\text{(nonnegative powers of $z_2$; ``$|z_1|>|z_2|$'')},\\
+  \loneiota{z_2}{z_1}(z_1-z_2)^n &:= \sum_{k\ge0}(-1)^{n+k}\binom nk\,z_1^{k}z_2^{n-k}
+  &&\text{(nonnegative powers of $z_1$; ``$|z_2|>|z_1|$'')}.
+\end{align*}
+Also let $\lonedelta = \sum_kz_1^kz_2^{-k-1}$ be the delta function, with coefficient $[m+n+1 = 0]$.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak Expansion.lean}.
+\begin{leancode}
+noncomputable def expandPos (n : ℤ) : FormalDist₂ ℂ :=
+  fun a b => if 0 ≤ b ∧ a = n - b then negOnePow b * gBinom n b.toNat else 0
+
+noncomputable def expandNeg (n : ℤ) : FormalDist₂ ℂ :=
+  fun a b => if 0 ≤ a ∧ b = n - a then negOnePow (n + a) * gBinom n a.toNat else 0
+
+def deltaForm : FormalDist₂ ℂ := fun m n => if m + n + 1 = 0 then 1 else 0
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Decoding \lean{expandPos}.} The coefficient of $z_1^az_2^b$ is nonzero only if $b\ge0$ and $a = n-b$; then
+it is $(-1)^b\binom nb$. With $k = b$ this is the first formula: $\loneiota{z_1}{z_2}(z_1-z_2)^n = z_1^n(1-z_2/z_1)^n$
+expanded by the binomial convention of Definition~\ref{l01:def:gbinom}(iv) with second variable $-z_2$.
+\textbf{Decoding \lean{expandNeg}.} Nonzero only if $a\ge0$ and $b = n-a$, with value $(-1)^{n+a}\binom na$. This is
+$(z_1-z_2)^n = (-1)^n(z_2-z_1)^n = (-1)^n\sum_a\binom na z_2^{n-a}(-z_1)^a$, the second formula with $k = a$.
+\textbf{Names.} The library's docstrings write $\iota_{12}$ for \lean{expandPos} and $\iota_{21}$ for \lean{expandNeg},
+consistent with Kac's $i_{z,w}$ (expansion in the domain $|z|>|w|$) and FLM's convention of expanding
+$(z_1-z_2)^n$ in nonnegative powers of the second variable. \lean{deltaForm} is $\lonedelta$ (the same series
+as \lean{deltaDeriv 0 deltaCoeff}; see Example~\ref{l01:ex:deltaderiv}).
+
+\textbf{Fidelity.} Same as Kac §2.1, FLM §8.1 and Lepowsky--Li §2.1. For $n\ge0$ the two series
+are both the polynomial $(z_1-z_2)^n$ (all binomials with $k>n$ vanish); they differ only for $n<0$.
+\end{dictionary}
+
+\begin{physics}
+These are the two radially ordered expansions of the propagator-type function $(z_1-z_2)^n$:
+$\loneiota{z_1}{z_2}$ is the expansion valid when the operator at $z_1$ is further from the origin (later in radial time)
+and is the one that appears in $a(z_1)b(z_2)$; $\loneiota{z_2}{z_1}$ is the one that appears in $b(z_2)a(z_1)$. A
+correlation function is a single rational function; its two operator orderings correspond to its two
+expansions.
+\end{physics}
+
+\begin{status}
+Definitions; no hypotheses.
+\end{status}
+
+\begin{example}[Simple and double poles by hand]\label{l01:ex:poles}
+For $n = -1$: $(-1)^b\binom{-1}b = (-1)^b(-1)^b = 1$, so
+\begin{equation*}
+  \loneiota{z_1}{z_2}(z_1-z_2)^{-1} = \sum_{b\ge0}z_1^{-1-b}z_2^{b},\qquad
+  \loneiota{z_2}{z_1}(z_1-z_2)^{-1} = \sum_{a\ge0}(-1)^{a-1}(-1)^az_1^az_2^{-1-a} = -\sum_{a\ge0}z_1^az_2^{-1-a}.
+\end{equation*}
+For $n = -2$: $(-1)^b\binom{-2}b = b+1$ and $(-1)^{a-2}\binom{-2}a = a+1$, so
+\begin{equation*}
+  \loneiota{z_1}{z_2}(z_1-z_2)^{-2} = \sum_{b\ge0}(b+1)z_1^{-2-b}z_2^{b},\qquad
+  \loneiota{z_2}{z_1}(z_1-z_2)^{-2} = \sum_{a\ge0}(a+1)z_1^{a}z_2^{-2-a}.
+\end{equation*}
+These are the Taylor series of $z_1^{-2}(1-z_2/z_1)^{-2}$ and $z_2^{-2}(1-z_1/z_2)^{-2}$. Note that the second is
+\emph{not} the negative of anything: $(z_1-z_2)^{-2} = (z_2-z_1)^{-2}$ is even under exchange.
+\end{example}
+
+\begin{proposition}[Coefficient formulas and supports]\label{l01:prop:expandvals}
+\leavevmode
+\begin{enumerate}[label=(\alph*)]
+\item $\big(\loneiota{z_1}{z_2}(z_1-z_2)^{-1}\big)_{a,b} = [b\ge0,\ a = -1-b]$ and
+  $\big(\loneiota{z_2}{z_1}(z_1-z_2)^{-1}\big)_{a,b} = -[a\ge0,\ b = -1-a]$.
+\item Both expansions of $(z_1-z_2)^n$ are supported on the antidiagonal $a+b = n$; the first vanishes for
+  $b<0$, the second for $a<0$.
+\end{enumerate}
+\end{proposition}
+
+\noindent Files \leanpath{VOA/\allowbreak Foundations/\allowbreak Expansion.lean} and
+\leanpath{VOA/\allowbreak Foundations/\allowbreak IotaZExpansion.lean}.
+\begin{leancode}
+theorem expandPos_neg_one (a b : ℤ) :
+    expandPos (-1) a b = if 0 ≤ b ∧ a = -1 - b then 1 else 0 := by
+
+theorem expandNeg_neg_one (a b : ℤ) :
+    expandNeg (-1) a b = if 0 ≤ a ∧ b = -1 - a then -1 else 0 := by
+
+theorem expandPos_eq_zero_off_diag (n a b : ℤ) (h : a + b ≠ n) : expandPos n a b = 0 := by
+
+theorem expandNeg_eq_zero_off_diag (n a b : ℤ) (h : a + b ≠ n) : expandNeg n a b = 0 := by
+
+theorem expandPos_eq_zero_of_neg (n a : ℤ) {b : ℤ} (hb : b < 0) : expandPos n a b = 0 := by
+
+theorem expandNeg_eq_zero_of_neg (n b : ℤ) {a : ℤ} (ha : a < 0) : expandNeg n a b = 0 := by
+\end{leancode}
+
+\begin{dictionary}
+Exactly (a) and (b); the hypotheses \lean{h}, \lean{hb}, \lean{ha} are the conditions ``off the antidiagonal'',
+``$b<0$'', ``$a<0$''.
+\end{dictionary}
+
+\begin{physics}
+Homogeneity: $(z_1-z_2)^n$ has total degree $n$, so it lives on the antidiagonal $a+b = n$; in CFT, this is
+scale covariance of a two-point function. The one-sided supports are the two radial orderings.
+\end{physics}
+
+\textbf{Proof on paper.} Read off from the definitions and Example~\ref{l01:ex:poles}. \qed
+
+\begin{status}
+Unconditional; \texttt{\#print axioms} clean for the jump theorem that uses them (below).
+\end{status}
+
+\subsection{The jump of the simple pole}
+
+\begin{theorem}[The delta-function jump; Gannon §5.1.2, FLM §8.10]\label{l01:thm:jump}
+\begin{equation*}
+  \loneiota{z_1}{z_2}\frac1{z_1-z_2}-\loneiota{z_2}{z_1}\frac1{z_1-z_2} = \lonedelta,
+  \qquad (z_1-z_2)\,\lonedelta = 0 .
+\end{equation*}
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak Expansion.lean}.
+\begin{leancode}
+theorem expand_jump : expandPos (-1) - expandNeg (-1) = deltaForm := by
+
+theorem mulBySub_deltaForm : mulBySub (deltaForm : FormalDist₂ ℂ) = 0 := by
+\end{leancode}
+
+\begin{dictionary}
+The difference is the coefficientwise difference of two-variable distributions. No hypotheses. This is the
+textbook identity (Kac §2.1; FLM §8.1; Lepowsky--Li §2.3, where it is a special case of the three-term
+delta-function identity behind the Jacobi identity).
+\end{dictionary}
+
+\begin{physics}
+This is the identity behind every equal-time commutator in chiral CFT. If $a(z)b(w)\sim c(w)/(z-w)$, then
+$a(z)b(w) = c(w)\loneiota zw(z-w)^{-1}+\cdots$ and $b(w)a(z) = c(w)\loneiota wz(z-w)^{-1}+\cdots$, so the commutator
+is $c(w)\delta(z,w)$: the contact term. On the circle it is the $\delta(\sigma_1-\sigma_2)$ of canonical commutation
+relations. In contour language: $\oint_{|z|>|w|}-\oint_{|z|<|w|} = \oint_{w}$, the integral around the pole.
+\end{physics}
+
+\textbf{Proof on paper.} By Proposition~\ref{l01:prop:expandvals}(a), at $(m,n)$ the left side is
+$[n\ge0, m = -1-n]+[m\ge0, n = -1-m]$. If $m+n+1\ne0$ both brackets vanish. If $m+n+1 = 0$, exactly one of
+$n\ge0$, $m\ge0$ holds (since $m+n = -1$), so the sum is $1$. The second identity was shown at the start of
+the subsection on derivatives of the delta function. \qed
+
+\begin{status}
+Unconditional; \texttt{\#print axioms VOA.expand\_jump} $=$ \lean{[propext, Classical.choice, Quot.sound]};
+same for \lean{mulBySub_deltaForm}.
+\end{status}
+
+\subsection{Multiplication by \texorpdfstring{$z_1-z_2$}{z1-z2} and the algebra of the expansions}
+
+\begin{proposition}[$(z_1-z_2)$ acts as expected on both expansions]\label{l01:prop:mulexpand}
+For all $n\in\Z$ and $N\in\N$, and for both $\iota = \loneiota{z_1}{z_2}$ and $\iota = \loneiota{z_2}{z_1}$:
+\begin{equation*}
+  (z_1-z_2)\cdot\iota(z_1-z_2)^n = \iota(z_1-z_2)^{n+1},\qquad (z_1-z_2)^N\cdot\iota(z_1-z_2)^{n} = \iota(z_1-z_2)^{n+N}.
+\end{equation*}
+Moreover $\iota(z_1-z_2)^0 = 1$ (the series with the single coefficient $1$ at $z_1^0z_2^0$), and in particular
+$(z_1-z_2)^N\,\iota(z_1-z_2)^{-N} = 1$.
+\end{proposition}
+
+\noindent Files \leanpath{VOA/\allowbreak Foundations/\allowbreak DeltaJump.lean} and
+\leanpath{VOA/\allowbreak Foundations/\allowbreak IotaZExpansion.lean}.
+\begin{leancode}
+theorem mulBySub_expandPos (n : ℤ) : mulBySub (expandPos n) = expandPos (n + 1) := by
+
+theorem mulBySub_expandNeg (n : ℤ) : mulBySub (expandNeg n) = expandNeg (n + 1) := by
+
+def unitDist : FormalDist₂ ℂ := fun a b => if a = 0 ∧ b = 0 then (1 : ℂ) else 0
+
+theorem expandPos_zero : expandPos 0 = unitDist := by
+
+theorem expandNeg_zero : expandNeg 0 = expandPos 0 := by
+
+theorem mulBySubPow_expandPos (N : ℕ) (m : ℤ) :
+    mulBySubPow N (expandPos m) = expandPos (m + (N : ℤ)) := by
+
+theorem mulBySubPow_expandPos_neg (N : ℕ) :
+    mulBySubPow N (expandPos (-(N : ℤ))) = expandPos 0 := by
+
+theorem mulBySubPow_expandNeg (N : ℕ) (m : ℤ) :
+    mulBySubPow N (expandNeg m) = expandNeg (m + (N : ℤ)) := by
+
+theorem mulBySubPow_expandNeg_neg (N : ℕ) :
+    mulBySubPow N (expandNeg (-(N : ℤ))) = expandNeg 0 := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{unitDist} is the constant $1\in\C[[z_1^{\pm1},z_2^{\pm1}]]$. \lean{(N : ℤ)} casts $N$ to an integer. The
+statements are exactly the displayed ones. \textbf{Why this is not trivial.} In a ring, $(z_1-z_2)\cdot
+(z_1-z_2)^n = (z_1-z_2)^{n+1}$ is a tautology. Here the left side is the operation \lean{mulBySub} applied to a
+particular infinite series, and the right side is a separately defined infinite series; the identity is
+Pascal's rule (Proposition~\ref{l01:prop:pascal}) coefficientwise. That it holds for \emph{both} expansions is
+the formal reason $(z_1-z_2)^N$ can be applied ``before choosing the ordering''. Note the contrast with
+Theorem~\ref{l01:thm:jump}: $(z_1-z_2)\cdot[\iota_{12}-\iota_{21}](z_1-z_2)^{-1} = 1-1 = 0$, consistent with
+$(z_1-z_2)\delta = 0$.
+\end{dictionary}
+
+\begin{physics}
+Multiplying an OPE singularity by $(z-w)^N$ lowers the order of the pole by $N$ in either radial ordering;
+after enough factors both orderings give the same polynomial, which is why $(z-w)^N[a(z),b(w)] = 0$ is the
+right formulation of locality. \lean{mulBySubPow_expandPos_neg} is the statement that
+$(z-w)^N\cdot(z-w)^{-N} = 1$ inside a fixed ordering; the lattice vertex operators use it to strip the
+prefactor $(z-w)^{\langle\alpha,\beta\rangle}$.
+\end{physics}
+
+\textbf{Proof on paper.} On the antidiagonal $a+b = n+1$ with $b = j+1\ge1$, the coefficient of
+$(z_1-z_2)\iota_{12}(z_1-z_2)^n$ is $(-1)^{j+1}\binom n{j+1}-(-1)^j\binom nj = (-1)^{j+1}\big(\binom n{j+1}+\binom nj\big) =
+(-1)^{j+1}\binom{n+1}{j+1}$ by Pascal; at $b = 0$ it is $\binom n0 = 1 = \binom{n+1}0$; off the antidiagonal both sides
+vanish. The computation for $\iota_{21}$ is the mirror image. The power version is induction on $N$. For
+$\iota(z_1-z_2)^0$: only $k = 0$ contributes since $\binom0k = 0$ for $k\ge1$. \qed
+
+\begin{status}
+All unconditional; axioms \lean{[propext, Classical.choice, Quot.sound]} (checked for
+\lean{mulBySub_expandPos}, \lean{mulBySub_expandNeg}, \lean{expandPos_zero}, \lean{expandNeg_zero},
+\lean{mulBySubPow_expandPos}, \lean{mulBySubPow_expandPos_neg}).
+\end{status}
+
+\begin{definition}[Products of expansions]\label{l01:def:convol}
+For $m,n\in\Z$ the product of the expansions in a fixed ordering is the two-variable series with
+coefficients
+\begin{align*}
+  \big(\iota_{12}(z_1-z_2)^m\cdot\iota_{12}(z_1-z_2)^n\big)_{a,b} &:=
+  \sum_{b_1\in\Z}\big(\iota_{12}(z_1-z_2)^m\big)_{m-b_1,b_1}\big(\iota_{12}(z_1-z_2)^n\big)_{a-(m-b_1),\,b-b_1},\\
+  \big(\iota_{21}(z_1-z_2)^m\cdot\iota_{21}(z_1-z_2)^n\big)_{a,b} &:=
+  \sum_{a_1\in\Z}\big(\iota_{21}(z_1-z_2)^m\big)_{a_1,m-a_1}\big(\iota_{21}(z_1-z_2)^n\big)_{a-a_1,\,b-(m-a_1)} .
+\end{align*}
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak IotaZExpansion.lean}.
+\begin{leancode}
+noncomputable def convolPos (m n : ℤ) : FormalDist₂ ℂ :=
+  fun a b => ∑ᶠ b₁ : ℤ, expandPos m (m - b₁) b₁ * expandPos n (a - (m - b₁)) (b - b₁)
+
+noncomputable def convolNeg (m n : ℤ) : FormalDist₂ ℂ :=
+  fun a b => ∑ᶠ a₁ : ℤ, expandNeg m a₁ (m - a₁) * expandNeg n (a - a₁) (b - (m - a₁))
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Is this the product of series?} The genuine product of two two-variable series $F,G$ is
+$(FG)_{a,b} = \sum_{(a_1,b_1)\in\Z^2}F_{a_1,b_1}G_{a-a_1,b-b_1}$, when this is a finite sum. The library has no
+general product operation (Definition~\ref{l01:def:formaldist}); \lean{convolPos} is that double sum
+\emph{already restricted} to the antidiagonal $a_1 = m-b_1$ of the first factor. Since
+$F = \iota_{12}(z_1-z_2)^m$ vanishes off this antidiagonal (Proposition~\ref{l01:prop:expandvals}(b)), the
+restriction loses nothing: \lean{convolPos m n} \emph{is} the genuine product. This identification is a
+one-line paper argument, not a Lean theorem; a referee who wants to see it should note that the restriction
+is harmless precisely because of \lean{expandPos_eq_zero_off_diag}. Likewise for \lean{convolNeg}, restricted to
+$b_1 = m-a_1$.
+
+\textbf{Junk value?} The summand is nonzero only for $0\le b_1\le b$ (the first factor needs $b_1\ge0$, the second
+$b-b_1\ge0$), so the \lean{finsum} is a genuine finite sum for every $(a,b)$: no junk value occurs. (The proof of
+Theorem~\ref{l01:thm:mult} uses exactly this finiteness, via \lean{cbz_convol_support_finite}.)
+\end{dictionary}
+
+\begin{physics}
+The product of two singular factors in the same radial ordering, e.g.\ the prefactors
+$(z-w)^{\langle\alpha,\beta\rangle}$ and $(z-w)^{\langle\alpha,\gamma\rangle}$ that arise when a lattice vertex operator
+$e^{\alpha}(z)$ is moved past $e^{\beta}(w)$ and then past $e^{\gamma}(w)$.
+\end{physics}
+
+\begin{status}
+Definitions. No hypotheses.
+\end{status}
+
+\begin{theorem}[Multiplicativity of the expansions]\label{l01:thm:mult}
+For all $m,n\in\Z$,
+\begin{equation*}
+  \iota_{12}(z_1-z_2)^m\cdot\iota_{12}(z_1-z_2)^n = \iota_{12}(z_1-z_2)^{m+n},\qquad
+  \iota_{21}(z_1-z_2)^m\cdot\iota_{21}(z_1-z_2)^n = \iota_{21}(z_1-z_2)^{m+n}.
+\end{equation*}
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak IotaZExpansion.lean}.
+\begin{leancode}
+theorem expandPos_mul (m n : ℤ) : convolPos m n = expandPos (m + n) := by
+
+theorem expandNeg_mul (m n : ℤ) : convolNeg m n = expandNeg (m + n) := by
+\end{leancode}
+
+\begin{dictionary}
+No hypotheses: the statement holds for all integer exponents, including two negative ones. Together with
+$\iota(z_1-z_2)^0 = 1$ it says that $n\mapsto\iota_{12}(z_1-z_2)^n$ is a group homomorphism from $(\Z,+)$ into the
+(partial) multiplicative structure of $\C[[z_1^{\pm1},z_2^{\pm1}]]$: the expansions inside a fixed ordering form a
+copy of the group of integer powers. An earlier docstring of \leanpath{IotaZExpansion.lean} listed a lemma
+``\lean{expandPos_mul_zero}'' among the unit/inverse laws, although no declaration of that name existed; the
+current docstring no longer mentions it. The unit laws are \lean{convolPos_zero_right}, \lean{convolPos_zero_left}
+and \lean{expandPos_zero}.
+\end{dictionary}
+
+\begin{physics}
+Inside a fixed radial ordering, singular factors multiply as functions. This is the formal content of the
+statement that the analytic continuation of a correlation function does not depend on how its prefactors are
+grouped, as long as all of them are expanded in the same region.
+\end{physics}
+
+\textbf{Proof on paper.} On the antidiagonal $a+b = m+n$ the $(a,b)$ coefficient of the left side is
+$\sum_{b_1}(-1)^{b_1}C(m,b_1)(-1)^{b-b_1}C(n,b-b_1) = (-1)^b\sum_{b_1}C(m,b_1)C(n,b-b_1) = (-1)^bC(m+n,b)$ by the
+generalised Vandermonde identity (Theorem~\ref{l01:thm:vandermonde}); this is the right side. Off the
+antidiagonal both sides vanish. For $\iota_{21}$ the signs combine as
+$(-1)^{m+a_1}(-1)^{n+a-a_1} = (-1)^{m+n+a}$. \qed
+
+\begin{status}
+Unconditional; \texttt{\#print axioms} of \lean{VOA.expandPos_mul} and \lean{VOA.expandNeg_mul} $=$
+\lean{[propext, Classical.choice, Quot.sound]}. Used downstream in
+\leanpath{VOA/\allowbreak Examples/\allowbreak LatticeA1.lean}.
+\end{status}
+
+\subsection{The jumps of higher poles}
+
+\begin{definition}[The jump of $(z_1-z_2)^{-k-1}$]\label{l01:def:negpowjump}
+Let $\mathbf 1_0\in\C[[z^{\pm1}]]$ be the constant series $1$, with coefficient $[t = 0]$. For $k\in\N$, the
+\emph{jump} of $(z_1-z_2)^{-k-1}$ is
+\begin{equation*}
+  J_k := \iota_{12}(z_1-z_2)^{-k-1}-\iota_{21}(z_1-z_2)^{-k-1}.
+\end{equation*}
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak DeltaJump.lean}.
+\begin{leancode}
+def deltaCoeff : FormalDist ℂ := fun t => if t = 0 then 1 else 0
+
+noncomputable def negPowJump (k : ℕ) : FormalDist₂ ℂ :=
+  expandPos (-(k : ℤ) - 1) - expandNeg (-(k : ℤ) - 1)
+\end{leancode}
+
+\begin{dictionary}
+\lean{deltaCoeff} is the one-variable series $1 = z^0$ (the docstring calls it ``the one-variable point mass
+$[t=0]$'': as a function of the index $t$ it is a point mass; as a series it is the constant $1$).
+\lean{-(k : ℤ) - 1} is $-k-1$. So \lean{negPowJump 0} is the left side of Theorem~\ref{l01:thm:jump}.
+\end{dictionary}
+
+\begin{physics}
+$J_k$ is the commutator contribution of an OPE pole of order $k+1$ with unit coefficient: if
+$a(z)b(w)\sim1/(z-w)^{k+1}$, then $[a(z),b(w)]\ni J_k$.
+\end{physics}
+
+\begin{status}
+Definitions. No hypotheses.
+\end{status}
+
+\begin{theorem}[All-order delta jump]\label{l01:thm:alljump}
+For every $k\in\N$,
+\begin{equation*}
+  \iota_{12}(z_1-z_2)^{-k-1}-\iota_{21}(z_1-z_2)^{-k-1} = \frac1{k!}\,\partial_{z_2}^k\lonedelta .
+\end{equation*}
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak DeltaJump.lean}.
+\begin{leancode}
+theorem mulBySub_negPowJump (k : ℕ) :
+    mulBySub (negPowJump (k + 1)) = negPowJump k := by
+
+theorem negPowJump_residue_zero (k : ℕ) (n : ℤ) :
+    negPowJump (k + 1) (-1) n = 0 := by
+
+theorem deltaDeriv_succ_residue_zero (k : ℕ) (c : FormalDist ℂ) (n : ℤ) :
+    deltaDeriv (k + 1) c (-1) n = 0 := by
+
+theorem negPowJump_eq_deltaDeriv (k : ℕ) :
+    negPowJump k = (((k.factorial : ℂ))⁻¹) • deltaDeriv k deltaCoeff := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{(((k.factorial : ℂ))⁻¹) •} is multiplication by the complex number $1/k!$; \lean{deltaDeriv k deltaCoeff} is
+$1\cdot\partial_{z_2}^k\lonedelta$ (Definition~\ref{l01:def:deltaderiv}). So the main statement is the display with
+the divided derivative $\partial^{(k)} = \partial^k/k!$: exactly the formula of Kac §2.1 and FLM §8.1. The three auxiliary
+lemmas are: $(z_1-z_2)J_{k+1} = J_k$; $\Res_{z_1}J_{k+1} = 0$ (the $m = -1$ slice); and $\Res_{z_1}$ of
+$c\,\partial^{k+1}\lonedelta$ vanishes. No hypotheses.
+\end{dictionary}
+
+\begin{physics}
+This is the formula that converts an OPE into commutators at every order:
+$a(z)b(w)\sim\sum_j\frac{(a_{(j)}b)(w)}{(z-w)^{j+1}}$ implies
+$[a(z),b(w)] = \sum_j(a_{(j)}b)(w)\,\partial_w^{(j)}\delta(z,w)$, because each pole contributes its jump. Together with
+Theorem~\ref{l01:thm:deltasum} it shows that ``local'' and ``has an OPE with finitely many poles'' are the same
+thing.
+\end{physics}
+
+\textbf{Proof on paper.} Induction on $k$; $k = 0$ is Theorem~\ref{l01:thm:jump}. Suppose
+$J_j = \frac1{j!}\partial^j\delta$. By Proposition~\ref{l01:prop:mulexpand}, $(z_1-z_2)J_{j+1} = J_j$. By
+Proposition~\ref{l01:prop:peel}(b), $(z_1-z_2)\frac1{(j+1)!}\partial^{j+1}\delta = \frac{j+1}{(j+1)!}\partial^j\delta = J_j$.
+So $D := J_{j+1}-\frac1{(j+1)!}\partial^{j+1}\delta$ satisfies $(z_1-z_2)D = 0$, hence
+$D = (\Res_{z_1}D)(z_2)\,\delta$ (Proposition~\ref{l01:prop:Neq1}). But $\Res_{z_1}D = 0$: the slice $m = -1$ of
+$\iota_{12}(z_1-z_2)^{-j-2}$ needs $-1 = -j-2-b$ with $b\ge0$, impossible for $j\ge0$; that of
+$\iota_{21}(z_1-z_2)^{-j-2}$ needs $m = -1\ge0$, impossible; and the slice of $\partial^{j+1}\delta$ carries the factor
+$-m-1 = 0$. Hence $D = 0$. \qed
+
+\begin{example}[The double pole]\label{l01:ex:doublejump}
+From Example~\ref{l01:ex:poles}, $J_1 = \sum_{b\ge0}(b+1)z_1^{-2-b}z_2^{b}-\sum_{a\ge0}(a+1)z_1^{a}z_2^{-2-a}$. Write the
+second sum with $b = -2-a\le-2$: its terms are $(-b-1)z_1^{-2-b}z_2^{b}$. Hence
+$J_1 = \sum_{b\in\Z}(b+1)z_1^{-2-b}z_2^{b}$ (the term $b = -1$ is zero), which is $\partial_{z_2}\lonedelta$ by
+Example~\ref{l01:ex:deltaderiv}. This is Theorem~\ref{l01:thm:alljump} for $k = 1$, and it is the free-boson
+commutator of Example~\ref{l01:ex:boson}: the double pole $1/(z-w)^2$ of $\alpha(z)\alpha(w)$ produces $\partial_w\delta(z,w)$.
+\end{example}
+
+\begin{status}
+Unconditional; \texttt{\#print axioms VOA.negPowJump\_eq\_deltaDeriv} $=$
+\lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\begin{corollary}[The jumps are local]\label{l01:cor:jumplocal}
+For $k,N\in\N$ with $k+1\le N$, $(z_1-z_2)^NJ_k = 0$; and $J_k$ is a sum
+$\sum_{j\le k}c^j(z_2)\,\partial^j_{z_2}\lonedelta$ in the sense of Theorem~\ref{l01:thm:deltasum}.
+\end{corollary}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak IotaZExpansion.lean}.
+\begin{leancode}
+theorem mulBySubPow_negPowJump_self (k : ℕ) :
+    mulBySubPow (k + 1) (negPowJump k) = 0 := by
+
+theorem mulBySubPow_negPowJump_eq_zero {k N : ℕ} (h : k + 1 ≤ N) :
+    mulBySubPow N (negPowJump k) = 0 := by
+
+theorem negPowJump_deltaSum (k : ℕ) :
+    ∃ c : Fin (k + 1) → FormalDist ℂ,
+      negPowJump k = ∑ j : Fin (k + 1), deltaDeriv (j : ℕ) (c j) :=
+\end{leancode}
+
+\begin{dictionary}
+Hypothesis \lean{h : k + 1 ≤ N} is the order condition. \lean{negPowJump_deltaSum} is an existence statement; by
+Theorem~\ref{l01:thm:alljump} one may take $c^k = \mathbf 1_0/k!$ and $c^j = 0$ for $j<k$. Its proof is the one-line
+term \lean{(local_iff_deltaSum (negPowJump k) (k + 1)).mp (mulBySubPow_negPowJump_self k)}: apply the structure
+theorem to the first statement.
+\end{dictionary}
+
+\begin{physics}
+A pole of order $k+1$ is cancelled by $(z-w)^{k+1}$ in the commutator. For lattice vertex operators
+$e^\alpha(z)e^\beta(w)\propto(z-w)^{\langle\alpha,\beta\rangle}$, so the (suitably signed) commutator of $e^\alpha$ and $e^\beta$ is killed by $(z-w)^N$
+once $N\ge-\langle\alpha,\beta\rangle$; the sign cocycles that make this the right bracket are discussed in
+Chapter~\ref{ch:03}.
+\end{physics}
+
+\textbf{Proof on paper.} Theorem~\ref{l01:thm:alljump} and Proposition~\ref{l01:prop:peel}(d); then
+Theorem~\ref{l01:thm:deltasum}. \qed
+
+\begin{status}
+Unconditional; axioms clean (checked for \lean{mulBySubPow_negPowJump_eq_zero} and
+\lean{negPowJump_deltaSum}).
+\end{status}
+
+%======================================================================
+\section{Operator-valued distributions: commutators, locality, normal ordering}\label{l01:sec:operators}
+%======================================================================
+
+From now on $\loneV$ is a complex vector space and $\End(\loneV)$ the algebra of its linear endomorphisms.
+Distributions with values in $\End(\loneV)$ are the candidates for fields.
+
+\begin{definition}[Commutator distribution, mutual locality, normal ordering]\label{l01:def:bracket}
+Let $a,b\in\End(\loneV)[[z^{\pm1}]]$, $a(z) = \sum_ma_mz^m$, $b(z) = \sum_nb_nz^n$.
+\begin{enumerate}[label=(\roman*)]
+\item The \emph{commutator} is $[a(z_1),b(z_2)] := \sum_{m,n}(a_mb_n-b_na_m)\,z_1^mz_2^n$.
+\item $a$ and $b$ are \emph{mutually local} if $(z_1-z_2)^N[a(z_1),b(z_2)] = 0$ for some $N\in\N$.
+\item The two-variable \emph{normal-ordered product} is
+  ${:}a(z_1)b(z_2){:} := a(z_1)_+b(z_2)+b(z_2)a(z_1)_-$, where $a(z)_+ := \sum_{m\ge0}a_mz^m$ and
+  $a(z)_- := \sum_{m<0}a_mz^m$; coefficientwise, ${:}ab{:}_{m,n} = a_mb_n$ if $m\ge0$ and $b_na_m$ if $m<0$.
+\end{enumerate}
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak Locality.lean}.
+\begin{leancode}
+def bracketDist (a b : FormalDist (Module.End ℂ V)) : FormalDist₂ (Module.End ℂ V) :=
+  fun m n => a m * b n - b n * a m
+
+def Local (a b : FormalDist (Module.End ℂ V)) : Prop :=
+  ∃ N : ℕ, mulBySubPow N (bracketDist a b) = 0
+
+def normalOrdered (a b : FormalDist (Module.End ℂ V)) : FormalDist₂ (Module.End ℂ V) :=
+  fun m n => if 0 ≤ m then a m * b n else b n * a m
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Decoding.} \lean{Module.End ℂ V} is $\End_\C(\loneV)$; its multiplication \lean{*} is composition, so
+\lean{a m * b n} is $a_m\circ b_n$. \lean{bracketDist a b m n} is therefore the coefficient of $z_1^mz_2^n$ in
+$[a(z_1),b(z_2)]$. Each coefficient is a single composition, so (i) is always defined: the two variables are
+different. \lean{Local a b} is a \lean{Prop}: ``there exists a natural number $N$ (depending on $a,b$) such that
+all coefficients of $(z_1-z_2)^N[a(z_1),b(z_2)]$ vanish''.
+
+\textbf{Normal ordering.} In \lean{normalOrdered}, the coefficients $a_m$ with $m\ge0$ (the nonnegative powers
+of $z_1$, i.e.\ the modes $a_{(k)}$ with $k = -m-1\le-1$: the ``creation'' part) stand to the \emph{left} of $b$,
+the others to the right. This is Kac (2.3.5) and Gannon (5.1.6b). The same-variable product ${:}a(z)b(z){:}$ is
+\emph{not} defined in this file, because it requires the field property; it is \lean{nprod} in
+\leanpath{VOA/\allowbreak Core/\allowbreak Dong.lean} (Chapter~\ref{ch:L03}).
+
+\textbf{Fidelity.} Same as Kac Def.~2.3 and Gannon §5.1.2. The definition is for arbitrary distributions, not
+only fields, which is the textbook generality. The library proves elsewhere that locality is symmetric
+(\lean{Local.symm} in \leanpath{VOA/\allowbreak Core/\allowbreak FieldOps.lean}); the definition itself is
+asymmetric only in the bookkeeping. \textbf{Could \lean{Local} be vacuous?} With $N = 0$ it says $[a,b] = 0$; it
+is satisfied by many nontrivial pairs (Examples~\ref{l01:ex:boson}, \ref{l01:ex:fermion}) and fails, e.g., for
+$a = b = $ a distribution whose commutator has a nonzero coefficient on infinitely many antidiagonals with growing
+derivative order, so it is a genuine condition. A useful corollary of Section~\ref{l01:sec:truncation}: if
+$[a(z_1),b(z_2)]$ has \emph{finite support} and $a,b$ are local, then $[a(z_1),b(z_2)] = 0$.
+\end{dictionary}
+
+\begin{physics}
+\lean{Local} is the chiral-algebra form of microcausality: two chiral fields commute up to contact terms at
+coincident points. It is the axiom (VA4) of the library's structure \lean{PreVertexAlgebra} in Chapter~\ref{ch:L03}
+(Definition~\ref{l03:def:VA}), imposed on all pairs of vertex operators $Y(u,z)$, $Y(v,z)$. The integer $N$ is
+the maximal order of the OPE pole between $a$ and $b$. Normal ordering puts annihilation operators to the
+right, so that ${:}a(z)b(w){:}$ is the regular part of the OPE, $a(z)b(w) = \text{(singular part)} + {:}a(z)b(w){:}$.
+\end{physics}
+
+\begin{status}
+Definitions. \lean{Local} is used as the locality axiom of the library's structures \lean{PreVertexAlgebra} and
+\lean{BarePreVA}, and hence of every structure built on \lean{PreVertexAlgebra} (\lean{VertexAlgebra},
+\lean{GradedVertexOperatorAlgebra}, \lean{VertexOperatorAlgebra}). (The release audit of 2026-10-27 established that
+\lean{PreVertexAlgebra} and \lean{BarePreVA} have no translation-covariance axiom and are therefore \emph{not} vertex algebras in
+the standard sense; the Borcherds identity fails for them. The library has since renamed them accordingly; its
+\lean{VertexAlgebra} is a \lean{PreVertexAlgebra} with translation covariance added as an axiom. See Chapter~\ref{ch:L03}.)
+\end{status}
+
+\begin{proposition}[Commuting distributions are local]\label{l01:prop:localzero}
+If $[a(z_1),b(z_2)] = 0$, then $a$ and $b$ are mutually local (with $N = 0$).
+\end{proposition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak Locality.lean}.
+\begin{leancode}
+theorem local_of_bracketDist_eq_zero {a b : FormalDist (Module.End ℂ V)}
+    (h : bracketDist a b = 0) : Local a b :=
+\end{leancode}
+
+\begin{dictionary}
+Hypothesis: the commutator distribution is zero. Conclusion: \lean{Local a b}, witnessed by $N = 0$.
+\end{dictionary}
+
+\begin{physics}
+Commuting fields, e.g.\ a field and a constant multiple of the identity, or fields from decoupled sectors of
+a tensor-product theory, are trivially local.
+\end{physics}
+
+\textbf{Proof on paper.} $(z_1-z_2)^0 = \mathrm{id}$. \qed
+
+\begin{status}
+Unconditional.
+\end{status}
+
+\subsection{Fields and the same-variable normal-ordered product}\label{l01:sec:field}
+
+The two-variable normal ordering of Definition~\ref{l01:def:bracket} keeps the variables $z_1$ and $z_2$
+apart, so each of its coefficients is one composition of two operators and nothing infinite is ever summed.
+Physicists, however, want the product ${:}a(z)b(z){:}$ of two fields \emph{at the same point}: the coefficient of
+$z^s$ in it is an infinite sum $\sum_m(\cdots)_{m,s-m}$ over the antidiagonal $m+n=s$ of operators, and such an
+infinite sum of operators has no meaning unless one says how it converges. The remedy is to apply it to a vector
+and to require that, on every vector, only finitely many terms survive. This is exactly what the \emph{field}
+condition (lower truncation) buys.
+
+\begin{definition}[Field; the normal-ordered product ${:}a(z)b(z){:}$]\label{l01:def:field}
+A distribution $a(z) = \sum_{n\in\Z}a_nz^n\in\End(\loneV)[[z^{\pm1}]]$ is a \emph{field} if for every vector
+$x\in\loneV$ there is an integer $B$ (depending on $x$) with $a_nx = 0$ for all $n<B$. Equivalently
+$a(z)x\in\loneV((z))$ has only finitely many negative powers of $z$; equivalently, in the mode indexing
+$a_{(m)} = a_{-m-1}$, one has $a_{(m)}x = 0$ for $m\gg0$.
+For two fields $a,b$ the \emph{normal-ordered product} is the distribution ${:}a(z)b(z){:}$ whose $z^s$-coefficient
+is the operator
+\begin{equation*}
+ ({:}ab{:})_s\,x \;=\; \sum_{m\in\Z}{:}a_mb_{s-m}{:}\,x
+ \;=\; \sum_{m\ge0}a_mb_{s-m}x \;+\; \sum_{m<0}b_{s-m}a_mx ,
+\end{equation*}
+the sum being finite for every $x$. In vertex-algebra language it is the $(-1)$-st product of fields,
+$a_{(-1)}b$.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak Dong.lean}.
+\begin{leancode}
+def IsField (a : FormalDist (End ℂ V)) : Prop :=
+  ∀ x : V, ∃ B : ℤ, ∀ n : ℤ, n < B → a n x = 0
+
+noncomputable def nprodCoeff {a b : FormalDist (End ℂ V)}
+    (ha : IsField a) (hb : IsField b) (s : ℤ) : V →ₗ[ℂ] V where
+  toFun x := ∑ᶠ m : ℤ, normalOrdered a b m (s - m) x
+
+noncomputable def nprod {a b : FormalDist (End ℂ V)}
+    (ha : IsField a) (hb : IsField b) : FormalDist (End ℂ V) :=
+  fun s => nprodCoeff ha hb s
+\end{leancode}
+(The two linearity fields of \lean{nprodCoeff}, \lean{map_add'} and \lean{map_smul'}, are proofs and are omitted.
+\lean{normalOrdered} is Definition~\ref{l01:def:bracket}, file \leanpath{VOA/\allowbreak Foundations/\allowbreak Locality.lean}.)
+
+\begin{dictionary}
+\textbf{Decoding \lean{IsField}.} \lean{a n x} is the coefficient $a_n$ of $z^n$, an endomorphism, applied to $x$.
+The statement reads: for every $x$ there exists an integer $B$ such that for every integer $n<B$ the vector
+$a_nx$ vanishes. ``$n$ very negative'' in the $z^n$-indexing is ``$m=-n-1$ very positive'' in the mode
+indexing, which is the familiar lower truncation $u_{(m)}x = 0$ for $m\gg0$. The bound $B$ depends on $x$ but
+not on anything else; it is \emph{not} uniform in $x$ (a uniform bound would force $a$ to be a Laurent
+polynomial of operators). This is Kac's Definition~1.3 and the ``truncation condition'' of Lepowsky--Li.
+
+\textbf{Decoding \lean{nprodCoeff}.} The $z^s$-coefficient applied to $x$ is
+\lean{∑ᶠ m : ℤ, normalOrdered a b m (s - m) x}, where \lean{normalOrdered a b m n} is $a_mb_n$ if $m\ge0$ and
+$b_na_m$ if $m<0$ (the creation part of $a$ is placed to the left, the annihilation part to the right).
+The symbol \lean{∑ᶠ} is Mathlib's \lean{finsum}: the sum over the support of the summand if that support is
+finite, and the value $0$ if it is infinite. \textbf{This is the trap to be checked here.} With no hypotheses
+the Lean expression would silently equal $0$ whenever the support is infinite. The library therefore makes the two
+field hypotheses \lean{ha}, \lean{hb} \emph{arguments} of \lean{nprodCoeff}, and proves
+(\lean{normalOrdered_diag_support_finite}, same file) that under them the support is finite for every $s$ and $x$.
+So the \lean{finsum} is a genuine finite sum, and \lean{nprod ha hb} is the textbook object, Kac (2.3.5)--(2.3.6)
+and Gannon (5.1.6b). The other direction of fidelity: nothing has been left out, since the only data of
+\lean{nprod} are the two distributions and the proof that they are fields.
+
+\textbf{Same, stronger or weaker?} The same as the textbook. In the library the product of two fields is again a
+field (\lean{IsField.nprod}, \leanpath{VOA/\allowbreak Core/\allowbreak FieldOps.lean}), and ${:}a\,b{:}$ is mutually
+local with a third field whenever the three are pairwise local (Dong's lemma, Theorem~\ref{l03:thm:dong}).
+
+\textbf{Could it be vacuous?} The zero distribution and every constant $c\cdot\mathrm{id}$ are fields, so the
+notion is satisfied; and every vertex operator $Y(u,z)$ of a \lean{BarePreVA} (a bare pre-vertex algebra: weaker than a standard vertex
+algebra, since it lacks translation covariance; Chapter~\ref{ch:L03}) is a field by the regularity axiom
+VA5 (\lean{BarePreVA.isField_Y}, Chapter~\ref{ch:L03}). It is a genuine condition: the distribution $\sum_{n\in\Z}\mathrm{id}_V\,z^n$ (the delta function times the identity) has $a_nx = x\neq0$ for all $n$ and $x\neq0$, so it is not a field.
+\end{dictionary}
+
+\begin{physics}
+A field is a distribution that truncates on every state, $a(z)x\in V((z))$: applying a local operator to a state of
+finite energy creates only finitely many states of lower energy, which is the algebraic form of ``the energy is
+bounded below'', and in the OPE it says that the singularity as $w\to z$ has a pole of finite order. The
+normal-ordered product ${:}a(z)b(z){:}$ is the regular term in the operator product expansion of $a(z)b(w)$ as
+$w\to z$, namely $\lim_{w\to z}\big(a(z)b(w)-\text{singular terms}\big)$. Free-field examples are the stress
+tensor of a free boson, $T = \tfrac12{:}J(z)J(z){:}$, and the Sugawara construction. Placing creation operators to
+the left of annihilation operators is the usual prescription that makes the vacuum expectation value of
+${:}a\,b{:}$ vanish for free fields.
+\end{physics}
+
+\textbf{Proof on paper that the sum is finite, and that the product is a field.} Fix $x$ and $s$, and let $B_a$ be the
+truncation bound of $a$ at $x$ and, for each vector $y$, $B_b(y)$ that of $b$ at $y$. In the sum over $m\ge0$ the term
+$a_mb_{s-m}x$ vanishes as soon as $s-m<B_b(x)$, i.e.\ for $m>s-B_b(x)$. In the sum over $m<0$ the term
+$b_{s-m}a_mx$ vanishes as soon as $m<B_a$. Hence only $m$ in the finite interval
+$[\min(B_a,0),\ \max(s-B_b(x),0)]$ can contribute. The coefficient is clearly linear in $x$, since each summand is.
+To see that ${:}ab{:}$ is again a field, let $s$ be very negative. For $m\ge0$ we have $s-m\le s<B_b(x)$, so
+$a_mb_{s-m}x = 0$. For $m<0$ only the finitely many $m$ with $B_a\le m<0$ matter, since $a_mx=0$ for $m<B_a$;
+choose $s$ below $\min_{B_a\le m<0}\big(m+B_b(a_mx)\big)$, and then $b_{s-m}a_mx = 0$ for each of them. \qed
+
+\begin{status}
+Definitions, not theorems. \texttt{\#print axioms} (run for this chapter with
+\texttt{lake env lean -DmaxSynthPendingDepth=3}) of \lean{VOA.IsField}, \lean{VOA.nprodCoeff}, \lean{VOA.nprod} is
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} for each. No hypotheses beyond the
+two field arguments; \lean{VOA.pbw} is not used.
+\end{status}
+
+\subsection{Super-locality: the \texorpdfstring{$\varepsilon$}{epsilon}-twisted commutator}\label{l01:sec:super}
+
+For fermionic (odd) fields, the radially ordered product $b(z_2)a(z_1)$ acquires a sign, and locality is a
+statement about the \emph{anticommutator}. Rather than duplicating the theory, the library introduces a
+scalar $\varepsilon$ in front of the second ordering.
+
+\begin{definition}[$\varepsilon$-twisted commutator and $\varepsilon$-locality]\label{l01:def:bracketeps}
+For $\varepsilon\in\C$ and $a,b\in\End(\loneV)[[z^{\pm1}]]$,
+$[a(z_1),b(z_2)]_\varepsilon := \sum_{m,n}(a_mb_n-\varepsilon\,b_na_m)z_1^mz_2^n$, and $a,b$ are
+\emph{$\varepsilon$-local} if $(z_1-z_2)^N[a(z_1),b(z_2)]_\varepsilon = 0$ for some $N\in\N$.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak Locality.lean}.
+\begin{leancode}
+def bracketDistε (ε : ℂ) (a b : FormalDist (Module.End ℂ V)) : FormalDist₂ (Module.End ℂ V) :=
+  fun m n => a m * b n - ε • (b n * a m)
+
+def Localε (ε : ℂ) (a b : FormalDist (Module.End ℂ V)) : Prop :=
+  ∃ N : ℕ, mulBySubPow N (bracketDistε ε a b) = 0
+\end{leancode}
+
+\begin{dictionary}
+\lean{ε • (b n * a m)} is the complex scalar $\varepsilon$ times the composition $b_n\circ a_m$. The intended
+instances are $\varepsilon = 1$ (bosonic) and $\varepsilon = (-1)^{|a||b|}$ (Koszul sign of parities $|a|,|b|\in\Z/2$;
+the library's \lean{koszul} lives in \leanpath{VOA/\allowbreak Foundations/\allowbreak Parity.lean}, another chapter).
+For other values of $\varepsilon$ the definition is meaningful but has no standard name; nothing in this chapter
+depends on $\varepsilon\in\{\pm1\}$ except \lean{bracketDistε_swap}, which needs $\varepsilon\neq0$. The file header
+stresses that no spin--statistics relation between parity and half-integer weights is assumed here.
+\end{dictionary}
+
+\begin{physics}
+For two odd fields (fermions, ghosts) the physically meaningful bracket is the anticommutator
+$\{a(z),b(w)\} = a(z)b(w)+b(w)a(z)$, and locality says $(z-w)^N\{a(z),b(w)\} = 0$: fermions anticommute at
+spacelike separation. This is the case $\varepsilon = -1$.
+\end{physics}
+
+\begin{status}
+Definitions.
+\end{status}
+
+\begin{proposition}[Basic properties of the twisted commutator]\label{l01:prop:epsbasic}
+\leavevmode
+\begin{enumerate}[label=(\alph*)]
+\item $[a,b]_1 = [a,b]$, hence $1$-locality is ordinary locality.
+\item $[a,b]_\varepsilon$ is additive in $a$ and in $b$.
+\item If $\varepsilon\neq0$: $[a(z_1),b(z_2)]_\varepsilon$ has $(m,n)$-coefficient
+  $-\varepsilon\cdot\big([b(z_1),a(z_2)]_{\varepsilon^{-1}}\big)_{n,m}$.
+\item If $[a,b]_\varepsilon = 0$ then $a,b$ are $\varepsilon$-local; every $a$ is $\varepsilon$-local with $0$ on either side.
+\end{enumerate}
+\end{proposition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak Locality.lean}.
+\begin{leancode}
+theorem bracketDistε_one (a b : FormalDist (Module.End ℂ V)) :
+    bracketDistε 1 a b = bracketDist a b := by
+
+theorem localε_one_iff (a b : FormalDist (Module.End ℂ V)) :
+    Localε 1 a b ↔ Local a b := by
+
+theorem bracketDistε_add_left (ε : ℂ) (a₁ a₂ b : FormalDist (Module.End ℂ V)) :
+    bracketDistε ε (a₁ + a₂) b = bracketDistε ε a₁ b + bracketDistε ε a₂ b := by
+
+theorem bracketDistε_add_right (ε : ℂ) (a b₁ b₂ : FormalDist (Module.End ℂ V)) :
+    bracketDistε ε a (b₁ + b₂) = bracketDistε ε a b₁ + bracketDistε ε a b₂ := by
+
+theorem bracketDistε_swap {ε : ℂ} (hε : ε ≠ 0) (a b : FormalDist (Module.End ℂ V)) (m n : ℤ) :
+    bracketDistε ε a b m n = -(ε • bracketDistε ε⁻¹ b a n m) := by
+
+theorem localε_of_bracketDistε_eq_zero {ε : ℂ} {a b : FormalDist (Module.End ℂ V)}
+    (h : bracketDistε ε a b = 0) : Localε ε a b :=
+
+theorem localε_zero_right (ε : ℂ) (a : FormalDist (Module.End ℂ V)) : Localε ε a 0 := by
+
+theorem localε_zero_left (ε : ℂ) (b : FormalDist (Module.End ℂ V)) : Localε ε 0 b := by
+\end{leancode}
+
+\begin{dictionary}
+In \lean{bracketDistε_swap} note the swapped indices \lean{n m} on the right: the coefficient of $z_1^mz_2^n$ in
+$[a(z_1),b(z_2)]_\varepsilon$ is compared with the coefficient of $z_1^nz_2^m$ in $[b(z_1),a(z_2)]_{\varepsilon^{-1}}$. For
+$\varepsilon = \pm1$, $\varepsilon^{-1} = \varepsilon$ and this is the graded antisymmetry
+$[a,b] = -(-1)^{|a||b|}[b,a]$. The hypothesis \lean{hε} is needed to form $\varepsilon^{-1}$ meaningfully
+(in Lean $0^{-1} = 0$, and the identity would be false at $\varepsilon = 0$ unless $ab = 0$).
+\end{dictionary}
+
+\begin{physics}
+(a) says the bosonic theory is the $\varepsilon = 1$ instance of the super theory; (c) is graded
+antisymmetry of the (anti)commutator; (d) says that the zero field is local with everything.
+\end{physics}
+
+\textbf{Proof on paper.} Coefficientwise algebra: $a_mb_n-\varepsilon b_na_m = -\varepsilon(b_na_m-\varepsilon^{-1}a_mb_n)$. \qed
+
+\begin{status}
+All unconditional; axioms clean (checked for \lean{bracketDistε_one}, \lean{localε_one_iff},
+\lean{bracketDistε_swap}).
+\end{status}
+
+\begin{theorem}[Structure theorem, $\varepsilon$-generically]\label{l01:thm:epsdeltasum}
+$a,b$ are $\varepsilon$-local iff for some $N$ there are $c^0,\dots,c^{N-1}\in\End(\loneV)[[z^{\pm1}]]$ with
+$[a(z_1),b(z_2)]_\varepsilon = \sum_{j<N}c^j(z_2)\partial^j_{z_2}\lonedelta$. In particular, if
+$[a(z_1),b(z_2)]_\varepsilon = c(z_2)\lonedelta$, then $a,b$ are $\varepsilon$-local with $N = 1$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak Locality.lean}.
+\begin{leancode}
+theorem localε_iff_deltaSum (ε : ℂ) (a b : FormalDist (Module.End ℂ V)) :
+    Localε ε a b ↔ ∃ (N : ℕ) (c : Fin N → FormalDist (Module.End ℂ V)),
+      bracketDistε ε a b = ∑ j : Fin N, deltaDeriv (j : ℕ) (c j) := by
+
+theorem localε_of_bracketDistε_eq_delta {ε : ℂ} {a b c : FormalDist (Module.End ℂ V)}
+    (h : bracketDistε ε a b = deltaDeriv 0 c) : Localε ε a b :=
+\end{leancode}
+
+\begin{dictionary}
+Here $N$ is existentially quantified \emph{inside} the iff (``$\exists N\,\exists c$''), because \lean{Localε} itself
+hides $N$; compare Theorem~\ref{l01:thm:deltasum}, where $N$ is fixed outside. Both versions are equivalent;
+this one is the convenient packaging for fields. The structure theorem is applied to the two-variable
+distribution $[a,b]_\varepsilon$; the sign never enters its proof, which is the structural reason the super
+theory is ``a refactor rather than a rewrite'' (file header).
+\end{dictionary}
+
+\begin{physics}
+The super-commutator of two local fields is determined by the singular part of their OPE, exactly as in the
+bosonic case: $\{\psi(z),\psi^*(w)\} = \delta(z,w)$ for a $bc$ or free-fermion system, $[\beta(z),\gamma(w)] = \delta(z,w)$
+for a $\beta\gamma$ system.
+\end{physics}
+
+\textbf{Proof on paper.} Theorem~\ref{l01:thm:deltasum} applied to $f = [a,b]_\varepsilon$; the second statement is
+Proposition~\ref{l01:prop:peel}(a). \qed
+
+\begin{status}
+Unconditional; axioms clean (checked for \lean{localε_iff_deltaSum}).
+\end{status}
+
+\begin{theorem}[Free-field criterion: canonical (anti)commutation relations]\label{l01:thm:car}
+Let $S\in\End(\loneV)$ and suppose $a_mb_n-\varepsilon\,b_na_m = [m+n+1 = 0]\,S$ for all $m,n\in\Z$. Then $a,b$ are
+$\varepsilon$-local (with $N = 1$). In particular, if $a_mb_n+b_na_m = [m+n+1 = 0]\,S$ for all $m,n$, then $a,b$ are
+$(-1)$-local.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak Locality.lean}.
+\begin{leancode}
+theorem localε_of_car {ε : ℂ} {a b : FormalDist (Module.End ℂ V)} (S : Module.End ℂ V)
+    (h : ∀ m n : ℤ, a m * b n - ε • (b n * a m) = if m + n + 1 = 0 then S else 0) :
+    Localε ε a b := by
+
+theorem localε_neg_one_of_anticomm {a b : FormalDist (Module.End ℂ V)}
+    (S : Module.End ℂ V) (h : ∀ m n : ℤ, a m * b n + b n * a m = if m + n + 1 = 0 then S else 0) :
+    Localε (-1) a b := by
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Indices.} $m,n$ are \emph{coefficient} indices ($z^m$), not modes. In modes, $a_m = a_{(-m-1)}$, and the
+condition $m+n+1 = 0$ becomes $p+q+1 = 0$ for $p = -m-1$, $q = -n-1$: the hypothesis reads
+$[a_{(p)},b_{(q)}]_\varepsilon = \delta_{p+q+1,0}\,S$, the same shape in both indexings. $S$ is an arbitrary fixed operator
+(in examples, a multiple of the identity). The hypothesis says $[a(z_1),b(z_2)]_\varepsilon = S\,\lonedelta$.
+\end{dictionary}
+
+\begin{physics}
+These are the canonical commutation relations of a $\beta\gamma$ system ($\varepsilon = 1$) and the canonical
+anticommutation relations of a $bc$ system or complex fermion ($\varepsilon = -1$): the OPE has a single simple pole
+$S/(z-w)$. The theorem is used to verify locality of the generating fields in
+\leanpath{VOA/\allowbreak Examples/\allowbreak BetaGamma.lean}, \leanpath{BetaGammaField.lean} and
+\leanpath{SymplecticFermion.lean}.
+\end{physics}
+
+\textbf{Proof on paper.} The hypothesis says $[a,b]_\varepsilon = c(z_2)\lonedelta$ with $c = S\cdot\mathbf 1_0$ (since
+$c_{m+n+1} = [m+n+1 = 0]S$); apply Theorem~\ref{l01:thm:epsdeltasum}. \qed
+
+\begin{example}[The free fermion]\label{l01:ex:fermion}
+Let $\psi(z) = \sum_p\psi_{(p)}z^{-p-1}$ with $\{\psi_{(p)},\psi_{(q)}\} = \delta_{p+q+1,0}$ (a neutral fermion with
+integer moding; the OPE is $\psi(z)\psi(w)\sim1/(z-w)$). In coefficient indexing $\psi_m = \psi_{(-m-1)}$ and
+$\{\psi_m,\psi_n\} = [m+n+1 = 0]$, so \lean{localε_neg_one_of_anticomm} with $S = \mathrm{id}$ shows
+$(z_1-z_2)\{\psi(z_1),\psi(z_2)\} = 0$. The bosonic commutator $[\psi(z_1),\psi(z_2)]$, with coefficients
+$\psi_m\psi_n-\psi_n\psi_m = 2\psi_m\psi_n-[m+n+1=0]$, is \emph{not} killed by any power of $z_1-z_2$ in the Fock
+representation: by Theorem~\ref{l01:thm:deltasum}, along each antidiagonal $m+n = s$ the coefficients of a distribution
+killed by $(z_1-z_2)^N$ are polynomial in $m$ of degree $<N$ with fixed operator coefficients, hence span a
+finite-dimensional space, whereas the operators $\psi_m\psi_{s-m}$ ($m>s-m$) are linearly independent in the Fock
+space. (Reason: in the Clifford algebra generated by the $\psi_m$, ordered products of distinct generators form a
+basis, as for an exterior algebra; and the Fock representation of this Clifford algebra is faithful, because the
+algebra of a nondegenerate form on a countable-dimensional space is a union of matrix algebras and hence simple.
+So distinct ordered pairs give linearly independent operators.) So the choice of $\varepsilon$ matters.
+\end{example}
+
+\begin{warning}\label{l01:warn:finitefermion}
+\textbf{A docstring claim that was heuristic (corrected in the source).} An earlier comment block before
+\lean{localε_of_car} said that ``a finite-support commutator can never satisfy this'' and concluded ``consequently
+there is no finite-dimensional fermionic toy example''. The current comment block keeps only the finiteness remark
+about mode support and says explicitly that no statement about finite-dimensional examples is proved or implied. The
+first sentence of the old comment is a correct theorem: a finitely supported two-variable
+distribution is lower-truncated, so by Theorem~\ref{l01:thm:cancel} it is killed by $(z_1-z_2)^N$ only if it is $0$.
+The second sentence is not a consequence of the first (a finite-dimensional $\loneV$ does not force the
+commutator to have finite support); it is a true but separate fact about Clifford algebras of infinite rank
+with nondegenerate form, which have no nonzero finite-dimensional representations when $S$ is a nonzero scalar.
+The library proves neither the second sentence nor needs it.
+\end{warning}
+
+\begin{status}
+Unconditional; axioms clean (checked for both declarations).
+\end{status}
+
+%======================================================================
+\section{Lower truncation and the cancellation theorem}\label{l01:sec:truncation}
+%======================================================================
+
+Theorem~\ref{l01:thm:deltasum} shows that $(z_1-z_2)$ has a huge kernel on $\loneW[[z_1^{\pm1},z_2^{\pm1}]]$: all of the
+$c(z_2)\lonedelta$. This kernel disappears on the subspace of series that are bounded below in $z_2$, which is
+where the products of fields $Y(u,z_1)Y(v,z_2)x$ live. This simple fact is the irreducible core of Goddard's
+uniqueness theorem and of the reconstruction theorem (Chapter~\ref{ch:L03},
+Theorems~\ref{l03:thm:goddard} and \ref{l03:thm:reconstruct}).
+
+\begin{definition}[Lower truncation in $z_2$]\label{l01:def:bddbelow}
+$f\in\loneW[[z_1^{\pm1},z_2^{\pm1}]]$ is \emph{lower-truncated in $z_2$} if there is $B\in\Z$ with $f_{m,n} = 0$ for all
+$m\in\Z$ and all $n<B$.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak IteratedLaurent.lean}.
+\begin{leancode}
+def IsBddBelow₂ (f : FormalDist₂ 𝒲) : Prop := ∃ B : ℤ, ∀ m n : ℤ, n < B → f m n = 0
+
+theorem IsBddBelow₂.mulBySub {f : FormalDist₂ 𝒲} (h : IsBddBelow₂ f) :
+    IsBddBelow₂ (mulBySub f) := by
+
+theorem IsBddBelow₂.mulBySubPow (N : ℕ) {f : FormalDist₂ 𝒲} (h : IsBddBelow₂ f) :
+    IsBddBelow₂ (mulBySubPow N f) := by
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Quantifiers.} $\exists B\,\forall m\,\forall n$: the bound is \emph{uniform in the $z_1$-power}. This is the
+space $\loneW[[z_1^{\pm1}]]((z_2))$ of Laurent series in $z_2$ (finitely many negative powers) with arbitrary
+doubly-infinite coefficients in $z_1$. An earlier docstring called this ``the sub-class $\mathcal W((z_1))((z_2))$''; the
+current docstring of \lean{IsBddBelow₂} says ``strictly larger than'' that class, which is right (the docstring of the
+cancellation theorem that follows still speaks of $\mathcal W((z_1))((z_2))$). The old wording was imprecise: membership in $\loneW((z_1))((z_2))$ would also require each $z_2^n$-coefficient to be bounded below
+in $z_1$, which \lean{IsBddBelow₂} does \emph{not} require. The predicate is therefore \emph{weaker} than
+membership in $\loneW((z_1))((z_2))$, and theorems with it as a hypothesis are correspondingly \emph{stronger} than
+their textbook counterparts. No harm results.
+
+\textbf{Why $Y(u,z_1)Y(v,z_2)x$ satisfies it.} Its coefficient of $z_1^mz_2^n$ is $u_m(v_nx)$ (coefficient indices).
+Since $Y(v,z)$ is a field, $v_nx = 0$ for $n<B$ with $B$ depending on $v,x$ only; then $u_m(v_nx) = 0$ for every $m$.
+The stability lemmas say that multiplication by $(z_1-z_2)^N$ preserves the property (with the same $B$).
+\end{dictionary}
+
+\begin{physics}
+Lower truncation in $z_2$ is the energy bound for the operator at the inner insertion point: acting with a
+field on a state of bounded energy produces finitely many states of lower energy. It singles out one radial
+ordering, $|z_1|>|z_2|$: the product $a(z_1)b(z_2)x$ is a genuine expansion in this region and lower truncation in
+$z_2$ is its formal signature.
+\end{physics}
+
+\begin{status}
+Definition and two stability lemmas, unconditional.
+\end{status}
+
+\begin{theorem}[Cancellation: $z_1-z_2$ is not a zero-divisor on lower-truncated series]\label{l01:thm:cancel}
+If $f\in\loneW[[z_1^{\pm1},z_2^{\pm1}]]$ is lower-truncated in $z_2$ and $(z_1-z_2)^Nf = 0$ for some $N\in\N$, then $f = 0$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak IteratedLaurent.lean}.
+\begin{leancode}
+theorem eq_zero_of_mulBySub_of_bddBelow {f : FormalDist₂ 𝒲} (hsub : mulBySub f = 0)
+    (hbb : IsBddBelow₂ f) : f = 0 := by
+
+theorem eq_zero_of_mulBySubPow_of_bddBelow :
+    ∀ (N : ℕ) (f : FormalDist₂ 𝒲), mulBySubPow N f = 0 → IsBddBelow₂ f → f = 0
+\end{leancode}
+
+\begin{dictionary}
+Two hypotheses: annihilation by $(z_1-z_2)^N$ and lower truncation. Both are needed: $\lonedelta$ satisfies the
+first ($N = 1$) but not the second, and is nonzero. The conclusion is $f = 0$. The first declaration is the case
+$N = 1$. Same as the cancellation step in Kac §4 (Goddard uniqueness) and Gannon §5.1.2; slightly stronger, by
+the remark on the predicate above.
+\end{dictionary}
+
+\begin{physics}
+If two operator products agree after multiplication by $(z_1-z_2)^N$, and both are genuine expansions in the
+same region, they agree: one may divide by $(z_1-z_2)^N$ inside a fixed radial ordering. This is how locality
+(``$(z-w)^N a(z)b(w) = (z-w)^N b(w)a(z)$'') is turned into identities between correlation functions, and why a
+field is determined by its action on the vacuum (Goddard).
+\end{physics}
+
+\textbf{Proof on paper.} $N = 1$: by Proposition~\ref{l01:prop:Neq1}, $f_{m,n} = f_{m-d,n+d}$ for all $d$. Given
+$(m,n)$, take $d$ with $n+d<B$; then $f_{m,n} = f_{m-d,n+d} = 0$. (In the file: $f_{m,n} = f_{-1,m+n+1} =
+f_{m+n-(B-1),B-1}$, and then one more step down.) General $N$: induction; $g = (z_1-z_2)^{N}f$ is lower-truncated
+and killed by $(z_1-z_2)$, so $g = 0$, and the induction hypothesis applies to $f$. \qed
+
+\begin{example}
+$f = \iota_{12}(z_1-z_2)^{-1} = \sum_{b\ge0}z_1^{-1-b}z_2^{b}$ is lower-truncated in $z_2$ (with $B = 0$) and
+$(z_1-z_2)f = 1\neq0$, consistent with the theorem. $f = \iota_{21}(z_1-z_2)^{-1}$ is \emph{not} lower-truncated in
+$z_2$ (it contains $z_2^{-1-a}$ for all $a\ge0$). Their difference $\lonedelta$ is killed by $z_1-z_2$, and it is not
+lower-truncated, as the theorem demands: for any $B$, its coefficient at $(m,n) = (-B,B-1)$ is
+$[-B+(B-1)+1 = 0] = 1$, although $n = B-1<B$. In the ring $\C[[z_1^{\pm1}]]((z_2))$, $z_1-z_2$ is in fact invertible with
+inverse $\iota_{12}(z_1-z_2)^{-1}$.
+\end{example}
+
+\begin{status}
+Unconditional; axioms \lean{[propext, Classical.choice, Quot.sound]} (both). Used downstream in
+\leanpath{VOA/\allowbreak Core/\allowbreak WeakAssoc.lean}, \leanpath{VOA/\allowbreak Core/\allowbreak Goddard.lean},
+\leanpath{VOA/\allowbreak Core/\allowbreak ReconstructionExistence.lean} and six further files.
+\end{status}
+
+%======================================================================
+\section{The substitution \texorpdfstring{$z_1\mapsto z_0+z_2$}{z1 to z0+z2}}\label{l01:sec:substitution}
+%======================================================================
+
+Weak associativity, $(z_0+z_2)^kY(u,z_0+z_2)Y(v,z_2)x = (z_0+z_2)^kY(Y(u,z_0)v,z_2)x$, compares a product of fields at
+$z_1$ and $z_2$ with an iterated field in the relative coordinate $z_0 = z_1-z_2$. Formally this requires substituting
+$z_1 = z_0+z_2$ into a two-variable series, which is the subject of this section.
+
+\begin{definition}[Substitution]\label{l01:def:subst}
+For $f\in\loneW[[z_1^{\pm1},z_2^{\pm1}]]$ lower-truncated in $z_2$, $f(z_0+z_2,z_2)$ is the series in $(z_0,z_2)$ obtained by
+replacing each $z_1^m$ by $(z_0+z_2)^m$ expanded in nonnegative powers of $z_2$ (Definition~\ref{l01:def:gbinom}(iv)):
+\begin{equation*}
+  \big(f(z_0+z_2,z_2)\big)_{a,b} = \sum_{k\ge0}\binom{a+k}{k}\,f_{a+k,\;b-k}.
+\end{equation*}
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak Substitution.lean}.
+\begin{leancode}
+noncomputable def subst (f : FormalDist₂ 𝒲) : FormalDist₂ 𝒲 :=
+  fun a b => ∑ᶠ k : ℤ, cbz (a + k) k • f (a + k) (b - k)
+
+theorem subst_summand_finite {f : FormalDist₂ 𝒲} (hf : IsBddBelow₂ f) (a b lo : ℤ) (c : ℤ → ℂ)
+    (hc : ∀ k, k < lo → c k = 0) :
+    (Function.support (fun k : ℤ => c k • f (a + k) (b - k))).Finite := by
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Derivation of the formula.} $f = \sum_{m,n}f_{m,n}z_1^mz_2^n$ and $(z_0+z_2)^m = \sum_{k\ge0}\binom mkz_0^{m-k}z_2^k$. The
+coefficient of $z_0^az_2^b$ collects $m-k = a$, $n+k = b$, i.e.\ $m = a+k$, $n = b-k$, with weight $\binom{a+k}{k}$. The sum
+is over $k\in\Z$ with $C(\cdot,k) = 0$ for $k<0$ (\lean{cbz}), which is the restriction $k\ge0$.
+
+\textbf{The junk-value trap} (\lonewarn{l01:warn:finsum}). \lean{subst f} is defined for every $f$; it is meaningful
+only if each coefficient sum is finite. \lean{subst_summand_finite} shows that this is the case when $f$ is
+lower-truncated in $z_2$ (with bound $B$): the summand vanishes for $k<0$ (binomial) and for $b-k<B$ (truncation),
+so only $0\le k\le b-B$ contribute. The general form with a coefficient function $c$ vanishing below \lean{lo} is
+used for the shifted sums in the next proof. Every theorem about \lean{subst} assumes \lean{IsBddBelow₂ f}.
+
+\textbf{Name.} The docstring calls \lean{subst} ``the $\iota_{z_2,z_0}$ map''; we avoid this name because it suggests
+an expansion of a rational function. What it is: the substitution $z_1\mapsto z_0+z_2$ with the FLM convention of
+expanding $(z_0+z_2)^m$ in nonnegative powers of $z_2$ (the region $|z_0|>|z_2|$).
+\end{dictionary}
+
+\begin{physics}
+Substituting $z_1 = z_0+z_2$ re-expresses a two-point operator product in terms of the centre $z_2$ and the
+separation $z_0$: this is the passage from $a(z_1)b(z_2)$ to the OPE $\sum_n(a_{(n)}b)(z_2)z_0^{-n-1}$, i.e.\ to the
+iterate $Y(Y(a,z_0)b,z_2)$. The expansion region $|z_0|>|z_2|$ is the one in which the OPE converges when
+both operators are near $z_2$ but the separation is not small compared with $z_2$; formally it is the region where
+$Y(u,z_0+z_2)$ makes sense as a series in nonnegative powers of $z_2$.
+\end{physics}
+
+\begin{status}
+Definition and finiteness lemma; the lemma is unconditional.
+\end{status}
+
+\begin{theorem}[Keystone multiplicativity of the substitution]\label{l01:thm:subst}
+If $f$ is lower-truncated in $z_2$, then
+\begin{equation*}
+  \big((z_1-z_2)f\big)(z_0+z_2,z_2) = z_0\cdot f(z_0+z_2,z_2),\qquad
+  \big((z_1-z_2)^Nf\big)(z_0+z_2,z_2) = z_0^N\cdot f(z_0+z_2,z_2)\quad(N\in\N).
+\end{equation*}
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak Substitution.lean}.
+\begin{leancode}
+theorem subst_mulBySub {f : FormalDist₂ 𝒲} (hf : IsBddBelow₂ f) :
+    subst (mulBySub f) = shiftZ₁ (subst f) := by
+
+theorem subst_mulBySubPow {f : FormalDist₂ 𝒲} (hf : IsBddBelow₂ f) (N : ℕ) :
+    subst (mulBySubPow N f) = (shiftZ₁^[N]) (subst f) := by
+\end{leancode}
+
+\begin{dictionary}
+On the right, the first variable of \lean{subst f} is $z_0$, so \lean{shiftZ₁} (multiplication by the first
+variable) is multiplication by $z_0$; \lean{shiftZ₁^[N]} is its $N$-fold iterate (\lean{f^[N]} is Lean's notation for
+function iteration). The hypothesis \lean{hf} makes both sides genuine finite sums (note that
+$(z_1-z_2)^Nf$ is again lower-truncated, Definition~\ref{l01:def:bddbelow}). This is ``substituting $z_1 = z_0+z_2$ turns
+$z_1-z_2$ into $z_0$'', which would be a tautology in a ring of functions and is here a coefficient identity.
+\end{dictionary}
+
+\begin{physics}
+The separation of the two insertion points is $z_0$: multiplying the product $a(z_1)b(z_2)$ by $(z_1-z_2)^N$ and then
+re-centring is the same as re-centring and multiplying the OPE by $z_0^N$, which removes the poles $z_0^{-n-1}$,
+$n<N$. This is the step that turns locality into weak associativity, and it is used in the proof of skew-symmetry
+(\leanpath{VOA/\allowbreak Core/\allowbreak Skew.lean}).
+\end{physics}
+
+\textbf{Proof on paper.} The $(a,b)$ coefficient of the left side is
+$\sum_kC(a+k,k)\big(f_{a-1+k,b-k}-f_{a+k,b-1-k}\big)$, and that of the right side is $\sum_kC(a-1+k,k)f_{a-1+k,b-k}$.
+Subtracting the right side from the first half of the left side gives
+$\sum_k\big(C(a+k,k)-C(a-1+k,k)\big)f_{a-1+k,b-k} = \sum_kC(a-1+k,k-1)f_{a-1+k,b-k}$ by Pascal's rule
+(Proposition~\ref{l01:prop:pascal}); shifting $k\mapsto k+1$ turns this into $\sum_kC(a+k,k)f_{a+k,b-1-k}$, the second half of
+the left side. All sums are finite by lower truncation, so the manipulations are legitimate. The power version is
+induction on $N$, using that $(z_1-z_2)^kf$ is lower-truncated. \qed
+
+\begin{example}[Substituting into $\iota_{12}(z_1-z_2)^{-1}$]\label{l01:ex:subst}
+Let $f = \iota_{12}(z_1-z_2)^{-1}$, lower-truncated with $B = 0$. Then
+$f(z_0+z_2,z_2)_{a,b} = \sum_{k=0}^{b}\binom{a+k}{k}[a+k = -1-(b-k)]$, which forces $a = -1-b$; for such $a$ the
+coefficient is $\sum_{k=0}^b\binom{k-b-1}{k} = \sum_{k=0}^b(-1)^k\binom bk = [b = 0]$ (Example~\ref{l01:ex:negbinom} with
+$r = b-k+1$). So $f(z_0+z_2,z_2) = z_0^{-1}$: substituting $z_1 = z_0+z_2$ into $1/(z_1-z_2)$ gives $1/z_0$, as it should.
+Consistently with the theorem, $(z_1-z_2)f = 1$ and $1(z_0+z_2,z_2) = 1 = z_0\cdot z_0^{-1}$.
+\end{example}
+
+\begin{status}
+Unconditional (the hypothesis is the meaningfulness condition); \texttt{\#print axioms} of
+\lean{VOA.subst_mulBySub} and \lean{VOA.subst_mulBySubPow} $=$ \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+%======================================================================
+\section{Three-variable distributions}\label{l01:sec:three}
+%======================================================================
+
+Dong's lemma (Chapter~\ref{ch:L03}, Theorem~\ref{l03:thm:dong}) is a statement about three fields $a(z_1)$, $b(z_2)$,
+$c(z_3)$ and their three pairwise localities. Its proof moves powers of $z_1-z_2$, $z_1-z_3$, $z_2-z_3$ around using
+the polynomial identity $z_2-z_3 = (z_2-z_1)+(z_1-z_3)$. The file \leanpath{FormalDist3.lean} provides exactly this.
+
+\begin{definition}[Three-variable distributions and pairwise differences]\label{l01:def:fd3}
+A three-variable distribution is $f:\Z^3\to\loneW$, $f = \sum f_{m,n,p}z_1^mz_2^nz_3^p$. Multiplication by $z_i$ shifts the
+$i$-th index by one, and multiplication by $z_i-z_j$ is the difference of two shifts; $(z_i-z_j)^N$ is its $N$-fold
+iterate.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalDist3.lean}.
+\begin{leancode}
+def FormalDist₃ (𝒲 : Type*) : Type _ := ℤ → ℤ → ℤ → 𝒲
+
+def shift₁ : FormalDist₃ 𝒲 →ₗ[ℂ] FormalDist₃ 𝒲 where
+  toFun f := fun m n p => f (m - 1) n p
+
+def mulBySub₁₂ : FormalDist₃ 𝒲 →ₗ[ℂ] FormalDist₃ 𝒲 := shift₁ - shift₂
+def mulBySub₁₃ : FormalDist₃ 𝒲 →ₗ[ℂ] FormalDist₃ 𝒲 := shift₁ - shift₃
+def mulBySub₂₃ : FormalDist₃ 𝒲 →ₗ[ℂ] FormalDist₃ 𝒲 := shift₂ - shift₃
+def mulBySub₂₁ : FormalDist₃ 𝒲 →ₗ[ℂ] FormalDist₃ 𝒲 := shift₂ - shift₁
+
+def mulBySub₁₂Pow : ℕ → (FormalDist₃ 𝒲 →ₗ[ℂ] FormalDist₃ 𝒲)
+  | 0 => LinearMap.id
+  | (N + 1) => mulBySub₁₂.comp (mulBySub₁₂Pow N)
+\end{leancode}
+
+\begin{dictionary}
+\lean{f m n p} is the coefficient of $z_1^mz_2^nz_3^p$. \lean{shift₂}, \lean{shift₃} are defined like \lean{shift₁} on the
+second and third index (omitted). The powers \lean{mulBySub₁₃Pow}, \lean{mulBySub₂₃Pow}, \lean{mulBySub₂₁Pow} are defined
+like \lean{mulBySub₁₂Pow}. The file proves \lean{mulBySub₁₂_apply : mulBySub₁₂ f m n p = f (m - 1) n p - f m (n - 1) p} and
+its analogues. Same as the textbook three-variable calculus (Kac §3.2, Lepowsky--Li §3.2).
+\end{dictionary}
+
+\begin{physics}
+Three-variable distributions are three-point operator products $a(z_1)b(z_2)c(z_3)$; the three differences are the
+three collision channels. Associativity of the OPE is the statement that the channels $z_1\to z_2$ and $z_2\to z_3$
+give consistent answers, and Dong's lemma is its first formal consequence.
+\end{physics}
+
+\begin{status}
+Definitions; no hypotheses.
+\end{status}
+
+\begin{theorem}[The binomial expansion of $(z_2-z_3)^N$]\label{l01:thm:fd3binom}
+On three-variable distributions, $z_2-z_3 = (z_2-z_1)+(z_1-z_3)$, $z_2-z_1 = -(z_1-z_2)$, and for every $N\in\N$
+\begin{equation*}
+  (z_2-z_3)^Nf = \sum_{i=0}^{N}\binom Ni\,(z_2-z_1)^i(z_1-z_3)^{N-i}f .
+\end{equation*}
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalDist3.lean}.
+\begin{leancode}
+theorem mulBySub₂₃_eq : (mulBySub₂₃ : FormalDist₃ 𝒲 →ₗ[ℂ] _) = mulBySub₂₁ + mulBySub₁₃ := by
+
+theorem mulBySub₂₁_eq_neg : (mulBySub₂₁ : FormalDist₃ 𝒲 →ₗ[ℂ] _) = -mulBySub₁₂ := by
+
+theorem mulBySub₂₃Pow_eq_sum (N : ℕ) (f : FormalDist₃ 𝒲) :
+    mulBySub₂₃Pow N f
+      = ∑ i ∈ Finset.range (N + 1),
+          (N.choose i) • mulBySub₂₁Pow i (mulBySub₁₃Pow (N - i) f) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{N.choose i} is the ordinary binomial coefficient (a natural number, acting by repeated addition). \lean{N - i} is
+truncated subtraction on $\N$, harmless because $i\le N$ in the range. The identity is an identity of linear maps
+applied to $f$; it rests on the fact that all shift operators commute, so that the binomial theorem holds in the
+commutative subalgebra they generate (the file proves \lean{mulBySub₂₁_comm_mulBySub₁₃}). No hypotheses.
+\end{dictionary}
+
+\begin{physics}
+In Dong's lemma one must show that $(z_2-z_3)^{M}$ kills $[(a_{(k)}b)(z_2),c(z_3)]$. Writing $z_2-z_3$ as
+$(z_2-z_1)+(z_1-z_3)$ and expanding distributes the factor between the channels in which $a$ is close to $b$ and in
+which $a$ is close to $c$; each term is killed by one of the given localities.
+\end{physics}
+
+\textbf{Proof on paper.} The operators of multiplication by $z_1,z_2,z_3$ commute, so the binomial theorem applies
+in the commutative algebra they generate. \qed
+
+\begin{status}
+Unconditional; axioms clean (checked for \lean{mulBySub₂₃_eq} and \lean{mulBySub₂₃Pow_eq_sum}). Used downstream in
+\leanpath{VOA/\allowbreak Core/\allowbreak Dong.lean} and \leanpath{VOA/\allowbreak Core/\allowbreak DongSuper.lean}.
+\end{status}
+
+%======================================================================
+\section{Four-variable distributions and the double-delta calculus}\label{l01:sec:four}
+%======================================================================
+
+The last four files build a four-variable calculus intended for the proof of Li's local-system theorem: a set of
+mutually local fields on a space $W$ generates a vertex algebra whose vertex operator is
+\begin{equation*}
+  Y_W(a(z),z_0)\,b(z) = \Res_{z_1}\Big(z_0^{-1}\delta\Big(\frac{z_1-z}{z_0}\Big)a(z_1)b(z) -
+  z_0^{-1}\delta\Big(\frac{z-z_1}{-z_0}\Big)b(z)a(z_1)\Big).
+\end{equation*}
+To prove that two such induced vertex operators are again local one needs to apply \emph{two} such delta kernels,
+sharing the base variable $z$, and to move powers of differences through the resulting double residue. We present
+the layer completely, but we warn at the outset (\lonewarn{l01:warn:shiftfinite}) that at this commit the layer is not
+used by any other file of the library, and that its main theorem carries a finiteness hypothesis that has not yet been
+discharged for the intended payloads.
+
+\subsection{Four-variable distributions, residues and Fubini}
+
+\begin{definition}[Four-variable distributions, differences, residues]\label{l01:def:fd4}
+A four-variable distribution is $f:\Z^4\to W$, $f = \sum f_{i,j,k,l}z_1^iz_2^jz_3^kz_4^l$. For each pair $i<j$ there is
+multiplication by $z_i-z_j$ and its powers. For each coordinate (resp.\ pair of coordinates) there is a residue,
+the coefficient at exponent $-1$ (resp.\ $(-1,-1)$), which is a three- (resp.\ two-)variable distribution in the
+remaining coordinates, in their original order.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalDist4.lean}.
+\begin{leancode}
+def FormalDist₄ (W : Type*) : Type _ := ℤ → ℤ → ℤ → ℤ → W
+
+def mulBySub₁₂ : FormalDist₄ W →ₗ[ℂ] FormalDist₄ W := shift₁ - shift₂
+
+def mulBySub₃₄ : FormalDist₄ W →ₗ[ℂ] FormalDist₄ W := shift₃ - shift₄
+
+def mulBySub₁₂Pow (N : ℕ) : FormalDist₄ W →ₗ[ℂ] FormalDist₄ W := mulBySub₁₂ ^ N
+
+def res₁ : FormalDist₄ W →ₗ[ℂ] FormalDist₃ W where
+  toFun f := fun j k l => f (-1) j k l
+
+def res₁₂ : FormalDist₄ W →ₗ[ℂ] FormalDist₂ W where
+  toFun f := fun k l => f (-1) (-1) k l
+\end{leancode}
+
+\begin{dictionary}
+These live in the namespace \lean{VOA.FormalDist₄}, so \lean{FormalDist₄.mulBySub₁₂} is distinct from the three-variable
+\lean{VOA.mulBySub₁₂} of Definition~\ref{l01:def:fd3}. All six differences \lean{mulBySub₁₂}, \dots, \lean{mulBySub₃₄}, all six
+powers, the four single residues \lean{res₁}--\lean{res₄} and the six double residues \lean{res₁₂}--\lean{res₃₄} are defined in the
+same way (we show representatives). Here powers are monoid powers \lean{mulBySub₁₂ ^ N} in the algebra of linear
+endomorphisms, rather than the recursion used for two and three variables; the file proves the recursion
+\lean{mulBySub₁₂Pow_succ}. Residues are pure coefficient extraction and need no finiteness.
+\end{dictionary}
+
+\begin{physics}
+Four-point configurations: two field insertions $x_1,x_2$ that will be contracted (integrated) and two relative
+coordinates $z_{o_1},z_{o_2}$ that remain; the residues are the contour integrals over $x_1$ and $x_2$.
+\end{physics}
+
+\begin{status}
+Definitions; linearity by \lean{rfl}. No hypotheses.
+\end{status}
+
+\begin{definition}[Coefficientwise finite families and their sums]\label{l01:def:coeffsum}
+A family $(F_a)_{a\in I}$ of four-variable distributions is \emph{coefficientwise finite} if for every multi-index the set
+of $a$ with nonzero coefficient is finite; a two-parameter family $(F_{a,b})$ is \emph{jointly coefficientwise finite} if
+for every multi-index the set of pairs $(a,b)$ with nonzero coefficient is finite. The (iterated) coefficientwise sums
+are $\big(\sum_aF_a\big)_{ijkl} = \sum_a(F_a)_{ijkl}$ and $\sum_a\sum_bF_{a,b}$.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalDist4.lean}.
+\begin{leancode}
+def CoeffFinite {ι : Type v} (F : ι → FormalDist₄ W) : Prop :=
+  ∀ i j k l, (Function.support fun a => F a i j k l).Finite
+
+def CoeffJointFinite {ι : Type v} {κ : Type w} (F : ι → κ → FormalDist₄ W) : Prop :=
+  ∀ i j k l, (Function.support fun p : ι × κ => F p.1 p.2 i j k l).Finite
+
+noncomputable def coeffFinsum {ι : Type v} (F : ι → FormalDist₄ W) : FormalDist₄ W :=
+  fun i j k l => ∑ᶠ a, F a i j k l
+
+noncomputable def coeffFinsum₂ {ι : Type v} {κ : Type w} (F : ι → κ → FormalDist₄ W) :
+    FormalDist₄ W := coeffFinsum fun a => coeffFinsum (F a)
+\end{leancode}
+
+\begin{dictionary}
+\lean{ι × κ} is the product type; \lean{p.1}, \lean{p.2} its components. Unlike \lean{algSum}
+(Definition~\ref{l01:def:algsum}), \lean{coeffFinsum} does \emph{not} take a finiteness proof as an argument: it is
+defined for all families and returns the junk value on infinite supports (\lonewarn{l01:warn:finsum}); the predicates
+\lean{CoeffFinite} and \lean{CoeffJointFinite} are carried separately by the theorems. The file also proves that residues
+commute with these sums (\lean{res₁_coeffFinsum_apply} etc.); those lemmas are definitional and carry an \emph{unused}
+finiteness hypothesis (named \lean{_hF}), kept, according to the file, so that callers retain the certificate.
+\end{dictionary}
+
+\begin{physics}
+Bookkeeping for sums over intermediate modes, which in a mode computation of a four-point function are finite on
+each state.
+\end{physics}
+
+\begin{status}
+Definitions.
+\end{status}
+
+\begin{theorem}[Fubini for algebraic sums]\label{l01:thm:fubini}
+If the doubly indexed family $(F_{a,b})$ in an abelian group has finite joint support, then
+$\sum_b\sum_aF_{a,b} = \sum_a\sum_bF_{a,b}$. Iterated sums are invariant under reindexing both variables by
+bijections. Consequently coefficientwise iterated sums of a jointly coefficientwise finite family may be exchanged.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalDist4.lean}.
+\begin{leancode}
+theorem finsum_finsum_comm_of_joint_finite {ι : Type v} {κ : Type w}
+    (F : ι → κ → W)
+    (hF : (Function.support fun p : ι × κ => F p.1 p.2).Finite) :
+    (∑ᶠ b, ∑ᶠ a, F a b) = ∑ᶠ a, ∑ᶠ b, F a b := by
+
+theorem finsum_finsum_reindex {ι ι' : Type v} {κ κ' : Type w}
+    (eι : ι ≃ ι') (eκ : κ ≃ κ') (F : ι' → κ' → W) :
+    (∑ᶠ a, ∑ᶠ b, F (eι a) (eκ b)) = ∑ᶠ a', ∑ᶠ b', F a' b' := by
+
+theorem coeffFinsum₂_comm {ι : Type v} {κ : Type w}
+    (F : ι → κ → FormalDist₄ W) (hF : CoeffJointFinite F) :
+    coeffFinsum₂ F = coeffFinsum₂ (fun b a => F a b) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{ι ≃ ι'} is a bijection (an equivalence of types). The reindexing lemma needs no finiteness: \lean{finsum} is
+invariant under bijections even in the junk case. The exchange lemma needs \emph{joint} finiteness, and this
+hypothesis is genuinely necessary, not an artefact of Lean (see the warning below).
+\end{dictionary}
+
+\begin{physics}
+Exchanging the order of two contour integrals, $\oint_{x_1}\oint_{x_2} = \oint_{x_2}\oint_{x_1}$, is legitimate only when the
+integrand has no singularity that one contour must cross; formally, when only finitely many intermediate modes
+contribute jointly.
+\end{physics}
+
+\textbf{Proof on paper.} With finite joint support $S\subseteq I\times K$, both iterated sums equal $\sum_{(a,b)\in S}F_{a,b}$. \qed
+
+\begin{warning}\label{l01:warn:fubini}
+\textbf{Why joint finiteness and not just finiteness of each inner sum.} On $\N\times\N$ let $F_{a,b} = [a = b]-[a = b+1]$.
+For each $a$, $b\mapsto F_{a,b}$ has finite support and $\sum_bF_{a,b} = [a = 0]$; so $\sum_a\sum_bF_{a,b} = 1$. For each
+$b$, $\sum_aF_{a,b} = 1-1 = 0$; so $\sum_b\sum_aF_{a,b} = 0$. All inner and outer sums here are genuine finite sums, yet the
+two iterated sums differ. The joint support (the two diagonals) is infinite. The library's insistence on
+\lean{CoeffJointFinite} and on \lean{DoubleResidueFinite} below is therefore mathematically necessary.
+\end{warning}
+
+\begin{status}
+Unconditional; axioms clean (checked for \lean{finsum_finsum_comm_of_joint_finite} and \lean{coeffFinsum₂_comm}).
+\end{status}
+
+\subsection{The single and double delta kernels}
+
+\begin{definition}[Orientations, single and double delta kernels]\label{l01:def:singledelta}
+There are two \emph{orientations}, $+$ and $-$. For an orientation $o$, the three-variable kernel
+$\Delta_o(x,z_b,z_o)$ has coefficient of $x^{s}z_b^{\beta}z_o^{r}$ equal to the coefficient of $x^sz_b^\beta$ in
+$\iota_o(x-z_b)^{-r-1}$, where $\iota_+ = \iota_{x,z_b}$ and $\iota_- = \iota_{z_b,x}$. Thus
+\begin{align*}
+  \Delta_+ &= z_o^{-1}\delta\Big(\frac{x-z_b}{z_o}\Big)\ \text{expanded in nonnegative powers of }z_b,\\
+  \Delta_- &= z_o^{-1}\delta\Big(\frac{x-z_b}{z_o}\Big)\ \text{expanded in nonnegative powers of }x .
+\end{align*}
+For orientations $o_1,o_2$ the \emph{double delta kernel} is the product sharing the base variable $z_b$:
+\begin{equation*}
+  K_{o_1o_2}(x_1,x_2,z_{o_1},z_{o_2};z_b) := \Delta_{o_1}(x_1,z_b,z_{o_1})\,\Delta_{o_2}(x_2,z_b,z_{o_2}),
+\end{equation*}
+a four-variable distribution in $(x_1,x_2,z_{o_1},z_{o_2})$ whose coefficients are one-variable series in $z_b$.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalDist4Delta.lean}.
+\begin{leancode}
+inductive Orientation
+  | pos
+  | neg
+  deriving DecidableEq
+
+noncomputable def singleDelta (o : Orientation) : FormalDist₃ ℂ
+  | source, base, outer => match o with
+    | .pos => expandPos (-outer - 1) source base
+    | .neg => expandNeg (-outer - 1) source base
+
+noncomputable def doubleDelta (o₁ o₂ : Orientation) : FormalDist₄ (FormalDist ℂ) :=
+  fun source₁ source₂ outer₁ outer₂ base => ∑ᶠ split : ℤ,
+    singleDelta o₁ source₁ split outer₁ *
+      singleDelta o₂ source₂ (base - split) outer₂
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Decoding \lean{singleDelta}.} The three indices are (source $s$, base $\beta$, outer $r$): exponents of $x$, $z_b$, $z_o$.
+The value is the $(s,\beta)$ coefficient of $\iota(x-z_b)^{-r-1}$ (Definition~\ref{l01:def:expand}). Summing over $r$:
+$\sum_rz_o^{r}(x-z_b)^{-r-1} = \sum_nz_o^{-n-1}(x-z_b)^{n}$ ($n = -r-1$) $= z_o^{-1}\delta((x-z_b)/z_o)$, so the kernel is the
+FLM delta function in the stated expansion. One checks that the $-$ orientation is the second FLM term: with the binomial
+convention (expansion in nonnegative powers of the second variable),
+$z_0^{-1}\delta((z-x)/(-z_0)) = \sum_n(-1)^nz_0^{-n-1}(z-x)^n$ with $(z-x)^n$ expanded in nonnegative powers of $x$, and
+$(-1)^n(z-x)^n$ so expanded is $\iota_{z,x}(x-z)^n$; hence $z_0^{-1}\delta((z-x)/(-z_0)) = \sum_nz_0^{-n-1}\iota_{z,x}(x-z)^n$, which
+is $\Delta_-$ with base $z_b = z$.
+
+\textbf{Decoding \lean{doubleDelta}.} \lean{FormalDist₄ (FormalDist ℂ)}: four explicit indices
+$(s_1,s_2,r_1,r_2)$ and a fifth, \lean{base}, for the $z_b$-series. The value is the $z_b^{\text{base}}$ coefficient of the product
+$\Delta_{o_1}\Delta_{o_2}$, a convolution in $z_b$ over \lean{split}. It is a genuine finite sum: the first factor vanishes
+unless $\text{split} = -r_1-1-s_1$ (antidiagonal support), proved as \lean{singleDelta_convolution_finite}. The four
+choices of $(o_1,o_2)$ are the PP/PN/NP/NN cases of the file header.
+\end{dictionary}
+
+\begin{physics}
+$z_0^{-1}\delta((z_1-z_2)/z_0)$ implements the change of variables $z_1 = z_2+z_0$ inside a contour integral: it is the
+kernel that converts the product $a(z_1)b(z_2)$ into the OPE in the relative coordinate $z_0$. The two orientations
+are the two radial orderings $a(z_1)b(z_2)$ and $b(z_2)a(z_1)$ that appear, with a relative sign, in the definition of
+the induced vertex operator $Y_W$; the double kernel performs two such re-centrings around the same base point,
+as needed for the three-point configuration $a_1(x_1)\,b(z_b)\,a_2(x_2)$.
+\end{physics}
+
+\begin{status}
+Definitions.
+\end{status}
+
+\begin{proposition}[Support and the defining relation of the single kernel]\label{l01:prop:singledelta}
+$\Delta_o$ is supported on $s+\beta = -r-1$; the convolution defining $K_{o_1o_2}$ has finitely many terms for each
+coefficient; and $(x-z_b)\Delta_o = z_o\Delta_o$ (on the support of the delta function, $x-z_b = z_o$).
+\end{proposition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalDist4Delta.lean}.
+\begin{leancode}
+theorem singleDelta_eq_zero_off_diag (o : Orientation) (source base outer : ℤ)
+    (h : source + base ≠ -outer - 1) : singleDelta o source base outer = 0 := by
+
+theorem singleDelta_convolution_finite (o₁ o₂ : Orientation)
+    (source₁ source₂ outer₁ outer₂ base : ℤ) :
+    (Function.support fun split : ℤ =>
+      singleDelta o₁ source₁ split outer₁ *
+        singleDelta o₂ source₂ (base - split) outer₂).Finite := by
+
+theorem singleDelta_relation (o : Orientation) (source base outer : ℤ) :
+    singleDelta o (source - 1) base outer - singleDelta o source (base - 1) outer =
+      singleDelta o source base (outer - 1) := by
+\end{leancode}
+
+\begin{dictionary}
+In \lean{singleDelta_relation}, the left side is the coefficient of $(x-z_b)\Delta_o$ (shift in $x$ minus shift in $z_b$) and
+the right side that of $z_o\Delta_o$ (shift in $z_o$). It is Proposition~\ref{l01:prop:mulexpand} with $n = -r-1$.
+\end{dictionary}
+
+\begin{physics}
+The delta function enforces momentum conservation in the relative coordinate: $x = z_b+z_o$.
+\end{physics}
+
+\textbf{Proof on paper.} Proposition~\ref{l01:prop:expandvals}(b) and Proposition~\ref{l01:prop:mulexpand}. \qed
+
+\begin{status}
+Unconditional.
+\end{status}
+
+\begin{theorem}[Outer-to-inner transport]\label{l01:thm:outerinner}
+For all orientations $o_1,o_2$ and $N\in\N$,
+\begin{equation*}
+  (z_{o_1}-z_{o_2})^N\,K_{o_1o_2} = (x_1-x_2)^N\,K_{o_1o_2}.
+\end{equation*}
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalDist4Delta.lean}.
+\begin{leancode}
+theorem mulBySub₁₂_comm_mulBySub₃₄ :
+    Commute
+      (FormalDist₄.mulBySub₁₂ : FormalDist₄ (FormalDist ℂ) →ₗ[ℂ] _)
+      (FormalDist₄.mulBySub₃₄ : FormalDist₄ (FormalDist ℂ) →ₗ[ℂ] _) := by
+
+theorem mulBySub₃₄_doubleDelta (o₁ o₂ : Orientation) :
+    FormalDist₄.mulBySub₃₄ (doubleDelta o₁ o₂) =
+      FormalDist₄.mulBySub₁₂ (doubleDelta o₁ o₂) := by
+
+theorem mulBySub₃₄Pow_doubleDelta (o₁ o₂ : Orientation) (N : ℕ) :
+    FormalDist₄.mulBySub₃₄Pow N (doubleDelta o₁ o₂) =
+      FormalDist₄.mulBySub₁₂Pow N (doubleDelta o₁ o₂) := by
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Which variables.} The four explicit coordinates of \lean{doubleDelta} are $(s_1,s_2,r_1,r_2)$, i.e.\ $(x_1,x_2,z_{o_1},z_{o_2})$.
+So \lean{mulBySub₃₄} is $z_{o_1}-z_{o_2}$ and \lean{mulBySub₁₂} is $x_1-x_2$. An earlier file header stated the identity as
+``$(z_3-z_0)^NK = (z_1-z_4)^NK$'', in a variable naming taken from Li's paper; the current header writes
+``$(z_3-z_4)^NK = (z_1-z_2)^NK$'' with $(z_1,z_2,z_3,z_4) = (\text{source}_1,\text{source}_2,\text{outer}_1,\text{outer}_2)$, which
+matches the Lean coordinates. It is the same statement.
+\lean{Commute A B} means $AB = BA$. No hypotheses; valid uniformly in the four orientations.
+\end{dictionary}
+
+\begin{physics}
+On the support of the kernel $x_i = z_b+z_{o_i}$, so $x_1-x_2 = z_{o_1}-z_{o_2}$: the separation of the two original
+insertion points equals the separation of their relative coordinates. This is the identity that transfers locality of
+$a_1,a_2$ to locality of the induced vertex operators.
+\end{physics}
+
+\textbf{Proof on paper.} By Proposition~\ref{l01:prop:singledelta},
+$z_{o_1}\Delta_1\Delta_2 - z_{o_2}\Delta_1\Delta_2 = ((x_1-z_b)\Delta_1)\Delta_2-\Delta_1((x_2-z_b)\Delta_2) = (x_1-x_2)\Delta_1\Delta_2$, the two
+$z_b$-terms cancelling. Coefficientwise the cancellation is an index shift in the convolution variable \lean{split}, legitimate
+because all convolution sums are finite. The power version follows by induction, using that the two difference
+operators commute. \qed
+
+\begin{status}
+Unconditional; \texttt{\#print axioms} of \lean{mulBySub₃₄_doubleDelta} and \lean{mulBySub₃₄Pow_doubleDelta} $=$
+\lean{[propext, Classical.choice, Quot.sound]} (also printed by the file's own audit section).
+\end{status}
+
+\subsection{Contraction: the semantic interface}
+
+\begin{definition}[Single contraction and residue substitution]\label{l01:def:contraction}
+For an orientation $o$ and $r,k\in\Z$ let $\gamma_o(r,k)$ be the coefficient of $\Delta_o$ at $(s,\beta,r) = (-r-k-1,k,r)$. For a
+two-variable payload $f(x,z_b)$, the \emph{single contraction} is
+$\big(\Res_x\Delta_o(x,z_b,z_o)f(x,z_b)\big)$, whose $(r,\beta')$ coefficient is
+$\sum_k\gamma_o(r,k)\,f_{r+k,\beta'-k}$ (\emph{residue substitution}).
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalDist4DeltaContract.lean}.
+\begin{leancode}
+noncomputable def contractionCoeff (o : Orientation) (outer k : ℤ) : ℂ :=
+  singleDelta o (-outer - k - 1) k outer
+
+noncomputable def contractionKernel (o : Orientation) : FormalDist₄ ℂ :=
+  fun outer baseOut source baseIn =>
+    singleDelta o (-source - 1) (baseOut - baseIn) outer
+
+noncomputable def singleContractSummand (o : Orientation) (f : FormalDist₂ W)
+    (outer baseOut k : ℤ) : W :=
+  contractionKernel o outer baseOut (outer + k) (baseOut - k) •
+    f (outer + k) (baseOut - k)
+
+noncomputable def singleDeltaContract (o : Orientation) (f : FormalDist₂ W) :
+    FormalDist₂ W :=
+  fun outer baseOut => ∑ᶠ k : ℤ, singleContractSummand o f outer baseOut k
+
+noncomputable def residueSubst (o : Orientation) (f : FormalDist₂ W) : FormalDist₂ W :=
+  fun outer baseOut => ∑ᶠ k : ℤ,
+    contractionCoeff o outer k • f (outer + k) (baseOut - k)
+\end{leancode}
+
+\begin{dictionary}
+\textbf{The matrix of the contraction.} \lean{contractionKernel o r β' s β} is the coefficient with which the input
+coefficient $f_{s,\beta}$ contributes to the output coefficient $(r,\beta')$: pairing $x^{s}$ in $f$ with $x^{-s-1}$ in the
+kernel (the residue in $x$) and $z_b^{\beta}$ in $f$ with $z_b^{\beta'-\beta}$ in the kernel (the product in $z_b$). It is
+supported on the ``residue graph'' $s = r+(\beta'-\beta)$, parametrised by $k = \beta'-\beta$; on it the coefficient is
+\lean{contractionCoeff o r k}.
+
+\textbf{Junk values.} \lean{singleDeltaContract} and \lean{residueSubst} are \lean{finsum}s over $k\in\Z$ and are meaningful only
+when finitely many $k$ contribute. For $o = +$, $\gamma_+(r,k) = (-1)^k\binom{-r-1}{k} = \binom{r+k}{k}$ for $k\ge0$ and $0$ for
+$k<0$ (\lean{contractionCoeff_pos_eq_zero_of_neg}), so \lean{residueSubst .pos} has exactly the coefficient formula of
+\lean{subst} (Definition~\ref{l01:def:subst}) and is meaningful on payloads lower-truncated in $z_b$. For $o = -$, $\gamma_-(r,k)=0$
+unless $k\le-r-1$, i.e.\ unless the source exponent $r+k$ is $\le-1$ (\lean{contractionCoeff_neg_eq_zero_of_gt}).
+
+\textbf{Design decision recorded in the file.} The header insists that the contraction coefficient be \emph{derived} from
+\lean{singleDelta}, not postulated by a separate binomial formula, and two regression checks pin values for the negative
+orientation (\lean{contractionCoeff_neg_zero_neg_one}, \lean{contractionCoeff_neg_neg_one_zero}); the second docstring says it is
+the value ``where the discarded binomial interface incorrectly returned zero''. See the warning below.
+\end{dictionary}
+
+\begin{physics}
+$\Res_x z_o^{-1}\delta((x-z_b)/z_o)\,f(x,z_b)$ is ``$f(z_b+z_o,z_b)$'': the contour integral over $x$ against the delta kernel
+re-centres the insertion point at $z_b$ with separation $z_o$. It is the formal version of Taylor-expanding a field
+around a nearby point, $a(z_b+z_o) = e^{z_o\partial}a(z_b)$, in the orientation $+$.
+\end{physics}
+
+\begin{status}
+Definitions.
+\end{status}
+
+\begin{proposition}[The contraction is the residue substitution; support and regression values]\label{l01:prop:contraction}
+For every payload $f$ and orientation $o$, the single contraction equals the residue substitution. The kernel vanishes off
+the residue graph; $\gamma_+(r,k) = 0$ for $k<0$; $\gamma_-(r,k) = 0$ for $k>-r-1$; and $\gamma_-(0,-1) = -1$, $\gamma_-(-1,0) = 1$.
+\end{proposition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalDist4DeltaContract.lean}.
+\begin{leancode}
+theorem singleDeltaContract_eq_residueSubst (o : Orientation) (f : FormalDist₂ W) :
+    singleDeltaContract o f = residueSubst o f := by
+
+theorem contractionKernel_eq_zero_off_graph (o : Orientation)
+    (outer baseOut source baseIn : ℤ)
+    (h : source ≠ outer + (baseOut - baseIn)) :
+    contractionKernel o outer baseOut source baseIn = 0 := by
+
+theorem contractionCoeff_pos_eq_zero_of_neg (outer : ℤ) {k : ℤ} (hk : k < 0) :
+    contractionCoeff .pos outer k = 0 := by
+
+theorem contractionCoeff_neg_eq_zero_of_gt (outer : ℤ) {k : ℤ}
+    (hk : -outer - 1 < k) : contractionCoeff .neg outer k = 0 := by
+
+theorem contractionCoeff_neg_zero_neg_one : contractionCoeff .neg 0 (-1) = -1 := by
+
+theorem contractionCoeff_neg_neg_one_zero : contractionCoeff .neg (-1) 0 = 1 := by
+\end{leancode}
+
+\begin{dictionary}
+The first identity holds summand by summand (no finiteness needed, since both sides are \lean{finsum}s of the same family).
+The regression values by hand: $\gamma_-(0,-1)$ is the coefficient of $x^{0}z_b^{-1}$ in $\iota_{z_b,x}(x-z_b)^{-1} =
+-\sum_{a\ge0}x^az_b^{-1-a}$, i.e.\ $-1$; and $\gamma_-(-1,0)$ is the coefficient of $x^0z_b^0$ in $\iota_{z_b,x}(x-z_b)^{0} = 1$.
+\end{dictionary}
+
+\begin{physics}
+Technical: it identifies the abstract contraction with the explicit re-centring formula and fixes the two
+orientation conventions by explicit values, the formal analogue of checking a sign convention on the simplest
+correlator.
+\end{physics}
+
+\textbf{Proof on paper.} Reparametrise the summation by $k$; the support statements are those of
+Proposition~\ref{l01:prop:expandvals}(b); the values are computed above. \qed
+
+\begin{status}
+Unconditional; axioms clean (checked for \lean{singleDeltaContract_eq_residueSubst} and both regression values).
+\end{status}
+
+\begin{warning}\label{l01:warn:binomialinterface}
+\textbf{A corrected mistake: the negative orientation is not ``the positive binomial with a different index''.} The header
+of \leanpath{FormalDist4DeltaContract.lean} records that an earlier interface computed the negative-orientation contraction
+coefficient by reusing the positive-expansion binomial formula, and that it returned $0$ at $(r,k) = (-1,0)$, where the
+correct value is $1$. The present interface derives every coefficient from \lean{singleDelta}, and
+\lean{contractionCoeff_neg_neg_one_zero} is the regression certificate. The lesson for the reader: the two expansions of
+$(x-z_b)^n$ are supported in \emph{opposite} half-planes of exponents (Proposition~\ref{l01:prop:expandvals}(b)), so no
+reindexing of one formula produces the other.
+\end{warning}
+
+\begin{definition}[Double contraction and double residue]\label{l01:def:kernelcontract}
+Consider a kernel and a payload
+\begin{equation*}
+  K\in\C[[z_b^{\pm1}]][[x_1^{\pm1},x_2^{\pm1},z_{o_1}^{\pm1},z_{o_2}^{\pm1}]],\qquad
+  f\in W[[x_1^{\pm1},z_b^{\pm1},x_2^{\pm1}]]
+\end{equation*}
+(coordinates in this order). The \emph{double contraction} in the order $(1,2)$ is
+\begin{equation*}
+  \big(\Res_{x_1}\Res_{x_2}K\,f\big)_{r_1,\beta',r_2} = \sum_{s_1}\sum_{s_2}\sum_{\beta}
+  K_{-s_1-1,\,-s_2-1,\,r_1,\,r_2}(\beta'-\beta)\;f_{s_1,\beta,s_2},
+\end{equation*}
+an element of $W[[z_{o_1}^{\pm1},z_b^{\pm1},z_{o_2}^{\pm1}]]$, and in the order $(2,1)$ with the outer two sums exchanged. For the
+double delta kernel the corresponding \emph{double residue} is
+$\sum_{k_1}\sum_{k_2}\gamma_{o_1}(r_1,k_1)\gamma_{o_2}(r_2,k_2)\,f_{r_1+k_1,\;\beta'-k_1-k_2,\;r_2+k_2}$, in either order.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalDist4DeltaContract.lean}.
+\begin{leancode}
+noncomputable def kernelContractSummand (K : FormalDist₄ (FormalDist ℂ))
+    (f : FormalDist₃ W) (outer₁ baseOut outer₂ source₁ source₂ baseIn : ℤ) : W :=
+  K (-source₁ - 1) (-source₂ - 1) outer₁ outer₂ (baseOut - baseIn) •
+    f source₁ baseIn source₂
+
+noncomputable def kernelContract₁₂ (K : FormalDist₄ (FormalDist ℂ))
+    (f : FormalDist₃ W) : FormalDist₃ W :=
+  fun outer₁ baseOut outer₂ => ∑ᶠ source₁ : ℤ, ∑ᶠ source₂ : ℤ, ∑ᶠ baseIn : ℤ,
+    kernelContractSummand K f outer₁ baseOut outer₂ source₁ source₂ baseIn
+
+noncomputable def kernelContract₂₁ (K : FormalDist₄ (FormalDist ℂ))
+    (f : FormalDist₃ W) : FormalDist₃ W :=
+  fun outer₁ baseOut outer₂ => ∑ᶠ source₂ : ℤ, ∑ᶠ source₁ : ℤ, ∑ᶠ baseIn : ℤ,
+    kernelContractSummand K f outer₁ baseOut outer₂ source₁ source₂ baseIn
+
+noncomputable def doubleResidueSummand (o₁ o₂ : Orientation) (f : FormalDist₃ W)
+    (outer₁ baseOut outer₂ k₁ k₂ : ℤ) : W :=
+  (contractionCoeff o₁ outer₁ k₁ * contractionCoeff o₂ outer₂ k₂) •
+    f (outer₁ + k₁) (baseOut - k₁ - k₂) (outer₂ + k₂)
+
+def DoubleResidueFinite (o₁ o₂ : Orientation) (f : FormalDist₃ W) : Prop :=
+  ∀ outer₁ baseOut outer₂,
+    (Function.support fun k : ℤ × ℤ =>
+      doubleResidueSummand o₁ o₂ f outer₁ baseOut outer₂ k.1 k.2).Finite
+
+noncomputable def doubleResidue₁₂ (o₁ o₂ : Orientation) (f : FormalDist₃ W) :
+    FormalDist₃ W :=
+  fun outer₁ baseOut outer₂ => ∑ᶠ k₁ : ℤ, ∑ᶠ k₂ : ℤ,
+    doubleResidueSummand o₁ o₂ f outer₁ baseOut outer₂ k₁ k₂
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Coordinates.} Payload \lean{f source₁ baseIn source₂}: the base variable is in the \emph{middle}. Output
+\lean{(outer₁, baseOut, outer₂)}: again base in the middle. So on payloads and outputs (both \lean{FormalDist₃}),
+the three-variable \lean{mulBySub₁₃} of Definition~\ref{l01:def:fd3} is $x_1-x_2$, respectively $z_{o_1}-z_{o_2}$.
+\lean{doubleResidue₂₁} is \lean{doubleResidue₁₂} with the two sums exchanged (omitted).
+\textbf{Junk values.} All five constructions are iterated \lean{finsum}s with no finiteness built in.
+\lean{DoubleResidueFinite} is the joint-finiteness predicate for the double residue (cf.\ \lonewarn{l01:warn:fubini}).
+\end{dictionary}
+
+\begin{physics}
+The double contraction is the pair of contour integrals $\oint_{x_1}\oint_{x_2}$ that converts a configuration
+$a_1(x_1)\,b(z_b)\,a_2(x_2)$ into the relative coordinates of $x_1,x_2$ with respect to $z_b$; the two orders of integration
+are the two orders in which the induced vertex operators $Y_W(a_1,z_{o_1})$, $Y_W(a_2,z_{o_2})$ act.
+\end{physics}
+
+\begin{status}
+Definitions.
+\end{status}
+
+\begin{theorem}[Double contraction of the double delta]\label{l01:thm:kernelresidue}
+For all orientations and every payload $f$: (a) on the residue graph the double kernel factorises,
+$K_{o_1o_2}(-r_1-k_1-1,-r_2-k_2-1,r_1,r_2)(k_1+k_2) = \gamma_{o_1}(r_1,k_1)\gamma_{o_2}(r_2,k_2)$, and it vanishes off the total
+antidiagonal; (b) the double contraction of $K_{o_1o_2}$ in either order is the double residue in the same order;
+(c) if $f$ satisfies \lean{DoubleResidueFinite}, the two orders agree; (d) the outer-to-inner transport survives contraction:
+$\Res\Res\big((z_{o_1}-z_{o_2})^NK\big)f = \Res\Res\big((x_1-x_2)^NK\big)f$ for every $f$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalDist4DeltaContract.lean}.
+\begin{leancode}
+theorem doubleDelta_on_residue_graph (o₁ o₂ : Orientation)
+    (outer₁ outer₂ k₁ k₂ : ℤ) :
+    doubleDelta o₁ o₂
+        (-outer₁ - k₁ - 1) (-outer₂ - k₂ - 1) outer₁ outer₂ (k₁ + k₂) =
+      contractionCoeff o₁ outer₁ k₁ * contractionCoeff o₂ outer₂ k₂ := by
+
+theorem doubleDelta_eq_zero_off_total_diag (o₁ o₂ : Orientation)
+    (source₁ source₂ outer₁ outer₂ base : ℤ)
+    (h : source₁ + source₂ + base ≠ -outer₁ - outer₂ - 2) :
+    doubleDelta o₁ o₂ source₁ source₂ outer₁ outer₂ base = 0 := by
+
+theorem kernelContract₁₂_doubleDelta (o₁ o₂ : Orientation) (f : FormalDist₃ W) :
+    kernelContract₁₂ (doubleDelta o₁ o₂) f = doubleResidue₁₂ o₁ o₂ f := by
+
+theorem kernelContract₂₁_doubleDelta (o₁ o₂ : Orientation) (f : FormalDist₃ W) :
+    kernelContract₂₁ (doubleDelta o₁ o₂) f = doubleResidue₂₁ o₁ o₂ f := by
+
+theorem doubleResidue_comm (o₁ o₂ : Orientation) (f : FormalDist₃ W)
+    (hfin : DoubleResidueFinite o₁ o₂ f) :
+    doubleResidue₁₂ o₁ o₂ f = doubleResidue₂₁ o₁ o₂ f := by
+
+theorem kernelContract_doubleDelta_comm (o₁ o₂ : Orientation) (f : FormalDist₃ W)
+    (hfin : DoubleResidueFinite o₁ o₂ f) :
+    kernelContract₁₂ (doubleDelta o₁ o₂) f =
+      kernelContract₂₁ (doubleDelta o₁ o₂) f := by
+
+theorem kernelContract₁₂_doubleDelta_transport (o₁ o₂ : Orientation) (N : ℕ)
+    (f : FormalDist₃ W) :
+    kernelContract₁₂ (FormalDist₄.mulBySub₃₄Pow N (doubleDelta o₁ o₂)) f =
+      kernelContract₁₂ (FormalDist₄.mulBySub₁₂Pow N (doubleDelta o₁ o₂)) f :=
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Hypotheses.} (a), (b), (d) have none. That (b) needs no finiteness is correct and not a junk-value accident: the
+innermost sum over $\beta$ (\lean{baseIn}) has at most one nonzero term by the total-antidiagonal support, and the remaining
+double sum is a bijective reindexing $(s_1,s_2)\mapsto(s_1-r_1,s_2-r_2)$ of the double-residue sum, and \lean{finsum} is
+invariant under bijections in all cases. (c) needs \lean{DoubleResidueFinite}, exactly the joint finiteness of
+\lonewarn{l01:warn:fubini}. (d) is Theorem~\ref{l01:thm:outerinner} with the equal kernels contracted against the same $f$; its
+proof is the one-line term \lean{kernelContract₁₂_congr (mulBySub₃₄Pow_doubleDelta o₁ o₂ N) f}. The file also proves the
+$(2,1)$-order analogue of (d). \textbf{Strength.} (d) is weaker than what is needed for locality, because the difference
+operators still act on the kernel; moving them onto the output and onto the payload is the next theorem, and that is
+where a finiteness hypothesis enters.
+\end{dictionary}
+
+\begin{physics}
+(c) is the formal statement that the two contour integrals may be performed in either order when only finitely many
+intermediate states contribute, which is the case for genuine field configurations (energy bounded below). (d) says that
+before any integration is performed the separation of the relative coordinates equals the separation of the original
+points.
+\end{physics}
+
+\textbf{Proof on paper.} (a) The convolution over \lean{split} has the single term $\text{split} = k_1$. (b) As explained in
+the dictionary. (c) Theorem~\ref{l01:thm:fubini}. (d) Theorem~\ref{l01:thm:outerinner}. \qed
+
+\begin{status}
+Unconditional for (a), (b), (d); (c) conditional on \lean{DoubleResidueFinite}. Axioms clean (checked for
+\lean{doubleDelta_on_residue_graph}, \lean{kernelContract₁₂_doubleDelta}, \lean{doubleResidue_comm},
+\lean{kernelContract_doubleDelta_comm}, \lean{kernelContract₁₂_doubleDelta_transport}).
+\end{status}
+
+\subsection{Moving difference powers through the contraction; locality transport}
+
+\begin{definition}[Shift-stable joint finiteness]\label{l01:def:shiftfinite}
+A three-index family $F_{s_1,s_2,\beta}$ is \emph{triple-finite} if its support in $\Z^3$ is finite. For a kernel $K$, a payload
+$f$ and integer offsets $d_1,d_2,d_3,d_4,e_1,e_3$, the \emph{shifted contraction summand} at output $(r_1,\beta',r_2)$ is
+\begin{equation*}
+  (s_1,s_2,\beta)\longmapsto K_{-s_1-1-d_1,\;-s_2-1-d_2,\;r_1-d_3,\;r_2-d_4}(\beta'-\beta)\cdot f_{s_1-e_1,\;\beta,\;s_2-e_3}.
+\end{equation*}
+The pair $(K,f)$ is \emph{shift-contract-finite} if for all offsets and all outputs this family is triple-finite.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalDist4DeltaSupport.lean}.
+\begin{leancode}
+def TripleFinite (F : ℤ → ℤ → ℤ → W) : Prop :=
+  (Function.support fun t : ℤ × (ℤ × ℤ) => F t.1 t.2.1 t.2.2).Finite
+
+noncomputable def shiftedContractSummand (K : FormalDist₄ (FormalDist ℂ))
+    (f : FormalDist₃ W) (d₁ d₂ d₃ d₄ e₁ e₃ : ℤ)
+    (outer₁ baseOut outer₂ source₁ source₂ baseIn : ℤ) : W :=
+  K (-source₁ - 1 - d₁) (-source₂ - 1 - d₂)
+      (outer₁ - d₃) (outer₂ - d₄) (baseOut - baseIn) •
+    f (source₁ - e₁) baseIn (source₂ - e₃)
+
+def ShiftContractFinite (K : FormalDist₄ (FormalDist ℂ)) (f : FormalDist₃ W) : Prop :=
+  ∀ d₁ d₂ d₃ d₄ e₁ e₃ outer₁ baseOut outer₂,
+    TripleFinite (shiftedContractSummand K f d₁ d₂ d₃ d₄ e₁ e₃
+      outer₁ baseOut outer₂)
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Why this shape.} Each application of a difference operator replaces a summand by a difference of two shifted
+summands; distributing the subtraction through a nested \lean{finsum} is legitimate only if both pieces have finite
+support (\lean{tripleFinsum_sub_distrib}). Requiring finiteness for \emph{all} offsets makes the predicate stable under
+any number of such steps: the file proves that it survives \lean{FormalDist₄.mulBySub₃₄}, \lean{FormalDist₄.mulBySub₁₂} on the
+kernel and \lean{mulBySub₁₃} on the payload, and their powers. The file header says plainly that this is ``stronger than any
+single displayed identity, but exactly stable''.
+
+\textbf{Could it be vacuous?} No. If $f$ has finite support, then for every offset the summand vanishes outside a
+translate of $\operatorname{supp}f$, so $(K,f)$ is shift-contract-finite for \emph{every} $K$; so the predicate has many
+nonzero instances. \textbf{Is it satisfied by the intended payloads?} That is the open question of
+\lonewarn{l01:warn:shiftfinite}.
+\end{dictionary}
+
+\begin{physics}
+The requirement that, on fixed external states, only finitely many intermediate modes contribute to a double contour
+integral, uniformly under the finite shifts produced by multiplying by polynomials in the coordinates. In a CFT this
+follows from the energy bound; formally it must be derived from lower truncation of the fields.
+\end{physics}
+
+\begin{status}
+Definitions.
+\end{status}
+
+\begin{theorem}[Difference powers through contraction; locality transport]\label{l01:thm:transport}
+Suppose $(K,f)$ is shift-contract-finite. Then for every $N\in\N$
+\begin{align*}
+  \Res\Res\big((z_{o_1}-z_{o_2})^NK\big)f &= (z_{o_1}-z_{o_2})^N\,\Res\Res\,Kf,\\
+  \Res\Res\big((x_1-x_2)^NK\big)f &= \Res\Res\,K\big((x_1-x_2)^Nf\big).
+\end{align*}
+Consequently, for the double delta kernel $K = K_{o_1o_2}$ with $(K,f)$ shift-contract-finite,
+$(z_{o_1}-z_{o_2})^N\Res\Res\,Kf = \Res\Res\,K(x_1-x_2)^Nf$, and if $(x_1-x_2)^Nf = 0$ then
+$(z_{o_1}-z_{o_2})^N\Res\Res\,Kf = 0$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalDist4DeltaSupport.lean}.
+\begin{leancode}
+theorem kernelContract₁₂_mulBySub₃₄Pow (K : FormalDist₄ (FormalDist ℂ))
+    (f : FormalDist₃ W) (hfin : ShiftContractFinite K f) (N : ℕ) :
+    kernelContract₁₂ (FormalDist₄.mulBySub₃₄Pow N K) f =
+      mulBySub₁₃Pow N (kernelContract₁₂ K f) := by
+
+theorem kernelContract₁₂_mulBySub₁₂Pow (K : FormalDist₄ (FormalDist ℂ))
+    (f : FormalDist₃ W) (hfin : ShiftContractFinite K f) (N : ℕ) :
+    kernelContract₁₂ (FormalDist₄.mulBySub₁₂Pow N K) f =
+      kernelContract₁₂ K (mulBySub₁₃Pow N f) := by
+
+theorem kernelContract₁₂_doubleDelta_locality_transport (o₁ o₂ : Orientation)
+    (N : ℕ) (f : FormalDist₃ W)
+    (hfin : ShiftContractFinite (doubleDelta o₁ o₂) f) :
+    mulBySub₁₃Pow N (kernelContract₁₂ (doubleDelta o₁ o₂) f) =
+      kernelContract₁₂ (doubleDelta o₁ o₂) (mulBySub₁₃Pow N f) := by
+
+theorem kernelContract₁₂_doubleDelta_eq_zero_of_local (o₁ o₂ : Orientation)
+    (N : ℕ) (f : FormalDist₃ W)
+    (hfin : ShiftContractFinite (doubleDelta o₁ o₂) f)
+    (hlocal : mulBySub₁₃Pow N f = 0) :
+    mulBySub₁₃Pow N (kernelContract₁₂ (doubleDelta o₁ o₂) f) = 0 := by
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Decoding.} \lean{FormalDist₄.mulBySub₃₄Pow N K} is $(z_{o_1}-z_{o_2})^NK$ and \lean{FormalDist₄.mulBySub₁₂Pow N K} is
+$(x_1-x_2)^NK$ on the kernel. The unqualified \lean{mulBySub₁₃Pow N} is the \emph{three-variable} operator of
+Definition~\ref{l01:def:fd3}, acting on the output (where it is $(z_{o_1}-z_{o_2})^N$, first minus third coordinate) or on the
+payload (where it is $(x_1-x_2)^N$). With these readings the four statements are the displayed ones.
+
+\textbf{Every hypothesis.} \lean{hfin : ShiftContractFinite ...} is the support interface of
+Definition~\ref{l01:def:shiftfinite}; \lean{hlocal} is locality of the payload in $(x_1,x_2)$. The first two theorems hold for an
+arbitrary kernel $K$; the last two for the double delta, combining them with Theorem~\ref{l01:thm:kernelresidue}(d).
+
+\textbf{Same, stronger, weaker?} As a formal statement, the last theorem is the locality-transport step of Li's proof
+(the file header calls the target ``Li's local-system theorem (Proposition 3.2.9)'') with its finiteness
+requirement made explicit. It is \emph{conditional}: it says nothing about payloads for which \lean{hfin} fails, and at this
+commit no theorem establishes \lean{hfin} for payloads built from fields.
+\end{dictionary}
+
+\begin{physics}
+If $a_1(x_1)$ and $a_2(x_2)$ are mutually local, then after re-centring both at $z_b$ the induced fields
+$Y_W(a_1,z_{o_1})$ and $Y_W(a_2,z_{o_2})$ are mutually local in the relative coordinates: locality is preserved by the
+passage from fields on $W$ to the vertex operators of the local system. Physically: the OPE of two chiral fields
+defines new chiral fields that are again local with respect to each other, the operator-algebra version of the
+statement that composite operators of a local theory are local.
+\end{physics}
+
+\textbf{Proof on paper.} For one factor $z_{o_1}-z_{o_2}$ on the kernel: the contraction of $(z_{o_1}-z_{o_2})K$ is a nested sum of
+differences of two shifted summands; by \lean{hfin} both pieces have finite joint support, so the sum splits, and each
+piece is the contraction of $K$ evaluated at a shifted output: together, $(z_{o_1}-z_{o_2})$ applied to the output. For one
+factor $x_1-x_2$ on the kernel: shifting the kernel's source index by one is the same as shifting the payload's source index
+by one after the bijective reindexing $s_i\mapsto s_i+1$ of the summation variable (residue pairing:
+$\Res_x(xK)f = \Res_xK(xf)$); again \lean{hfin} legitimises splitting the difference. Induction on $N$ using the stability of
+\lean{hfin}. The locality transport is the chain: output power $=$ (first theorem) contraction of the outer power on $K$
+$=$ (Theorem~\ref{l01:thm:outerinner}) contraction of the inner power on $K$ $=$ (second theorem) contraction of $K$ against the
+power on the payload. If the latter vanishes, the contraction of $K$ against $0$ is $0$. \qed
+
+\begin{status}
+\textbf{Conditional} on \lean{ShiftContractFinite (doubleDelta o₁ o₂) f} (and, for the last theorem, on payload locality, which
+is the intended input). \texttt{\#print axioms} for all four $=$ \lean{[propext, Classical.choice, Quot.sound]}.
+\end{status}
+
+\begin{warning}\label{l01:warn:shiftfinite}
+\textbf{The four-variable layer is not yet connected to the rest of the library.} When this chapter was first written, and still in the released source as far as point (1) is concerned (re-checked by a grep of the imports for this edition):
+(1) no file outside \leanpath{VOA/\allowbreak Foundations/\allowbreak FormalDist4*.lean} imports \leanpath{FormalDist4.lean},
+\leanpath{FormalDist4Delta.lean}, \leanpath{FormalDist4DeltaContract.lean} or \leanpath{FormalDist4DeltaSupport.lean}, except
+the umbrella \leanpath{VOA/\allowbreak Foundations.lean}; in particular \leanpath{VOA/\allowbreak Core/\allowbreak LocalSystem.lean}
+does not use them, although the header of \leanpath{FormalDist4.lean} then said the layer is ``needed in the proof of Li's
+local-system theorem''. (The current header says more cautiously that its purpose is to ``support the double-residue
+calculation in Li's local-system theorem''; a grep of the current tree confirms that only the umbrella imports the layer.) (2) The hypothesis \lean{ShiftContractFinite (doubleDelta o₁ o₂) f} has not been derived, for any
+payload built from fields, from lower truncation (\lean{IsField}). The project's internal records of the local-system
+route list exactly this support derivation as the next obligation, and claim neither it nor the induced locality of regular
+fields. A rough count suggests that for the $(+,+)$ orientation the
+summand is supported where $s_i\ge r_i$ and $\beta = \beta'-(s_1-r_1)-(s_2-r_2)$, so joint finiteness requires the payload to
+vanish for very negative base exponent $\beta$, which is the kind of truncation fields provide; this is a heuristic, not a
+proof. A referee should therefore treat Theorem~\ref{l01:thm:transport} as a correct conditional theorem whose hypothesis is
+an open input, and the whole layer as infrastructure for future work.
+\end{warning}
+
+%======================================================================
+\section{Verification record}\label{l01:sec:verification}
+%======================================================================
+
+\paragraph{What was run.} (This run dates from the first writing of the chapter, at an earlier commit, and was not re-run for this edition.) The tree at that commit was already built (the \texttt{.olean} files of all thirteen
+modules are present and the working tree has no modifications under \texttt{VOA/}); we did \emph{not} re-run the aggregate
+\texttt{lake build} for this chapter. We created a scratch file outside the repository importing
+\lean{VOA.Foundations.FormalDist4DeltaSupport} and \lean{VOA.Foundations.IotaZExpansion} (which together import all
+thirteen modules) and containing sixty \texttt{\#print axioms} commands, and ran it with the audit-safe invocation required
+by the project (a bare \texttt{lake env lean} may drop \texttt{maxSynthPendingDepth}):
+\begin{plaincode}
+export PATH="$HOME/.elan/bin:$PATH"
+lake env lean -DmaxSynthPendingDepth=3 Axioms.lean
+\end{plaincode}
+
+\paragraph{Result.} All sixty declarations report exactly the three standard axioms; there is no \lean{sorryAx} and no
+\lean{VOA.pbw}. A representative excerpt of the output:
+\begin{plaincode}
+'VOA.local_iff_deltaSum' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.expand_jump' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.negPowJump_eq_deltaDeriv' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.cbz_vandermonde' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.expandPos_mul' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.eq_zero_of_mulBySubPow_of_bddBelow' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.subst_mulBySub' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.localε_of_car' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.mulBySub₂₃Pow_eq_sum' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.FormalDist₄Delta.mulBySub₃₄Pow_doubleDelta' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.FormalDist₄Delta.kernelContract₁₂_doubleDelta_eq_zero_of_local' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+\end{plaincode}
+The full list of the sixty names checked is:
+\begin{plaincode}
+VOA.mode_eq_res, VOA.res_deriv, VOA.deriv_lpSMul, VOA.res_lpSMul_deriv, VOA.algSum_add,
+VOA.algSum_smul, VOA.mulBySub_deltaDeriv, VOA.mulBySubPow_deltaDeriv_self,
+VOA.mulBySubPow_deltaDeriv_eq_zero, VOA.eq_deltaDeriv_zero_of_mulBySub_eq_zero,
+VOA.exists_deltaSum_of_mulBySubPow_eq_zero, VOA.local_iff_deltaSum,
+VOA.local_of_bracketDist_eq_zero, VOA.bracketDistε_one, VOA.localε_one_iff, VOA.bracketDistε_swap,
+VOA.localε_iff_deltaSum, VOA.localε_of_car, VOA.localε_neg_one_of_anticomm, VOA.gBinom_neg_one,
+VOA.expand_jump, VOA.mulBySub_deltaForm, VOA.eq_zero_of_mulBySub_of_bddBelow,
+VOA.eq_zero_of_mulBySubPow_of_bddBelow, VOA.gBinom_succ_pascal, VOA.cbz_pascal,
+VOA.subst_summand_finite, VOA.subst_mulBySub, VOA.subst_mulBySubPow, VOA.mulBySub_expandPos,
+VOA.mulBySub_expandNeg, VOA.negPowJump_eq_deltaDeriv, VOA.cbz_vandermonde, VOA.expandPos_mul,
+VOA.expandNeg_mul, VOA.expandPos_zero, VOA.expandNeg_zero, VOA.mulBySubPow_expandPos,
+VOA.mulBySubPow_expandPos_neg, VOA.mulBySubPow_negPowJump_eq_zero, VOA.negPowJump_deltaSum,
+VOA.mulBySub₂₃_eq, VOA.mulBySub₂₃Pow_eq_sum, VOA.FormalDist₄.finsum_finsum_comm_of_joint_finite,
+VOA.FormalDist₄.coeffFinsum₂_comm, VOA.FormalDist₄Delta.singleDelta_relation,
+VOA.FormalDist₄Delta.mulBySub₃₄_doubleDelta, VOA.FormalDist₄Delta.mulBySub₃₄Pow_doubleDelta,
+VOA.FormalDist₄Delta.singleDeltaContract_eq_residueSubst,
+VOA.FormalDist₄Delta.doubleDelta_on_residue_graph,
+VOA.FormalDist₄Delta.contractionCoeff_neg_zero_neg_one,
+VOA.FormalDist₄Delta.contractionCoeff_neg_neg_one_zero,
+VOA.FormalDist₄Delta.kernelContract₁₂_doubleDelta, VOA.FormalDist₄Delta.doubleResidue_comm,
+VOA.FormalDist₄Delta.kernelContract_doubleDelta_comm,
+VOA.FormalDist₄Delta.kernelContract₁₂_doubleDelta_transport,
+VOA.FormalDist₄Delta.kernelContract₁₂_mulBySub₃₄Pow,
+VOA.FormalDist₄Delta.kernelContract₁₂_mulBySub₁₂Pow,
+VOA.FormalDist₄Delta.kernelContract₁₂_doubleDelta_locality_transport,
+VOA.FormalDist₄Delta.kernelContract₁₂_doubleDelta_eq_zero_of_local
+\end{plaincode}
+
+\paragraph{Release audit 2026-10-27.} \texttt{Notes/\allowbreak Textbook/\allowbreak referee/\allowbreak RELEASE\_AUDIT\_FOUNDATIONS.md}.
+For this chapter its relevant findings are: \lean{Local} is used verbatim in the standard sense (it checked the convention
+of \lean{mulBySub}), and the structures \lean{PreVertexAlgebra}/\lean{BarePreVA} that use \lean{Local} as an axiom lack
+translation covariance, so they are not vertex algebras in the standard sense (Chapter~\ref{ch:L03}); after the audit
+the library gave them these names (formerly \lean{VertexAlgebra} and \lean{BareVA}) and reserved \lean{VertexAlgebra} for
+the translation-covariant notion.
+
+\paragraph{Reading the result honestly.} A clean \texttt{\#print axioms} does not report explicit hypotheses. The
+theorems of this chapter with genuine hypotheses are: those carrying a Laurent-polynomial hypothesis
+(\lean{deriv_lpSMul}, \lean{res_lpSMul_deriv}), a lower-truncation hypothesis (\lean{eq_zero_of_mulBySubPow_of_bddBelow},
+\lean{subst_mulBySub}, \lean{subst_mulBySubPow}), a joint-finiteness hypothesis (\lean{finsum_finsum_comm_of_joint_finite},
+\lean{coeffFinsum₂_comm}, \lean{doubleResidue_comm}, \lean{kernelContract_doubleDelta_comm}), and the shift-stable
+support hypothesis \lean{ShiftContractFinite} (the four theorems of Theorem~\ref{l01:thm:transport}). The first three
+kinds are meaningfulness or genuine mathematical conditions that are part of the textbook statements. The last is an
+open input at this commit (\lonewarn{l01:warn:shiftfinite}).
+
+\paragraph{Downstream use (checked by \texttt{grep} at this commit).} \lean{Local} is the locality axiom of
+\lean{PreVertexAlgebra}, \lean{BarePreVA} and \lean{VertexOperatorAlgebra}; \lean{eq_zero_of_mulBySubPow_of_bddBelow} is used in nine files of \texttt{VOA/Core} (weak associativity, Goddard
+uniqueness, reconstruction); \lean{subst_mulBySubPow} in \leanpath{Core/\allowbreak Skew.lean}; \lean{mulBySub₂₃Pow_eq_sum} in
+\leanpath{Core/\allowbreak Dong.lean} and \leanpath{Core/\allowbreak DongSuper.lean}; \lean{expandPos_mul} in
+\leanpath{Examples/\allowbreak LatticeA1.lean}; \lean{localε_of_car} in three free-field example files; \lean{LaurentPoly} in
+\leanpath{Examples/\allowbreak VirasoroKacLaurent.lean}. Not used outside the thirteen files of this chapter: \lean{formalDelta}, \lean{delta₂},
+\lean{lpSMul} and its two theorems, \lean{binomialExpand}, \lean{algSum}, \lean{negPowJump_eq_deltaDeriv}, and the whole
+four-variable layer.
+
+\paragraph{Docstring discrepancies found while writing this chapter.}
+All but one of these have since been corrected in the source (a grep of the current tree finds none of (1), (3), (4), (5),
+(6), and only half of (2)); they are kept here as a record of what the first edition reported.
+(1) \leanpath{IotaZExpansion.lean} listed a lemma \lean{expandPos_mul_zero} that does not exist (Theorem~\ref{l01:thm:mult}).
+(2) \leanpath{IteratedLaurent.lean} described \lean{IsBddBelow₂} as the class $\mathcal W((z_1))((z_2))$; it is the larger class
+$\mathcal W[[z_1^{\pm1}]]((z_2))$ (Definition~\ref{l01:def:bddbelow}). The definition's docstring is now correct; the docstring
+of \lean{eq_zero_of_mulBySubPow_of_bddBelow} still says $\mathcal W((z_1))((z_2))$.
+(3) \leanpath{Expansion.lean} said the general-$n$ multiplicativity of the expansions is ``provided by
+\lean{subst_mulBySubPow}''; the multiplicativity of the expansions is \lean{expandPos_mul}/\lean{expandNeg_mul} in
+\leanpath{IotaZExpansion.lean}, while \lean{subst_mulBySubPow} is the multiplicativity of the substitution, a different
+statement.
+(4) The heuristic ``no finite-dimensional fermionic toy example'' in \leanpath{Locality.lean}
+(\lonewarn{l01:warn:finitefermion}).
+(5) \leanpath{FormalDist4.lean} said the layer is needed for Li's theorem, but it is not (yet) imported by
+\leanpath{Core/\allowbreak LocalSystem.lean} (\lonewarn{l01:warn:shiftfinite}).
+(6) \leanpath{FormalDist4Delta.lean} stated its central identity in variables $(z_3-z_0)^NK = (z_1-z_4)^NK$ that do not
+match the Lean coordinates; the Lean statement is $(z_{o_1}-z_{o_2})^NK = (x_1-x_2)^NK$ (Theorem~\ref{l01:thm:outerinner}).
+None of these affects the truth of any Lean statement.
+
+%======================================================================
+\section{Referee's checklist}\label{l01:sec:checklist}
+%======================================================================
+
+\begingroup\small
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.30\textwidth}>{\raggedright\arraybackslash}p{0.33\textwidth}>{\raggedright\arraybackslash}p{0.2\textwidth}>{\raggedright\arraybackslash}p{0.09\textwidth}}
+\toprule
+Lean declaration & Intended meaning & Hypotheses / status & Check\\
+\midrule\endhead
+\lean{FormalDist}, \lean{FormalDist₂} & $\loneW[[z^{\pm1}]]$, $\loneW[[z_1^{\pm1},z_2^{\pm1}]]$; no product & definition & Def.~\ref{l01:def:formaldist}, \ref{l01:def:formaldist2}\\
+\lean{mode} & $f_{(m)} = f_{-m-1}$ & definition; \textbf{key convention} & Def.~\ref{l01:def:mode}\\
+\lean{res}, \lean{deriv} & $\Res_z$, $\partial_z$ & definition & Def.~\ref{l01:def:mode}\\
+\lean{mode_eq_res}, \lean{res_deriv} & $f_{(m)} = \Res z^mf$; $\Res\partial f = 0$ & none; unconditional & Prop.~\ref{l01:prop:moderes}\\
+\lean{lpSMul} & Laurent polynomial times distribution & definition; junk value if $g$ infinite & Def.~\ref{l01:def:lpsmul}\\
+\lean{deriv_lpSMul}, \lean{res_lpSMul_deriv} & Leibniz; integration by parts & $g$ Laurent polynomial & Thm.~\ref{l01:thm:leibniz}, \ref{l01:thm:byparts}\\
+\lean{gBinom}, \lean{cbz}, \lean{negOnePow} & $\binom nk$, $n\in\Z$; $C(n,k) = 0$ for $k<0$; $(-1)^n$ & definition & Def.~\ref{l01:def:gbinom}\\
+\lean{cbz_vandermonde} & $\sum_iC(m,i)C(n,k-i) = C(m+n,k)$, all $m,n,k\in\Z$ & none; unconditional & Thm.~\ref{l01:thm:vandermonde}\\
+\lean{mulBySub}, \lean{mulBySubPow} & multiplication by $(z_1-z_2)^N$ & definition & Def.~\ref{l01:def:formaldist2}\\
+\lean{deltaDeriv}, \lean{cCoeff} & $c(z_2)\partial_{z_2}^j\delta(z_1,z_2)$ (plain $\partial^j$); $\Res_{z_1}(z_1-z_2)^jf$ & definition & Def.~\ref{l01:def:deltaderiv}\\
+\lean{local_iff_deltaSum} & $(z_1-z_2)^Nf = 0\iff f = \sum_{j<N}c^j\partial^j\delta$ (Gannon 5.1.2, Kac 2.3) & none; unconditional & Thm.~\ref{l01:thm:deltasum}\\
+\lean{expandPos}, \lean{expandNeg}, \lean{deltaForm} & $\iota_{z_1,z_2}$, $\iota_{z_2,z_1}$ of $(z_1-z_2)^n$; $\delta(z_1,z_2)$ & definition & Def.~\ref{l01:def:expand}\\
+\lean{expand_jump} & $\iota_{12}-\iota_{21}$ of $(z_1-z_2)^{-1}$ is $\delta$ & none; unconditional & Thm.~\ref{l01:thm:jump}\\
+\lean{negPowJump_}\allowbreak\lean{eq_deltaDeriv} & jump of $(z_1-z_2)^{-k-1}$ is $\partial^{(k)}\delta$ & none; unconditional & Thm.~\ref{l01:thm:alljump}\\
+\lean{expandPos_mul}, \lean{expandNeg_mul} & $\iota(z_1-z_2)^m\iota(z_1-z_2)^n = \iota(z_1-z_2)^{m+n}$ & none; \lean{convolPos} is the genuine product (paper) & Thm.~\ref{l01:thm:mult}\\
+\lean{bracketDist}, \lean{Local}, \lean{normalOrdered} & $[a(z_1),b(z_2)]$; mutual locality; ${:}a(z_1)b(z_2){:}$ & definition & Def.~\ref{l01:def:bracket}\\
+\lean{IsField}, \lean{nprodCoeff}, \lean{nprod} & field (lower truncation); same-variable ${:}a(z)b(z){:}$, the $(-1)$-st product & definition; \lean{∑ᶠ} finite because both arguments are fields & Def.~\ref{l01:def:field}\\
+\lean{localε_iff_}\allowbreak\lean{deltaSum}, \lean{localε_of_car} & super-locality; CAR/CCR $\Rightarrow$ local & none; unconditional & Thm.~\ref{l01:thm:epsdeltasum}, \ref{l01:thm:car}\\
+\lean{IsBddBelow₂} & lower truncation in $z_2$, uniform in $z_1$ & definition (weaker than $\loneW((z_1))((z_2))$) & Def.~\ref{l01:def:bddbelow}\\
+\lean{eq_zero_of_}\allowbreak\lean{mulBySubPow_of_bddBelow} & $z_1-z_2$ not a zero-divisor on lower-truncated series & lower truncation; unconditional & Thm.~\ref{l01:thm:cancel}\\
+\lean{subst}, \lean{subst_mulBySub(Pow)} & $f(z_0+z_2,z_2)$; $(z_1-z_2)\mapsto z_0$ & lower truncation; junk value otherwise & Def.~\ref{l01:def:subst}, Thm.~\ref{l01:thm:subst}\\
+\lean{mulBySub₂₃Pow_}\allowbreak\lean{eq_sum} & $(z_2-z_3)^N = \sum\binom Ni(z_2-z_1)^i(z_1-z_3)^{N-i}$ & none; unconditional & Thm.~\ref{l01:thm:fd3binom}\\
+\lean{finsum_finsum_}\allowbreak\lean{comm_of_joint_finite} & Fubini for algebraic sums & joint finite support (necessary) & Thm.~\ref{l01:thm:fubini}\\
+\lean{mulBySub₃₄Pow_}\allowbreak\lean{doubleDelta} & $(z_{o_1}-z_{o_2})^NK = (x_1-x_2)^NK$ & none; unconditional & Thm.~\ref{l01:thm:outerinner}\\
+\lean{kernelContract₁₂_}\allowbreak\lean{doubleDelta}, \lean{doubleResidue_comm} & contraction $=$ double residue; order exchange & none; \lean{DoubleResidueFinite} for exchange & Thm.~\ref{l01:thm:kernelresidue}\\
+\lean{kernelContract₁₂_}\allowbreak\lean{doubleDelta_}\allowbreak\lean{eq_zero_of_local} & locality transported through double delta & \textbf{conditional} on \lean{ShiftContractFinite} (open input); layer unused & Thm.~\ref{l01:thm:transport}, p.~\pageref{l01:warn:shiftfinite}\\
+\bottomrule
+\end{longtable}
+\endgroup
+
+%======================================================================
+\section{Notes and references}\label{l01:sec:notes}
+%======================================================================
+
+\textbf{Formal calculus.} The formal-distribution approach to vertex algebras, with the delta function, the two expansions
+and the structure theorem for local distributions, is developed in V.~G.~Kac, \emph{Vertex Algebras for Beginners},
+University Lecture Series 10, American Mathematical Society, second edition (1998), Chapters~1--2 (the structure theorem
+is his Theorem~2.3; Dong's lemma is Lemma~3.2; Goddard uniqueness and reconstruction are in Chapter~4). The same material
+in the language of fields and with geometric motivation is in E.~Frenkel and D.~Ben-Zvi, \emph{Vertex Algebras and
+Algebraic Curves}, Mathematical Surveys and Monographs 88, American Mathematical Society, second edition (2004),
+Chapter~1. The most thorough treatment of formal calculus, including the binomial convention, the three-term delta-function
+identity and the substitution $z_1\mapsto z_0+z_2$, is J.~Lepowsky and H.~Li, \emph{Introduction to Vertex Operator Algebras
+and Their Representations}, Progress in Mathematics 227, Birkh\"auser (2004), Chapter~2; locality, weak associativity and
+local systems are in Chapters~3 and~5 of the same book. The original source of the formal-variable calculus in this
+area is I.~Frenkel, J.~Lepowsky and A.~Meurman, \emph{Vertex Operator Algebras and the Monster}, Pure and Applied
+Mathematics 134, Academic Press (1988), Chapters~2 and~8.
+
+\textbf{The library's primary reference.} The docstrings of the files of this chapter follow T.~Gannon, \emph{Moonshine
+beyond the Monster: The Bridge Connecting Algebra, Modular Forms and Physics}, Cambridge University Press (2006),
+§5.1.2 (formal distributions, Paradoxes~5.1 and~5.2, the residue and integration by parts (5.1.3), the binomial
+convention (5.1.4), Proposition~5.1.2, normal ordering (5.1.6)).
+
+\textbf{Local systems.} H.~Li, ``Local systems of vertex operators, vertex superalgebras and modules'', \emph{Journal of
+Pure and Applied Algebra} 109 (1996), 143--195 (arXiv:hep-th/9406185), is the source of the construction that the
+four-variable layer of Section~\ref{l01:sec:four} is intended to formalise. Dong's lemma is due to C.~Dong; see Li's paper
+and Kac's book for proofs.
+
+\textbf{Physics.} Radial quantisation, the operator product expansion and the relation between OPEs and commutators
+are explained in P.~Di~Francesco, P.~Mathieu and D.~S\'en\'echal, \emph{Conformal Field Theory}, Springer (1997),
+Chapters~5--6, and in P.~Ginsparg, ``Applied conformal field theory'', in \emph{Fields, Strings and Critical Phenomena}
+(Les Houches 1988), North-Holland (1990), arXiv:hep-th/9108028. The free-fermion and $\beta\gamma$/$bc$ systems mentioned in
+Section~\ref{l01:sec:super} are standard; see J.~Polchinski, \emph{String Theory}, Vol.~1, Cambridge University Press (1998),
+Chapter~2.
+
+\textbf{Project records.} The trust model (no project axiom;
+\lean{VOA.pbw}, formerly a project axiom, is now a theorem and is not used here) is explained in
+Chapter~\ref{ch:01}. The status of the four-variable layer is the one stated in Warning~\ref{l01:warn:shiftfinite}.
+
+\endgroup

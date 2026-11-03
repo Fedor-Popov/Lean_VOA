@@ -1,0 +1,61 @@
+\chapter*{Preface}
+\addcontentsline{toc}{chapter}{Preface}
+This book is a self-contained account of the Lean~4 library \textsc{LeanVOA} (this release edition
+omits one chapter, on affine $\mathfrak{sl}_3$, which is in preparation): a
+formalization of the theory of vertex operator algebras that culminates in a machine-checked
+construction of the Moonshine module $\Vnat$ of Frenkel, Lepowsky and Meurman. It is written for a
+reader who is an advanced graduate student in mathematics or mathematical physics, who knows
+algebra and some representation theory, but who is neither an expert in vertex algebras nor a
+user of Lean.
+
+\paragraph{What the book is for.} A formal proof is only as good as its statement. A Lean theorem
+can be perfectly verified by the computer and still fail to say what its authors meant: a
+hypothesis may be too strong, a definition may be vacuous, a convention may have silently changed.
+The purpose of this book is to let a \emph{human referee} check, theorem by theorem, that the Lean
+statements are the mathematics we intended. For every definition and theorem we therefore print
+(i) the statement in ordinary mathematical language, (ii) the Lean declaration copied verbatim
+from the source, (iii) a \emph{fidelity check} that decodes the Lean statement and compares it with
+the mathematics, (iv) a proof explained on paper, and (v) the machine status of the result. Each
+chapter ends with a \emph{referee's checklist}. We do not explain how the Lean proofs are
+organised: the computer has checked them; the reader's job, and ours, is to check that what was
+checked is what we wanted.
+
+\paragraph{How the book is tied to the code.} This edition documents \bookrelease{} of the library (commit
+\texttt{\bookcommit}). The chapters do not repeat this: whenever a chapter speaks of ``the release'' or ``the released
+source'', it means this commit, and every check that was run at an earlier state of the library and not repeated for this
+edition is marked as such where it is reported. Every Lean file of the library is assigned to exactly one chapter of the full book (in this
+edition, files assigned to the chapters in preparation are not documented), and every quotation of Lean
+code in the book matches the source verbatim.
+
+\paragraph{The trust base.} Lean checks every proof against its kernel. The library uses only Lean's three
+standard axioms (\lean{propext}, \lean{Classical.choice}, \lean{Quot.sound}); it contains no project axiom.
+Until 19 October 2026 it contained one, \lean{VOA.pbw}, a
+Poincaré--Birkhoff--Witt statement for affine vacuum modules and induced modules; that declaration is now
+a theorem with the same name and statement (Chapter~\ref{ch:L02}). Some chapters still record, as history,
+which results used to depend on it; the construction of the Moonshine module never did. A clean axiom list
+does not make a theorem unconditional: \texttt{\#print axioms} does not report the explicit hypotheses of a
+theorem, so every status box of the book names them, and several headline results of Part~VI are
+conditional reductions to named, unproved inputs (Chapter~\ref{ch:01}, Section~\ref{ch01:sec:newstatus}).
+
+\paragraph{Defects found while writing the book.} Writing and refereeing the book was itself an audit
+of the library. Every defect it found in the Lean source (a vacuous hypothesis, an uninhabitable
+structure, a missing axiom field, a stale docstring) is reported in the chapter where it occurs,
+in a box headed ``Trap / dead end'', and collected, with its evidence, in the catalogue of dead ends,
+traps and documentation debt of Chapter~\ref{ch:15} (Sections~\ref{ch15:sec:deadends} and~\ref{ch15:sec:debt}). The book does not repair the library: it documents the release above
+as it is.
+
+\paragraph{Index.} The appendix ends with an index of every Lean declaration quoted here.
+
+\paragraph{Structure.} Part~I sets up formal calculus, the axioms of vertex algebras and their
+structure theory. Part~II treats the main families of examples and the rigidity programmes.
+Parts~III and~IV develop representation theory and modularity. Part~V covers super, logarithmic and
+unitary theories. Part~VI formalizes recent research: the Arakawa--Dai theorems on classical freeness,
+Huang's tensor categories, the Gannon--Rayhaun classification of central charge one, affine vertex
+algebras for every simple Lie algebra, and classical freeness for the Deligne exceptional series
+(Chapters~\ref{ch:L24}--\ref{ch:L27}): a proof for $A_2$, and for the other six types a conditional
+reduction whose remaining inputs are named; and the transfer of graded unitarity through the BRST coset
+(Chapters~\ref{ch:L28} and~\ref{ch:L29}), from the boundary admissible affine $\mathfrak{sl}_2$ to the minimal models
+$M(2,2n+1)$, a proved implication whose one hypothesis, graded unitarity of the affine algebra, is open. A chapter on
+affine $\mathfrak{sl}_3$ is in preparation. Part~VII constructs the Moonshine module. Part~VIII records how all of this was
+verified, every dead end met along the way, the numerical evidence, and the open problems. Chapter~\ref{ch:01},
+Section~\ref{ch01:sec:map}, gives a map of the book, chapter by chapter, with the status of each headline result.

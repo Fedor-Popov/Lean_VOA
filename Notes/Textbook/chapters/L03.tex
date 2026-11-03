@@ -1,0 +1,2889 @@
+\chapter[Vertex algebra axioms, Borcherds identity, reconstruction]{Vertex algebra axioms, the Borcherds identity, and reconstruction}\label{ch:L03}
+\begingroup\setlength{\emergencystretch}{3em}
+
+\providecommand{\lthreevac}{\mathbf{1}}
+\providecommand{\lthreeV}{\mathcal{V}}
+\providecommand{\lthreeY}{Y}
+\providecommand{\lthreeBL}{B_{\mathrm L}}
+\providecommand{\lthreeBR}{B_{\mathrm R}}
+\providecommand{\lthreeD}{\partial}
+\providecommand{\lthreeno}[1]{{:}#1{:}}
+
+This chapter documents the release of the LeanVOA library named in the front matter. Every Lean quotation below is checked by \texttt{scripts/textbook/sync.py}
+to occur verbatim (up to whitespace and comments) in the source files of that release. Checks that were run at an earlier state of the library and not re-run for this edition are marked as such. The chapter covers the twenty-seven files assigned to it in
+\texttt{Notes/Textbook/assignment.txt}, all in \leanpath{VOA/\allowbreak Core/}:
+\leanpath{BareVA}, \leanpath{VertexAlgebra}, \leanpath{VertexOperatorAlgebra}, \leanpath{Fields},
+\leanpath{Identities}, \leanpath{OPE}, \leanpath{Goddard}, \leanpath{Dong}, \leanpath{FieldOps},
+\leanpath{FieldCombinatorics}, \leanpath{Reconstruction}, \leanpath{BorcherdsIdentity},
+\leanpath{Borcherds}, \leanpath{Skew}, \leanpath{WeakAssoc}, \leanpath{SkewSymmetry},
+\leanpath{FLM}, \leanpath{Commutativity}, \leanpath{ReconstructionExistence},
+\leanpath{TensorFieldLift}, the five \leanpath{LocalSystem*} files, \leanpath{FieldProductIterate}
+and \leanpath{JacobiLocal} (each with suffix \texttt{.lean}).
+
+\section[What this chapter is about]{What this chapter is about, and what it found}\label{l03:sec:intro}
+
+Chapter~\ref{ch:01} stated the library's structures \lean{PreVertexAlgebra} (Gannon's axioms VA1--VA5 on a graded
+space, which, as this chapter shows, do \emph{not} make a vertex algebra in the standard sense; hence the prefix) and
+\lean{VertexOperatorAlgebra} (the Lepowsky--Li/FLM vertex operator algebra, or VOA, \emph{of CFT type}, the CFT-type
+layer over the general notion \lean{GradedVertexOperatorAlgebra}), and it stated the most important theorems about them --- the Borcherds identity,
+skew-symmetry, Goddard uniqueness, Dong's lemma, the reconstruction theorem --- with short proofs.
+Chapter~\ref{ch:L01} develops the formal calculus (formal distributions, the delta function,
+locality, the decomposition of a local distribution into derivatives of the delta function) on
+which all of this rests. The present chapter goes one level deeper. It has four jobs.
+
+\begin{enumerate}
+\item \textbf{Audit the axioms.} We compare the library's structures \lean{PreVertexAlgebra},
+  \lean{BarePreVA} and \lean{VertexOperatorAlgebra} with the textbook definitions of Borcherds,
+  Frenkel--Lepowsky--Meurman (FLM), Kac, Frenkel--Ben-Zvi and Lepowsky--Li, axiom by axiom:
+  is the translation operator part of the data or derived? is truncation required for all
+  pairs? is the Jacobi identity an axiom, and if not, is it proved in all indices?
+\item \textbf{Present the derivation of the Borcherds identity} from locality, step by step, as
+  the library actually carries it out: Goddard uniqueness, Dong's lemma, translation covariance,
+  the field $n$-th product theorem for $n\ge0$ and $n<0$, the iterate formula for all $\ell$,
+  and the Pascal-recursion argument that assembles the full three-index identity.
+\item \textbf{Present the further structure theory} proved in these files: skew-symmetry and the
+  weak-associativity argument behind it, the FLM associativity formula, commutative vertex
+  algebras, the operator-first reconstruction theorem, the tensor-product lift of fields, Li's
+  local systems of weak vertex operators (including a Borcherds identity for an arbitrary pair of
+  local fields on an arbitrary vector space), and the localisation of the first-order Jacobi
+  identity used in deformation theory.
+\item \textbf{Record precisely what is conditional, what is incomplete, and where the library's
+  documentation over-claims.}
+\end{enumerate}
+
+\begin{warning}[title={The main finding of this chapter: Gannon's axioms, \texttt{PreVertexAlgebra}, do not give a vertex algebra in the textbook sense}]
+The library's structure \lean{VOA.PreVertexAlgebra} transcribes Gannon's Definition 5.1.3(a): a
+graded space with a state--field map satisfying vacuum, creation, locality and truncation. It has
+\textbf{no translation-covariance axiom}. The textbook definitions (Kac, Frenkel--Ben-Zvi) include
+a translation operator $T$ with $[T,Y(u,z)] = \partial_zY(u,z)$ as part of the data; the
+FLM/Lepowsky--Li definitions take the Jacobi identity as an axiom, from which translation
+covariance follows. Without it, \emph{the Borcherds identity does not follow.} We exhibit in
+Section~\ref{l03:sec:counter} a three-dimensional graded space satisfying every field of
+\lean{PreVertexAlgebra} on which the Borcherds identity, skew-symmetry and the derivative property
+$Y(Tu,z) = \partial_zY(u,z)$ all fail. The counterexample was checked in Lean for this chapter, axiom-clean, and has since been
+vendored into the library as \lean{VOA.TranslationCovariantCounterexample.VA}, with
+\lean{not_isTranslationCovariant} and \lean{jacobi_fails} (file
+\leanpath{VOA/\allowbreak Core/\allowbreak TranslationCovariant.lean}).
+
+The library itself is consistent with this: every theorem that needs translation covariance
+(the Borcherds identity, skew-symmetry, the duality formulas, the commutative-algebra theorem) is
+stated for \lean{VertexOperatorAlgebra}, whose axiom (VOA3), $Y(L_{-1}v,z) = \partial_zY(v,z)$,
+supplies exactly the missing ingredient. What was wrong is \emph{documentation}: (i) an earlier
+docstring of \leanpath{VOA/\allowbreak Core/\allowbreak BareVA.lean} asserted that the axioms VA2--VA5 are
+``all the Borcherds/Jacobi derivation actually consumes'' and planned to restate the Borcherds chain
+over \lean{BarePreVA}; this is false, and the plan is a dead end unless a translation axiom is added.
+The current docstring has been corrected: it carries a \textbf{Warning} that VA2--VA5 alone do not
+imply the Borcherds/Jacobi identity, cites the counterexample of Section~\ref{l03:sec:counter}, and
+calls the restatement over \lean{BarePreVA} a dead end.
+(ii) An earlier version of the fidelity check of the vertex-algebra definition in Chapter~\ref{ch:01}
+called the library's definition ``stronger'' than Kac's and said that locality and Jacobi are equivalent
+``for vertex algebras'' (Chapter~\ref{ch:01} now corrects this); the first claim is incorrect (the two definitions are incomparable: the
+library's has an extra grading but lacks translation covariance), and the second holds only in the
+presence of translation covariance, hence for the library's VOAs but not for its
+\lean{PreVertexAlgebra}s. For VOAs, we show (on paper, Section~\ref{l03:sec:compare}) that the
+library's definition is exactly the Lepowsky--Li definition plus the CFT-type condition; only the direction
+``library VOA $\Rightarrow$ Lepowsky--Li VOA'' is machine-checked.
+
+The release audit of 2026-10-27 (\texttt{Notes/\allowbreak Textbook/\allowbreak referee/\allowbreak RELEASE\_AUDIT\_FOUNDATIONS.md},
+finding M-1) recompiled the counterexample and confirmed this finding. Its wording, which this chapter adopts: the
+library's \lean{VertexOperatorAlgebra} is the Lepowsky--Li/FLM VOA \textbf{of CFT type} ($V_0 = \C\lthreevac$,
+$V_n = 0$ for $n<0$, integer grading, finite-dimensional pieces), so every theorem about \lean{VertexOperatorAlgebra}
+is a theorem about VOAs of CFT type only; \lean{PreVertexAlgebra} and \lean{BarePreVA} are \textbf{not} vertex algebras
+in the standard sense, and the Borcherds identity, a theorem for \lean{VertexOperatorAlgebra}, fails for them. Where this
+chapter says ``vertex algebra in the library's sense'' or ``bare vertex algebra'' it means these weaker structures
+(``graded VA1--VA5 data''), never the textbook notion, and never the library's \lean{VertexAlgebra} described next.
+
+\textbf{The library's response: names that say what the structures are.} After this finding the library renamed its
+structures (28 October 2026). The structure transcribing Gannon's axioms, formerly called \lean{VertexAlgebra}, is now
+\lean{PreVertexAlgebra} (projection \lean{toPreVertexAlgebra}); its ungraded companion, formerly \lean{BareVA}, is
+\lean{BarePreVA}. The name \lean{VertexAlgebra} now denotes the genuine notion: a \lean{PreVertexAlgebra} together with
+the field \lean{translation_covariant}, which says $Y(Tu,z) = \partial_zY(u,z)$ for the intrinsic translation operator
+$Tu = u_{(-2)}\lthreevac$ (file \leanpath{VOA/\allowbreak Core/\allowbreak GenuineVertexAlgebra.lean}). On the conformal
+side there are two layers: \lean{GradedVertexOperatorAlgebra} extends \lean{PreVertexAlgebra} by a conformal vector,
+the axioms (VOA1)--(VOA3) and truncation from below ($V_n = 0$ for $n\ll0$), which is the FLM/Lepowsky--Li notion
+(written with locality in place of the Jacobi identity); \lean{VertexOperatorAlgebra} extends it by the two
+CFT-type fields \lean{vacuum_grade} and \lean{positivity}, i.e.\ (VOA4). Every VOA is a vertex algebra in the new sense,
+by \lean{VertexOperatorAlgebra.toVertexAlgebra}, whose covariance field is
+\lean{VertexOperatorAlgebra.isTranslationCovariant}. The structure theory of this chapter (Borcherds identity,
+skew-symmetry, FLM associativity, \dots) is proved for \lean{VertexOperatorAlgebra}; the library does not restate it
+for \lean{VertexAlgebra} or for \lean{GradedVertexOperatorAlgebra}.
+\end{warning}
+
+\textbf{How the chapter is organised.} Section~\ref{l03:sec:conventions} recalls the conventions
+(modes, locality, fields, normal ordering) in the form used below. Section~\ref{l03:sec:axioms}
+presents the three structures and Section~\ref{l03:sec:compare} compares them with the literature;
+Section~\ref{l03:sec:counter} gives the counterexample. Sections~\ref{l03:sec:vafacts}--\ref{l03:sec:dong}
+treat what holds at the level of the weak structures \lean{PreVertexAlgebra}/\lean{BarePreVA}: product fields, the operator product
+expansion, Goddard uniqueness and Dong's lemma. Section~\ref{l03:sec:cascade} is the
+``reconstruction cascade'' at the VOA level, Section~\ref{l03:sec:borcherds} the full Borcherds
+identity, Section~\ref{l03:sec:skew} skew-symmetry, Section~\ref{l03:sec:flm} the FLM associativity
+formula, and Section~\ref{l03:sec:comm} commutative vertex algebras.
+Sections~\ref{l03:sec:recon}--\ref{l03:sec:jacobilocal} treat the existence side: reconstruction,
+tensor lifts, local systems and the localised Jacobi identity. The chapter ends with the referee's
+checklist and the notes.
+
+\textbf{The logical skeleton in one paragraph.} At the bare level one has: (a) the iterated
+product $Y(u,z_1)Y(v,z_2)x$ lies in $V((z_1))((z_2))$, on which $z_1-z_2$ is not a zero divisor;
+(b) hence a field local with every $Y(b,\cdot)$ is determined by what it does to the vacuum
+(Goddard); (c) locality is preserved by all field products (Dong). At the VOA level one adds:
+(d) $Y(u,z)\lthreevac = e^{zT}u$ (from VOA3); then (e) every field product $Y(u,\cdot)_{(n)}Y(v,\cdot)$
+is local with all $Y(b,\cdot)$ by (c) and creates $u_{(n)}v$ by (d), so equals $Y(u_{(n)}v,\cdot)$
+by (b) --- this is the \emph{duality} or \emph{$n$-th product theorem}; (f) its $n\ge0$ case gives
+the commutator formula, its all-$n$ case gives the iterate formula, and a Pascal recursion glues
+these into the Borcherds identity; (g) skew-symmetry is again (b), applied to the field
+$v\mapsto e^{zT}Y(v,-z)u$, whose locality is the hard computation.
+
+%======================================================================
+\section{Conventions recalled}\label{l03:sec:conventions}
+%======================================================================
+
+We use the conventions of Chapter~\ref{ch:01} and Chapter~\ref{ch:L01} throughout. Since every
+fidelity check below depends on them, we restate the four that matter most.
+
+\textbf{Distributions are indexed by powers of $z$; modes by the shifted index.} A formal
+distribution with coefficients in a space $W$ is a function $f:\Z\to W$, read as
+$\sum_kf(k)z^k$ (\lean{VOA.FormalDist}, written \lean{W⟦z^±⟧}). The \emph{mode} is
+\lean{mode f n = f (-n - 1)}, so that for $f = Y(u,z) = \sum_nu_{(n)}z^{-n-1}$ one has
+\lean{mode (Y u) n} $=u_{(n)}$, while \lean{(Y u) k} is the coefficient of $z^k$, i.e.\
+$u_{(-k-1)}$. Both indexings occur in the statements below and we decode each occurrence. The
+$n$-th product is \lean{V.smul u n v := mode (V.Y u) n v} $=u_{(n)}v$ (the name \lean{smul} has
+nothing to do with scalar multiplication). The derivative is \lean{deriv f k = (k+1) • f (k+1)},
+the coefficientwise $\partial_z$; in modes, $(\partial_zf)_{(m)} = -m\,f_{(m-1)}$.
+
+\textbf{Two-variable distributions and locality.} A two-variable distribution is
+$F:\Z\to\Z\to W$, $F(m,n)$ being the coefficient of $z_1^mz_2^n$ (\lean{FormalDist₂}).
+Multiplication by $z_1-z_2$ is \lean{mulBySub F m n = F (m-1) n - F m (n-1)} and
+\lean{mulBySubPow N} is its $N$-th iterate. The commutator of two operator-valued distributions is
+\lean{bracketDist a b m n = a m * b n - b n * a m}, and
+\begin{equation*}
+\text{\lean{Local a b}}\quad:\Longleftrightarrow\quad \exists N\in\N,\ (z_1-z_2)^N[a(z_1),b(z_2)] = 0 .
+\end{equation*}
+The $j$-th \emph{OPE coefficient} of a two-variable distribution is
+$\text{\lean{cCoeff j F}}(w) = \Res_{z_1}(z_1-w)^jF(z_1,w)$, i.e.\ \lean{cCoeff j F n = mulBySubPow j F (-1) n}
+(no factorial). Chapter~\ref{ch:L01} proves (\lean{local_iff_deltaSum}, Gannon Prop.~5.1.2) that
+$(z_1-z_2)^NF = 0$ if and only if $F = \sum_{j<N}c_j(z_2)\partial_{z_2}^j\delta(z_1/z_2)$ for some
+one-variable $c_j$, where the building block \lean{deltaDeriv j c} has
+$z_1^mz_2^n$-coefficient $\big(\prod_{i<j}(-m-1-i)\big)\,c(m+n+1+j)$; and then
+$c_j = \frac1{j!}\,$\lean{cCoeff j F}.
+
+\textbf{Fields and lower truncation.} The library's predicate is
+\begin{leancode}
+def IsField (a : FormalDist (End ℂ V)) : Prop :=
+  ∀ x : V, ∃ B : ℤ, ∀ n : ℤ, n < B → a n x = 0
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak Dong.lean} (\lean{VOA.IsField}). In modes: for each
+vector $x$, $a_{(m)}x = 0$ for $m\gg0$, i.e.\ $a(z)x\in V((z))$. This is Kac's notion of field and
+Lepowsky--Li's ``truncation''.
+
+\textbf{Normal ordering.} The two-variable normal-ordered product is
+\lean{normalOrdered a b m n = if 0 ≤ m then a m * b n else b n * a m}: the coefficients of
+\emph{nonnegative} powers of $z_1$ (the modes $a_{(k)}$ with $k\le-1$, which create states) go to
+the left. The same-variable product ${:}a(z)b(z){:}$ of two fields is \lean{nprod ha hb}, with
+$z^s$-coefficient $\sum_m\text{\lean{normalOrdered a b m (s-m)}}$ (a finite sum on each vector),
+and the negative products are
+\begin{leancode}
+noncomputable def negProd {a b : FormalDist (End ℂ V)} (ha : IsField a) (hb : IsField b)
+    (m : ℕ) : FormalDist (End ℂ V) :=
+  (m.factorial : ℂ)⁻¹ • nprod (ha.deriv_iterate m) hb
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak Dong.lean}. So \lean{negProd ha hb m}
+$=\frac1{m!}{:}(\partial_z^ma)(z)\,b(z){:}$, the field product $a_{(-m-1)}b$ of Kac
+(§2.3).
+
+\begin{dictionary}
+\textbf{Why these conventions are the standard ones.} For $n\ge0$ Kac defines the field product
+$a(w)_{(n)}b(w) = \Res_z\big(a(z)b(w)\iota_{z,w}(z-w)^n - b(w)a(z)\iota_{w,z}(z-w)^n\big)$; for
+$n\ge0$ the two expansions of $(z-w)^n$ agree (it is a polynomial), so this is
+$\Res_z(z-w)^n[a(z),b(w)]$, which is \lean{cCoeff n (bracketDist a b)}. For $n=-m-1<0$ Kac's
+formula gives $\frac1{m!}{:}\partial^ma(w)\,b(w){:}$, which is \lean{negProd}. Hence the library's
+pair (\lean{cCoeff}, \lean{negProd}) is exactly Kac's family of $n$-th products of fields. The
+$z$-power indexing of distributions is Gannon's; the $+1$ shift between powers and modes is the
+source of most sign and index decoding in this chapter, and we redo it in every fidelity check.
+\end{dictionary}
+
+\begin{physics}
+These conventions are the algebraic shadow of the operator product expansion of two chiral fields,
+$a(z)b(w) = \sum_{n\ge0}\frac{(a_{(n)}b)(w)}{(z-w)^{n+1}} + {:}a(z)b(w){:}$. The singular terms are
+the OPE coefficients $a_{(n)}b$ with $n\ge0$; they are extracted by contour integrals
+$\oint_w dz\,(z-w)^n a(z)b(w)$, which is what $\Res_{z}(z-w)^n[a(z),b(w)]$ computes (the commutator
+is the difference of the two radially ordered expansions, i.e.\ the contour around $w$). The
+regular part at $z=w$ is the normal-ordered product, and its Taylor coefficients are the
+$a_{(-m-1)}b = \frac1{m!}{:}\partial^ma\,b{:}$. A field is an operator whose OPE with any state has a
+pole of finite order: in radial quantisation, $a(z)$ applied to a state of bounded energy produces
+only finitely many states of lower energy.
+\end{physics}
+
+%======================================================================
+\section{The three structures}\label{l03:sec:axioms}
+%======================================================================
+
+\subsection{\texttt{PreVertexAlgebra}: Gannon's Definition 5.1.3(a)}
+
+\begin{definition}[The library's \texttt{PreVertexAlgebra}: graded VA1--VA5 data]\label{l03:def:VA}
+A \emph{pre-vertex algebra} (Gannon's ``vertex algebra''; in this book also called, for historical reasons, ``a
+vertex algebra in the library's sense''; it is \emph{not} a vertex algebra in the standard sense of Kac, Frenkel--Ben-Zvi or Lepowsky--Li, since it lacks
+translation covariance, see Section~\ref{l03:sec:counter}) is a complex vector space $V$ with a
+$\Z$-grading $V = \bigoplus_{n\in\Z}V_n$ by finite-dimensional subspaces, a linear map
+$Y:V\to\End(V)[[z^{\pm1}]]$, $u\mapsto Y(u,z) = \sum_nu_{(n)}z^{-n-1}$, and a vector
+$\lthreevac\in V_0$, such that for all $u,v\in V$:
+\begin{enumerate}[label=(VA\arabic*)]
+\item $u\in V_k$, $v\in V_\ell$ $\Rightarrow$ $u_{(n)}v\in V_{k+\ell-n-1}$ for all $n\in\Z$;
+\item $Y(\lthreevac,z) = \mathrm{id}_V$;
+\item $u_{(-1)}\lthreevac = u$ and $u_{(n)}\lthreevac = 0$ for $n\ge0$;
+\item $Y(u,z)$ and $Y(v,z)$ are mutually local;
+\item there is $N = N(u,v)\in\Z$ with $u_{(n)}v = 0$ for all $n\ge N$.
+\end{enumerate}
+\end{definition}
+
+\begin{leancode}
+structure PreVertexAlgebra (𝒱 : Type u) [AddCommGroup 𝒱] [Module ℂ 𝒱] where
+  grading : ℤ → Submodule ℂ 𝒱
+  isInternal : DirectSum.IsInternal grading
+  finrank : ∀ n, FiniteDimensional ℂ (grading n)
+  Y : 𝒱 →ₗ[ℂ] (End ℂ 𝒱)⟦z^±⟧
+  vacuum : 𝒱
+  vacuum_mem : vacuum ∈ grading 0
+  grading_mode : ∀ {k ℓ : ℤ} (u : 𝒱), u ∈ grading k → ∀ (v : 𝒱), v ∈ grading ℓ →
+    ∀ (n : ℤ), mode (Y u) n v ∈ grading (k + ℓ - n - 1)
+  vacuum_Y : Y vacuum = (1 : (End ℂ 𝒱)⟦z^±⟧)
+  creation : ∀ u : 𝒱, mode (Y u) (-1) vacuum = u ∧ ∀ n : ℤ, 0 ≤ n → mode (Y u) n vacuum = 0
+  locality : ∀ u v : 𝒱, Local (Y u) (Y v)
+  regularity : ∀ u v : 𝒱, ∃ N : ℤ, ∀ n : ℤ, N ≤ n → mode (Y u) n v = 0
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak VertexAlgebra.lean} (\lean{VOA.PreVertexAlgebra};
+field docstrings removed).
+
+\begin{dictionary}
+Chapter~\ref{ch:01} decodes every field; we add only what the audit needs.
+\begin{itemize}
+\item \textbf{The data} are the grading (three fields: a family of submodules, the internal
+  direct-sum property \lean{DirectSum.IsInternal} --- every vector is uniquely a finite sum of
+  homogeneous components --- and finite-dimensionality of each piece), the map \lean{Y} and the
+  vector \lean{vacuum}. \textbf{There is no translation operator among the data, and no axiom
+  mentions a derivative.}
+\item \textbf{Truncation is for all pairs}: \lean{regularity} is quantified over all $u,v$,
+  and the bound $N$ may depend on both. Applied for fixed $u$ and all $v$ it says that $Y(u,z)$ is
+  a field (\lean{isField_Y} below).
+\item \textbf{Locality is for all pairs, including $u = v$}, with an order $N$ depending on the
+  pair (the existential is inside \lean{Local}).
+\item \textbf{Vacuum}: \lean{1} is the library's own unit distribution (coefficient
+  $\mathrm{id}$ at $z^0$, zero elsewhere), so \lean{vacuum_Y} is $Y(\lthreevac,z) = \mathrm{id}$,
+  not the constant series $\delta(z)$.
+\item \textbf{No Jacobi identity} is assumed, and \textbf{no axiom relates $u_{(-2)}\lthreevac$ to
+  anything}.
+\end{itemize}
+How the definition compares with the literature is the subject of Section~\ref{l03:sec:compare}.
+\end{dictionary}
+
+\begin{physics}
+The five axioms are the minimal chiral-algebra data a physicist writes down: a space of states
+graded by scaling dimension with finite degeneracies (VA1), the identity operator corresponding to
+the vacuum (VA2), the state--operator map $u = \lim_{z\to0}Y(u,z)\lthreevac$ (VA3), commutativity of
+chiral fields at distinct points, i.e.\ single-valuedness of radially ordered correlators
+$\langle\cdots a(z)b(w)\cdots\rangle$ up to poles on the diagonal (VA4), and finite-order poles in
+the OPE (VA5). What is \emph{missing} is the statement that the field at $z$ is the translate of
+the field at $0$, i.e.\ that the Hamiltonian-like operator $L_{-1}$ generating translations acts as
+$\partial_z$ on fields. Section~\ref{l03:sec:counter} shows that this is not a cosmetic omission.
+\end{physics}
+
+\begin{definition}[The $n$-th product and the translation operator]\label{l03:def:smulT}
+In a vertex algebra in the library's sense, $u_{(n)}v := $ \lean{V.smul u n v}, and the
+\emph{translation operator} is the linear map $T:V\to V$, $Tu := u_{(-2)}\lthreevac$. One has
+$T\lthreevac = 0$ and $T(V_k)\subseteq V_{k+1}$.
+\end{definition}
+\begin{leancode}
+def smul (V : PreVertexAlgebra 𝒱) (u : 𝒱) (n : ℤ) (v : 𝒱) : 𝒱 := mode (V.Y u) n v
+
+def T (V : PreVertexAlgebra 𝒱) : 𝒱 →ₗ[ℂ] 𝒱 where
+  toFun u := V.smul u (-2) V.vacuum
+
+@[simp] theorem T_vacuum (V : PreVertexAlgebra 𝒱) : V.T V.vacuum = 0
+
+theorem T_mem_grading (V : PreVertexAlgebra 𝒱) {k : ℤ} {u : 𝒱} (hu : u ∈ V.grading k) :
+    V.T u ∈ V.grading (k + 1)
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak VertexAlgebra.lean} (\lean{smul}) and
+\leanpath{VOA/\allowbreak Core/\allowbreak Identities.lean} (\lean{T}, \lean{T_vacuum},
+\lean{T_mem_grading}; linearity proofs omitted).
+
+\begin{dictionary}
+$T$ is \emph{defined}, not postulated, and defined by the formula that holds in every textbook
+vertex algebra ($Y(u,z)\lthreevac = e^{zT}u$ gives $u_{(-2)}\lthreevac = Tu$). \lean{T_vacuum} is
+VA2: $\lthreevac_{(-2)} = \delta_{-2,-1}\mathrm{id} = 0$. \lean{T_mem_grading} is VA1 with
+$\lthreevac\in V_0$ and $n=-2$: $k+0+2-1 = k+1$. Nothing about $T$ beyond these two facts holds in
+general (Section~\ref{l03:sec:counter}).
+\end{dictionary}
+
+\begin{physics}
+$T$ is meant to be the generator of translations, $L_{-1}$, which raises the scaling dimension by
+one ($\partial_z$ has dimension one) and annihilates the translation-invariant vacuum. In a genuine
+CFT $Tu$ is the state of the derivative field $\partial u(z)$.
+\end{physics}
+
+\subsection{\texttt{BarePreVA}: the axioms without the grading}
+
+\begin{definition}[Bare pre-vertex algebra (the library's \texttt{BarePreVA})]\label{l03:def:bare}
+A \emph{bare pre-vertex algebra} (in this book also ``bare vertex algebra''; not a vertex algebra in the standard sense:
+like \lean{PreVertexAlgebra} it has no translation-covariance axiom, and the Borcherds identity fails for it) is a
+complex vector space with $Y$ and $\lthreevac$ as above satisfying
+(VA2)--(VA5), with no grading. Every pre-vertex algebra gives one by forgetting
+the grading.
+\end{definition}
+\begin{leancode}
+structure BarePreVA (𝒱 : Type u) [AddCommGroup 𝒱] [Module ℂ 𝒱] where
+  Y : 𝒱 →ₗ[ℂ] (End ℂ 𝒱)⟦z^±⟧
+  vacuum : 𝒱
+  vacuum_Y : Y vacuum = (1 : (End ℂ 𝒱)⟦z^±⟧)
+  creation : ∀ u : 𝒱, mode (Y u) (-1) vacuum = u ∧ ∀ n : ℤ, 0 ≤ n → mode (Y u) n vacuum = 0
+  locality : ∀ u v : 𝒱, Local (Y u) (Y v)
+  regularity : ∀ u v : 𝒱, ∃ N : ℤ, ∀ n : ℤ, N ≤ n → mode (Y u) n v = 0
+
+def PreVertexAlgebra.toBarePreVA (V : PreVertexAlgebra 𝒱) : BarePreVA 𝒱 where
+
+theorem isField_Y (V : BarePreVA 𝒱) (u : 𝒱) : IsField (V.Y u)
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak BareVA.lean} (\lean{VOA.BarePreVA},
+\lean{VOA.PreVertexAlgebra.toBarePreVA}, \lean{VOA.BarePreVA.isField_Y}; the body of \lean{toBarePreVA} copies
+the five fields). The same file also defines \lean{VertexOperatorAlgebra.toBarePreVA} through the
+underlying vertex algebra.
+
+\begin{dictionary}
+The fields are those of \lean{PreVertexAlgebra} minus \lean{grading}, \lean{isInternal},
+\lean{finrank}, \lean{vacuum_mem}, \lean{grading_mode}, verbatim otherwise. \lean{isField_Y}: VA5
+for the pair $(u,x)$ gives $N$ with $u_{(n)}x = 0$ for $n\ge N$; in $z$-power indexing the
+coefficient \lean{(Y u) k x} $=u_{(-k-1)}x$ vanishes for $k<-N$, which is \lean{IsField} with
+$B = -N$.
+
+\textbf{The file's motivation, and why its original plan fails.} An earlier docstring explained that the
+grading is ``dead weight'' for the Borcherds theory --- correctly: none of the Borcherds files uses the
+grading --- and that the Borcherds chain should be restated over \lean{BarePreVA} so that it can be
+applied to Li's local systems (Section~\ref{l03:sec:local}), which carry no grading. It asserted
+that VA2--VA5 are ``all the Borcherds/Jacobi derivation actually consumes''. The current docstring
+reverses this: under the heading \textbf{Warning} it says that VA2--VA5 alone do not imply the
+Borcherds/Jacobi identity, because neither \lean{PreVertexAlgebra} nor \lean{BarePreVA} has a
+translation-covariance axiom; it cites the counterexample of Section~\ref{l03:sec:counter}; it calls the
+restatement over \lean{BarePreVA} a dead end; and its status note says that nothing Borcherds-related is
+proved over \lean{BarePreVA}. The old sentence was
+false: the derivation also consumes translation covariance, which the library takes from the VOA
+axiom (VOA3). The counterexample of Section~\ref{l03:sec:counter} is a \lean{PreVertexAlgebra}, hence
+(by \lean{toBarePreVA}) a \lean{BarePreVA}, violating the Borcherds identity. The restatement plan can
+only succeed if a translation operator with $[T,Y(u,z)] = \partial_zY(u,z)$ and $T\lthreevac = 0$
+is added to \lean{BarePreVA}. (For the local-system application this is harmless: a local system has
+the natural translation $a\mapsto\partial a$, see \lean{LocalFieldSystem.translation_val} in
+Section~\ref{l03:sec:local}.)
+\end{dictionary}
+
+\begin{physics}
+Removing the grading means forgetting the scaling dimensions, keeping only the operator algebra.
+That is the natural setting for, e.g., the algebra of all chiral fields acting on a single sector
+(a module), where no vacuum-module grading is available.
+\end{physics}
+
+\begin{status}
+\lean{BarePreVA} and \lean{toBarePreVA} are definitions; \lean{BarePreVA.isField_Y} is proved,
+\texttt{\#print axioms} $=$ \lean{[propext, Classical.choice, Quot.sound]} (run for this
+chapter). No Borcherds-type theorem is stated over \lean{BarePreVA} at this commit.
+\end{status}
+
+\subsection{\texttt{VertexOperatorAlgebra}}
+
+\begin{definition}[Vertex operator algebra of CFT type, the library's \texttt{VertexOperatorAlgebra}]\label{l03:def:VOA}
+A VOA (in the library's sense: a Lepowsky--Li/FLM VOA \emph{of CFT type}) is a structure as in
+Definition~\ref{l03:def:VA} with $\omega\in V_2$ and
+$c\in\C$ such that, with $L_n := \omega_{(n+1)}$: (VOA1) the Virasoro relations with central charge
+$c$; (VOA2) $L_0 = n$ on $V_n$; (VOA3) $Y(L_{-1}v,z) = \partial_zY(v,z)$ for all $v$; (VOA4)
+$V_0 = \C\lthreevac$ and $V_n = 0$ for $n<0$.
+\end{definition}
+Axiom (VOA4) is the CFT-type condition (Lean fields \lean{vacuum_grade} and \lean{positivity}). It is a
+\emph{restriction} relative to FLM and Lepowsky--Li, who require only $\dim V_n<\infty$ and $V_n = 0$ for $n\ll0$: it
+excludes VOAs with $\dim V_0>1$ (for example non-simple direct sums), VOAs with negative weights (the $\beta\gamma$
+system in its standard grading, shifted conformal vectors) and indefinite-lattice examples. Within CFT type the
+definition imposes no further restriction. Every theorem the library proves about \lean{VertexOperatorAlgebra} is
+therefore a theorem about VOAs of CFT type. Note also that the zero space satisfies every axiom (if
+$\lthreevac = 0$, creation forces $V = 0$, and $V_0 = \C\cdot 0 = 0$ is allowed); the literature differs on whether to
+admit it, and statements meant for nonzero VOAs must assume $\lthreevac\neq 0$ or \lean{Nontrivial} (release audit
+2026-10-27, finding m-4).
+The library keeps the two layers apart. \lean{VOA.GradedVertexOperatorAlgebra} extends \lean{PreVertexAlgebra} by
+$\omega$, $c$, (VOA1)--(VOA3) and the FLM/Lepowsky--Li truncation $V_n = 0$ for $n\ll 0$ (field
+\lean{grading_bounded_below}); \lean{VOA.VertexOperatorAlgebra} extends it by (VOA4), and its truncation field is filled
+automatically ($N = 0$). So \lean{VertexOperatorAlgebra} is of CFT type \emph{by definition}, and the general notion is
+\lean{GradedVertexOperatorAlgebra}; for the latter the library provides the $L_n$ form of (VOA1)--(VOA3) and the map
+\lean{GradedVertexOperatorAlgebra.toNearVOA}, while every theorem of this chapter is stated for
+\lean{VertexOperatorAlgebra}. Both structures are printed in Chapter~\ref{ch:01}.
+The Lean structure \lean{VOA.VertexOperatorAlgebra} (file
+\leanpath{VOA/\allowbreak Core/\allowbreak VertexOperatorAlgebra.lean}) is printed and decoded in
+full in Chapter~\ref{ch:01}; for the audit we need only the translation field:
+\begin{leancode}
+  translation : ∀ v : 𝒱, Y (mode (Y conformalVector) 0 v) = deriv (Y v)
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak VertexOperatorAlgebra.lean}: \lean{mode (Y ω) 0}
+$=\omega_{(0)} = L_{-1}$, and \lean{deriv} is $\partial_z$; so this is the $L_{-1}$-derivative
+property of Lepowsky--Li and FLM, stated as an equality of fields for every $v$.
+
+\begin{physics}
+The conformal vector is the stress tensor $T(z) = Y(\omega,z) = \sum L_nz^{-n-2}$. Axiom (VOA3) is
+the translation Ward identity: $L_{-1} = \oint T(z)\,dz$ generates $z\mapsto z+\epsilon$, and the
+state $L_{-1}v$ corresponds to the field $\partial v(z)$. It is precisely this axiom that the bare
+definition lacks, and it is through it that all of the structure theory of this chapter enters.
+\end{physics}
+
+(\lean{VOA.NearVOA}, the same axioms without finite-dimensionality and without (VOA4), is described in
+Chapter~\ref{ch:01}; no theorem of this chapter is stated for it.)
+
+%======================================================================
+\section{Comparison with the textbook definitions}\label{l03:sec:compare}
+%======================================================================
+
+The standard definitions differ in which properties are axioms and which are theorems. We
+summarise them, then compare.
+
+\begin{itemize}
+\item \textbf{Borcherds (1986)}: a vector space with bilinear products $u_{(n)}v$ ($n\in\Z$), a
+  vacuum, $u_{(n)}v = 0$ for $n\gg0$, $\lthreevac_{(n)}v = \delta_{n,-1}v$, $u_{(-1)}\lthreevac = u$,
+  $u_{(n)}\lthreevac = 0$ ($n\ge0$), and the Borcherds identity in all three indices as the main
+  axiom. (Borcherds originally wrote it with a derivation $D$, $Du = u_{(-2)}\lthreevac$, and
+  skew-symmetry among the axioms; the identity in all indices implies both.)
+\item \textbf{FLM (1988) and Lepowsky--Li (2004, Def.~3.1.1)}: $(V,Y,\lthreevac)$ with
+  truncation for all pairs, vacuum property, creation property, and the Jacobi identity
+  \eqref{l03:eq:jacobi} for all $u,v$; the $D$-derivative property is a consequence
+  (Lepowsky--Li, §3.1). A VOA (LL Def.~3.1.22) adds a $\Z$-grading with finite-dimensional pieces,
+  $V_n = 0$ for $n\ll0$, $\omega\in V_2$ with Virasoro relations, $L_0$-grading and the
+  $L_{-1}$-derivative property.
+\item \textbf{Kac (1998, Def.~1.3) and Frenkel--Ben-Zvi (2004, Def.~1.3.1)}: $(V,\lthreevac,T,Y)$
+  with $T\in\End V$ \emph{part of the data}; each $Y(u,z)$ a field; vacuum axiom
+  $Y(\lthreevac,z) = \mathrm{id}$, $Y(u,z)\lthreevac\in V[[z]]$ with constant term $u$;
+  \emph{translation axiom} $[T,Y(u,z)] = \partial_zY(u,z)$ and $T\lthreevac = 0$; locality. No
+  grading.
+\item \textbf{Gannon (2006, Def.~5.1.3(a))}: as Definition~\ref{l03:def:VA}, with grading and
+  locality, without $T$ and without Jacobi.
+\end{itemize}
+
+The Jacobi identity referred to is
+\begin{equation}\label{l03:eq:jacobi}
+z_0^{-1}\delta\Big(\tfrac{z_1-z_2}{z_0}\Big)Y(u,z_1)Y(v,z_2)
+ - z_0^{-1}\delta\Big(\tfrac{z_2-z_1}{-z_0}\Big)Y(v,z_2)Y(u,z_1)
+ = z_2^{-1}\delta\Big(\tfrac{z_1-z_0}{z_2}\Big)Y(Y(u,z_0)v,z_2),
+\end{equation}
+whose $z_0^{-\ell-1}z_1^{-m-1}z_2^{-n-1}$-coefficient is the Borcherds identity
+\eqref{l03:eq:borcherds}. (To extract it, multiply by $z_0^{\ell}z_1^{m}z_2^{n}$, take
+$\operatorname{Res}_{z_0}\operatorname{Res}_{z_1}\operatorname{Res}_{z_2}$, and expand each $\delta$-function binomially in the
+direction fixed by its argument; this is the standard computation behind Kac (4.8.3). The library states and proves only the
+coefficient form, Theorem~\ref{l03:thm:borcherds}.)
+
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.27\textwidth}>{\raggedright\arraybackslash}p{0.2\textwidth}>{\raggedright\arraybackslash}p{0.2\textwidth}>{\raggedright\arraybackslash}p{0.23\textwidth}}
+\toprule
+Ingredient & Kac / FBZ & FLM / LL & library \lean{PreVertexAlgebra} (\lean{VOA})\\
+\midrule\endhead
+grading, $\dim V_n<\infty$ & no (VA); yes (VOA) & VOA only & required (both)\\
+translation $T$ & data, axiom $[T,Y]=\partial Y$ & derived, theorem & derived $Tu = u_{(-2)}\lthreevac$; \textbf{no axiom} (VOA: from (VOA3))\\
+truncation, all pairs & yes (``field'') & yes & yes (\lean{regularity})\\
+vacuum, creation & yes & yes & yes\\
+locality & axiom & theorem & axiom\\
+Jacobi / Borcherds & theorem & axiom & \textbf{not implied}; theorem for VOAs, all $(\ell,m,n)$\\
+skew-symmetry & theorem & theorem & \textbf{not implied}; theorem for VOAs\\
+CFT type & --- & no ($V_n=0$ for $n\ll0$) & VOA: $V_0 = \C\lthreevac$, $V_{<0}=0$\\
+\bottomrule
+\end{longtable}
+
+\begin{proposition}[The library's VOA is the Lepowsky--Li VOA of CFT type]\label{l03:prop:equiv}
+Let $(V,Y,\lthreevac,\omega)$ be a graded vector space with a state--field map, vacuum and
+conformal vector. The following are equivalent:
+\begin{enumerate}[label=(\alph*)]
+\item it is a \lean{VertexOperatorAlgebra} (Definition~\ref{l03:def:VOA});
+\item it is a VOA in the sense of Lepowsky--Li Definition~3.1.22, with $V_0 = \C\lthreevac$ and
+  $V_n = 0$ for $n<0$.
+\end{enumerate}
+Direction (a)$\Rightarrow$(b) is formalised (through \lean{jacobi}); direction (b)$\Rightarrow$(a), ``every standard
+Lepowsky--Li VOA of CFT type is a library VOA'', is \textbf{proved on paper only}.
+\end{proposition}
+
+\begin{physics}
+The proposition says that, at the level of chiral algebras with a stress tensor, the library
+axiomatises exactly the standard object: a holomorphic CFT chiral algebra whose spectrum of
+$L_0$ is nonnegative with a unique vacuum. The extra condition (CFT type) excludes chiral
+algebras with negative-dimension states (some non-unitary and logarithmic theories, the
+$\beta\gamma$ system in its standard grading) and those with several dimension-zero states.
+\end{physics}
+
+\textbf{Proof on paper.} (a)$\Rightarrow$(b): truncation, vacuum, creation, the grading, Virasoro,
+$L_0$- and $L_{-1}$-properties are fields of the structure, and $V_n=0$ for $n<0$ is (VOA4). The
+Jacobi identity is the content of the theorem \lean{jacobi} (Section~\ref{l03:sec:borcherds}), whose
+mode form for all $\ell,m,n$ is equivalent to \eqref{l03:eq:jacobi} coefficient by coefficient.
+(b)$\Rightarrow$(a): the only fields of the library structure that are not literally LL axioms are
+VA1 (\lean{grading_mode}) and VA4 (\lean{locality}). Locality follows from Jacobi by the
+classical argument (Lepowsky--Li, §3.2: multiply \eqref{l03:eq:jacobi} by $z_0^N$ with $N$ beyond the
+truncation order of $u_{(n)}v$ and take $\Res_{z_0}$). VA1 follows from the commutator formula with
+$u = \omega$, $m = 1$: $[L_0,v_{(n)}] = (L_{-1}v)_{(n+1)} + (L_0v)_{(n)} = (-n-1+\wt v)\,v_{(n)}$
+(using $(L_{-1}v)_{(n+1)} = -(n+1)v_{(n)}$, the derivative property), so $v_{(n)}$ shifts the
+$L_0$-eigenvalue by $\wt v-n-1$, and the grading is the $L_0$-eigenspace grading by
+(VOA2). \qed
+
+\begin{status}
+Direction (a)$\Rightarrow$(b) is machine-checked in the sense that every LL axiom is either a field
+of \lean{VertexOperatorAlgebra} or the theorem \lean{VOA.VertexOperatorAlgebra.jacobi}
+(axiom-clean). Direction (b)$\Rightarrow$(a) is argued on paper only: the library contains no
+structure in the Lepowsky--Li form, so there is nothing to state; in particular the release audit of 2026-10-27
+(finding m-2) found no Lean declaration deriving \lean{Local} from the Jacobi identity. The claim ``every standard VOA of
+CFT type is an instance of \lean{VertexOperatorAlgebra}'' therefore rests on the literature (FLM, Lepowsky--Li), not on
+the machine.
+\end{status}
+
+\begin{remark}
+Dropping (VOA4) on both sides, the same argument identifies \lean{GradedVertexOperatorAlgebra} with the VOA of
+Lepowsky--Li Definition~3.1.22 on paper. Neither direction of that statement is formalised: the theorem
+\lean{jacobi} is proved only for \lean{VertexOperatorAlgebra}.
+\end{remark}
+
+%======================================================================
+\section[A counterexample to the Borcherds identity]{A vertex algebra in the library's sense that violates the Borcherds identity}\label{l03:sec:counter}
+%======================================================================
+
+\begin{theorem}[Gannon's axioms do not imply translation covariance]\label{l03:thm:counter}
+Let $A = \C\lthreevac\oplus\C x\oplus\C y$ be the commutative unital algebra with
+$x^2 = xy = y^2 = 0$, graded by $\deg\lthreevac = \deg x = 0$, $\deg y = 2$. For $u = a\lthreevac + bx + cy$
+put $\varphi_z(u) := u + bz^2y\in A[z]$ and let $Y(u,z)$ be multiplication by $\varphi_z(u)$:
+\begin{equation*}
+Y(u,z)v = \varphi_z(u)\,v ,\qquad\text{so}\quad Y(\lthreevac,z) = \mathrm{id},\quad Y(x,z) = x\cdot{} + z^2\,y\cdot{},\quad Y(y,z) = y\cdot{} .
+\end{equation*}
+Then $(A,Y,\lthreevac)$ with this grading satisfies (VA1)--(VA5), i.e.\ it is a
+\lean{PreVertexAlgebra}. But $Tx = x_{(-2)}\lthreevac = 0$ while $\partial_zY(x,z) = 2z\,y\cdot{}\ne0$, so
+$Y(Tx,z)\ne\partial_zY(x,z)$; there is \emph{no} operator $T'$ with $[T',Y(u,z)] = \partial_zY(u,z)$
+for all $u$; and the Borcherds identity \eqref{l03:eq:borcherds} fails for
+$(u,v,w,\ell,m,n) = (x,\lthreevac,\lthreevac,-2,0,-2)$: its left side is $2y$ and its right side is $0$.
+Consequently skew-symmetry fails as well: $Y(x,z)\lthreevac = x+z^2y$, whereas
+$e^{zT}Y(\lthreevac,-z)x = x$.
+\end{theorem}
+
+\begin{physics}
+Physically this is an ``operator algebra'' in which the field attached to $x$ at the point $z$ is
+\emph{not} the translate of the field at the origin: $Y(x,z) = x + z^2y$ instead of $e^{zL_{-1}}$
+acting. All fields commute, so locality is trivially satisfied, and the vacuum reproduces every
+state; but there is no consistent notion of moving an operator, so OPE associativity (crossing
+symmetry) and Bose exchange symmetry fail. In conformal field theory translation invariance is
+always present (it is the $L_{-1}$ Ward identity), so physicists never meet this pathology; it is
+a reminder that the bare axioms VA1--VA5 are not a complete axiomatisation of a chiral algebra.
+\end{physics}
+
+\textbf{Proof on paper.} The modes of $Y(u,z) = u\cdot{} + bz^2y\cdot{}$ are $u_{(-1)} = u\cdot{}$,
+$u_{(-3)} = b\,y\cdot{}$ and $u_{(n)} = 0$ otherwise (the coefficient of $z^k$ is $u_{(-k-1)}$).
+
+(VA2): $\varphi_z(\lthreevac) = \lthreevac$. (VA3): $u_{(-1)}\lthreevac = u$, and $u_{(n)} = 0$ for
+$n\ge0$. (VA5): $u_{(n)}v = 0$ for $n\ge0$. (VA4): all $Y(u,z)$ are multiplication operators by
+elements of the commutative algebra $A[z]$, so $[Y(u,z_1),Y(v,z_2)] = 0$, local with order $0$.
+(VA1): it suffices to check homogeneous $u,v$ and the two nonzero modes. For $n=-1$ the target
+degree is $\deg u+\deg v$, and $u\cdot v$ is homogeneous of that degree because $A$ is a graded
+algebra ($\deg$ is additive on the nonzero products $\lthreevac\cdot w = w$). For $n = -3$ the target is
+$\deg u+\deg v+2$; the mode is $b\,y\cdot{}$ with $b$ the $x$-coefficient of $u$, nonzero only for
+$u\in\C x$ (degree $0$), and $y\cdot v$ is nonzero only for $v\in\C\lthreevac$, giving $y$ of degree
+$2 = 0+0+2$. The pieces $V_0 = \mathrm{span}(\lthreevac,x)$ and $V_2 = \C y$ are finite-dimensional
+and $\lthreevac\in V_0$.
+
+Failure of translation covariance: $Tx = x_{(-2)}\lthreevac$ is the $z^1$-coefficient of
+$\varphi_z(x)\lthreevac = x+z^2y$, which is $0$; so $Y(Tx,z) = 0$, while $\partial_zY(x,z)$ has
+$z^1$-coefficient $2y\cdot{}\ne0$. For an arbitrary $T'$, the $z^1$-coefficient of $[T',Y(x,z)]$ is
+$[T',x_{(-2)}] = [T',0] = 0$, again different from $2y\cdot{}$.
+
+Failure of Borcherds: with $u = x$, $v = w = \lthreevac$, $\ell=-2$, $m=0$, $n=-2$, the left side of
+\eqref{l03:eq:borcherds} is $\sum_{i\ge0}(-1)^i\binom{-2}{i}\big(x_{(-2-i)}\lthreevac_{(-2+i)}\lthreevac -
+\lthreevac_{(-4-i)}x_{(i)}\lthreevac\big)$. The second term vanishes ($x_{(i)}\lthreevac = 0$ for $i\ge0$),
+and $\lthreevac_{(-2+i)}\lthreevac = \delta_{i,1}\lthreevac$; so only $i = 1$ survives, giving
+$(-1)\binom{-2}{1}x_{(-3)}\lthreevac = 2y$. The right side is $\sum_i\binom0i(x_{(-2+i)}\lthreevac)_{(-2-i)}\lthreevac
+= (x_{(-2)}\lthreevac)_{(-2)}\lthreevac = 0_{(-2)}\lthreevac = 0$. Skew-symmetry: $T = 0$ on $x$ and
+$Y(\lthreevac,-z) = \mathrm{id}$. \qed
+
+\begin{dictionary}
+\textbf{Why this example is the general mechanism.} For a \emph{commutative} vertex algebra in the
+library's sense (all fields commute and have no negative powers of $z$), $Y(u,z) = \varphi_z(u)\cdot{}$
+for a map $\varphi_z:A\to A[[z]]$ which the axioms force to be an algebra homomorphism with
+$\varphi_0 = \mathrm{id}$ --- a \emph{Hasse--Schmidt derivation}. The Borcherds identity at $m=0$,
+$\ell<0$ says $Y(u_{(\ell)}v,z) = Y(u,\cdot)_{(\ell)}Y(v,\cdot)$, which here is the group law
+$\varphi_w\circ\varphi_z = \varphi_{z+w}$, i.e.\ $\varphi_z = e^{zT}$ for an ordinary derivation $T$. A
+Hasse--Schmidt derivation that is not exponential (here $\varphi_z = \mathrm{id}+z^2D$ with $D(x) = y$, $D(\lthreevac) = D(y) = 0$)
+satisfies VA1--VA5 and nothing more. In particular the correspondence behind Gannon's
+Theorem~5.1.4 --- a commutative vertex algebra \emph{is} a commutative algebra with a derivation $T$,
+via $Y(u,z)v = (e^{zT}u)\,v$ --- fails for Gannon's own definition: the example is commutative, its
+product $u_{(-1)}v$ is commutative and associative, its $T$ is $0$, yet $Y(x,z)\neq x\cdot{}$. The
+library proves the theorem only for VOAs (Section~\ref{l03:sec:comm}), and only the three
+conditions, not the reconstruction of $Y$ from $(A,T)$.
+
+\textbf{The machine check.} For this chapter the example was formalised in Lean outside the library
+(not built by \texttt{lake build}, compiled with
+\texttt{lake env lean -DmaxSynthPendingDepth=3} at an earlier commit, when this chapter was first written, and not re-run for
+this edition; the check is not part of this release) as an inhabitant
+\lean{L03Counter.VA : PreVertexAlgebra (Fin 3 → ℂ)} together with two refutations, \lean{jacobi_fails} and
+\lean{translation_fails}, all depending only on the axioms \texttt{propext}, \texttt{Classical.choice} and
+\texttt{Quot.sound}. The library's own copy,
+\lean{VOA.TranslationCovariantCounterexample}, is described in the warning of Section~\ref{l03:sec:intro}.
+Here \lean{V = Fin 3 → ℂ} with coordinates $(\lthreevac,x,y)$, \lean{grading 0 = {v | v 2 = 0}},
+\lean{grading 2 = {v | v 0 = 0 ∧ v 1 = 0}}, all other pieces $\bot$; \lean{jacobi_fails} is the
+negation of the conclusion of \lean{VertexOperatorAlgebra.jacobi} (Theorem~\ref{l03:thm:borcherds})
+at fixed indices, with \lean{VA.smul} in place of \lean{W.smul}.
+\end{dictionary}
+
+\begin{status}
+Machine-checked for this chapter in a scratch file (not in the library, not part of the aggregate
+build); axiom-clean. The paper proof is complete and independent of the scratch
+file.
+\end{status}
+
+\begin{warning}[title={Consequences for the reader}]
+\begin{enumerate}
+\item \emph{Do not read ``vertex algebra'' in a Lean statement as the textbook notion.} A theorem
+  with hypothesis \lean{V : PreVertexAlgebra 𝒱} is a theorem about Gannon-style graded local
+  state--field systems, a class strictly larger than that of the vertex algebras of Kac or
+  Lepowsky--Li equipped with a compatible grading (every such graded vertex algebra is a
+  \lean{PreVertexAlgebra}, but not conversely). The theorems of this chapter
+  stated at that level (Goddard uniqueness, the OPE decomposition, Dong's lemma, product fields)
+  are true in the larger class, so nothing false is proved.
+\item \emph{Theorems that need translation covariance are, correctly, stated for VOAs.} The
+  Borcherds identity, skew-symmetry, the duality formulas and Theorem~5.1.4 are all hypothesised
+  on \lean{VertexOperatorAlgebra}. In the source, the docstrings of
+  \leanpath{VOA/\allowbreak Core/\allowbreak Identities.lean} say this explicitly (``at the bare-VA
+  level $Y(Tu,z) = \partial_zY(u,z)$ is circular''); the counterexample shows it is not merely
+  circular but false.
+\item \emph{Dead end.} Restating the Borcherds chain over \lean{BarePreVA} (the plan of an earlier
+  docstring of \leanpath{BareVA.lean}; the current docstring records it as a dead end) cannot succeed
+  without adding a translation axiom.
+\end{enumerate}
+\end{warning}
+
+%======================================================================
+\section[The bare level: product fields, cancellation]{What holds at the bare level: product fields and the cancellation principle}\label{l03:sec:vafacts}
+%======================================================================
+
+Everything in this and the next three sections is proved for an arbitrary \lean{PreVertexAlgebra}
+(and, where noted, for arbitrary distributions on an arbitrary vector space); by
+Section~\ref{l03:sec:counter} none of it needs, or yields, translation covariance.
+
+\subsection{The vertex operators are fields}
+
+\begin{theorem}\label{l03:thm:isfield}
+In a vertex algebra in the library's sense, every $Y(u,z)$ is a field.
+\end{theorem}
+\begin{leancode}
+theorem isField_Y {𝒱 : Type u} [AddCommGroup 𝒱] [Module ℂ 𝒱] (V : PreVertexAlgebra 𝒱) (u : 𝒱) :
+    IsField (V.Y u)
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak Reconstruction.lean}
+(\lean{VOA.PreVertexAlgebra.isField_Y}).
+
+\begin{dictionary}
+Same content as \lean{BarePreVA.isField_Y}; the proof converts VA5 for $(u,x)$ to the $z$-power
+indexing (bound $B = -N$). The only hypothesis is the structure.
+\end{dictionary}
+
+\begin{physics}
+Every chiral operator has finite-order poles against every state; this is what allows normal
+ordering ${:}u(z)v(z){:}$ to be defined at all.
+\end{physics}
+
+\textbf{Proof on paper.} If $u_{(n)}x = 0$ for $n\ge N$, then the $z^k$-coefficient
+$u_{(-k-1)}x$ vanishes for $-k-1\ge N$, i.e.\ $k<-N$ (indeed $k\le-N-1$). \qed
+
+\subsection{The iterated product field and the cancellation principle}
+
+\begin{definition}[Iterated product field]\label{l03:def:yprod}
+For $u,v,x\in V$, $Y(u,z_1)Y(v,z_2)x$ is the two-variable distribution whose
+$z_1^mz_2^n$-coefficient is $u_{(-m-1)}v_{(-n-1)}x$.
+\end{definition}
+\begin{leancode}
+def Yprod (V : PreVertexAlgebra 𝒱) (u v x : 𝒱) : FormalDist₂ 𝒱 :=
+  fun m n => (V.Y u) m ((V.Y v) n x)
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak Fields.lean} (\lean{VOA.PreVertexAlgebra.Yprod}).
+
+\begin{dictionary}
+\lean{(V.Y u) m} is the coefficient of $z_1^m$ in $Y(u,z_1)$, i.e.\ $u_{(-m-1)}$; similarly for
+$v$. No hypothesis; this is a definition, and each coefficient is a single vector (no sum).
+\end{dictionary}
+
+\begin{physics}
+$Y(u,z_1)Y(v,z_2)x$ is the radially ordered product $|z_1|>|z_2|$ of two operators acting on the
+state $x$: the formal-series counterpart of a three-point function
+$\langle x'|u(z_1)v(z_2)|x\rangle$ expanded in the region $|z_1|>|z_2|$.
+\end{physics}
+
+\begin{definition}[Lower truncation in the second variable]\label{l03:def:bdd2}
+A two-variable distribution $F$ is \emph{lower-truncated in $z_2$} if there is $B$ with
+$F(m,n) = 0$ for all $m$ and all $n<B$. Such distributions form the space $W((z_1))((z_2))$ \emph{only
+in the second variable}; nothing is assumed in $z_1$.
+\end{definition}
+\begin{leancode}
+def IsBddBelow₂ (f : FormalDist₂ 𝒲) : Prop := ∃ B : ℤ, ∀ m n : ℤ, n < B → f m n = 0
+\end{leancode}
+File \leanpath{VOA/\allowbreak Foundations/\allowbreak IteratedLaurent.lean}
+(\lean{VOA.IsBddBelow₂}; treated in Chapter~\ref{ch:L01}).
+
+\begin{physics}
+Lower truncation in $z_2$ uniformly in $z_1$ is the formal analogue of analyticity of a correlator
+near $z_2 = 0$ in the domain $|z_1|>|z_2|$: the inner operator, acting on a fixed state, has a pole
+of bounded order.
+\end{physics}
+
+\begin{theorem}[The product field is lower-truncated; cancellation]\label{l03:thm:yprodext}
+For all $u,v,x$, $Y(u,z_1)Y(v,z_2)x$ is lower-truncated in $z_2$. Consequently, if
+$(z_1-z_2)^NY(u,z_1)Y(v,z_2)x = (z_1-z_2)^NY(u',z_1)Y(v',z_2)x'$ for some $N$, then
+$Y(u,z_1)Y(v,z_2)x = Y(u',z_1)Y(v',z_2)x'$.
+\end{theorem}
+\begin{leancode}
+theorem Yprod_bddBelow (V : PreVertexAlgebra 𝒱) (u v x : 𝒱) : IsBddBelow₂ (V.Yprod u v x)
+
+theorem Yprod_ext (V : PreVertexAlgebra 𝒱) {u v x u' v' x' : 𝒱} (N : ℕ)
+    (h : mulBySubPow N (V.Yprod u v x) = mulBySubPow N (V.Yprod u' v' x')) :
+    V.Yprod u v x = V.Yprod u' v' x'
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak Fields.lean}. The engine is the cancellation lemma of
+Chapter~\ref{ch:L01}:
+\begin{leancode}
+theorem eq_zero_of_mulBySubPow_of_bddBelow :
+    ∀ (N : ℕ) (f : FormalDist₂ 𝒲), mulBySubPow N f = 0 → IsBddBelow₂ f → f = 0
+\end{leancode}
+File \leanpath{VOA/\allowbreak Foundations/\allowbreak IteratedLaurent.lean}.
+
+\begin{dictionary}
+\lean{Yprod_bddBelow}: the bound is uniform in $m$ (the $z_1$-power) because it comes from VA5 for
+the single pair $(v,x)$: if $v_{(n)}x = 0$ for $n\ge N$, the whole $z_2^q$-column vanishes for
+$q<-N$. \lean{Yprod_ext}: the hypothesis is one equation between two-variable distributions; the
+six vectors are arbitrary. The cancellation lemma is the precise statement ``$z_1-z_2$ is a non-zero
+divisor on $W((z_1))((z_2))$''; without the truncation hypothesis it is false
+($(z_1-z_2)\delta(z_1/z_2) = 0$).
+\end{dictionary}
+
+\begin{physics}
+The cancellation principle is the formal version of a familiar analytic fact: two functions
+holomorphic in the annulus region $|z_1|>|z_2|$ that agree after multiplication by $(z_1-z_2)^N$
+agree. The point of formal calculus is that this fails for distributions supported on the diagonal
+($\delta(z_1/z_2)$ is the formal ``contact term''), and truncation in $z_2$ excludes exactly those.
+\end{physics}
+
+\textbf{Proof on paper.} Truncation is explained in the dictionary. For cancellation, let
+$f\ne0$ be lower-truncated in $z_2$ with $(z_1-z_2)f = 0$, and let $q$ be the least $z_2$-power that
+occurs. The $z_1^{m+1}z_2^q$-coefficient of $(z_1-z_2)f$ is $f(m,q) - f(m+1,q-1) = f(m,q)$, so
+$f(m,q) = 0$ for all $m$, contradicting the choice of $q$. Induction on $N$ handles $(z_1-z_2)^N$, and
+\lean{Yprod_ext} applies this to the difference of the two product fields, which is again
+lower-truncated. \qed
+
+\begin{status}
+\lean{Yprod_bddBelow}, \lean{Yprod_ext}, \lean{eq_zero_of_mulBySubPow_of_bddBelow}: unconditional;
+\texttt{\#print axioms} \lean{VOA.PreVertexAlgebra.Yprod_ext} $=$
+\lean{[propext, Classical.choice, Quot.sound]} (run for this chapter).
+\end{status}
+
+\subsection{The vacuum expansion}
+
+\begin{lemma}\label{l03:lem:vacexp}
+$Y(b,w)\lthreevac$ has no negative powers of $w$, and its $w^0$-coefficient is $b$.
+\end{lemma}
+\begin{leancode}
+theorem Y_apply_vacuum_eq_zero (V : PreVertexAlgebra 𝒱) (b : 𝒱) {n : ℤ} (hn : n < 0) :
+    (V.Y b) n V.vacuum = 0
+
+theorem Y_apply_vacuum_zero (V : PreVertexAlgebra 𝒱) (b : 𝒱) : (V.Y b) 0 V.vacuum = b
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak Goddard.lean}.
+
+\begin{dictionary}
+\lean{(V.Y b) n} with $n<0$ is the mode $b_{(-n-1)}$ with $-n-1\ge0$, killed on $\lthreevac$ by VA3;
+\lean{(V.Y b) 0} is $b_{(-1)}$, and $b_{(-1)}\lthreevac = b$. This is all of VA3, re-indexed. The
+higher coefficients $b_{(-k-1)}\lthreevac$, $k\ge1$, are \emph{not} determined at this level (in the
+counterexample $x_{(-3)}\lthreevac = y$ while $T^2x/2 = 0$).
+\end{dictionary}
+
+\begin{physics}
+$\lim_{w\to0}Y(b,w)\lthreevac = b$: inserting the operator at the origin creates the state. In a
+genuine CFT the full expansion is $Y(b,w)\lthreevac = e^{wL_{-1}}b$; only its constant term is an
+axiom here.
+\end{physics}
+
+%======================================================================
+\section{The operator product expansion}\label{l03:sec:ope}
+%======================================================================
+
+\begin{theorem}[OPE decomposition and the structural commutator formula]\label{l03:thm:ope}
+For all $u,v$ in a vertex algebra in the library's sense there are $N$ and one-variable
+distributions $c_0,\dots,c_{N-1}$ with
+\begin{equation*}
+[Y(u,z_1),Y(v,z_2)] = \sum_{j<N}c_j(z_2)\,\partial_{z_2}^j\delta(z_1/z_2),
+\end{equation*}
+and then, for all $a,b\in\Z$,
+\begin{equation*}
+[u_{(a)},v_{(b)}] = \sum_{j<N}a(a-1)\cdots(a-j+1)\,(c_j)_{(a+b-j)} .
+\end{equation*}
+\end{theorem}
+\begin{leancode}
+theorem bracket_deltaSum (V : PreVertexAlgebra 𝒱) (u v : 𝒱) :
+    ∃ (N : ℕ) (c : Fin N → FormalDist (End ℂ 𝒱)),
+      bracketDist (V.Y u) (V.Y v) = ∑ j : Fin N, deltaDeriv (j : ℕ) (c j)
+
+theorem mode_bracket_ope (V : PreVertexAlgebra 𝒱) (u v : 𝒱) {N : ℕ}
+    {c : Fin N → FormalDist (End ℂ 𝒱)}
+    (h : bracketDist (V.Y u) (V.Y v) = ∑ j : Fin N, deltaDeriv (j : ℕ) (c j)) (a b : ℤ) :
+    ⁅mode (V.Y u) a, mode (V.Y v) b⁆ = ∑ j : Fin N,
+      (∏ i ∈ Finset.range (j : ℕ), (a - (i : ℤ))) • mode (c j) (a + b - ((j : ℕ) : ℤ))
+
+theorem mode_commutator_structural (V : PreVertexAlgebra 𝒱) (u v : 𝒱) (a b : ℤ) :
+    ∃ (N : ℕ) (c : Fin N → FormalDist (End ℂ 𝒱)),
+      bracketDist (V.Y u) (V.Y v) = ∑ j : Fin N, deltaDeriv (j : ℕ) (c j) ∧
+      ⁅mode (V.Y u) a, mode (V.Y v) b⁆ = ∑ j : Fin N,
+        (∏ i ∈ Finset.range (j : ℕ), (a - (i : ℤ))) • mode (c j) (a + b - ((j : ℕ) : ℤ))
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak OPE.lean}.
+
+\begin{dictionary}
+\lean{Fin N} is $\{0,\dots,N-1\}$; \lean{deltaDeriv j c} is $c(z_2)\partial_{z_2}^j\delta(z_1/z_2)$
+with \emph{no} $1/j!$ (Section~\ref{l03:sec:conventions}); \lean{⁅·,·⁆} is the commutator in
+$\End V$; the product $\prod_{i<j}(a-i)$ is the falling factorial $a^{\underline j}$, an integer acting
+by \lean{•}. The decomposition is \lean{local_iff_deltaSum} (Chapter~\ref{ch:L01}) applied to VA4.
+
+\textbf{What is not claimed.} The coefficients $c_j$ are \emph{not} identified with
+$\frac1{j!}Y(u_{(j)}v,z)$ here; they are only existential. The identification is the duality
+theorem \lean{nth_product} (Theorem~\ref{l03:thm:nthproduct}), proved for VOAs. Hence this theorem is
+the commutator formula ``up to the identification of the OPE coefficients'', which is why the
+library calls it \emph{structural}.
+\end{dictionary}
+
+\begin{physics}
+This is the singular part of the OPE in its commutator form: the commutator of two chiral fields is
+supported on the diagonal, a finite sum of derivatives of the delta function whose coefficients are
+the residues $\oint_w(z-w)^j u(z)v(w)\,dz$, i.e.\ the pole coefficients of $u(z)v(w)\sim
+\sum_j\frac{(u_{(j)}v)(w)}{(z-w)^{j+1}}$. The mode formula is the familiar recipe ``the OPE poles
+determine the commutation relations of the modes'', e.g.\ $J(z)J(w)\sim\frac{k}{(z-w)^2}$ giving
+$[J_m,J_n] = km\,\delta_{m+n,0}$.
+\end{physics}
+
+\textbf{Proof on paper.} The decomposition is VA4 plus Gannon's Prop.~5.1.2. For the modes: the
+$z_1^{-a-1}z_2^{-b-1}$-coefficient of the commutator is $[u_{(a)},v_{(b)}]$; that of
+$c(z_2)\partial_{z_2}^j\delta(z_1/z_2) = \sum_{k}c(z_2)\,\partial_{z_2}^j(z_1^kz_2^{-k-1})$ is
+$\prod_{i<j}(a-i)$ times the $z_2^{-a-b+j-1}$-coefficient of $c$, i.e.\ $a^{\underline j}c_{(a+b-j)}$ (the
+library's formula with $m = -a-1$: $\prod_{i<j}(-m-1-i) = \prod_{i<j}(a-i)$). \qed
+
+\begin{status}
+All three unconditional, axiom-clean (\texttt{\#print axioms} \lean{VOA.bracket_deltaSum} run for this
+chapter).
+\end{status}
+
+%======================================================================
+\section{Goddard uniqueness}\label{l03:sec:goddard}
+%======================================================================
+
+Goddard's theorem is the engine of everything that follows. Its in-algebra version is form~(i) of
+Theorem~\ref{l03:thm:goddard} below; we present all three versions the library proves, because each is used.
+
+\begin{theorem}[Goddard uniqueness, three forms]\label{l03:thm:goddard}
+Let $V$ be a vertex algebra in the library's sense, $a\in V$ and $A(z)\in\End(V)[[z^{\pm1}]]$ with
+$A(z)\lthreevac = Y(a,z)\lthreevac$ coefficientwise.
+\begin{enumerate}[label=(\roman*)]
+\item If $A$ is local with every $Y(b,z)$, then $A = Y(a,\cdot)$.
+\item It suffices that for every $b$ some $(z_1-z_2)^N$ kills $[A(z_1),Y(b,z_2)]\lthreevac$ (the
+  commutator applied to the vacuum only).
+\end{enumerate}
+(iii) (\emph{Abstract test fields.}) Let $V$ be any vector space with a vector $\lthreevac$, $A$ a
+distribution with $A(z)\lthreevac = 0$, and $(G_b)_{b\in V}$ distributions with $G_b(w)\lthreevac\in V[[w]]$
+of constant term $b$. If $A$ is local with every $G_b$, then $A = 0$.
+\end{theorem}
+\begin{leancode}
+theorem goddard_uniqueness (V : PreVertexAlgebra 𝒱) (A : FormalDist (End ℂ 𝒱)) (a : 𝒱)
+    (hAloc : ∀ b : 𝒱, Local A (V.Y b))
+    (hAvac : ∀ m : ℤ, A m V.vacuum = (V.Y a) m V.vacuum) :
+    A = V.Y a
+
+theorem goddard_zero (vac : 𝒱) (A : FormalDist (End ℂ 𝒱)) (G : 𝒱 → FormalDist (End ℂ 𝒱))
+    (hloc : ∀ b, Local A (G b))
+    (hcre0 : ∀ b, (G b) 0 vac = b)
+    (hcreneg : ∀ b, ∀ q : ℤ, q < 0 → (G b) q vac = 0)
+    (hAvac : ∀ p : ℤ, A p vac = 0)
+    (m : ℤ) (b : 𝒱) : A m b = 0
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak Goddard.lean} (\lean{VOA.PreVertexAlgebra.goddard_uniqueness},
+\lean{VOA.goddard_zero}).
+\begin{leancode}
+theorem goddard_uniqueness_vac (V : PreVertexAlgebra 𝒱) (A : FormalDist (End ℂ 𝒱)) (a : 𝒱)
+    (hAloc : ∀ b : 𝒱, ∃ N : ℕ, mulBySubPow N (applyVec V.vacuum (bracketDist A (V.Y b))) = 0)
+    (hAvac : ∀ m : ℤ, A m V.vacuum = (V.Y a) m V.vacuum) :
+    A = V.Y a
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak WeakAssoc.lean} (\lean{VOA.PreVertexAlgebra.goddard_uniqueness_vac}).
+Here \lean{applyVec x F m n = (F m n) x} evaluates an operator-valued two-variable distribution on a
+vector (\lean{VOA.applyVec}, \leanpath{VOA/\allowbreak Core/\allowbreak Goddard.lean}).
+
+\begin{dictionary}
+\textbf{Hypotheses.} In (i), \lean{hAloc} is locality with every vertex operator and \lean{hAvac}
+equality on the vacuum of the coefficient of every power $z^m$. $A$ is not assumed to be a field. In
+(ii), \lean{hAloc} is weaker: only $[A(z_1),Y(b,z_2)]\lthreevac$, a $V$-valued two-variable distribution,
+is required to be killed. (ii) implies (i) (apply a locality relation to $\lthreevac$) and is what
+skew-symmetry uses (Section~\ref{l03:sec:skew}). In (iii) the conclusion \lean{A m b = 0} for all
+$m,b$ is $A = 0$; no vertex algebra is present; \lean{hcre0}/\lean{hcreneg} say $G_b(w)\lthreevac\in
+b+wV[[w]]$. (iii) is the version needed \emph{before} a vertex algebra exists, in the reconstruction
+theorem (Section~\ref{l03:sec:recon}).
+
+\textbf{Strength.} (i) is Kac's uniqueness theorem (Kac, §4.4) and the uniqueness half of the
+reconstruction theorem of Frenkel--Ben-Zvi (§4.4); it is stated here with no translation operator, and it is \emph{true} without one:
+the proof uses only Lemma~\ref{l03:lem:vacexp}. In the counterexample of
+Section~\ref{l03:sec:counter} it holds (the reader may check that the field $A = Y(x,\cdot)+z\,y\cdot{}$,
+which is local with everything, does not create $Y(x,z)\lthreevac$: it creates $x+zy+z^2y$).
+\end{dictionary}
+
+\begin{physics}
+``The state determines the field.'' A local operator in a chiral CFT is uniquely fixed by the state
+it creates from the vacuum, because the vacuum is cyclic and separating for local fields; two
+local operators creating the same state would differ by a local operator annihilating the vacuum,
+which must vanish (a chiral Reeh--Schlieder argument). This is why one may speak of \emph{the} field
+of a state.
+\end{physics}
+
+\textbf{Proof on paper.} (iii) first. Fix $b$ and put $D(z,w) := A(z)G_b(w)\lthreevac$. Since
+$A(z)\lthreevac = 0$, $D = [A(z),G_b(w)]\lthreevac$, so $(z-w)^ND = 0$ by locality. Since
+$G_b(w)\lthreevac$ has no negative powers of $w$, $D$ is lower-truncated in $w$ (bound $0$). By the
+cancellation lemma $D = 0$, and its $w^0$-coefficient is $A(z)b = 0$. (i) and (ii): apply the same
+argument to $D = A(z)Y(b,w)\lthreevac - Y(a,z)Y(b,w)\lthreevac = [A(z),Y(b,w)]\lthreevac -
+[Y(a,z),Y(b,w)]\lthreevac$ (using $A\lthreevac = Y(a)\lthreevac$), killed by $(z-w)^{N_1+N_2}$, with $N_2$ the
+locality order of $(a,b)$ (VA4); reading off $w^0$ gives $A(z)b = Y(a,z)b$. \qed
+
+\begin{status}
+All three unconditional, axiom-clean (\texttt{\#print axioms} of
+\lean{VOA.PreVertexAlgebra.goddard_uniqueness} and \lean{VOA.goddard_zero} run for this chapter;
+\lean{goddard_uniqueness_vac} is in the dependency cone of \lean{skew}, also clean).
+\end{status}
+
+%======================================================================
+\section{Dong's lemma and the calculus of local fields}\label{l03:sec:dong}
+%======================================================================
+
+The second engine is that locality propagates. All results of this section are about arbitrary
+operator-valued distributions on an arbitrary complex vector space $V$ --- no vertex algebra, no
+vacuum.
+
+\subsection{Elementary closure properties}
+
+\begin{proposition}\label{l03:prop:localcalc}
+Let $a,b$ be distributions on $V$.
+\begin{enumerate}[label=(\alph*)]
+\item If $a,b$ are local then so are $b,a$, and so are $\partial a,b$ and $a,\partial b$ (and all
+  iterated derivatives).
+\item The identity field $1(z) = \mathrm{id}\cdot z^0$ is a field, local with every distribution,
+  and ${:}a\,1{:} = a$ for every field $a$.
+\item If $a,b$ are fields then $\partial a$ and ${:}ab{:}$ are fields.
+\end{enumerate}
+\end{proposition}
+\begin{leancode}
+theorem Local.derivL {a b : FormalDist (End ℂ V)} (h : Local a b) : Local (deriv a) b
+
+theorem Local.deriv_iterate_left {a b : FormalDist (End ℂ V)} (h : Local a b) (i : ℕ) :
+    Local ((deriv^[i]) a) b
+
+theorem Local.symm {a b : FormalDist (End ℂ V)} (h : Local a b) : Local b a
+
+noncomputable def idField : FormalDist (End ℂ V) := fun j => if j = 0 then LinearMap.id else 0
+
+theorem Local_idField_left (b : FormalDist (End ℂ V)) :
+    Local (idField : FormalDist (End ℂ V)) b
+
+theorem nprod_idField {a : FormalDist (End ℂ V)} (ha : IsField a) :
+    nprod ha (idField_isField) = a
+
+theorem IsField.nprod {a b : FormalDist (End ℂ V)} (ha : IsField a) (hb : IsField b) :
+    IsField (nprod ha hb)
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak FieldOps.lean}. And
+\begin{leancode}
+theorem IsField.deriv {a : FormalDist (End ℂ V)} (ha : IsField a) :
+    IsField (VOA.deriv a)
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak Dong.lean}.
+
+\begin{dictionary}
+\lean{deriv^[i]} is the $i$-fold iterate of $\partial_z$. The right-hand versions
+(\lean{Local.derivR}, \lean{Local.deriv_iterate_right}, \lean{Local_idField_right}) are in the same
+file. \lean{idField} has coefficient $\mathrm{id}$ at $z^0$: it is the unit field (the same object as
+the \lean{1} of VA2, defined separately for an arbitrary space). Locality of $\partial a$ with $b$
+costs one extra power: $(z_1-z_2)^{N+1}[\partial a,b] = 0$ if $(z_1-z_2)^N[a,b] = 0$.
+\end{dictionary}
+
+\begin{physics}
+Derivatives of local fields are local (the derivative $\partial\phi$ of a primary is a descendant
+field of the same theory), the identity operator commutes with everything, and normal ordering with
+the identity is trivial. These are the bookkeeping facts behind ``the operator content of a chiral
+algebra is closed under $\partial$ and normal ordering''.
+\end{physics}
+
+\textbf{Proof on paper.} (a) Symmetry: swapping the variables turns $(z_1-z_2)^N$ into
+$(-1)^N(z_1-z_2)^N$ and $[a,b]$ into $-[b,a]$. Derivative: differentiate $(z_1-z_2)^N[a(z_1),b(z_2)] = 0$
+in $z_1$ to get $(z_1-z_2)^N[\partial a,b] = -N(z_1-z_2)^{N-1}[a,b]$, and multiply by $z_1-z_2$.
+(b) $\mathrm{id}$ is central; ${:}a1{:}_s = \sum_m{:}a_m1_{s-m}{:} = a_s$ since only $m = s$
+contributes. (c) The truncation bound of $\partial a$ shifts by one; for ${:}ab{:}$ on a vector $x$ the
+finitely many $a_m$ with $m<0$ that do not kill $x$, and the truncation of $b$ on finitely many vectors,
+give a bound. \qed
+
+\begin{status}
+All unconditional and axiom-clean (in the dependency cone of \lean{gen_local} and
+\lean{reconstruct}, both checked for this chapter).
+\end{status}
+
+\subsection{Dong's lemma}
+
+\begin{theorem}[Dong's lemma, all products]\label{l03:thm:dong}
+Let $a,b,c$ be pairwise local distributions on $V$. Then for every $k\ge0$ the field product
+$a_{(k)}b := \Res_{z_1}(z_1-z_2)^k[a(z_1),b(z_2)]$ is local with $c$. If moreover $a,b$ are fields,
+then ${:}ab{:}$ is local with $c$, and hence so are all negative products
+$a_{(-m-1)}b = \frac1{m!}{:}(\partial^ma)b{:}$.
+\end{theorem}
+\begin{leancode}
+theorem jacobi₃ (a b c : FormalDist (End ℂ V)) :
+    outerC₁₂ (bracketDist a b) c
+      = outerA a (bracketDist b c) - outerB b (bracketDist a c)
+
+theorem dong_core (a b c : FormalDist (End ℂ V)) {r : ℕ}
+    (hab : mulBySubPow r (bracketDist a b) = 0)
+    (hac : mulBySubPow r (bracketDist a c) = 0)
+    (hbc : mulBySubPow r (bracketDist b c) = 0)
+    (k M : ℕ) (hM : 2 * r ≤ M) :
+    mulBySub₂₃Pow (M + r) (mulBySub₁₂Pow k (outerC₁₂ (bracketDist a b) c)) = 0
+
+theorem dong_nonneg {a b c : FormalDist (End ℂ V)}
+    (hab : Local a b) (hac : Local a c) (hbc : Local b c) (k : ℕ) :
+    Local (cCoeff k (bracketDist a b)) c
+
+theorem dong_neg {a b c : FormalDist (End ℂ V)} (ha : IsField a) (hb : IsField b)
+    (hab : Local a b) (hac : Local a c) (hbc : Local b c) :
+    Local (nprod ha hb) c
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak Dong.lean}.
+
+\begin{dictionary}
+\textbf{Three-variable objects.} \lean{FormalDist₃ W} is $\Z^3\to W$, the coefficient of
+$z_1^mz_2^nz_3^p$ (\leanpath{VOA/\allowbreak Foundations/\allowbreak FormalDist3.lean}).
+\lean{outerC₁₂ X c} is $[X(z_1,z_2),c(z_3)]$, \lean{outerA a X} is $[a(z_1),X(z_2,z_3)]$,
+\lean{outerB b X} is $[b(z_2),X(z_1,z_3)]$; \lean{mulBySub₁₂Pow k}, \lean{mulBySub₂₃Pow k} multiply
+by $(z_1-z_2)^k$, $(z_2-z_3)^k$. So \lean{jacobi₃} is the operator Jacobi identity
+$[[a,b],c] = [a,[b,c]] - [b,[a,c]]$ with variables attached, and \lean{dong_core} says
+$(z_2-z_3)^{M+r}(z_1-z_2)^k[[a(z_1),b(z_2)],c(z_3)] = 0$ once $M\ge2r$, with $r$ a common locality
+order. \lean{dong_nonneg} is the $k\ge0$ case of the theorem (\lean{cCoeff k} as in
+Section~\ref{l03:sec:conventions}); \lean{dong_neg} the normal-ordered case. The negative products
+follow by combining \lean{dong_neg} with \lean{Local.deriv_iterate_left} (this combination is
+\lean{Fld.prod_local_right_of_pairwise}, Theorem~\ref{l03:thm:fldlaws}).
+
+\textbf{Fidelity.} This is Kac's Lemma~3.2 (Dong's lemma) for all $n\in\Z$. The hypotheses are
+exactly pairwise locality, plus the field property where it is needed to form the product.
+\end{dictionary}
+
+\begin{physics}
+Dong's lemma is the closure of local fields under the OPE: if $a$, $b$, $c$ are mutually local
+chiral fields, then every coefficient of the OPE $a(z)b(w)$ --- singular or regular --- is a chiral
+field local with $c$. It is why the composite operators of a CFT (${:}JJ{:}$, $\partial J$,
+${:}TT{:}$, \dots) are again legitimate chiral fields with the same commutativity properties as their
+constituents.
+\end{physics}
+
+\textbf{Proof on paper.} Let $r$ bound the three locality orders and $M\ge2r$. By the operator
+Jacobi identity,
+\begin{equation*}
+(z_2-z_3)^{M+r}(z_1-z_2)^k[[a_1,b_2],c_3] = (z_2-z_3)^{M+r}(z_1-z_2)^k\big([a_1,[b_2,c_3]] - [b_2,[a_1,c_3]]\big),
+\end{equation*}
+with subscripts naming the variables. The first term dies because $(z_2-z_3)^r$ passes through
+$a(z_1)$ and kills $[b_2,c_3]$. For the second write $(z_2-z_3)^{M} = \big((z_2-z_1)+(z_1-z_3)\big)^{M} =
+\sum_i\binom Mi(z_2-z_1)^{i}(z_1-z_3)^{M-i}$: terms with $M-i\ge r$ die by locality of $a,c$ (the factor
+passes through $b(z_2)$); the others have $i>M-r\ge r$, and $(z_2-z_1)^i$ together with the identity
+$[b_2,[a_1,c_3]] = [a_1,[b_2,c_3]] - [[a_1,b_2],c_3]$ splits into a term killed by $(z_1-z_2)^r$
+(locality of $a,b$) and a term killed by the reserve factor $(z_2-z_3)^r$ (locality of $b,c$). This
+proves \lean{dong_core}. Taking $\Res_{z_1}$ commutes with multiplication by $(z_2-z_3)$ and turns
+$(z_1-z_2)^k[[a_1,b_2],c_3]$ into $[(a_{(k)}b)(z_2),c(z_3)]$, giving \lean{dong_nonneg} with order
+$3r$. For \lean{dong_neg}, one first proves $(z_1-z_3)^r(z_2-z_3)^{3r}[{:}a(z_1)b(z_2){:},c(z_3)] = 0$
+by splitting ${:}a_1b_2{:} = a_+(z_1)b(z_2) + b(z_2)a_-(z_1)$ and reusing \lean{dong_core} for the
+part that is a genuine double commutator; then one restricts to the diagonal $z_1 = z_2$, which is
+legitimate on each vector because $a,b$ are fields (\lean{diag3}, a finite sum), and both factors
+become powers of $(z-z_3)$: order $4r$. \qed
+
+\begin{status}
+\lean{dong_nonneg}, \lean{dong_neg}: unconditional; \texttt{\#print axioms} $=$
+\lean{[propext, Classical.choice, Quot.sound]} for both (run for this chapter).
+\end{status}
+
+%======================================================================
+\section{The reconstruction cascade in a VOA}\label{l03:sec:cascade}
+%======================================================================
+
+From here on $W$ is a \lean{VertexOperatorAlgebra}. The single new input is (VOA3). We follow the
+dependency order of \leanpath{VOA/\allowbreak Core/\allowbreak Identities.lean} and
+\leanpath{VOA/\allowbreak Core/\allowbreak Reconstruction.lean}.
+
+\subsection{Creation: \texorpdfstring{$Y(u,z)\lthreevac = e^{zT}u$}{Y(u,z)1 = exp(zT)u}}
+
+\begin{theorem}[Derivative property and creation]\label{l03:thm:creation}
+In a VOA: $T = L_{-1}$; $Y(T^ju,z) = \partial_z^jY(u,z)$ for all $j\in\N$; and
+$u_{(-k-1)}\lthreevac = \frac1{k!}T^ku$ for all $k\in\N$.
+\end{theorem}
+\begin{leancode}
+theorem T_eq_Lneg1 (W : VertexOperatorAlgebra 𝒱) : W.toPreVertexAlgebra.T = W.L (-1)
+
+theorem Y_Tpow (W : VertexOperatorAlgebra 𝒱) (u : 𝒱) (j : ℕ) :
+    W.Y ((W.toPreVertexAlgebra.T ^ j) u) = (deriv^[j]) (W.Y u)
+
+theorem creation_pow (W : VertexOperatorAlgebra 𝒱) (a : 𝒱) (k : ℕ) :
+    W.smul a (-(k : ℤ) - 1) W.vacuum
+      = ((k.factorial : ℂ)⁻¹) • ((W.toPreVertexAlgebra.T ^ k) a)
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak Identities.lean}.
+
+\begin{dictionary}
+\lean{W.toPreVertexAlgebra.T} is the translation operator of Definition~\ref{l03:def:smulT} of the
+underlying \lean{PreVertexAlgebra}; \lean{W.L (-1)} $=\omega_{(0)}$. \lean{T ^ j} is the $j$-th power in
+$\End V$, \lean{deriv^[j]} the $j$-th iterate of $\partial_z$. \lean{-(k : ℤ) - 1} is the mode
+index $-k-1$. The short proof of $T = L_{-1}$ is the proof on paper after Theorem~\ref{l03:thm:TL}; the point for us is that \emph{every step
+uses (VOA3)}, and that the counterexample of Section~\ref{l03:sec:counter} violates all three
+conclusions (with $T = 0$ and $x_{(-3)}\lthreevac = y$).
+\end{dictionary}
+
+\begin{physics}
+The vacuum is translation invariant and the state created at $z$ is the translate of the state
+created at $0$: $u(z)|0\rangle = e^{zL_{-1}}u(0)|0\rangle$. This is the translation Ward identity on
+the vacuum module.
+\end{physics}
+
+\begin{status}
+Unconditional, axiom-clean (\texttt{\#print axioms} run for \lean{T_eq_Lneg1},
+\lean{creation_pow}, \lean{Y_Tpow}).
+\end{status}
+
+\begin{theorem}[The derivative property $Y(Tu,z) = \partial_zY(u,z)$]\label{l03:thm:TL}
+In a VOA, for every $u\in V$: $Y(Tu,z) = \partial_zY(u,z)$, where $T = L_{-1}$ is the translation operator of
+Definition~\ref{l03:def:smulT}. In modes, $(Tu)_{(n)} = -n\,u_{(n-1)}$ for all $n\in\Z$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak Identities.lean}.
+\begin{leancode}
+theorem Y_T (W : VertexOperatorAlgebra 𝒱) (u : 𝒱) :
+    W.Y (W.toPreVertexAlgebra.T u) = deriv (W.Y u)
+
+theorem mode_Y_T (W : VertexOperatorAlgebra 𝒱) (u : 𝒱) (n : ℤ) :
+    mode (W.Y (W.toPreVertexAlgebra.T u)) n = (-n) • mode (W.Y u) (n - 1)
+\end{leancode}
+
+\begin{dictionary}
+\lean{W.toPreVertexAlgebra.T} is the translation operator $Tu = u_{(-2)}\lthreevac$ of the underlying \lean{PreVertexAlgebra}
+(Definition~\ref{l03:def:smulT}); \lean{W.Y} is the state--field map; \lean{deriv} is the formal derivative
+$\partial_z$ of Definition~\ref{l01:def:mode} (Chapter~\ref{ch:L01}), so \lean{deriv (W.Y u)} is
+$\sum_n(-n-1)u_{(n)}z^{-n-2}$; the equality is an equality of formal distributions, i.e.\ of all coefficients.
+\lean{mode f n} is the coefficient $f_{-n-1}$ (the library convention of Chapter~\ref{ch:L01}), and
+\lean{(-n) • ...} is multiplication by the integer $-n$ cast to $\C$. \textbf{Hypotheses:} none beyond ``$W$ is a
+VOA''. \textbf{Same, stronger or weaker?} The statement is the textbook one, Gannon (5.1.8a) and Kac's translation
+axiom: the field of $Tu$ is the derivative of the field of $u$. What deserves attention is where the statement comes
+from. The weaker structure \lean{PreVertexAlgebra} does not imply it (the counterexample of
+Theorem~\ref{l03:thm:counter} has $T=0$ but a field that is not constant); for a VOA the statement is the axiom (VOA3),
+which is written with $L_{-1}$, combined with the identification $T = L_{-1}$ (Theorem~\ref{l03:thm:creation}). \textbf{Could it be vacuous?} No: it is an
+equation between nonzero fields in every nonzero VOA (for the Heisenberg VOA, $T J = J_{(-2)}\lthreevac$ and
+$Y(TJ,z) = \partial_zJ(z)$).
+\end{dictionary}
+
+\begin{physics}
+Derivatives of a field are generated by the stress tensor: $[L_{-1},\phi(z)] = \partial\phi(z)$, and, since
+$L_{-1}u = \partial u$ is the state of the derivative operator, the field of that state is the derivative of
+the field. This is the ``state--operator'' form of the translation Ward identity in a chiral CFT. In modes it is
+the familiar rule that differentiating $\sum_nu_{(n)}z^{-n-1}$ multiplies the $n$-th mode by $-n$ and lowers its
+index, e.g.\ $\partial J(z)=\sum_n(-n)J_{(n-1)}z^{-n-1}$ for a current.
+\end{physics}
+
+\textbf{Proof on paper.} By the axiom (VOA3), $Y(L_{-1}u,z) = \partial_zY(u,z)$, so it suffices to show
+$T = L_{-1}$. Evaluate (VOA3) on the vacuum and use creation $Y(v,z)\lthreevac\in v+zV[[z]]$: the $z^0$-coefficient of
+$Y(L_{-1}u,z)\lthreevac$ is $L_{-1}u$, while the $z^0$-coefficient of $\partial_zY(u,z)\lthreevac$ is the
+$z^1$-coefficient of $Y(u,z)\lthreevac$, which is $u_{(-2)}\lthreevac = Tu$. Hence $L_{-1}u = Tu$. The mode form
+is obtained by comparing the coefficient of $z^{-n-1}$ on both sides of $Y(Tu,z) = \partial_zY(u,z)$:
+$\partial_z\sum_ku_{(k)}z^{-k-1} = \sum_k(-k-1)u_{(k)}z^{-k-2} = \sum_n(-n)u_{(n-1)}z^{-n-1}$ after the substitution $k=n-1$. \qed
+
+\begin{status}
+Unconditional. \texttt{\#print axioms} \lean{VOA.VertexOperatorAlgebra.Y\_T} $=$
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (run for this chapter at the
+commit of the front matter, with \texttt{lake env lean -DmaxSynthPendingDepth=3}); \lean{mode_Y_T} proved from it by
+rewriting. The PBW theorem \lean{VOA.pbw} (Chapter~\ref{ch:L02}; formerly a project axiom, now a theorem) is not used.
+\end{status}
+
+\subsection{Translation covariance}
+
+\begin{theorem}[Translation covariance]\label{l03:thm:transcov}
+In a VOA, $[L_{-1},Y(u,z)] = Y(L_{-1}u,z) = \partial_zY(u,z)$. In modes:
+$[L_{-1},u_{(n)}] = (L_{-1}u)_{(n)} = -n\,u_{(n-1)}$.
+\end{theorem}
+\begin{leancode}
+theorem translation_covariance (W : VertexOperatorAlgebra 𝒱) (u : 𝒱) :
+    cCoeff 0 (bracketDist (W.Y W.conformalVector) (W.Y u)) = W.Y (W.L (-1) u)
+
+theorem L_neg_one_deriv (W : VertexOperatorAlgebra 𝒱) (u w : 𝒱) (n : ℤ) :
+    W.L (-1) (W.smul u n w) - W.smul u n (W.L (-1) w) = W.smul (W.L (-1) u) n w
+
+theorem L_comm_mode (W : VertexOperatorAlgebra 𝒱) (u : 𝒱) (n : ℤ) :
+    ⁅W.L (-1), mode (W.Y u) n⁆ = (-n) • mode (W.Y u) (n - 1)
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak Reconstruction.lean}.
+
+\begin{dictionary}
+\lean{cCoeff 0 (bracketDist (Y ω) (Y u))} is $\Res_{z_1}[Y(\omega,z_1),Y(u,z_2)] = [\omega_{(0)},Y(u,z_2)]
+= [L_{-1},Y(u,z_2)]$ (library lemma \lean{cCoeff_zero_omega_apply}). Note that (VOA3) is
+$Y(L_{-1}u) = \partial Y(u)$, an equality of the field \emph{of a state}; translation covariance is the
+\emph{operator} statement $[L_{-1},Y(u)] = \partial Y(u)$, which Kac and FBZ take as their axiom. It
+is a theorem here, and the combination of the two is Kac's axiom. \lean{L_neg_one_deriv} is the
+$z^{-n-1}$-coefficient applied to $w$; \lean{L_comm_mode} rewrites $(L_{-1}u)_{(n)} = (Tu)_{(n)} =
+-n\,u_{(n-1)}$.
+\end{dictionary}
+
+\begin{physics}
+The stress tensor generates translations of every field: $[L_{-1},\phi(z)] = \partial\phi(z)$, the
+conformal Ward identity for $z\mapsto z+\epsilon$, obtained by contour-integrating $T(w)\phi(z)$
+around $z$.
+\end{physics}
+
+\textbf{Proof on paper.} The candidate field $A := [L_{-1},Y(u,\cdot)] = \Res_{z_1}[Y(\omega,z_1),Y(u,\cdot)]$
+is local with every $Y(b,\cdot)$ by Dong's lemma (\lean{dong_nonneg} with $k = 0$, applied to the
+pairwise local $Y(\omega),Y(u),Y(b)$). On the vacuum, $A(z)\lthreevac = L_{-1}Y(u,z)\lthreevac$ because
+$L_{-1}\lthreevac = T\lthreevac = 0$; and $L_{-1}(u_{(s)}\lthreevac) = (L_{-1}u)_{(s)}\lthreevac$ for all $s$
+(both are $T^{j+1}u/j!$ for $s = -j-1$ by \lean{creation_pow}, and $0$ for $s\ge0$). So $A$ creates
+$Y(L_{-1}u,z)\lthreevac$, and Goddard (Theorem~\ref{l03:thm:goddard}(i)) gives $A = Y(L_{-1}u,\cdot)$. \qed
+
+\begin{status}
+Unconditional, axiom-clean (\texttt{\#print axioms} \lean{translation_covariance}
+run for this chapter).
+\end{status}
+
+\subsection{Duality for \texorpdfstring{$n\ge0$}{n >= 0} and the commutator formula}
+
+\begin{theorem}[The $n$-th product theorem, $n\ge0$]\label{l03:thm:nthproduct}
+In a VOA, for all $u,v$ and $k\in\N$:
+\begin{equation*}
+Y(u_{(k)}v,z) = \Res_{z_1}(z_1-z)^k[Y(u,z_1),Y(v,z)] .
+\end{equation*}
+\end{theorem}
+\begin{leancode}
+theorem cCoeff_vacuum_eq (W : VertexOperatorAlgebra 𝒱) (u v : 𝒱) (k : ℕ) (m : ℤ) :
+    cCoeff k (bracketDist (W.Y u) (W.Y v)) m W.vacuum = (W.Y (W.smul u k v)) m W.vacuum
+
+theorem nth_product (W : VertexOperatorAlgebra 𝒱) (u v : 𝒱) (k : ℕ) :
+    cCoeff k (bracketDist (W.Y u) (W.Y v)) = W.Y (W.smul u k v)
+
+theorem assoc_nonneg (W : VertexOperatorAlgebra 𝒱) (u v : 𝒱) (k : ℕ) :
+    W.Y (W.smul u k v) = cCoeff k (bracketDist (W.Y u) (W.Y v))
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak Reconstruction.lean}.
+
+\begin{dictionary}
+\lean{W.smul u k v} with \lean{k : ℕ} coerced to $\Z$ is $u_{(k)}v$. \lean{assoc_nonneg} is
+\lean{nth_product} read backwards (Gannon (5.1.9b)). This is Kac's ``$n$-th product identity'' $Y(a_{(n)}b,z) =
+Y(a,z)_{(n)}Y(b,z)$ (Kac, §4.6) for $n\ge0$: the state--field map is a homomorphism for the nonnegative
+products.
+\end{dictionary}
+
+\begin{physics}
+The field of the state $u_{(k)}v$ --- the coefficient of $(z-w)^{-k-1}$ in the OPE $u(z)v(w)$ --- is
+the corresponding OPE coefficient \emph{field}: OPE coefficients of states and of operators agree.
+This is the state--operator correspondence applied to the singular part of the OPE.
+\end{physics}
+
+\textbf{Proof on paper.} The left field is local with every $Y(b,\cdot)$ by Dong's lemma. It
+creates $u_{(k)}v$: on the vacuum its $z^m$-coefficient vanishes for $m<0$ (all modes $v_{(q)}$,
+$q\ge0$, kill $\lthreevac$, and $(z_1-z)^k$ has no negative powers of $z$), its $z^0$-coefficient is
+$\Res_{z_1}(z_1)^k Y(u,z_1)v = u_{(k)}v$, and the higher coefficients follow by induction from
+$[L_{-1},\cdot\,]$ acting as $\partial_z$ on both sides (\lean{L_comm_cCoeff},
+\lean{L_comm_Ycoeff}) together with $L_{-1}\lthreevac = 0$. This is \lean{cCoeff_vacuum_eq}; Goddard
+finishes. \qed
+
+\begin{status}
+Unconditional, axiom-clean.
+\end{status}
+
+\begin{theorem}[Commutator formula]\label{l03:thm:comm}
+In a VOA, for all $u,v$ and $a,b\in\Z$,
+$[u_{(a)},v_{(b)}] = \sum_{j\ge0}\binom aj(u_{(j)}v)_{(a+b-j)}$ (a finite sum).
+\end{theorem}
+\begin{leancode}
+theorem mode_commutator (W : VertexOperatorAlgebra 𝒱) (u v : 𝒱) (a b : ℤ) :
+    ∃ N : ℕ, ⁅mode (W.Y u) a, mode (W.Y v) b⁆
+      = ∑ j : Fin N, gBinom a (j : ℕ) • mode (W.Y (W.smul u (j : ℕ) v)) (a + b - (j : ℕ))
+
+theorem commBound (W : VertexOperatorAlgebra 𝒱) (u v : 𝒱) (m n : ℤ) :
+    ∃ N : ℕ, (∀ k : ℕ, N ≤ k → W.smul u k v = 0)
+      ∧ ⁅mode (W.Y u) m, mode (W.Y v) n⁆
+        = ∑ j : Fin N, gBinom m (j : ℕ) • mode (W.Y (W.smul u (j : ℕ) v)) (m + n - (j : ℕ))
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak Reconstruction.lean} (\lean{mode_commutator}) and
+\leanpath{VOA/\allowbreak Core/\allowbreak Borcherds.lean} (\lean{commBound}). The theorem
+\lean{jacobi_commutator} of \leanpath{VOA/\allowbreak Core/\allowbreak BorcherdsIdentity.lean} is
+\lean{mode_commutator} under another name.
+
+\begin{dictionary}
+\lean{gBinom a j} is $\binom aj = a(a-1)\cdots(a-j+1)/j!$ for $a\in\Z$ (Chapter~\ref{ch:L01}, Definition~\ref{l01:def:gbinom}).
+\textbf{The existential.} \lean{mode_commutator} asserts the identity for \emph{some} $N$; read
+alone it does not say that the omitted terms $j\ge N$ vanish, so it is formally weaker than the
+textbook ``$\sum_{j\ge0}$''. \lean{commBound} closes the gap: the same $N$ also satisfies
+$u_{(k)}v = 0$ for all $k\ge N$, so the finite sum \emph{is} the full sum. Together they are exactly
+the commutator formula of Gannon (5.1.7c), Kac (§4.6) and Lepowsky--Li (§3.1).
+\end{dictionary}
+
+\begin{physics}
+``Commutators of modes are determined by the singular part of the OPE.'' For the Virasoro field,
+$T(z)T(w)\sim\frac{c/2}{(z-w)^4}+\frac{2T(w)}{(z-w)^2}+\frac{\partial T(w)}{z-w}$ produces the Virasoro
+relations; for currents $J^a(z)J^b(w)\sim\frac{k\delta^{ab}}{(z-w)^2}+\frac{f^{abc}J^c(w)}{z-w}$ the
+affine Kac--Moody relations.
+\end{physics}
+
+\textbf{Proof on paper.} Theorem~\ref{l03:thm:ope} gives the structural formula with coefficients
+$c_j$; the delta-decomposition determines $c_j = \frac1{j!}\Res_{z_1}(z_1-z)^j[Y(u,z_1),Y(v,z)]$
+(\lean{cCoeff_deltaSum}), which is $\frac1{j!}Y(u_{(j)}v,z)$ by Theorem~\ref{l03:thm:nthproduct}; and
+$a^{\underline j}/j! = \binom aj$. For \lean{commBound}, the same decomposition shows
+$\Res_{z_1}(z_1-z)^k[\cdots] = 0$ for $k\ge N$, i.e.\ $Y(u_{(k)}v) = 0$, and creation gives $u_{(k)}v = 0$. \qed
+
+\begin{status}
+Both unconditional, axiom-clean.
+\end{status}
+
+\subsection{Duality for \texorpdfstring{$n<0$}{n < 0}}
+
+\begin{theorem}[The $n$-th product theorem, $n<0$]\label{l03:thm:assocneg}
+In a VOA, for all $u,v$ and $k\in\N$,
+\begin{equation*}
+Y(u_{(-k-1)}v,z) = \frac1{k!}\,{:}\partial_z^kY(u,z)\,Y(v,z){:}.
+\end{equation*}
+\end{theorem}
+\begin{leancode}
+theorem assoc_neg (W : VertexOperatorAlgebra 𝒱) (u v : 𝒱) (k : ℕ) :
+    W.Y (W.smul u (-(k:ℤ) - 1) v) = negProd (W.isField_Y u) (W.isField_Y v) k
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak Reconstruction.lean}.
+
+\begin{dictionary}
+\lean{negProd (W.isField_Y u) (W.isField_Y v) k} is $\frac1{k!}{:}(\partial^kY(u))Y(v){:}$
+(Section~\ref{l03:sec:conventions}); the two \lean{isField_Y} arguments are the proofs that the
+vertex operators are fields, needed to form the normal-ordered product. With $k = 0$:
+$Y(u_{(-1)}v,z) = {:}Y(u,z)Y(v,z){:}$, Gannon (5.1.9a), Kac (§4.6). Together with
+Theorem~\ref{l03:thm:nthproduct}: $Y(u_{(n)}v,z) = Y(u,z)_{(n)}Y(v,z)$ for \emph{all} $n\in\Z$.
+\end{dictionary}
+
+\begin{physics}
+The regular part of the OPE: the field of the state $u_{(-k-1)}v$ is the $k$-th Taylor coefficient of
+$u(z)v(w)$ at $z = w$ after subtracting the poles, i.e.\ ${:}\partial^ku\,v{:}/k!$. For instance the
+Sugawara or free-boson stress tensor is the field of the state $\frac12 J_{(-1)}J$, namely
+$\frac12{:}JJ{:}$.
+\end{physics}
+
+\textbf{Proof on paper.} Replace $\partial^kY(u)$ by $Y(T^ku)$ (Theorem~\ref{l03:thm:creation}). The
+field $\frac1{k!}{:}Y(T^ku)Y(v){:}$ is local with every $Y(b)$ by \lean{dong_neg}. On the vacuum,
+its negative $z$-powers vanish (in each normal-ordered term the factor acting first on
+$\lthreevac$ is a coefficient of a negative power of $z$, which kills $\lthreevac$), its $z^0$-coefficient is $\frac1{k!}(T^ku)_{(-1)}v = u_{(-k-1)}v$ (iterate
+\lean{mode_Y_T}: $(Tu)_{(n)} = -n\,u_{(n-1)}$), and the higher coefficients are pinned by translation
+covariance of the normal-ordered product (\lean{nprod_L_comm}) and $L_{-1}\lthreevac = 0$ via the
+recursion $L_{-1}(F_s\lthreevac) = (s+1)F_{s+1}\lthreevac$ (\lean{vacuum_recursion_eq}). So it creates
+$Y(u_{(-k-1)}v,z)\lthreevac$, and Goddard finishes. \qed
+
+\begin{status}
+Unconditional, axiom-clean (\texttt{\#print axioms} \lean{VOA.VertexOperatorAlgebra.assoc_neg} run for this
+chapter).
+\end{status}
+
+\subsection{The iterate formula for all \texorpdfstring{$\ell$}{l}}
+
+\begin{theorem}[Iterate (associativity) formula]\label{l03:thm:iterate}
+In a VOA, for all $u,v,x$ and $\ell,n\in\Z$,
+\begin{equation*}
+(u_{(\ell)}v)_{(n)}x = \sum_{i\ge0}(-1)^i\binom\ell i\Big(u_{(\ell-i)}v_{(n+i)}x - (-1)^\ell\,v_{(\ell+n-i)}u_{(i)}x\Big).
+\end{equation*}
+\end{theorem}
+\begin{leancode}
+theorem mode_iterate_borcherds_nonneg (W : VertexOperatorAlgebra 𝒱) (u v : 𝒱) (k : ℕ) (n : ℤ) :
+    mode (W.Y (W.smul u (k : ℤ) v)) n =
+      ∑ i ∈ Finset.range (k + 1), ((-1 : ℂ) ^ i * gBinom (k : ℤ) i) •
+        (mode (W.Y u) ((k : ℤ) - i) * mode (W.Y v) (n + i)
+          - ((-1 : ℂ) ^ k) • (mode (W.Y v) ((k : ℤ) + n - i) * mode (W.Y u) (i)))
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak Reconstruction.lean}.
+\begin{leancode}
+theorem mode_iterate_neg (W : VertexOperatorAlgebra 𝒱) (u v : 𝒱) (k : ℕ) (N : ℤ) (x : 𝒱) :
+    W.smul (W.smul u (-(k:ℤ) - 1) v) N x
+      = ∑ᶠ i : ℕ, ((-1:ℂ)^i * gBinom (-(k:ℤ)-1) i) •
+          (W.smul u (-(k:ℤ)-1-i) (W.smul v (N+i) x)
+            - ((-1:ℂ)^(-(k:ℤ)-1)) • W.smul v (-(k:ℤ)-1+N-i) (W.smul u i x))
+
+theorem mode_iterate (W : VertexOperatorAlgebra 𝒱) (u v : 𝒱) (ℓ N : ℤ) (x : 𝒱) :
+    W.smul (W.smul u ℓ v) N x
+      = ∑ᶠ i : ℕ, ((-1:ℂ)^i * gBinom ℓ i) •
+          (W.smul u (ℓ - i) (W.smul v (N + i) x)
+            - ((-1:ℂ)^ℓ) • W.smul v (ℓ + N - i) (W.smul u i x))
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak BorcherdsIdentity.lean}.
+
+\begin{dictionary}
+\textbf{Operator vs.\ vector form.} For $\ell = k\ge0$ the identity is stated as an equality of
+operators (no $x$), a sum over $i\in\{0,\dots,k\}$ since $\binom ki = 0$ for $i>k$. For $\ell<0$ the
+binomial $\binom\ell i$ never vanishes and the sum over $i$ is infinite as an operator identity; it is
+finite only after applying to $x$ (the factors $v_{(N+i)}x$ and $u_{(i)}x$ vanish for $i\gg0$ by VA5).
+Hence \lean{mode_iterate} is stated on vectors with \lean{∑ᶠ} (\lean{finsum}: a genuine sum when the
+support is finite, $0$ otherwise). Its support is finite for the reason just given, so \lean{∑ᶠ} is a
+true finite sum here (the library proves the corresponding finiteness lemmas \lean{Puv_fin},
+\lean{Pvu_fin}, Section~\ref{l03:sec:borcherds}).
+
+\textbf{Signs.} \lean{(-1:ℂ)^ℓ} with \lean{ℓ : ℤ} is the integer power ($\pm1$); for $\ell = -k-1$ it is
+$(-1)^{k+1}$ (library lemma \lean{neg_one_zpow_negsucc}). The formula is Gannon (5.1.7d), the iterate formula of Lepowsky--Li (§3.1), and the
+$m = 0$ case of the Borcherds identity in Kac (§4.8).
+\end{dictionary}
+
+\begin{physics}
+The iterate formula expresses the modes of a composite field $(u_{(\ell)}v)(z)$ through the modes of
+its constituents, with radial ordering taken into account (the two sums are the two orderings
+$|z_1|>|z_2|$ and $|z_2|>|z_1|$). It is the mode form of associativity of the OPE: expanding
+$u(z_1)v(z_2)x$ around $z_2$ first, or computing the OPE $u\times v$ first and then acting on $x$, gives
+the same answer.
+\end{physics}
+
+\textbf{Proof on paper.} For $\ell = k\ge0$: by Theorem~\ref{l03:thm:nthproduct},
+$(u_{(k)}v)_{(n)}$ is the $z^{-n-1}$-coefficient of $\Res_{z_1}(z_1-z)^k[Y(u,z_1),Y(v,z)]$; expanding
+$(z_1-z)^k = \sum_r\binom kr z_1^r(-z)^{k-r}$ gives $\sum_r(-1)^{k-r}\binom kr[u_{(r)},v_{(n+k-r)}]$, and
+reindexing $r = k-i$ in the first half (with $\binom k{k-i} = \binom ki$) and writing
+$(-1)^{k-i} = (-1)^i(-1)^k$ in the second half gives the displayed form. For $\ell = -k-1$: by Theorem~\ref{l03:thm:assocneg} the left side
+is the $z^{-N-1}$-coefficient of $\frac1{k!}{:}\partial^kY(u)Y(v){:}$ applied to $x$, i.e.\
+$\frac1{k!}\sum_m{:}(\partial^kY(u))_mY(v)_{-N-1-m}{:}x$. Split the sum into $m\ge0$ (creation part,
+on the left) and $m\le-k-1$ (annihilation part, on the right; the range $-k-1<m<0$ contributes zero
+because the falling factorial from $\partial^k$ vanishes there). Reindex the two ranges by $m = i$ and
+$m = -k-1-i$; the coefficients are $\frac1{k!}\prod_{j<k}(i+1+j) = \binom{k+i}{i} = (-1)^i\binom{-k-1}{i}$
+and its signed analogue (\lean{posfac_eq}, \lean{negfac_eq}). This is the displayed formula. \qed
+
+\begin{status}
+\lean{mode_iterate} (and both branches): unconditional; \texttt{\#print axioms} \lean{VOA.VertexOperatorAlgebra.mode_iterate} $=$ \lean{[propext, Classical.choice, Quot.sound]} (run for
+this chapter).
+\end{status}
+
+%======================================================================
+\section{The Borcherds identity}\label{l03:sec:borcherds}
+%======================================================================
+
+\begin{definition}[The two sides]\label{l03:def:BLBR}
+For $u,v,x\in V$ and $\ell,m,n\in\Z$ put
+\begin{align*}
+\lthreeBR(\ell,m,n) &= \sum_{i\ge0}\binom mi(u_{(\ell+i)}v)_{(m+n-i)}x,\\
+P_{uv}(\ell,m,n) &= \sum_{i\ge0}(-1)^i\binom\ell i\,u_{(\ell+m-i)}v_{(n+i)}x,\qquad
+P_{vu}(\ell,m,n) = \sum_{i\ge0}(-1)^i\binom\ell i\,v_{(\ell+n-i)}u_{(m+i)}x,\\
+\lthreeBL(\ell,m,n) &= P_{uv}(\ell,m,n) - (-1)^\ell P_{vu}(\ell,m,n).
+\end{align*}
+\end{definition}
+\begin{leancode}
+noncomputable def BR (W : VertexOperatorAlgebra 𝒱) (u v x : 𝒱) (ℓ m n : ℤ) : 𝒱 :=
+  ∑ᶠ i : ℤ, cbz m i • W.smul (W.smul u (ℓ + i) v) (m + n - i) x
+
+noncomputable def Puv (W : VertexOperatorAlgebra 𝒱) (u v x : 𝒱) (ℓ m n : ℤ) : 𝒱 :=
+  ∑ᶠ i : ℤ, (negOnePow i * cbz ℓ i) • W.smul u (ℓ + m - i) (W.smul v (n + i) x)
+
+noncomputable def Pvu (W : VertexOperatorAlgebra 𝒱) (u v x : 𝒱) (ℓ m n : ℤ) : 𝒱 :=
+  ∑ᶠ i : ℤ, (negOnePow i * cbz ℓ i) • W.smul v (ℓ + n - i) (W.smul u (m + i) x)
+
+noncomputable def BL (W : VertexOperatorAlgebra 𝒱) (u v x : 𝒱) (ℓ m n : ℤ) : 𝒱 :=
+  Puv W u v x ℓ m n - negOnePow ℓ • Pvu W u v x ℓ m n
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak Borcherds.lean}.
+
+\begin{dictionary}
+\lean{cbz n i} is $\binom ni$ for $i\ge0$ and $0$ for $i<0$ (\leanpath{VOA/\allowbreak Foundations/\allowbreak
+Substitution.lean}), so the sums over $i\in\Z$ are sums over $i\ge0$. \lean{negOnePow i} is $(-1)^i$
+as a complex number. Each of the three \lean{∑ᶠ} has finite support (lemmas \lean{BR_fin},
+\lean{Puv_fin}, \lean{Pvu_fin}): for $\lthreeBR$ by VA5 for $(u,v)$; for $P_{uv}$ by VA5 for $(v,x)$; for
+$P_{vu}$ by VA5 for $(u,x)$. So none of them is a silently zero ``divergent'' \lean{finsum}.
+\end{dictionary}
+
+\begin{physics}
+$\lthreeBL$ and $\lthreeBR$ are the two sides of OPE associativity in a three-point function
+$\langle x'|u(z_1)v(z_2)|x\rangle$: on the left, the two radial orderings of $u(z_1)v(z_2)$ (the
+difference is a contour around $z_2$); on the right, the OPE $u(z_1)v(z_2)$ expanded around $z_2$ and
+then $Y(\cdot,z_2)$ acting on $x$. The weights $(z_1-z_2)^\ell$ and $z_1^m$ select one moment of each.
+\end{physics}
+
+\begin{lemma}[Pascal recursion and the anti-diagonal pin]\label{l03:lem:pascal}
+Both sides satisfy $B(\ell,m+1,n) = B(\ell,m,n+1) + B(\ell+1,m,n)$. Moreover, if a family
+$D:\Z^2\to M$ in an abelian group satisfies $D(\ell,n+1) = -D(\ell+1,n)$ for all $\ell,n$ and $D(0,n) = 0$
+for all $n$, then $D\equiv0$.
+\end{lemma}
+\begin{leancode}
+theorem BR_rec (W : VertexOperatorAlgebra 𝒱) (u v x : 𝒱) (ℓ m n : ℤ) :
+    BR W u v x ℓ (m + 1) n = BR W u v x ℓ m (n + 1) + BR W u v x (ℓ + 1) m n
+
+theorem BL_rec (W : VertexOperatorAlgebra 𝒱) (u v x : 𝒱) (ℓ m n : ℤ) :
+    BL W u v x ℓ (m + 1) n = BL W u v x ℓ m (n + 1) + BL W u v x (ℓ + 1) m n
+
+theorem antidiag_pin {M : Type*} [AddCommGroup M] (D : ℤ → ℤ → M)
+    (hrec : ∀ ℓ n : ℤ, D ℓ (n + 1) = -D (ℓ + 1) n) (hbd : ∀ n : ℤ, D 0 n = 0) :
+    ∀ ℓ n : ℤ, D ℓ n = 0
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak Borcherds.lean}.
+
+\begin{dictionary}
+Pure combinatorics; \lean{BR_rec} and \lean{BL_rec} hold in every VOA without using any identity
+between modes (only Pascal's rule for $\binom\cdot\cdot$ and reindexing). \lean{antidiag_pin} is a
+statement about arbitrary families.
+\end{dictionary}
+
+\begin{physics}
+The recursion is the identity $z_1^{m+1} = z_1^m\big((z_1-z_2)+z_2\big)$ inside the Jacobi identity:
+raising the power of $z_1$ is the same as raising the power of $z_2$ or of $z_1-z_2$. Physically, the
+three moments of a correlator are not independent.
+\end{physics}
+
+\textbf{Proof on paper.} For $\lthreeBR$: $\binom{m+1}i = \binom mi + \binom m{i-1}$, and the shift
+$i\mapsto i+1$ in the second sum turns it into $\lthreeBR(\ell+1,m,n)$. For $P_{uv}$ and $P_{vu}$ use
+$\binom{\ell+1}{i} = \binom\ell i+\binom\ell{i-1}$ in the form $\binom\ell{i-1} = \binom{\ell+1}i - \binom\ell i$:
+one gets $P_{uv}(\ell,m+1,n) = P_{uv}(\ell,m,n+1) + P_{uv}(\ell+1,m,n)$ and
+$P_{vu}(\ell,m+1,n) = P_{vu}(\ell,m,n+1) - P_{vu}(\ell+1,m,n)$, and the sign $(-1)^{\ell+1} = -(-1)^\ell$
+makes $\lthreeBL$ satisfy the same recursion as $\lthreeBR$. For the pin: $D(\ell,n) = -D(\ell+1,n-1) =
+D(\ell+2,n-2) = \cdots$, so $D(\ell,n) = \pm D(0,n+\ell) = 0$ (and similarly moving left for $\ell<0$). \qed
+
+\begin{status}
+Unconditional, axiom-clean (in the cone of \lean{borcherds}).
+\end{status}
+
+\begin{theorem}[The Borcherds identity]\label{l03:thm:borcherds}
+In a VOA, for all $u,v,x\in V$ and all $\ell,m,n\in\Z$, $\lthreeBL(\ell,m,n) = \lthreeBR(\ell,m,n)$, i.e.
+\begin{equation}\label{l03:eq:borcherds}
+\sum_{i\ge0}(-1)^i\binom\ell i\Big(u_{(\ell+m-i)}v_{(n+i)}x - (-1)^\ell v_{(\ell+n-i)}u_{(m+i)}x\Big)
+ = \sum_{i\ge0}\binom mi(u_{(\ell+i)}v)_{(m+n-i)}x .
+\end{equation}
+\end{theorem}
+\begin{leancode}
+theorem borcherds_base (W : VertexOperatorAlgebra 𝒱) (u v x : 𝒱) (ℓ n : ℤ) :
+    BL W u v x ℓ 0 n = BR W u v x ℓ 0 n
+
+theorem borcherds_boundary (W : VertexOperatorAlgebra 𝒱) (u v x : 𝒱) (m n : ℤ) :
+    BL W u v x 0 m n = BR W u v x 0 m n
+
+theorem borcherds (W : VertexOperatorAlgebra 𝒱) (u v x : 𝒱) (ℓ m n : ℤ) :
+    BL W u v x ℓ m n = BR W u v x ℓ m n
+
+theorem jacobi (W : VertexOperatorAlgebra 𝒱) (u v x : 𝒱) (ℓ m n : ℤ) :
+    (∑ᶠ i : ℤ, (negOnePow i * cbz ℓ i) •
+        (W.smul u (ℓ + m - i) (W.smul v (n + i) x)
+          - negOnePow ℓ • W.smul v (ℓ + n - i) (W.smul u (m + i) x)))
+      = ∑ᶠ i : ℤ, cbz m i • W.smul (W.smul u (ℓ + i) v) (m + n - i) x
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak Borcherds.lean}.
+
+\begin{dictionary}
+\textbf{All indices.} \lean{borcherds} and \lean{jacobi} are quantified over all $u,v,x$ and all
+$\ell,m,n\in\Z$, with no side condition: this is the Borcherds identity in full, Gannon (5.1.7b),
+Kac (4.8.3), equivalent coefficient by coefficient to the Jacobi identity \eqref{l03:eq:jacobi}
+(the extraction is sketched after \eqref{l03:eq:jacobi}). \lean{jacobi} is \lean{borcherds} with
+$\lthreeBL$ written as one \lean{finsum} (lemma \lean{BL_as_finsum}). The base case $m = 0$ is
+Theorem~\ref{l03:thm:iterate}; the boundary $\ell = 0$ is Theorem~\ref{l03:thm:comm} applied to $x$.
+
+\textbf{What it does not say.} It is stated for \lean{VertexOperatorAlgebra} only. For a
+\lean{PreVertexAlgebra} it is false in general (Theorem~\ref{l03:thm:counter}).
+\end{dictionary}
+
+\begin{physics}
+The Borcherds identity is OPE associativity together with locality --- crossing symmetry of the
+chiral three-point functions, in mode form. Every relation among OPE coefficients of a chiral algebra
+is a consequence of it; its $\ell = 0$ slice gives the mode algebra (current, Virasoro, $W$-algebras),
+its $m = 0$ slice the modes of composite fields. Proving it from locality is the rigorous version of
+``single-valued correlators with finite poles are automatically associative''.
+\end{physics}
+
+\textbf{Proof on paper.} Let $D_m(\ell,n) = \lthreeBL(\ell,m,n) - \lthreeBR(\ell,m,n)$. By
+Lemma~\ref{l03:lem:pascal}, $D_{m+1}(\ell,n) = D_m(\ell,n+1) + D_m(\ell+1,n)$. For $m\ge0$: $D_0\equiv0$
+(base case), so $D_m\equiv0$ by induction upward. For $m = -k-1<0$, induct downward: if $D_{m+1}\equiv0$
+then $D_m(\ell,n+1) = -D_m(\ell+1,n)$, and $D_m(0,n) = 0$ by the boundary case; the anti-diagonal pin
+gives $D_m\equiv0$. No delta-function calculus and no rearrangement of infinite sums is used. \qed
+
+\begin{status}
+\lean{borcherds}, \lean{jacobi}: unconditional; \texttt{\#print axioms} $=$
+\lean{[propext, Classical.choice, Quot.sound]} for both (run for this chapter). The PBW theorem \lean{VOA.pbw} is not used.
+\end{status}
+
+\begin{theorem}[The commutator formula, as re-exposed in the Borcherds layer]\label{l03:thm:jacobicomm}
+In a VOA, for all $u,v\in V$ and $a,b\in\Z$ there is a natural number $N$ such that
+\begin{equation*}
+ [u_{(a)},v_{(b)}] \;=\; \sum_{j=0}^{N-1}\binom aj\,(u_{(j)}v)_{(a+b-j)} .
+\end{equation*}
+It is the case $\ell = 0$ of the Borcherds identity (Theorem~\ref{l03:thm:borcherds}); the case $m=0$ is the iterate
+formula (Theorem~\ref{l03:thm:iterate}).
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak BorcherdsIdentity.lean}.
+\begin{leancode}
+theorem jacobi_commutator (W : VertexOperatorAlgebra 𝒱) (u v : 𝒱) (a b : ℤ) :
+    ∃ N : ℕ, ⁅mode (W.Y u) a, mode (W.Y v) b⁆
+      = ∑ j : Fin N, gBinom a (j : ℕ) • mode (W.Y (W.smul u (j : ℕ) v)) (a + b - (j : ℕ))
+\end{leancode}
+
+\begin{dictionary}
+\lean{⁅x, y⁆} is the commutator $xy-yx$ in the ring $\End(V)$ (here of two mode operators);
+\lean{mode (W.Y u) a} is $u_{(a)}$; \lean{W.smul u j v} is $u_{(j)}v$; \lean{gBinom a j} is the binomial coefficient
+$\binom aj = a(a-1)\cdots(a-j+1)/j!$ for $a\in\Z$ (Definition~\ref{l01:def:gbinom}); \lean{Fin N} indexes $j = 0,\dots,N-1$;
+\lean{(j : ℕ)} is the coercion $\mathrm{Fin}\,N\to\N$. The statement is word for word that of \lean{mode_commutator}
+(Theorem~\ref{l03:thm:comm}); in the source the proof is the single term \lean{mode_commutator W u v a b}, and the
+declaration exists so that the Borcherds file can name the $\ell = 0$ slice without importing the reconstruction file.
+Hence the same fidelity remarks apply: because of the existential quantifier, read alone the statement does not say that
+the omitted terms $j\ge N$ vanish, so it is formally weaker than the textbook ``$\sum_{j\ge0}$''. The strengthening is
+\lean{commBound} of Theorem~\ref{l03:thm:comm}, which supplies the same $N$ with $u_{(k)}v = 0$ for $k\ge N$. The
+\emph{iterate} formula, the case $m=0$, is a different statement, \lean{mode_iterate} of
+Theorem~\ref{l03:thm:iterate}, and is not part of this theorem. \textbf{Could it be vacuous?} No: for the
+Virasoro field $u=v=\omega$ one finds $N = 4$ and the Virasoro relations.
+\end{dictionary}
+
+\begin{physics}
+Commutators of modes are the singular part of the OPE: $[u_{(a)},v_{(b)}]$ is the contour integral of the
+singular terms $\sum_j(u_{(j)}v)(w)/(z-w)^{j+1}$, which is why only finitely many $j$ occur (a pole of bounded order).
+For currents this is the affine Kac--Moody algebra; for $\omega$ it is the Virasoro algebra with its central term
+$\tfrac c{12}(m^3-m)\delta_{m+n,0}$.
+\end{physics}
+
+\textbf{Proof on paper.} Put $\ell=0$ in the Borcherds identity~\eqref{l03:eq:borcherds}. Since
+$\binom0i = \delta_{i,0}$ the left side collapses to $u_{(m)}v_{(n)}x - v_{(n)}u_{(m)}x$, and the right side is
+$\sum_i\binom mi(u_{(i)}v)_{(m+n-i)}x$ with $m=a$, $n=b$. The sum is finite because $u_{(i)}v = 0$ for $i\gg0$ (regularity),
+and the bound $N$ may be chosen independent of $x$ since the right side is a finite sum of operators. \qed
+
+\begin{status}
+Unconditional. \texttt{\#print axioms} \lean{VOA.VertexOperatorAlgebra.jacobi\_commutator} $=$
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (run for this chapter). The PBW theorem \lean{VOA.pbw} is not used.
+\end{status}
+
+%======================================================================
+\section{Skew-symmetry}\label{l03:sec:skew}
+%======================================================================
+
+Skew-symmetry is the hardest of the classical identities in the library's route, because the
+natural proof (Goddard uniqueness for a reflected field) requires a locality statement for a field
+that is not a vertex operator. The library proves it in three files: \leanpath{Skew.lean} defines
+the candidate and reduces the theorem to a locality gate, \leanpath{WeakAssoc.lean} proves the gate,
+and \leanpath{SkewSymmetry.lean} assembles.
+
+\subsection{The candidate field}
+
+\begin{definition}[The reflected field]\label{l03:def:skewdist}
+For $u\in V$ define $\tilde Y(u,z)\in\End(V)[[z^{\pm1}]]$ by $\tilde Y(u,z)b := e^{zT}Y(b,-z)u$, i.e.\
+its $z^t$-coefficient is
+\begin{equation*}
+\tilde Y(u)_t\,b = \sum_{j\ge0}\frac{(-1)^{t-j}}{j!}\,T^j\big(Y(b)_{t-j}\,u\big),
+\end{equation*}
+where $Y(b)_s$ is the $z^s$-coefficient of $Y(b,z)$. The sum is finite for each $b$.
+\end{definition}
+\begin{leancode}
+def sgn (n : ℤ) : ℂ := if Even n then 1 else -1
+
+noncomputable def skewCoeffFun (W : VertexOperatorAlgebra 𝒱) (u : 𝒱) (t : ℤ) (b : 𝒱) : 𝒱 :=
+  ∑ᶠ j : ℕ, ((j.factorial : ℂ)⁻¹) • (sgn (t - j)) •
+    ((W.toPreVertexAlgebra.T ^ j) ((W.Y b) (t - j) u))
+
+theorem skew_support_finite (W : VertexOperatorAlgebra 𝒱) (u b : 𝒱) (t : ℤ) :
+    (Function.support (fun j : ℕ => ((j.factorial : ℂ)⁻¹) • (sgn (t - j)) •
+      ((W.toPreVertexAlgebra.T ^ j) ((W.Y b) (t - j) u)))).Finite
+
+noncomputable def skewDist (W : VertexOperatorAlgebra 𝒱) (u : 𝒱) : FormalDist (End ℂ 𝒱) :=
+  fun t => skewOp W u t
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak Skew.lean} (\lean{skewOp W u t} is
+\lean{skewCoeffFun W u t} packaged as a linear map in $b$).
+
+\begin{dictionary}
+\lean{sgn n} $=(-1)^n$. \lean{(W.Y b) (t - j) u} is the $z^{t-j}$-coefficient of $Y(b,z)u$; replacing
+$z$ by $-z$ multiplies it by $(-1)^{t-j}$, and $e^{zT} = \sum_jz^jT^j/j!$ shifts the power by $j$. So
+\lean{skewCoeffFun W u t b} is the $z^t$-coefficient of $e^{zT}Y(b,-z)u$, as displayed. Finiteness
+(\lean{skew_support_finite}): $Y(b)_{t-j}u = b_{(j-t-1)}u = 0$ once $j-t-1\ge N(b,u)$ (VA5), so the
+\lean{∑ᶠ} is a genuine finite sum.
+\end{dictionary}
+
+\begin{physics}
+$\tilde Y(u,z)b = e^{zT}Y(b,-z)u$ is the operator obtained by \emph{exchanging} the two insertions in
+$u(z)b(0)$: put $b$ at $0$ and $u$ at $z$, swap their roles, and translate back by $z$. For bosonic
+chiral fields, OPE exchange symmetry says this is the same operator as $Y(u,z)$.
+\end{physics}
+
+\begin{lemma}\label{l03:lem:skewvac}
+$\tilde Y(u,z)\lthreevac = Y(u,z)\lthreevac$.
+\end{lemma}
+\begin{leancode}
+theorem skewCoeffFun_vacuum (W : VertexOperatorAlgebra 𝒱) (u : 𝒱) (t : ℤ) :
+    skewCoeffFun W u t W.vacuum = (W.Y u) t W.vacuum
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak Skew.lean}.
+
+\begin{dictionary}
+For $b = \lthreevac$, $Y(\lthreevac,-z)u = u$ (VA2), so only $j = t$ survives for $t\ge0$ and the value is
+$T^tu/t! = u_{(-t-1)}\lthreevac$ by \lean{creation_pow}; for $t<0$ both sides vanish. Uses (VOA3)
+through \lean{creation_pow}.
+\end{dictionary}
+
+\begin{physics}
+Both operators create the same state from the vacuum: $e^{zL_{-1}}u$.
+\end{physics}
+
+\subsection{The reduction to a locality statement}
+
+\begin{proposition}[Skew-symmetry reduces to locality of $\tilde Y$]\label{l03:prop:skewred}
+If, for every $c$, some power $(z_1-z_2)^N$ kills $[\tilde Y(u,z_1),Y(c,z_2)]$ applied to every
+vector (uniformly), then $\tilde Y(u,z) = Y(u,z)$. It suffices that for every $c$ some
+$(z_1-z_2)^N$ kills $[\tilde Y(u,z_1),Y(c,z_2)]\lthreevac$.
+\end{proposition}
+\begin{leancode}
+theorem skew_eq_Y_of_local (W : VertexOperatorAlgebra 𝒱) (u : 𝒱)
+    (hloc : ∀ c : 𝒱, Local (skewDist W u) (W.Y c)) :
+    skewDist W u = W.Y u
+
+def WeakAssocLoc (W : VertexOperatorAlgebra 𝒱) (u : 𝒱) : Prop :=
+  ∀ c : 𝒱, ∃ N : ℕ, ∀ b : 𝒱,
+    mulBySubPow N (applyVec b (bracketDist (skewDist W u) (W.Y c))) = 0
+
+theorem skewDist_eq_Y_of_weakAssoc (W : VertexOperatorAlgebra 𝒱) (u : 𝒱)
+    (hWA : WeakAssocLoc W u) :
+    skewDist W u = W.Y u
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak Skew.lean}.
+\begin{leancode}
+def SkewVacLocal (W : VertexOperatorAlgebra 𝒱) (u : 𝒱) : Prop :=
+  ∀ c : 𝒱, ∃ N : ℕ,
+    mulBySubPow N (applyVec W.vacuum (bracketDist (skewDist W u) (W.Y c))) = 0
+
+theorem skewDist_eq_Y_of_vacLocal (W : VertexOperatorAlgebra 𝒱) (u : 𝒱)
+    (h : SkewVacLocal W u) : skewDist W u = W.Y u
+
+theorem weakAssocLoc_of_vacLocal (W : VertexOperatorAlgebra 𝒱) (u : 𝒱)
+    (h : SkewVacLocal W u) : WeakAssocLoc W u
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak WeakAssoc.lean}.
+
+\begin{dictionary}
+\lean{WeakAssocLoc W u}: for each $c$ a single $N$ works for all test vectors $b$ --- this
+uniformity is what upgrades the vector statements to the operator statement \lean{Local}
+(\lean{local_of_applyVec_annihilation}). \lean{SkewVacLocal W u}: the same with only the vacuum as
+test vector, which is much easier to verify; Goddard's vacuum form
+(Theorem~\ref{l03:thm:goddard}(ii)) turns it into $\tilde Y = Y$, and \emph{then}
+\lean{WeakAssocLoc} holds a posteriori by VA4. The file \leanpath{Skew.lean} also contains a
+predicate \lean{FLMCoeff} described in its docstring as ``the single remaining open lemma''; that
+description is out of date --- the gate is now closed by \lean{skewVacLocal} below, and
+\lean{FLMCoeff} is not used by \lean{skew}.
+\end{dictionary}
+
+\begin{physics}
+To prove exchange symmetry it is enough to show that the exchanged operator is a legitimate local
+field; uniqueness of the field of a state then does the rest. The locality check, moreover, only has
+to be done inside vacuum correlators.
+\end{physics}
+
+\begin{status}
+These reductions are unconditional and axiom-clean; their hypotheses are discharged next.
+\end{status}
+
+\subsection{The vacuum locality computation}
+
+\begin{lemma}[$T$ and modes]\label{l03:lem:smulTpow}
+In a VOA, $c_{(p)}(Tw) = T(c_{(p)}w) + p\,c_{(p-1)}w$, and more generally
+\begin{equation*}
+c_{(p)}(T^ku) = \sum_{r=0}^k\binom kr\,p^{\underline r}\;T^{k-r}\big(c_{(p-r)}u\big),\qquad
+p^{\underline r} = p(p-1)\cdots(p-r+1).
+\end{equation*}
+\end{lemma}
+\begin{leancode}
+theorem smul_comm_T (W : VertexOperatorAlgebra 𝒱) (c w : 𝒱) (p : ℤ) :
+    W.smul c p (W.toPreVertexAlgebra.T w)
+      = W.toPreVertexAlgebra.T (W.smul c p w) + p • W.smul c (p - 1) w
+
+def fallI (p : ℤ) (r : ℕ) : ℤ := ∏ i ∈ Finset.range r, (p - (i : ℤ))
+
+def mcoeff (p : ℤ) (k r : ℕ) : ℤ := (k.choose r : ℤ) * fallI p r
+
+theorem smul_Tpow_expand (W : VertexOperatorAlgebra 𝒱) (c u : 𝒱) (p : ℤ) (k : ℕ) :
+    W.smul c p ((W.toPreVertexAlgebra.T ^ k) u)
+      = ∑ r ∈ Finset.range (k + 1),
+          (mcoeff p k r) • ((W.toPreVertexAlgebra.T ^ (k - r)) (W.smul c (p - (r : ℤ)) u))
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak WeakAssoc.lean}.
+
+\begin{dictionary}
+\lean{fallI p r} is the falling factorial $p^{\underline r}$, \lean{mcoeff p k r} $=\binom kr p^{\underline r}$, an
+integer acting by \lean{•}. \lean{smul_comm_T} is translation covariance in the form
+$[c_{(p)},T] = -[T,c_{(p)}] = p\,c_{(p-1)}$ (from \lean{L_neg_one_deriv} and \lean{T_eq_Lneg1});
+\lean{smul_Tpow_expand} is its $k$-fold iterate, proved by induction with Pascal's rule.
+\end{dictionary}
+
+\begin{physics}
+$e^{-zT}Y(c,w)e^{zT} = Y(c,w-z)$: conjugating by a translation shifts the insertion point. The lemma
+is this identity coefficient by coefficient.
+\end{physics}
+
+\begin{theorem}[Skew-locality on the vacuum, and weak associativity]\label{l03:thm:skewvac}
+In a VOA, for all $u$: \lean{SkewVacLocal W u} and \lean{WeakAssocLoc W u} hold.
+\end{theorem}
+\begin{leancode}
+theorem skewVacLocal (W : VertexOperatorAlgebra 𝒱) (u : 𝒱) : SkewVacLocal W u
+
+theorem weakAssocLoc (W : VertexOperatorAlgebra 𝒱) (u : 𝒱) : WeakAssocLoc W u :=
+  weakAssocLoc_of_vacLocal W u (skewVacLocal W u)
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak WeakAssoc.lean}.
+
+\begin{dictionary}
+No hypotheses beyond the VOA. The order $N$ for \lean{skewVacLocal} is the regularity bound $M_0$ of
+the pair $(c,u)$ (\lean{W.toPreVertexAlgebra.regularity c u}), i.e.\ the pole order of $Y(c,w)u$.
+\end{dictionary}
+
+\begin{physics}
+This is the computation that the exchanged operator has the same singularity structure as an honest
+field: inside vacuum correlators, $[\tilde Y(u,z_1),Y(c,z_2)]|0\rangle$ is a contact term supported on
+$z_1 = z_2$ of order at most the pole order of the OPE $c\times u$.
+\end{physics}
+
+\textbf{Proof on paper.} Let $G(z_1,z_2) := [\tilde Y(u,z_1),Y(c,z_2)]\lthreevac$. Using
+Lemma~\ref{l03:lem:skewvac} and creation,
+\begin{equation*}
+G = \tilde Y(u,z_1)\,e^{z_2T}c - Y(c,z_2)\,e^{z_1T}u .
+\end{equation*}
+Second term: by Lemma~\ref{l03:lem:smulTpow}, $Y(c,z_2)e^{z_1T}u = e^{z_1T}\,Y(c,z_2-z_1)u$ with
+$(z_2-z_1)^{-s-1}$ expanded in nonnegative powers of $z_1$ (closed form \lean{Term2_expand}). First
+term: by definition and $Y(T^jc,w) = \partial^jY(c,w)$,
+$\tilde Y(u,z_1)e^{z_2T}c = e^{z_1T}\sum_j\frac{z_2^j}{j!}\partial^j_{w}Y(c,w)u\big|_{w=-z_1} =
+e^{z_1T}\,Y(c,z_2-z_1)u$ with $(z_2-z_1)^{-s-1}$ expanded in nonnegative powers of $z_2$ (closed form
+\lean{Term1_expand}). Since $Y(c,w)u = \sum_{s<M_0}(c_{(s)}u)w^{-s-1} + (\text{regular})$, the
+regular parts agree, and $G$ is $e^{z_1T}$ applied to $\sum_{s<M_0}(c_{(s)}u)\big(\iota_{z_2,z_1} -
+\iota_{z_1,z_2}\big)(z_2-z_1)^{-s-1}$, a finite sum of derivatives of $\delta(z_1/z_2)$ of order $<M_0$
+(the ``jump sum'' of \lean{Gfield_eq_jumpSum}). Each is killed by $(z_1-z_2)^{M_0}$
+(\lean{mulBySubPow_jumpSum_eq_zero}). The library carries this out entirely by coefficient
+comparison in the four sign sectors of $(z_1,z_2)$-exponents, without formal delta-function
+substitution. \qed
+
+\begin{status}
+Unconditional, axiom-clean (\texttt{\#print axioms} \lean{VOA.VertexOperatorAlgebra.weakAssocLoc} run for this
+chapter). The file's history (a gate once sanctioned as an axiom \lean{weakAssocLoc_gate}, later a single
+\lean{sorry} in \lean{Gfield_eq_jumpSum}) is closed: neither occurs at this commit.
+\end{status}
+
+\subsection{Skew-symmetry}
+
+\begin{theorem}[Skew-symmetry]\label{l03:thm:skew}
+In a VOA, $Y(u,z)v = e^{zT}Y(v,-z)u$ for all $u,v$. In modes,
+$u_{(n)}v = \sum_{j\ge0}\frac{(-1)^{n+j+1}}{j!}T^j(v_{(n+j)}u)$.
+\end{theorem}
+\begin{leancode}
+theorem skew (W : VertexOperatorAlgebra 𝒱) (u : 𝒱) : skewDist W u = W.Y u :=
+  skewDist_eq_Y_of_weakAssoc W u (weakAssocLoc W u)
+
+theorem skew_mode (W : VertexOperatorAlgebra 𝒱) (u v : 𝒱) (n : ℤ) :
+    W.smul u n v
+      = ∑ᶠ j : ℕ, ((j.factorial : ℂ)⁻¹) • (sgn (-n - 1 - j)) •
+          ((W.toPreVertexAlgebra.T ^ j) ((W.Y v) (-n - 1 - j) u))
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak SkewSymmetry.lean}.
+
+\begin{dictionary}
+\lean{skew} is an equality of operator-valued distributions, $\tilde Y(u,\cdot) = Y(u,\cdot)$, which by
+Definition~\ref{l03:def:skewdist} is $Y(u,z)v = e^{zT}Y(v,-z)u$ for all $v$. \lean{skew_mode} reads
+off the $z^{-n-1}$-coefficient ($t = -n-1$): \lean{(W.Y v) (-n - 1 - j)} $=v_{(n+j)}$ and
+\lean{sgn (-n - 1 - j)} $=(-1)^{n+j+1}$. Same as Gannon (5.1.8), Kac (4.2.1), Lepowsky--Li (§3.1). The
+one-line proof term is shown because it is informative: skew-symmetry \emph{is} the reduction applied
+to the proved gate.
+\end{dictionary}
+
+\begin{physics}
+Bose exchange symmetry of the chiral algebra: $u(z)v(0) = e^{zL_{-1}}v(-z)u(0)$ inside correlators.
+In terms of OPE coefficients, the poles of $v(z)u(0)$ determine those of $u(z)v(0)$; e.g.\ for
+currents $J^a_{(0)}J^b = -J^b_{(0)}J^a$ (antisymmetry of the Lie bracket on $V_1$) and
+$J^a_{(1)}J^b = J^b_{(1)}J^a$ (symmetry of the level form).
+\end{physics}
+
+\textbf{Proof on paper.} Theorem~\ref{l03:thm:skewvac} and Proposition~\ref{l03:prop:skewred}. \qed
+
+\begin{status}
+Unconditional; \texttt{\#print axioms} $=$ \lean{[propext, Classical.choice, Quot.sound]} for
+\lean{skew} and \lean{skew_mode} (run for this chapter).
+\end{status}
+
+%======================================================================
+\section[The FLM formulation]{The FLM formulation: associativity after a change of variables}\label{l03:sec:flm}
+%======================================================================
+
+FLM and Lepowsky--Li formulate the heart of the Jacobi identity as \emph{weak associativity}:
+$(z_0+z_2)^NY(u,z_0+z_2)Y(v,z_2)x = (z_0+z_2)^NY(Y(u,z_0)v,z_2)x$. The library proves a variant in
+which the polynomial factor is $(z_1-z_2)^N$ with $N$ the locality order, and the substitution
+$z_1 = z_0+z_2$ is done on the doubly truncated product.
+
+\begin{definition}[Substitution $z_1\mapsto z_0+z_2$; composite field]\label{l03:def:subst2}
+(a) A two-variable distribution is \emph{lower-truncated in $z_1$} if its $z_1$-support is bounded
+below uniformly in the $z_2$-power. (b) For $F$ lower-truncated in both variables,
+$\iota_{z_2,z_0}F(z_0+z_2,z_2)$ is the distribution whose $z_0^az_2^b$-coefficient is
+$\sum_{k}\binom{a+k}{a}F(a+k,b-k)$ (expand $(z_0+z_2)^{m}$ in nonnegative powers of $z_0$). (c) The
+\emph{composite field} $Y(Y(u,z_0)v,z_2)x$ has $z_0^az_2^b$-coefficient $(u_{(-a-1)}v)_{(-b-1)}x$.
+\end{definition}
+\begin{leancode}
+def IsBddBelow₁ (f : FormalDist₂ 𝒲) : Prop := ∃ B : ℤ, ∀ m n : ℤ, m < B → f m n = 0
+
+noncomputable def subst2 (f : FormalDist₂ 𝒲) : FormalDist₂ 𝒲 :=
+  fun a b => ∑ᶠ k : ℤ, cbz (a + k) a • f (a + k) (b - k)
+
+noncomputable def comp (W : VertexOperatorAlgebra 𝒱) (u v x : 𝒱) : FormalDist₂ 𝒱 :=
+  fun a b => mode (W.Y (W.smul u (-a-1) v)) (-b-1) x
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak Skew.lean}.
+
+\begin{dictionary}
+In \lean{subst2}, the term $F(m,n)z_1^mz_2^n$ with $z_1 = z_0+z_2$ contributes
+$\binom ma z_0^az_2^{m-a+n}$; matching $z_0^az_2^b$ gives $m = a+k$, $n = b-k$, coefficient
+\lean{cbz (a+k) a} $=\binom{a+k}a$ (zero for $a<0$). Without truncation in both variables the sum
+over $k$ would be infinite; the library proves finiteness on the doubly truncated class
+(\lean{subst2_summand_finite}). \lean{comp}: \lean{W.smul u (-a-1) v} is the $z_0^a$-coefficient of
+$Y(u,z_0)v$, and \lean{mode (Y w) (-b-1) x} is the $z_2^b$-coefficient of $Y(w,z_2)x$.
+\end{dictionary}
+
+\begin{physics}
+$z_1 = z_0+z_2$ re-expands a correlator around the second insertion point: $z_0$ is the separation
+$z_1-z_2$, small compared with $z_2$. The composite field is the OPE $u\times v$ evaluated first and
+then inserted at $z_2$.
+\end{physics}
+
+\begin{theorem}[FLM associativity]\label{l03:thm:flm}
+In a VOA, let $N$ satisfy $(z_1-z_2)^N[Y(u,z_1),Y(v,z_2)] = 0$. Then for every $x$,
+\begin{equation*}
+\iota_{z_2,z_0}\Big((z_1-z_2)^NY(u,z_1)Y(v,z_2)x\Big)\Big|_{z_1 = z_0+z_2} = z_0^N\,Y(Y(u,z_0)v,z_2)x .
+\end{equation*}
+\end{theorem}
+\begin{leancode}
+theorem flm (W : VertexOperatorAlgebra 𝒱) (u v x : 𝒱) {N : ℕ}
+    (hN : mulBySubPow N (bracketDist (W.Y u) (W.Y v)) = 0) (a b : ℤ) :
+    subst2 (mulBySubPow N (W.toPreVertexAlgebra.Yprod u v x)) a b = comp W u v x (a - N) b
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak FLM.lean}.
+
+\begin{dictionary}
+The right side \lean{comp W u v x (a - N) b} is the $z_0^{a-N}z_2^b$-coefficient of the composite,
+i.e.\ the $z_0^az_2^b$-coefficient of $z_0^N\,Y(Y(u,z_0)v,z_2)x$. The left side is legitimate because
+$(z_1-z_2)^NY(u,z_1)Y(v,z_2)x$ is lower-truncated in both variables (in $z_2$ by VA5; in $z_1$ because
+it equals $(z_1-z_2)^NY(v,z_2)Y(u,z_1)x$ by locality, and that is truncated in $z_1$ by VA5 for
+$(u,x)$; lemma \lean{exists_mulBySubPow_Yprod_doublyBdd}). The hypothesis \lean{hN} is locality for
+$(u,v)$ with an explicit order --- not an extra assumption, since VA4 provides such an $N$. The statement
+holds for every integer $a$ (both the ``singular'' $a<N$ and ``normal'' $a\ge N$ regimes).
+
+\textbf{Comparison with FLM.} FLM (§§8.8--8.10) and Lepowsky--Li (§3.6, ``weak associativity'') use the
+factor $(z_0+z_2)^{k}$ with $k$ depending on $(u,x)$; the library's version uses $(z_1-z_2)^N =
+z_0^N$ with $N$ depending on $(u,v)$. The two are equivalent formulations of the same associativity
+(each follows from the Jacobi identity by multiplying by the appropriate power and taking a residue);
+neither is used as an axiom.
+\end{dictionary}
+
+\begin{physics}
+Associativity of the OPE in its most concrete form: the product $u(z_1)v(z_2)$ acting on $x$,
+re-expanded around $z_2$ in the separation $z_0 = z_1-z_2$, is the OPE of $u$ and $v$ followed by
+insertion at $z_2$ --- once the poles on the diagonal have been cleared by $(z_1-z_2)^N$. This is the
+statement that the three-point function is a single rational function with the correct expansions in
+the two channels.
+\end{physics}
+
+\textbf{Proof on paper.} Expand the left side by the binomial theorem and compare
+coefficients. For $a\ge N$ (the ``normal'' columns, $z_0$-power $a-N\ge0$, i.e.\ negative products)
+the composite coefficient is a normal-ordered product by Theorem~\ref{l03:thm:assocneg}, whose
+coefficients are exactly what the substitution produces after the $(z_1-z_2)^N$ prefactor has been
+absorbed (\lean{flm_normal}); the remaining boundary terms are shown to vanish because the relevant
+binomials $\binom{p}{a-N}$ with $0\le p<a-N$ are zero (\lean{FLMBoundaryResidual}). For $a<N$ (the
+singular columns, nonnegative products) the composite coefficient is $\Res_{z_1}(z_1-z_2)^{N-a-1}$ of the
+commutator by Theorem~\ref{l03:thm:nthproduct}, and the substitution of the commutator, killed by
+$(z_1-z_2)^N$, reproduces it (\lean{flm_lt}). \qed
+
+\begin{status}
+Unconditional, axiom-clean (\texttt{\#print axioms} \lean{VOA.VertexOperatorAlgebra.flm} run for this
+chapter). The file is imported by \leanpath{WeakAssoc.lean}.
+\end{status}
+
+%======================================================================
+\section{Commutative vertex algebras (Gannon Theorem 5.1.4)}\label{l03:sec:comm}
+%======================================================================
+
+\begin{definition}[Commutative; the classical product]\label{l03:def:comm}
+A vertex algebra is \emph{commutative} if $[Y(u,z_1),Y(v,z_2)] = 0$ for all $u,v$. Its
+\emph{classical product} is $u\cdot v := u_{(-1)}v$.
+\end{definition}
+\begin{leancode}
+def IsCommutative (V : PreVertexAlgebra 𝒱) : Prop :=
+  ∀ u v : 𝒱, bracketDist (V.Y u) (V.Y v) = 0
+
+def cmul (V : PreVertexAlgebra 𝒱) (u v : 𝒱) : 𝒱 := V.smul u (-1) v
+
+@[simp] theorem vacuum_cmul (V : PreVertexAlgebra 𝒱) (u : 𝒱) : V.cmul V.vacuum u = u
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak Commutativity.lean} (also \lean{cmul_vacuum}:
+$u\cdot\lthreevac = u$).
+
+\begin{dictionary}
+\lean{IsCommutative} is locality with order $0$ for every pair. The counterexample of
+Section~\ref{l03:sec:counter} is commutative.
+\end{dictionary}
+
+\begin{physics}
+A commutative vertex algebra is a chiral algebra with no singular OPEs: all fields are holomorphic
+at coincident points, as for the algebra of functions on the jet space of a target (the classical
+limit of a chiral algebra, or the chiral algebra of a topologically twisted theory in which all
+fields are regular).
+\end{physics}
+
+\begin{theorem}[Gannon Theorem 5.1.4 for VOAs]\label{l03:thm:commalg}
+For a VOA $W$ the following are equivalent: (1) $W$ is commutative; (3) $u_{(n)}v = 0$ for all
+$u,v$ and $n\ge0$. If they hold, then $u\cdot v = u_{(-1)}v$ is commutative and associative with
+unit $\lthreevac$, so $W$ is a commutative ring, and $T = L_{-1}$ is a derivation of it (the derivation
+law holds in every VOA).
+\end{theorem}
+\begin{leancode}
+theorem comm_iff_nonneg_modes (W : VertexOperatorAlgebra 𝒱) :
+    W.toPreVertexAlgebra.IsCommutative ↔ ∀ (u v : 𝒱) (n : ℤ), 0 ≤ n → W.smul u n v = 0
+
+theorem Lneg1_cmul_leibniz (W : VertexOperatorAlgebra 𝒱) (u v : 𝒱) :
+    W.L (-1) (W.toPreVertexAlgebra.cmul u v)
+      = W.toPreVertexAlgebra.cmul (W.L (-1) u) v + W.toPreVertexAlgebra.cmul u (W.L (-1) v)
+
+theorem cmul_assoc_of_comm (W : VertexOperatorAlgebra 𝒱)
+    (hcomm : W.toPreVertexAlgebra.IsCommutative) (u v w : 𝒱) :
+    W.toPreVertexAlgebra.cmul (W.toPreVertexAlgebra.cmul u v) w
+      = W.toPreVertexAlgebra.cmul u (W.toPreVertexAlgebra.cmul v w)
+
+theorem cmul_comm_of_comm (W : VertexOperatorAlgebra 𝒱)
+    (hcomm : W.toPreVertexAlgebra.IsCommutative) (u v : 𝒱) :
+    W.toPreVertexAlgebra.cmul u v = W.toPreVertexAlgebra.cmul v u
+
+def commRing_of_comm (W : VertexOperatorAlgebra 𝒱)
+    (hcomm : W.toPreVertexAlgebra.IsCommutative) : CommRing 𝒱 :=
+
+theorem commRing_of_comm_isDerivation (W : VertexOperatorAlgebra 𝒱)
+    (hcomm : W.toPreVertexAlgebra.IsCommutative) (a b : 𝒱) :
+    letI := commRing_of_comm W hcomm
+    W.L (-1) (a * b) = (W.L (-1) a) * b + a * (W.L (-1) b)
+
+theorem comm_iff_assoc_alg (W : VertexOperatorAlgebra 𝒱) :
+    W.toPreVertexAlgebra.IsCommutative ↔
+      ((∀ (u v : 𝒱) (n : ℤ), 0 ≤ n → W.smul u n v = 0)
+        ∧ (∀ u v : 𝒱, W.toPreVertexAlgebra.cmul u v = W.toPreVertexAlgebra.cmul v u)
+        ∧ (∀ u v w : 𝒱, W.toPreVertexAlgebra.cmul (W.toPreVertexAlgebra.cmul u v) w
+              = W.toPreVertexAlgebra.cmul u (W.toPreVertexAlgebra.cmul v w)))
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak Commutativity.lean}.
+
+\begin{dictionary}
+\textbf{\lean{commRing_of_comm}} builds a Mathlib \lean{CommRing} structure on the underlying additive
+group with multiplication \lean{cmul} and one \lean{vacuum}; its fields (associativity, commutativity,
+unit laws, distributivity) are the theorems listed (distributivity is bilinearity of \lean{smul}).
+\lean{letI := …} makes this ring structure the one used by \lean{*} in the next line. It is a
+\lean{def} whose type mentions \lean{hcomm}, so it exists only for commutative VOAs.
+
+\textbf{What \lean{comm_iff_assoc_alg} says, precisely.} The right side is the conjunction of
+condition (3) with commutativity and associativity of \lean{cmul}. The direction $\Leftarrow$ uses only
+the first conjunct (it is (3)$\Rightarrow$(1)). So the theorem is ``(1)$\iff$(3), and (1) implies that
+\lean{cmul} is commutative and associative''. Gannon's converse --- \emph{every} commutative
+associative unital algebra with a derivation $T$ is a commutative vertex algebra via
+$Y(u,z)v = (e^{zT}u)v$ --- is \textbf{not} stated in the library. It is in any case not a statement
+about VOAs (a commutative differential algebra has no conformal vector in general), and at the level
+of \lean{PreVertexAlgebra} the correspondence fails (Section~\ref{l03:sec:counter}).
+\end{dictionary}
+
+\begin{physics}
+A chiral algebra with no singular OPEs is the same thing as a commutative algebra of local operators
+with an action of $\partial$: the OPE reduces to the ordinary product, $u(z)v(w) = {:}u(z)v(w){:}$, and
+all the structure is the commutative product and the derivative. In a VOA the stress tensor always
+has a singular OPE with itself unless everything is trivial, which is the content of the warning
+below.
+\end{physics}
+
+\textbf{Proof on paper.} (1)$\Rightarrow$(3): by Theorem~\ref{l03:thm:nthproduct},
+$Y(u_{(k)}v) = \Res_{z_1}(z_1-z)^k\cdot0 = 0$, so $u_{(k)}v = (u_{(k)}v)_{(-1)}\lthreevac = 0$.
+(3)$\Rightarrow$(1): every term of the commutator formula vanishes. Associativity: by
+Theorem~\ref{l03:thm:assocneg} with $k = 0$, $(u_{(-1)}v)_{(-1)}w$ is the $z^0$-coefficient of
+${:}Y(u,z)Y(v,z){:}w$, and under (3) only the term $u_{(-1)}v_{(-1)}w$ survives. Commutativity: by
+skew-symmetry at $n=-1$, $u_{(-1)}v = \sum_j\frac{(-1)^j}{j!}T^j(v_{(j-1)}u)$, and under (3) only $j = 0$
+survives. Leibniz: Theorem~\ref{l03:thm:transcov} at $n = -1$. \qed
+
+\begin{status}
+All unconditional, axiom-clean (\texttt{\#print axioms} for \lean{comm_iff_nonneg_modes},
+\lean{comm_iff_assoc_alg}, \lean{commRing_of_comm} run for this chapter).
+\end{status}
+
+\begin{warning}[title={Theorem 5.1.4 at the VOA level is a statement about the trivial VOA}]
+Let $W$ be a commutative \lean{VertexOperatorAlgebra}. By (3), $L_0 = \omega_{(1)} = 0$ on $W$; by
+(VOA2), $L_0 = n$ on $W_n$, so $W_n = 0$ for $n\ne0$, and by (VOA4) $W = W_0 = \C\lthreevac$ (or $W = 0$).
+Then $\omega\in W_2 = 0$, and if $W\ne0$ the Virasoro relation $[L_2,L_{-2}] = 4L_0+\frac c2$ forces
+$c = 0$. So the hypothesis \lean{IsCommutative} is satisfiable only by the one-dimensional VOA
+$\C\lthreevac$ (and the zero VOA), and all theorems of this section are, for VOAs, statements about that
+algebra. They are true and correctly proved, but they do \emph{not} formalise the classical
+content of Gannon's Theorem~5.1.4 (commutative vertex algebras $=$ commutative differential
+algebras), which lives at the level of vertex algebras with translation covariance --- a level the
+library does not have a correct structure for (Section~\ref{l03:sec:counter}). The source docstring
+does not mention this.
+\end{warning}
+
+%======================================================================
+\section[Reconstruction]{Reconstruction: building a vertex algebra from generating fields}\label{l03:sec:recon}
+%======================================================================
+
+The theorems so far start from a vertex algebra. Constructing one --- the Heisenberg, lattice,
+affine, Virasoro and Moonshine VOAs of later chapters --- requires the converse direction:
+produce a state--field map from a few generating fields. The library has two reconstruction theorems:
+\lean{Reconstruction.reconstruct} (Theorem~\ref{l03:thm:reconstruct} below) and its word-field corollary
+\lean{NonlinearConformal.reconstruct_of_generators}, which belongs to Chapter~\ref{ch:L11}
+(Theorem~\ref{l11:thm:recongen}).
+Here we present the ingredients in \leanpath{VOA/\allowbreak Core/\allowbreak ReconstructionExistence.lean}
+and say exactly what the theorem delivers.
+
+\begin{definition}[$T$-covariance]\label{l03:def:dcov}
+For $T\in\End V$, a distribution $a$ is $T$-covariant if $[T,a(z)] = \partial_za(z)$, i.e.\
+$[T,a_m] = (m+1)a_{m+1}$ for the $z^m$-coefficients.
+\end{definition}
+\begin{leancode}
+def DCovariant (T : End ℂ V) (a : FormalDist (End ℂ V)) : Prop :=
+  ∀ m : ℤ, T * a m - a m * T = ((m + 1 : ℤ)) • a (m + 1)
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak ReconstructionExistence.lean}
+(\lean{VOA.Reconstruction.DCovariant}). The same file proves closure under scalars, sums, finite
+linear combinations, $\partial$ and ${:}\cdot\,\cdot{:}$ (\lean{DCovariant.smul}, \lean{.add},
+\lean{.finsetSum}, \lean{.deriv'}, \lean{.nprod}, the last via the Leibniz rule \lean{deriv_nprod}).
+
+\begin{dictionary}
+The $z^m$-coefficient of $\partial_za$ is $(m+1)a_{m+1}$, so the definition is $[T,a(z)] = \partial a(z)$
+exactly: Kac's and FBZ's translation axiom for a single field. Here $T$ is an arbitrary operator, not
+$u_{(-2)}\lthreevac$.
+\end{dictionary}
+
+\begin{physics}
+$T$-covariance says that $a$ is a translation-covariant local operator: $e^{\epsilon T}a(z)e^{-\epsilon T}
+= a(z+\epsilon)$. This is precisely the property missing from the axioms of
+Definition~\ref{l03:def:VA}; in the reconstruction theorem it is \emph{required of the generators}.
+\end{physics}
+
+\begin{lemma}[The creation tower is forced]\label{l03:lem:tower}
+If $F,G$ are $T$-covariant, $T\lthreevac = 0$, $F(z)\lthreevac,G(z)\lthreevac\in V[[z]]$ and their constant
+terms agree, then $F(z)\lthreevac = G(z)\lthreevac$.
+\end{lemma}
+\begin{leancode}
+theorem tower_unique {T : End ℂ V} {F G : FormalDist (End ℂ V)} {vac : V}
+    (hF : DCovariant T F) (hG : DCovariant T G) (hTvac : T vac = 0)
+    (hbase : F 0 vac = G 0 vac)
+    (hFneg : ∀ q : ℤ, q < 0 → F q vac = 0) (hGneg : ∀ q : ℤ, q < 0 → G q vac = 0)
+    (p : ℤ) : F p vac = G p vac
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak ReconstructionExistence.lean}.
+
+\begin{dictionary}
+All hypotheses are as stated; the conclusion is the equality of every $z^p$-coefficient on the vacuum.
+\end{dictionary}
+
+\begin{physics}
+For a translation-covariant field, $a(z)|0\rangle = e^{zT}a_{(-1)}|0\rangle$: the state at $z$ is the
+translate of the state at $0$. This is what fails in the counterexample, whose $Y(x,z)$ is not
+$T$-covariant for any $T$.
+\end{physics}
+
+\textbf{Proof on paper.} Apply $[T,F_p] = (p+1)F_{p+1}$ to $\lthreevac$ and use $T\lthreevac = 0$:
+$(p+1)F_{p+1}\lthreevac = TF_p\lthreevac$. Induction on $p\ge0$. \qed
+
+\begin{theorem}[Operator-first uniqueness]\label{l03:thm:fieldzero}
+Let $V$ be a vector space with a vector $\lthreevac$, and let $(s_j,f_j)_{j\in J}$ be states and distributions with
+$f_j(z)\lthreevac\in V[[z]]$ and $f_j(z)\lthreevac|_{z=0} = s_j$, such that the $s_j$ span $V$. If a distribution
+$A\in\End(V)[[z^{\pm1}]]$ is mutually local with every $f_j$ and $A(z)\lthreevac = 0$, then $A = 0$.
+\end{theorem}
+\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak ReconstructionExistence.lean}.
+\begin{leancode}
+theorem field_eq_zero_of_vacuum {ι : Type*} (vac : V) (A : FormalDist (End ℂ V))
+    (st : ι → V) (fld : ι → FormalDist (End ℂ V))
+    (hloc : ∀ j, Local A (fld j))
+    (hcre0 : ∀ j, (fld j) 0 vac = st j)
+    (hcreneg : ∀ j, ∀ q : ℤ, q < 0 → (fld j) q vac = 0)
+    (hAvac : ∀ p : ℤ, A p vac = 0)
+    (hspan : Submodule.span ℂ (Set.range st) = ⊤) :
+    A = 0
+\end{leancode}
+
+\begin{dictionary}
+\lean{ι} is an index type; \lean{st j} is the state $s_j$ and \lean{fld j} the distribution $f_j$. \lean{(fld j) 0 vac = st j}
+says the $z^0$-coefficient of $f_j(z)\lthreevac$ is $s_j$, i.e.\ the mode $(f_j)_{(-1)}\lthreevac = s_j$;
+\lean{hcreneg} says there are no negative powers of $z$ in $f_j(z)\lthreevac$, so that $f_j(z)\lthreevac\in V[[z]]$;
+\lean{hAvac : ∀ p, A p vac = 0} says $A(z)\lthreevac = 0$ coefficientwise; \lean{Local A (fld j)} is
+Definition~\ref{l01:def:bracket} (some power of $z_1-z_2$ kills the commutator); \lean{hspan} says the states span $V$
+(\lean{Set.range st} is the set of states, \lean{⊤} the whole space). \textbf{Hypotheses:} exactly those of the
+mathematical statement. \textbf{Scope.} No vertex algebra is assumed: $V$ is a bare vector space, and neither $A$ nor
+the $f_j$ is assumed to be a field. It is the spanning-family strengthening of the abstract Goddard theorem
+(Theorem~\ref{l03:thm:goddard}(iii), \lean{goddard_zero}), in which the test fields were required for \emph{every} vector
+$b\in V$; here only a spanning family is needed. The conclusion $A=0$ is an equality of distributions. \textbf{Could it be
+vacuous?} The hypotheses are satisfiable
+non-trivially: in any VOA take the $f_j$ to be the vertex operators $Y(s_j,\cdot)$ of a spanning family $(s_j)$, which
+are local with $Y(a,\cdot)$ for every $a$. The theorem has content because locality against a spanning family is a
+strong condition; it is used by the reconstruction theorem (Theorem~\ref{l03:thm:reconstruct}) to show that the
+extension $Y$ is well defined.
+\end{dictionary}
+
+\begin{physics}
+An operator that is mutually local with all the fundamental fields and gives zero on the vacuum is the zero
+operator. Heuristically this is the chiral cousin of the Reeh--Schlieder property in axiomatic quantum field
+theory (the vacuum is cyclic and separating for local operators): a local operator is determined by the state it
+creates from the vacuum. Here it is a theorem of formal calculus, and it is the technical heart of the uniqueness part
+of the state--field correspondence: the field of a state is determined by the state.
+\end{physics}
+
+\textbf{Proof on paper.} Fix $j$ and put $G(z,w) := A(z)f_j(w)\lthreevac\in\End(V)[[z^{\pm1}]]\otimes V[[w]]$. Mutual
+locality gives $N$ with $(z-w)^N[A(z),f_j(w)] = 0$; applying this to $\lthreevac$ and using $A(z)\lthreevac = 0$ gives
+$(z-w)^NG(z,w) = (z-w)^N\big(A(z)f_j(w)\lthreevac - f_j(w)A(z)\lthreevac\big) = 0$. The series $G$ contains only
+nonnegative powers of $w$ (because $f_j(w)\lthreevac\in V[[w]]$), so it is lower truncated in $w$, and by the
+cancellation theorem (Theorem~\ref{l01:thm:cancel}: $z-w$ is not a zero divisor on lower-truncated series) $G=0$.
+Taking the coefficient of $w^0$, which is $A(z)s_j$, gives $A(z)s_j = 0$ for all $j$. Hence every coefficient
+$A_m$ vanishes on the span of the $s_j$, which is $V$, so $A=0$. \qed
+
+\begin{status}
+Unconditional; \texttt{\#print axioms} \lean{VOA.Reconstruction.field\_eq\_zero\_of\_vacuum} $=$
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (run for this chapter). The PBW theorem \lean{VOA.pbw} is not used.
+\end{status}
+
+\begin{theorem}[Operator-first reconstruction]\label{l03:thm:reconstruct}
+Let $V$ be a vector space, $\lthreevac\in V$, $T\in\End V$ with $T\lthreevac = 0$, and $(s_i,f_i)_{i\in I}$
+states and distributions such that each $f_i$ is a field, the $f_i$ are pairwise local and
+$T$-covariant, $f_i(z)\lthreevac\in V[[z]]$ with constant term $s_i$, and the $s_i$ span $V$. Then there is
+a linear $Y:V\to\End(V)[[z^{\pm1}]]$ with $Y(s_i,\cdot) = f_i$, all $Y(u,\cdot)$ fields, pairwise
+local, $T$-covariant, with $Y(u,z)\lthreevac\in u+zV[[z]]$.
+\end{theorem}
+\begin{leancode}
+theorem reconstruct {ι : Type*} (vac : V) (st : ι → V) (fld : ι → FormalDist (End ℂ V))
+    (T : End ℂ V)
+    (hspan : Submodule.span ℂ (Set.range st) = ⊤)
+    (hfield : ∀ i, IsField (fld i))
+    (hlocal : ∀ i j, Local (fld i) (fld j))
+    (hcre0 : ∀ i, (fld i) 0 vac = st i)
+    (hcreneg : ∀ i, ∀ q : ℤ, q < 0 → (fld i) q vac = 0)
+    (hTvac : T vac = 0)
+    (hTcov : ∀ i, DCovariant T (fld i)) :
+    ∃ YA : V →ₗ[ℂ] FormalDist (End ℂ V),
+      (∀ i, YA (st i) = fld i) ∧
+      (∀ u : V, IsField (YA u)) ∧
+      (∀ u v : V, Local (YA u) (YA v)) ∧
+      (∀ u : V, (YA u) 0 vac = u) ∧
+      (∀ u : V, ∀ q : ℤ, q < 0 → (YA u) q vac = 0) ∧
+      (∀ u : V, DCovariant T (YA u))
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak ReconstructionExistence.lean}
+(\lean{VOA.Reconstruction.reconstruct}).
+
+\begin{dictionary}
+\textbf{What it delivers.} The six conjuncts are: $Y$ extends the given fields; fields (VA5); locality
+(VA4); creation (VA3, both halves); $T$-covariance. In particular, through \lean{tower_unique}, the
+conclusion includes $Y(u,z)\lthreevac = e^{zT}u$, i.e.\ the full Kac/FBZ axiom system \emph{minus} the
+vacuum axiom $Y(\lthreevac) = \mathrm{id}$, which the user must check (it holds as soon as $\lthreevac$ is
+among the $s_i$ with $f = \mathrm{id}$).
+
+\textbf{What it does not deliver.} No grading (VA1) and no \lean{PreVertexAlgebra} structure; the user
+assembles one. Uniqueness of $Y$ is not part of the statement (the docstring says ``unique''; the
+statement is $\exists$), although it follows from \lean{field_eq_zero_of_vacuum}.
+
+\textbf{Comparison with Kac's existence theorem.} Kac (Thm.~4.5) and FBZ (Thm.~4.4.1) start from a
+family of generating fields and assume that the \emph{monomials} $a^{i_1}_{(-j_1-1)}\cdots
+a^{i_r}_{(-j_r-1)}\lthreevac$ span; the fields of the monomials are then \emph{constructed} as
+normal-ordered products. The library's theorem instead takes as input a family whose states already
+span, each state with its field. It is therefore a reduction of Kac's theorem to Dong's lemma: one
+applies it to the family of all iterated normal-ordered word fields (which are pairwise local by
+Dong's lemma and $T$-covariant by \lean{DCovariant.nprod}); this is done in
+\lean{reconstruct_of_generators} (Theorem~\ref{l11:thm:recongen} in Chapter~\ref{ch:L11}).
+
+\textbf{Translation covariance is a hypothesis here.} This is the correct design: by
+Section~\ref{l03:sec:counter}, VA1--VA5 do not imply it, so a construction must supply it.
+\end{dictionary}
+
+\begin{physics}
+``A chiral algebra is generated by a few fields and their OPEs.'' One specifies the currents (or the
+stress tensor), checks that their OPEs have finite poles (locality), that $\partial$ acts as $[L_{-1},\cdot]$
+and that the vacuum is translation invariant; then every composite operator is determined and the
+whole operator algebra is consistent.
+\end{physics}
+
+\textbf{Proof on paper.} Define $Y$ on formal combinations $\sum c_is_i$ by $\sum c_if_i$. Well-defined:
+if $\sum c_is_i = 0$, the field $A = \sum c_if_i$ is local with every $f_j$, annihilates $\lthreevac$ in
+degree $<0$, has constant term $\sum c_is_i = 0$, and by $T$-covariance (Lemma~\ref{l03:lem:tower}
+applied inductively) annihilates $\lthreevac$ in every degree; so $A = 0$ by Goddard
+(Theorem~\ref{l03:thm:goddard}(iii) in its spanning form \lean{field_eq_zero_of_vacuum}). Every listed
+property is linear in the field and holds for the $f_i$. \qed
+
+\begin{status}
+\lean{reconstruct}, \lean{tower_unique}, \lean{field_eq_zero_of_vacuum}: unconditional, axiom-clean
+(\texttt{\#print axioms} \lean{VOA.Reconstruction.reconstruct} run for this chapter).
+\end{status}
+
+\subsection{Fields on a tensor product}
+
+To build tensor-product VOAs before either factor is packaged as a vertex algebra, the library lifts
+fields to $A\otimes B$.
+
+\begin{definition}[First- and second-factor lifts]\label{l03:def:tensorlift}
+For a distribution $f$ on $A$, $f\otimes1$ acts on $A\otimes B$ by $(f\otimes1)_n(a\otimes b) =
+f_na\otimes b$; similarly $1\otimes g$. The tensor translation is $T_A\otimes1+1\otimes T_B$.
+\end{definition}
+\begin{leancode}
+noncomputable def firstField (f : FormalDist (End ℂ A)) :
+    FormalDist (End ℂ (A ⊗[ℂ] B)) :=
+  fun n => LinearMap.rTensor B (f n)
+
+noncomputable def secondField (g : FormalDist (End ℂ B)) :
+    FormalDist (End ℂ (A ⊗[ℂ] B)) :=
+  fun n => LinearMap.lTensor A (g n)
+
+noncomputable def tensorTranslation (TA : End ℂ A) (TB : End ℂ B) :
+    End ℂ (A ⊗[ℂ] B) :=
+  LinearMap.rTensor B TA + LinearMap.lTensor A TB
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak TensorFieldLift.lean} (namespace
+\lean{VOA.TensorFieldLift}).
+
+\begin{dictionary}
+\lean{A ⊗[ℂ] B} is Mathlib's tensor product over $\C$; \lean{LinearMap.rTensor B φ} $=\varphi\otimes\mathrm{id}_B$
+and \lean{LinearMap.lTensor A ψ} $=\mathrm{id}_A\otimes\psi$.
+\end{dictionary}
+
+\begin{physics}
+Two decoupled chiral algebras: fields of the first system act on the first factor of the product
+Hilbert space, fields of the second on the second, and the total translation generator is the sum.
+\end{physics}
+
+\begin{theorem}[Lifts preserve the reconstruction hypotheses]\label{l03:thm:tensorlift}
+Lifts of fields are fields; lifts of local pairs are local; a first-factor lift and a second-factor
+lift always commute, hence are local; lifts of $T_A$- (resp.\ $T_B$-)covariant fields are covariant for
+the tensor translation; and ${:}(f\otimes1)(1\otimes g){:}$ is the ordinary product.
+\end{theorem}
+\begin{leancode}
+theorem isField_firstField {f : FormalDist (End ℂ A)} (hf : IsField f) :
+    IsField (firstField (B := B) f)
+
+theorem local_firstField {f g : FormalDist (End ℂ A)} (h : Local f g) :
+    Local (firstField (B := B) f) (firstField g)
+
+theorem local_firstField_secondField (f : FormalDist (End ℂ A))
+    (g : FormalDist (End ℂ B)) :
+    Local (firstField (B := B) f) (secondField (A := A) g) :=
+  local_of_bracketDist_eq_zero (bracketDist_firstField_secondField f g)
+
+theorem dcovariant_firstField {TA : End ℂ A} {TB : End ℂ B}
+    {f : FormalDist (End ℂ A)} (hf : Reconstruction.DCovariant TA f) :
+    Reconstruction.DCovariant (tensorTranslation TA TB) (firstField f)
+
+theorem nprod_firstField_secondField_apply {f : FormalDist (End ℂ A)}
+    {g : FormalDist (End ℂ B)} (hf : IsField f) (hg : IsField g) (s : ℤ)
+    (x : A ⊗[ℂ] B) :
+    nprod (isField_firstField (B := B) hf) (isField_secondField (A := A) hg) s x
+      = ∑ᶠ m : ℤ,
+          (firstField (B := B) f m * secondField (A := A) g (s - m)) x
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak TensorFieldLift.lean}. The second-factor analogues
+(\lean{isField_secondField}, \lean{local_secondField}, \lean{dcovariant_secondField},
+\lean{nprod_firstField}, \lean{nprod_secondField}) are in the same file.
+
+\begin{dictionary}
+\lean{(B := B)} only fixes the implicit second factor. \lean{isField_firstField} needs an argument by
+induction on tensors (a general element of $A\otimes B$ is a finite sum of pure tensors). In the last
+statement the right side is a \lean{finsum} whose support is finite because $f$, $g$ are fields.
+\end{dictionary}
+
+\begin{physics}
+Fields of decoupled systems commute (they are mutually local with no singular OPE), and their
+normal-ordered product is just the product, e.g.\ the stress tensor of a tensor product is
+$T_A\otimes1+1\otimes T_B$ with no cross terms.
+\end{physics}
+
+\begin{status}
+All unconditional, axiom-clean (\texttt{\#print axioms} \lean{local_firstField_secondField} run for this chapter).
+\end{status}
+
+%======================================================================
+\section{Local systems of weak vertex operators}\label{l03:sec:local}
+%======================================================================
+
+Li (1996) constructs vertex algebras, and their modules, from \emph{local systems}: spaces of
+mutually local fields on a fixed vector space $M$, closed under all field products. The space of
+such fields is itself a vertex algebra, with $M$ as a module. The library has the first three of
+the four steps of this construction. All results here are about an arbitrary complex vector space
+$M$.
+
+\subsection{Weak vertex operators and the generated system}
+
+\begin{definition}[Weak vertex operators; the generated system]\label{l03:def:fld}
+$\mathrm{Fld}(M)$ is the set of fields on $M$, with the identity field $1$, the normal-ordered product
+and $\partial$. For $S\subseteq\mathrm{Fld}(M)$, $\mathrm{Gen}(S,i,a)$ means that $a$ is obtained from
+elements of $S$ and $1$ by $i$ applications of ${:}\cdot\,\cdot{:}$ and $\partial$; $\mathrm{Generated}(S)$ is
+the set of such $a$ (any $i$).
+\end{definition}
+\begin{leancode}
+def Fld (M : Type*) [AddCommGroup M] [Module ℂ M] : Type _ :=
+  {a : FormalDist (End ℂ M) // IsField a}
+
+noncomputable def one : Fld M := ⟨idField, idField_isField⟩
+
+noncomputable def nprod (a b : Fld M) : Fld M :=
+  ⟨VOA.nprod a.2 b.2, a.2.nprod b.2⟩
+
+noncomputable def deriv (a : Fld M) : Fld M :=
+  ⟨VOA.deriv a.1, a.2.deriv⟩
+
+inductive Gen (S : Set (Fld M)) : ℕ → Fld M → Prop
+  | base {a : Fld M} : a ∈ S → Gen S 0 a
+  | one : Gen S 0 Fld.one
+  | nprod {i j : ℕ} {a b : Fld M} : Gen S i a → Gen S j b → Gen S (i + j + 1) (a.nprod b)
+  | deriv {i : ℕ} {a : Fld M} : Gen S i a → Gen S (i + 1) a.deriv
+
+def Generated (S : Set (Fld M)) : Set (Fld M) := {a | ∃ i, Gen S i a}
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak LocalSystem.lean} (\lean{Fld.one}, \lean{Fld.nprod},
+\lean{Fld.deriv} in namespace \lean{VOA.Fld}).
+
+\begin{dictionary}
+\lean{{a // IsField a}} is the subtype: a pair of a distribution \lean{a.1} and a proof \lean{a.2}
+that it is a field. \lean{Gen} is an \emph{inductive predicate}: its four constructors are the only
+ways to establish \lean{Gen S i a}. The index $i$ counts operations; it is bookkeeping for the
+locality induction below. Note that \lean{Generated} is closed under ${:}\cdot\,\cdot{:}$ and $\partial$,
+hence under all negative products, but not under linear combinations or the nonnegative products;
+the linear, all-product closure is the \lean{LocalFieldSystem} below.
+\end{dictionary}
+
+\begin{physics}
+The operators one can build from a set of chiral fields by taking derivatives and normal-ordered
+products --- the ``composite operators'' of the theory. No vacuum and no grading are involved: this
+is the operator algebra acting on a fixed sector $M$.
+\end{physics}
+
+\begin{theorem}[The generated system is local]\label{l03:thm:genlocal}
+If the elements of $S$ are pairwise local, so are all elements of $\mathrm{Generated}(S)$.
+\end{theorem}
+\begin{leancode}
+theorem gen_local (S : Set (Fld M)) (hS : ∀ a ∈ S, ∀ b ∈ S, Local a.1 b.1) :
+    ∀ (N i j : ℕ) (a b : Fld M), i + j ≤ N → Gen S i a → Gen S j b → Local a.1 b.1
+
+theorem generated_local {S : Set (Fld M)} (hS : ∀ a ∈ S, ∀ b ∈ S, Local a.1 b.1)
+    {a b : Fld M} (ha : a ∈ Generated S) (hb : b ∈ Generated S) : Local a.1 b.1
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak LocalSystem.lean}.
+
+\begin{dictionary}
+\lean{hS} includes $a = b$ (self-locality of each generator), which is genuinely required. The bound
+$N$ in \lean{gen_local} is the induction parameter; \lean{generated_local} is the clean form.
+\end{dictionary}
+
+\begin{physics}
+Composite operators of mutually local fields are mutually local: closure of the chiral operator algebra
+under the OPE.
+\end{physics}
+
+\textbf{Proof on paper.} Strong induction on $i+j$. If $a = {:}a_1a_2{:}$, Dong's lemma
+(\lean{dong_neg}) needs $a_1\sim a_2$, $a_1\sim b$, $a_2\sim b$, all of strictly smaller total size;
+if $a = \partial a_1$, use \lean{Local.derivL}; if $a$ is a generator or $1$, peel $b$ instead
+(using symmetry); two generators are local by \lean{hS}, and $1$ is local with everything. \qed
+
+\begin{status}
+Unconditional, axiom-clean (\texttt{\#print axioms} \lean{VOA.gen_local} run for this chapter).
+\end{status}
+
+\subsection{All integer products and closed local systems}
+
+\begin{definition}[Integer field products; local field system]\label{l03:def:lfs}
+For fields $a,b$ on $M$ and $n\in\Z$: $a_{(n)}b := \Res_{z_1}(z_1-z_2)^n[a(z_1),b(z_2)]$ if $n\ge0$ and
+$a_{(n)}b := \frac1{(-n-1)!}{:}\partial^{-n-1}a\,b{:}$ if $n<0$. A \emph{local field system} is a linear
+subspace of $\mathrm{Fld}(M)$ containing $1$, pairwise local, and closed under all $a_{(n)}b$.
+\end{definition}
+\begin{leancode}
+noncomputable def prod (n : ℤ) (a b : Fld M) : Fld M :=
+  if _hn : 0 ≤ n then
+    ⟨cCoeff n.toNat (bracketDist a.1 b.1), isField_cCoeff_bracket a.2 b.2 n.toNat⟩
+  else
+    ⟨negProd a.2 b.2 (-n - 1).toNat, isField_negProd a.2 b.2 (-n - 1).toNat⟩
+
+structure LocalFieldSystem (M : Type*) [AddCommGroup M] [Module ℂ M] where
+  carrier : Submodule ℂ (Fld M)
+  one_mem : Fld.one ∈ carrier
+  locality : ∀ a ∈ carrier, ∀ b ∈ carrier, Local a.1 b.1
+  prod_mem : ∀ (n : ℤ) {a b : Fld M}, a ∈ carrier → b ∈ carrier → Fld.prod n a b ∈ carrier
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak LocalSystemBare.lean} (\lean{VOA.Fld.prod},
+\lean{VOA.LocalFieldSystem}; $\mathrm{Fld}(M)$ is given its vector-space structure in the same file).
+
+\begin{dictionary}
+\lean{n.toNat} is $n$ for $n\ge0$; \lean{(-n - 1).toNat} is $-n-1$ for $n<0$. The two field-property
+proofs (\lean{isField_cCoeff_bracket}, \lean{isField_negProd}) show that products of fields are fields.
+Same as Li's definition (and Kac's $n$-th products of fields).
+\end{dictionary}
+
+\begin{physics}
+A maximal consistent set of chiral operators acting on a sector: closed under taking every OPE
+coefficient, containing the identity.
+\end{physics}
+
+\begin{theorem}[Basic laws of field products]\label{l03:thm:fldlaws}
+For fields on $M$: $1_{(n)}a = \delta_{n,-1}a$; $a_{(k)}1 = 0$ ($k\ge0$), $a_{(-1)}1 = a$,
+$a_{(-k-1)}1 = \frac1{k!}\partial^ka$; if $(z_1-z_2)^N[a,b] = 0$ then $a_{(n)}b = 0$ for $n\ge N$; and
+products of pairwise local fields are local with a third field local with both.
+\end{theorem}
+\begin{leancode}
+theorem prod_one_left_all (n : ℤ) (a : Fld M) :
+    prod n one a = if n = -1 then a else 0
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak LocalSystemAction.lean} (namespace \lean{VOA.Fld}).
+\begin{leancode}
+theorem prod_one_right_negsucc (k : ℕ) (a : Fld M) :
+    (prod (-(k : ℤ) - 1) a one).1 =
+      (k.factorial : ℂ)⁻¹ • (VOA.deriv^[k]) a.1
+
+theorem prod_eventually_zero_of_local {a b : Fld M} (h : Local a.1 b.1) :
+    ∃ N : ℤ, ∀ n : ℤ, N ≤ n → prod n a b = 0
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak LocalSystemBare.lean} (also \lean{prod_one_right_nat},
+\lean{prod_one_right_neg_one}).
+\begin{leancode}
+theorem prod_local_right_of_pairwise {a b c : Fld M}
+    (hab : Local a.1 b.1) (hac : Local a.1 c.1) (hbc : Local b.1 c.1) (n : ℤ) :
+    Local (prod n a b).1 c.1
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak LocalSystemRegular.lean}.
+
+\begin{dictionary}
+These are the vacuum, creation and truncation laws of a vertex algebra, for the system of fields with
+$1$ as vacuum; \lean{prod_local_right_of_pairwise} is Dong's lemma for every $n\in\Z$ (negative $n$ via
+\lean{dong_neg} and \lean{Local.deriv_iterate_left}). Note the translation built in:
+$a_{(-2)}1 = \partial a$.
+\end{dictionary}
+
+\begin{physics}
+In the space of operators, the identity plays the vacuum and $\partial$ the translation generator:
+$a_{(-k-1)}1 = \partial^ka/k!$ is the Taylor expansion of the operator itself.
+\end{physics}
+
+\begin{status}
+All unconditional, axiom-clean (\texttt{\#print axioms} run for
+\lean{Fld.prod_local_right_of_pairwise} and \lean{LocalFieldSystem.creation_deriv}).
+\end{status}
+
+\subsection{The Borcherds identity for two local fields}
+
+\begin{theorem}[Borcherds identity for an arbitrary local pair]\label{l03:thm:fieldjacobi}
+Let $a,b$ be mutually local fields on an arbitrary vector space $M$. Then for every $x\in M$ and all
+$\ell,m,n\in\Z$,
+\begin{equation*}
+\sum_{i\ge0}(-1)^i\binom\ell i\Big(a_{(\ell+m-i)}b_{(n+i)}x - (-1)^\ell b_{(\ell+n-i)}a_{(m+i)}x\Big)
+= \sum_{i\ge0}\binom mi(a_{(\ell+i)}b)_{(m+n-i)}x,
+\end{equation*}
+where $a_{(\ell+i)}b$ is the field product of Definition~\ref{l03:def:lfs}. Its $m = 0$ case, the iterate
+formula, holds for any two fields (locality not needed).
+\end{theorem}
+\begin{leancode}
+theorem mode_prod_iterate (a b : Fld M) (ell N : ℤ) (x : M) :
+    mode (prod ell a b).1 N x =
+      ∑ᶠ i : ℕ, ((-1 : ℂ) ^ i * gBinom ell i) •
+        (mode a.1 (ell - i) (mode b.1 (N + i) x)
+          - ((-1 : ℂ) ^ ell) • mode b.1 (ell + N - i) (mode a.1 i x))
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak FieldProductIterate.lean}.
+\begin{leancode}
+theorem field_jacobi_of_local {a b : Fld M} (h : Local a.1 b.1)
+    (x : M) (ell m n : ℤ) :
+    (∑ᶠ i : ℤ, (negOnePow i * cbz ell i) •
+      (mode a.1 (ell + m - i) (mode b.1 (n + i) x) -
+        negOnePow ell • mode b.1 (ell + n - i) (mode a.1 (m + i) x))) =
+      ∑ᶠ i : ℤ, cbz m i • mode (prod (ell + i) a b).1 (m + n - i) x
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak LocalSystemJacobi.lean} (also the packaged form
+\lean{field_borcherds_of_local}).
+
+\begin{dictionary}
+The left side is literally the left side of \lean{VertexOperatorAlgebra.jacobi} with \lean{W.smul u}
+replaced by \lean{mode a.1}; the right side has the field product \lean{prod (ell + i) a b} where
+\lean{jacobi} has $Y(u_{(\ell+i)}v)$. The only hypothesis is \lean{Local a.1 b.1}.
+
+\textbf{How this sharpens the counterexample.} Apply the theorem to $a = Y(u)$, $b = Y(v)$ in a
+\lean{PreVertexAlgebra}: the Borcherds identity of the algebra holds for all $(\ell,m,n)$ \emph{if and only
+if} $Y(u_{(\ell)}v) = Y(u)_{(\ell)}Y(v)$ for all $\ell$ (take $m = 0$ for ``only if''). For $\ell\ge0$ this
+needs only Goddard and the creation tower; for $\ell<0$ it needs the creation tower $Y(u,z)\lthreevac =
+e^{zT}u$ --- translation covariance. In Section~\ref{l03:sec:counter}, $Y(x)_{(-2)}Y(\lthreevac) = \partial
+Y(x) = 2z\,y\cdot{}\ne0 = Y(x_{(-2)}\lthreevac)$.
+\end{dictionary}
+
+\begin{physics}
+OPE associativity is automatic \emph{for operators}: any two mutually local chiral operators satisfy
+the Borcherds identity with their operator OPE coefficients. What a vertex algebra adds is the
+state--operator correspondence, and the content of the Borcherds identity of a vertex algebra is that
+this correspondence intertwines the OPEs of states with those of operators.
+\end{physics}
+
+\textbf{Proof on paper.} Identical in structure to Theorem~\ref{l03:thm:borcherds}: the iterate formula
+($m=0$) is a direct coefficient computation from the definitions of the field products (no locality);
+the commutator formula ($\ell = 0$) follows from the delta-decomposition of $[a,b]$, whose coefficients
+are by construction the nonnegative products (\lean{commutator_prod_bound_of_local}); the Pascal
+recursion and the anti-diagonal pin finish. \qed
+
+\begin{status}
+Unconditional, axiom-clean (\texttt{\#print axioms} \lean{VOA.Fld.field_jacobi_of_local} and
+\lean{VOA.Fld.mode_prod_iterate} run for this chapter).
+\end{status}
+
+\subsection{The carrier action, and what is not yet proved}
+
+\begin{definition}[Induced state--field map of a local system]\label{l03:def:statefield}
+For a local field system $L$, the vacuum is $1\in L$, the mode action is $a\mapsto(b\mapsto a_{(n)}b)$,
+the induced field of $a\in L$ is $\mathcal Y(a,z) = \sum_n(a_{(n)}\cdot)z^{-n-1}$ acting on $L$, and the
+translation is $a\mapsto a_{(-2)}1$.
+\end{definition}
+\begin{leancode}
+noncomputable def vacuum : L.carrier := ⟨Fld.one, L.one_mem⟩
+
+noncomputable def stateField : L.carrier →ₗ[ℂ] FormalDist (End ℂ L.carrier) where
+  toFun a := fun q => modeAction L (-q - 1) a
+
+theorem stateField_vacuum :
+    stateField L (vacuum L) = (idField : FormalDist (End ℂ L.carrier))
+
+theorem creation_deriv (a : L.carrier) (k : ℕ) :
+    (modeAction L (-(k : ℤ) - 1) a (vacuum L) : Fld M).1 =
+      (k.factorial : ℂ)⁻¹ • (VOA.deriv^[k]) a.1.1
+
+theorem translation_val (a : L.carrier) :
+    (translation L a : Fld M).1 = VOA.deriv a.1.1
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak LocalSystemAction.lean} (namespace
+\lean{VOA.LocalFieldSystem}; \lean{modeAction L n a b} is $a_{(n)}b$).
+
+\begin{dictionary}
+\lean{L.carrier} is the subspace, used as a type. \lean{stateField} has $z^q$-coefficient
+\lean{modeAction L (-q - 1)}, so its modes are the field products, as in any vertex algebra.
+\lean{stateField_vacuum} is VA2, \lean{creation_deriv} the creation tower, \lean{translation_val} says the
+induced translation is $\partial$. The file also proves \lean{creation_neg_one}, \lean{creation_nonneg}
+(VA3) and \lean{modeAction_eventually_zero} (VA5).
+\end{dictionary}
+
+\begin{physics}
+The operators of a local system themselves form a chiral algebra: the identity operator is its vacuum,
+$\partial$ its translation, and OPE coefficients its products.
+\end{physics}
+
+\begin{warning}[title={Li's construction is not complete at this commit}]
+The library proves VA2, VA3, VA5 and the creation tower for the induced fields of a local field
+system, Dong closure (\lean{LocalFieldSystem.prod_local}), and the Borcherds identity for the action
+on $M$. It does \textbf{not} prove that the induced fields \lean{stateFld L a} are mutually local on
+$L$ (VA4 for the local system), nor the compatibility $\mathcal Y(a_{(n)}b) = \mathcal Y(a)_{(n)}\mathcal Y(b)$,
+and it packages neither a \lean{BarePreVA} nor a \lean{PreVertexAlgebra} on $L$, nor a module structure on
+$M$. The file \leanpath{LocalSystemRegular.lean} names these as ``the intended endpoints''. In
+particular no result of the library is conditional on them; they are open work. (If the endpoint is
+a \lean{BarePreVA}, the warning of Section~\ref{l03:sec:counter} applies: a Borcherds identity over
+\lean{BarePreVA} would require adding translation covariance, which a local system does have,
+\lean{translation_val}.)
+\end{warning}
+
+%======================================================================
+\section{Localising the first-order Jacobi identity}\label{l03:sec:jacobilocal}
+%======================================================================
+
+The file \leanpath{VOA/\allowbreak Core/\allowbreak JacobiLocal.lean} serves the deformation theory of
+Chapter~\ref{ch:L07}, where a first-order deformation $Y+tY_1$ of a VOA is encoded by a
+\emph{cochain} $f:V\to\End(V)[[z^{\pm1}]]$ (\lean{VOA.Deform.Cochain}), with deformed products
+$u^1_{(n)}v = $ \lean{cmode f u n v}, and the cocycle condition \lean{JacobiAx W f} is the linearisation
+of the Borcherds identity in $f$ (four insertions of $f$ on the left, two on the right). Chapter~\ref{ch:L07}
+gives the definitions of \lean{Cochain}, \lean{cmode}, \lean{JacobiAx}, \lean{gradedCochains} and
+\lean{IsRigid} with their Lean source; we state only the localisation theorem proved here.
+
+\begin{lemma}[Products vanish above the grading bound]\label{l03:lem:gradingbound}
+In a VOA, if $u\in V_a$, $v\in V_b$ and $n>a+b-1$, then $u_{(n)}v = 0$.
+\end{lemma}
+\begin{leancode}
+theorem smul_eq_zero_of_grading_lt (W : VertexOperatorAlgebra 𝒱) {a b : ℤ} {u v : 𝒱}
+    (hu : u ∈ W.grading a) (hv : v ∈ W.grading b) {n : ℤ} (hn : a + b - 1 < n) :
+    W.smul u n v = 0
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak JacobiLocal.lean} (\lean{VOA.Deform.smul_eq_zero_of_grading_lt}).
+
+\begin{dictionary}
+VA1 puts $u_{(n)}v$ in $V_{a+b-n-1}$, which is $0$ by (VOA4) when $a+b-n-1<0$. This explicit bound is
+what makes the Borcherds sums finite with an explicit range once the grades are fixed.
+\end{dictionary}
+
+\begin{physics}
+In a theory with nonnegative scaling dimensions, the OPE $u(z)v(w)$ has a pole of order at most
+$\Delta_u+\Delta_v$, the pole being fixed by the dimension of the lowest state that can appear.
+\end{physics}
+
+\begin{theorem}[Localisation of the cocycle condition]\label{l03:thm:jacobilocal}
+For a graded cochain $f$ on a VOA, \lean{JacobiAx W f} holds if and only if, for every
+$(a,b,d,\ell,m,n)\in\Z^6$, the explicit finite equation \lean{LocalJacobiAt W f a b d ℓ m n} holds:
+for all $u\in V_a$, $v\in V_b$, $x\in V_d$,
+$\sum_{i=0}^{B_L}\mathrm{jac1L}_i = \sum_{i=0}^{B_R}\mathrm{jac1R}_i$ with
+$B_L = \max(b+d-n-1,\,a+d-m-1)$ and $B_R = a+b-\ell-1$.
+\end{theorem}
+\begin{leancode}
+def LocalJacobiAt (W : VertexOperatorAlgebra 𝒱) (f : Cochain 𝒱) (a b d ℓ m n : ℤ) : Prop :=
+  ∀ u ∈ W.grading a, ∀ v ∈ W.grading b, ∀ x ∈ W.grading d,
+    (∑ i ∈ Finset.Icc (0 : ℤ) (jacBoundL a b d m n), jac1L W f u v x ℓ m n i)
+      = ∑ i ∈ Finset.Icc (0 : ℤ) (jacBoundR a b ℓ), jac1R W f u v x ℓ m n i
+
+theorem jacobiAx_iff_localJacobiAt (W : VertexOperatorAlgebra 𝒱) {f : Cochain 𝒱}
+    (hf : f ∈ gradedCochains W) :
+    JacobiAx W f ↔ ∀ a b d ℓ m n : ℤ, LocalJacobiAt W f a b d ℓ m n
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak JacobiLocal.lean} (namespace \lean{VOA.Deform}). The
+summands are
+\begin{leancode}
+noncomputable def jac1L (W : VertexOperatorAlgebra 𝒱) (f : Cochain 𝒱) (u v x : 𝒱)
+    (ℓ m n i : ℤ) : 𝒱 :=
+  (negOnePow i * cbz ℓ i) •
+    (cmode f u (ℓ + m - i) (W.smul v (n + i) x)
+      + W.smul u (ℓ + m - i) (cmode f v (n + i) x)
+      - negOnePow ℓ •
+        (cmode f v (ℓ + n - i) (W.smul u (m + i) x)
+          + W.smul v (ℓ + n - i) (cmode f u (m + i) x)))
+
+noncomputable def jac1R (W : VertexOperatorAlgebra 𝒱) (f : Cochain 𝒱) (u v x : 𝒱)
+    (ℓ m n i : ℤ) : 𝒱 :=
+  cbz m i •
+    (W.smul (cmode f u (ℓ + i) v) (m + n - i) x
+      + cmode f (W.smul u (ℓ + i) v) (m + n - i) x)
+
+def jacBoundL (a b d m n : ℤ) : ℤ := max (b + d - n - 1) (a + d - m - 1)
+
+def jacBoundR (a b ℓ : ℤ) : ℤ := a + b - ℓ - 1
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak JacobiLocal.lean}.
+
+\begin{dictionary}
+\lean{Finset.Icc 0 N} is $\{0,\dots,N\}$ (empty if $N<0$). \lean{jac1L} and \lean{jac1R} are the $i$-th
+summands of the two sides of the linearised Borcherds identity: the four (resp.\ two) ways of replacing
+one product by a deformed product \lean{cmode f}. The theorem replaces each \lean{finsum} by an explicit
+finite sum, using Lemma~\ref{l03:lem:gradingbound} and its analogue for graded cochains, and uses the
+direct-sum decomposition to reduce from arbitrary to homogeneous $u,v,x$. \textbf{Scope (stated in the
+source):} for fixed input grades $(a,b,d)$ there are still infinitely many equations ($\ell\to-\infty$),
+so the system is not finite per tridegree; the theorem is a reformulation, not a finiteness theorem.
+The same file proves the consumer \lean{not_isRigid_of_local}: a solution of the local system whose
+component at some tridegree is not a coboundary component refutes \lean{IsRigid}; by
+Chapter~\ref{ch:L07}, \lean{IsRigid} is the ungraded rigidity notion that is false for every Virasoro VOA
+for definitional reasons, so this consumer is of limited use.
+\end{dictionary}
+
+\begin{physics}
+First-order deformations of a chiral algebra are infinitesimal changes of all OPE coefficients
+preserving associativity; the theorem says that, sector by sector in scaling dimensions, the
+associativity constraints on the deformed OPE coefficients are finitely many linear equations each ---
+the form in which conformal-bootstrap-style constraints on marginal deformations are actually
+solved.
+\end{physics}
+
+\begin{status}
+\lean{jacobiAx_iff_localJacobiAt}, \lean{smul_eq_zero_of_grading_lt}, \lean{not_isRigid_of_local}:
+unconditional, axiom-clean (\texttt{\#print axioms} run for this chapter).
+\end{status}
+
+\section{Combinatorial lemmas}\label{l03:sec:combinatorics}
+
+The file \leanpath{VOA/\allowbreak Core/\allowbreak FieldCombinatorics.lean} (namespace
+\lean{VOA.FieldCombinatorics}) collects coefficient identities used by the field-product files; it
+is independent of vertex algebras. The one with mathematical content is the negative binomial:
+
+\begin{lemma}\label{l03:lem:negbinom}
+For $s,n\in\N$, $\binom{-s-1}{n} = (-1)^n\frac{(s+n)!}{s!\,n!} = (-1)^n\binom{s+n}{n}$.
+\end{lemma}
+\begin{leancode}
+theorem gBinom_negsucc (s n : ℕ) :
+    gBinom (-(s : ℤ) - 1) n =
+      (-1) ^ n * ((s + n).factorial : ℂ) /
+        ((s.factorial : ℂ) * (n.factorial : ℂ))
+\end{leancode}
+File \leanpath{VOA/\allowbreak Core/\allowbreak FieldCombinatorics.lean}.
+
+\begin{dictionary}
+Exactly the displayed identity; it converts the coefficients of normal-ordered products into the
+binomials of the iterate formula. Other lemmas there: the expansion of $(z_1-z_2)^N$ coefficientwise
+(\lean{mulBySubPow_apply_sum}), $\binom nk$ for natural $n$ (\lean{gBinom_natCast_eq_choose}), binomial
+symmetry (\lean{gBinom_symm_nat}) and the coefficients of $\partial^j$ (\lean{deriv_pow_apply}).
+\end{dictionary}
+
+\begin{physics}
+$\binom{-s-1}{n}$ is the Taylor coefficient of $(z-w)^{-s-1}$ in powers of $w/z$: it governs the
+expansion of an OPE pole of order $s+1$ in one radial ordering.
+\end{physics}
+
+%======================================================================
+\section{Referee's checklist}\label{l03:sec:checklist}
+%======================================================================
+
+\begingroup\small
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.28\textwidth}>{\raggedright\arraybackslash}p{0.31\textwidth}>{\raggedright\arraybackslash}p{0.2\textwidth}>{\raggedright\arraybackslash}p{0.1\textwidth}}
+\toprule
+Lean declaration & Intended meaning & Hypotheses / status & Check\\
+\midrule\endhead
+\lean{PreVertexAlgebra} & Gannon Def.~5.1.3(a): grading, VA1--VA5 & definition; \textbf{no translation axiom}; strictly weaker than Kac/FBZ/LL in that direction & Def.~\ref{l03:def:VA}, §\ref{l03:sec:compare}\\
+\lean{BarePreVA} & VA2--VA5 without grading & definition; docstring now warns that it does \textbf{not} suffice for Borcherds (an earlier docstring claimed it did) & Def.~\ref{l03:def:bare}\\
+\lean{GradedVertexOperatorAlgebra} & LL/FLM VOA (graded, truncated below), without CFT type & definition; no structure theory proved at this level & Def.~\ref{l03:def:VOA}\\
+\lean{VertexOperatorAlgebra} & LL/FLM VOA of CFT type (a restriction of LL/FLM) & definition; (VOA3) supplies translation; LL $\Rightarrow$ library direction on paper only & Prop.~\ref{l03:prop:equiv}\\
+\lean{VertexAlgebra}, \lean{toVertexAlgebra} & \lean{PreVertexAlgebra} + translation covariance; every VOA is one & definition; map from VOAs via \lean{isTranslationCovariant} & §\ref{l03:sec:intro}\\
+(scratch) \lean{L03Counter.VA}, \lean{jacobi_fails} & a \lean{PreVertexAlgebra} violating Borcherds & machine-checked outside the library (not in this release); library copy \lean{TranslationCovariantCounterexample} & Thm.~\ref{l03:thm:counter}\\
+\lean{PreVertexAlgebra.T} & $Tu = u_{(-2)}\lthreevac$ & definition & Def.~\ref{l03:def:smulT}\\
+\lean{Yprod_ext}, \lean{eq_}\allowbreak\lean{zero_}\allowbreak\lean{of_}\allowbreak\lean{mulBySubPow_}\allowbreak\lean{of_}\allowbreak\lean{bddBelow} & $z_1-z_2$ non-zero-divisor on $V((z_1))((z_2))$ & none; unconditional & Thm.~\ref{l03:thm:yprodext}\\
+\lean{bracket_deltaSum}, \lean{mode_}\allowbreak\lean{commutator_}\allowbreak\lean{structural} & OPE decomposition; structural commutator & VA level; coefficients not identified & Thm.~\ref{l03:thm:ope}\\
+\lean{goddard_uniqueness}, \lean{goddard_uniqueness_vac}, \lean{goddard_zero} & state determines local field & VA level / abstract; unconditional & Thm.~\ref{l03:thm:goddard}\\
+\lean{dong_nonneg}, \lean{dong_neg} & locality closed under field products & pairwise locality (+ field); unconditional & Thm.~\ref{l03:thm:dong}\\
+\lean{creation_pow}, \lean{Y_Tpow}, \lean{T_eq_Lneg1} & $Y(u,z)\lthreevac = e^{zT}u$, $T = L_{-1}$ & VOA; unconditional & Thm.~\ref{l03:thm:creation}\\
+\lean{Y_T}, \lean{mode_Y_T} & $Y(Tu,z) = \partial_zY(u,z)$; $(Tu)_{(n)} = -n\,u_{(n-1)}$ & VOA; unconditional & Thm.~\ref{l03:thm:TL}\\
+\lean{translation_covariance} & $[L_{-1},Y(u)] = Y(L_{-1}u)$ & VOA; unconditional & Thm.~\ref{l03:thm:transcov}\\
+\lean{nth_product}, \lean{assoc_nonneg} & $Y(u_{(k)}v) = \Res(z_1-z)^k[Y(u),Y(v)]$ & VOA; unconditional & Thm.~\ref{l03:thm:nthproduct}\\
+\lean{mode_commutator}, \lean{commBound} & commutator formula (complete sum) & VOA; $\exists N$ made exhaustive by \lean{commBound} & Thm.~\ref{l03:thm:comm}\\
+\lean{assoc_neg} & $Y(u_{(-k-1)}v) = \frac1{k!}{:}\partial^kY(u)Y(v){:}$ & VOA; unconditional & Thm.~\ref{l03:thm:assocneg}\\
+\lean{mode_iterate} & iterate formula, all $\ell\in\Z$ & VOA; vector form; unconditional & Thm.~\ref{l03:thm:iterate}\\
+\lean{borcherds}, \lean{jacobi} & Borcherds identity, all $(\ell,m,n)$ & VOA; unconditional, axiom-clean & Thm.~\ref{l03:thm:borcherds}\\
+\lean{jacobi_commutator} & commutator formula, $\ell=0$ slice of Borcherds (alias of \lean{mode_commutator}) & VOA; $\exists N$ (see \lean{commBound}); unconditional & Thm.~\ref{l03:thm:jacobicomm}\\
+\lean{skewVacLocal}, \lean{weakAssocLoc} & reflected field is local & VOA; unconditional & Thm.~\ref{l03:thm:skewvac}\\
+\lean{skew}, \lean{skew_mode} & $Y(u,z)v = e^{zT}Y(v,-z)u$ & VOA; unconditional & Thm.~\ref{l03:thm:skew}\\
+\lean{flm} & FLM associativity after $z_1 = z_0+z_2$ & VOA, explicit locality order; unconditional & Thm.~\ref{l03:thm:flm}\\
+\lean{comm_iff_nonneg_modes}, \lean{comm_iff_assoc_alg}, \lean{commRing_of_comm} & Gannon Thm.~5.1.4 & VOA; \textbf{hypothesis forces $W = \C\lthreevac$} & Thm.~\ref{l03:thm:commalg}, warning\\
+\lean{Reconstruction.}\allowbreak\lean{reconstruct} & existence of $Y$ from spanning local $T$-covariant fields & all hypotheses explicit; no VA2/VA1 in conclusion & Thm.~\ref{l03:thm:reconstruct}\\
+\lean{Reconstruction.}\allowbreak\lean{field_eq_zero_of_vacuum} & a field local with a spanning family of creating fields and killing the vacuum is $0$ & bare vector space; all hypotheses explicit; unconditional & Thm.~\ref{l03:thm:fieldzero}\\
+\lean{TensorFieldLift.*} & lifts to $A\otimes B$ preserve hypotheses & unconditional & Thm.~\ref{l03:thm:tensorlift}\\
+\lean{gen_local}, \lean{generated_local} & generated system is local & pairwise local generators & Thm.~\ref{l03:thm:genlocal}\\
+\lean{Fld.prod}, \lean{LocalFieldSystem} & Li's field products and local systems & definitions & Def.~\ref{l03:def:lfs}\\
+\lean{Fld.}\allowbreak\lean{field_}\allowbreak\lean{jacobi_}\allowbreak\lean{of_}\allowbreak\lean{local}, \lean{Fld.mode_prod_iterate} & Borcherds for any local pair of fields & \lean{Local a b}; unconditional & Thm.~\ref{l03:thm:fieldjacobi}\\
+\lean{LocalFieldSystem.}\allowbreak\lean{stateField} etc. & induced VA on a local system & partial: \textbf{VA4 for induced fields not proved} & Def.~\ref{l03:def:statefield}, warning\\
+\lean{Deform.}\allowbreak\lean{jacobiAx_}\allowbreak\lean{iff_}\allowbreak\lean{localJacobiAt} & cocycle condition = local finite equations & graded cochain; unconditional & Thm.~\ref{l03:thm:jacobilocal}\\
+\bottomrule
+\end{longtable}
+\endgroup
+
+\textbf{Machine verification for this chapter.} When the chapter was first written, \texttt{\#print axioms} was run on a scratch file
+importing the chapter's modules, with \texttt{lake env lean -DmaxSynthPendingDepth=3} (never the
+bare command), against the build products of an earlier commit (not re-run for this edition); a full \texttt{lake build} was
+\emph{not} run for this chapter. Every one of the following reported exactly
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}:
+\lean{goddard_uniqueness}, \lean{goddard_zero}, \lean{Yprod_ext}, \lean{bracket_deltaSum},
+\lean{dong_nonneg}, \lean{dong_neg}, \lean{T_eq_Lneg1}, \lean{creation_pow}, \lean{Y_Tpow},
+\lean{translation_covariance}, \lean{nth_product}, \lean{mode_commutator}, \lean{assoc_neg},
+\lean{mode_iterate}, \lean{skew}, \lean{skew_mode}, \lean{weakAssocLoc}, \lean{flm}, \lean{borcherds},
+\lean{jacobi}, \lean{jacobi_commutator}, \lean{Y_T}, \lean{field_eq_zero_of_vacuum}, \lean{comm_iff_nonneg_modes}, \lean{comm_iff_assoc_alg}, \lean{commRing_of_comm},
+\lean{reconstruct}, \lean{gen_local}, \lean{field_jacobi_of_local}, \lean{mode_prod_iterate},
+\lean{prod_local_right_of_pairwise}, \lean{creation_deriv}, \lean{jacobiAx_iff_localJacobiAt},
+\lean{smul_eq_zero_of_grading_lt}, \lean{not_isRigid_of_local}, \lean{local_firstField_secondField},
+\lean{BarePreVA.isField_Y} (full names as in the sections above).
+The PBW theorem \lean{VOA.pbw} occurs nowhere in this chapter.
+
+\textbf{Release audit 2026-10-27:} \texttt{Notes/\allowbreak Textbook/\allowbreak referee/\allowbreak RELEASE\_AUDIT\_FOUNDATIONS.md}
+(at an earlier commit; no \texttt{lake build}, \texttt{\#print axioms} on the existing build products). It re-ran
+\texttt{\#print axioms} on \lean{VOA.VertexOperatorAlgebra.borcherds} and \lean{VOA.VertexOperatorAlgebra.jacobi} (three
+standard axioms each), confirmed that the Borcherds identity is stated for all $(\ell,m,n)\in\Z^3$, that its three
+\lean{finsum}s are proved finite (\lean{BR_fin}, \lean{Puv_fin}, \lean{Pvu_fin}), and that it is derived from locality,
+not assumed. It recompiled the counterexample \lean{L03Counter.VA} (\lean{translation_fails}, \lean{jacobi_fails}:
+three standard axioms) and adopted this chapter's finding: \lean{PreVertexAlgebra}/\lean{BarePreVA} are not vertex
+algebras in the standard sense; \lean{VertexOperatorAlgebra} is the LL/FLM VOA of CFT type; the direction
+LL $\Rightarrow$ library of Proposition~\ref{l03:prop:equiv} is paper-only; the zero space is a VOA.
+
+%======================================================================
+\section{Notes and references}\label{l03:sec:notes}
+%======================================================================
+
+\textbf{Original sources.} R.~E.~Borcherds, ``Vertex algebras, Kac--Moody algebras, and the Monster'',
+\emph{Proc.\ Nat.\ Acad.\ Sci.\ USA} 83 (1986), 3068--3071 (the definition by the Borcherds identity).
+I.~B.~Frenkel, J.~Lepowsky and A.~Meurman, \emph{Vertex Operator Algebras and the Monster}, Pure and
+Applied Mathematics 134, Academic Press (1988), Chapter~8 (the Jacobi identity, weak associativity,
+the definition of a VOA).
+
+\textbf{Textbooks.} V.~G.~Kac, \emph{Vertex Algebras for Beginners}, 2nd ed., University Lecture
+Series 10, AMS (1998): Definition~1.3 (translation operator as data), §§2--3 (fields, locality,
+Dong's lemma), §4 (uniqueness, existence, $n$-th product identity, Borcherds identity).
+E.~Frenkel and D.~Ben-Zvi, \emph{Vertex Algebras and Algebraic Curves}, 2nd ed., Mathematical
+Surveys and Monographs 88, AMS (2004): Definition~1.3.1 and §4.4 (reconstruction).
+J.~Lepowsky and H.~Li, \emph{Introduction to Vertex Operator Algebras and Their Representations},
+Progress in Mathematics 227, Birkh\"auser (2004): Chapter~3 (Jacobi identity, commutator and iterate
+formulas, skew-symmetry, weak commutativity and associativity, Definition~3.1.22 of a VOA).
+T.~Gannon, \emph{Moonshine beyond the Monster}, Cambridge University Press (2006), §5.1: Definition
+5.1.3 (the library's axioms), Proposition~5.1.2, (5.1.7)--(5.1.9), Theorem~5.1.4.
+
+\textbf{Further.} H.~Li, ``Local systems of vertex operators, vertex superalgebras and modules'',
+\emph{J.\ Pure Appl.\ Algebra} 109 (1996), 143--195.
+For
+Hasse--Schmidt derivations (the structure behind the counterexample of Section~\ref{l03:sec:counter})
+see H.~Hasse and F.~K.~Schmidt, \emph{J.\ Reine Angew.\ Math.} 177 (1937), 215--237.
+Physics background: A.~A.~Belavin, A.~M.~Polyakov and A.~B.~Zamolodchikov, \emph{Nucl.\ Phys.\ B} 241
+(1984), 333--380; P.~Di~Francesco, P.~Mathieu and D.~S\'en\'echal, \emph{Conformal Field Theory},
+Springer (1997), Chapter~6 (OPE, radial ordering, mode algebras).
+
+\textbf{Project records.} The history of the skew-symmetry gate (once the sanctioned axiom
+\lean{weakAssocLoc_gate}, then a single \lean{sorry} in \lean{Gfield_eq_jumpSum}) is recorded only in
+the docstrings of \leanpath{SkewSymmetry.lean} and \leanpath{WeakAssoc.lean}. The translation gap of
+\lean{PreVertexAlgebra} and the vacuity of Theorem~5.1.4 for VOAs are recorded for the first time here.
+
+\endgroup

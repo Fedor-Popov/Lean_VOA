@@ -1,0 +1,2641 @@
+\chapter{First-order deformations and the graded first-order rigidity of Virasoro minimal models}\label{ch:L07}
+\begingroup\setlength{\emergencystretch}{3em}
+
+\providecommand{\lsevenvac}{\mathbf{1}}
+\providecommand{\lsevenV}{\mathcal{V}}
+\providecommand{\lsevenR}{R}
+\providecommand{\lsevenE}{\mathcal{E}}
+\providecommand{\lsevenK}{\mathsf{K}}
+\providecommand{\lsevenN}{\mathsf{N}}
+\providecommand{\lsevenLt}{\widetilde{L}}
+\providecommand{\lsevencpq}{c_{p,q}}
+
+This chapter documents the release of the LeanVOA library named in the front matter. Every Lean quotation below is checked by \texttt{scripts/textbook/sync.py}
+to occur verbatim (up to whitespace and comments) in the source files of that release. The chapter was
+first written against an earlier state of the library; checks that were run at that earlier state and not re-run for this edition are marked as such. The chapter covers the files assigned to it in
+\texttt{Notes/Textbook/assignment.txt}: the general first-order deformation theory in
+\leanpath{VOA/\allowbreak Core/\allowbreak Deformation*.lean}, \leanpath{VOA/\allowbreak Core/\allowbreak DeformedForm.lean},
+\leanpath{VOA/\allowbreak Core/\allowbreak RigidityBridge.lean} and a few auxiliary linear-algebra files,
+the example file \leanpath{VOA/\allowbreak Examples/\allowbreak NonzeroDeformation.lean}, and the
+roughly eighty files \leanpath{VOA/\allowbreak Examples/\allowbreak Virasoro*.lean} whose subject is the rigidity of
+the simple Virasoro vertex operator algebras.
+
+The headline of the chapter is a single theorem,
+\lean{VOA.VirModule.minimal_graded_rigidity}: \emph{for every pair of coprime integers
+$p,q\ge2$, every graded first-order deformation of the simple Virasoro vertex operator algebra
+$L(\lsevencpq,0)$ of central charge $\lsevencpq = 1-6(p-q)^2/(pq)$ is trivial}, that is, it is
+undone by an infinitesimal change of coordinates. The theorem is proved without any hypothesis
+beyond the label conditions, and \texttt{\#print axioms} reports only Lean's three standard axioms;
+in particular \lean{VOA.pbw} (the PBW theorem of Chapter~\ref{ch:L02}; formerly a project axiom, now a theorem) is not used.
+
+Three qualifications travel with the headline everywhere in this chapter (they are the caveats of the
+release audit \texttt{Notes/Textbook/referee/RELEASE\_AUDIT\_RIGIDITY.md}). First, the theorem is
+\emph{graded first-order} rigidity: the parameter ring is $\C[t]/(t^2)$, the vertex operation $Y$ is
+deformed, the vacuum is held fixed, the deformation must respect the weight grading, and ``trivial''
+means ``the coboundary of a grade-preserving, vacuum-fixing $\varphi$''. Nothing is claimed about formal
+($\C[[t]]$), ungraded or grading-moving deformations; the library's \emph{ungraded} notion
+\lean{IsRigid} is false for every universal Virasoro VOA $V(c,0)$, for a definitional reason
+(Warning~\ref{l07:warn:isrigid}), and is never quoted as true in this book. Second, the notion
+\lean{IsRigidGraded} is not vacuous: the library constructs the $c$-derivative $\partial_cY$ on the universal
+Virasoro VOA $V(c,0)$ and proves \lean{VOA.}\allowbreak\lean{VirPoly.}\allowbreak\lean{not_}\allowbreak\lean{isRigidGraded_}\allowbreak\lean{virasoroVOA}, i.e.\ $V(c,0)$ is not graded first-order rigid,
+for every $c\in\C$ (Remark~\ref{l07:rem:nonvacuity}). The witness deformation moves the central charge, which the
+library's notion of first-order deformation allows (it is not required to preserve $\omega$ or $c$). This caveat of
+the release audit has therefore been discharged since the audit was written. Third, at $(p,q) = (2,3)$ the central charge is $c_{2,3} = 0$
+and $L(0,0) = \C\lsevenvac$, so that instance is trivially true; the content lies in the other labels.
+
+The chapter has four jobs.
+\begin{enumerate}
+\item Explain from first principles what a first-order deformation of a vertex operator algebra
+  is, what it means for one to be \emph{trivial}, and what \emph{rigidity} means, both
+  mathematically (vanishing of a second cohomology group, in the spirit of Gerstenhaber's
+  deformation theory of associative algebras) and physically (absence of exactly marginal
+  deformations of a chiral algebra: the theory is an isolated point of its moduli space).
+\item Present the library's definitions --- \lean{FirstOrderDeformation}, \lean{IsGraded},
+  \lean{IsCoboundary}, \lean{IsTrivial}, \lean{IsRigid}, \lean{IsRigidGraded} --- with their
+  verbatim Lean source, and run the fidelity check on them with particular care. This is the heart
+  of the chapter: the referee must be convinced that \lean{IsRigidGraded} is the rigidity notion
+  the authors intended, must know exactly which deformations it quantifies over, and must know
+  how it could have been vacuous and why it is not. We shall see that one of the two notions the
+  library defines, \lean{IsRigid}, is \emph{false for every Virasoro vertex operator algebra for a
+  definitional reason}, and that the library knows this and uses only \lean{IsRigidGraded}.
+\item Explain the proof of the headline theorem on paper. The proof has three steps that can be
+  stated in a paragraph each: (a) a graded deformation of $L(c,0)$ has exactly one gauge-invariant
+  parameter $\delta$, the first-order change of the central charge; (b) if $\delta = 0$ the
+  deformation is trivial (a reconstruction theorem using simplicity); (c) if $c = \lsevencpq$, a
+  null vector of the universal vacuum module, whose norm has a \emph{simple} zero at $c$, forces
+  $\delta = 0$. Step (c) needs the Kac determinant of the vacuum module, which is the subject of the
+  companion Chapter~\ref{ch:L06}; we state precisely which results of that chapter are used.
+\item Present the worked cases that the library proved on the way (central charge $0$,
+  Lee--Yang $-22/5$, Ising $1/2$, $M(2,7)$ at $-68/7$, tricritical Ising $7/10$, the families
+  $M(2,q)$ and $M(p,3)$), the dead ends that were recorded (a tautological ``structural''
+  rigidity theorem, an unsatisfiable ``bridge'' hypothesis, the false belief that an isolated
+  degenerate charge suffices), and close with the referee's checklist.
+\end{enumerate}
+
+The foundations --- formal distributions, modes $u_{(n)}$, the definitions of vertex algebra and
+vertex operator algebra, the Borcherds identity, ideals, simple quotients and invariant bilinear
+forms --- are those of Chapters~\ref{ch:L01}, \ref{ch:L03} and~\ref{ch:L04}, to which we point for every such notion. The Virasoro
+vertex operator algebra itself (its construction, its Verma modules, the Kac determinant) is the
+subject of Chapter~\ref{ch:L06}; since that chapter is a companion rather than a prerequisite we
+recall in Section~\ref{l07:sec:virasoro} every Virasoro definition our statements use, with its
+verbatim Lean source.
+
+%======================================================================
+\section{Why deformations, and why minimal models should be rigid}\label{l07:sec:motivation}
+%======================================================================
+
+\subsection{Deformations in algebra: Gerstenhaber's picture}
+
+Let $A$ be an associative algebra over $\C$ with product $\mu(a,b) = ab$. A \emph{first-order
+deformation} of $A$ is an associative product on $A[t]/(t^2) = A\oplus tA$ of the form
+\begin{equation*}
+ \mu_t(a,b) = \mu(a,b) + t\,\mu_1(a,b),
+\end{equation*}
+extended $\C[t]/(t^2)$-bilinearly, where $\mu_1 : A\times A\to A$ is bilinear. Associativity of
+$\mu_t$ modulo $t^2$ is the condition
+\begin{equation*}
+ \mu_1(ab,c) + \mu_1(a,b)c = \mu_1(a,bc) + a\mu_1(b,c),
+\end{equation*}
+which says that $\mu_1$ is a Hochschild $2$-cocycle. Two deformations are \emph{equivalent} if
+they differ by an infinitesimal change of coordinates $a\mapsto a + t\varphi(a)$ with
+$\varphi : A\to A$ linear; such a change transforms $\mu_1$ into
+$\mu_1 + \delta\varphi$ with $(\delta\varphi)(a,b) = \varphi(a)b - \varphi(ab) + a\varphi(b)$,
+a Hochschild coboundary. A deformation is \emph{trivial} if it is equivalent to the zero
+deformation, and $A$ is \emph{rigid} (to first order) if every first-order deformation is
+trivial; equivalently the second Hochschild cohomology $HH^2(A,A)$ vanishes. This is the theory
+created by Gerstenhaber in 1964. Two features of it will recur:
+\begin{itemize}
+\item \emph{The cocycle condition is linear in $\mu_1$.} The original axiom (associativity) is
+  quadratic in the product; substituting $\mu + t\mu_1$ and discarding $t^2$ leaves the
+  ``derivative'' of the axiom in the direction $\mu_1$, which is linear. Hence the
+  deformations form a vector space, and the trivial ones a subspace.
+\item \emph{Rigidity is a statement about a quotient.} A nonzero $\mu_1$ can be trivial; what is
+  asked is that every cocycle is a coboundary. A rigidity theorem that forgot the quotient (``every
+  $\mu_1$ is zero'') would be false for every algebra, since $\delta\varphi$ is almost never zero.
+\end{itemize}
+
+\subsection{Deformations of vertex algebras}
+
+A vertex algebra (Definition~\ref{l03:def:VA} of Chapter~\ref{ch:L03}) has infinitely many
+products $u_{(n)}v$, $n\in\Z$, packaged in the state--field correspondence
+$Y(u,z) = \sum_n u_{(n)}z^{-n-1}$, and its main identity, the Borcherds identity
+(Theorem~\ref{l03:thm:borcherds}), is quadratic in $Y$. Deforming $Y$ to $Y + tY_1$ over the dual
+numbers and discarding $t^2$ therefore gives, exactly as for associative algebras, a linear
+``cocycle'' condition on $Y_1$, and infinitesimal changes of coordinates $1 + t\varphi$ give
+``coboundaries''. Cohomology theories for vertex algebras in which the second cohomology
+classifies such first-order deformations were developed by Huang (for grading-restricted vertex
+algebras) and by others; see the Notes at the end of the chapter. The library constructs no
+cohomology theory at all: it works with the cocycle and coboundary conditions directly, as
+elementary statements about modes. This is a deliberate design decision, recorded in the
+docstring of \leanpath{VOA/\allowbreak Core/\allowbreak Deformation.lean}, and it makes the fidelity check easier,
+because nothing is hidden inside a homological construction.
+
+\subsection{The physical picture: moduli of conformal field theories}
+
+In two-dimensional conformal field theory one asks whether a given theory sits in a continuous
+family. The standard example is the compactified free boson: the radius $R$ of the target circle
+can be varied continuously, and every value gives a consistent CFT; the operator that moves $R$ is
+the ``exactly marginal'' operator $\partial X\bar\partial X$ of conformal weight $(1,1)$. A theory
+with no exactly marginal deformations is \emph{isolated}: it is a point, not a curve, in the space
+of theories.
+
+A vertex operator algebra is the \emph{chiral algebra} of a CFT: the algebra of fields depending
+holomorphically on $z$, with their operator product expansions. Deforming the vertex algebra
+means deforming the OPE coefficients of the chiral fields while keeping the space of states fixed.
+For the free boson the chiral algebra is the Heisenberg vertex operator algebra, generated by a
+current $J(z)$ with $J(z)J(w)\sim k/(z-w)^2$; changing $k$ looks like a deformation, but it is
+undone by rescaling $J\mapsto\lambda J$, i.e.\ by a change of coordinates, so it is trivial. For
+the Virasoro algebra the analogous parameter is the central charge in
+\begin{equation*}
+ T(z)T(w)\sim\frac{c/2}{(z-w)^4} + \frac{2T(w)}{(z-w)^2} + \frac{\partial T(w)}{z-w},
+\end{equation*}
+and here rescaling $T$ does \emph{not} undo a change of $c$: rescaling $T\mapsto\lambda T$ changes
+the coefficient $2$ of the second-order pole, which is fixed by the requirement that $T$ generate
+the conformal symmetry. So the universal Virasoro vertex operator algebra $V(c,0)$ has a genuine
+one-parameter family of deformations, $c\mapsto c+t$. (We shall see that the library proves the
+``coordinate change cannot move $c$'' half of this statement as a theorem,
+Theorem~\ref{l07:thm:gaugeline}, and also constructs the deformation $\partial_c$ itself,
+\lean{VOA.}\allowbreak\lean{VirPoly.}\allowbreak\lean{cDeformation}; Section~\ref{l07:sec:nonvacuity}.)
+
+\subsection{Why the minimal models should be rigid}
+
+The \emph{minimal models} of Belavin, Polyakov and Zamolodchikov are the CFTs whose chiral algebra
+is the simple quotient $L(c,0)$ of $V(c,0)$ at one of the special central charges
+\begin{equation*}
+ \lsevencpq = 1-\frac{6(p-q)^2}{pq},\qquad p,q\ge2,\ \gcd(p,q) = 1 .
+\end{equation*}
+(Examples: $c_{2,3} = 0$, the Lee--Yang model $c_{2,5} = -22/5$, the Ising model $c_{3,4} = 1/2$, the
+tricritical Ising model $c_{4,5} = 7/10$.) At these values, and only there, the vacuum module
+$V(c,0)$ contains a \emph{null vector} --- a nonzero state $s$ of positive weight orthogonal to
+everything for the invariant form --- and $L(c,0) = V(c,0)/\langle s\rangle$. The lowest one sits at
+weight $(p-1)(q-1)$. The physical heuristic for rigidity is then:
+\begin{enumerate}
+\item The chiral algebra $L(c,0)$ is generated by $T$, and the only parameter in the $TT$ OPE is
+  $c$. So any deformation of $L(c,0)$, after a change of coordinates, can only move $c$, to
+  $c + t\delta$.
+\item In $L(c,0)$ the null vector is \emph{zero}: $s = 0$ is a relation of the algebra. A
+  deformation must keep this relation (to first order, after correcting $s$ by $t s'$).
+\item But the norm $\langle s,s\rangle$ of the corresponding universal state, as a function of the
+  central charge, vanishes at $c = \lsevencpq$ to \emph{first} order. Moving $c$ to $c + t\delta$
+  changes the norm by $t\delta\cdot\frac{d}{dc}\langle s,s\rangle\ne0$ unless $\delta = 0$, and a
+  state with nonzero norm cannot be zero. Hence $\delta = 0$, and by step 1 the deformation is
+  trivial.
+\end{enumerate}
+That is the whole idea, and the Lean proof follows it faithfully. The work is in making each step
+precise: in step 1, ``after a change of coordinates'' and ``generated by $T$'' become a
+reconstruction theorem (Section~\ref{l07:sec:reconstruction}); in step 2, ``keep the relation''
+becomes a pairing identity over the dual numbers (Section~\ref{l07:sec:obstruction}); in step 3 one
+needs to know that a suitable norm, or the vacuum Gram determinant, has a \emph{simple} zero at
+$\lsevencpq$ (Section~\ref{l07:sec:all}). The word ``simple'' is essential: the minimal-model
+charges accumulate at $c = 1$, so ``$\lsevencpq$ is an isolated degenerate value'' is not even true
+across all levels, and at a fixed level an isolated root of multiplicity two would \emph{not}
+obstruct a first-order motion (Warning~\ref{l07:warn:doubleroot}).
+
+The physical statement is about first order only, and so is the theorem. It says nothing about
+analytic families, about the full (non-chiral) CFT, or about the modules of $L(c,0)$; we list
+precisely what it does and does not say in Section~\ref{l07:sec:fidelity-rigid}.
+
+%======================================================================
+\section{First-order deformations of a vertex operator algebra}\label{l07:sec:deformations}
+%======================================================================
+
+Throughout, $W$ is a vertex operator algebra in the sense of Definition~\ref{l03:def:VOA} of
+Chapter~\ref{ch:L03}, with state space $\lsevenV = \bigoplus_{n\ge0}\lsevenV_n$ (CFT type:
+$\lsevenV_0 = \C\lsevenvac$, $\lsevenV_n = 0$ for $n<0$), state--field map $Y$, vacuum $\lsevenvac$,
+conformal vector $\omega$ and central charge $c$. We write $u_{(n)}v$ for the $n$-th product
+(\lean{W.smul u n v} in Lean) and $L_n = \omega_{(n+1)}$.
+
+\subsection{Derivation of the axioms}\label{l07:sec:derivation}
+
+Let $\lsevenR = \C[t]/(t^2)$, the ring of dual numbers, and let $\lsevenV_\lsevenR = \lsevenR\otimes_\C
+\lsevenV = \lsevenV\oplus t\lsevenV$. We look for a vertex algebra structure on $\lsevenV_\lsevenR$ over
+$\lsevenR$, with the same vacuum, of the form
+\begin{equation}\label{l07:eq:Yt}
+ Y^t(u,z)v = Y(u,z)v + t\,Y_1(u,z)v,\qquad\text{i.e.}\qquad u^t_{(n)}v = u_{(n)}v + t\,u^1_{(n)}v,
+\end{equation}
+where $Y_1 : \lsevenV\to\End(\lsevenV)[[z^{\pm1}]]$ is $\C$-linear, $u^1_{(n)}v$ denotes the coefficient
+of $z^{-n-1}$ in $Y_1(u,z)v$, and everything is extended $\lsevenR$-bilinearly. Each vertex-algebra
+axiom for $(\lsevenV_\lsevenR, Y^t,\lsevenvac)$ splits into a $t^0$ part, which is the axiom for $W$ and
+holds automatically, and a $t^1$ part, which is a condition on $Y_1$:
+\begin{enumerate}[label=(D\arabic*)]
+\item \emph{Truncation} (VA5). $u^t_{(n)}v = 0$ for $n\gg0$; at order $t$: for all $u,v$ there is
+  $N$ with $u^1_{(n)}v = 0$ for $n\ge N$.
+\item \emph{Vacuum field} (VA2). $Y^t(\lsevenvac,z) = \mathrm{id}$; the right side has no $t$, so
+  $Y_1(\lsevenvac,z) = 0$.
+\item \emph{Creation} (VA3). $u^t_{(n)}\lsevenvac = 0$ for $n\ge0$ and $u^t_{(-1)}\lsevenvac = u$; the
+  vector $u$ on the right has no $t$-component (we deform $Y$, not the space), so
+  $u^1_{(n)}\lsevenvac = 0$ for all $n\ge-1$.
+\item \emph{Borcherds identity.} Every term of \eqref{l03:eq:borcherds} contains exactly two
+  modes. Substituting $u_{(k)}\mapsto u_{(k)} + tu^1_{(k)}$ and keeping the coefficient of $t$
+  gives, for all $u,v,x\in\lsevenV$ and $\ell,m,n\in\Z$,
+  \begin{equation}\label{l07:eq:jac1}
+  \begin{aligned}
+   &\sum_{i\ge0}(-1)^i\binom{\ell}{i}\Big(u^1_{(\ell+m-i)}v_{(n+i)}x + u_{(\ell+m-i)}v^1_{(n+i)}x
+     - (-1)^\ell\big(v^1_{(\ell+n-i)}u_{(m+i)}x + v_{(\ell+n-i)}u^1_{(m+i)}x\big)\Big)\\
+   &\qquad = \sum_{i\ge0}\binom mi\Big((u^1_{(\ell+i)}v)_{(m+n-i)}x + (u_{(\ell+i)}v)^1_{(m+n-i)}x\Big).
+  \end{aligned}
+  \end{equation}
+  On each side one sums over the two ways of placing a single $Y_1$. This is the ``$Y_1$ is a
+  $2$-cocycle'' condition, and it is linear in $Y_1$.
+\end{enumerate}
+Locality (VA4) is not imposed separately: over a commutative base ring the Borcherds identity
+together with vacuum, creation and truncation is equivalent to the full set of vertex-algebra
+axioms (this is the Jacobi-identity definition of Frenkel--Lepowsky--Meurman and Lepowsky--Li, and
+its equivalence with the locality definition; for the library's own axioms over $\C$ see
+Chapter~\ref{ch:L03}). The grading axiom (VA1) is \emph{not} imposed at this stage; its first-order
+part will be the separate predicate \lean{IsGraded} below.
+
+\subsection{The definition}
+
+\begin{definition}[First-order deformation]\label{l07:def:fod}
+A \emph{first-order deformation} of $W$ is a $\C$-linear map
+$Y_1 : \lsevenV\to\End(\lsevenV)[[z^{\pm1}]]$ satisfying (D1)--(D4). We write
+$u^1_{(n)}v := (Y_1(u))_{(n)}v$ for its products.
+\end{definition}
+
+\begin{leancode}
+structure FirstOrderDeformation (W : VertexOperatorAlgebra 𝒱) where
+  Y1 : 𝒱 →ₗ[ℂ] (End ℂ 𝒱)⟦z^±⟧
+  truncation : ∀ u v : 𝒱, ∃ N : ℤ, ∀ n : ℤ, N ≤ n → mode (Y1 u) n v = 0
+  vacuum_Y1 : Y1 W.vacuum = 0
+  creation : ∀ (u : 𝒱) (n : ℤ), -1 ≤ n → mode (Y1 u) n W.vacuum = 0
+  jacobi : ∀ (u v x : 𝒱) (ℓ m n : ℤ),
+      (∑ᶠ i : ℤ, (negOnePow i * cbz ℓ i) •
+          (mode (Y1 u) (ℓ + m - i) (W.smul v (n + i) x)
+            + W.smul u (ℓ + m - i) (mode (Y1 v) (n + i) x)
+            - negOnePow ℓ •
+              (mode (Y1 v) (ℓ + n - i) (W.smul u (m + i) x)
+                + W.smul v (ℓ + n - i) (mode (Y1 u) (m + i) x))))
+        = ∑ᶠ i : ℤ, cbz m i •
+            (W.smul (mode (Y1 u) (ℓ + i) v) (m + n - i) x
+              + mode (Y1 (W.smul u (ℓ + i) v)) (m + n - i) x)
+
+def smul₁ (D : FirstOrderDeformation W) (u : 𝒱) (n : ℤ) (v : 𝒱) : 𝒱 := mode (D.Y1 u) n v
+\end{leancode}
+(\lean{VOA.Deform.FirstOrderDeformation}, \lean{VOA.Deform.FirstOrderDeformation.smul₁},
+\leanpath{VOA/\allowbreak Core/\allowbreak Deformation.lean}; the ambient context is
+\lean{variable {𝒱 : Type u} [AddCommGroup 𝒱] [Module ℂ 𝒱]}, i.e.\ $\lsevenV$ is a complex vector space;
+field docstrings removed.)
+
+\begin{dictionary}
+\textbf{Decoding.}
+\begin{itemize}
+\item \lean{Y1 : 𝒱 →ₗ[ℂ] (End ℂ 𝒱)⟦z^±⟧} is a $\C$-linear map from $\lsevenV$ to formal distributions
+  with coefficients in $\End_\C(\lsevenV)$ --- \emph{exactly the type} of the undeformed
+  \lean{W.Y} (Chapter~\ref{ch:L03}, Definition~\ref{l03:def:VA}). Linearity in $u$ is built into
+  \lean{→ₗ[ℂ]}; linearity of each $u^1_{(n)}$ in $v$ is built into \lean{End ℂ 𝒱}. So $Y_1$ is a
+  bilinear family of products, with nothing assumed beyond bilinearity.
+\item \lean{mode (Y1 u) n v} is $u^1_{(n)}v$, by the convention \lean{mode f n = f (-n-1)} of
+  Definition~\ref{l01:def:mode}: the coefficient of $z^{-n-1}$. \lean{smul₁ D u n v} is the same
+  thing with a name, mirroring \lean{W.smul u n v} $= u_{(n)}v$.
+\item \lean{truncation} is (D1), with $N$ depending on $u,v$. \lean{vacuum_Y1} is (D2):
+  \lean{Y1 W.vacuum = 0} means the whole distribution $Y_1(\lsevenvac,z)$ is zero.
+  \lean{creation} is (D3): $u^1_{(n)}\lsevenvac = 0$ for every $n\ge-1$ --- note \emph{including}
+  $n = -1$, which is the first-order part of $u_{(-1)}\lsevenvac = u$.
+\item \lean{jacobi} is \eqref{l07:eq:jac1}. \lean{negOnePow i} is $(-1)^i$, \lean{cbz ℓ i} is the
+  binomial coefficient $\binom{\ell}{i}$ with integer lower index, \emph{zero for $i<0$}
+  (Definition~\ref{l01:def:gbinom}), so the sums over all $i\in\Z$ are the sums over $i\ge0$ of the
+  displayed formula. The left side has four terms: $u^1v$, $uv^1$, $v^1u$, $vu^1$; the right side
+  has two: $(u^1_{(\ell+i)}v)_{(m+n-i)}x$ and $(u_{(\ell+i)}v)^1_{(m+n-i)}x$. This is
+  term-by-term the Leibniz derivative of the library's undeformed Borcherds identity
+  \lean{VertexOperatorAlgebra.jacobi} (Theorem~\ref{l03:thm:borcherds}), whose summands are
+  $u_{(\ell+m-i)}v_{(n+i)}x - (-1)^\ell v_{(\ell+n-i)}u_{(m+i)}x$ and $\binom mi(u_{(\ell+i)}v)_{(m+n-i)}x$.
+\item \lean{∑ᶠ} is Mathlib's \lean{finsum}: the sum of a family with finite support, and \emph{by
+  definition $0$ if the support is infinite}.
+\end{itemize}
+
+\textbf{Could \lean{jacobi} be vacuous?} Yes, in principle, through \lean{finsum}: if one of the
+two families had infinite support, its \lean{finsum} would be $0$ by fiat and the axiom would
+degenerate. The library proves that this does not happen: \lean{jacobiLHS_support_finite} and
+\lean{jacobiRHS_support_finite} (same file) show both supports are finite, using
+\lean{truncation} and the undeformed VA5. (Negative $i$ are killed by \lean{cbz}; large $i$ by
+truncation.) So \lean{jacobi} is a genuine finite identity, the one displayed.
+
+\textbf{What is fixed and what is deformed.}
+\begin{itemize}
+\item The \emph{state space} is fixed: $\lsevenV_\lsevenR = \lsevenV\oplus t\lsevenV$, a free $\lsevenR$-module.
+  Deformations that change the underlying graded dimensions (as happens at a jump of the family
+  $c\mapsto L(c,0)$) are \emph{not} first-order deformations in this sense; this is the standard
+  convention of algebraic deformation theory.
+\item The \emph{vacuum} is fixed. The source records why this loses nothing: a deformed vacuum
+  $\lsevenvac + t\lsevenvac'$ can be moved back to $\lsevenvac$ by the coordinate change of
+  $\varphi = -(\,v\mapsto\lsevenvac'_{(-1)}v\,)$. We have not checked this remark in Lean; it is not
+  used.
+\item The \emph{conformal vector} is \textbf{not} part of the data. Nothing requires $Y^t$ to have
+  a conformal vector, let alone $\omega$. So these are deformations of the \emph{vertex algebra}
+  underlying $W$, not of the vertex operator algebra. For the rigidity question this is the
+  \emph{harder} (larger) class: every deformation of $W$ as a VOA (moving $Y$ and possibly $\omega$)
+  gives a deformation of the vertex algebra by forgetting $\omega$.
+\item The \emph{translation operator} is not mentioned. In a vertex algebra it is determined by
+  $Tu = u_{(-2)}\lsevenvac$, so the deformed one is $T + tT_1$ with $T_1u = u^1_{(-2)}\lsevenvac$;
+  (D3) does not force $T_1 = 0$ because it constrains only $n\ge-1$. Similarly skew-symmetry is not
+  an axiom; it follows from (D4) as it does in the undeformed case.
+\item The \emph{base ring} is the dual numbers only. This is ``first order''. There is no
+  statement over $\C[t]/(t^3)$ or $\C[[t]]$.
+\end{itemize}
+
+\textbf{Same as the literature?} With these conventions, a \lean{FirstOrderDeformation} is exactly
+a vertex algebra structure on $\lsevenR\otimes\lsevenV$ over $\lsevenR$ reducing to $W$ modulo $t$ and
+having vacuum $\lsevenvac$: (D1)--(D4) are necessary (they are the order-$t$ parts of axioms that any
+such structure satisfies) and, by the Jacobi-identity form of the axioms, sufficient. The
+direction that matters for rigidity is the first: \emph{no genuine first-order deformation is
+excluded by the definition}, so a rigidity theorem quantifying over \lean{FirstOrderDeformation}
+is not weakened by a too-narrow notion of deformation.
+\end{dictionary}
+
+\begin{status}
+A definition. The support-finiteness lemmas \lean{jacobiLHS_}\allowbreak\lean{support_}\allowbreak\lean{finite},
+\lean{jacobiRHS_}\allowbreak\lean{support_}\allowbreak\lean{finite} and the linearity lemmas for \lean{smul₁}
+(\lean{smul₁_add_left}, \lean{smul₁_smul_right}, \ldots) are proved in the same file, axiom-clean.
+\end{status}
+
+\begin{physics}
+A first-order deformation is the chiral-algebra version of perturbing a CFT by an infinitesimal
+amount: one keeps the space of states and the vacuum and changes every operator product expansion
+coefficient $C_{uv}^{w}$ by $t\,\delta C_{uv}^{w}$, discarding $t^2$. Conditions (D1)--(D4) say that the perturbed
+OPEs are still consistent: the OPE of two fields is still a Laurent series (truncation), the identity
+field is still the identity (vacuum), the state--operator map still sends $u$ to the field creating $u$
+from the vacuum (creation), and the perturbed OPE is still associative and local (Borcherds). In
+conformal perturbation theory such a change is produced by integrating a \emph{marginal} operator over the
+plane; for a purely chiral algebra the analogous objects are changes of the OPE structure constants, and
+the question whether they are ``exactly marginal'' is the question whether they integrate to a family.
+The definition does not require the perturbed theory to keep a stress tensor; that only enlarges the class
+of perturbations considered.
+\end{physics}
+
+\subsection{Graded deformations}
+
+\begin{definition}[Graded deformation]\label{l07:def:graded}
+A first-order deformation is \emph{graded} if $u^1_{(n)}v\in\lsevenV_{k+\ell-n-1}$ whenever
+$u\in\lsevenV_k$, $v\in\lsevenV_\ell$, $n\in\Z$; that is, each $u^1_{(n)}$ shifts the weight exactly as
+$u_{(n)}$ does (VA1 at order $t$).
+\end{definition}
+\begin{leancode}
+def IsGraded (D : FirstOrderDeformation W) : Prop :=
+  ∀ (k ℓ : ℤ) (u : 𝒱), u ∈ W.grading k → ∀ (v : 𝒱), v ∈ W.grading ℓ → ∀ (n : ℤ),
+    D.smul₁ u n v ∈ W.grading (k + ℓ - n - 1)
+\end{leancode}
+(\lean{VOA.Deform.FirstOrderDeformation.IsGraded}, \leanpath{VOA/\allowbreak Core/\allowbreak Deformation.lean}.)
+
+\begin{dictionary}
+\lean{W.grading k} is the subspace $\lsevenV_k$ (the field \lean{grading} of
+Definition~\ref{l03:def:VA}). The quantifiers are over all integers $k,\ell,n$ and all
+homogeneous $u,v$; for $k<0$ or $\ell<0$ the hypothesis forces $u=0$ or $v=0$ (CFT type) and the
+condition is empty. The predicate is exactly VA1 for the $t$-component.
+
+\textbf{Why a predicate and not a field.} The source explains: an ungraded first-order deformation
+is a legitimate object, and making gradedness a field would silently strengthen
+\lean{FirstOrderDeformation}. We shall see in Warning~\ref{l07:warn:isrigid} that this choice has
+a consequence for the \emph{ungraded} rigidity notion \lean{IsRigid}, which the library
+acknowledges and avoids.
+
+\textbf{What gradedness buys.} For graded $Y_1$ the mode index is determined by three weights:
+$u^1_{(n)}$ maps $\lsevenV_a\otimes\lsevenV_b$ to $\lsevenV_{a+b-n-1}$, so the component of $Y_1$ from
+$\lsevenV_a\otimes\lsevenV_b$ to $\lsevenV_d$ lives in the single mode $n = a+b-d-1$, and is a bilinear
+map between finite-dimensional spaces. Since $\lsevenV_d = 0$ for $d<0$, truncation (D1) is then
+automatic (\lean{Deform.truncated_of_graded} in \leanpath{VOA/\allowbreak Core/\allowbreak DeformationGraded.lean}).
+\end{dictionary}
+
+\begin{physics}
+Gradedness says the perturbation preserves conformal weights: the field of a state of weight $k$
+acting on a state of weight $\ell$ still produces, at the pole $(z-w)^{-n-1}$, states of weight $k+\ell-n-1$.
+Physically this is the requirement that the perturbation commutes with dilatations $z\mapsto\lambda z$, i.e.\ is
+\emph{marginal} rather than relevant or irrelevant: a perturbation by an operator of the wrong weight would
+introduce a scale and break conformal invariance. (Heuristic: a CFT perturbed by a marginal operator stays
+conformal to first order; that is what gradedness models here.)
+\end{physics}
+
+\subsection{Trivial deformations}
+
+Let $\varphi:\lsevenV\to\lsevenV$ be linear and consider the $\lsevenR$-linear automorphism $g = 1+t\varphi$
+of $\lsevenV_\lsevenR$, with inverse $1-t\varphi$. Transporting $Y$ along $g$ gives the vertex algebra
+structure $Y^g(u,z) = g^{-1}Y(gu,z)g$, and modulo $t^2$
+\begin{equation*}
+ Y^g(u,z)v = Y(u,z)v + t\big(Y(\varphi u,z)v - \varphi(Y(u,z)v) + Y(u,z)\varphi v\big).
+\end{equation*}
+Its vacuum is $g^{-1}\lsevenvac = \lsevenvac - t\varphi(\lsevenvac)$, which is $\lsevenvac$ precisely when
+$\varphi(\lsevenvac) = 0$. So the first-order deformations ``obtained by a change of coordinates'' are
+\begin{equation}\label{l07:eq:delta}
+ (\delta\varphi)(u,n,v) := (\varphi u)_{(n)}v - \varphi(u_{(n)}v) + u_{(n)}(\varphi v),
+ \qquad \varphi(\lsevenvac) = 0 .
+\end{equation}
+In words: $\delta\varphi$ measures the failure of $\varphi$ to be a derivation of every $n$-th
+product.
+
+\begin{definition}[Coboundary, trivial deformation]\label{l07:def:trivial}
+A linear map $\varphi:\lsevenV\to\lsevenV$ is \emph{grade-preserving} if $\varphi(\lsevenV_k)\subseteq\lsevenV_k$
+for all $k$. A cochain $f:\lsevenV\to\End(\lsevenV)[[z^{\pm1}]]$ is a \emph{coboundary} if there is a
+grade-preserving $\varphi$ with $\varphi(\lsevenvac) = 0$ and $f(u)_{(n)}v = (\delta\varphi)(u,n,v)$ for
+all $u,n,v$. A first-order deformation is \emph{trivial} if its $Y_1$ is a coboundary.
+\end{definition}
+\begin{leancode}
+def GradePreserving (W : VertexOperatorAlgebra 𝒱) (φ : 𝒱 →ₗ[ℂ] 𝒱) : Prop :=
+  ∀ (k : ℤ) (u : 𝒱), u ∈ W.grading k → φ u ∈ W.grading k
+
+def IsCoboundary (W : VertexOperatorAlgebra 𝒱) (f : 𝒱 →ₗ[ℂ] (End ℂ 𝒱)⟦z^±⟧) : Prop :=
+  ∃ φ : 𝒱 →ₗ[ℂ] 𝒱, φ W.vacuum = 0 ∧ GradePreserving W φ ∧
+    ∀ (u : 𝒱) (n : ℤ) (v : 𝒱),
+      mode (f u) n v = W.smul (φ u) n v - φ (W.smul u n v) + W.smul u n (φ v)
+
+def IsTrivial (D : FirstOrderDeformation W) : Prop := IsCoboundary W D.Y1
+\end{leancode}
+(\lean{VOA.Deform.GradePreserving}, \lean{VOA.Deform.IsCoboundary},
+\lean{VOA.Deform.FirstOrderDeformation.IsTrivial}, \leanpath{VOA/\allowbreak Core/\allowbreak Deformation.lean}.)
+
+\begin{dictionary}
+\lean{∃ φ : 𝒱 →ₗ[ℂ] 𝒱} is ``there is a linear map $\varphi$''; the three conjuncts are
+$\varphi(\lsevenvac) = 0$, grade preservation, and the formula \eqref{l07:eq:delta} for every
+$u\in\lsevenV$ (not only homogeneous), $n\in\Z$, $v\in\lsevenV$. \lean{W.smul (φ u) n v} is
+$(\varphi u)_{(n)}v$, \lean{φ (W.smul u n v)} is $\varphi(u_{(n)}v)$, \lean{W.smul u n (φ v)} is
+$u_{(n)}(\varphi v)$.
+
+\textbf{Sign.} The opposite overall sign ($-\delta\varphi$) gives the same set, since $\varphi$ may be
+replaced by $-\varphi$. Indeed the library's reconstruction theorem produces its trivialising map as
+\lean{-ψ} (Theorem~\ref{l07:thm:closedlift}).
+
+\textbf{The gauge group.} Allowed coordinate changes are $1+t\varphi$ with $\varphi$ grade-preserving
+and vacuum-fixing. $\varphi$ is \emph{not} required to fix $\omega$, nor to commute with anything.
+So triviality is generous in the expected way: it allows every infinitesimal graded,
+vacuum-preserving change of basis. Restricting $\varphi$ to be grade-preserving is natural for
+graded deformations; it matters only for ungraded ones (Warning~\ref{l07:warn:isrigid}).
+\end{dictionary}
+
+The first thing to check about any notion of ``trivial deformation'' is that the trivial ones are
+deformations at all: that $\delta\varphi$ satisfies (D1)--(D4).
+
+\begin{physics}
+A trivial deformation is a field redefinition: one relabels the states $u\mapsto u+t\varphi(u)$, as a physicist
+relabels operators by mixing operators of the same dimension. Such a ``deformation'' changes the OPE
+coefficients written in the old basis but not the theory; it is the analogue of a redundant operator in
+conformal perturbation theory. Requiring $\varphi$ to preserve weights says operators only mix with operators
+of the same scaling dimension; requiring $\varphi(\lsevenvac)=0$ says the identity operator is not redefined.
+\end{physics}
+
+\begin{theorem}[Coboundaries are cocycles]\label{l07:thm:cobcoc}
+For every linear $\varphi$ with $\varphi(\lsevenvac) = 0$, the cochain $\delta\varphi$ satisfies
+(D1)--(D4). In particular every coboundary is the $Y_1$ of a first-order deformation.
+\end{theorem}
+\begin{leancode}
+def cocycles (W : VertexOperatorAlgebra 𝒱) : Submodule ℂ (Cochain 𝒱) where
+  carrier := {f | Truncated f ∧ f W.vacuum = 0 ∧ CreationAx W f ∧ JacobiAx W f}
+
+theorem coboundaries_le_cocycles (W : VertexOperatorAlgebra 𝒱) :
+    coboundaries W ≤ cocycles W := by
+
+theorem deltaCochain_mem_cocycles (W : VertexOperatorAlgebra 𝒱) {φ : 𝒱 →ₗ[ℂ] 𝒱}
+    (hφ0 : φ W.vacuum = 0) : deltaCochain W φ ∈ Deform.cocycles W := by
+\end{leancode}
+(\lean{VOA.Deform.cocycles}, \lean{VOA.Deform.coboundaries_le_cocycles},
+\leanpath{VOA/\allowbreak Core/\allowbreak DeformationGraded.lean}; \lean{VOA.NonzeroDeform.deltaCochain_mem_cocycles},
+\leanpath{VOA/\allowbreak Examples/\allowbreak NonzeroDeformation.lean}. The proof
+of the submodule axioms of \lean{cocycles} is omitted.)
+
+\begin{dictionary}
+\lean{Cochain 𝒱} abbreviates \lean{𝒱 →ₗ[ℂ] (End ℂ 𝒱)⟦z^±⟧}, the type of \lean{Y1}.
+\lean{Truncated}, \lean{CreationAx}, \lean{JacobiAx} are (D1), (D3), (D4) restated for an arbitrary
+cochain, verbatim copies of the fields of \lean{FirstOrderDeformation}; so \lean{cocycles W} is the
+set of $Y_1$'s of first-order deformations, and the library proves the bijection
+\lean{cocycleEquivDeformation : ↥(cocycles W) ≃ FirstOrderDeformation W}. That it is a
+\lean{Submodule} --- closed under sums and scalar multiples --- is the statement that the axioms
+are linear in $Y_1$. \lean{coboundaries W} is the submodule of coboundaries
+(Definition~\ref{l07:def:trivial}); \lean{≤} is inclusion. \lean{deltaCochain W φ} is the cochain
+$\delta\varphi$ of \eqref{l07:eq:delta}, defined for \emph{any} linear $\varphi$, graded or not.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+(D2) and (D3): if $\varphi\lsevenvac = 0$ then $(\delta\varphi)(\lsevenvac,n,v) = 0 - \varphi(\lsevenvac_{(n)}v)
++ \lsevenvac_{(n)}\varphi v = -\delta_{n,-1}\varphi v + \delta_{n,-1}\varphi v = 0$, and for $n\ge-1$,
+$(\delta\varphi)(u,n,\lsevenvac) = (\varphi u)_{(n)}\lsevenvac - \varphi(u_{(n)}\lsevenvac)$, which is
+$0-0$ for $n\ge0$ and $\varphi u - \varphi u$ for $n=-1$. (D1) is immediate from VA5 for the three
+terms. For (D4), write $\mathcal{D}$ for the operation that, applied to a trilinear expression
+$F(u,v,x)$, returns $F(\varphi u,v,x)+F(u,\varphi v,x)+F(u,v,\varphi x)-\varphi F(u,v,x)$. A direct
+expansion shows that substituting $\delta\varphi$ for $Y_1$ in each summand of the left side of
+\eqref{l07:eq:jac1} gives $\mathcal{D}$ of the corresponding summand of the undeformed Borcherds
+identity (the inner $\varphi$'s cancel in pairs), and likewise on the right. Applying the undeformed
+identity at $(\varphi u,v,x)$, $(u,\varphi v,x)$, $(u,v,\varphi x)$ and $(u,v,x)$ concludes. This is the
+mode-by-mode form of the statement that $Y^g$ is again a vertex algebra.
+\end{proof}
+
+\begin{status}
+\lean{coboundaries_le_cocycles}, \lean{deltaCochain_mem_cocycles} and
+\lean{cocycleEquivDeformation} are proved; \texttt{\#print axioms} gives
+\lean{[propext, Classical.choice, Quot.sound]} (checked for \lean{coboundaries_le_cocycles}, see
+Section~\ref{l07:sec:axioms}). Unconditional.
+\end{status}
+
+\begin{physics}
+Field redefinitions never spoil consistency: if one starts from a consistent set of OPEs and renames
+operators, the renamed OPEs are consistent. This is the trivial direction of every deformation theory,
+and it is why ``deformations modulo field redefinitions'' is a well-defined space (the tangent space of the
+moduli space at the given theory).
+\end{physics}
+
+\subsection{Rigidity}
+
+\begin{definition}[Rigidity]\label{l07:def:rigid}
+$W$ is \emph{rigid} if every first-order deformation is trivial, and \emph{graded rigid} (in full:
+\emph{graded first-order rigid}) if every \emph{graded} first-order deformation is trivial. Only the second
+notion is meaningful (Warning~\ref{l07:warn:isrigid}); whenever this chapter says ``graded rigid'' it means
+graded first-order rigid in this sense.
+\end{definition}
+\begin{leancode}
+def IsRigid (W : VertexOperatorAlgebra 𝒱) : Prop :=
+  ∀ D : FirstOrderDeformation W, D.IsTrivial
+
+def IsRigidGraded (W : VertexOperatorAlgebra 𝒱) : Prop :=
+  ∀ D : FirstOrderDeformation W, D.IsGraded → D.IsTrivial
+\end{leancode}
+(\lean{VOA.Deform.IsRigid}, \leanpath{VOA/\allowbreak Core/\allowbreak Deformation.lean};
+\lean{VOA.Deform.IsRigidGraded}, \leanpath{VOA/\allowbreak Core/\allowbreak DeformationGraded.lean}.)
+
+The library also proves the cohomological reading: with $H(W) := \mathrm{cocycles}/\mathrm{coboundaries}$
+(an honest quotient module),
+\begin{leancode}
+abbrev H (W : VertexOperatorAlgebra 𝒱) : Type u := ↥(cocycles W) ⧸ coboundariesIn W
+
+theorem isRigid_iff_H_trivial (W : VertexOperatorAlgebra 𝒱) :
+    IsRigid W ↔ ∀ z : H W, z = 0 := by
+
+theorem isRigidGraded_of_gradedCocycles_le (W : VertexOperatorAlgebra 𝒱)
+    (h : gradedCocycles W ≤ gradedCoboundaries W) : IsRigidGraded W := by
+\end{leancode}
+(\lean{VOA.Deform.H}, \lean{VOA.Deform.isRigid_iff_H_trivial},
+\lean{VOA.Deform.isRigidGraded_of_gradedCocycles_le}, \leanpath{VOA/\allowbreak Core/\allowbreak DeformationGraded.lean}.
+\lean{coboundariesIn W} is \lean{coboundaries W} viewed inside \lean{cocycles W};
+\lean{gradedCocycles} and \lean{gradedCoboundaries} are the intersections of the two submodules with
+the submodule \lean{gradedCochains W} of graded cochains.)
+
+\begin{warning}\label{l07:warn:isrigid}
+\textbf{\lean{IsRigid} is false for every Virasoro vertex operator algebra, for a definitional
+reason; only \lean{IsRigidGraded} is meaningful.} The cocycle condition (D1)--(D4) ignores the
+grading, while \lean{IsCoboundary} insists on a \emph{grade-preserving} $\varphi$. Consequently
+\lean{IsTrivial} implies \lean{IsGraded} (\lean{NonzeroDeform.isGraded_of_isTrivial}: each of the
+three terms of $\delta\varphi$ lands in the right weight), and \emph{any} ungraded cocycle is
+non-trivial. Such cocycles are easy to produce: $\varphi = L_1$ kills the vacuum, so
+$\delta L_1$ is a cocycle (Theorem~\ref{l07:thm:cobcoc}), but $L_1$ lowers weights by one and
+$\delta L_1$ is not graded: on $V(c,0)$ one computes $\omega^1_{(-3)}\lsevenvac = -5L_{-3}\lsevenvac$,
+of weight $3$, whereas gradedness would put it in weight $2+0-(-3)-1 = 4$. The library proves
+\begin{leancode}
+theorem isGraded_of_isTrivial {W : VertexOperatorAlgebra 𝒱}
+    (D : Deform.FirstOrderDeformation W) (hD : D.IsTrivial) : D.IsGraded := by
+
+def l1Deformation (W : VertexOperatorAlgebra 𝒱) : Deform.FirstOrderDeformation W :=
+  deformOf W (L_one_vacuum W)
+
+theorem not_isRigid_virasoroVOA (c : ℂ) : ¬ Deform.IsRigid (virasoroVOA c) :=
+  fun h => not_isTrivial_l1Deformation c (h (l1Deformation (virasoroVOA c)))
+\end{leancode}
+(\lean{VOA.NonzeroDeform.*}, \leanpath{VOA/\allowbreak Examples/\allowbreak NonzeroDeformation.lean}.) The deformation
+$\delta L_1$ is of course trivial in the ordinary sense --- it is a change of coordinates by the
+\emph{ungraded} map $1+tL_1$ --- so \lean{not_isRigid_virasoroVOA} records an asymmetry of the
+definitions, not a modulus of $V(c,0)$. The same argument applies to any VOA with $L_1\ne0$ on
+some weight space. The source itself says so (``\lean{Deform.IsRigid} is false for essentially every
+VOA and \lean{IsRigid}-shaped goals should not be pursued'') and recommends exactly the repair the
+library then adopted: state rigidity as \lean{IsRigidGraded}. Every rigidity theorem of this chapter
+concerns \lean{IsRigidGraded}. A reader who meets the word ``rigid'' attached to \lean{IsRigid}
+anywhere in the library should treat it as a trap: \lean{IsRigid} must never be quoted as true, and
+it is proved to fail for every $V(c,0)$
+(\lean{VOA.NonzeroDeform.not_isRigid_virasoroVOA}, \texttt{\#print axioms}-clean).
+\end{warning}
+
+\begin{physics}
+Rigidity means that the tangent space to the space of chiral algebras at $W$ is zero: every
+infinitesimal change of OPE coefficients is a field redefinition. In CFT language, the chiral algebra has
+no exactly marginal deformations and is an isolated point of its moduli space (its ``conformal manifold''
+is a point). The free boson is the model counterexample for the full CFT (its radius is a modulus), and the
+universal Virasoro algebra, whose central charge can be moved, is the model counterexample for chiral
+algebras. The graded version restricts to perturbations that preserve scaling dimensions, i.e.\ to
+marginal ones, which are the ones relevant for families of conformal theories.
+\end{physics}
+
+\subsection{Fidelity of \lean{IsRigidGraded}}\label{l07:sec:fidelity-rigid}
+
+Since the headline theorem is a statement of the form \lean{IsRigidGraded (virasoroSimple c)},
+everything rests on this definition, and we examine it from every side.
+
+\begin{dictionary}
+\textbf{What \lean{IsRigidGraded W} says, unfolded completely.} For every $\C$-linear
+$Y_1:\lsevenV\to\End(\lsevenV)[[z^{\pm1}]]$ satisfying (D1)--(D4) and such that every $u^1_{(n)}$ shifts
+weight as $u_{(n)}$ does, there is a linear $\varphi:\lsevenV\to\lsevenV$ with $\varphi(\lsevenvac) = 0$,
+$\varphi(\lsevenV_k)\subseteq\lsevenV_k$ for all $k$, and
+$u^1_{(n)}v = (\varphi u)_{(n)}v - \varphi(u_{(n)}v) + u_{(n)}\varphi v$ for all $u,v\in\lsevenV$,
+$n\in\Z$. One single $\varphi$ works for all $u,n,v$ at once.
+
+\textbf{Which deformations are allowed.} Deformations of the \emph{vertex algebra} structure $Y$
+(not just of the VOA; $\omega$ may become non-conformal), over the dual numbers $\C[t]/(t^2)$, on the
+fixed graded space $\lsevenV$, with fixed vacuum, compatible with the original weight grading.
+
+\textbf{Which coordinate changes are allowed.} $1+t\varphi$ with $\varphi$ grade-preserving and
+$\varphi(\lsevenvac) = 0$.
+
+\textbf{Is the graded gauge group too small?} One might worry that a graded deformation could be
+trivialised by an \emph{ungraded} $\varphi$ but not by a graded one, which would make
+\lean{IsRigidGraded} stronger than intended (harder to satisfy) --- harmless for a rigidity
+\emph{theorem}, but worth knowing. It cannot happen. Argued on paper (not formalised): decompose an
+arbitrary linear $\varphi$ with $\varphi\lsevenvac = 0$ into homogeneous components
+$\varphi = \sum_d\varphi_d$, $\varphi_d(\lsevenV_k)\subseteq\lsevenV_{k+d}$ (possible because $\lsevenV =
+\bigoplus\lsevenV_k$). For homogeneous $u,v$, the three terms of $(\delta\varphi_d)(u,n,v)$ lie in
+$\lsevenV_{k+\ell-n-1+d}$, so the weight-$(k+\ell-n-1)$ part of $\delta\varphi(u,n,v)$ is
+$\delta\varphi_0(u,n,v)$. If $Y_1 = \delta\varphi$ is graded, it equals its weight-$(k+\ell-n-1)$ part,
+so $Y_1 = \delta\varphi_0$ on homogeneous vectors and hence everywhere; and $\varphi_0\lsevenvac$ is the
+weight-$0$ part of $\varphi\lsevenvac = 0$. So for graded deformations ``trivial by a graded gauge'' and
+``trivial by any gauge'' coincide.
+
+\textbf{Is the graded class of deformations too small?} Restricting to graded deformations is
+standard (the cohomology theories in the literature for graded vertex algebras are
+grading-restricted), and it is the only sensible choice with this gauge group by
+Warning~\ref{l07:warn:isrigid}. It does exclude deformations in which the weight grading itself
+moves. For a deformation of $W$ \emph{as a vertex operator algebra}, with deformed conformal vector
+$\omega+t\omega_1$, the deformed $L_0$ is diagonalisable on each finite-dimensional
+$\lsevenV_n\oplus t\lsevenV_n$-block with the same integer eigenvalues, and one expects to conjugate it back
+to the original grading by a coordinate change; we have not formalised this, and the library does
+not claim it. The theorem should therefore be read as \emph{graded} rigidity, and the book never
+says more.
+
+\textbf{Same as / weaker than / stronger than the literature.} Up to the remarks just made,
+\lean{IsRigidGraded W} is the vanishing of the first-order (``$H^2$'') deformation space of $W$ as a
+graded vertex algebra with fixed vacuum. It is \emph{weaker} than rigidity among all
+(ungraded) deformations with ungraded gauge (a notion the library does not define), and
+\emph{stronger} than rigidity of $W$ as a VOA with $\omega$ fixed, because $\omega$ is allowed to
+move. It is a first-order statement: it does not by itself say that every formal deformation over
+$\C[[t]]$ is trivial (that follows by the usual Gerstenhaber induction for graded deformations with
+finite-dimensional weight spaces, an argument we mention but which the library does not contain),
+and it says nothing about convergent families.
+
+\textbf{Comparison with Linshaw--Qi.} In the standard terminology, \lean{IsRigidGraded W} is the vanishing
+of the \emph{graded} second deformation cohomology $H^2$ of $W$ with the vacuum fixed: graded cocycles modulo
+coboundaries of grade-preserving, vacuum-fixing $\varphi$. It is \emph{at least as strong as} the notion of
+Linshaw and Qi (arXiv:2601.12017, \S2). The gauge group is the same as theirs (grade-preserving $\varphi$ with
+$\varphi\lsevenvac = 0$), while the class of deformations is \emph{larger}: Linshaw--Qi require the
+deformation to preserve the translation (derivative) operator and the grading operator, whereas
+\lean{FirstOrderDeformation} does not ask $T = L_{-1}$ to be preserved (the trivial deformation $\delta L_0$
+already has $\omega^1_{(-2)}\lsevenvac = -L_{-3}\lsevenvac\neq0$) and lets $\omega$ stop being conformal. Since
+\lean{IsRigidGraded} asserts triviality for every member of the larger class, with the same notion of
+triviality, it implies Linshaw--Qi rigidity. The affine theorem of Chapter~\ref{ch:L09} is therefore
+Linshaw--Qi's Theorem~5.1 in their own sense, not merely an analogue of it.
+
+\textbf{How could it have been vacuous?} Three ways, each checked:
+\begin{enumerate}
+\item \emph{An unsatisfiable or degenerate cocycle condition} would make every VOA rigid. The
+  \lean{finsum} trap is excluded by the finiteness lemmas above, and the condition is satisfiable
+  by nonzero cochains: the library constructs the scaling deformation $\delta L_0$, which is graded
+  with $u^1_{(n)}v = (n+1)u_{(n)}v$ and has $Y_1\neq0$ on $V(c,0)$ for every $c$
+  (\lean{NonzeroDeform.exists_nonzero_deformation}, Example~\ref{l07:ex:scaling}).
+  So the rigidity theorem has to do real work even on trivial deformations: it must find $\varphi$.
+\item \emph{A gauge group so large that everything is trivial.} The gauge group is exactly the
+  graded vacuum-fixing changes of coordinates. The library proves that it is \emph{not} large
+  enough to absorb a change of the central term: on any VOA with $\lsevenV_2 = \C\omega$ a coboundary
+  has $\omega^1_{(1)}\omega = 2\mu\omega$ and $\omega^1_{(3)}\omega = \mu c\lsevenvac$ for one scalar $\mu$
+  (Theorem~\ref{l07:thm:gaugeline}). A deformation with $\omega^1_{(1)}\omega = 0$ and
+  $\omega^1_{(3)}\omega\ne0$ --- what $\partial_c$ would be --- is provably non-trivial.
+\item \emph{A conclusion true for every VOA.} Is \lean{IsRigidGraded} perhaps true for all $W$?
+  On paper, no: the universal Virasoro VOA $V(c,0)$ at generic $c$ has the nontrivial graded
+  deformation $\partial_c$. In Lean too: the library constructs $\partial_c$ (\lean{VOA.}\allowbreak\lean{VirPoly.}\allowbreak\lean{cDeformation}),
+  proves that it is a nontrivial graded deformation, and so proves \lean{¬ IsRigidGraded W} for the concrete
+  $W = V(c,0)$, every $c$ (\lean{VOA.}\allowbreak\lean{VirPoly.}\allowbreak\lean{not_}\allowbreak\lean{isRigidGraded_}\allowbreak\lean{virasoroVOA}; Section~\ref{l07:sec:nonvacuity}).
+\end{enumerate}
+\end{dictionary}
+
+\subsection{Is \texorpdfstring{\lean{IsRigidGraded}}{IsRigidGraded} vacuous? The non-vacuity check}\label{l07:sec:nonvacuity}
+
+A rigidity notion that every vertex operator algebra satisfied would make the headline theorem worthless.
+We therefore searched the library (all files assigned to this chapter, and every occurrence of
+\lean{¬ IsRigidGraded}, \lean{¬ Deform.IsRigidGraded} and \lean{¬ D.IsTrivial} under \leanpath{VOA/}) for a
+\emph{graded} deformation proved \emph{non-trivial}. When this section was first written,
+the outcome was: \textbf{there was none}. That has since changed: the files \leanpath{VirasoroPoly*.lean},
+\leanpath{VirasoroCDefBuild.lean}, \leanpath{VirasoroCDefJacobi.lean} and \leanpath{VirasoroCDefFinal.lean} under
+\leanpath{VOA/\allowbreak Examples/} construct $\partial_cY$ and prove
+\begin{leancode}
+theorem isCDeformation_cDeformation (c : ℂ) : VirCDef.IsCDeformation c (cDeformation c) :=
+
+theorem not_isRigidGraded_virasoroVOA (c : ℂ) : ¬ Deform.IsRigidGraded (virasoroVOA c) :=
+\end{leancode}
+(\lean{VOA.}\allowbreak\lean{VirPoly.}\allowbreak\lean{isCDeformation_}\allowbreak\lean{cDeformation}, \lean{VOA.}\allowbreak\lean{VirPoly.}\allowbreak\lean{not_}\allowbreak\lean{isRigidGraded_}\allowbreak\lean{virasoroVOA},
+\leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroCDefFinal.lean}; the deformation \lean{cDeformation c} itself is
+defined in \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroCDefJacobi.lean}). Here \lean{virasoroVOA c} is the
+\emph{universal} $V(c,0)$, not the simple quotient, and $c\in\C$ is arbitrary. The rest of this section records the
+earlier search and the gauge-group half on which the new theorem rests. Apart from $\partial_cY$, the deformations the
+library constructs are the zero deformation and $\delta\varphi$ for explicit $\varphi$; those with graded $\varphi$
+(e.g.\ $\delta L_0$) are trivial by construction, and those with ungraded $\varphi$ (e.g.\ $\delta L_1$) are non-trivial
+only because they are ungraded (Warning~\ref{l07:warn:isrigid}). Every other statement of the form
+\lean{¬ IsRigidGraded W} in the library is conditional: \lean{VirCDef.not_isRigidGraded_of_isCDeformation} and
+\lean{not_isRigidGraded_of_omega_witness} (\leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroCDeformation.lean}) assume a
+deformation (now supplied by \lean{cDeformation}), and \lean{AffineSl2RigidityCollapse.no_uniform_derivation_piece2}
+and \lean{…no_uniform_derivation_sl2Basis_tripletW2} (\leanpath{VOA/\allowbreak Examples/\allowbreak AffineSl2RigidityCollapse.lean})
+assume a uniform derivation. What \emph{is} proved unconditionally is the half of the non-vacuity argument
+that concerns the gauge group:
+\begin{leancode}
+theorem not_isTrivial_of_omega_witness (D : FirstOrderDeformation (virasoroVOA c))
+    (h1 : D.smul₁ (omegaVir c) 1 (omegaVir c) = 0)
+    (h3 : D.smul₁ (omegaVir c) 3 (omegaVir c) ≠ 0) : ¬ D.IsTrivial :=
+\end{leancode}
+(\lean{VOA.VirCDef.not_isTrivial_of_omega_witness}, \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroCDeformation.lean}.)
+
+\begin{dictionary}
+\textbf{Fidelity check of the non-vacuity claim.} The claim to be checked is ``there exist VOAs that are not graded
+rigid''. \emph{Machine status:} proved, for $V(c,0)$ at every $c$ (\lean{VOA.}\allowbreak\lean{VirPoly.}\allowbreak\lean{not_}\allowbreak\lean{isRigidGraded_}\allowbreak\lean{virasoroVOA}). The theorem
+quoted just above says that \emph{if} a deformation of $V(c,0)$ leaves
+$\omega_{(1)}\omega$ unchanged and moves $\omega_{(3)}\omega$, it is not trivial (for every $c$, including $c = 0$), and
+\lean{not_isRigidGraded_of_isCDeformation} turns any \emph{graded} such deformation into \lean{¬ IsRigidGraded (virasoroVOA c)}.
+The inhabitant --- a graded first-order deformation with
+$\omega^1_{(1)}\omega = 0$, $\omega^1_{(3)}\omega = \frac12\lsevenvac$, namely $\partial_cY$ --- is \lean{cDeformation c}, and
+\lean{isCDeformation_cDeformation} checks the three conditions. \emph{The argument, which the Lean construction follows:}
+the creation monomials in sorted order form a basis of $V(c,0)$ with a $c$-independent index set (proved,
+\lean{gradedBasis}); in that basis every structure constant $\langle$basis$\rangle_{(n)}\langle$basis$\rangle$ is a polynomial in $c$
+(normal ordering, as in Definition~\ref{l07:def:words}). Transport all $V(c',0)$ to one space via this basis; the
+Borcherds identity holds identically in $c'$, so differentiating at $c' = c$ gives a cochain $Y_1 = \partial_cY$ satisfying
+(D1)--(D4); it is graded because the basis is homogeneous; its values on $(\omega,\omega)$ are $\partial_c(2\omega) = 0$ and
+$\partial_c(\frac c2\lsevenvac) = \frac12\lsevenvac$. By the theorem above it is non-trivial, so $V(c,0)$ is \emph{not} graded rigid, at
+every $c$. (Note this concerns the universal $V(c,0)$; at generic $c$ it coincides with $L(c,0)$, so generic simple
+Virasoro VOAs are not graded rigid either, while the minimal ones are.) The file \leanpath{VirasoroCDeformation.lean} names two routes
+to formalising this; the library took the second (differentiation of polynomial structure constants on the
+$c$-independent basis of sorted creation words, \leanpath{VirasoroPolyStructure.lean} to \leanpath{VirasoroCDefFinal.lean}).
+\emph{Verdict:} \lean{IsRigidGraded} is non-vacuous, machine-checked: $V(c,0)$ is not graded first-order rigid at any
+$c\in\C$. The witness moves the central charge; the library's \lean{FirstOrderDeformation} does not require the conformal
+vector or $c$ to be preserved, which is the same convention under which the rigidity theorems of this chapter are proved.
+\end{dictionary}
+
+\begin{warning}\label{l07:warn:nonvacuity}
+\textbf{Non-vacuity of \lean{IsRigidGraded}: once a paper argument, now machine-checked.} When this chapter was first written, the library contained no proof that any concrete vertex operator algebra fails
+\lean{IsRigidGraded}; the files cited in Section~\ref{l07:sec:nonvacuity} now supply one
+(\lean{VOA.}\allowbreak\lean{VirPoly.}\allowbreak\lean{not_}\allowbreak\lean{isRigidGraded_}\allowbreak\lean{virasoroVOA}). The conditional statement on which that proof rests is
+\begin{leancode}
+def IsCDeformation (D : FirstOrderDeformation (virasoroVOA c)) : Prop :=
+  D.IsGraded ∧
+    D.smul₁ (omegaVir c) 1 (omegaVir c) = 0 ∧
+    D.smul₁ (omegaVir c) 3 (omegaVir c) = (2⁻¹ : ℂ) • vacVec c
+
+theorem not_isRigidGraded_of_isCDeformation {D : FirstOrderDeformation (virasoroVOA c)}
+    (hD : IsCDeformation c D) : ¬ IsRigidGraded (virasoroVOA c) :=
+\end{leancode}
+(\lean{VOA.VirCDef.IsCDeformation}, \lean{VOA.VirCDef.not_isRigidGraded_of_isCDeformation},
+\leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroCDeformation.lean}): a graded deformation of the universal
+$V(c,0)$ that leaves $\omega_{(1)}\omega = 2\omega$ unchanged and moves $\omega_{(3)}\omega = \frac c2\lsevenvac$ at
+rate $\frac12\lsevenvac$ --- the derivative $\partial_c$ --- would refute graded rigidity of $V(c,0)$.
+The file \leanpath{VirasoroCDeformation.lean} does not itself inhabit \lean{IsCDeformation}; it says so
+(``\lean{IsCDeformation c} is a predicate and this file does \textbf{not} inhabit it''; some of its docstrings,
+written before the construction, still say that the predicate is inhabited nowhere), and
+explains that constructing $\partial_cY$ needs either a square-zero extension
+$U(\mathfrak{Vir})/J_2(c)$ with a PBW-type freeness statement, or differentiation of the family
+of structure constants on a $c$-independent basis. The second route is the one later carried out, in
+\leanpath{VirasoroCDefJacobi.lean} and \leanpath{VirasoroCDefFinal.lean}, which inhabit the predicate
+(\lean{VOA.}\allowbreak\lean{VirPoly.}\allowbreak\lean{isCDeformation_}\allowbreak\lean{cDeformation}). Two routes that do \emph{not} produce a
+nontrivial graded deformation are also recorded there: the background-charge family of free bosons
+(whose $Y$ is independent of the parameter, so the cochain is zero) and naive differentiation of
+$c\mapsto V(c,0)$ (the carrier \lean{VirUniv c} depends on $c$, so $\partial_cY$ is not even
+type-correct without a trivialisation). The project notes also contain the observation that a
+uniform derivation ``$\forall W$, \lean{IsRigidGraded W} $\Rightarrow$ (some normalisation
+statement)'' would refute graded rigidity of a free boson (\lean{AffineSl2RigidityCollapse.}\allowbreak
+\lean{no_uniform_derivation_piece2}), which again is a conditional, not a witness.
+
+Consequently \lean{IsRigidGraded} fails for $V(c,0)$ at every $c$, machine-checked (the standard argument
+that $c\mapsto V(c,0)$ is a nontrivial family, formalised, together with
+Theorem~\ref{l07:thm:gaugeline}); since $L(c,0) = V(c,0)$ at generic $c$, it is a
+genuine property that the minimal models have and generic Virasoro VOAs lack. As further internal
+evidence that the minimal-model theorem has content: its proof uses, at the decisive step, a null
+relation in the \emph{simple} quotient together with the simplicity of the quotient; at generic $c$
+there is no such relation, and the proof does not apply.
+\end{warning}
+
+\begin{remark}[Non-vacuity, in one paragraph]\label{l07:rem:nonvacuity}
+Here is the whole non-vacuity argument. Every step of it is now machine-checked; the paragraph marked
+\emph{(Construction.)} is the step that was missing when this chapter was first written.
+\emph{(Construction.)} The universal $V(c,0)$ has the $c$-independent PBW basis
+$L_{-n_1}\cdots L_{-n_k}\lsevenvac$, $n_1\ge\dots\ge n_k\ge2$, in which every structure constant of $Y_c$ is a
+polynomial in $c$. Transporting all $V(c',0)$ to one space along this basis and differentiating at $c' = c$
+gives $Y_1 := \partial_cY$. It satisfies (D1)--(D4): truncation, since the vanishing bound does not depend on
+$c$; the vacuum and creation conditions, since $Y_c(\lsevenvac) = \mathrm{id}$ and $u_{(-1)}\lsevenvac = u$ hold for
+every $c$; the linearised Borcherds identity, by differentiating the Borcherds identity in $c$. It is graded,
+because the basis is homogeneous, and
+\begin{equation*}
+ \omega^1_{(1)}\omega = \partial_c(2\omega) = 0,\qquad \omega^1_{(3)}\omega = \partial_c\big(\tfrac c2\lsevenvac\big) = \tfrac12\lsevenvac .
+\end{equation*}
+So $Y_1$ is a graded first-order deformation. In Lean this is \lean{VOA.}\allowbreak\lean{VirPoly.}\allowbreak\lean{cDeformation}
+(\leanpath{VirasoroCDefJacobi.lean}; the linearised Borcherds identity is \lean{Y1_jacobi}), with
+\lean{cDeformation_isGraded}, \lean{cDeformation_omega_one} ($\omega^1_{(1)}\omega = 0$) and \lean{cDeformation_omega_three}
+($\omega^1_{(3)}\omega = \frac12\lsevenvac$) in \leanpath{VirasoroCDefFinal.lean}. \emph{(Non-triviality.)} On any VOA with $\lsevenV_2 = \C\omega$, every
+coboundary $f$ has $(f(\omega)_{(1)}\omega, f(\omega)_{(3)}\omega) = (2\mu\omega,\mu c\lsevenvac)$ for one scalar $\mu$
+(\lean{VOA.VirCDef.cmode_conformal_of_isCoboundary}, Theorem~\ref{l07:thm:gaugeline}). For $Y_1$ this would
+need $0 = 2\mu$ and $\frac12 = \mu c$, which is impossible; so $Y_1$ is non-trivial. The library proves exactly
+this step: \lean{VOA.VirCDef.not_isTrivial_of_omega_witness} (quoted in Section~\ref{l07:sec:nonvacuity}) and
+\lean{VOA.VirCDef.not_isRigidGraded_of_isCDeformation} (quoted in Warning~\ref{l07:warn:nonvacuity}), both
+\texttt{\#print axioms}-clean. \emph{(Conclusion, in Lean.)} \lean{VOA.}\allowbreak\lean{VirPoly.}\allowbreak\lean{not_}\allowbreak\lean{isRigidGraded_}\allowbreak\lean{virasoroVOA}: $V(c,0)$ is not graded
+first-order rigid at any $c$, nor is $L(c,0) = V(c,0)$ at generic $c$ (the deformation moves the central charge, as the
+library's notion allows); so the notion separates the minimal-model charges from the
+generic ones, as a rigidity theorem should.
+\end{remark}
+
+\begin{physics}
+In conformal-field-theory terms the remark says: the chiral algebra generated by a stress tensor alone has
+one genuine modulus, the central charge, and rescaling $T$ cannot imitate a change of $c$ (it moves the
+double pole $2T$ and the quartic pole $c/2$ together). The minimal models kill this modulus through their
+null vectors; the generic Virasoro algebra keeps it.
+\end{physics}
+
+\begin{status}
+Machine-checked: \lean{VOA.VirCDef.cmode_conformal_of_isCoboundary},
+\lean{VOA.VirCDef.not_isTrivial_of_omega_witness}, \lean{VOA.VirCDef.not_isRigidGraded_of_omega_witness},
+\lean{VOA.VirCDef.not_isRigidGraded_of_isCDeformation}; each reports \lean{[propext, Classical.choice,
+Quot.sound]} (re-run 2026-10-27, Section~\ref{l07:sec:axioms}). Also machine-checked since:
+\lean{VOA.VirPoly.cDeformation}, \lean{VOA.VirPoly.isCDeformation_cDeformation} and
+\lean{VOA.VirPoly.not_isRigidGraded_virasoroVOA} (every $c\in\C$), so a VOA that is not graded first-order rigid
+exists in Lean. Their axiom lists are reported as the three standard axioms by the release follow-ups audit
+(2026-10-28); \texttt{\#print axioms} was not re-run for this chapter.
+\end{status}
+
+\begin{example}[The zero and scaling deformations]\label{l07:ex:scaling}
+The zero cochain is a deformation (\lean{Deform.zeroDeformation}), trivial with $\varphi = 0$. More
+interestingly, $\varphi = L_0$ is grade-preserving and kills $\lsevenvac$, so $\delta L_0$ is a trivial
+graded deformation. On homogeneous $u\in\lsevenV_a$, $v\in\lsevenV_b$,
+\begin{equation*}
+ (\delta L_0)(u,n,v) = a\,u_{(n)}v - (a+b-n-1)u_{(n)}v + b\,u_{(n)}v = (n+1)\,u_{(n)}v,
+\end{equation*}
+i.e.\ $Y_1(u,z) = -z\partial_zY(u,z)$: the infinitesimal form of the rescaling $z\mapsto\lambda z$.
+In particular $\omega^1_{(1)}\omega = 2\cdot2\omega = 4\omega$ and $\omega^1_{(3)}\omega = 4\cdot\frac c2\lsevenvac = 2c\lsevenvac$,
+so this trivial deformation \emph{does} change the structure constant $\omega_{(3)}\omega$ --- together
+with $\omega_{(1)}\omega$, in the ratio allowed by Theorem~\ref{l07:thm:gaugeline} ($\mu = 2$). This is the
+example that refutes any naive rigidity statement forgetting the quotient by coboundaries.
+\begin{leancode}
+def scalingDeformation (W : VertexOperatorAlgebra 𝒱) : Deform.FirstOrderDeformation W :=
+  deformOf W (L_zero_vacuum W)
+
+theorem smul₁_scalingDeformation_homog (W : VertexOperatorAlgebra 𝒱) {a b : ℤ} {u v : 𝒱}
+    (hu : u ∈ W.grading a) (hv : v ∈ W.grading b) (n : ℤ) :
+    (scalingDeformation W).smul₁ u n v = ((n : ℂ) + 1) • W.smul u n v := by
+
+theorem exists_nonzero_deformation (c : ℂ) :
+    ∃ D : Deform.FirstOrderDeformation (virasoroVOA c), D.Y1 ≠ 0 ∧ D.IsGraded :=
+\end{leancode}
+(\lean{VOA.NonzeroDeform.*}, \leanpath{VOA/\allowbreak Examples/\allowbreak NonzeroDeformation.lean}; \lean{deformOf W h}
+is the deformation with $Y_1 = \delta\varphi$ built from Theorem~\ref{l07:thm:cobcoc}, and
+\lean{virasoroVOA c} is the universal Virasoro VOA of Section~\ref{l07:sec:virasoro}. The source
+also proves that $\delta L_0$ is the only deformation of the ``mode-diagonal'' form
+$u^1_{(n)}v = g(n)u_{(n)}v$, up to scale.)
+\end{example}
+
+\subsection{The finite-dimensional picture and its limit}\label{l07:sec:tridegree}
+
+Because a graded $Y_1$ is determined by its components $\lsevenV_a\times\lsevenV_b\to\lsevenV_d$ (in the mode
+$n = a+b-d-1$), one might hope to decide rigidity one ``tridegree'' $(a,b,d)$ at a time, by finite
+linear algebra. The file \leanpath{VOA/\allowbreak Core/\allowbreak DeformationGraded.lean} sets this up carefully:
+\lean{GradedCochain W a b d} is the finite-dimensional space
+$\mathrm{Hom}(\lsevenV_a,\mathrm{Hom}(\lsevenV_b,\lsevenV_d))$, \lean{gradedComponent} is the linear component map,
+\lean{gradedCocyclesAt} and \lean{gradedCoboundariesAt} are the images of cocycles and coboundaries,
+and \lean{DeformationSpaceAt W a b d} is their (finite-dimensional) quotient. It proves the easy
+direction --- rigidity implies vanishing at every tridegree --- and then states the converse as a
+named \emph{non-theorem}:
+\begin{leancode}
+theorem gradedCocyclesAt_le_gradedCoboundariesAt_of_isRigid {W : VertexOperatorAlgebra 𝒱}
+    (h : IsRigid W) (a b c : ℤ) :
+    gradedCocyclesAt W a b c ≤ gradedCoboundariesAt W a b c := by
+
+def GradedToGlobalRigidity (W : VertexOperatorAlgebra 𝒱) : Prop :=
+  (∀ a b c : ℤ, gradedCocyclesAt W a b c ≤ gradedCoboundariesAt W a b c) → IsRigid W
+\end{leancode}
+(\lean{VOA.Deform.*}, \leanpath{VOA/\allowbreak Core/\allowbreak DeformationGraded.lean}.)
+
+\begin{warning}\label{l07:warn:tridegree}
+\textbf{Tridegree-wise vanishing does not give rigidity.} The coboundary of $\varphi$ at tridegree
+$(a,b,d)$ depends only on the three blocks $\varphi_a,\varphi_b,\varphi_d$ of $\varphi$. Vanishing of
+every \lean{DeformationSpaceAt} produces one $\varphi$ \emph{per tridegree}, and nothing forces these
+choices to patch into a single $\varphi$. The source gives a concrete instance on $V(c,0)$
+(\leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroDeformationLow.lean}): the candidate $\partial_cY$ has component
+$\frac12\lsevenvac$ at $(2,2,0)$ and $0$ at $(2,2,2)$; on $\lsevenV_2 = \C\omega$ a gauge acts by one scalar,
+$\varphi\omega = \lambda\omega$, and kills it at $(2,2,0)$ only for $\lambda = 1/(2c)$ and at $(2,2,2)$ only
+for $\lambda = 0$. Both deformation spaces vanish (for $c\ne0$), yet no single $\varphi$ works. So
+\lean{GradedToGlobalRigidity} is \emph{not} proved, is not used, and the headline theorem is stated
+against \lean{IsRigidGraded} directly, with one global $\varphi$; it does not inherit this gap. (The
+tables of \lean{VirasoroDeformationLow} --- the coboundary space fills the cochain space at the
+tridegrees $(2,2,d)$, $d\in\{0,\dots,4\}$, except $(2,2,0)$ at $c = 0$ --- are correct finite
+statements, but they are partial information, not rigidity.)
+\end{warning}
+
+\subsection{Regular deformations and the pole coefficient}
+
+For completeness we record the remaining definitions of \leanpath{VOA/\allowbreak Core/\allowbreak Deformation.lean},
+which serve the affine-algebra rigidity proofs of Chapter~\ref{ch:L09} (the paper of Linshaw and Qi
+on $L_{-4/3}(\mathfrak{sl}_2)$ that the deformation layer was first built to formalise). A
+deformation is \emph{regular} if $Y_1(a,x)b$ has no negative powers of $x$ for weight-one $a,b$,
+i.e.\ $a^1_{(n)}b = 0$ for $n\ge0$; its \emph{pole vector} is the coefficient $a^1_{(1)}b$ of
+$x^{-2}$, which for graded $D$ lies in $\lsevenV_0 = \C\lsevenvac$.
+\begin{leancode}
+def Regular (D : FirstOrderDeformation W) : Prop :=
+  ∀ a ∈ W.grading 1, ∀ b ∈ W.grading 1, ∀ n : ℤ, 0 ≤ n → D.smul₁ a n b = 0
+
+def poleVec (D : FirstOrderDeformation W) (a b : 𝒱) : 𝒱 := D.smul₁ a 1 b
+\end{leancode}
+(\lean{VOA.Deform.FirstOrderDeformation.Regular}, \lean{…poleVec}, same file.) The Virasoro
+algebras have $\lsevenV_1 = 0$, so these notions are empty there and play no role in this chapter.
+The cautionary tale attached to them --- the statement ``every graded deformation is regular'' is
+\emph{false}, refuted by $\delta L_0$, which has $a^1_{(0)}b = a_{(0)}b$ --- is told in
+Chapter~\ref{ch:L09}.
+
+%======================================================================
+\section{The Virasoro vertex operator algebras, recalled}\label{l07:sec:virasoro}
+%======================================================================
+
+This section recalls, briefly but completely, the Virasoro objects that occur in the statements
+of this chapter. Proofs (and the construction of the vertex operators) belong to
+Chapter~\ref{ch:L06}; here we only need the definitions and a handful of facts, each with its Lean
+name.
+
+\subsection{The Virasoro algebra and its vacuum module}
+
+\begin{definition}[Virasoro algebra]\label{l07:def:vir}
+The Virasoro algebra $\mathfrak{Vir}$ is the Lie algebra with basis $\{L_n\}_{n\in\Z}\cup\{C\}$ and
+bracket
+\begin{equation}\label{l07:eq:vir}
+ [L_m,L_n] = (m-n)L_{m+n} + \frac{m^3-m}{12}\,\delta_{m+n,0}\,C,\qquad [C,\mathfrak{Vir}] = 0 .
+\end{equation}
+It is the central extension of the Witt algebra of vector fields $-z^{n+1}\partial_z$ by the
+Gelfand--Fuks cocycle.
+\end{definition}
+\begin{leancode}
+abbrev Virasoro : Type := LieAlgebra.ofTwoCocycle gfCocycle
+
+noncomputable def L (n : ℤ) : Virasoro := ofProd gfCocycle (Witt.gen n, 0)
+
+noncomputable def C : Virasoro := ofProd gfCocycle (0, 1)
+
+theorem virasoro_bracket (m n : ℤ) :
+    ⁅L m, L n⁆ = ((m : ℂ) - n) • L (m + n)
+      + (if m + n = 0 then (((m : ℂ) ^ 3 - m) / 12) • C else 0) := by
+\end{leancode}
+(\lean{VOA.Virasoro}, \lean{VOA.L}, \lean{VOA.C}, \lean{VOA.virasoro_bracket},
+\leanpath{VOA/\allowbreak Foundations/\allowbreak Virasoro.lean}. \lean{LieAlgebra.ofTwoCocycle} is Mathlib's central
+extension of a Lie algebra by a $2$-cocycle; \lean{gfCocycle} is the Gelfand--Fuks cocycle on the
+library's Witt algebra; \lean{ofProd} identifies the extension with the product
+$\mathrm{Witt}\times\C$ as a vector space.)
+
+\begin{physics}
+$L_n$ are the modes of the stress tensor $T(z)=\sum L_nz^{-n-2}$: $L_{-1}$ generates translations, $L_0$
+dilatations (the Hamiltonian in radial quantisation), $L_1$ special conformal transformations. The central
+term is the conformal anomaly: $c$ measures the response of the theory to curvature (the Casimir energy on
+a cylinder is $-\pi c/(6L)$) and counts degrees of freedom (a free boson has $c=1$, a free fermion $c=1/2$).
+\end{physics}
+
+\begin{definition}[Universal vacuum module]\label{l07:def:Vc}
+For $c\in\C$, let $J(c)\subseteq U(\mathfrak{Vir})$ be the left ideal generated by the $L_n$ with
+$n\ge-1$ and by $C-c$. The \emph{universal Virasoro vacuum module} is $V(c,0) := U(\mathfrak{Vir})/J(c)$,
+with vacuum $\lsevenvac = [1]$ and $\mathfrak{Vir}$ acting by left multiplication. Write $L_n$ also for the
+operator by which $L_n$ acts, and $\omega := L_{-2}\lsevenvac$.
+\end{definition}
+\begin{leancode}
+abbrev UVir : Type := UniversalEnvelopingAlgebra ℂ Virasoro
+
+def vacGens (c : ℂ) : Set UVir :=
+  {a | (∃ n : ℤ, -1 ≤ n ∧ a = ι ℂ (L n)) ∨ a = ι ℂ C - algebraMap ℂ UVir c}
+
+noncomputable def vacIdeal (c : ℂ) : Submodule UVir UVir :=
+  Submodule.span _ (vacGens c)
+
+abbrev VirUniv (c : ℂ) : Type := UVir ⧸ vacIdeal c
+
+noncomputable def virVacRho (c : ℂ) : Virasoro →ₗ⁅ℂ⁆ Module.End ℂ (VirUniv c) :=
+  (Algebra.lsmul ℂ ℂ (VirUniv c)).toLieHom.comp (ι ℂ)
+
+noncomputable def vacVec (c : ℂ) : VirUniv c := Submodule.Quotient.mk 1
+\end{leancode}
+(\lean{VOA.VirModule.*}, \leanpath{VOA/\allowbreak Foundations/\allowbreak VirasoroModule.lean}.)
+\begin{leancode}
+noncomputable def Lop (n : ℤ) : End ℂ (VirUniv c) := virVacRho c (L n)
+
+noncomputable def omegaVir : VirUniv c := Lop c (-2) (vacVec c)
+\end{leancode}
+(\lean{VOA.VirModule.Lop}, \lean{VOA.VirModule.omegaVir}, \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroField.lean}.)
+
+\begin{dictionary}
+\lean{UniversalEnvelopingAlgebra ℂ Virasoro} is Mathlib's $U(\mathfrak{Vir})$, with \lean{ι ℂ} the
+canonical map $\mathfrak{Vir}\to U(\mathfrak{Vir})$. \lean{Submodule UVir UVir} spanned by a set is
+the \emph{left} ideal it generates (a submodule of $U$ over itself acting by left multiplication),
+and \lean{⧸} is the quotient module; so \lean{VirUniv c} is $V(c,0)$ exactly as in
+Definition~\ref{l07:def:Vc}. \lean{virVacRho c} is the Lie homomorphism $\mathfrak{Vir}\to\End(V(c,0))$
+given by left multiplication, and \lean{Lop c n} is the operator $L_n$ on $V(c,0)$. The
+docstring of \lean{VirUniv} records a corrected naming error: this is the \emph{universal} module,
+often written $V(c,0)$ or $\mathrm{Vir}^c$, \emph{not} the simple $L(c,0)$; the two differ exactly at
+the degenerate central charges, which is the whole point of this chapter. The library also proves
+$C$ acts by $c$ (\lean{vac_acts_central}) and $\lsevenvac\neq0$ for every $c$
+(\lean{vacVec_ne_zero}, without using \lean{VOA.pbw}).
+\end{dictionary}
+
+By the Poincar\'e--Birkhoff--Witt theorem $V(c,0)$ has basis the ``creation monomials''
+$L_{-n_1}\cdots L_{-n_k}\lsevenvac$ with $n_1\ge\cdots\ge n_k\ge2$; the monomial has $L_0$-eigenvalue
+(weight) $n_1+\cdots+n_k$. The library encodes a monomial by the list $[n_1-2,\dots,n_k-2]$ of
+natural numbers, defines the weight and the monomials, and grades $V(c,0)$ by the span of the
+monomials of each weight:
+\begin{leancode}
+def energyVir : List ℕ → ℕ
+  | [] => 0
+  | (i :: rest) => (i + 2) + energyVir rest
+
+noncomputable def negWordVir : List ℕ → VirUniv c
+  | [] => vacVec c
+  | n :: ws => Lop c (-(n : ℤ) - 2) (negWordVir ws)
+
+noncomputable def gradingVir (n : ℤ) : Submodule ℂ (VirUniv c) :=
+  Submodule.span ℂ {x | ∃ ws : List ℕ, (energyVir ws : ℤ) = n ∧ negWordVir c ws = x}
+\end{leancode}
+(\lean{VOA.VirModule.energyVir}, \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroGrading.lean};
+\lean{VOA.VirModule.negWordVir}, \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroSpanning.lean};
+\lean{VOA.VirModule.gradingVir}, \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroGrading.lean}.)
+The \emph{sorted} lists of weight $n$ (partitions of $n$ into parts $\ge2$) index a basis
+\lean{gradedBasis c n} of the weight-$n$ space, with $c$-independent index type
+\lean{SortedOfEnergy n}; this is proved, \lean{pbw}-free, in
+\leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroPartitionBasis.lean}. So
+\begin{equation*}
+ \dim V(c,0)_n = \#\{\text{partitions of $n$ into parts}\ge2\}:\qquad 1,0,1,1,2,2,4,4,7,8,12,\dots
+ \quad(n = 0,1,2,\dots),
+\end{equation*}
+independently of $c$. In particular $V(c,0)_1 = 0$, $V(c,0)_2 = \C\omega$, $V(c,0)_3 = \C L_{-3}\lsevenvac$,
+$V(c,0)_4 = \mathrm{span}\{L_{-2}^2\lsevenvac,L_{-4}\lsevenvac\}$ (\lean{VirDefLow.gradingVir_two},
+\lean{gradingVir_three}, \lean{LeeYang.gradingVir_four}).
+
+\begin{physics}
+$V(c,0)$ is the space of states of a CFT of central charge $c$ that are created from the vacuum by the stress
+tensor alone: $L_{-n_1}\cdots L_{-n_k}\lsevenvac$ corresponds to the field $\,{:}\partial^{n_1-2}T\cdots\partial^{n_k-2}T{:}\,$
+(up to normalisation). The relations $L_n\lsevenvac=0$ for $n\ge-1$ say the vacuum is invariant under the global
+conformal group $\mathrm{SL}_2$ generated by $L_{-1},L_0,L_1$. ``Universal'' means no further relations are
+imposed: every possible descendant of the identity is kept, even those of zero norm.
+\end{physics}
+
+\begin{definition}[Universal Virasoro VOA]\label{l07:def:virVOA}
+$V(c,0)$ with the grading above, vacuum $\lsevenvac$, conformal vector $\omega = L_{-2}\lsevenvac$, central
+charge $c$, and the unique vertex operators with $Y(\omega,z) = \sum_nL_nz^{-n-2}$, is a vertex operator
+algebra of CFT type (Chapter~\ref{ch:L06}).
+\end{definition}
+\begin{leancode}
+noncomputable def virasoroVOA : VertexOperatorAlgebra (VirUniv c) where
+  grading := gradingVir c
+  isInternal := gradingVir_isInternal c
+  finrank := gradingVir_finiteDimensional c
+  Y := virYA c
+  vacuum := vacVec c
+  vacuum_mem := vacVec_mem_gradingVir_zero c
+  grading_mode := fun u hu v hv n => virYA_grading_mode c u hu v hv n
+  vacuum_Y := virYA_vacuum c
+  creation := virYA_creation c
+  locality := virYA_local c
+  regularity := virYA_regularity c
+  conformalVector := omegaVir c
+  conformal_mem := omegaVir_mem_gradingVir_two c
+  centralCharge := c
+  virasoro := virYA_virasoro c
+  L0_grading := fun {_} v hv => virYA_L0_grading c v hv
+  translation := virYA_omega_translation c
+  vacuum_grade := gradingVir_zero c
+  positivity := gradingVir_neg c
+\end{leancode}
+(\lean{VOA.VirModule.virasoroVOA}, \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroInstance.lean}.) The
+vertex operator \lean{virYA c} is built by the reconstruction theorem of Chapter~\ref{ch:L03}
+(Theorem~\ref{l03:thm:reconstruct}) from the field of $\omega$; we do not need its definition, only
+that its conformal modes are the operators \lean{Lop c n} (\lean{virasoroVOA_L_eq_Lop}) and the
+facts listed above.
+
+\begin{physics}
+This is the chiral algebra generated by the stress tensor alone, with the OPE $T(z)T(w)\sim
+\frac{c/2}{(z-w)^4}+\frac{2T(w)}{(z-w)^2}+\frac{\partial T(w)}{z-w}$. Every two-dimensional CFT of central charge
+$c$ contains (a quotient of) it: it is the ``identity sector'' or vacuum Verma module of the theory.
+\end{physics}
+
+\subsection{The simple quotient \texorpdfstring{$L(c,0)$}{L(c,0)}}
+
+\begin{definition}[Simple Virasoro VOA]\label{l07:def:Lc}
+$L(c,0)$ is the quotient of $V(c,0)$ by its maximal proper (graded) ideal; it is a simple vertex
+operator algebra of central charge $c$.
+\end{definition}
+\begin{leancode}
+def maxQuotientVOA (W : VertexOperatorAlgebra 𝒱) :
+    VertexOperatorAlgebra (𝒱 ⧸ maxGradedIdeal W) :=
+  quotientVOA W (maxGradedIdeal W) (maxGradedIdeal_isIdeal W) (maxGradedIdeal_isGradedIdeal W)
+
+noncomputable def maxIdealVir (c : ℂ) : Submodule ℂ (VirUniv c) :=
+  maxGradedIdeal (virasoroVOA c)
+
+noncomputable def virasoroSimple (c : ℂ) :
+    VertexOperatorAlgebra (VirUniv c ⧸ maxIdealVir c) :=
+  maxQuotientVOA (virasoroVOA c)
+
+theorem virasoroSimple_isSimple : (virasoroSimple c).IsSimple :=
+  isSimple_maxQuotientVOA' (virasoroVOA c) (vacVec_ne_zero c)
+
+theorem virasoroSimple_vacuum_ne_zero : (virasoroSimple c).vacuum ≠ 0 := by
+\end{leancode}
+(\lean{VOA.QuotVOA.maxQuotientVOA}, \leanpath{VOA/\allowbreak Core/\allowbreak QuotientVOA.lean};
+\lean{VOA.VirSimple.maxIdealVir}, \lean{…virasoroSimple}, \lean{…virasoroSimple_isSimple},
+\lean{…virasoroSimple_vacuum_ne_zero}, \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroSimple.lean}.)
+
+\begin{dictionary}
+\lean{maxGradedIdeal W} is the sum of all graded ideals not containing $\lsevenvac$, and
+\lean{quotientVOA} the quotient VOA, both from Chapter~\ref{ch:L04} (Definition~\ref{l04:def:quot}).
+\lean{IsSimple} is Definition~\ref{l04:def:simple}: nonzero, and only the ideals $0$ and
+everything. Since every ideal of a VOA is graded (\lean{QuotVOA.isGradedIdeal_of_isIdeal}), the
+``graded'' in \lean{maxGradedIdeal} costs nothing, and \lean{virasoroSimple c} is the standard
+$L(c,0)$. Its grading is the image grading (\lean{virasoroSimple_grading}), its central charge is
+$c$ (\lean{virasoroSimple_centralCharge}, by \lean{rfl}), its vacuum is nonzero, and its weight-one
+space is zero (\lean{virasoroSimple_grading_one}). For $c\ne0$ its weight-two space is $\C\omega$
+with $\omega\ne0$; for $c = 0$ the vector $\omega$ lies in the maximal ideal (it has norm $\frac c2 = 0$)
+and $L(0,0) = \C\lsevenvac$ is the one-dimensional trivial VOA (\lean{zeroCharge_conformal_eq_zero},
+Section~\ref{l07:sec:zero}). The statement \lean{virasoroSimple_grading_two} --- weight two is
+$\C\cdot\omega$ --- holds for all $c$, with $\C\cdot0 = 0$ when $c = 0$.
+\end{dictionary}
+
+\begin{physics}
+Passing to $L(c,0)$ is setting null states to zero. In a CFT, a state of zero norm that is orthogonal to everything
+decouples from all correlation functions, and consistency (e.g.\ unitarity, or crossing symmetry in BPZ's
+analysis) requires it to vanish; the resulting null-vector decoupling equations are the differential
+equations that solve the minimal models. $L(c,0)$ is the vacuum sector of the CFT actually realised.
+\end{physics}
+
+\begin{definition}[Minimal-model central charges]\label{l07:def:cpq}
+For natural numbers $p,q$, $\lsevencpq := 1 - 6(p-q)^2/(pq)$.
+\end{definition}
+\begin{leancode}
+def minimalCentralCharge (p q : ℕ) : ℚ := 1 - 6 * ((p : ℚ) - q) ^ 2 / (p * q)
+\end{leancode}
+(\lean{VOA.VirModule.minimalCentralCharge}, \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroVOA.lean}.)
+\begin{dictionary}
+The value is a rational number; in \lean{virasoroSimple (minimalCentralCharge p q)} it is coerced
+to $\C$ (Lean inserts the cast $\Q\to\C$ silently). Division by $pq = 0$ would give $0$ in Lean's
+convention, but the theorems below always assume $p,q\ge2$. The formula is symmetric in $p,q$
+(\lean{minimalCharge_swap}). Examples: $c_{2,3} = 0$, $c_{2,5} = -22/5$, $c_{3,4} = 1/2$,
+$c_{2,7} = -68/7$, $c_{4,5} = 7/10$, $c_{5,6} = 4/5$. Every coprime pair $p,q\ge2$ gives a value
+$<1$, and these values accumulate at $1$ (take $p-q$ fixed, $p\to\infty$).
+\end{dictionary}
+
+\begin{physics}
+These are the central charges of the BPZ minimal models, the conformal theories with finitely many primary
+fields under the Virasoro algebra. $c_{3,4}=1/2$ is the critical Ising model, $c_{4,5}=7/10$ the tricritical
+Ising model, $c_{5,6}=4/5$ the three-state Potts model (as a Virasoro theory), $c_{2,5}=-22/5$ the Lee--Yang edge
+singularity; the unitary series $c_{m,m+1}$ (Friedan--Qiu--Shenker) are the multicritical Ising points. The set is
+discrete away from $c=1$, which is why the minimal models come in a list rather than in families.
+\end{physics}
+
+\subsection{The invariant form and the Kac determinant}\label{l07:sec:kac}
+
+By Li's theorem (Theorem~\ref{l04:thm:canonical} of Chapter~\ref{ch:L04}) $V(c,0)$ carries a unique
+invariant symmetric bilinear form with $\langle\lsevenvac,\lsevenvac\rangle = 1$; it satisfies
+$\langle L_na,b\rangle = \langle a,L_{-n}b\rangle$. In Lean it is \lean{VirGram4.canB c}, and its
+analogue on $L(c,0)$ is \lean{VirQuotForm.Bsimp c}:
+\begin{leancode}
+noncomputable def canB : InvariantForm (virasoroVOA c) :=
+  canonicalInvariantForm (vacVec_ne_zero c) (virasoroVOA_qp c)
+
+noncomputable def Bsimp : InvariantForm (virasoroSimple c) :=
+  canonicalInvariantForm (virasoroSimple_vacuum_ne_zero c) (virasoroSimple_qp c)
+\end{leancode}
+(\leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroGram4.lean}, \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroQuotientForm.lean}.)
+\lean{InvariantForm} and \lean{canonicalInvariantForm} are Definition~\ref{l04:def:invform} and
+Theorem~\ref{l04:thm:canonical}; the two arguments discharge the hypotheses $\lsevenvac\ne0$ and
+$L_1\lsevenV_1 = 0$ (vacuous, as $\lsevenV_1 = 0$). The form is normalised (\lean{canB_normalized},
+\lean{Bsimp_normalized}: $\langle\lsevenvac,\lsevenvac\rangle = 1$) and fully invariant.
+
+Because $\langle L_na,b\rangle = \langle a,L_{-n}b\rangle$ and $L_n\lsevenvac = 0$ for $n\ge-1$, the pairing of two
+creation monomials can be computed by moving the modes of the left monomial to the right as positive
+modes and commuting them through with \eqref{l07:eq:vir} until they hit the vacuum. The result is a
+polynomial in $c$. For example
+\begin{equation*}
+ \langle\omega,\omega\rangle = \langle\lsevenvac,L_2L_{-2}\lsevenvac\rangle = \tfrac c2,\qquad
+ \langle L_{-3}\lsevenvac,L_{-3}\lsevenvac\rangle = 2c,
+\end{equation*}
+and at weight $4$, in the basis $(L_{-2}^2\lsevenvac, L_{-4}\lsevenvac)$, the Gram matrix is
+\begin{equation}\label{l07:eq:gram4}
+ G_4(c) = \begin{pmatrix} \tfrac{c(c+8)}{2} & 3c\\ 3c & 5c\end{pmatrix},\qquad
+ \det G_4(c) = \tfrac{c^2(5c+22)}{2}.
+\end{equation}
+The \emph{level-$n$ vacuum Gram determinant} $D_n(c) := \det G_n(c)$ is a polynomial in $c$. The
+radical of the form is the maximal ideal (Theorem~\ref{l04:thm:lirad}), so
+$\dim L(c,0)_n = \mathrm{rank}\,G_n(c)$, and $L(c,0)\ne V(c,0)$ exactly when some $D_n(c)$ vanishes. The
+classical result (Kac, Feigin--Fuchs; for the vacuum module, Gorelik--Kac) is that $D_n(c)$ vanishes
+exactly at minimal-model charges $c = c_{p,q}$ with $(p-1)(q-1)\le n$, and that at the \emph{first} such
+level $n = (p-1)(q-1)$ the zero at $c = \lsevencpq$ is \emph{simple}. For example $D_4$ vanishes simply at
+$-22/5 = c_{2,5}$ and doubly at $0 = c_{2,3}$ (where the first singular level is $2$ and $D_2 = c/2$ has a
+simple zero). This simple-zero statement is the one representation-theoretic input of the rigidity proof;
+Section~\ref{l07:sec:all} states exactly which Lean theorems supply it.
+
+\begin{example}[The Lee--Yang null vector]\label{l07:ex:leeyang}
+At $c = -22/5$ the vector $s = 5L_{-2}^2\lsevenvac - 3L_{-4}\lsevenvac$ spans the kernel of $G_4(c)$:
+indeed $5\cdot\frac{c(c+8)}2 - 3\cdot3c = \frac{5c^2+22c}{2} = 0$ and $5\cdot3c-3\cdot5c = 0$. So $s$ is
+in the radical, hence in the maximal ideal, and $s = 0$ in $L(-22/5,0)$; $\dim L(-22/5,0)_4 = 1$. Its
+norm as a polynomial in $c$ is
+\begin{equation*}
+ P(c) = \langle s,s\rangle_c = 25\cdot\tfrac{c(c+8)}2 - 2\cdot15\cdot3c + 9\cdot5c
+ = \tfrac{25}{2}c^2 + 55c = \tfrac{5c}{2}(5c+22),
+\end{equation*}
+with $P(-22/5) = 0$ and $P'(-22/5) = 25\cdot(-\tfrac{22}{5}) + 55 = -55\ne0$. This number $-55$ is the
+whole Lee--Yang rigidity theorem (Section~\ref{l07:sec:leeyang}).
+\end{example}
+
+%======================================================================
+\section{Anatomy of a graded deformation of \texorpdfstring{$L(c,0)$}{L(c,0)}}\label{l07:sec:anatomy}
+%======================================================================
+
+From now on, unless said otherwise, $W = L(c,0)$, $\lsevenV$ is its state space, and
+$D$ is a graded first-order deformation of $W$ with products $u^1_{(n)}v$. This section carries out
+step 1 of the heuristic of Section~\ref{l07:sec:motivation}: it shows that $D$ produces, on the
+first-order space $\lsevenV\oplus t\lsevenV$, an honest representation of the Virasoro algebra whose central
+charge is $c+t\delta$ for a single number $\delta$, and that $\delta$ is the only gauge-invariant
+information at the level of $\omega$.
+
+\subsection{Two scalars and the gauge line}
+
+Since $\lsevenV_0 = \C\lsevenvac$, $\lsevenV_1 = 0$ and $\lsevenV_2 = \C\omega$, gradedness of $D$ forces
+\begin{equation*}
+ \omega^1_{(3)}\omega\in\lsevenV_{2+2-3-1} = \lsevenV_0,\quad
+ \omega^1_{(2)}\omega\in\lsevenV_1 = 0,\quad
+ \omega^1_{(1)}\omega\in\lsevenV_2,\quad
+ \omega^1_{(n)}\omega\in\lsevenV_{3-n} = 0\ (n\ge4),
+\end{equation*}
+so there are scalars $\alpha,\beta$ with
+\begin{equation}\label{l07:eq:alphabeta}
+ \omega^1_{(3)}\omega = \alpha\lsevenvac,\qquad \omega^1_{(1)}\omega = \beta\omega .
+\end{equation}
+Compare the undeformed values $\omega_{(3)}\omega = L_2L_{-2}\lsevenvac = \frac c2\lsevenvac$ and
+$\omega_{(1)}\omega = L_0\omega = 2\omega$: to first order the deformation changes ``$\frac c2$'' by
+$\alpha$ and ``$2$'' by $\beta$.
+\begin{leancode}
+theorem exists_conformal_parameters (D : FirstOrderDeformation W) (hD : D.IsGraded)
+    (h2 : W.grading 2 = ℂ ∙ W.conformalVector) :
+    ∃ α β : ℂ,
+      D.smul₁ W.conformalVector 3 W.conformalVector = α • W.vacuum ∧
+      D.smul₁ W.conformalVector 1 W.conformalVector = β • W.conformalVector := by
+\end{leancode}
+(\lean{VOA.VirDeformModes.exists_conformal_parameters}, \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroDeformationModes.lean};
+$W$ is an arbitrary VOA here, and \lean{h2} is the hypothesis $\lsevenV_2 = \C\omega$.)
+
+\begin{theorem}[The gauge line]\label{l07:thm:gaugeline}
+Let $W$ be any VOA with $\lsevenV_2 = \C\omega$ and let $f$ be a coboundary. Then there is $\mu\in\C$
+with $f(\omega)_{(1)}\omega = 2\mu\,\omega$ and $f(\omega)_{(3)}\omega = \mu c\,\lsevenvac$. Consequently, for a
+trivial graded deformation the scalars of \eqref{l07:eq:alphabeta} satisfy $\alpha = \mu c$,
+$\beta = 2\mu$, hence
+\begin{equation}\label{l07:eq:delta-def}
+ \delta := 2\alpha - \beta c = 0 .
+\end{equation}
+\end{theorem}
+\begin{leancode}
+theorem cmode_conformal_of_isCoboundary (W : VertexOperatorAlgebra 𝒱)
+    (hV2 : W.grading 2 = ℂ ∙ W.conformalVector) {f : Cochain 𝒱} (hf : IsCoboundary W f) :
+    ∃ μ : ℂ,
+      cmode f W.conformalVector 1 W.conformalVector = (2 * μ) • W.conformalVector ∧
+      cmode f W.conformalVector 3 W.conformalVector = (μ * W.centralCharge) • W.vacuum := by
+\end{leancode}
+(\lean{VOA.VirCDef.cmode_conformal_of_isCoboundary}, \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroCDeformation.lean};
+\lean{cmode f u n v} is \lean{mode (f u) n v}, i.e.\ $f(u)_{(n)}v$.)
+
+\begin{proof}[Proof on paper]
+$f = \delta\varphi$ with $\varphi$ grade-preserving, $\varphi\lsevenvac = 0$. Then $\varphi\omega = \mu\omega$ for
+some $\mu$ (as $\lsevenV_2 = \C\omega$) and $\varphi$ kills $\lsevenV_0 = \C\lsevenvac$. Hence
+$(\delta\varphi)(\omega,1,\omega) = \mu\cdot2\omega - \varphi(2\omega) + \mu\cdot2\omega = 2\mu\omega$ and
+$(\delta\varphi)(\omega,3,\omega) = \mu\frac c2\lsevenvac - \varphi(\frac c2\lsevenvac) + \mu\frac c2\lsevenvac = \mu c\lsevenvac$.
+\end{proof}
+
+\begin{dictionary}
+This is the precise form of the physicist's ``rescaling $T$ cannot change $c$ alone'': the image
+of the gauge group in the two slots $(\omega_{(1)}\omega,\omega_{(3)}\omega)$ is the line
+$\C\cdot(2\omega, c\lsevenvac)$. The library also proves the converse (every point of the line is attained,
+by $\frac\mu2\delta L_0$: \lean{VirCDef.exists_isCoboundary_on_gauge_line}), and for $c\ne0$ an
+``iff'' on $L(c,0)$ (\lean{VirRigidStruct.attained_by_coboundary_iff}). The combination
+$\delta = 2\alpha-\beta c$ is the linear functional vanishing on the line; it is the \emph{central
+variation} of the deformation, and the rest of the proof is about showing $\delta = 0$ and that
+$\delta = 0$ suffices. Caution: \eqref{l07:eq:alphabeta} are only two of infinitely many components
+of $Y_1$ on $\omega\otimes\omega$ (the components $\omega^1_{(n)}\omega$ for $n\le0$ land in $\lsevenV_{3-n}$
+and are unconstrained so far). Reducing all of them to $(\alpha,\beta)$ is exactly what the
+reconstruction theorem of Section~\ref{l07:sec:reconstruction} does; the project notes record the
+earlier claim ``the $(\omega,\omega)$ deformation data is two-dimensional'' as an undercount.
+\end{dictionary}
+
+\begin{status}
+\lean{exists_conformal_parameters} and \lean{cmode_conformal_of_isCoboundary} are proved for an
+arbitrary VOA; axioms \lean{[propext, Classical.choice, Quot.sound]}. Unconditional.
+\end{status}
+
+\begin{physics}
+This is the statement ``rescaling $T$ cannot change $c$ alone''. A field redefinition $T\mapsto(1+t\mu)T$ multiplies
+the fourth-order pole $c/2$ by $(1+t\mu)^2$ but also the second-order pole $2T$ by $(1+t\mu)$; only the ratio
+$c/2:2$, i.e.\ $\delta=2\alpha-\beta c$, is redefinition-invariant. So in the chiral algebra generated by $T$ the
+central charge is a genuine coordinate on the space of theories, not an artefact of normalisation --- in
+contrast with the Heisenberg level, which rescaling the current removes.
+\end{physics}
+
+\subsection{The first-order space and its operators}
+
+A state of the deformed algebra is $v + tv_1$, which the library writes as the pair
+$(v,v_1)\in\lsevenV\times\lsevenV$. Multiplication by $t$ is the square-zero map
+$\lsevenN(v,v_1) = (0,v)$, and a dual number $a+tb$ acts by $a + b\lsevenN$. The mode of a ``constant''
+state $a = (a,0)$ acts by the block matrix
+\begin{equation}\label{l07:eq:lifted}
+ a^t_{(n)}(x,x_1) = \big(a_{(n)}x,\ a^1_{(n)}x + a_{(n)}x_1\big),
+\end{equation}
+which is \eqref{l07:eq:Yt} written in coordinates.
+\begin{leancode}
+def liftedMode (a : V) (n : ℤ) : End ℂ (V × V) where
+  toFun x := (W.smul a n x.1, D.smul₁ a n x.1 + W.smul a n x.2)
+
+def tangentShift : End ℂ (V × V) where
+  toFun x := (0, x.1)
+
+def dualScalarAction : DualNumber ℂ →ₐ[ℂ] End ℂ (V × V) where
+  toFun z := z.fst • (1 : End ℂ (V × V)) + z.snd • tangentShift
+\end{leancode}
+(\lean{VOA.Deform.liftedMode}, \leanpath{VOA/\allowbreak Core/\allowbreak DeformationLiftedModes.lean};
+\lean{VOA.Deform.tangentShift}, \lean{VOA.Deform.dualScalarAction},
+\leanpath{VOA/\allowbreak Core/\allowbreak DeformationCentralModes.lean}; linearity proofs omitted.
+\lean{DualNumber ℂ} is Mathlib's $\C[\varepsilon]/(\varepsilon^2)$, implemented as the trivial square-zero
+extension, with \lean{z.fst}, \lean{z.snd} the two coordinates of $z = a+b\varepsilon$.)
+
+The key observation is that the Taylor expansion of polynomials happens automatically:
+for $p\in\C[X]$,
+\begin{equation}\label{l07:eq:taylor}
+ p(k\cdot1 + \delta\lsevenN) = p(k)\cdot1 + p'(k)\,\delta\,\lsevenN,
+\end{equation}
+because $\lsevenN^2 = 0$ (\lean{Deform.dualScalarAction_polynomial}). A central operator of the form
+$k+\delta\lsevenN$ therefore records a ``central charge'' $k$ together with its first-order variation
+$\delta$, and any polynomial identity in the central charge acquires a tangent coefficient
+$p'(k)\delta$.
+
+\subsection{The normalised Virasoro modes}
+
+Write $L^1_n := \omega^1_{(n+1)}$ for the correction to $L_n = \omega_{(n+1)}$. The order-$t$ commutator
+formula (the $\ell = 0$ slice of \eqref{l07:eq:jac1}) gives
+\begin{equation*}
+ [L^1_m,L_n] + [L_m,L^1_n] = \sum_{i\ge0}\binom{m+1}{i}\Big((\omega^1_{(i)}\omega)_{(m+n+2-i)}
+   + (\omega_{(i)}\omega)^1_{(m+n+2-i)}\Big).
+\end{equation*}
+Only $i\in\{0,1,3\}$ contribute ($i = 2$ and $i\ge4$ land in $\lsevenV_1 = 0$ or negative weight), and the
+$i = 1,3$ terms are known by \eqref{l07:eq:alphabeta}. The $i = 0$ term involves the unknown
+$\omega^1_{(0)}\omega\in\lsevenV_3$ and the correction of $\omega_{(0)}\omega = L_{-1}\omega$; but
+antisymmetry of the left side under $m\leftrightarrow n$ determines it (at $m = -1$; the potential
+central term vanishes there because $\binom{2}{3} = 0$). The result, proved as
+\lean{mixedComm_virasoro}, is
+\begin{equation*}
+ [L^1_m,L_n]+[L_m,L^1_n] = (m-n)L^1_{m+n} + \tfrac{(m-n)\beta}{2}L_{m+n}
+ + \delta_{m+n,0}\tfrac{m^3-m}{6}\,\alpha .
+\end{equation*}
+The term $\frac{(m-n)\beta}2L_{m+n}$ is the effect of a rescaling of $\omega$; it is removed by the
+normalisation $\widetilde L_n := L_n + t(L^1_n - \frac\beta2L_n)$. Then $\widetilde L_n$ satisfy the Virasoro
+relations with central term $\frac{m^3-m}{12}(c + t(2\alpha-\beta c))$:
+\begin{equation}\label{l07:eq:normcomm}
+ [\widetilde L_m,\widetilde L_n] = (m-n)\widetilde L_{m+n} + \delta_{m+n,0}\frac{m^3-m}{12}\big(c\cdot1 + \delta\,\lsevenN\big),
+ \qquad \delta = 2\alpha-\beta c .
+\end{equation}
+\begin{leancode}
+noncomputable def normalizedL (D : FirstOrderDeformation W) (β : ℂ) (n : ℤ) : End ℂ (V × V) :=
+  liftedMode D W.conformalVector (n+1) -
+    (β/2) • (tangentShift * liftedMode D W.conformalVector (n+1))
+
+theorem normalizedL_comm (D : FirstOrderDeformation W) (hD : D.IsGraded)
+    (h1 : W.grading 1 = ⊥) (α β : ℂ)
+    (ha : D.smul₁ W.conformalVector 3 W.conformalVector = α • W.vacuum)
+    (hb : D.smul₁ W.conformalVector 1 W.conformalVector = β • W.conformalVector)
+    (m n : ℤ) :
+    ⁅normalizedL D β m, normalizedL D β n⁆ =
+      ((m : ℂ)-n) • normalizedL D β (m+n) +
+      if m+n=0 then (((m : ℂ)^3-m)/12) •
+        (W.centralCharge • (1 : End ℂ (V × V)) +
+          (2*α-β*W.centralCharge) • tangentShift) else 0 := by
+
+theorem normalizedL_vacuum (D : FirstOrderDeformation W) (β : ℂ)
+    (n : ℤ) (hn : -1 ≤ n) : normalizedL D β n (W.vacuum, 0) = 0 := by
+
+theorem normalizedL_tangent (D : FirstOrderDeformation W) (β : ℂ) (n : ℤ) (x : V) :
+    normalizedL D β n (0, x) = (0, W.L n x) := by
+
+theorem normalizedL_neg_two_vacuum (D : FirstOrderDeformation W) (β : ℂ) :
+    normalizedL D β (-2) (W.vacuum, 0) =
+      (W.conformalVector, -(β/2) • W.conformalVector) := by
+\end{leancode}
+(\lean{VOA.VirDeformModes.*}, \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroDeformationModes.lean}; here $W$ is
+any VOA with $\lsevenV_1 = 0$, hypothesis \lean{h1}.)
+
+\begin{dictionary}
+\lean{liftedMode D W.conformalVector (n+1)} is $\omega^t_{(n+1)} = L_n + tL^1_n$ in the form
+\eqref{l07:eq:lifted}; \lean{tangentShift * liftedMode …} is $t\cdot\omega^t_{(n+1)} = tL_n$ (since $t^2 = 0$);
+so \lean{normalizedL D β n} is $\widetilde L_n$. The bracket \lean{⁅·,·⁆} is the commutator in $\End(\lsevenV\times\lsevenV)$.
+\lean{normalizedL_comm} is \eqref{l07:eq:normcomm}: the central term is
+$\frac{m^3-m}{12}$ times the operator $c\cdot1 + (2\alpha-\beta c)\lsevenN$. \lean{normalizedL_vacuum}: the
+constant vacuum $(\lsevenvac,0)$ is killed by $\widetilde L_n$ for $n\ge-1$ (from (D3)).
+\lean{normalizedL_tangent}: on pure tangent states $(0,x)$ the normalised modes act by the
+\emph{undeformed} $L_n$ --- this is the formal content of ``$t\cdot(\text{correction}) = 0$'' and will be
+the crux of the obstruction. \lean{normalizedL_neg_two_vacuum}: the normalised conformal state is
+$\widetilde\omega = (\omega,-\frac\beta2\omega)$.
+
+\textbf{No hidden input.} The hypotheses are exactly: $D$ graded, $\lsevenV_1 = 0$, and the defining
+equations of $\alpha,\beta$. In particular no deformed translation law, no deformed invariant form and
+no Virasoro relation for the deformed modes is assumed; \eqref{l07:eq:normcomm} is derived from (D4).
+\end{dictionary}
+
+The library packages \eqref{l07:eq:normcomm} as a structure and instantiates it for every
+$L(c,0)$:
+\begin{leancode}
+structure CentralVirasoroData (E : Type*) [AddCommGroup E] [Module ℂ E] where
+  L : ℤ → End ℂ E
+  central : End ℂ E
+  comm : ∀ m n, ⁅L m, L n⁆ = ((m : ℂ)-n) • L (m+n) +
+    if m+n=0 then (((m : ℂ)^3-m)/12) • central else 0
+  central_comm : ∀ n, Commute central (L n)
+
+theorem virasoroSimple_exists_normalizedData (c : ℂ)
+    (D : FirstOrderDeformation (VirSimple.virasoroSimple c)) (hD : D.IsGraded) :
+    ∃ (α β : ℂ) (A : CentralVirasoroData
+        ((VirModule.VirUniv c ⧸ VirSimple.maxIdealVir c) ×
+          (VirModule.VirUniv c ⧸ VirSimple.maxIdealVir c))),
+      D.smul₁ (VirSimple.virasoroSimple c).conformalVector 3
+        (VirSimple.virasoroSimple c).conformalVector = α • (VirSimple.virasoroSimple c).vacuum ∧
+      D.smul₁ (VirSimple.virasoroSimple c).conformalVector 1
+        (VirSimple.virasoroSimple c).conformalVector = β • (VirSimple.virasoroSimple c).conformalVector ∧
+      A.L = normalizedL D β ∧
+      A.central = c • 1 + (2*α-β*c) • tangentShift := by
+\end{leancode}
+(\lean{VOA.VirDeformModes.CentralVirasoroData}, \lean{…virasoroSimple_exists_normalizedData}, same file.)
+
+\begin{dictionary}
+\lean{CentralVirasoroData E} is a representation of the Virasoro relations on $E$ in which the central
+element acts by an operator \lean{central} commuting with all $L_n$ (rather than by a scalar). The
+theorem says: for every central charge $c$ (including $c = 0$, where $\omega = 0$ in $L(0,0)$ and
+$\alpha = 0$ is forced) and every graded $D$ of $L(c,0)$ there are $\alpha,\beta$ as in \eqref{l07:eq:alphabeta}
+and such a representation on $\lsevenV\times\lsevenV$, given by the normalised modes, with central operator
+$c+\delta\lsevenN$. The existential quantifier over $\alpha,\beta$ is harmless: they are uniquely determined
+by $D$ (because $\lsevenvac\ne0$ and, for $c\neq0$, $\omega\neq0$), and every later theorem takes them as
+arguments together with their defining equations.
+\end{dictionary}
+
+\begin{status}
+\lean{normalizedL_comm}, \lean{virasoroSimple_exists_normalizedData}: proved, axioms
+\lean{[propext, Classical.choice, Quot.sound]}. Unconditional.
+\end{status}
+
+%======================================================================
+\section{Reconstruction: zero central variation implies triviality}\label{l07:sec:reconstruction}
+%======================================================================
+
+This section carries out step 1 of the heuristic in full: a graded deformation of $L(c,0)$ whose
+central variation $\delta$ vanishes is trivial. The argument has a general part, valid for any
+\emph{simple} VOA, and a Virasoro part that produces the required subspace.
+
+\subsection{Closed lifts in a simple VOA}
+
+\begin{definition}[Deformed product, closed lift]\label{l07:def:closedlift}
+On $\lsevenV\times\lsevenV$ (states $x = x_0 + tx_1$) define the deformed $n$-th product
+\begin{equation*}
+ x\star_n y := \big(x_{0(n)}y_0,\ x_{0(n)}y_1 + x_{1(n)}y_0 + x_0{}^1_{(n)}y_0\big),
+\end{equation*}
+the product of $Y^t$ written in coordinates. A subspace $S\subseteq\lsevenV\times\lsevenV$ is \emph{mode-closed}
+if $x\star_ny\in S$ for $x,y\in S$; its \emph{reduction} is the first projection $S\to\lsevenV$; its
+\emph{tangent kernel} is $\{v : (0,v)\in S\}$; it is \emph{grade-closed} if it contains the homogeneous
+components $(x_{0,n},x_{1,n})$ of each of its elements.
+\end{definition}
+\begin{leancode}
+def product (x : V × V) (n : ℤ) (y : V × V) : V × V :=
+  (W.smul x.1 n y.1,
+    W.smul x.1 n y.2 + W.smul x.2 n y.1 + D.smul₁ x.1 n y.1)
+
+def ModeClosed (S : Submodule ℂ (V × V)) : Prop :=
+  ∀ x ∈ S, ∀ y ∈ S, ∀ n : ℤ, product D x n y ∈ S
+
+def reduction (S : Submodule ℂ (V × V)) : S →ₗ[ℂ] V :=
+  (LinearMap.fst ℂ V V).comp S.subtype
+
+def tangentKernel (S : Submodule ℂ (V × V)) : Submodule ℂ V :=
+  S.comap (LinearMap.inr ℂ V V)
+
+def GradeClosed (W : VertexOperatorAlgebra V) (S : Submodule ℂ (V × V)) : Prop :=
+  ∀ x ∈ S, ∀ n : ℤ, (gradePart W n x.1, gradePart W n x.2) ∈ S
+\end{leancode}
+(\lean{VOA.Deform.Reconstruction.*}, \leanpath{VOA/\allowbreak Core/\allowbreak DeformationReconstruction.lean};
+\lean{gradePart W n} is the projection $\lsevenV\to\lsevenV_n$ along the other weight spaces.)
+
+\begin{physics}
+$\lsevenV\times\lsevenV$ is the space of states of the perturbed theory, with $(x,x_1)$ the state $x+tx_1$, and $\star_n$ is
+its perturbed OPE. A closed lift is a candidate for ``the same operator algebra written in a new basis'':
+a family of perturbed operators, one over each unperturbed operator, closed under the perturbed OPE.
+\end{physics}
+
+\begin{theorem}[Reconstruction from a closed lift]\label{l07:thm:closedlift}
+Let $W$ be simple and $D$ a first-order deformation. Suppose $S\subseteq\lsevenV\times\lsevenV$ is mode-closed,
+grade-closed, contains $(\lsevenvac,0)$, does not contain $(0,\lsevenvac)$, and its reduction is surjective.
+Then $D$ is trivial.
+\end{theorem}
+\begin{leancode}
+theorem isTrivial_of_closed_lift (S : Submodule ℂ (V × V))
+    (hsimple : W.IsSimple) (hclosed : ModeClosed D S)
+    (hsurj : Function.Surjective (reduction S))
+    (hsep : (0, W.vacuum) ∉ S) (hvac : (W.vacuum, 0) ∈ S)
+    (hgrade : GradeClosed W S) : D.IsTrivial := by
+\end{leancode}
+(\lean{VOA.Deform.Reconstruction.isTrivial_of_closed_lift}, same file.)
+
+\begin{proof}[Proof on paper]
+\emph{The tangent kernel $K$ is an ideal.} If $v\in K$ and $u\in\lsevenV$, choose $x\in S$ with $x_0 = u$
+(surjectivity); then $x\star_n(0,v) = (0,u_{(n)}v)\in S$, so $u_{(n)}v\in K$. \emph{It is zero.} By simplicity
+$K = 0$ or $K = \lsevenV$; the latter would give $(0,\lsevenvac)\in S$. \emph{So $S$ is a graph.} The reduction is
+injective (its kernel is $\{(0,v)\in S\} = 0$) and surjective, so $S = \{(v,\psi v)\}$ for a unique linear
+$\psi:\lsevenV\to\lsevenV$. \emph{Properties of $\psi$.} $(\lsevenvac,0)\in S$ gives $\psi\lsevenvac = 0$; grade-closure gives
+$\psi(\lsevenV_n)\subseteq\lsevenV_n$; mode-closure applied to $(u,\psi u)\star_n(v,\psi v)$ gives
+$\psi(u_{(n)}v) = u_{(n)}\psi v + (\psi u)_{(n)}v + u^1_{(n)}v$, i.e.\ $u^1_{(n)}v = \delta(-\psi)(u,n,v)$.
+So $D$ is the coboundary of $\varphi = -\psi$.
+\end{proof}
+
+\begin{dictionary}
+\textbf{Hypotheses.} \lean{hsimple} is simplicity of $W$ (Definition~\ref{l04:def:simple}) --- this
+is where the \emph{simple} quotient is essential; the universal $V(c,0)$ is not simple at the minimal
+charges, and at generic $c$ a closed lift with the separation property need not exist (the
+$\partial_c$-deformation has none). \lean{hclosed}, \lean{hsurj}, \lean{hsep}, \lean{hvac},
+\lean{hgrade} are the five properties of the definition. \lean{Function.Surjective (reduction S)} is
+surjectivity of the first projection restricted to $S$. The conclusion \lean{D.IsTrivial} is
+Definition~\ref{l07:def:trivial}, with one global $\varphi$. Note that $\lsevenV\times\lsevenV$ itself is \emph{not}
+assumed to be of CFT type --- its weight-zero part is two-dimensional, which is exactly why separation
+(\lean{hsep}) is a hypothesis.
+
+\textbf{Interpretation.} $S$ is the would-be image of an isomorphism $(\lsevenV_\lsevenR,Y)\to(\lsevenV_\lsevenR,Y^t)$; the
+theorem turns it into the coordinate change. This is the ``reconstruction'' half of rigidity, and it is
+completely general.
+\end{dictionary}
+
+\begin{status}
+Proved for every simple VOA and every deformation; axioms \lean{[propext, Classical.choice, Quot.sound]}.
+The same file proves the variant \lean{isTrivial_of_generated_separation} for the smallest closed lift
+containing a generating set, where only separation remains to be checked.
+\end{status}
+
+\begin{physics}
+If, over every operator of the unperturbed theory, one can find a perturbed operator such that the
+perturbed operators close among themselves under the perturbed OPE and contain the identity but not ``$t$
+times the identity'', then the perturbation is a field redefinition. Simplicity of $W$ is used the way a
+physicist uses irreducibility of the vacuum sector: there are no nontrivial subsectors in which a would-be
+obstruction could hide. Heuristic content: a perturbation is trivial exactly when the perturbed theory is
+isomorphic to the unperturbed one.
+\end{physics}
+
+\subsection{The closed lift of a fixed-charge deformation}
+
+Now let $W = L(c,0)$ and suppose $\delta = 0$, so the normalised modes $\widetilde L_n$ satisfy the
+Virasoro relations with \emph{scalar} central charge $c$ and kill $(\lsevenvac,0)$ for $n\ge-1$. By the
+universal property of $V(c,0) = U(\mathfrak{Vir})/J(c)$ there is a unique $\mathfrak{Vir}$-module map
+\begin{equation*}
+ F : V(c,0)\to\lsevenV\times\lsevenV,\qquad F(\lsevenvac) = (\lsevenvac,0),\qquad F(L_nv) = \widetilde L_nF(v)
+\end{equation*}
+(\lean{VirDeformModes.fixedEval}). Let $S = F(V(c,0))$. Then:
+\begin{enumerate}
+\item the first component of $F$ is the projection $\pi : V(c,0)\to L(c,0)$, because the first component
+  of $\widetilde L_n$ is $L_n$; hence the reduction of $S$ is surjective;
+\item $F$ maps $V(c,0)_n$ into $\lsevenV_n\times\lsevenV_n$ (the normalised modes shift both coordinates by the
+  expected weight, \lean{normalizedL_mem_grading}), hence $S$ is grade-closed;
+\item separation: the weight-zero part of $S$ is $F(\C\lsevenvac) = \C(\lsevenvac,0)$, which does not contain
+  $(0,\lsevenvac)$;
+\item mode-closure: $S$ is generated from $(\lsevenvac,0)$ by the modes of the corrected conformal state
+  $\widetilde\omega = (\omega,-\frac\beta2\omega)$, whose deformed products are exactly the $\widetilde L_n$
+  (\lean{corrected_conformal_product}); the order-$t$ iterate formula (the $m = 0$ slice of
+  \eqref{l07:eq:jac1}, proved on $\lsevenV\times\lsevenV$ as \lean{Deform.Reconstruction.product_iterate}) shows that the states whose
+  deformed modes preserve $S$ are closed under deformed products, so all of $S$ preserves $S$.
+\end{enumerate}
+Theorem~\ref{l07:thm:closedlift} applies, using simplicity of $L(c,0)$.
+
+\begin{theorem}[Fixed-charge reconstruction]\label{l07:thm:zerodelta}
+Let $D$ be a graded first-order deformation of $L(c,0)$, $c\in\C$ arbitrary, with scalars $\alpha,\beta$
+as in \eqref{l07:eq:alphabeta}. If $2\alpha-\beta c = 0$ then $D$ is trivial.
+\end{theorem}
+\begin{leancode}
+variable (c : ℂ) (D : FirstOrderDeformation (virasoroSimple c))
+
+theorem isTrivial_of_zero_central_variation (hD : D.IsGraded) (α β : ℂ)
+    (ha : D.smul₁ (virasoroSimple c).conformalVector 3
+      (virasoroSimple c).conformalVector = α • (virasoroSimple c).vacuum)
+    (hb : D.smul₁ (virasoroSimple c).conformalVector 1
+      (virasoroSimple c).conformalVector = β • (virasoroSimple c).conformalVector)
+    (hz : 2*α-β*c = 0) : D.IsTrivial := by
+\end{leancode}
+(\lean{VOA.VirDeformModes.isTrivial_of_zero_central_variation},
+\leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroFixedReconstruction.lean}. This file is assigned to
+Chapter~\ref{ch:L06} but its theorem is indispensable here; its companion \lean{isTrivial_of_fixed_modes}
+takes the \lean{CentralVirasoroData} with central operator $c\cdot1$ directly.)
+
+\begin{dictionary}
+All hypotheses are visible: gradedness, the defining equations of $\alpha$ and $\beta$, and $\delta = 0$.
+There is no hypothesis on $c$ (it holds at every central charge, degenerate or not) and none on the
+representation theory of $L(c,0)$ beyond what the library proves (simplicity, $\lsevenV_1 = 0$, $\lsevenV_2 = \C\omega$,
+the universal property of $V(c,0)$). So the theorem reduces graded rigidity of $L(c,0)$ to the single
+scalar equation $\delta = 0$:
+\begin{equation*}
+ \text{\lean{IsRigidGraded (virasoroSimple c)}}\iff\text{every graded $D$ has }2\alpha-\beta c = 0,
+\end{equation*}
+the ``$\Leftarrow$'' by this theorem and ``$\Rightarrow$'' by the gauge line
+(Theorem~\ref{l07:thm:gaugeline}). This is the precise sense in which ``the only possible modulus of
+$L(c,0)$ is the central charge''.
+\end{dictionary}
+
+\begin{status}
+Proved, axioms \lean{[propext, Classical.choice, Quot.sound]}; no \lean{VOA.pbw}. Unconditional.
+\end{status}
+\begin{physics}
+``The Virasoro vacuum sector is determined by $c$.'' If a perturbation of $L(c,0)$ does not change the central
+charge, then the perturbed stress tensor still satisfies the Virasoro algebra with the same $c$, all states are
+still its descendants, and the perturbed theory is the same theory in new coordinates. This is the
+first-order form of the familiar fact that the $TT$ OPE has only one free parameter.
+\end{physics}
+
+
+%======================================================================
+\section{The obstruction: null relations force zero central variation}\label{l07:sec:obstruction}
+%======================================================================
+
+We now carry out steps 2 and 3 of the heuristic: at a central charge where $L(c,0)$ has a relation
+whose norm polynomial has a simple zero, every graded deformation has $\delta = 0$. Two formulations
+appear in the library: an early, purely linear-algebraic ``bridge'' through deformed bilinear forms,
+which turned out to be the wrong tool for the simple quotient, and the word-pairing obstruction that
+the final proof uses. We present both, the first as an instructive near-miss.
+
+\subsection{Deformed bilinear forms and Jantzen layers}
+
+Let $E$ be a finite-dimensional vector space with a symmetric bilinear form $B_0$ and another bilinear
+form $B_1$, thought of as the first-order deformation $B_t = B_0+tB_1$. A vector $s$ in the radical of
+$B_0$ (a ``relation at $t = 0$'') \emph{lifts to first order} if there is $s_1$ with
+$(B_0+tB_1)(s+ts_1,\cdot) = 0$ modulo $t^2$, i.e.\ $B_1(s,v) + B_0(s_1,v) = 0$ for all $v$.
+
+\begin{proposition}[Lifting criterion]\label{l07:prop:lift}
+For symmetric $B_0$ on finite-dimensional $E$ and any $s\in E$: $s$ lifts to first order if and only if
+$B_1(s,v) = 0$ for all $v$ in the radical of $B_0$. Hence, writing $F_1 = \mathrm{rad}\,B_0$ and
+$F_2 = \{s\in F_1 : B_1(s,F_1) = 0\}$ (the first two Jantzen layers), $F_2$ is exactly the set of
+relations that lift.
+\end{proposition}
+\begin{leancode}
+def radBil (B : E →ₗ[K] E →ₗ[K] K) : Submodule K E := LinearMap.ker B
+
+theorem lift_iff_pairing_zero [FiniteDimensional K E] {B₀ B₁ : E →ₗ[K] E →ₗ[K] K}
+    (hB₀ : ∀ x y : E, B₀ x y = B₀ y x) (s : E) :
+    (∃ s₁ : E, ∀ v : E, B₁ s v + B₀ s₁ v = 0) ↔ ∀ v ∈ radBil B₀, B₁ s v = 0 := by
+
+def F1 (B₀ : E →ₗ[K] E →ₗ[K] K) : Submodule K E := radBil B₀
+
+def F2 (B₀ B₁ : E →ₗ[K] E →ₗ[K] K) : Submodule K E where
+  carrier := {s | s ∈ F1 B₀ ∧ ∀ v ∈ F1 B₀, B₁ s v = 0}
+\end{leancode}
+(\lean{VOA.DefForm.*}, \leanpath{VOA/\allowbreak Core/\allowbreak DeformedForm.lean}, over an arbitrary field
+\lean{K}; submodule proofs of \lean{F2} omitted.)
+
+\begin{proof}[Proof on paper]
+``$\Rightarrow$'': if $v\in\mathrm{rad}B_0$ then $B_0(s_1,v) = B_0(v,s_1) = 0$ by symmetry. ``$\Leftarrow$'': the
+functional $-B_1(s,\cdot)$ kills $\mathrm{rad}B_0$; for symmetric $B_0$ on a finite-dimensional space the
+functionals of the form $B_0(x,\cdot)$ are exactly those killing $\mathrm{rad}B_0$ (dimension count), so
+$-B_1(s,\cdot) = B_0(s_1,\cdot)$ for some $s_1$.
+\end{proof}
+
+The \emph{rigidity bridge} applies this to $E = \lsevenV_k$ with $B_0 = $ the level-$k$ Shapovalov form
+$\langle a,b\rangle_k := \varepsilon(a_{(2k-1)}b)$ (where $a_{(2k-1)}b\in\lsevenV_0 = \C\lsevenvac$ and $\varepsilon$ reads off
+the coefficient of $\lsevenvac$) and $B_1 = \langle a,b\rangle^1_k := \varepsilon(a^1_{(2k-1)}b)$, the same formula
+with $Y_1$. It proves that the Shapovalov form is symmetric (from skew-symmetry), agrees up to the sign
+$(-1)^k$ with the canonical invariant form on quasi-primary vectors, and contains every Virasoro
+singular vector of a descendant-spanned weight space in its radical. Its main theorem is:
+
+\begin{leancode}
+theorem F2_lt_F1_of_self_pairing_ne_zero (hvac : W.vacuum ≠ 0)
+    (D : FirstOrderDeformation W) (hD : D.IsGraded) {k : ℤ} {s : W.grading k}
+    (hs : s ∈ DefForm.radBil (shapForm W hvac k))
+    (hself : shapForm₁ D hD hvac k s s ≠ 0) :
+    DefForm.F2 (shapForm W hvac k) (shapForm₁ D hD hvac k) < DefForm.F1 (shapForm W hvac k) :=
+\end{leancode}
+(\lean{VOA.RigidBridge.F2_lt_F1_of_self_pairing_ne_zero}, \leanpath{VOA/\allowbreak Core/\allowbreak RigidityBridge.lean};
+\lean{shapForm W hvac k} and \lean{shapForm₁ D hD hvac k} are the two forms just described, defined
+via \lean{vacCoeff W hvac : W.grading 0 →ₗ[ℂ] ℂ}, the inverse of $\lambda\mapsto\lambda\lsevenvac$.)
+
+\begin{dictionary}
+In words: if $s$ is a relation of the level-$k$ Shapovalov form and the \emph{deformed} self-pairing
+$\langle s,s\rangle^1_k$ is nonzero, then $s$ does not survive to first order, so $F_2\subsetneq F_1$ (\lean{<} on
+submodules is strict inclusion). The file's own docstring states loudly that this is an obstruction
+statement, not rigidity: ``Nothing here proves \lean{IsRigid}''.
+\end{dictionary}
+
+\begin{warning}\label{l07:warn:bridge}
+\textbf{The bridge hypothesis is unsatisfiable exactly where rigidity holds.} The library proves
+(\lean{NonzeroDeform.shapForm₁_self_eq_zero_of_isTrivial}) that for every \emph{trivial} graded deformation
+the deformed self-pairing of a radical vector vanishes:
+\noindent File \leanpath{VOA/Examples/NonzeroDeformation.lean}.
+\begin{leancode}
+theorem shapForm₁_self_eq_zero_of_isTrivial (W : VertexOperatorAlgebra 𝒱)
+    (hvac : W.vacuum ≠ 0) (D : Deform.FirstOrderDeformation W) (hD : D.IsGraded)
+    (hT : D.IsTrivial) {k : ℤ} {s : W.grading k}
+    (hs : s ∈ DefForm.radBil (shapForm W hvac k)) :
+    shapForm₁ D hD hvac k s s = 0 := by
+\end{leancode}
+So the hypothesis \lean{hself} can only be met by a non-trivial graded deformation, and on a graded-rigid
+VOA it is never met. Moreover on the simple quotient $L(c,0)$ the Shapovalov form is nondegenerate, so
+its radical is zero and the bridge has nothing to act on. The bridge is a correct theorem about the
+universal $V(c,0)$ (``a singular vector of $V(c_{p,q},0)$ does not survive a deformation that moves its
+norm''), but it is not a route to rigidity of $L(c,0)$, and the final proof does not use it. It is kept
+because the linear algebra of Proposition~\ref{l07:prop:lift} is correct and because it documents a
+recorded dead end: the project notes also refute an earlier ``Jantzen bridge lemma''
+$\mathrm{rad}_R = F_2\oplus\varepsilon F_1$, which negated its own hypothesis, and that false lemma appears
+nowhere in the library.
+\end{warning}
+
+\begin{physics}
+In a family of theories, the Gram matrix of states becomes $B_0+tB_1$. A null state at $t=0$ survives to first order
+(remains null after a small correction) exactly when its first-order change of norm, paired against the other
+null states, vanishes. This is the first step of the Jantzen filtration, the representation-theorist's way of
+following null vectors along a family of central charges or highest weights.
+\end{physics}
+
+\subsection{Words, their adjoints, and the norm polynomial}
+
+The correct mechanism is not a deformed form on $L(c,0)$ but a computation in the representation
+$\widetilde L_n$ of Section~\ref{l07:sec:anatomy}, paired with the \emph{undeformed} invariant form.
+
+\begin{definition}[Words and norm polynomials]\label{l07:def:words}
+A \emph{word} is a finite list $w = [m_1,\dots,m_k]$ of integers; in a representation $L$ of the
+Virasoro relations it acts by $L_w := L_{m_1}\cdots L_{m_k}$. Its \emph{adjoint} is
+$w^\dagger := [-m_k,\dots,-m_1]$ (reverse and negate), so that $\langle L_wx,y\rangle = \langle x,L_{w^\dagger}y\rangle$ for an
+invariant form. For a word $w$, the \emph{vacuum polynomial} $P_w\in\C[X]$ is defined by normal
+ordering: commute positive and zero modes to the right using \eqref{l07:eq:vir}, with the central
+element kept as a formal variable $X$, until they annihilate the vacuum; $P_w$ is the coefficient of the
+empty creation word. For a finite combination $s = \sum_ir_iL_{w_i}\lsevenvac$ the \emph{norm polynomial} is
+\begin{equation*}
+ P_{w,r}(X) := \sum_{i,j}r_ir_j\,P_{w_i^\dagger w_j}(X),\qquad\text{so that}\qquad P_{w,r}(c) = \langle s,s\rangle_{V(c,0)} .
+\end{equation*}
+\end{definition}
+\begin{leancode}
+noncomputable def virWord (L : ℤ → End ℂ V) : List ℤ → End ℂ V
+  | [] => 1
+  | n::w => L n * virWord L w
+
+theorem virWord_adjoint {W : VertexOperatorAlgebra V} (B : InvariantForm W)
+    (w : List ℤ) (x y : V) :
+    B.form (virWord W.L w x) y =
+      B.form x (virWord W.L (w.reverse.map Neg.neg) y) := by
+
+noncomputable def centralPolynomial : NormalForm →ₗ[ℂ] Polynomial ℂ :=
+  Finsupp.linearCombination ℂ (fun t => if t.2=[] then X^t.1 else 0)
+
+noncomputable def wordPolynomial (w : List ℤ) : Polynomial ℂ :=
+  centralPolynomial (wordNormal w)
+
+noncomputable def relationPolynomial (w : ι → List ℤ) (r : ι → ℂ) : Polynomial ℂ :=
+  ∑ i, ∑ j, (r i * r j) • wordPolynomial ((w i).reverse.map Neg.neg ++ w j)
+\end{leancode}
+(\lean{VOA.VirDeformModes.virWord}, \lean{…virWord_adjoint}, \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroWordPairing.lean};
+\lean{VOA.VirDeformModes.NormalOrdering.centralPolynomial}, \lean{…wordPolynomial},
+\leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroUniversalPairing.lean}; \lean{…relationPolynomial},
+\leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroUniformObstruction.lean}.)
+
+\begin{dictionary}
+\lean{virWord L w} is $L_w$ (\lean{1} is the identity, \lean{*} composition, so $L_{[m]++w} = L_m\circ L_w$).
+\lean{w.reverse.map Neg.neg} is $w^\dagger$ and \lean{++} is concatenation, so
+\lean{(w i).reverse.map Neg.neg ++ w j} is $w_i^\dagger w_j$. \lean{wordNormal w} is the normal-ordered form
+of $L_w\lsevenvac$, a finite formal combination of (central power, creation word) labels built by a recursive
+commutation algorithm (\leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroNormalOrdering.lean}); \lean{centralPolynomial}
+keeps the terms with empty creation word, turning central power $k$ into $X^k$. \lean{relationPolynomial w r}
+is $P_{w,r}$; the index type \lean{ι} is any finite type.
+
+\textbf{Why this is the right polynomial.} Two theorems pin down the meaning, so the reader need not
+trust the normal-ordering algorithm: (i) at every $c$, $P_{u^\dagger v}(c) = \langle L_u\lsevenvac,L_v\lsevenvac\rangle$ in
+$V(c,0)$ for the canonical form (\lean{universal_gram_entry}), hence
+$P_{w,r}(c) = \langle s,s\rangle$ (\lean{relationPolynomial_eval}); (ii) in \emph{any}
+\lean{CentralVirasoroData} with a vacuum-like vector, the normal-ordering evaluation reproduces
+$L_wv$ (\lean{evaluate_wordNormal}). Both are proved; there is no free choice in $P_{w,r}$.
+\end{dictionary}
+\begin{leancode}
+theorem universal_gram_entry (c : ℂ) (u v : List ℤ) :
+    (wordPolynomial (u.reverse.map Neg.neg ++ v)).eval c =
+      (VirGram4.canB c).form
+        (virWord (VirModule.virasoroVOA c).L u (VirModule.vacVec c))
+        (virWord (VirModule.virasoroVOA c).L v (VirModule.vacVec c)) := by
+\end{leancode}
+(\lean{VOA.VirDeformModes.NormalOrdering.universal_gram_entry}, \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroUniversalPairing.lean}.)
+
+\begin{physics}
+A word is a product of Virasoro generators; its vacuum polynomial is the vacuum expectation value
+$\langle0|L_{m_1}\cdots L_{m_k}|0\rangle$ computed with only the Virasoro algebra, as a polynomial in $c$. The norm
+polynomial of a combination $s$ is the two-point function $\langle s|s\rangle$ of the corresponding descendant of the
+identity, as a function of the central charge. Its zeros are the central charges at which $s$ becomes a null
+state --- the vacuum row of the Kac table.
+\end{physics}
+
+\subsection{The word-pairing obstruction}
+
+\begin{theorem}[Relation obstruction]\label{l07:thm:relation}
+Let $c\in\C$. Suppose $s := \sum_ir_iL_{w_i}\lsevenvac = 0$ in $L(c,0)$ for a finite family of words $w_i$ and
+coefficients $r_i$, and suppose the norm polynomial satisfies $P'_{w,r}(c)\ne0$. Then every graded
+first-order deformation of $L(c,0)$ has central variation $\delta = 0$, and therefore
+$L(c,0)$ is graded rigid.
+\end{theorem}
+\begin{leancode}
+theorem virWord_pairing_obstruction {W : VertexOperatorAlgebra V}
+    (D : FirstOrderDeformation W) (β : ℂ) (B : InvariantForm W)
+    {ι : Type*} [Fintype ι] (w : ι → List ℤ) (r : ι → ℂ)
+    (hr : ∑ i, r i • virWord W.L (w i) W.vacuum = 0) :
+    B.form W.vacuum
+      ((∑ i, r i • virWord (normalizedL D β) ((w i).reverse.map Neg.neg))
+        (∑ j, r j • virWord (normalizedL D β) (w j) (W.vacuum,0))).2 = 0 := by
+
+theorem simple_normalized_word_tangent (c : ℂ)
+    (D : FirstOrderDeformation (VirSimple.virasoroSimple c)) (hD : D.IsGraded)
+    (α β : ℂ)
+    (ha : D.smul₁ (VirSimple.virasoroSimple c).conformalVector 3
+      (VirSimple.virasoroSimple c).conformalVector = α • (VirSimple.virasoroSimple c).vacuum)
+    (hb : D.smul₁ (VirSimple.virasoroSimple c).conformalVector 1
+      (VirSimple.virasoroSimple c).conformalVector = β • (VirSimple.virasoroSimple c).conformalVector)
+    (w : List ℤ) :
+    (VirQuotForm.Bsimp c).form (VirSimple.virasoroSimple c).vacuum
+      (virWord (normalizedL D β) w ((VirSimple.virasoroSimple c).vacuum,0)).2 =
+        (wordPolynomial w).derivative.eval c * (2*α-β*c) := by
+
+theorem graded_rigidity_of_relation (c : ℂ) (w : ι → List ℤ) (r : ι → ℂ)
+    (hr : ∑ i, r i • virWord (VirSimple.virasoroSimple c).L (w i)
+      (VirSimple.virasoroSimple c).vacuum = 0)
+    (hd : (relationPolynomial w r).derivative.eval c ≠ 0) :
+    IsRigidGraded (VirSimple.virasoroSimple c) := by
+\end{leancode}
+(\lean{VOA.VirDeformModes.virWord_pairing_obstruction}, \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroWordPairing.lean};
+\lean{VOA.VirDeformModes.NormalOrdering.simple_normalized_word_tangent},
+\leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroUniversalPairing.lean};
+\lean{VOA.VirDeformModes.NormalOrdering.graded_rigidity_of_relation},
+\leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroUniformObstruction.lean}, where \lean{{ι : Type*} [Fintype ι]} is a
+section variable.)
+
+\begin{proof}[Proof on paper]
+Let $D$ be graded with scalars $\alpha,\beta$ and normalised modes $\widetilde L_n$ (central operator
+$c+\delta\lsevenN$). Lift the relation: $\widetilde s := \sum_jr_j\widetilde L_{w_j}(\lsevenvac,0)$. Its first coordinate is
+$\sum_jr_jL_{w_j}\lsevenvac = s = 0$, so $\widetilde s = (0,s')$ for some $s'\in\lsevenV$. Apply the lifted adjoint
+combination $\widetilde A := \sum_ir_i\widetilde L_{w_i^\dagger}$ and pair the tangent coordinate with the vacuum using the
+\emph{undeformed} invariant form $B$ of $L(c,0)$:
+\begin{itemize}
+\item \emph{It vanishes.} On pure tangent states the normalised modes act by the undeformed $L_n$
+  (\lean{normalizedL_tangent}), so $\widetilde A(0,s') = (0,As')$ with $A = \sum_ir_iL_{w_i^\dagger}$, and by
+  invariance $B(\lsevenvac,As') = B(\sum_ir_iL_{w_i}\lsevenvac,s') = B(s,s') = B(0,s') = 0$. This is
+  \lean{virWord_pairing_obstruction}, valid for any VOA, any $\beta$ and any invariant form.
+\item \emph{It equals $P'_{w,r}(c)\,\delta$.} Expanding,
+  $\widetilde A\widetilde s = \sum_{i,j}r_ir_j\widetilde L_{w_i^\dagger w_j}(\lsevenvac,0)$. In any representation of the Virasoro
+  relations with central operator $\lsevenK$ and a vector killed by $L_n$, $n\ge-1$, normal ordering gives
+  $L_w(\lsevenvac,0) = P_w(\lsevenK)(\lsevenvac,0) + (\text{creation words of positive weight applied to }(\lsevenvac,0))$; the
+  vacuum pairing kills the positive-weight terms (weight orthogonality, Proposition~\ref{l04:thm:formbasics}),
+  and by \eqref{l07:eq:taylor} with $\lsevenK = c+\delta\lsevenN$ the tangent coordinate of $P_w(\lsevenK)(\lsevenvac,0)$ is
+  $P_w'(c)\delta\lsevenvac$. Summing, the tangent pairing is $P'_{w,r}(c)\delta$ (with $B(\lsevenvac,\lsevenvac) = 1$). This is
+  \lean{simple_normalized_word_tangent} and its sum \lean{relation_tangent}.
+\end{itemize}
+Hence $P'_{w,r}(c)\delta = 0$, so $\delta = 0$ (\lean{central_variation_zero_of_relation}), and
+Theorem~\ref{l07:thm:zerodelta} makes $D$ trivial.
+\end{proof}
+
+\begin{dictionary}
+\textbf{Hypotheses of \lean{graded_rigidity_of_relation}.} \lean{hr}: the relation $s = 0$ holds in the
+\emph{simple} algebra \lean{virasoroSimple c}, with its own modes \lean{(virasoroSimple c).L} --- an ordinary
+statement about $L(c,0)$, not about deformations. \lean{hd}: the derivative \lean{derivative.eval c} of the
+norm polynomial is nonzero at $c$. Neither mentions a deformation; the theorem has no deformation-theoretic
+hypothesis at all. In particular it does \emph{not} assume determinant preservation, a deformed invariant
+form, or a deformed singular vector --- the three ways in which earlier versions of the argument were
+circular. \textbf{Conclusion:} \lean{IsRigidGraded} of Definition~\ref{l07:def:rigid}.
+
+\textbf{Why the derivative, and why at $c$.} By \lean{relationPolynomial_eval}, $P_{w,r}(c) = \langle s,s\rangle$ in
+$V(c,0)$; since $s$ maps to $0$ in $L(c,0)$, it lies in the radical and $P_{w,r}(c) = 0$ automatically. So the
+content of \lean{hd} is that this zero is \emph{simple}. A double zero would give no information
+(Warning~\ref{l07:warn:doubleroot}).
+
+\textbf{How it could be vacuous.} If no relation with $P'\neq0$ existed at any $c$, the theorem would be empty.
+It is not: at $c = -22/5$ the Lee--Yang relation of Example~\ref{l07:ex:leeyang} has $P' = -55$; at Ising,
+$P' = 84084$ (Section~\ref{l07:sec:worked}); and at every $\lsevencpq$ the vacuum Gram determinant supplies one
+(Section~\ref{l07:sec:all}). At generic $c$, $L(c,0) = V(c,0)$ has no relations at all, so the theorem says
+nothing there --- consistent with $V(c,0)$ not being rigid.
+\end{dictionary}
+
+\begin{status}
+\lean{virWord_pairing_obstruction}, \lean{simple_normalized_word_tangent}, \lean{graded_rigidity_of_relation}:
+proved, axioms \lean{[propext, Classical.choice, Quot.sound]}. The theorem is unconditional; its two
+hypotheses are ordinary algebraic facts to be checked at the charge of interest. The same file also gives
+\lean{graded_rigidity_of_word_gram}, which replaces \lean{hr} by ``$r$ is a row-kernel vector of the
+polynomial Gram matrix of a word basis evaluated at $c$'', so that the hypothesis can be checked entirely in
+the universal module.
+\end{status}
+
+\begin{physics}
+This is the null-vector argument for rigidity. In the minimal model the null state $s$ is set to zero. Perturb
+the theory; to first order the only effect (after field redefinitions) is $c\to c+t\delta$. The relation $s=0$ must
+persist, but the norm of $s$ in the perturbed theory is $P(c+t\delta)=tP'(c)\delta$, and a vanishing state has
+zero norm. So $\delta=0$ unless the norm vanishes to second order. Physically: the minimal-model central
+charge is pinned by null-vector decoupling, and to first order it cannot move.
+\end{physics}
+
+\subsection{The determinant form of the obstruction}
+
+For a uniform theorem it is more convenient to use the whole vacuum Gram matrix. Index the partitions of
+$n$ into parts $\ge2$ by \lean{SortedOfEnergy n} and let $G_n(X)$ be the matrix of norm polynomials
+$P_{w_i^\dagger w_j}(X)$ of the corresponding creation words; $\det G_n(c) = D_n(c)$ is the vacuum Gram
+determinant of Section~\ref{l07:sec:kac}.
+\begin{leancode}
+def partitionWord (n : ℕ) (w : SortedOfEnergy n) : List ℤ :=
+  w.val.map (fun (i : ℕ) => -(i:ℤ)-2)
+
+noncomputable def partitionGramPolynomial (n : ℕ) :
+    Matrix (SortedOfEnergy n) (SortedOfEnergy n) (Polynomial ℂ) :=
+  fun i j => wordPolynomial ((partitionWord n i).reverse.map Neg.neg ++ partitionWord n j)
+
+theorem partitionGramPolynomial_eval (c : ℂ) (n : ℕ) :
+    (partitionGramPolynomial n).map (Polynomial.eval c) =
+      GramMat.gramMatrix (VirGram4.canB c) (n:ℤ) (gradedBasis c n) := by
+\end{leancode}
+(\lean{VOA.VirDeformModes.NormalOrdering.*}, \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroPartitionObstruction.lean};
+\lean{GramMat.gramMatrix B n e} is the matrix $(B(e_i,e_j))$ of a basis $e$ of $\lsevenV_n$.)
+
+\begin{theorem}[Simple determinant root obstruction]\label{l07:thm:det}
+If $D_n(c) = 0$ and $D_n'(c)\ne0$ for some $n$, then $L(c,0)$ is graded rigid.
+\end{theorem}
+\begin{leancode}
+theorem actual_partition_determinant_zero (c : ℂ)
+    (D : FirstOrderDeformation (virasoroSimple c)) (hD : D.IsGraded)
+    (α β : ℂ)
+    (ha : D.smul₁ (virasoroSimple c).conformalVector 3
+      (virasoroSimple c).conformalVector = α • (virasoroSimple c).vacuum)
+    (hb : D.smul₁ (virasoroSimple c).conformalVector 1
+      (virasoroSimple c).conformalVector = β • (virasoroSimple c).conformalVector)
+    (n : ℕ) (hroot : (partitionGramPolynomial n).det.eval c = 0) :
+    (partitionGramPolynomial n).det.aeval (inl c + inr (2*α-β*c) : DualNumber ℂ) = 0 := by
+
+theorem graded_rigidity_of_simple_determinant (c : ℂ) (n : ℕ)
+    (hroot : (partitionGramPolynomial n).det.eval c = 0)
+    (hsimple : (partitionGramPolynomial n).det.derivative.eval c ≠ 0) :
+    IsRigidGraded (virasoroSimple c) := by
+\end{leancode}
+(\lean{VOA.VirDeformModes.NormalOrdering.*}, \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroDeterminantObstruction.lean};
+\lean{inl c + inr δ} is the dual number $c+\delta\varepsilon$ and \lean{aeval} evaluates a polynomial at it.)
+
+\begin{proof}[Proof on paper]
+Let $D$ be graded. \emph{Step 1: the determinant does not move.} Since $D_n(c) = 0$ there is a nonzero
+$r$ with $\sum_ir_i\langle e_i,e_j\rangle = 0$ for all $j$, so $\sum_ir_ie_i$ lies in the radical and
+$\sum_ir_i\pi(e_i) = 0$ in $L(c,0)$. Lift: $\sum_ir_i\widetilde L_{w_i}(\lsevenvac,0) = (0,x)$ with $x\in L(c,0)_n$. The
+ordinary words $\pi(e_j)$ span $L(c,0)_n$, so $x = \sum_js_j\pi(e_j)$, and since $t\cdot(y,y_1) = (0,y)$ the
+dual-number vector $\rho = r - ts$ satisfies $\sum_i\rho_i\widetilde L_{w_i}(\lsevenvac,0) = 0$. Pairing with the lifted
+adjoint rows as in the previous proof shows $\rho^{T}G_n(c+t\delta) = 0$ over the dual numbers. As $r\neq0$, some
+$\rho_i$ is a unit, so the matrix $G_n(c+t\delta)$ has a kernel vector with a unit entry and its determinant is
+zero. \emph{Step 2: Taylor.} $0 = D_n(c+t\delta) = D_n(c) + tD_n'(c)\delta = tD_n'(c)\delta$, so $\delta = 0$
+(\lean{VirRigidTangent.tangent_eq_zero_of_simple_root}). \emph{Step 3:} Theorem~\ref{l07:thm:zerodelta}.
+\end{proof}
+
+\begin{dictionary}
+\lean{hroot} and \lean{hsimple} are exactly ``$D_n$ has a simple zero at $c$''; nothing about deformations is
+assumed. Determinant preservation ($D_n(c+t\delta) = 0$) is a \emph{conclusion}
+(\lean{actual_partition_determinant_zero}), proved from the actual deformation, not a hypothesis. This is the
+``determinant'' twin of Theorem~\ref{l07:thm:relation}, and it is the form used for the general theorem.
+\end{dictionary}
+
+\begin{status}
+Both theorems proved, axioms \lean{[propext, Classical.choice, Quot.sound]}. Unconditional.
+\end{status}
+
+\begin{warning}\label{l07:warn:doubleroot}
+\textbf{An isolated degenerate charge is not enough; the root must be simple.} One might think that
+rigidity follows because $\lsevencpq$ is an isolated zero of the level-$n$ determinant. It does not: over the
+dual numbers, $X^2$ has the nonzero root $\varepsilon$, although $0$ is its only complex root. The library records
+this as a theorem,
+\begin{leancode}
+theorem isolated_root_has_nonzero_tangent :
+    (∀ c : ℂ, c ^ 2 = 0 ↔ c = 0) ∧
+      (DualNumber.eps : DualNumber ℂ) ≠ 0 ∧
+      (X ^ 2 : Polynomial ℂ).aeval (DualNumber.eps : DualNumber ℂ) = 0 := by
+\end{leancode}
+(\lean{VOA.VirRigidTangent.isolated_root_has_nonzero_tangent}, \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroRigidityTangent.lean}),
+and the theorem that is used is the simple-root test
+\lean{tangent_eq_zero_of_simple_root}: if $p'(c)\ne0$ and $p(c+\delta\varepsilon) = 0$ then $\delta = 0$. Concretely,
+$D_4(c) = c^2(5c+22)/2$ has a \emph{double} zero at $c = 0$, so level $4$ says nothing at $c = 0$ (the useful
+level there is $2$). A second, related trap is also recorded: ``the degenerate locus is discrete'' is false as
+a statement over all levels, since the charges $\lsevencpq$ accumulate at $c = 1$; the correct and sufficient
+statement is per level (for fixed $n$, $D_n$ is a nonzero polynomial with finitely many roots), and the
+argument above uses only one level at a time.
+\end{warning}
+\begin{physics}
+The determinant $D_n(c)$ is the Kac determinant of the vacuum module at level $n$; its zeros list the central
+charges where a null descendant of the identity appears. A simple zero means that, as $c$ moves off the
+minimal value, exactly one state stops being null at first order. The theorem says the minimal model cannot
+be perturbed: any perturbation would have to move $c$, and moving $c$ would turn the decoupled null state back
+into a physical state of nonzero norm.
+\end{physics}
+
+
+%======================================================================
+\section{Worked cases}\label{l07:sec:worked}
+%======================================================================
+
+Before the general theorem, the library proved graded rigidity case by case, each time by exhibiting a
+relation with a nonzero norm derivative and applying the mechanism of Theorem~\ref{l07:thm:relation} (in
+the earliest cases, a hand-specialised version of it). These cases are worth reading: each is a complete,
+checkable instance of the argument, with explicit numbers, and together they show the mechanism is not
+vacuous. All of them are now also consequences of the general theorem of Section~\ref{l07:sec:all}.
+
+\subsection{Central charge zero: \texorpdfstring{$M(2,3)$}{M(2,3)}}\label{l07:sec:zero}
+
+At $c = 0$ the conformal vector has norm $\langle\omega,\omega\rangle = c/2 = 0$ and spans $V(0,0)_2$, so it lies in
+the radical, i.e.\ in the maximal ideal: $\omega = 0$ in $L(0,0)$. Then $\alpha\lsevenvac = \omega^1_{(3)}\omega = 0$, so
+$\alpha = 0$ and $\delta = 2\alpha - \beta\cdot0 = 0$; Theorem~\ref{l07:thm:zerodelta} applies.
+\begin{leancode}
+theorem zeroCharge_conformal_eq_zero : (virasoroSimple 0).conformalVector = 0 := by
+
+theorem zeroCharge_graded_rigidity : Deform.IsRigidGraded (virasoroSimple 0) := by
+\end{leancode}
+(\lean{VOA.VirDeformModes.*}, \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroZeroChargeRigidity.lean}.)
+\begin{dictionary}
+In fact $L(0,0) = \C\lsevenvac$ is the one-dimensional VOA (every positive-weight creation monomial contains a
+mode applied to $\omega = 0$, or more simply, $\omega = 0$ generates). Its graded rigidity is a triviality, and
+the library's proof is correspondingly short. It is included honestly: $c_{2,3} = 0$, so the minimal model
+$M(2,3)$ is the trivial theory, and the general theorem covers it with no exception (the vacuum Gram
+determinant $D_2(c) = c/2$ has a simple zero at $0$).
+\end{dictionary}
+
+
+\begin{physics}
+$M(2,3)$ is the trivial CFT with one state; its rigidity is the statement that a one-point theory cannot be
+deformed. It is included because the minimal-model list starts there, and because $c=0$ is a point where the
+level-two null vector is $T$ itself: at $c=0$ the stress tensor of the vacuum sector has zero norm and decouples.
+\end{physics}
+
+\subsection{Lee--Yang: \texorpdfstring{$M(2,5)$, $c = -22/5$}{M(2,5), c = -22/5}}\label{l07:sec:leeyang}
+
+The relation is $s = 5L_{-2}^2\lsevenvac - 3L_{-4}\lsevenvac = 0$ in $L(-\frac{22}5,0)$
+(Example~\ref{l07:ex:leeyang}). In any representation with central operator $\lsevenK$ and a vacuum-like vector
+$v$, normal ordering gives the adjoint-word identity
+\begin{equation*}
+ (5L_2L_2 - 3L_4)(5L_{-2}L_{-2} - 3L_{-4})v = \big(\tfrac{25}{2}\lsevenK^2 + 55\lsevenK\big)v,
+\end{equation*}
+\lean{vir_singular4_polynomial}. With $\lsevenK = -\frac{22}5 + \delta\lsevenN$ the right side applied to
+$(\lsevenvac,0)$ is $(0,-55\delta\lsevenvac)$ (\lean{leeYang_singular_central_polynomial}; the constant term
+vanishes because $-22/5$ is a root and the tangent term is $P'(-22/5) = -55$). The vanishing pairing
+forces $-55\delta = 0$.
+\begin{leancode}
+theorem leeYang_singular_central_polynomial (δ : ℂ) (v : V) :
+    let K : End ℂ (V × V) := LeeYang.leeYangC • 1 + δ • tangentShift
+    (25/2 : ℂ) • K (K (v, 0)) + (55 : ℂ) • K (v, 0) =
+      (0, (-55 * δ) • v) := by
+
+theorem leeYang_graded_rigidity : Deform.IsRigidGraded (virasoroSimple LeeYang.leeYangC) := by
+\end{leancode}
+(\lean{VOA.VirDeformModes.leeYang_singular_central_polynomial},
+\leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroDeformationGram4.lean};
+\lean{VOA.VirDeformModes.leeYang_graded_rigidity}, \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroFixedReconstruction.lean};
+\lean{LeeYang.leeYangC} is \lean{-22 / 5 : ℂ}.)
+
+
+\begin{physics}
+The Lee--Yang model describes the edge singularity of the Ising model in an imaginary magnetic field; it is the
+simplest non-unitary CFT, with one nontrivial primary of weight $-1/5$. Its vacuum null vector at level four,
+$(L_{-2}^2-\frac35L_{-4})\lsevenvac$, is the relation $\,{:}TT{:}\propto\partial^2T$ among chiral fields; the number $-55$
+measures how fast this relation fails when $c$ moves off $-22/5$, and its nonvanishing pins $c$.
+\end{physics}
+
+\subsection{Ising and \texorpdfstring{$M(2,7)$}{M(2,7)} at weight six}
+
+$c_{3,4} = \frac12$ and $c_{2,7} = -\frac{68}7$ both have first singular level $(p-1)(q-1) = 6$. The weight-six
+space has the basis $L_{-6}\lsevenvac$, $L_{-4}L_{-2}\lsevenvac$, $L_{-3}^2\lsevenvac$, $L_{-2}^3\lsevenvac$, and the null relations
+have integral coefficients:
+\begin{equation*}
+ \text{Ising: }(-108,-264,93,64),\qquad M(2,7):\ (-38,-77,-7,49).
+\end{equation*}
+They are certified as row-kernel vectors of the canonical Gram matrix \lean{canGram6} at the respective
+charge (\lean{ising_gram6_row}, \lean{m27_gram6_row}) and hence vanish in $L(c,0)$. The norm polynomials,
+computed by normal ordering with the central operator kept,
+\begin{equation*}
+ P_{\mathrm{Is}}(\lsevenK) = -83316\lsevenK + 165096\lsevenK^2 + 3072\lsevenK^3,\qquad
+ P_{2,7}(\lsevenK) = 67830\lsevenK + \tfrac{48951}{2}\lsevenK^2 + \tfrac{7203}{4}\lsevenK^3,
+\end{equation*}
+vanish at their charges and have derivatives $84084$ and $102102$ there. (Check for Ising:
+$-83316\cdot\frac12+165096\cdot\frac14+3072\cdot\frac18 = -41658+41274+384 = 0$ and
+$-83316+165096+3\cdot3072\cdot\frac14 = 84084$.)
+\begin{leancode}
+def weight6Words : Fin 4 → List ℤ := ![[-6],[-4,-2],[-3,-3],[-2,-2,-2]]
+
+def isingCoefficients : Fin 4 → ℂ := ![-108,-264,93,64]
+
+def m27Coefficients : Fin 4 → ℂ := ![-38,-77,-7,49]
+
+theorem ising_weight6_central {V : Type*} [AddCommGroup V] [Module ℂ V]
+    (δ : ℂ) (v : V) :
+    let K : End ℂ (V × V) := isingC • 1 + δ • tangentShift
+    (-83316 : ℂ) • K (v,0) + (165096 : ℂ) • (K^2) (v,0) +
+      (3072 : ℂ) • (K^3) (v,0) = (0, (84084*δ) • v) := by
+
+theorem ising_graded_rigidity : Deform.IsRigidGraded (virasoroSimple isingC) := by
+
+theorem m27_graded_rigidity : Deform.IsRigidGraded (virasoroSimple m27C) := by
+\end{leancode}
+(\lean{VOA.VirDeformModes.*}, \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroWeight6Norm.lean} and
+\leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroWeight6Rigidity.lean}; \lean{isingC} is \lean{1 / 2},
+\lean{m27C} is \lean{-68 / 7}, both in \lean{VirGram56}.)
+
+\begin{dictionary}
+The normal forms were \emph{proposed} by a Python script
+and each reduction step was then \emph{proved} in Lean from the Virasoro commutators, with the central
+element kept as an operator so that the tangent coefficient is retained. Python is not trusted: it only
+suggests the identities that Lean checks. The source states this, and it matters for the trust model: no
+numerical evidence enters these theorems.
+\end{dictionary}
+
+
+\begin{physics}
+The Ising CFT ($c=1/2$, primaries $1,\sigma,\varepsilon$ of weights $0,\frac1{16},\frac12$) is the continuum limit of the
+critical two-dimensional Ising model, equivalently a free Majorana fermion. Heuristically, its vacuum relation at weight six
+reflects that, for a single real fermion $\psi$, products of $T=-\frac12\psi\partial\psi$ satisfy an extra identity (from
+$\psi^2=0$); $M(2,7)$ is a non-unitary model with the same first singular level. The nonzero derivatives
+$84084$ and $102102$ say these relations cannot survive any change of $c$.
+\end{physics}
+
+\subsection{Tricritical Ising: \texorpdfstring{$M(4,5)$, $c = 7/10$}{M(4,5), c = 7/10}}
+
+Here the first singular level is $3\cdot4 = 12$, where $V(c,0)_{12}$ has dimension $21$. The library certifies an
+explicit weight-twelve combination of the $21$ partition words with integer coefficients, proves it is
+annihilated by $L_1$ and $L_2$ at $c = 7/10$ (hence lies in the maximal ideal and vanishes in $L(\frac7{10},0)$),
+proves it is nonzero at every charge (its ``vacuum survival'' value is $8000$), and computes its norm
+polynomial, a polynomial of degree six whose derivative at $7/10$ is $128451135137139360$:
+\begin{leancode}
+noncomputable def tricriticalC : ℂ := 7/10
+
+theorem tricritical_weight12_central {V : Type*} [AddCommGroup V] [Module ℂ V]
+    (δ : ℂ) (v : V) :
+    let K : End ℂ (V × V) := tricriticalC • 1+δ • tangentShift
+    (321372476328566880:ℂ) • K (v,0) +
+      (-1083581144832396000:ℂ) • (K^2) (v,0) +
+      (866474649917232000:ℂ) • (K^3) (v,0) +
+      (36252776782320000:ℂ) • (K^4) (v,0) +
+      (527065804800000:ℂ) • (K^5) (v,0) +
+      (2949120000000:ℂ) • (K^6) (v,0) = (0,(128451135137139360*δ) • v) := by
+
+theorem tricritical_graded_rigidity : Deform.IsRigidGraded (virasoroSimple tricriticalC) := by
+
+theorem minimal_four_five_graded_rigidity :
+    Deform.IsRigidGraded (virasoroSimple (minimalCentralCharge 4 5)) := by
+\end{leancode}
+(\lean{VOA.VirDeformModes.*}, \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroTricriticalRigidity.lean}; the certificate,
+with 555 private ordered-word reductions, is in \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroTricriticalNorm.lean}.)
+
+
+\begin{physics}
+The tricritical Ising model ($c=7/10$) describes the tricritical point of the Blume--Capel model and is the
+simplest superconformal minimal model; its first vacuum null vector sits at weight twelve, which is why the
+explicit certificate is large. Rigidity says the tricritical point is isolated among chiral algebras generated
+by $T$.
+\end{physics}
+
+\subsection{The families \texorpdfstring{$M(2,q)$}{M(2,q)} and \texorpdfstring{$M(p,3)$}{M(p,3)}}
+
+Two infinite families were done uniformly before the general theorem, each by constructing the relevant null
+vector by an explicit recursion and proving its norm derivative nonzero.
+
+\emph{$M(2,q)$, $q$ odd.} In Kac's parametrisation $c(t) = 13-6t-6/t$, the choice $t = (N+1)/2$ makes the
+$(1,N)$ Kac weight $h_{1,N}(t) = \frac{(N-t)^2-(t-1)^2}{4t}$ equal to $0$, and $c((N+1)/2) = c_{2,N+1}$
+(\lean{bsaCharge_eq_minimal}). The vacuum module therefore contains the $(1,N)$ singular vector of
+Benoit and Saint-Aubin, built by a finite recursion in the $L_{-1},L_{-2}$ (the library constructs it from the
+Ward identities for $L_1$, $L_2$, with only the denominators $r(N-r)$, without assuming a singular-vector
+formula). For even $N$ the norm derivative is identified with a ``diagonal response'' computed by a
+three-term recurrence and a contiguous relation, and shown nonzero.
+\begin{leancode}
+noncomputable def bsaCharge (N : ℕ) : ℂ :=
+  13 - 3*((N:ℂ)+1) - 12/((N:ℂ)+1)
+
+theorem bsa_even_graded_rigidity (k : ℕ) :
+    Deform.IsRigidGraded (VirSimple.virasoroSimple (bsaCharge (2*(k+2)))) :=
+
+theorem minimal_two_graded_rigidity (q : ℕ) (hq : 2≤q) (hcop : Nat.Coprime 2 q) :
+    Deform.IsRigidGraded (VirSimple.virasoroSimple (minimalCentralCharge 2 q)) := by
+
+theorem minimal_right_two_graded_rigidity (p : ℕ) (hp : 2≤p) (hcop : Nat.Coprime p 2) :
+    Deform.IsRigidGraded (VirSimple.virasoroSimple (minimalCentralCharge p 2)) := by
+\end{leancode}
+(\lean{VOA.VirModule.bsaCharge}, \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroBSARecursion.lean}; the three theorems,
+\leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroBoundaryRigidity.lean}. \lean{bsa_even_graded_rigidity k} covers $q = 2k+5$;
+$q = 3$ is the zero-charge case; coprimality with $2$ supplies oddness.)
+
+\emph{$M(p,3)$.} At $t = 3/p$ the $(p-1,2)$ Kac weight is $0$ and the first vacuum singular level is
+$2(p-1)$. The library constructs the singular vector by a ``fusion'' recursion (a triangular system dividing
+only by charge-independent nonzero diagonals, nonresonant by coprimality with $3$), transports the
+construction to a moving charge, proves the moving-norm identity
+$\langle S(t),S(t)\rangle = -d_R(t)\,C(t)$ with $d_R$ vanishing simply at $t_0 = 3/p$ and $C(t_0)\ne0$ (the latter by a finite
+hypergeometric-resonance argument), and concludes that the norm derivative is nonzero.
+\begin{leancode}
+theorem minimal_three_graded_rigidity (p : ℕ) (hp : 2≤p) (hcop : Nat.Coprime p 3) :
+    Deform.IsRigidGraded (VirSimple.virasoroSimple (minimalCentralCharge p 3)) := by
+
+theorem minimal_left_three_graded_rigidity (q : ℕ) (hq : 2≤q) (hcop : Nat.Coprime 3 q) :
+    Deform.IsRigidGraded (VirSimple.virasoroSimple (minimalCentralCharge 3 q)) := by
+\end{leancode}
+(\lean{VOA.InverseDS.VirasoroVerma.*}, \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroMinimalThreeRigidity.lean}; the
+construction occupies the \lean{VirasoroFusion*}, \lean{VirasoroMinimalThree*}, \lean{VirasoroThreeMoving*}
+and \lean{VirasoroMovingNormDerivative} files of this chapter.)
+
+\begin{status}
+Every theorem of this section is proved; \texttt{\#print axioms} gives
+\lean{[propext, Classical.choice, Quot.sound]} for \lean{zeroCharge_graded_rigidity},
+\lean{leeYang_graded_rigidity}, \lean{ising_graded_rigidity}, \lean{m27_graded_rigidity},
+\lean{tricritical_graded_rigidity}, \lean{minimal_four_five_graded_rigidity}, \lean{bsa_even_graded_rigidity},
+\lean{minimal_two_graded_rigidity}, \lean{minimal_right_two_graded_rigidity},
+\lean{minimal_three_graded_rigidity} and \lean{minimal_left_three_graded_rigidity}
+(Section~\ref{l07:sec:axioms}). No \lean{VOA.pbw}. All unconditional statements of graded first-order
+rigidity. Full names: the tricritical theorems are \lean{VOA.VirDeformModes.tricritical_graded_rigidity}
+and \lean{VOA.VirDeformModes.minimal_four_five_graded_rigidity}; the three-label theorems are
+\lean{VOA.InverseDS.VirasoroVerma.minimal_three_graded_rigidity} and
+\lean{VOA.InverseDS.VirasoroVerma.minimal_left_three_graded_rigidity}; the two-label theorems are
+\lean{VOA.VirModule.minimal_two_graded_rigidity} and \lean{VOA.VirModule.minimal_right_two_graded_rigidity}
+(not all in \lean{VOA.VirModule}, despite the headline's namespace).
+\end{status}
+
+\begin{warning}\label{l07:warn:tautology}
+\textbf{A ``structural'' rigidity theorem that was a tautology.} Before the cases above were proved, the file
+\leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroRigidityStructural.lean} stated rigidity of Ising, $M(2,7)$ and Lee--Yang from a
+graded-dimension jump, under a hypothesis
+\begin{leancode}
+def RealisedByNondegenerate (U : VertexOperatorAlgebra 𝒰) (n : ℤ) (d : ℕ) : Prop :=
+  (∃ D : FirstOrderDeformation U, D.IsGraded ∧ ¬ D.IsTrivial) → finrank ℂ (U.grading n) = d
+
+theorem isRigidGraded_of_finrank_lt (U : VertexOperatorAlgebra 𝒰) (n : ℤ) (d : ℕ)
+    (hE : RealisedByNondegenerate U n d) (hlt : finrank ℂ (U.grading n) < d) :
+    IsRigidGraded U := by
+\end{leancode}
+intended to mean ``a modulus would move $U$ along the family $c\mapsto L(c,0)$, preserving graded dimensions''.
+An adversarial audit showed that, given the (proved) jump \lean{hlt}, the hypothesis \lean{hE} is
+\emph{logically equivalent to the conclusion}: \lean{hE} unfolds to ``a nontrivial graded deformation exists
+$\Rightarrow$ (a false equation)'', i.e.\ to \lean{IsRigidGraded U}. The library now records the certificate
+\begin{leancode}
+theorem realisedByNondegenerate_iff_isRigidGraded
+    {V : Type*} [AddCommGroup V] [Module ℂ V] (W : VertexOperatorAlgebra V)
+    (n : ℤ) (d : ℕ) (hlt : Module.finrank ℂ (W.grading n) < d) :
+    VirRigidStruct.RealisedByNondegenerate W n d ↔ Deform.IsRigidGraded W := by
+\end{leancode}
+(\lean{VOA.VirRigidTangent.realisedByNondegenerate_iff_isRigidGraded},
+\leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroRigidityTangent.lean}). So the instances
+\lean{isRigidGraded_virasoroSimple_ising} etc.\ in that file read ``if $L(c,0)$ is graded rigid then it is graded
+rigid''. They remain in the library (with honest docstrings) but are \emph{not} the rigidity theorems; the
+unconditional theorems of this section are. The lesson, which the project applies throughout: a hypothesis
+must be checked for \emph{uniform derivability from the conclusion}, not merely for truth. (The unconditional
+content of that file --- the gauge line and the dimension jump
+$\dim L(\frac12,0)_6<\dim L(1,0)_6$ --- is correct.)
+\end{warning}
+
+\begin{physics}
+$M(2,q)$ are the non-unitary ``Lee--Yang series'' (they include Lee--Yang at $q=5$); their vacuum null vector
+is of Benoit--Saint-Aubin type, the explicit $(1,s)$ null vectors found in the study of degenerate fields, whose
+decoupling gives order-$s$ differential equations for correlators. $M(p,3)$ include the Ising model
+$M(4,3)$. In both families the physics is the same as in the single cases: the null vector pins the central
+charge to first order.
+\end{physics}
+
+
+%======================================================================
+\section{All minimal models}\label{l07:sec:all}
+%======================================================================
+
+\begin{theorem}[Graded first-order rigidity of the Virasoro minimal models]\label{l07:thm:main}
+Let $p,q\ge2$ be coprime integers and $\lsevencpq = 1-6(p-q)^2/(pq)$. Every graded first-order deformation of
+the simple Virasoro vertex operator algebra $L(\lsevencpq,0)$ is trivial: there is a grade-preserving linear map
+$\varphi$ with $\varphi(\lsevenvac) = 0$ such that $u^1_{(n)}v = (\varphi u)_{(n)}v - \varphi(u_{(n)}v) + u_{(n)}\varphi v$ for all
+$u,v,n$.
+\end{theorem}
+\begin{leancode}
+theorem minimal_graded_rigidity (p q : ℕ) (hp : 2 ≤ p) (hq : 2 ≤ q)
+    (hcop : p.Coprime q) :
+    IsRigidGraded (virasoroSimple (minimalCentralCharge p q)) := by
+  apply minimal_rigidity_of_infinite_kac_roots p q hp hq hcop
+  intro r s hr hs _
+  exact infinite_integer_screening_roots r s hr hs
+\end{leancode}
+(\lean{VOA.VirModule.minimal_graded_rigidity}, \leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroMinimalRigidityComplete.lean};
+the three-line proof is shown because it is informative: it is the composition of two named theorems.)
+
+\begin{dictionary}
+\textbf{Decoding the statement.}
+\begin{itemize}
+\item \lean{(p q : ℕ)}: natural numbers; \lean{hp}, \lean{hq}: $p,q\ge2$; \lean{hcop : p.Coprime q}:
+  $\gcd(p,q) = 1$. These are exactly the standard labels of the minimal models; the order of $p,q$ is
+  irrelevant (the formula is symmetric and both orders are allowed), and $p = q$ is excluded by coprimality.
+  There is no unitarity assumption: non-unitary models such as Lee--Yang are included.
+\item \lean{minimalCentralCharge p q} is Definition~\ref{l07:def:cpq}, a rational number, silently cast to
+  $\C$.
+\item \lean{virasoroSimple c} is $L(c,0)$, the quotient of the universal vacuum VOA $V(c,0)$ by its maximal
+  proper ideal (Definition~\ref{l07:def:Lc}); it is simple, with nonzero vacuum, for every $c$.
+\item \lean{IsRigidGraded} is Definition~\ref{l07:def:rigid}, examined in Section~\ref{l07:sec:fidelity-rigid}.
+\end{itemize}
+
+\textbf{Every hypothesis is the intended one, and there are no others.} The statement has no hypothesis about
+singular vectors, determinants, characters, vacuum survival, norm derivatives, or deformations; earlier
+versions of the theorem (\lean{minimal_graded_rigidity_of_kac_singular}, \lean{graded_rigidity_of_verma_kac},
+\lean{minimal_rigidity_of_infinite_kac_roots}) carried such inputs as explicit hypotheses, and the final
+theorem discharges them, as its displayed proof shows.
+
+\textbf{Same as the intended theorem?} Yes, in the sense of Section~\ref{l07:sec:fidelity-rigid}: it is
+\emph{graded} first-order rigidity of the vacuum VOA of every minimal model, over the dual numbers, modulo
+graded vacuum-preserving coordinate changes, with the conformal vector allowed to move. It does not assert
+rigidity among ungraded deformations (where the library's \lean{IsRigid} is false for a definitional reason,
+Warning~\ref{l07:warn:isrigid}), higher-order or analytic rigidity, rigidity of the minimal-model modules or
+of the full non-chiral CFT, or the rationality of $L(\lsevencpq,0)$ (which is Wang's theorem, a separate matter).
+
+\textbf{Could it be vacuous?} The hypotheses are satisfiable ($p = 2$, $q = 3$, \dots); the object
+$L(\lsevencpq,0)$ is a genuine nonzero simple VOA (for $(p,q)\ne(2,3),(3,2)$ it is infinite-dimensional, with
+$\omega\neq0$); the deformation notion contains every genuine graded first-order deformation and admits nonzero
+graded cocycles (e.g.\ $\delta L_0$); the conclusion is not a tautology of the definitions: it fails for
+$V(c,0)$ at every $c$, machine-checked (\lean{VOA.}\allowbreak\lean{VirPoly.}\allowbreak\lean{not_}\allowbreak\lean{isRigidGraded_}\allowbreak\lean{virasoroVOA}, Remark~\ref{l07:rem:nonvacuity}).
+
+\textbf{The label $(2,3)$.} At $(p,q) = (2,3)$ (or $(3,2)$) the central charge is $c_{2,3} = 0$, and
+$L(0,0) = \C\lsevenvac$ is the one-dimensional VOA (Section~\ref{l07:sec:zero}); its graded rigidity is
+trivially true, since $Y_1\lsevenvac = 0$ is forced by (D2). This instance of the theorem carries no content.
+It is harmless: the other labels do.
+\end{dictionary}
+
+\begin{physics}
+Every Virasoro minimal model --- Ising, tricritical Ising, Potts, Lee--Yang and all non-unitary $M(p,q)$ --- has a chiral
+algebra with no exactly marginal deformations (to first order, among weight-preserving perturbations): the
+minimal models are isolated points, not members of continuous families. This matches the physical picture
+in which $c$ is quantised by null-vector decoupling and the Kac table, and the classification of minimal
+models as a discrete list. Honest caveats: this is a statement about the chiral vacuum algebra only (not about
+the full non-chiral CFT with its modular-invariant combination of sectors, nor about its modules), and about
+first order only. That the full CFT is isolated too is widely believed, but it is a different statement
+(about weight-$(1,1)$ fields of the non-chiral theory) and is not what is proved.
+\end{physics}
+
+\subsection{The proof on paper}
+
+Fix coprime $p,q\ge2$, put $c_0 = \lsevencpq$ and $N = (p-1)(q-1)$, and let $D$ be a graded first-order deformation
+of $L(c_0,0)$.
+\begin{enumerate}
+\item \emph{Normal form} (Section~\ref{l07:sec:anatomy}). $D$ determines scalars $\alpha,\beta$ and normalised modes
+  $\widetilde L_n$ on $\lsevenV\oplus t\lsevenV$ satisfying the Virasoro relations with central operator $c_0+\delta\lsevenN$,
+  $\delta = 2\alpha-\beta c_0$.
+\item \emph{Reconstruction} (Theorem~\ref{l07:thm:zerodelta}). If $\delta = 0$ then $D$ is trivial.
+\item \emph{Obstruction} (Theorem~\ref{l07:thm:det}). If the vacuum Gram determinant $D_N(c) = \det G_N(c)$ has a
+  simple zero at $c_0$, then $\delta = 0$.
+\item \emph{Representation theory} (Chapter~\ref{ch:L06}). $D_N(c_0) = 0$ and $D_N'(c_0)\ne0$.
+\end{enumerate}
+Steps 1--3 are this chapter's; step 4 is a statement purely about the universal Virasoro vacuum module, and is
+the deep input. In the literature it follows from the Kac determinant formula for the vacuum module (Gorelik and
+Kac): $D_N(c)$ is, up to a nonzero constant, $\prod(c-c_{a,b})^{\dim L(h;c_{a,b})_N}$ over primitive labels, and
+at the first level $N = (p-1)(q-1)$ the factor $c-c_{p,q}$ occurs exactly once (the lowest weight space of the
+irreducible quotient is one-dimensional) while every other factor is nonzero at $c_0$ (distinct coprime label
+pairs with ratios $>1$ give distinct charges). The Lean proof does \emph{not} cite this; it proves step 4 from
+scratch along the following route, all of which lives in files of Chapter~\ref{ch:L06}:
+\begin{enumerate}[label=(\alph*)]
+\item \emph{Kac parametrisation.} $c(t) = 13-6t-6/t$, $h_{r,s}(t) = \frac{(rt-s)^2-(t-1)^2}{4t}$; for $p>q$ one takes
+  $t = p/q$, so that $c(p/q) = c_{p,q}$, and the label $(q-1,p-1)$ has $h = 0$ at level $(p-1)(q-1)$.
+\item \emph{Gram roots from free fields.} For positive integers $r,s,m$, at $t = m^2$, an explicit finite
+  ``screening'' polynomial in a rank-one charged Fock space is a nonzero state of energy $rs$ annihilated by
+  $L_1$ and $L_2$; a transfer argument (equal level dimensions of Fock and Verma, injectivity below the first
+  degenerate level) turns it into a zero of the Verma Gram determinant at $(c(t),h_{r,s}(t))$ and level $rs$.
+  This gives, for each label, the infinite family of roots $t\in\{1,4,9,\dots\}$:
+  \lean{infinite_integer_screening_roots}.
+\item \emph{All parameters.} Along a Kac curve the determinant is a Laurent polynomial in $t$; infinitely many
+  roots force it to vanish identically (\lean{kacGram_root_of_infinite}). Strong induction on the level then
+  produces actual nonzero singular vectors at nonreal $t$, and degree exhaustion
+  $\sum_{\lambda\vdash n}\ell(\lambda) = \sum_{rs\le n}p(n-rs)$ identifies the Verma determinant with the Kac product;
+  continuity extends it to all $t\ne0$.
+\item \emph{From Verma to vacuum.} The coefficient of the top power of $h$ in the level-$(n+1)$ Verma determinant
+  equals $2^{p(n)}\det G^{\mathrm{vac}}_{n+1}(c)\det G^{\mathrm{Verma}}_n(c,1)$; comparing with the Kac product, whose
+  relevant factor vanishes simply at $t = p/q$ (derivative $q(q-p)/(2p)\neq0$) while the weight-one factor does not
+  vanish, the chain rule gives $D_N(c_0) = 0\neq D_N'(c_0)$ (\lean{vacuum_simple_of_verma_kac}).
+\end{enumerate}
+The two Lean theorems composed in the displayed proof are the end points of this route:
+\begin{leancode}
+theorem minimal_rigidity_of_infinite_kac_roots (p q : ℕ) (hp : 2 ≤ p)
+    (hq : 2 ≤ q) (hcop : p.Coprime q)
+    (hroots : ∀ r s : ℕ, 0 < r → 0 < s → r*s ≤ (p-1)*(q-1) →
+      ∃ S : Set ℂ, S.Infinite ∧ (∀ t ∈ S, t ≠ 0) ∧
+        ∀ t ∈ S, (vermaGramMatrix (vermaBSACharge t)
+          (fusionKacWeight r s t) (r*s)).det = 0) :
+    IsRigidGraded (virasoroSimple (minimalCentralCharge p q)) := by
+
+theorem infinite_integer_screening_roots (r s : ℕ) (hr : 0 < r) (hs : 0 < s) :
+    ∃ S : Set ℂ, S.Infinite ∧ (∀ t ∈ S, t ≠ 0) ∧
+      ∀ t ∈ S, (vermaGramMatrix (vermaBSACharge t)
+        (fusionKacWeight r s t) (r*s)).det = 0 := by
+\end{leancode}
+(\lean{VOA.InverseDS.VirasoroVerma.minimal_rigidity_of_infinite_kac_roots},
+\leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroKacRootBootstrap.lean};
+\lean{VOA.VirasoroScreening.infinite_integer_screening_roots},
+\leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroScreeningKacRoots.lean}; both files belong to Chapter~\ref{ch:L06}.)
+
+\begin{dictionary}
+\lean{vermaBSACharge t} is $c(t) = 13-6t-6/t$ and \lean{fusionKacWeight r s t} is $h_{r,s}(t)$;
+\lean{vermaGramMatrix c h n} is the level-$n$ Gram (Shapovalov) matrix of the Verma module $M(c,h)$ in the
+partition basis. The hypothesis \lean{hroots} of the first theorem is a statement about Verma modules only ---
+for each positive label $(r,s)$ with $rs\le(p-1)(q-1)$, infinitely many distinct nonzero parameters $t$ at which
+$\det G^{\mathrm{Verma}}_{rs}(c(t),h_{r,s}(t)) = 0$ --- and the second theorem supplies it for \emph{all} positive
+labels, with $S = \{1,4,9,\dots\}$. The source of the first theorem notes that isolated collision parameters could
+not satisfy \lean{hroots}; it genuinely requires infinitely many roots, and gets them. The internal route
+(a)--(d) replaces the external citation of Gorelik--Kac, which the project's paper note
+(\texttt{Notes/Virasoro\_Uniform\_Rigidity\_Argument.tex}) keeps as an alternative exposition, not a proof
+dependency.
+\end{dictionary}
+
+\begin{status}
+\lean{VOA.VirModule.minimal_graded_rigidity}: \textbf{graded first-order rigidity, proved, unconditional}
+(no hypotheses beyond the label conditions; the notion is non-vacuous, since $V(c,0)$ is proved not graded rigid,
+Remark~\ref{l07:rem:nonvacuity}). \texttt{\#print axioms} (run on this
+commit, see Section~\ref{l07:sec:axioms}):
+\begin{plaincode}
+'VOA.VirModule.minimal_graded_rigidity' depends on axioms: [propext, Classical.choice, Quot.sound]
+\end{plaincode}
+\lean{VOA.pbw} does \emph{not} appear: the result does not use \lean{VOA.pbw}. Its hypotheses are only
+the label conditions. (The project's build record reports an aggregate \lean{lake build} of 9,874 jobs and
+a full sequential axiom audit with the same outcome at the time the theorem landed; for this book we re-ran
+\texttt{\#print axioms} on the built tree and did not re-run the aggregate build.) The repository's
+\texttt{README.md} now records the theorem as proved, with the same graded first-order qualification.
+\end{status}
+
+%======================================================================
+\section{Other files of this chapter}\label{l07:sec:others}
+%======================================================================
+
+For completeness, here is what the remaining assigned files contain; none of them is needed for the statements
+above beyond what has been described.
+\begin{itemize}
+\item \leanpath{Core/\allowbreak DeformationCurrentModes}, \leanpath{Core/\allowbreak DeformationPoleForm},
+  \leanpath{Core/\allowbreak DeformationNormalization}, and the current part of
+  \leanpath{Core/\allowbreak DeformationLiftedModes}, \leanpath{Core/\allowbreak DeformationCentralModes}: the weight-one
+  (affine) analogue of Section~\ref{l07:sec:anatomy} --- lifted current modes, the invariant pole pairing, the
+  level variation $k+\delta\lsevenN$, and gauge normalisation via $H^2(\mathfrak g,\mathfrak g) = 0$. They serve the affine
+  rigidity theorems of Chapter~\ref{ch:L09}. \leanpath{Core/\allowbreak DeformationIteration}: the iterate formula on
+  $\lsevenV\times\lsevenV$ used in Section~\ref{l07:sec:reconstruction}.
+\item \leanpath{Core/\allowbreak RankOneTransfer} (completing the square for a positive-definite Hermitian matrix minus a rank-one
+  term), \leanpath{Core/\allowbreak GlobalConformalTowers} (norms of global descendants
+  $\langle L_{-1}^ru,L_{-1}^rv\rangle = r!(2m)_r\langle u,v\rangle$ for quasi-primaries of weight $m$), \leanpath{Core/\allowbreak HorizontalSaturation}
+  ($\mathfrak{sl}_2$ ladder saturation): linear-algebra tools used by the graded-unitarity work of Chapter~\ref{ch:L19}.
+\item \leanpath{Examples/\allowbreak VirasoroDeformationLow}, \leanpath{VirasoroRigidityGramLift}: the tridegree tables of
+  Section~\ref{l07:sec:tridegree} and the level-$4$/$6$ Gram matrices over $\C[X]$ evaluated at dual numbers.
+  \leanpath{VirasoroCDeformation}: the gauge line and the conditional non-rigidity of $V(c,0)$.
+  \leanpath{VirasoroPolyStructure}, \leanpath{VirasoroPolyFields}, \leanpath{VirasoroPolyTensor},
+  \leanpath{VirasoroPolyEnergy}, \leanpath{VirasoroPolyDeriv}, \leanpath{VirasoroCDefBuild},
+  \leanpath{VirasoroCDefJacobi}, \leanpath{VirasoroCDefFinal}: the structure constants of $V(c,0)$ as polynomials in $c$ on
+  the sorted-word basis, their $c$-derivative $\partial_cY$ (\lean{cDeformation}), and the unconditional non-rigidity
+  \lean{not_isRigidGraded_virasoroVOA} (Section~\ref{l07:sec:nonvacuity}). (These files postdate the assignment list of
+  the first edition.)
+  \leanpath{VirasoroDeformationReconstruction}: generation of $L(c,0)$ by $\omega$ and the generated-carrier form of
+  reconstruction.
+\item \leanpath{VirasoroBSA*}, \leanpath{VirasoroVermaBSA*}, \leanpath{VirasoroDescendantBSATransport}: the
+  Benoit--Saint-Aubin $(1,N)$ singular vectors, in the vacuum module and in general Verma modules
+  (\lean{vermaBSA_nonzero_highest_all}: a nonzero highest-weight vector at level $N$ of $M(c(t),h_{1,N}(t))$ for every
+  $t\ne0$, $N>0$). \leanpath{VirasoroFusion*}, \leanpath{VirasoroVacuumFusion*}, \leanpath{VirasoroMinimalThree*},
+  \leanpath{VirasoroThreeMoving*}, \leanpath{VirasoroMovingNormDerivative}, \leanpath{VirasoroMinimalFourVacuum},
+  \leanpath{VirasoroMinimalFusionArithmetic}, \leanpath{VirasoroMinimalChargeArithmetic}: the fusion construction of
+  singular vectors and its arithmetic (nonresonance at prime-power labels; uniqueness of the primitive label of a
+  charge). \leanpath{VirasoroTranslationTangent}, \leanpath{VirasoroTranslationFirstForm}: the translated first-order
+  form, giving the Verma-to-vacuum coefficient identity of step (d).
+\item \leanpath{VirasoroSalazarInterface}: definitions of predicates expressing Salazar's admissible-monomial basis
+  theorem for the boundary simple Virasoro module, with implications between them; nothing is assumed or asserted,
+  and no axiom is added.
+\end{itemize}
+Several of these files contain conditional theorems whose hypotheses were later discharged (for instance
+\lean{graded_rigidity_of_bsa_scalar}, \lean{minimal_graded_rigidity_of_kac_singular},
+\lean{graded_rigidity_of_verma_kac}); their docstrings say ``this conditional theorem does not assert that the
+scalar input holds''. They are correct as stated and are superseded by the unconditional theorems quoted in this
+chapter.
+
+%======================================================================
+\section{Verification record}\label{l07:sec:axioms}
+%======================================================================
+
+When this chapter was first written we ran \texttt{\#print axioms} on the headline declarations, on the already-built tree at
+an earlier commit (not re-run for this edition), with a scratch file importing the relevant modules and the command
+\begin{plaincode}
+export PATH="$HOME/.elan/bin:$PATH"
+lake env lean -DmaxSynthPendingDepth=3 Axioms.lean
+\end{plaincode}
+(the flag avoids the audit trap of Section~\ref{ch15:sec:trap}: a bare \texttt{lake env lean} drops
+\texttt{maxSynthPendingDepth}). Every one of the following reported exactly
+\begin{plaincode}
+depends on axioms: [propext, Classical.choice, Quot.sound]
+\end{plaincode}
+\begin{quote}\small
+\lean{VirModule.minimal_graded_rigidity};
+\lean{VirDeformModes.NormalOrdering.graded_rigidity_of_relation};
+\lean{VirDeformModes.NormalOrdering.graded_rigidity_of_simple_determinant};
+\lean{VirDeformModes.isTrivial_of_zero_central_variation};
+\lean{VirDeformModes.virasoroSimple_exists_normalizedData}; \lean{VirDeformModes.normalizedL_comm};
+\lean{VirDeformModes.virWord_pairing_obstruction}; \lean{Deform.Reconstruction.isTrivial_of_closed_lift};
+\lean{Deform.coboundaries_le_cocycles}; \lean{Deform.isRigid_iff_H_trivial};
+\lean{Deform.isRigidGraded_of_gradedCocycles_le};
+\lean{Deform.gradedCocyclesAt_le_gradedCoboundariesAt_of_isRigid}; \lean{DefForm.lift_iff_pairing_zero};
+\lean{RigidBridge.F2_lt_F1_of_self_pairing_ne_zero}; \lean{RigidBridge.shapForm_symm};
+\lean{NonzeroDeform.not_isRigid_virasoroVOA}; \lean{NonzeroDeform.isGraded_of_isTrivial};
+\lean{NonzeroDeform.shapForm₁_self_eq_zero_of_isTrivial}; \lean{NonzeroDeform.exists_nonzero_deformation};
+\lean{VirCDef.not_isRigidGraded_of_isCDeformation}; \lean{VirCDef.cmode_conformal_of_isCoboundary};
+\lean{VirDeformModes.zeroCharge_graded_rigidity}; \lean{VirDeformModes.leeYang_graded_rigidity};
+\lean{VirDeformModes.ising_graded_rigidity}; \lean{VirDeformModes.m27_graded_rigidity};
+\lean{VirDeformModes.tricritical_graded_rigidity}; \lean{VirDeformModes.minimal_four_five_graded_rigidity};
+\lean{VirModule.minimal_two_graded_rigidity}; \lean{VirModule.minimal_right_two_graded_rigidity};
+\lean{VirModule.bsa_even_graded_rigidity}; \lean{InverseDS.VirasoroVerma.minimal_three_graded_rigidity};
+\lean{InverseDS.VirasoroVerma.minimal_left_three_graded_rigidity};
+\lean{InverseDS.VirasoroVerma.minimal_rigidity_of_infinite_kac_roots};
+\lean{InverseDS.VirasoroVerma.minimal_graded_rigidity_of_kac_singular};
+\lean{VirasoroScreening.infinite_integer_screening_roots};
+\lean{VirRigidTangent.tangent_eq_zero_of_simple_root}; \lean{VirRigidTangent.isolated_root_has_nonzero_tangent};
+\lean{VirRigidStruct.isRigidGraded_of_finrank_lt};
+\lean{VirRigidTangent.realisedByNondegenerate_iff_isRigidGraded}.
+\end{quote}
+(All names in the \lean{VOA} namespace.) The PBW theorem \lean{VOA.pbw} appears in none of them. We did not
+re-run the aggregate \texttt{lake build} for this chapter; the tree had been built, and the \texttt{olean} files of
+the imported modules were present. A clean \texttt{\#print axioms} does not report explicit hypotheses; here the
+headline theorems have none beyond the label conditions, so ``unconditional'' is justified for them, while the
+reduction theorems (\lean{graded_rigidity_of_relation}, \lean{graded_rigidity_of_simple_determinant},
+\lean{minimal_rigidity_of_infinite_kac_roots}, \ldots) are unconditional \emph{implications} whose hypotheses are
+visible in their statements.
+
+\textbf{Re-run 2026-10-27.} At a later commit (not re-run for this edition), with the same command on a
+scratch file, \texttt{\#print axioms} again gave exactly \lean{[propext, Classical.choice, Quot.sound]} for
+\lean{VirModule.minimal_graded_rigidity}, \lean{InverseDS.VirasoroVerma.minimal_three_graded_rigidity},
+\lean{InverseDS.VirasoroVerma.minimal_left_three_graded_rigidity}, \lean{VirDeformModes.tricritical_graded_rigidity},
+\lean{VirDeformModes.minimal_four_five_graded_rigidity}, \lean{VirCDef.cmode_conformal_of_isCoboundary},
+\lean{VirCDef.not_isTrivial_of_omega_witness}, \lean{VirCDef.not_isRigidGraded_of_omega_witness},
+\lean{VirCDef.not_isTrivial_of_isCDeformation}, \lean{VirCDef.not_isRigidGraded_of_isCDeformation} and
+\lean{NonzeroDeform.not_isRigid_virasoroVOA} (all in \lean{VOA}). No aggregate \texttt{lake build} was run.
+
+Release audit 2026-10-27: \texttt{Notes/Textbook/referee/RELEASE\_AUDIT\_RIGIDITY.md}. Its verdict on the
+headline and its special cases is ``announceable with caveats''; the two caveats (graded first-order only;
+non-vacuity argued on paper only) are stated in the opening of the chapter, in
+Section~\ref{l07:sec:fidelity-rigid} and in Remark~\ref{l07:rem:nonvacuity}. The second caveat has since been
+discharged by \lean{VOA.}\allowbreak\lean{VirPoly.}\allowbreak\lean{not_}\allowbreak\lean{isRigidGraded_}\allowbreak\lean{virasoroVOA} (release follow-ups audit,
+\texttt{Notes/Textbook/referee/RELEASE\_AUDIT\_FOLLOWUPS.md}, 2026-10-28: ``with caveats: holds for every $c$; the
+deformation moves $c$''; it reports standard axioms for \lean{cDeformation}, \lean{isCDeformation_cDeformation},
+\lean{cDeformation_isGraded} and \lean{not_isRigidGraded_virasoroVOA}). We did not re-run \texttt{\#print axioms} on these
+for this chapter. The remaining caveat is that rigidity is graded first-order only (plus the remark on the label
+$(2,3)$).
+
+%======================================================================
+\section{Referee's checklist}\label{l07:sec:checklist}
+%======================================================================
+
+\begingroup\small
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.29\textwidth}>{\raggedright\arraybackslash}p{0.33\textwidth}>{\raggedright\arraybackslash}p{0.2\textwidth}>{\raggedright\arraybackslash}p{0.1\textwidth}}
+\toprule
+Lean declaration & Intended meaning & Hypotheses / status & Check\\
+\midrule\endhead
+\lean{Deform.}\allowbreak\lean{FirstOrderDeformation} & $Y+tY_1$ is a VA over $\C[t]/t^2$, same space and vacuum & definition; (D1)--(D4), \lean{finsum} non-vacuous & Def.~\ref{l07:def:fod}\\
+\lean{…FirstOrderDeformation.}\allowbreak\lean{IsGraded} & $Y_1$ respects weights (VA1 at order $t$) & definition (predicate) & Def.~\ref{l07:def:graded}\\
+\lean{Deform.}\allowbreak\lean{IsCoboundary}, \lean{…IsTrivial} & $Y_1 = \delta\varphi$, $\varphi$ graded, $\varphi\lsevenvac = 0$ & definition & Def.~\ref{l07:def:trivial}\\
+\lean{Deform.}\allowbreak\lean{coboundaries_}\allowbreak\lean{le_}\allowbreak\lean{cocycles} & field redefinitions are deformations & none; unconditional & Thm.~\ref{l07:thm:cobcoc}\\
+\lean{Deform.IsRigid} & every deformation trivial & definition; \textbf{TRAP}: false for every $V(c,0)$ (definitional) & Warn.~\ref{l07:warn:isrigid}\\
+\lean{Deform.}\allowbreak\lean{IsRigidGraded} & every graded first-order deformation trivial (graded $H^2 = 0$, vacuum fixed; $\ge$ Linshaw--Qi) & definition; the notion used & Def.~\ref{l07:def:rigid}, §\ref{l07:sec:fidelity-rigid}\\
+\lean{Deform.}\allowbreak\lean{isRigid_}\allowbreak\lean{iff_}\allowbreak\lean{H_}\allowbreak\lean{trivial} & rigidity $\iff$ $H = 0$ & none; unconditional & §\ref{l07:sec:deformations}\\
+\lean{Deform.}\allowbreak\lean{GradedToGlobalRigidity} & tridegree-wise $\Rightarrow$ global & \textbf{named target, not proved}, unused & Warn.~\ref{l07:warn:tridegree}\\
+\lean{VirCDef.}\allowbreak\lean{not_}\allowbreak\lean{isRigidGraded_}\allowbreak\lean{of_}\allowbreak\lean{isCDeformation} & $\partial_c$ would refute rigidity of $V(c,0)$ & conditional; the predicate is inhabited by \lean{VirPoly.cDeformation} & Warn.~\ref{l07:warn:nonvacuity}\\
+\lean{VirPoly.}\allowbreak\lean{not_}\allowbreak\lean{isRigidGraded_}\allowbreak\lean{virasoroVOA} & $V(c,0)$ is not graded first-order rigid, every $c$ & none; unconditional (the witness $\partial_cY$ moves $c$) & §\ref{l07:sec:nonvacuity}\\
+\lean{VOA.}\allowbreak\lean{VirCDef.}\allowbreak\lean{not_}\allowbreak\lean{isTrivial_}\allowbreak\lean{of_}\allowbreak\lean{omega_}\allowbreak\lean{witness} & a deformation of $V(c,0)$ with $\omega^1_{(1)}\omega = 0\neq\omega^1_{(3)}\omega$ is non-trivial & the two $\omega$-values; unconditional & Rem.~\ref{l07:rem:nonvacuity}\\
+\lean{VirCDef.}\allowbreak\lean{cmode_}\allowbreak\lean{conformal_}\allowbreak\lean{of_}\allowbreak\lean{isCoboundary} & gauge line: coboundaries have $\delta = 0$ & $\lsevenV_2 = \C\omega$; unconditional & Thm.~\ref{l07:thm:gaugeline}\\
+\lean{VirDeformModes.}\allowbreak\lean{normalizedL_}\allowbreak\lean{comm} & normalised modes: Virasoro with centre $c+\delta\lsevenN$ & graded, $\lsevenV_1 = 0$; unconditional & §\ref{l07:sec:anatomy}\\
+\lean{Deform.}\allowbreak\lean{Reconstruction.}\allowbreak\lean{isTrivial_}\allowbreak\lean{of_}\allowbreak\lean{closed_}\allowbreak\lean{lift} & closed separated lift $\Rightarrow$ trivial & $W$ simple + 5 lift properties & Thm.~\ref{l07:thm:closedlift}\\
+\lean{VirDeformModes.}\allowbreak\lean{isTrivial_}\allowbreak\lean{of_}\allowbreak\lean{zero_}\allowbreak\lean{central_}\allowbreak\lean{variation} & $\delta = 0\Rightarrow$ trivial, any $c$ & graded; unconditional & Thm.~\ref{l07:thm:zerodelta}\\
+\lean{DefForm.}\allowbreak\lean{lift_}\allowbreak\lean{iff_}\allowbreak\lean{pairing_}\allowbreak\lean{zero} & lifting criterion for null vectors & $B_0$ symmetric, fin.-dim.; unconditional & Prop.~\ref{l07:prop:lift}\\
+\lean{RigidBridge.}\allowbreak\lean{F2_}\allowbreak\lean{lt_}\allowbreak\lean{F1_}\allowbreak\lean{of_}\allowbreak\lean{self_}\allowbreak\lean{pairing_}\allowbreak\lean{ne_}\allowbreak\lean{zero} & a null vector with $\langle s,s\rangle^1\ne0$ does not lift & hypothesis unsatisfiable for trivial $D$; not used & Warn.~\ref{l07:warn:bridge}\\
+\lean{…NormalOrdering.}\allowbreak\lean{graded_}\allowbreak\lean{rigidity_}\allowbreak\lean{of_}\allowbreak\lean{relation} & relation with simple-zero norm $\Rightarrow$ rigid & relation in $L(c,0)$, $P'(c)\ne0$; unconditional & Thm.~\ref{l07:thm:relation}\\
+\lean{…NormalOrdering.}\allowbreak\lean{graded_}\allowbreak\lean{rigidity_}\allowbreak\lean{of_}\allowbreak\lean{simple_}\allowbreak\lean{determinant} & simple zero of $D_n$ $\Rightarrow$ rigid & $D_n(c) = 0\neq D'_n(c)$; unconditional & Thm.~\ref{l07:thm:det}\\
+\lean{VirRigidTangent.}\allowbreak\lean{isolated_}\allowbreak\lean{root_}\allowbreak\lean{has_}\allowbreak\lean{nonzero_}\allowbreak\lean{tangent} & isolated root $\not\Rightarrow$ rigid & none & Warn.~\ref{l07:warn:doubleroot}\\
+\lean{VirRigidStruct.}\allowbreak\lean{isRigidGraded_}\allowbreak\lean{of_}\allowbreak\lean{finrank_}\allowbreak\lean{lt} & ``dimension jump'' rigidity & \textbf{TAUTOLOGY}: hypothesis $\iff$ conclusion & Warn.~\ref{l07:warn:tautology}\\
+\lean{VOA.}\allowbreak\lean{VirDeformModes.}\allowbreak\lean{zeroCharge_}\allowbreak\lean{graded_}\allowbreak\lean{rigidity} & $M(2,3)$, $c = 0$, $L(0,0) = \C\lsevenvac$: trivially rigid & none; unconditional & §\ref{l07:sec:zero}\\
+\lean{VirDeformModes.}\allowbreak\lean{leeYang_}\allowbreak\lean{graded_}\allowbreak\lean{rigidity} & Lee--Yang $c = -22/5$ & none; unconditional & §\ref{l07:sec:leeyang}\\
+\lean{VirDeformModes.}\allowbreak\lean{ising_}\allowbreak\lean{graded_}\allowbreak\lean{rigidity}, \lean{m27_graded_rigidity} & Ising, $M(2,7)$ & none; unconditional & §\ref{l07:sec:worked}\\
+\lean{VOA.}\allowbreak\lean{VirDeformModes.}\allowbreak\lean{tricritical_}\allowbreak\lean{graded_}\allowbreak\lean{rigidity} (+ \lean{minimal_four_five}) & $M(4,5)$ & none; unconditional & §\ref{l07:sec:worked}\\
+\lean{VOA.}\allowbreak\lean{VirModule.}\allowbreak\lean{minimal_}\allowbreak\lean{two_}\allowbreak\lean{graded_}\allowbreak\lean{rigidity} (+ \lean{right}) & $M(2,q)$, $M(p,2)$ & labels; unconditional & §\ref{l07:sec:worked}\\
+\lean{VOA.}\allowbreak\lean{InverseDS.}\allowbreak\lean{VirasoroVerma.}\allowbreak\lean{minimal_}\allowbreak\lean{three_}\allowbreak\lean{graded_}\allowbreak\lean{rigidity} (+ \lean{left}) & $M(p,3)$, $M(3,q)$ & labels; unconditional & §\ref{l07:sec:worked}\\
+\lean{…minimal_}\allowbreak\lean{rigidity_}\allowbreak\lean{of_}\allowbreak\lean{infinite_}\allowbreak\lean{kac_}\allowbreak\lean{roots} & infinitely many Verma Gram roots $\Rightarrow$ rigid & \lean{hroots} (supplied by screening) & §\ref{l07:sec:all}\\
+\lean{VirModule.}\allowbreak\lean{minimal_}\allowbreak\lean{graded_}\allowbreak\lean{rigidity} (headline) & every graded first-order deformation of every minimal model $L(c_{p,q},0)$ is trivial & $p,q\ge2$ coprime; \textbf{unconditional}, no \lean{pbw}; non-vacuity machine-checked ($V(c,0)$ not graded rigid) & Thm.~\ref{l07:thm:main}\\
+\bottomrule
+\end{longtable}
+\endgroup
+
+%======================================================================
+\section{Notes and references}\label{l07:sec:notes}
+%======================================================================
+
+\textbf{Deformation theory.} The cohomological theory of deformations of associative algebras is due to
+M.~Gerstenhaber, ``On the deformation of rings and algebras'', \emph{Annals of Mathematics} 79 (1964), 59--103;
+the Lie-algebra analogue to A.~Nijenhuis and R.~W.~Richardson, ``Cohomology and deformations in graded Lie
+algebras'', \emph{Bull.\ Amer.\ Math.\ Soc.} 72 (1966), 1--29. For vertex algebras, a cohomology theory in which
+the second cohomology classifies first-order deformations of grading-restricted vertex algebras was developed by
+Y.-Z.~Huang, ``A cohomology theory of grading-restricted vertex algebras'', \emph{Comm.\ Math.\ Phys.} 327 (2014),
+279--307, and ``First and second cohomologies of grading-restricted vertex algebras'', \emph{Comm.\ Math.\ Phys.}
+327 (2014), 261--278. The library constructs no cohomology theory and no comparison with Huang's is formalised.
+
+\textbf{The target statements.} The affine counterpart, rigidity of $L_{-4/3}(\mathfrak{sl}_2)$, is the subject of the
+paper of A.~Linshaw and F.~Qi, arXiv:2601.12017v2 (2026), whose Theorem~3.1 setting (regular deformations, pole
+coefficient) is formalised in \leanpath{VOA/\allowbreak Core/\allowbreak Deformation.lean}; see Chapter~\ref{ch:L09}. The
+Virasoro theorem of this chapter was formulated within the project; the project's working note
+\texttt{Notes/Virasoro\_Uniform\_Rigidity\_Argument.tex} gives a short paper proof using the vacuum Kac
+determinant of M.~Gorelik and V.~Kac, ``On simplicity of vacuum modules'', \emph{Advances in Mathematics} 211
+(2007), 621--677, arXiv:math-ph/0606002, Theorem~4.2.1; the Lean proof does not depend on that citation.
+
+\textbf{Virasoro representation theory.} The Kac determinant: V.~G.~Kac, ``Contravariant form for
+infinite-dimensional Lie algebras and superalgebras'', in \emph{Group Theoretical Methods in Physics}, Lecture
+Notes in Physics 94, Springer (1979), 441--445; B.~L.~Feigin and D.~B.~Fuchs, ``Verma modules over the Virasoro
+algebra'', in \emph{Topology} (Leningrad 1982), Lecture Notes in Mathematics 1060, Springer (1984), 230--245. The
+Benoit--Saint-Aubin null vectors: L.~Benoit and Y.~Saint-Aubin, ``Degenerate conformal field theories and explicit
+expressions for some null vectors'', \emph{Phys.\ Lett.\ B} 215 (1988), 517--522. Fusion constructions of singular
+vectors: e.g.\ A.~Kent, ``Singular vectors of the Virasoro algebra'', \emph{Phys.\ Lett.\ B} 273 (1991), 56--62. Free-field
+(screening) realisations: V.~S.~Dotsenko and V.~A.~Fateev, ``Conformal algebra and multipoint correlation functions
+in 2D statistical models'', \emph{Nucl.\ Phys.\ B} 240 (1984), 312--348.
+
+\textbf{Vertex operator algebras of Virasoro type.} I.~B.~Frenkel and Y.~Zhu, ``Vertex operator algebras associated
+to representations of affine and Virasoro algebras'', \emph{Duke Math.\ J.} 66 (1992), 123--168, construct $V(c,0)$
+and $L(c,0)$ as VOAs; W.~Wang, ``Rationality of Virasoro vertex operator algebras'', \emph{Int.\ Math.\ Res.\ Notices}
+1993, no.~7, 197--211, proves that $L(c_{p,q},0)$ is rational with irreducible modules given by the Kac table. Neither
+rationality nor the module classification is used or proved in this chapter.
+
+\textbf{Physics.} The minimal models: A.~A.~Belavin, A.~M.~Polyakov and A.~B.~Zamolodchikov, ``Infinite conformal
+symmetry in two-dimensional quantum field theory'', \emph{Nucl.\ Phys.\ B} 241 (1984), 333--380; the unitary series:
+D.~Friedan, Z.~Qiu and S.~Shenker, ``Conformal invariance, unitarity, and critical exponents in two dimensions'',
+\emph{Phys.\ Rev.\ Lett.} 52 (1984), 1575--1578. For conformal perturbation theory and marginal deformations see
+P.~Di~Francesco, P.~Mathieu and D.~S\'en\'echal, \emph{Conformal Field Theory}, Springer (1997), and for the
+Lee--Yang model J.~L.~Cardy, ``Conformal invariance and the Yang--Lee edge singularity in two dimensions'',
+\emph{Phys.\ Rev.\ Lett.} 54 (1985), 1354--1356. Standard VOA background: T.~Gannon, \emph{Moonshine beyond the Monster},
+Cambridge University Press (2006), §§3.1, 5.1; J.~Lepowsky and H.~Li, \emph{Introduction to Vertex Operator Algebras and
+Their Representations}, Birkh\"auser (2004).
+
+\textbf{Project records.} The dead ends of Warnings~\ref{l07:warn:isrigid}--\ref{l07:warn:tautology} are also
+recorded in the project's internal records; the book's own catalogue of dead ends is Section~\ref{ch15:sec:deadends}.
+
+\endgroup

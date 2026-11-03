@@ -1,0 +1,102 @@
+import VOA.Classification.COne.OrbIcoZModeTable02
+
+/-! Exact constant-pivot elimination in the genuine icosahedral Zhu algebra. -/
+set_option Elab.async false
+set_option maxSynthPendingDepth 3
+set_option maxRecDepth 100000
+set_option linter.style.longLine false
+noncomputable section
+namespace VOA.Classification.COne.OrbIcoZ
+open VOA VertexOperatorAlgebra OrbOdd OrbZhu Polynomial OrbIco
+
+def modeExpression15 : ModeRel := [(55, [mkRat (49516) 1323, mkRat (872) 1323]),
+ (67, [mkRat (-444897149055787) 12877716852, mkRat (915500067302439361) 20282404041900, mkRat (261095517561617797) 6084721212570, mkRat (-639599768512707796) 3042360606285, mkRat (-1428055679781411116) 15211803031425, mkRat (-55413707432678624) 3042360606285, mkRat (-5812658004839104) 15211803031425, mkRat (-31538725914112) 15211803031425]),
+ (71, [mkRat (0) 1, mkRat (190579041904297) 83621538, mkRat (12887907076928601163) 482914381950, mkRat (-238598327382354806953) 5070601010475, mkRat (-64542254226698563208) 1014120202095, mkRat (455797175956086263528) 5070601010475, mkRat (46222807589356609984) 5070601010475, mkRat (10448026596753250432) 5070601010475, mkRat (231467670842678272) 5070601010475, mkRat (70695822344192) 563400112275])]
+
+set_option maxHeartbeats 8000000 in
+theorem modeExpression15_check :
+    equalRelCheck (substRel modeInterp14 (specialize (66) rawSymbolRows))
+      ([(53, [mkRat (-928911222036475776) 1])] ++ scaleRel [mkRat (928911222036475776) 1] modeExpression15) = true := by
+  decide +kernel
+
+def modeInterp15 (k : ℤ) : ModeRel :=
+  if k = (53) then modeExpression15 else modeInterp14 k
+
+theorem modeInterp15_correct (k : ℤ) :
+    selfMode k = evalRel Wi selfMode (modeInterp15 k) := by
+  exact modeInterp_update modeInterp14 modeInterp14_correct (specialize (66) rawSymbolRows) modeExpression15
+    (53) (mkRat (-928911222036475776) 1) (by decide +kernel) (specializedNull_holds (66)) modeExpression15_check k
+
+def modeExpression16 : ModeRel := [(55, [mkRat (-19528) 147, mkRat (-872) 147]),
+ (67, [mkRat (6999700895393) 55032978, mkRat (-91680174763741426) 563400112275, mkRat (-52679827043180749) 307309152150, mkRat (1309412673832176404) 1690200336825, mkRat (628385337159234188) 1690200336825, mkRat (134471033135654752) 1690200336825, mkRat (5812658004839104) 1690200336825, mkRat (31538725914112) 1690200336825]),
+ (71, [mkRat (0) 1, mkRat (-2998463554763) 357357, mkRat (-2642407994945505086) 26828576775, mkRat (96282884139411111403) 563400112275, mkRat (12548819506973656376) 51218192025, mkRat (-7433586129174604136) 22536004491, mkRat (-24577835698685253568) 563400112275, mkRat (-985266800576724608) 112680022455, mkRat (-231467670842678272) 563400112275, mkRat (-70695822344192) 62600012475])]
+
+set_option maxHeartbeats 8000000 in
+theorem modeExpression16_check :
+    equalRelCheck (substRel modeInterp15 (specialize (65) rawSymbolRows))
+      ([(52, [mkRat (-1356936276915000000) 1])] ++ scaleRel [mkRat (1356936276915000000) 1] modeExpression16) = true := by
+  decide +kernel
+
+def modeInterp16 (k : ℤ) : ModeRel :=
+  if k = (52) then modeExpression16 else modeInterp15 k
+
+theorem modeInterp16_correct (k : ℤ) :
+    selfMode k = evalRel Wi selfMode (modeInterp16 k) := by
+  exact modeInterp_update modeInterp15 modeInterp15_correct (specialize (65) rawSymbolRows) modeExpression16
+    (52) (mkRat (-1356936276915000000) 1) (by decide +kernel) (specializedNull_holds (65)) modeExpression16_check k
+
+def modeExpression17 : ModeRel := [(55, [mkRat (35143378) 88935, mkRat (77383) 2541, mkRat (7004) 29645]),
+ (67, [mkRat (-3151685959422144041) 8223853067430, mkRat (7614948746170080114971) 15941622869172000, mkRat (680826396544738375169467) 1243446583795416000, mkRat (-1445859862981681677930151) 621723291897708000, mkRat (-1496881543960973811994103) 1243446583795416000, mkRat (-4355842291560828741251) 15543082297442700, mkRat (-5675055790309655797) 310861645948854, mkRat (-4555557953331990004) 19428852871803375, mkRat (-4235511768975892) 6476284290601125]),
+ (71, [mkRat (0) 1, mkRat (1350093724093203251) 53401643295, mkRat (1468520380486424590705379) 4934311840458000, mkRat (-104811117774645923097816629) 207241097299236000, mkRat (-6100307439556285813590991) 7970811434586000, mkRat (202872673567855672458789181) 207241097299236000, mkRat (1074959242401541461459778) 6476284290601125, mkRat (3035309829188193375587) 99635142932325, mkRat (13990801852362401009032) 6476284290601125, mkRat (47780355632468924728) 2158761430200375, mkRat (12742138506330752) 239862381133375])]
+
+set_option maxHeartbeats 8000000 in
+theorem modeExpression17_check :
+    equalRelCheck (substRel modeInterp16 (specialize (64) rawSymbolRows))
+      ([(51, [mkRat (-1669013302280192000) 1])] ++ scaleRel [mkRat (1669013302280192000) 1] modeExpression17) = true := by
+  decide +kernel
+
+def modeInterp17 (k : ℤ) : ModeRel :=
+  if k = (51) then modeExpression17 else modeInterp16 k
+
+theorem modeInterp17_correct (k : ℤ) :
+    selfMode k = evalRel Wi selfMode (modeInterp17 k) := by
+  exact modeInterp_update modeInterp16 modeInterp16_correct (specialize (64) rawSymbolRows) modeExpression17
+    (51) (mkRat (-1669013302280192000) 1) (by decide +kernel) (specializedNull_holds (64)) modeExpression17_check k
+
+def modeExpression18 : ModeRel := [(55, [mkRat (-55328320) 53361, mkRat (-6226790) 53361, mkRat (-14008) 5929]),
+ (67, [mkRat (9978214003392618331) 9868623680916, mkRat (-76085441683457230010209) 62172329189770800, mkRat (-564597253637629791525281) 373033975138624800, mkRat (1137189737801242841011253) 186516987569312400, mkRat (1270365048734369310222949) 373033975138624800, mkRat (3989354866500689916361) 4662924689232810, mkRat (171726469963847282951) 2331462344616405, mkRat (2920733183817186952) 1665330246154575, mkRat (8471023537951784) 1295256858120225]),
+ (71, [mkRat (0) 1, mkRat (-4274394706729172605) 64081971954, mkRat (-1165923739472108313839557) 1480293552137400, mkRat (81260674473206475888681487) 62172329189770800, mkRat (64771255421633475169987529) 31086164594885400, mkRat (-157028138876054986269384503) 62172329189770800, mkRat (-2076577924945383972700108) 3885770574360675, mkRat (-14650239399036160233250) 155430822974427, mkRat (-33391114463779258058032) 3885770574360675, mkRat (-11445770026550656528) 61678898005725, mkRat (-25484277012661504) 47972476226675])]
+
+set_option maxHeartbeats 8000000 in
+theorem modeExpression18_check :
+    equalRelCheck (substRel modeInterp17 (specialize (63) rawSymbolRows))
+      ([(50, [mkRat (-1804307908032000000) 1])] ++ scaleRel [mkRat (1804307908032000000) 1] modeExpression18) = true := by
+  decide +kernel
+
+def modeInterp18 (k : ℤ) : ModeRel :=
+  if k = (50) then modeExpression18 else modeInterp17 k
+
+theorem modeInterp18_correct (k : ℤ) :
+    selfMode k = evalRel Wi selfMode (modeInterp18 k) := by
+  exact modeInterp_update modeInterp17 modeInterp17_correct (specialize (63) rawSymbolRows) modeExpression18
+    (50) (mkRat (-1804307908032000000) 1) (by decide +kernel) (specializedNull_holds (63)) modeExpression18_check k
+
+def modeExpression19 : ModeRel := [(55, [mkRat (66944949320) 27054027, mkRat (450922841729) 1217431215, mkRat (292299296) 22135113, mkRat (79259216) 1217431215]),
+ (67, [mkRat (-24210486467150298120373) 10006784412448824, mkRat (1882729025872807426554997) 663607808404500960, mkRat (1125233987523772767410783207) 298623513782025432000, mkRat (-6483448678044479269809249823) 447935270673038148000, mkRat (-2600456378329911086590620163) 298623513782025432000, mkRat (-19480615474064148486801227) 8295097605056262000, mkRat (-55700099058074210474549) 223967635336519074, mkRat (-8473182502838546628334) 933198480568829475, mkRat (-50300660136042601028) 666570343263449625, mkRat (-26190498086224612208) 265961566962116400375]),
+ (71, [mkRat (0) 1, mkRat (10371122472136094707651) 64979119561356, mkRat (1702794286810361880652857281) 900610597120394160, mkRat (-11708156055929796181698531421) 3828506586949044000, mkRat (-382906422994587888670837402339) 74655878445506358000, mkRat (292726377969169053698750342081) 49770585630337572000, mkRat (6275579392034314177888616527) 4147548802528131000, mkRat (1249050207263011236701778221) 4665992402844147375, mkRat (8923299622565148896119012) 311066160189609825, mkRat (1551130892174037525006248) 1555330800948049125, mkRat (96071886465175814391776) 12664836522005542875, mkRat (9370132349834587648) 9850428406004311125])]
+
+set_option maxHeartbeats 8000000 in
+theorem modeExpression19_check :
+    equalRelCheck (substRel modeInterp18 (specialize (62) rawSymbolRows))
+      ([(49, [mkRat (-1717169112040846464) 1])] ++ scaleRel [mkRat (1717169112040846464) 1] modeExpression19) = true := by
+  decide +kernel
+
+def modeInterp19 (k : ℤ) : ModeRel :=
+  if k = (49) then modeExpression19 else modeInterp18 k
+
+theorem modeInterp19_correct (k : ℤ) :
+    selfMode k = evalRel Wi selfMode (modeInterp19 k) := by
+  exact modeInterp_update modeInterp18 modeInterp18_correct (specialize (62) rawSymbolRows) modeExpression19
+    (49) (mkRat (-1717169112040846464) 1) (by decide +kernel) (specializedNull_holds (62)) modeExpression19_check k
+
+end VOA.Classification.COne.OrbIcoZ

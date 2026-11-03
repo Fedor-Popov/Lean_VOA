@@ -1,0 +1,3019 @@
+\chapter{Existence of the twisted triality I: reduction to Zhu generation}\label{ch:12}
+
+\providecommand{\chtwelveO}{\mathcal{O}}
+\providecommand{\chtwelveG}{\mathcal{G}}
+
+\section{What this chapter is about}\label{ch12:sec:intro}
+
+This chapter documents the release of the LeanVOA library named in the front matter. Every Lean quotation below is checked by \texttt{scripts/textbook/sync.py} to occur verbatim (up to whitespace and comments) in the source files of that release. Checks that were run at an earlier state of the library and not re-run for this edition are marked as such.
+
+The Moonshine module of Frenkel, Lepowsky and Meurman is the vector space
+\begin{equation*}
+  \Vnat \;=\; V_\Leech^{+}\;\oplus\;(V_\Leech^{T})^{+},
+\end{equation*}
+the $\theta$-fixed part of the Leech lattice vertex operator algebra together with the $\theta$-fixed
+part of its $\theta$-twisted module.  Earlier chapters of the Moonshine Part built both summands and
+the vertex operators on the four ``blocks'' (untwisted $\times$ untwisted, untwisted $\times$
+twisted, twisted $\times$ untwisted, twisted $\times$ twisted), and reduced the Jacobi identity of
+$\Vnat$ to one family of identities.  The tool FLM use to control the twisted $\times$ twisted block
+is the \emph{triality}: an extra symmetry $\sigma$ of $\Vnat$ that mixes the untwisted and the twisted
+summands.
+
+To describe $\sigma$ one refines the decomposition of $\Vnat$ by a \emph{Golay frame}
+(Chapter~\ref{ch:11}): the description of $\Leech$ through the Golay code together with the vector
+$w=8e_0$, which singles out a sublattice and two involutions, recalled precisely in \S\ref{ch12:sec:recall}.  There is an index-two sublattice $\Leech_0\subset\Leech$, an involution $g$ of
+$V_\Leech^+$ acting by $-1$ on the charges outside $\Leech_0$, and a matching involution $J$ on the
+twisted space.  They split
+\begin{equation}\label{ch12:eq:fourblocks}
+  \Vnat \;=\; V_0^{+}\;\oplus\;V_3^{+}\;\oplus\;T_0^{+}\;\oplus\;T_1^{+},
+\end{equation}
+where $V_0^+$ is the $g$-fixed part of $V_\Leech^+$ (a vertex operator algebra, isomorphic to
+$V_{\Leech_0}^+$), $V_3^+$ the $g=-1$ part of $V_\Leech^+$, and $T_s^+$ ($s\in\Z/2$) the two
+$J$-eigenspaces of $(V_\Leech^T)^+$.  The triality restricts to an automorphism $\sigma\in\Aut V_0^+$
+of order two, constructed in Chapter~\ref{ch:11} from the Golay code, and FLM's theorem says that
+$\sigma$ extends to all of $\Vnat$, exchanging $V_3^+$ with one of the two twisted sectors and mapping
+the other twisted sector to itself.
+
+Extending $\sigma$ means constructing linear maps
+\begin{equation}\label{ch12:eq:sigmaproblem}
+  \Phi : V_3^+ \to T_{s}^+, \qquad \Phi(u_{(n)}x) = (\sigma u)_{(n)}\,\Phi(x)
+  \quad (u\in V_0^+,\ n\in\Z,\ x\in V_3^+),
+\end{equation}
+and similarly $T_{s'}^+\to T_{s'}^+$.  A map with property \eqref{ch12:eq:sigmaproblem} is called a
+\emph{$\sigma$-twisted intertwiner}.  Physically: $V_0^+$ is a chiral algebra, $V_3^+$ and $T_s^+$
+are two of its superselection sectors, and $\sigma$ is a symmetry of the chiral algebra; the question
+is whether the sector $V_3^+$, with every field twisted by $\sigma$, is equivalent to a twisted sector.
+The difficulty is that \eqref{ch12:eq:sigmaproblem} is a condition on infinitely many modes of
+infinitely many states; neither Dolan--Goddard--Montague nor the modern literature writes the map down
+explicitly on twisted states.
+
+This chapter proves, in Lean, that the existence of such maps follows from a \emph{finite} statement
+about the weight-two top levels of the modules (each $49152$-dimensional), and that this finite
+statement need only be checked for the zero modes of \emph{weight-two} states of $V_0^+$.  The second
+half of that sentence is the theorem that the weight-two subspace \emph{Zhu-generates} $V_0^+$:
+\begin{equation*}
+  \text{every subspace of } V_0^+ \text{ containing } \mathbf 1,\ \chtwelveO(V_0^+),\ (V_0^+)_2
+  \text{ and closed under Zhu's product } \ast \text{ is all of } V_0^+ .
+\end{equation*}
+That theorem, \lean{VOA.Moonshine.zhuGenerated_weightTwo}, is the headline of the chapter.  Its proof
+mixes vertex algebra (a filtered form of the commutator formula in Zhu's algebra), explicit
+Heisenberg computations, and the combinatorics of the extended binary Golay code, including a
+counting proof of the existence of the Steiner system $S(5,8,24)$ (a family of $8$-element subsets, the
+\emph{octads}, of a $24$-element set such that every $5$-element subset lies in exactly one of them).  The weight-two identities
+themselves, and hence the existence of $\sigma$, are the subject of Chapter~\ref{ch:13}.
+
+\subsection*{The chain of reductions}
+
+The logical structure is a chain of implications, each a Lean theorem.  Reading from the goal
+backwards:
+\begin{enumerate}[label=(\arabic*)]
+\item A $\sigma$-twisted intertwiner $\Phi$ with $\Phi(x_0)=y_0$ exists if and only if every linear
+  relation among the vectors $u^1_{(n_1)}\cdots u^k_{(n_k)}x_0$ also holds among the vectors
+  $(\sigma u^1)_{(n_1)}\cdots(\sigma u^k)_{(n_k)}y_0$ (``annihilator compatibility'';
+  \S\ref{ch12:sec:twint}).
+\item Annihilator compatibility follows from a linear map $\varphi$ on the top level that intertwines
+  the zero modes $o(a)$ of all homogeneous $a\in V_0^+$, maps into the right sector, and is non-zero
+  in a precise sense (\S\ref{ch12:sec:top}).  The proof uses Li's single-mode spanning lemma and a
+  nondegenerate invariant form on the target only.
+\item Intertwining the zero modes of \emph{all} $a$ follows from intertwining those of a
+  Zhu-generating set $G$ (\S\ref{ch12:sec:zhugen}).  This is the ``easy direction'' of Zhu's theory:
+  zero modes on a lowest-weight space multiply according to $\ast$ and kill $\chtwelveO(V)$.
+\item $G=(V_0^+)_2$ is Zhu-generating (\S\S\ref{ch12:sec:filtered}--\ref{ch12:sec:headline}).
+\end{enumerate}
+Every step is \texttt{\#print axioms}-clean (only \lean{propext}, \lean{Classical.choice},
+\lean{Quot.sound}), and none uses \lean{VOA.pbw} (the PBW theorem of Chapter~\ref{ch:L02}; formerly a project axiom, now a theorem).  Step (2) was deliberately
+designed to avoid the library's Verma-module route, which would then have imported the axiom \lean{VOA.pbw}
+(\S\ref{ch12:sec:whynotverma}).
+
+\subsection*{How to read this chapter}
+
+Following the book's constitution, each definition and theorem is presented as: mathematical
+statement; the Lean declaration copied verbatim, with its file; a \emph{fidelity check} (the box
+``From the mathematics to the Lean statement'') which decodes the Lean statement, lists every
+hypothesis, and says whether the Lean statement is the same as, stronger or weaker than the
+mathematics and why it is not vacuous; a proof on paper; and a status box recording what the machine
+verified.  Proof bodies are not reproduced.  The chapter ends with a referee's checklist
+(\S\ref{ch12:sec:checklist}).
+
+\section{The objects, recalled}\label{ch12:sec:recall}
+
+\subsection{Standing conventions: modes}\label{ch12:sec:modes}
+
+Throughout this chapter a field is written $Y(u,z)=\sum_{n\in\Z}u_{(n)}z^{-n-1}$, and $u_{(n)}$, the
+coefficient of $z^{-n-1}$, is the \emph{$n$-th mode} of $u$; for states $u,v$ of a VOA, $u_{(n)}v$ is
+the \emph{$n$-th product}.  If $u$ has weight $k$, then $u_{(n)}$ raises weights by $k-n-1$; so
+$u_{(k-1)}$ preserves weight (the zero mode $o(u)$ of \S\ref{ch12:sec:zhu}), $u_{(-1)}$ is the
+normal-ordered product ($u_{(-1)}\mathbf 1=u$), and $u_{(n)}\mathbf 1=0$ for $n\ge0$.  In Lean a field is
+stored as a function of the exponent, and \lean{mode f n} returns the coefficient at exponent $-n-1$
+(Definition~\ref{l01:def:mode}); thus \lean{mode (Y u) n} $=u_{(n)}$ and \lean{W.smul u n v} $=u_{(n)}v$.  For a
+module, \lean{A.act u n x} (or \lean{mode (M.YM u) n x}) is $u_{(n)}x$.  On the plus part of the twisted
+module the integer mode $u_{(n)}$ is stored at the doubled index $2n$ (\lean{mode_plusModule}, below).
+Weak modules (Definition~\ref{l12:def:weakmodule}) are vector spaces with such fields satisfying the vacuum axiom,
+truncation ($u_{(n)}x=0$ for $n\gg0$) and the Jacobi identity; ordinary modules (\lean{OrdVModule})
+additionally carry an $L_0$-grading with finite-dimensional weight spaces and weights bounded below.
+The statements of this chapter mention a handful of objects constructed earlier in the Moonshine
+Part.  We recall each of them with its Lean source and meaning; full treatments are in the chapters
+indicated.
+
+\subsection{Lattices: \texorpdfstring{$\Leech$}{Λ} and \texorpdfstring{$\Leech_0$}{Λ₀}}
+
+The Leech lattice is realised in the library as a sublattice of $\Z^{24}$ with the form
+$\langle x,y\rangle = x\cdot y/8$ (``$\sqrt 8$-coordinates''): $\Leech$ consists of integer vectors all
+of whose coordinates have the same parity, subject to Golay-code and congruence conditions recalled in
+Chapter~\ref{ch:02}.  Its Lean name is \lean{leech}, its carrier type \lean{leech.carrier} and its form
+\lean{leech.form}.  The map
+\begin{equation*}
+  \beta : \Leech \to \Z/2,\qquad x\mapsto x_0 \bmod 2
+\end{equation*}
+(all coordinates have the same parity; read it off coordinate $0$) is a homomorphism; its kernel is the
+index-two sublattice $\Leech_0=\ker\beta$ of vectors with all coordinates even.
+File \leanpath{VOA/Moonshine/FrameSectors.lean}.
+\begin{leancode}
+noncomputable def frameChar : leech.carrier →+ ZMod 2 := Leech.beta.toAddMonoidHom
+
+noncomputable def lambda0 : Submodule ℤ leech.carrier := LinearMap.ker Leech.beta
+\end{leancode}
+(\leanpath{VOA/Moonshine/FrameSectors.lean}; \lean{Leech.beta} is defined in
+\leanpath{VOA/LatticesAndCodes/Leech/Defs.lean} by \texttt{toFun x := ((((x : Fin 24 → ℤ) 0 : ℤ)) : ZMod 2)}.)
+
+Halving the even vectors gives a second model of $\Leech_0$, used in \S\ref{ch12:sec:ground}:
+\begin{equation}\label{ch12:eq:Acoords}
+  A \;=\; \{ g\in\Z^{24} \;:\; g\bmod 2\in\chtwelveG,\ \textstyle\sum_i g_i\equiv 0 \pmod 4\},
+  \qquad \langle g,h\rangle = \tfrac12\, g\cdot h,
+\end{equation}
+where $\chtwelveG\subset\mathbb F_2^{24}$ is the extended binary Golay code.  In Lean $A$ is
+\lean{Leech.subA}; the isometry $A\cong\Leech_0$, $g\mapsto 2g$, is \lean{lambda0Equiv}, with
+\lean{lambda0Equiv_form} stating $\langle\iota a,\iota b\rangle_\Leech=(a\cdot b)/2$.  In the
+$A$-model, $|\gamma|^2=\tfrac12 g\cdot g$.  Since $\Leech$ has no roots, every non-zero vector has
+$|\gamma|^2\ge4$; in $A$-coordinates $g\cdot g\ge 8$.
+
+\subsection{The vertex algebras \texorpdfstring{$V_\Leech^+$}{V\_Λ⁺} and \texorpdfstring{$V_0^+$}{V₀⁺}}
+
+$V_\Leech$ (Lean: \lean{leechVOA}, carrier \lean{LatModuleGen leech}) is the lattice vertex operator
+algebra (Chapter~\ref{ch:03}): as a vector space $M(1)\otimes\C[\Leech]$, the Fock space of $24$ free
+bosons tensored with the group algebra of the lattice, spanned by the states
+$h_{a_1}(-n_1)\cdots h_{a_r}(-n_r)\otimes e^\gamma$ of weight $\sum n_i+\tfrac12|\gamma|^2$.  The
+involution $\theta$ lifts $-1$ on $\Leech$ (Chapter~\ref{ch:04}); $V_\Leech^+$ is its fixed points:
+File \leanpath{VOA/Moonshine/FrameSectors.lean}.
+\begin{leancode}
+abbrev VPlus : Type := ↥(orbifold (Subgroup.zpowers leechTheta)).carrier
+\end{leancode}
+(\leanpath{VOA/Moonshine/FrameSectors.lean}.)  Here \lean{orbifold H} is the subalgebra of fixed points
+of a group $H$ of automorphisms, \lean{Subgroup.zpowers leechTheta} is the group generated by $\theta$,
+and \lean{↥} turns a subspace into the type of its elements.  So \lean{VPlus} is the type of vectors of
+$V_\Leech^+$; \lean{leechVOAPlus} is the VOA structure on it.
+
+The Golay frame gives the involution $g(p\otimes e^\gamma)=(-1)^{\beta(\gamma)}p\otimes e^\gamma$ of
+$V_\Leech$, which commutes with $\theta$ and restricts to $V_\Leech^+$ (Lean: \lean{plusFrameAut}).
+Its eigenspaces are the \emph{frame sectors}:
+File \leanpath{VOA/Moonshine/FrameSectors.lean}.
+\begin{leancode}
+noncomputable def frameSector (i : ZMod 2) : Submodule ℂ VPlus :=
+  Module.End.eigenspace (plusFrameAut.toLinearEquiv : Module.End ℂ VPlus)
+    (Moonshine.Extraspecial.sgn i)
+\end{leancode}
+with \lean{Extraspecial.sgn i} $=(-1)^i$.  So \lean{frameSector 0} is $V_0^+$ (charges in
+$\Leech_0$) and \lean{frameSector 1} is $V_3^+$ (charges in $\Leech\setminus\Leech_0$).  The fixed
+subalgebra is a VOA:
+File \leanpath{VOA/Moonshine/FrameSectors.lean}.
+\begin{leancode}
+noncomputable def V0Sub : VOASubalgebra leechVOAPlus := orbifold (Subgroup.zpowers plusFrameAut)
+
+noncomputable def V0P : VertexOperatorAlgebra V0Sub.carrier := V0Sub.toVOA
+\end{leancode}
+and \lean{V0Sub_carrier : V0Sub.carrier = frameSector 0}.  Elements of $V_0^+$ have type
+\lean{V0Sub.carrier}, a subtype of \lean{VPlus}; the coercion \lean{(u : VPlus)} forgets that $u$ lies
+in $V_0^+$.
+
+The basic vectors of charge $\pm\beta$ are (\leanpath{VOA/Moonshine/CyclicFrameSectors.lean})
+File \leanpath{VOA/Moonshine/CyclicFrameSectors.lean}.
+\begin{leancode}
+noncomputable def frameX0 (β : leech.carrier) : LatModuleGen leech :=
+  latChargeGen leech β + latChargeGen leech (-β)
+
+noncomputable def frameX0P (β : leech.carrier) : VPlus := ⟨frameX0 β, frameX0_mem_plus β⟩
+\end{leancode}
+so \lean{frameX0P β} is $x_\beta=e^\beta+e^{-\beta}\in V_\Leech^+$ (the library's $\theta$ sends
+$e^\beta\mapsto e^{-\beta}$ on charged vacua).  It has weight $\tfrac12|\beta|^2$, and lies in $V_0^+$
+if $\beta\in\Leech_0$, in $V_3^+$ if $\beta\notin\Leech_0$.  The projection
+$P=\tfrac12(1+\theta):V_\Leech\to V_\Leech^+$ is \lean{plusProj} (\leanpath{VOA/Moonshine/Generation.lean}).
+
+\subsection{The twisted sectors \texorpdfstring{$T_s^+$}{T\_s⁺}}
+
+The $\theta$-twisted $V_\Leech$-module is $V_\Leech^T=S[\theta]\otimes T$, where $S[\theta]$ is the Fock
+space of $24$ bosons with half-integral modes $h_a(-\tfrac12),h_a(-\tfrac32),\dots$ and $T$ is the
+$2^{12}$-dimensional irreducible module of the extraspecial group (Chapters~\ref{ch:06}--\ref{ch:08}).
+In Lean the carrier is \lean{Tw}, the $T$-factor \lean{TLeechT}, and $(V_\Leech^T)^+$, the fixed space
+of the lift of $\theta$, is (\leanpath{VOA/Moonshine/TwistedPlus.lean})
+File \leanpath{VOA/Moonshine/TwistedPlus.lean}.
+\begin{leancode}
+noncomputable abbrev TP : Submodule ℂ Tw := plusSub leechThetaLift
+
+noncomputable def plusModule : OrdVModule leechVOAPlus TP :=
+  TwistedPlus.plusModule leechThetaLift
+\end{leancode}
+\lean{plusModule} is $(V_\Leech^T)^+$ as an \emph{ordinary} module for $V_\Leech^+$ (graded by $L_0$,
+finite-dimensional weight spaces, weights bounded below); its integer mode $u_{(n)}$ is the twisted mode
+of index $n$, stored at the doubled index $2n$ (\lean{mode_plusModule}).  The lowest weight of
+$V_\Leech^T$ is $24/16=3/2$, carried by $\mathbf 1\otimes T$; but the lift of $\theta$ acts there by $-1$
+(FLM's normalisation, adopted by the library), so the lowest weight of $(V_\Leech^T)^+$ is $2$, carried
+by $h_a(-\tfrac12)\mathbf 1\otimes T$ (dimension $24\cdot2^{12}=98304$).
+
+The frame involution $J$ on $T$ is $c^{-1}e_w$ for $w=8e_0$ (\lean{frameW}), normalised so that
+$J^2=1$.  Its eigenspaces $T_s$ (\lean{leechFrameT s}, each of dimension $2^{11}$) give
+(\leanpath{VOA/Moonshine/CyclicTwisted.lean})
+File \leanpath{VOA/Moonshine/CyclicTwisted.lean}.
+\begin{leancode}
+noncomputable def TPframe (s : ZMod 2) : Submodule ℂ TP := (twFrameL s).comap TP.subtype
+
+noncomputable def frameX0T (t₀ : TLeechT) : Tw := (X (0, 0) : FockT 24) ⊗ₜ t₀
+\end{leancode}
+i.e.\ $T_s^+=(V_\Leech^T)^+\cap(S[\theta]\otimes T_s)$, and \lean{frameX0T t₀} is
+$h_0(-\tfrac12)\mathbf 1\otimes t_0$ (\lean{X (0, 0)} is the lowest creation operator of the first
+boson).  Its copy in \lean{TP} is called \lean{x0T t₀} below.
+
+Finally \lean{TPForm} (\leanpath{VOA/Moonshine/InvFormTP.lean}) is the symmetric bilinear form on
+$(V_\Leech^T)^+$ obtained by restricting the invariant form of the twisted module
+(Chapter~\ref{ch:09}).  Two of its properties are used: it is \emph{FHL-invariant}
+(\lean{TPForm_fhlInv}: for $u$ homogeneous of weight $k$, the adjoint of $u_{(r)}$ is
+$\sum_{j\ge0}\frac{(-1)^k}{j!}(L_1^ju)_{(2k-r-2-j)}$), and it is \emph{nondegenerate}
+(\lean{SimpleNat.TPForm_eq_zero_of_forall}, \leanpath{VOA/Moonshine/SimpleForm.lean}: if
+$\langle t,y\rangle=0$ for all $y$ then $t=0$).
+
+\subsection{The triality on \texorpdfstring{$V_0^+$}{V₀⁺}}
+
+Chapter~\ref{ch:11} constructs an automorphism of $V_0^+$ by transporting the
+Dolan--Goddard--Montague triality $\sigma=G(\chi z_0)G^{-1}$ of the Golay-code lattice VOA
+$V_{N(A_1^{24})}$ along an isomorphism of its fixed-point subalgebra with $V_0^+$
+(\leanpath{VOA/Moonshine/FrameBridgeGolay.lean}):
+File \leanpath{VOA/Moonshine/FrameBridgeGolay.lean}.
+\begin{leancode}
+noncomputable def v0Sigma : Aut V0P :=
+  Aut.transport golayToV0 golayToV0_isVOAHom golayToV0_omega golaySigma0
+\end{leancode}
+with \lean{v0Sigma_sq : v0Sigma * v0Sigma = 1} and $\sigma\ne1$.  As an automorphism, $\sigma$ fixes
+$\mathbf 1$ and $\omega$, preserves the grading, and satisfies $\sigma(u_{(n)}v)=(\sigma u)_{(n)}(\sigma v)$.
+The isomorphism \lean{golayToV0} contains a character \lean{golayE} chosen by \lean{Classical.choose};
+this matters in \S\ref{ch12:sec:golayE}.
+
+\section{Zhu's algebra and the Zhu correspondence}\label{ch12:sec:zhu}
+
+Zhu's algebra is treated for general VOAs in Chapter~\ref{ch:L12}; we recall here exactly what this
+chapter uses, so that every statement below can be checked without leaving the chapter.
+
+\subsection{Motivation: what the lowest weight space sees}
+
+Let $V$ be a vertex operator algebra and $M$ an ordinary $V$-module whose weights lie in $h+\N$ for
+some $h\in\C$: we say $M$ has \emph{lowest weight} $h$ and call $M_h$ its \emph{top level}.  Physically,
+$M$ is a sector of a chiral conformal field theory and $M_h$ its space of ground states; a field
+$Y(a,z)=\sum_n a_{(n)}z^{-n-1}$ with $a\in V_k$ moves weights by $a_{(n)}:M_\mu\to M_{\mu+k-n-1}$.
+Exactly one mode preserves weights,
+\begin{equation*}
+  o(a)\;:=\;a_{(k-1)}\qquad(a\in V_k),
+\end{equation*}
+extended linearly to all of $V$: the \emph{zero mode} (the physicist's $a_0$).  On $M_h$, all modes
+$a_{(n)}$ with $n>k-1$ vanish, since they would lower the weight below $h$.  So the only operators $V$
+induces on $M_h$ are the zero modes, and $M_h$ is a module for the algebra they generate.
+
+Zhu's insight is that this algebra is a quotient of an algebra built from $V$ alone:
+\begin{enumerate}[label=(\roman*)]
+\item the composite $o(a)o(b)$ on $M_h$ is again a zero mode $o(a\ast b)$, for an explicit bilinear
+  product $\ast$ on $V$;
+\item an explicit subspace $\chtwelveO(V)\subset V$ has zero modes vanishing on every top level.
+\end{enumerate}
+Then $A(V)=V/\chtwelveO(V)$ with $\ast$ is an associative algebra (Zhu's theorem) and every top level
+is an $A(V)$-module; conversely (the hard direction) every $A(V)$-module is the top level of some
+$V$-module.
+
+\subsection{The Zhu product and \texorpdfstring{$\chtwelveO(V)$}{O(V)}}
+
+\begin{definition}[Zhu product]\label{ch12:def:zhumul}
+For $a\in V_k$ and $b\in V$,
+\begin{equation*}
+  a\ast b\;=\;\Res_z\,Y(a,z)\,b\,\frac{(1+z)^{k}}{z}\;=\;\sum_{m=0}^{k}\binom{k}{m}\,a_{(m-1)}b,
+\end{equation*}
+extended linearly in $a$ over the grading.
+\end{definition}
+File \leanpath{VOA/Modules/ZhuAlgebra.lean}.
+\begin{leancode}
+noncomputable def zhuFamily (W : VertexOperatorAlgebra 𝒱) (v : 𝒱) (k : ℤ) :
+    (W.grading k) →ₗ[ℂ] 𝒱 where  toFun uk := ∑ m ∈ Finset.range (k.toNat + 1), cbz k m • W.smul (uk : 𝒱) ((m : ℤ) - 1) v
+  ...
+noncomputable def zhuMul (W : VertexOperatorAlgebra 𝒱) (u v : 𝒱) : 𝒱 :=
+  letI := DirectSum.IsInternal.chooseDecomposition W.grading W.isInternal
+  (DFinsupp.lsum ℂ (zhuFamily W v)) (DirectSum.decompose W.grading u)
+\end{leancode}
+(\leanpath{VOA/Modules/ZhuAlgebra.lean}; the linearity proofs inside \lean{zhuFamily} are omitted.)
+\begin{dictionary}
+\begin{itemize}
+\item \lean{W.smul u n v} is the $n$-th product $u_{(n)}v$, the coefficient of $z^{-n-1}$ in
+  $Y(u,z)v$.  (Generally, \lean{mode f n} denotes the coefficient $u_{(n)}$ of a field $f$.)
+\item \lean{cbz k m} is the generalised binomial coefficient $\binom km$; for $0\le m\le k$ the
+  ordinary one.  The sum over \lean{Finset.range (k.toNat + 1)}, i.e.\ $m=0,\dots,k$, is the full
+  residue, as $\binom km=0$ for $m>k\ge0$.
+\item \lean{W.grading k} is $V_k$, and \lean{W.isInternal} says $V=\bigoplus_kV_k$
+  (\lean{DirectSum.IsInternal}).  \lean{DirectSum.decompose} splits $u$ into homogeneous components and
+  \lean{DFinsupp.lsum} applies \lean{zhuFamily W v k} to the weight-$k$ component and sums: ``extend
+  linearly over the grading''.
+\item Same as the textbook definition.
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+The Zhu product is the zero-mode algebra written at the level of states: acting with the zero mode $o(a)$ on a ground state $x$ of any sector and then with $o(b)$ gives $o(a\ast b)x$ (Theorem~\ref{ch12:thm:easy}). The binomial weighting $(1+z)^k/z$ is the radial-quantisation factor that converts the plane field $Y(a,z)$ of weight $k$ into the cylinder field, whose constant Fourier mode is the zero mode. Heuristically, $a\ast b$ is the ordering-corrected product of the two zero-mode operators; it is noncommutative because $[o(a),o(b)]$ is nonzero already on ground states.
+\end{physics}
+
+\begin{definition}[$\chtwelveO(V)$ and Zhu's algebra]\label{ch12:def:O}
+$\chtwelveO(V)$ is the span of the elements $(L_{-1}u+L_0u)\ast v$, $u,v\in V$; and
+$A(V)=V/\chtwelveO(V)$.
+\end{definition}
+File \leanpath{VOA/Modules/ZhuAlgebra.lean}.
+\begin{leancode}
+def O (W : VertexOperatorAlgebra 𝒱) : Submodule ℂ 𝒱 :=
+  Submodule.span ℂ {x | ∃ u v : 𝒱, x = zhuMul W (W.L (-1) u + W.L 0 u) v}
+
+abbrev A (W : VertexOperatorAlgebra 𝒱) : Type u := 𝒱 ⧸ O W
+\end{leancode}
+(\leanpath{VOA/Modules/ZhuAlgebra.lean}.)
+\begin{dictionary}
+\begin{itemize}
+\item Zhu's original generators are $a\circ b=\Res_zY(a,z)b\,(1+z)^k/z^2$, $a\in V_k$.  The library uses
+  Gannon's generating set $(L_{-1}+L_0)u\ast v$ (\emph{Moonshine beyond the Monster}, (5.3.8c)); the
+  library proves that Zhu's $a\circ b$ lies in this span (\lean{residue_base_mem_O}, the case $k=0$ of
+  Lemma~\ref{ch12:lem:Ocontents}(b)).  This chapter only uses that $\chtwelveO(V)$ contains the
+  elements listed in Lemma~\ref{ch12:lem:Ocontents} and that its zero modes vanish on top levels
+  (Theorem~\ref{ch12:thm:easy}), both proved for the library's definition.
+\item \lean{Submodule.span ℂ S} is the complex linear span of $S$.  \lean{W.L n} is $L_n$.
+\item $A(V)$ is introduced only as a vector space here.  We do \emph{not} need that $\ast$ descends to
+  an associative product on $A(V)$; the notion of Zhu generation (Definition~\ref{ch12:def:zhugen}) is
+  formulated on $V$, so it never mentions the quotient ring.
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+$\chtwelveO(V)$ collects the combinations that vanish as operators on every ground state: total derivatives $L_{-1}u$ combined with $L_0u$ are exactly the states whose zero mode is zero on lowest-weight states, since $o(L_{-1}u+L_0u)=0$ there. The quotient $A(V)$ is thus the algebra of zero modes acting on the ground states of all sectors (the Zhu algebra), and its irreducible representations are the candidate ground-state spaces of irreducible sectors. This is the standard dictionary behind ``a rational VOA has finitely many sectors''; the definition itself is purely algebraic.
+\end{physics}
+
+\begin{lemma}[What $\chtwelveO(V)$ contains]\label{ch12:lem:Ocontents}
+Let $a\in V_p$ with $p\in\N$, $b\in V$, and $y\in V_w$.
+\begin{enumerate}[label=(\alph*)]
+\item $L_{-1}y+L_0y\in\chtwelveO(V)$; hence $L_{-1}y+w\,y\in\chtwelveO(V)$.
+\item (Frenkel--Zhu higher residues) For every $k\in\N$,
+  \begin{equation*}
+    \mathrm{Pres}(a,p,b,k)\;:=\;\sum_{i=0}^{p+k}\binom{p+k}{i}\,a_{(i-2-k)}b
+    \;=\;\Res_zY(a,z)b\,\frac{(1+z)^{p+k}}{z^{2+k}}\;\in\;\chtwelveO(V).
+  \end{equation*}
+\end{enumerate}
+\end{lemma}
+File \leanpath{VOA/Moonshine/ZhuGenFiltration.lean}.
+\begin{leancode}
+theorem L_neg_one_add_mem_O (y : 𝒱) : W.L (-1) y + W.L 0 y ∈ O W
+
+theorem L_neg_one_add_wt_mem_O {w : ℤ} {y : 𝒱} (hy : y ∈ W.grading w) :
+    W.L (-1) y + (w : ℂ) • y ∈ O W
+\end{leancode}
+(\leanpath{VOA/Moonshine/ZhuGenFiltration.lean}, namespace \lean{VOA.Moonshine.ZhuGen}), and
+File \leanpath{VOA/Modules/ZhuModule.lean}.
+\begin{leancode}
+noncomputable def Pres (W : VertexOperatorAlgebra 𝒱) (M : ℕ) (a b : 𝒱) (n : ℕ) : 𝒱 :=
+  ∑ i ∈ Finset.range (M + n + 1), cbz ((M : ℤ) + n) (i : ℤ) • W.smul a ((i : ℤ) - 2 - n) b
+
+theorem Pres_mem_O (W : VertexOperatorAlgebra 𝒱) {M : ℕ} {a : 𝒱}
+    (ha : a ∈ W.grading (M : ℤ)) (b : 𝒱) (n : ℕ) : Pres W M a b n ∈ O W
+\end{leancode}
+(\leanpath{VOA/Modules/ZhuModule.lean}.)
+\begin{dictionary}
+\begin{itemize}
+\item On $V_w$, $L_0$ acts by $w$ (\lean{L_zero_grading}); so (a) is literally
+  $(L_{-1}+L_0)y\in\chtwelveO$ and its homogeneous form.
+\item In \lean{Pres W M a b n}, $M$ is the weight $p$ of $a$ (hypothesis \lean{ha}) and $n$ the depth
+  $k$.  The sum runs over $i=0,\dots,M+n$ with coefficient $\binom{M+n}{i}$ and mode $i-2-n$: the
+  display.
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+Part (a) says that a field plus its derivative is an operator identity on ground states (a total $z$-derivative has no zero mode), and (b) is the higher-residue version of the same cancellation. Lemma-level bookkeeping in the reduction of an operator on a sector to its action on ground states.
+\end{physics}
+\begin{proof}[Proof on paper]
+(a) Take $v=\mathbf 1$ in the generator: $c\ast\mathbf 1=c$ for every $c$, because only the $m=0$ term
+$c_{(-1)}\mathbf 1=c$ survives ($c_{(n)}\mathbf 1=0$ for $n\ge0$).  (b) For $k=0$ this is Zhu's
+$a\circ b$, which is a generator rewritten with $(L_{-1}a)_{(n)}=-n\,a_{(n-1)}$.  The induction on $k$
+uses the residue identity
+\begin{equation*}
+  (k+2)\,\mathrm{Pres}(a,p,b,k+1)\;=\;\mathrm{Pres}(L_{-1}a,\,p+1,\,b,\,k)+(p+k+1)\,\mathrm{Pres}(a,p,b,k),
+\end{equation*}
+which is integration by parts: $Y(L_{-1}a,z)=\partial_zY(a,z)$ and $\Res_z\partial_z(\cdots)=0$.  Both terms
+on the right are in $\chtwelveO$ by induction (the first with $L_{-1}a$ of weight $p+1$).
+\end{proof}
+\begin{status}Proved, unconditional, no \lean{VOA.pbw}.\end{status}
+
+\subsection{Zero modes on a lowest-weight space: the easy direction}
+
+\begin{definition}[Zero mode, lowest weight]\label{ch12:def:omod}
+For an ordinary module $N$ (Lean: \lean{OrdVModule W M}; a module graded by $L_0$-eigenvalues
+$\alpha\in\C$, with finite-dimensional weight spaces and weights bounded below), the zero mode of
+$a=\sum_ka_k$ is $o(a)=\sum_k(a_k)_{(k-1)}$.  $N$ has lowest weight $h$ if every non-zero weight space
+$N_\alpha$ has $\alpha\in h+\N$.
+\end{definition}
+File \leanpath{VOA/Modules/Character.lean}.
+\begin{leancode}
+noncomputable def oModFamily (N : OrdVModule W M) (k : ℤ) : (W.grading k) →ₗ[ℂ] End ℂ M :=
+  (modeLinear (k - 1)).comp (N.YM.comp (W.grading k).subtype)
+
+noncomputable def oMod (N : OrdVModule W M) : 𝒱 →ₗ[ℂ] End ℂ M :=
+  letI := DirectSum.IsInternal.chooseDecomposition W.grading W.isInternal
+  (DFinsupp.lsum ℂ (oModFamily N)).comp (DirectSum.decomposeLinearEquiv W.grading).toLinearMap
+\end{leancode}
+(\leanpath{VOA/Modules/Character.lean}), and
+File \leanpath{VOA/Modules/ZeroModeMult.lean}.
+\begin{leancode}
+def IsLowestWeight (N : OrdVModule W M) (h : ℂ) : Prop :=
+  ∀ α : ℂ, N.weight α ≠ ⊥ → ∃ n : ℕ, α = h + n
+\end{leancode}
+(\leanpath{VOA/Modules/ZeroModeMult.lean}).
+\begin{dictionary}
+\begin{itemize}
+\item \lean{modeLinear (k - 1)} extracts the mode $(\cdot)_{(k-1)}$ of a field; \lean{N.YM} is the module
+  vertex operator.  So \lean{oModFamily N k} sends $a_k\in V_k$ to $(a_k)_{(k-1)}$ on $N$, and
+  \lean{oMod} sums over components.
+\item \lean{N.weight α} is $N_\alpha$; \lean{≠ ⊥} means ``non-zero subspace''.  \lean{IsLowestWeight N h}
+  is ``every non-zero weight space has weight in $h+\N$''.  It does not require $N_h\neq0$ (a zero
+  module has every lowest weight); harmless, since the theorems below concern maps on $N_h$.
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+The zero mode $o(a)$ is the $L_0$-preserving part of the field $a(z)$, the only part that maps each energy eigenspace to itself; the lowest-weight space $N_h$ is the space of ground states (primaries) of the sector, with energy $h$ the conformal weight of the sector. A ``module of lowest weight $h$'' is one whose energies are bounded below by the ground-state energy, as in any unitary sector with a vacuum-like lowest state; for the three sectors here the ground energy is $2$ (conformal weight two states).
+\end{physics}
+
+\begin{theorem}[Zhu's easy direction]\label{ch12:thm:easy}
+Let $N$ have lowest weight $h$ and $x\in N_h$.  For all $u,v\in V$: $o(u\ast v)x=o(u)o(v)x$;
+$o(a)x=0$ for $a\in\chtwelveO(V)$; $o(u)x\in N_h$; and $o(\mathbf 1)=\mathrm{id}$.
+\end{theorem}
+File \leanpath{VOA/Modules/ZhuModule.lean}.
+\begin{leancode}
+theorem oMod_zhuMul_lowest_all (N : OrdVModule W Mod) {h : ℂ} (hcw : IsLowestWeight N h)
+    (u v : 𝒱) {x : Mod} (hx : x ∈ N.weight h) :
+    oMod N (zhuMul W u v) x = oMod N u (oMod N v x)
+
+theorem O_le_ker_rhoLW (N : OrdVModule W Mod) {h : ℂ} (hcw : IsLowestWeight N h) :
+    O W ≤ LinearMap.ker (rhoLW N h)
+\end{leancode}
+(\leanpath{VOA/Modules/ZhuModule.lean}), together with \lean{oMod_preserves_lowest_all} (same file)
+and \lean{oMod_vacuum : oMod N W.vacuum = LinearMap.id} (\leanpath{VOA/Modules/Character.lean}).
+\begin{dictionary}
+\lean{rhoLW N h} is the linear map $V\to\End(N_h)$, $a\mapsto o(a)|_{N_h}$; ``$\chtwelveO(V)\le\ker$'' is
+$o(a)|_{N_h}=0$ for $a\in\chtwelveO(V)$.  All $u,v$ are arbitrary and $h$ is any complex number: the
+textbook statement.
+\end{dictionary}
+
+\begin{physics}
+This is the statement that the ground states of a sector form a representation of the Zhu algebra: the zero modes act on the ground states, kill $\chtwelveO(V)$, and multiply as the Zhu product. Physically it expresses that the algebra of zero modes preserves the ground-state space, and that the OPE collapses, on ground states, to the associative algebra $A(V)$. The converse (the ``hard direction'', that every $A(V)$-module is the ground-state space of a sector) is the Verma-type reconstruction and is deliberately avoided in this chapter.
+\end{physics}
+\begin{proof}[Proof on paper]
+For homogeneous $u\in V_k$, the Borcherds identity expresses each mode of $u_{(m-1)}v$ as a combination
+of products $u_{(i)}v_{(j)}$ and $v_{(j)}u_{(i)}$.  On $N_h$, every product in which the right-hand
+factor lowers the weight vanishes; after summing over $m$ with the coefficients $\binom km$ of $\ast$,
+binomial identities collapse the surviving terms to $o(u)o(v)$.  This is Zhu~(1996), Theorem~2.1.2
+(Gannon (5.3.9a)); linearity extends it to all $u,v$.  For $\chtwelveO$: translation covariance
+$(L_{-1}u)_{(n)}=-n\,u_{(n-1)}$ gives $o(L_{-1}u)=(L_{-1}u)_{(k)}=-k\,u_{(k-1)}$, so
+$o((L_{-1}+L_0)u)=0$, and then $o(((L_{-1}+L_0)u)\ast v)x=o((L_{-1}+L_0)u)\,o(v)x=0$.
+\end{proof}
+\begin{status}All proved, unconditional, \texttt{\#print axioms}-clean, no \lean{VOA.pbw}.\end{status}
+
+\subsection{The hard direction, and why this chapter avoids it}\label{ch12:sec:whynotverma}
+
+Zhu's theorem has a converse: from an $A(V)$-module $U$ one builds a $V$-module $L(U)$ with top level
+$U$, the irreducible quotient of a generalised Verma module $M(U)$ (Dong--Li--Mason; the library
+follows Dong--Jiang, Chapter~\ref{ch:L13}).  The classical way to build a module map out of a module
+generated by its top level uses this converse: if source and target are irreducible quotients of Verma
+modules, a map of top levels lifts.
+
+\begin{warning}
+\textbf{The Verma-module route is not \lean{VOA.pbw}-free (history).}  The library's Dong--Jiang construction
+carries a hypothesis \lean{BottomProjection} (\leanpath{VOA/Modules/ZhuVermaAnArchDLM3Survival.lean}),
+whose only supplier for a general VOA is \lean{voaPBWBottomProjection}, i.e.\ \lean{VOA.pbw} --- at the time an
+axiom (it has since become a theorem).  Using it would then have made
+$\sigma$, and hence the Moonshine module, depend on an axiom.  This chapter therefore proves
+directly the weaker statement actually needed (\S\ref{ch12:sec:top}), using Li's lemma and a
+nondegenerate form on the \emph{target} only.  The final construction of $\Vnat$ is \lean{VOA.pbw}-free
+(checked by \texttt{\#print axioms}).
+\end{warning}
+
+\subsection{Examples}
+
+\begin{example}[Rank-one Heisenberg]\label{ch12:ex:heis}
+For the Heisenberg VOA $M(1)$ of one boson $h$, $A(M(1))\cong\C[x]$ with $x=[h(-1)\mathbf 1]$: the top
+of the Fock module of momentum $\lambda$ is $\C e^\lambda$ and $o(h)=h(0)$ acts by $\lambda$.  The
+fixed-point algebra $M(1)^+$ under $h\mapsto-h$ is generated by $\omega$ and a weight-four primary $J$
+(Dong--Nagatomo), and $A(M(1)^+)$ needs $[J]$ besides $[\omega]$: weight two alone does \emph{not}
+generate.  In \S\ref{ch12:sec:fock} this rank-one obstruction re-appears as a one-dimensional
+deficiency at weight $4$, and we see why it disappears in rank $\ge3$.
+  Concretely: in rank one, the products allowed by the filtered criterion of
+\S\ref{ch12:sec:filtered} span a codimension-one subspace of the weight-$4$ part of $M(1)^+$, the missing
+direction being that of $J$.
+\end{example}
+
+\begin{example}[Lattice VOA tops]\label{ch12:ex:lattice}
+For a lattice VOA $V_L$ and its module $V_{L+\lambda}$, the top level is spanned by $e^\mu$ with
+$\mu\in L+\lambda$ of minimal norm.  For $\gamma\in L$ the zero mode $o(e^\gamma)=e^\gamma_{(|\gamma|^2/2-1)}$
+sends $e^\mu$ to $\epsilon(\gamma,\mu)e^{\mu+\gamma}$ if $\langle\gamma,\mu\rangle=-\tfrac12|\gamma|^2$
+(equivalently $|\mu+\gamma|^2=|\mu|^2$) and to $0$ if $\langle\gamma,\mu\rangle>-\tfrac12|\gamma|^2$; the case
+$\langle\gamma,\mu\rangle<-\tfrac12|\gamma|^2$ cannot occur, since $\mu+\gamma\in L+\lambda$ would be shorter
+than $\mu$.  For $V_0^+$ acting on $V_3^+$ this is the computation behind \S\ref{ch12:sec:numerics}: the
+weight-two lattice states $e^\gamma+e^{-\gamma}$, $|\gamma|^2=4$, move the top vectors $e^n$, $|n|^2=4$, to
+$e^{n+\gamma}$ exactly when $\langle\gamma,n\rangle=-2$.
+\end{example}
+
+\section{Twisted intertwiners and the existence criterion}\label{ch12:sec:twint}
+
+This section is pure linear algebra; no vertex algebra appears.  It isolates the device by which
+$\sigma$ will be \emph{defined}: a map determined by its value on one vector, which exists as soon as
+that value respects every linear relation.
+
+\subsection{The abstract setting}
+
+Fix a set $\mathcal A$ of ``letters'' (later: the states of $V_0^+$), complex vector spaces $M,N$,
+actions $\rho:\mathcal A\times\Z\to\End(M)$, $(u,n)\mapsto\rho_{u,n}$, and $\tau:\mathcal A\times\Z\to\End(N)$
+(later: $\rho_{u,n}=u_{(n)}$ on the source and $\tau_{u,n}=u_{(n)}$ on the target), and a map
+$g:\mathcal A\to\mathcal A$ (later: $\sigma$).
+
+\begin{definition}[Twisted intertwiner]\label{ch12:def:istwint}
+Let $S\subseteq\mathcal A$ and $X\le M$.  A linear map $\Phi:M\to N$ is a \emph{$g$-twisted intertwiner
+on $X$ for the letters $S$} if $\Phi(\rho_{u,n}x)=\tau_{g(u),n}\Phi(x)$ for all $u\in S$, $n\in\Z$,
+$x\in X$.
+\end{definition}
+File \leanpath{VOA/Moonshine/TrialityTwGeneric.lean}.
+\begin{leancode}
+def IsTwInt (ρ : A → ℤ → M →ₗ[ℂ] M) (τ : A → ℤ → N →ₗ[ℂ] N) (g : A → A) (S : Set A)
+    (X : Submodule ℂ M) (Φ : M →ₗ[ℂ] N) : Prop :=
+  ∀ u ∈ S, ∀ (n : ℤ), ∀ x ∈ X, Φ (ρ u n x) = τ (g u) n (Φ x)
+\end{leancode}
+(\leanpath{VOA/Moonshine/TrialityTwGeneric.lean}, namespace \lean{VOA.Moonshine.TrialityTw}.)
+\begin{dictionary}
+\begin{itemize}
+\item \lean{M →ₗ[ℂ] N} is the type of $\C$-linear maps; \lean{Submodule ℂ M} a subspace.  The Lean
+  variable \lean{A} is the letter set $\mathcal A$ (no structure assumed).
+\item $\Phi$ is defined on all of $M$ but the condition is imposed only for $x\in X$; values off $X$ are
+  irrelevant.  Harmless and convenient, since the sectors are subspaces of bigger carriers.
+\item Stability $\rho_{u,n}X\subseteq X$ is not part of the definition; theorems that need it assume it
+  (\lean{hstab}).
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+A $g$-twisted intertwiner is a linear map between two sectors that carries the field modes of one to the modes of the other twisted by the symmetry $g$: the picture is a symmetry operator $U_g$ implementing $\Phi u_{(n)}\Phi^{-1}=g(u)_{(n)}$. When $g$ is the triality $\sigma$ and the two sectors are different, such a map is the object that realises $\sigma$ as a symmetry of the combined theory, and it is what ``extending the triality to the twisted sector'' means concretely. The trivial map $\Phi=0$ always satisfies the definition, which is the origin of the $\varphi=0$ trap discussed later; the definition alone carries no nonzero content.
+\end{physics}
+
+\subsection{Uniqueness and involutivity from a cyclic vector}
+
+\begin{theorem}[Uniqueness]\label{ch12:thm:eqOn_of_cyclic}
+Suppose $x_0\in X$ and $X=\operatorname{span}\{\rho_{u,n}x_0:u\in S,\ n\in\Z\}$.  If $\Phi,\Psi$ are
+$g$-twisted intertwiners on $X$ with $\Phi(x_0)=\Psi(x_0)$, then $\Phi=\Psi$ on $X$.
+\end{theorem}
+File \leanpath{VOA/Moonshine/TrialityTwGeneric.lean}.
+\begin{leancode}
+theorem eqOn_of_cyclic {x₀ : M} (hx₀ : x₀ ∈ X)
+    (hcyc : span ℂ {y | ∃ u ∈ S, ∃ n : ℤ, y = ρ u n x₀} = X) {Φ Ψ : M →ₗ[ℂ] N}
+    (hΦ : IsTwInt ρ τ g S X Φ) (hΨ : IsTwInt ρ τ g S X Ψ) (h : Φ x₀ = Ψ x₀) :
+    ∀ x ∈ X, Φ x = Ψ x
+\end{leancode}
+\begin{dictionary}
+\lean{hcyc} is \emph{single-mode} cyclicity: $X$ is spanned by vectors with \emph{one} letter applied to
+$x_0$, not by arbitrary words.  This is stronger than ordinary cyclicity, and it is what the library
+proves for $V_3^+$ and $T_s^+$ (Chapter~\ref{ch:11}).  Otherwise the statement is the textbook one.
+\end{dictionary}
+
+\begin{physics}
+If a sector is generated from one state by the modes of the fields (a cyclic vector, such as a highest-weight state), then a symmetry operator is already determined by its value on that state, since its action on all the descendants is forced by the intertwining relation. This is the usual reconstruction of a representation from its ground states, and it is why the existence problem for the triality reduces to specifying a single image vector.
+\end{physics}
+\begin{proof}[Proof on paper]
+On a spanning vector, $\Phi(\rho_{u,n}x_0)=\tau_{gu,n}\Phi(x_0)=\tau_{gu,n}\Psi(x_0)=\Psi(\rho_{u,n}x_0)$; both
+maps are linear.
+\end{proof}
+
+\begin{theorem}[Involutivity criterion]\label{ch12:thm:comp_eqOn_id}
+Let $\Phi$ be $g$-twisted on $X$ with $\Phi(X)\subseteq Y$, $\Psi:N\to M$ be $g'$-twisted on $Y$ for letters
+$S'\supseteq g(S)$, and $g'(g(u))=u$ for $u\in S$.  If $X$ is single-mode cyclic on $x_0$ and
+$\Psi\Phi(x_0)=x_0$, then $\Psi\Phi=\mathrm{id}$ on $X$.
+\end{theorem}
+File \leanpath{VOA/Moonshine/TrialityTwGeneric.lean}.
+\begin{leancode}
+theorem comp_eqOn_id {Φ : M →ₗ[ℂ] N} {Ψ : N →ₗ[ℂ] M} {x₀ : M} (hx₀ : x₀ ∈ X)
+    (hcyc : span ℂ {y | ∃ u ∈ S, ∃ n : ℤ, y = ρ u n x₀} = X)
+    (hΦ : IsTwInt ρ τ g S X Φ) (hΨ : IsTwInt τ ρ g' S' Y Ψ) (hmap : ∀ x ∈ X, Φ x ∈ Y)
+    (hS : ∀ u ∈ S, g u ∈ S') (hgg : ∀ u ∈ S, g' (g u) = u) (h : Ψ (Φ x₀) = x₀) :
+    ∀ x ∈ X, Ψ (Φ x) = x
+\end{leancode}
+\begin{dictionary}Every hypothesis appears in the statement; in the application $g=g'=\sigma$, $\sigma^2=1$.\end{dictionary}
+
+\begin{physics}
+Applying the symmetry twice should return the original state; if the composite fixes the cyclic ground state and the labels satisfy $g'g=1$, it is the identity on the whole sector. Physically this is the statement that $\sigma^2=1$ on the sectors follows from checking it on one ground state, and it is the algebraic form of ``$\sigma$ is an involution''.
+\end{physics}
+\begin{proof}[Proof on paper]
+$\Psi\Phi$ is $(g'\circ g)$-twisted, i.e.\ untwisted: $\Psi\Phi\rho_{u,n}x=\Psi\tau_{gu,n}\Phi x=\rho_{g'gu,n}\Psi\Phi x$.
+So is the identity; they agree at $x_0$; apply Theorem~\ref{ch12:thm:eqOn_of_cyclic}.
+\end{proof}
+\begin{status}Both proved, unconditional.\end{status}
+
+\subsection{Words and annihilator compatibility}
+
+A \emph{word} is a finite list $w=[(u_1,n_1),\dots,(u_k,n_k)]$ with $u_i\in S$, acting by
+$\rho_w=\rho_{u_1,n_1}\circ\cdots\circ\rho_{u_k,n_k}$; its twist is $g(w)=[(gu_1,n_1),\dots,(gu_k,n_k)]$.  A
+formal combination $f=\sum_wf(w)\,w$ evaluates as $\mathrm{ev}_{x_0}(f)=\sum_wf(w)\rho_wx_0$, and twisted as
+$\mathrm{ev}^g_{y_0}(f)=\sum_wf(w)\tau_{g(w)}y_0$.
+
+\begin{definition}[Annihilator compatibility]\label{ch12:def:anncompat}
+$(x_0,y_0)$ is \emph{annihilator-compatible} if $\ker\mathrm{ev}_{x_0}\subseteq\ker\mathrm{ev}^g_{y_0}$: every
+relation $\sum_wf(w)\rho_wx_0=0$ implies $\sum_wf(w)\tau_{g(w)}y_0=0$.
+\end{definition}
+File \leanpath{VOA/Moonshine/TrialityTwGeneric.lean}.
+\begin{leancode}
+def wordAct (ρ : A → ℤ → M →ₗ[ℂ] M) : List (A × ℤ) → M →ₗ[ℂ] M
+  | [] => LinearMap.id
+  | p :: w => ρ p.1 p.2 ∘ₗ wordAct ρ w
+
+def twWord (g : A → A) (w : List (A × ℤ)) : List (A × ℤ) := w.map fun p => (g p.1, p.2)
+
+def Words (S : Set A) : Type _ := {w : List (A × ℤ) // ∀ p ∈ w, p.1 ∈ S}
+
+noncomputable def evW (ρ : A → ℤ → M →ₗ[ℂ] M) (S : Set A) (x₀ : M) : (Words S →₀ ℂ) →ₗ[ℂ] M :=
+  Finsupp.linearCombination ℂ fun w : Words S => wordAct ρ w.1 x₀
+
+noncomputable def evTw (τ : A → ℤ → N →ₗ[ℂ] N) (g : A → A) (S : Set A) (y₀ : N) :
+    (Words S →₀ ℂ) →ₗ[ℂ] N :=
+  Finsupp.linearCombination ℂ fun w : Words S => wordAct τ (twWord g w.1) y₀
+
+def AnnCompat (ρ : A → ℤ → M →ₗ[ℂ] M) (τ : A → ℤ → N →ₗ[ℂ] N) (g : A → A) (S : Set A)
+    (x₀ : M) (y₀ : N) : Prop :=
+  LinearMap.ker (evW ρ S x₀) ≤ LinearMap.ker (evTw τ g S y₀)
+\end{leancode}
+\begin{dictionary}
+\begin{itemize}
+\item \lean{Words S →₀ ℂ} is the space of finitely supported functions from words to $\C$, i.e.\ formal
+  finite combinations of words; \lean{Finsupp.linearCombination ℂ v} is $f\mapsto\sum_wf(w)v(w)$.
+\item \lean{wordAct ρ (p :: w)} is $\rho_p\circ\rho_w$: the first letter of the list is outermost.  The
+  twist changes letters and keeps mode indices.  So \lean{evW}, \lean{evTw} are $\mathrm{ev}_{x_0}$,
+  $\mathrm{ev}^g_{y_0}$, and \lean{AnnCompat} is the kernel inclusion, literally.
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+Annihilator compatibility says that the choice of image state is consistent: every relation among descendants of the source ground state (a null-vector-type relation) is respected by the twisted descendants of the proposed image. It is the algebraic analogue of requiring that a candidate map between sectors respects the null states, the usual obstruction to defining an intertwiner from a ground-state assignment. Heuristic reading only; the precise statement is the displayed condition on kernels.
+\end{physics}
+
+\begin{theorem}[Existence $\Leftrightarrow$ annihilator compatibility]\label{ch12:thm:exists_twInt_iff}
+Suppose $\rho_{u,n}X\subseteq X$ for $u\in S$, $x_0\in X$, and $X$ is single-mode cyclic on $x_0$.  For
+every $y_0\in N$, a $g$-twisted intertwiner $\Phi$ on $X$ with $\Phi(x_0)=y_0$ exists if and only if
+$(x_0,y_0)$ is annihilator-compatible.
+\end{theorem}
+File \leanpath{VOA/Moonshine/TrialityTwGeneric.lean}.
+\begin{leancode}
+theorem exists_twInt_iff (hstab : ∀ u ∈ S, ∀ (n : ℤ), ∀ x ∈ X, ρ u n x ∈ X) {x₀ : M}
+    (hx₀ : x₀ ∈ X) (hcyc : span ℂ {y | ∃ u ∈ S, ∃ n : ℤ, y = ρ u n x₀} = X) (y₀ : N) :
+    (∃ Φ : M →ₗ[ℂ] N, IsTwInt ρ τ g S X Φ ∧ Φ x₀ = y₀) ↔ AnnCompat ρ τ g S x₀ y₀
+\end{leancode}
+\begin{dictionary}
+\begin{itemize}
+\item Hypotheses: stability (\lean{hstab}), \lean{hx₀}, cyclicity (\lean{hcyc}) --- all about the
+  \emph{source}.  Nothing is assumed about $y_0$ or $N$.
+\item Non-vacuity: for $y_0=0$ the right side is trivially true and $\Phi=0$ works.  The content is
+  existence for a prescribed \emph{non-zero} $y_0$; this is why the top-level residual of
+  \S\ref{ch12:sec:top} carries a non-triviality clause.
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+This is the existence half of the ground-state reconstruction: an operator between sectors extending a given assignment on the ground state exists exactly when no null relation of the source is violated by the target. The twisted triality on a sector is thus equivalent to a finite-looking consistency check on one pair of states, and the chapter's strategy is to verify that check only through the ground states and a handful of light fields.
+\end{physics}
+\begin{proof}[Proof on paper]
+($\Rightarrow$) A twisted intertwiner sends $\rho_wx_0$ to $\tau_{g(w)}\Phi(x_0)$ (induction on the length of
+$w$, stability keeping us in $X$), so $\Phi\circ\mathrm{ev}_{x_0}=\mathrm{ev}^g_{y_0}$ and kernels are included.
+($\Leftarrow$) The range of $\mathrm{ev}_{x_0}$ is $X$: it contains the one-letter words $\rho_{u,n}x_0$ and is
+contained in $X$ by stability.  Define $\Phi_0(\mathrm{ev}_{x_0}f)=\mathrm{ev}^g_{y_0}f$ on $X$; well defined
+by the kernel inclusion.  Extend linearly to $M$ (choose a complement).  If $x=\mathrm{ev}_{x_0}f$, prepending
+$(u,n)$ to every word of $f$ gives $f'$ with $\rho_{u,n}x=\mathrm{ev}_{x_0}f'$ and
+$\mathrm{ev}^g_{y_0}f'=\tau_{gu,n}\mathrm{ev}^g_{y_0}f$: the intertwining property.  The empty word gives
+$\Phi(x_0)=y_0$.
+\end{proof}
+\begin{status}
+\lean{IsTwInt}, \lean{eqOn_of_cyclic}, \lean{comp_eqOn_id}, \lean{AnnCompat}, \lean{exists_twInt_iff}:
+proved, unconditional; \texttt{\#print axioms exists\_twInt\_iff} $=$ [\lean{propext},
+\lean{Classical.choice}, \lean{Quot.sound}] (re-run).  \lean{Classical.choice} enters through the
+choice of a complement.
+\end{status}
+
+\begin{theorem}[Gram criterion]\label{ch12:thm:gram}
+Let $B_1$, $B_2$ be bilinear forms on $M$, $N$.  If
+$B_1(\rho_{w'}x_0,\rho_wx_0)=B_2(\tau_{g(w')}y_0,\tau_{g(w)}y_0)$ for all words $w,w'$, and $B_2$ is
+nondegenerate on the span of the twisted word vectors, then $(x_0,y_0)$ is annihilator-compatible.
+\end{theorem}
+File \leanpath{VOA/Moonshine/TrialityTwGeneric.lean}.
+\begin{leancode}
+theorem annCompat_of_gram (B₁ : M →ₗ[ℂ] M →ₗ[ℂ] ℂ) (B₂ : N →ₗ[ℂ] N →ₗ[ℂ] ℂ) {x₀ : M} {y₀ : N}
+    (hgram : ∀ w w' : Words S, B₁ (wordAct ρ w'.1 x₀) (wordAct ρ w.1 x₀)
+      = B₂ (wordAct τ (twWord g w'.1) y₀) (wordAct τ (twWord g w.1) y₀))
+    (hnd : ∀ y ∈ LinearMap.range (evTw τ g S y₀),
+      (∀ y' ∈ LinearMap.range (evTw τ g S y₀), B₂ y' y = 0) → y = 0) :
+    AnnCompat ρ τ g S x₀ y₀
+\end{leancode}
+\begin{dictionary}
+\lean{hnd} is nondegeneracy of $B_2$ on the range of $\mathrm{ev}^g_{y_0}$.  This criterion is \emph{not}
+used for $\sigma$: it would need source Gram data too; the route taken (\S\ref{ch12:sec:top}) needs a form
+on the target only.
+\end{dictionary}
+
+\begin{physics}
+If the two-point functions (Gram matrices) of the descendants agree between the source ground state and the proposed image, and the target pairing is nondegenerate, then no relation can be violated. This is the physicist's route of checking that an operator is an isometry on a basis of states; the chapter records it as a clean criterion but does not use it on the path to the main result.
+\end{physics}
+\begin{proof}[Proof on paper]
+If $\mathrm{ev}_{x_0}f=0$ then $B_2(\mathrm{ev}^gf',\mathrm{ev}^gf)=B_1(\mathrm{ev}f',\mathrm{ev}f)=0$ for every
+$f'$; nondegeneracy gives $\mathrm{ev}^gf=0$.
+\end{proof}
+\begin{status}Proved, unconditional.  Not on the path to $\Vnat$.\end{status}
+
+\section{The triality problem on the library's sectors}\label{ch12:sec:sectors}
+
+\begin{definition}[The actions]\label{ch12:def:actions}
+For $u\in V_0^+$, $n\in\Z$: $\mathrm{act}_V(u,n)=u_{(n)}$ on $V_\Leech^+$ (adjoint action),
+$\mathrm{act}_T(u,n)=u_{(n)}$ on $(V_\Leech^T)^+$ (module action), and $\mathrm{sig}(u)=\sigma(u)$.
+\end{definition}
+File \leanpath{VOA/Moonshine/TrialityTwSigma.lean}.
+\begin{leancode}
+noncomputable def actV (u : V0Sub.carrier) (n : ℤ) : VPlus →ₗ[ℂ] VPlus :=
+  mode (leechVOAPlus.Y (u : VPlus)) n
+
+noncomputable def actT (u : V0Sub.carrier) (n : ℤ) : TP →ₗ[ℂ] TP :=
+  mode (Moonshine.plusModule.YM (u : VPlus)) n
+
+noncomputable def sig (u : V0Sub.carrier) : V0Sub.carrier := v0Sigma u
+\end{leancode}
+(\leanpath{VOA/Moonshine/TrialityTwSigma.lean}, namespace \lean{VOA.Moonshine.TrialityTw}.)
+\begin{dictionary}
+\lean{mode (Y a) n} is $a_{(n)}$.  The letter $u\in V_0^+$ is coerced to $V_\Leech^+$ to act; so
+$\mathrm{act}_V$ is the vertex operator of $V_\Leech^+$ restricted to $V_0^+$-letters.
+\lean{sig_sig : sig (sig u) = u} records $\sigma^2=1$.
+\end{dictionary}
+
+\begin{physics}
+These are the three ways the weight-zero algebra $V_0^+$ (the even sublattice vertex algebra) acts on the neutral/charged and twisted sectors: through its own fields on $V_\Leech^+$, through its modes on the twisted sector $(V_\Leech^T)^+$, and through the triality automorphism $\sigma$ relabelling the fields. In the orbifold picture $V_\Leech^+$ and the twisted sectors $T_s^+$ are the untwisted and twisted sectors of the same $\mathbb Z_2$ orbifold, and $\sigma$ is the symmetry permuting them.
+\end{physics}
+
+\begin{lemma}[Stability]\label{ch12:lem:stab}
+$V_3^+$ and each $T_s^+$ are stable under all $u_{(n)}$, $u\in V_0^+$.
+\end{lemma}
+File \leanpath{VOA/Moonshine/TrialityTwSigma.lean}.
+\begin{leancode}
+theorem actV_stab : ∀ u ∈ (Set.univ : Set V0Sub.carrier), ∀ (n : ℤ),
+    ∀ x ∈ frameSector 1, actV u n x ∈ frameSector 1
+
+theorem actT_stab (s : ZMod 2) : ∀ u ∈ (Set.univ : Set V0Sub.carrier), ∀ (n : ℤ),
+    ∀ x ∈ TPframe s, actT u n x ∈ TPframe s
+\end{leancode}
+
+\begin{physics}
+The charged piece $V_3^+$ and each twisted piece $T_s^+$ are closed under the modes of the fields of $V_0^+$, so they are genuine sub-sectors (superselection sectors) of the larger space. Technical bookkeeping step: it ensures that ``act on a sector by a field mode'' stays inside the sector.
+\end{physics}
+\begin{proof}[Proof on paper]
+$g$ (resp.\ $J$) is compatible with the vertex operators ($gY(u,z)g^{-1}=Y(gu,z)$, and on the twisted
+module $JY(u,z)J^{-1}=Y(gu,z)$, Chapter~\ref{ch:11}) and fixes $u\in V_0^+$; so $u_{(n)}$ commutes with it
+and preserves its eigenspaces.
+\end{proof}
+\begin{status}Proved, unconditional.\end{status}
+
+\begin{theorem}[Cyclicity of the sectors]\label{ch12:thm:cyc}
+(a) If $\beta\in\Leech\setminus\Leech_0$, then $V_3^+=\operatorname{span}\{u_{(n)}x_\beta:u\in V_0^+,n\in\Z\}$.
+(b) If $0\neq t_0\in T_s$, then $T_s^+=\operatorname{span}\{u_{(n)}x_{t_0}:u\in V_0^+,n\in\Z\}$, where
+$x_{t_0}=h_0(-\tfrac12)\mathbf 1\otimes t_0$.
+\end{theorem}
+File \leanpath{VOA/Moonshine/TrialityTwSigma.lean}.
+\begin{leancode}
+theorem cyc_V3 {β : leech.carrier} (hβ : β ∉ lambda0) :
+    Submodule.span ℂ {y | ∃ u ∈ (Set.univ : Set V0Sub.carrier), ∃ n : ℤ, y = actV u n (frameX0P β)}
+      = frameSector 1
+
+noncomputable def x0T (t₀ : TLeechT) : TP := ⟨frameX0T t₀, frameX0T_mem_TP t₀⟩
+
+theorem cyc_T {s : ZMod 2} {t₀ : TLeechT} (ht₀ : t₀ ∈ leechFrameT s) (h0 : t₀ ≠ 0) :
+    Submodule.span ℂ {y | ∃ u ∈ (Set.univ : Set V0Sub.carrier), ∃ n : ℤ, y = actT u n (x0T t₀)}
+      = TPframe s
+\end{leancode}
+\begin{dictionary}
+These restate \lean{span_smul_frameX0} (\leanpath{VOA/Moonshine/CyclicFrameSectors.lean}) and
+\lean{span_smul_frameX0T} (\leanpath{VOA/Moonshine/CyclicTwisted.lean}), proved in Chapter~\ref{ch:11},
+with letters typed as elements of $V_0^+$.  The hypotheses ($\beta\notin\Leech_0$; $t_0\in T_s$,
+$t_0\neq0$) are exactly that the vector lies in the sector and is non-zero.
+\end{dictionary}
+
+\begin{physics}
+Each sector is generated from a single ground state by the field modes: the charged sector $V_3^+$ from the vertex-operator state $x_\beta$ of a vector $\beta\notin\Leech_0$ (a nonzero charge), and each twisted sector from a nonzero twisted ground state $x_{t_0}$. This is the standard statement that a sector is an irreducible module built on its ground state, and it is what lets the intertwiner be specified by a single image vector.
+\end{physics}
+\begin{status}Proved, unconditional.\end{status}
+
+\begin{definition}[$\sigma$-twisted maps on the sectors]\label{ch12:def:issigma}
+A linear $\Phi:V_\Leech^+\to(V_\Leech^T)^+$ is \emph{$\sigma$-twisted on $V_3^+$} if
+$\Phi(u_{(n)}x)=(\sigma u)_{(n)}\Phi(x)$ for all $u\in V_0^+$, $n\in\Z$, $x\in V_3^+$; similarly
+$\Phi:(V_\Leech^T)^+\to(V_\Leech^T)^+$ on $T_s^+$, and $\Phi:(V_\Leech^T)^+\to V_\Leech^+$ on $T_s^+$.  (This is
+Definition~\ref{ch12:def:istwint} with $\rho,\tau\in\{\mathrm{act}_V,\mathrm{act}_T\}$, $g=\sigma$ and all letters.)
+\end{definition}
+File \leanpath{VOA/Moonshine/TrialityTwSigma.lean}.
+\begin{leancode}
+def IsSigmaV3T (Φ : VPlus →ₗ[ℂ] TP) : Prop :=
+  IsTwInt actV actT sig Set.univ (frameSector 1) Φ
+
+def IsSigmaTT (s : ZMod 2) (Φ : TP →ₗ[ℂ] TP) : Prop :=
+  IsTwInt actT actT sig Set.univ (TPframe s) Φ
+
+def IsSigmaTV (s : ZMod 2) (Φ : TP →ₗ[ℂ] VPlus) : Prop :=
+  IsTwInt actT actV sig Set.univ (TPframe s) Φ
+\end{leancode}
+\begin{dictionary}
+\begin{itemize}
+\item Letters \lean{Set.univ}: all of $V_0^+$ and every mode.  This is the full condition
+  \eqref{ch12:eq:sigmaproblem}, not a weakening to generators.
+\item The definition does not fix the target sector; which sector is hit is part of the data of the
+  existence theorems, and is not determined by the library's definitions (\S\ref{ch12:sec:golayE}).
+\item Trap: $\Phi=0$ satisfies all three definitions; the existence theorems therefore also assert that
+  $\Phi$ hits a cyclic vector.
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+This is the twisted-intertwiner condition of Definition~\ref{ch12:def:istwint} specialised to the triality: a map between the sectors $V_3^+$, $T_s^+$, $V_\Leech^+$ that sends every mode $u_{(n)}$ to the mode of the triality-rotated field $\sigma(u)_{(n)}$. A nonzero such map is the operator implementing the triality symmetry across the sectors; the zero map also qualifies, which is the $\varphi=0$ trap.
+\end{physics}
+
+\begin{theorem}[Uniqueness and weight preservation]\label{ch12:thm:sectoruniq}
+(a) A $\sigma$-twisted map on $V_3^+$ is determined by its value at $x_\beta$ ($\beta\notin\Leech_0$); on
+$T_s^+$ by its value at $x_{t_0}$ ($0\neq t_0\in T_s$).  (b) Every such map commutes with $L_0$.
+\end{theorem}
+File \leanpath{VOA/Moonshine/TrialityTwSigma.lean}.
+\begin{leancode}
+theorem IsSigmaV3T.eqOn {β : leech.carrier} (hβ : β ∉ lambda0) {Φ Ψ : VPlus →ₗ[ℂ] TP}
+    (hΦ : IsSigmaV3T Φ) (hΨ : IsSigmaV3T Ψ) (h : Φ (frameX0P β) = Ψ (frameX0P β)) :
+    ∀ x ∈ frameSector 1, Φ x = Ψ x
+
+theorem IsSigmaTT.eqOn {s : ZMod 2} {t₀ : TLeechT} (ht₀ : t₀ ∈ leechFrameT s) (h0 : t₀ ≠ 0)
+    {Φ Ψ : TP →ₗ[ℂ] TP} (hΦ : IsSigmaTT s Φ) (hΨ : IsSigmaTT s Ψ) (h : Φ (x0T t₀) = Ψ (x0T t₀)) :
+    ∀ x ∈ TPframe s, Φ x = Ψ x
+
+theorem IsSigmaV3T.L0_comm {Φ : VPlus →ₗ[ℂ] TP} (hΦ : IsSigmaV3T Φ) {x : VPlus}
+    (hx : x ∈ frameSector 1) :
+    Φ (mode (leechVOAPlus.Y leechVOAPlus.conformalVector) 1 x)
+      = mode (Moonshine.plusModule.YM leechVOAPlus.conformalVector) 1 (Φ x)
+\end{leancode}
+\begin{dictionary}
+$L_0=\omega_{(1)}$, so \lean{mode (Y ω) 1} is $L_0$.  The conformal vector of $V_0^+$ is that of $V_\Leech^+$,
+and $\sigma\omega=\omega$ (\lean{sig_omega}): the whole content of (b).  \lean{IsSigmaTT.L0_comm} and
+\lean{IsSigmaTV.eqOn} are analogous.
+\end{dictionary}
+
+\begin{physics}
+The triality map on a sector is fixed by the image of one ground state (uniqueness by cyclicity), and it commutes with $L_0$, i.e.\ it preserves energy because $\sigma$ fixes the stress tensor. This reflects the fact that symmetry operators commute with the Hamiltonian and are fixed by their action on the lowest states.
+\end{physics}
+\begin{proof}[Proof on paper]
+(a) Theorem~\ref{ch12:thm:eqOn_of_cyclic} with Theorem~\ref{ch12:thm:cyc}.  (b) The intertwining property
+for the letter $\omega$ at mode $1$, with $\sigma\omega=\omega$.
+\end{proof}
+\begin{status}Proved, unconditional.\end{status}
+
+\begin{theorem}[Existence criterion on the sectors]\label{ch12:thm:sigma_exists_iff}
+For $\beta\notin\Leech_0$ and $y_0\in(V_\Leech^T)^+$: a $\sigma$-twisted $\Phi$ on $V_3^+$ with
+$\Phi(x_\beta)=y_0$ exists iff $(x_\beta,y_0)$ is annihilator-compatible for $(\mathrm{act}_V,\mathrm{act}_T,\sigma)$
+with all letters.  Likewise on $T_s^+$ with $x_{t_0}$.
+\end{theorem}
+File \leanpath{VOA/Moonshine/TrialityTwSigma.lean}.
+\begin{leancode}
+theorem sigmaV3T_exists_iff {β : leech.carrier} (hβ : β ∉ lambda0) (y₀ : TP) :
+    (∃ Φ : VPlus →ₗ[ℂ] TP, IsSigmaV3T Φ ∧ Φ (frameX0P β) = y₀)
+      ↔ AnnCompat actV actT sig Set.univ (frameX0P β) y₀
+
+theorem sigmaTT_exists_iff {s : ZMod 2} {t₀ : TLeechT} (ht₀ : t₀ ∈ leechFrameT s) (h0 : t₀ ≠ 0)
+    (y₀ : TP) :
+    (∃ Φ : TP →ₗ[ℂ] TP, IsSigmaTT s Φ ∧ Φ (x0T t₀) = y₀)
+      ↔ AnnCompat actT actT sig Set.univ (x0T t₀) y₀
+\end{leancode}
+
+\begin{physics}
+The triality can be extended to a sector, sending the chosen ground state to a given target state, if and only if the target state obeys the same null relations as the source; this is the sector-level version of the extension criterion above. The physical content is that nothing beyond a consistency check on the ground states is needed to define the symmetry operator on the whole sector.
+\end{physics}
+\begin{proof}[Proof on paper]
+Theorem~\ref{ch12:thm:exists_twInt_iff} with Lemma~\ref{ch12:lem:stab} and Theorem~\ref{ch12:thm:cyc}.
+\end{proof}
+\begin{status}Proved, unconditional (\lean{sigmaTV_exists_iff} likewise).\end{status}
+
+\begin{theorem}[Involutivity on the sectors]\label{ch12:thm:invol}
+If $\Phi$ is $\sigma$-twisted on $V_3^+$ with $\Phi(V_3^+)\subseteq T_s^+$, $\Psi$ is $\sigma$-twisted from
+$T_s^+$ to $V_\Leech^+$, and $\Psi\Phi(x_\beta)=x_\beta$, then $\Psi\Phi=\mathrm{id}$ on $V_3^+$.  Similarly
+(\lean{sigma_involutive_TT}) $\Phi\Phi=\mathrm{id}$ on $T_s^+$ if $\Phi\Phi(x_{t_0})=x_{t_0}$.
+\end{theorem}
+File \leanpath{VOA/Moonshine/TrialityTwSigma.lean}.
+\begin{leancode}
+theorem sigma_involutive_V3 {β : leech.carrier} (hβ : β ∉ lambda0) {s : ZMod 2}
+    {Φ : VPlus →ₗ[ℂ] TP} {Ψ : TP →ₗ[ℂ] VPlus} (hΦ : IsSigmaV3T Φ) (hΨ : IsSigmaTV s Ψ)
+    (hmap : ∀ x ∈ frameSector 1, Φ x ∈ TPframe s) (h : Ψ (Φ (frameX0P β)) = frameX0P β) :
+    ∀ x ∈ frameSector 1, Ψ (Φ x) = x
+\end{leancode}
+
+\begin{physics}
+Applying the triality operator twice returns the identity on the sector, once one checks it on the ground state. This is the sector-level statement $\sigma^2=1$, necessary for $\sigma$ to define a $\mathbb Z_2$ symmetry (rather than a larger group) of the combined sectors.
+\end{physics}
+\begin{proof}[Proof on paper]Theorem~\ref{ch12:thm:comp_eqOn_id} with $g=g'=\sigma$.\end{proof}
+\begin{status}Proved, unconditional.\end{status}
+
+\subsection{Which twisted sector is \texorpdfstring{$T_0$}{T₀}? An undetermined label}\label{ch12:sec:golayE}
+
+FLM's $\sigma$ maps $V_3^+$ to the twisted summand whose central character is shared with the twisted
+module of the Golay lattice $N(A_1^{24})$ (the ``common summand'' $X_0$).  One would like to say which of
+\lean{TPframe 0}, \lean{TPframe 1} that is.  The library's definitions do not determine it.
+
+\begin{theorem}[\lean{golayE} is not determined at $w$]\label{ch12:thm:golayE}
+Let $\psi$ be the lift of $-1$ to $V_{\Leech_0}$ used to build \lean{v0Sigma}, $\theta$ the standard lift,
+and $g_e$ the automorphism $p\otimes e^\gamma\mapsto e(\gamma)p\otimes e^\gamma$ given by a character $e$ of
+$\Leech_0$.  There are characters $e_1,e_2$ with $\psi=g_{e_i}\theta g_{e_i}^{-1}$ for both $i$, and
+$w_0\in\Leech_0$ mapping to $w=8e_0$, with $e_2(w_0)=-e_1(w_0)$.
+\end{theorem}
+File \leanpath{VOA/Moonshine/TrialityTwSigma.lean}.
+\begin{leancode}
+theorem golayE_not_determined :
+    ∃ e₁ e₂ : lam0.carrier →+ Additive ℂˣ,
+      (∀ x, lam0Psi x = charLat lam0 e₁ (thetaLat lam0 (charLat lam0 (-e₁) x))) ∧
+      (∀ x, lam0Psi x = charLat lam0 e₂ (thetaLat lam0 (charLat lam0 (-e₂) x))) ∧
+      ∃ w₀ : lam0.carrier, inclΛ w₀ = frameW ∧ charVal lam0 e₂ w₀ = -charVal lam0 e₁ w₀
+\end{leancode}
+(\leanpath{VOA/Moonshine/TrialityTwSigma.lean}.)
+\begin{dictionary}
+\begin{itemize}
+\item \lean{lam0} is $\Leech_0$ as an abstract lattice, with inclusion \lean{inclΛ} into $\Leech$.  A character
+  $\Leech_0\to\C^\times$ is typed additively (\lean{→+ Additive ℂˣ}); \lean{charVal} evaluates it; \lean{charLat
+  lam0 e} is $g_e$ on $V_{\Leech_0}$, and \lean{-e} the inverse character; \lean{lam0Psi} is $\psi$.
+\item The first two clauses: both $e_1$, $e_2$ satisfy the specification (\lean{exists_golayE}) from which
+  \lean{golayE} was chosen.  The last: they disagree in sign at the preimage of $w$.
+\item An existence statement about the specification, not a defect of \lean{v0Sigma}; its consequence (a
+  design constraint) is argued on paper below.
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+The sign character $e$ on the sublattice $\Leech_0$ is a choice of discrete torsion, and the theorem records that the library's lift of $-1$ does not determine which of two characters labels the twisted sector $T_0$; the two choices differ by a sign on the lattice vector $w$. It is the analogue of the familiar ambiguity of discrete torsion in an orbifold: two labelings of the twisted sector agree on all data the library fixes but disagree on a coset sign, so one must not assume a particular labeling. A warning rather than a construction.
+\end{physics}
+\begin{proof}[Proof on paper]
+Take $e_1=$ \lean{golayE} and $e_2=e_1e_\beta$, $e_\beta(a)=(-1)^{\langle\beta,\iota a\rangle}$ with $\beta=u=(5,1^{23})$.
+The specification only sees $e^2$, because $g_e\theta g_e^{-1}=g_{e^2}\theta$, and $e_\beta^2=1$.  And
+$\langle u,w\rangle=5\cdot8/8=5$ is odd, so $e_\beta(w_0)=-1$.
+\end{proof}
+\begin{status}Proved, unconditional.\end{status}
+
+\textbf{Consequence (argued on paper, \texttt{Notes/TrialityTwisted.md} §3).}  Replacing \lean{golayE} by $e_2$
+conjugates \lean{v0Sigma} by the restriction of $g_\beta=(-1)^{\langle\beta,\cdot\rangle}$, which extends to $\Vnat$
+as $g_\beta\oplus(1\otimes e_\beta)$.  This fixes $V_3^+$ but, since $\langle\beta,w\rangle$ is odd, $e_\beta$
+anticommutes with $e_w$ and swaps \lean{TPframe 0} and \lean{TPframe 1}.  If $\Phi:V_3^+\to T_s^+$ is
+$\sigma_{e_1}$-twisted, $(1\otimes e_\beta)\Phi g_\beta^{-1}:V_3^+\to T_{s+1}^+$ is $\sigma_{e_2}$-twisted.  As the two
+sectors are non-isomorphic, exactly one $s$ works for each choice, and the choices give different $s$:
+the answer is a hidden bit of \lean{Classical.choose}.
+
+\begin{warning}
+\textbf{Do not try to prove $\sigma(V_3^+)=$ \lean{TPframe 0} (or \lean{TPframe 1}).}  It is not determined
+by the definitions.  Downstream statements are phrased with ``$\exists s$'' (\lean{sigmaV3T_exists_of_top'}
+below, \lean{topSigma_both} in Chapter~\ref{ch:13}).  This costs nothing for $\Vnat$: one needs some sector
+and the intertwining identities, not its name.
+\end{warning}
+
+\section{From the top level to the whole module}\label{ch12:sec:top}
+
+Theorem~\ref{ch12:thm:sigma_exists_iff} reduces the existence of $\sigma$ on $V_3^+$ to an
+annihilator compatibility, but that compatibility quantifies over \emph{all} words in \emph{all}
+modes of \emph{all} states of $V_0^+$.  This section reduces it to a statement on the top level.
+The section has a generic part (any VOA $W$, any two weak modules) and a Leech part.
+
+\subsection{The idea}
+
+Classically one argues: $V_3^+$ is generated by its top level $\Omega=(V_3^+)_2$; a module
+generated by its top level is a quotient of the generalised Verma module $M(\Omega)$; if the target
+is irreducible, a top-level isomorphism lifts.  We replace the Verma module by a direct argument
+about the \emph{graph} of the top-level map.
+
+Let $A$ (source) and $B$ (target, already twisted by $\sigma$) be weak $W$-modules, $\varphi:A\to B$
+a linear map, and $\Omega\le A$ the top level.  Consider in $A\oplus B$ the submodule $Z$
+generated by the graph $\Gamma=\{(x,\varphi x):x\in\Omega\}$.  If $Z$ contains no non-zero vector of
+the form $(0,y)$, then $Z$ is itself the graph of a module map $\Phi$ extending $\varphi$: that is
+annihilator compatibility.  To show $Z\cap(0\oplus B)=0$:
+\begin{enumerate}
+\item (Li's lemma) $Z$ is spanned by \emph{single modes} $(a_{(q)}x,\,a_{(q)}\varphi x)$, $x\in\Omega$.
+\item On a single mode, the only part of $a_{(q)}\varphi x$ that an invariant form can pair with
+  $\varphi\Omega$ is its weight-two part, and there it equals $\varphi(o(a)x)$ by the top-level
+  hypothesis.  So for $(0,y)\in Z$, $y$ is orthogonal to $\varphi\Omega$.
+\item Invariance of the form moves any test vector $c_{(r)}\varphi x'$ back onto $\varphi x'$ (the
+  adjoint of a mode is a combination of modes, and $Z$ is a submodule), so $y$ is orthogonal to the
+  whole target sector.
+\item Nondegeneracy of the form on the target sector gives $y=0$.
+\end{enumerate}
+Only the \emph{target} needs a form.
+
+\subsection{Sums and twists of weak modules}
+
+A weak module (Definition~\ref{l12:def:weakmodule}) is a vector space $M$ with $Y_M:W\to\End(M)[[z^{\pm1}]]$
+satisfying the vacuum axiom, truncation ($u_{(n)}x=0$ for $n\gg0$) and the Jacobi identity, with no
+grading condition.
+
+\begin{definition}\label{ch12:def:prod_twist}
+(a) For weak modules $A$ on $M$ and $B$ on $N$, $A\oplus B$ is the weak module on $M\times N$ with
+$u_{(n)}(m,y)=(u_{(n)}m,u_{(n)}y)$.  (b) For a weak module $B$ and $g\in\Aut W$, the twisted module
+$B^g$ has $Y_{B^g}(u,z)=Y_B(gu,z)$.
+\end{definition}
+File \leanpath{VOA/Moonshine/SigmaExistGeneric.lean}.
+\begin{leancode}
+noncomputable def prodModule (A : WeakModule W M) (B : WeakModule W N) :
+    WeakModule W (M × N) where  YM := prodYM A B
+  ...
+@[simp] theorem prodModule_act (A : WeakModule W M) (B : WeakModule W N) (u : 𝒱) (n : ℤ)
+    (p : M × N) : (prodModule A B).act u n p = (A.act u n p.1, B.act u n p.2)
+
+noncomputable def twistModule (B : WeakModule W N) (g : Aut W) : WeakModule W N where  YM := B.YM.comp g.toLinearEquiv.toLinearMap
+  ...
+@[simp] theorem twistModule_act (B : WeakModule W N) (g : Aut W) (u : 𝒱) (n : ℤ) (x : N) :
+    (twistModule B g).act u n x = B.act (g u) n x
+\end{leancode}
+(\leanpath{VOA/Moonshine/SigmaExistGeneric.lean}, namespace \lean{VOA.Moonshine.SigmaExist}; the
+verification of the axioms is omitted.)
+\begin{dictionary}
+\lean{A.act u n x} is $u_{(n)}x$ in the module $A$.  The two \lean{act} lemmas state that the
+constructions have exactly the intended modes; since \lean{prodModule} and \lean{twistModule} are
+values of the structure \lean{WeakModule}, Lean has checked the vacuum, truncation and Jacobi
+axioms for them (the Jacobi identity for $B^g$ uses $g(u_{(n)}v)=(gu)_{(n)}(gv)$).  There is no
+possibility of vacuity: a structure value with all fields supplied is a genuine weak module.
+\end{dictionary}
+
+\begin{physics}
+The direct sum of two modules is the space of states of two decoupled sectors, and the twisted module $B^g$ is the same Hilbert space with the field labels rotated by the symmetry $g$ (the sector seen through a symmetry-transformed set of fields). The twisting trick is what allows a $\sigma$-twisted intertwiner to be recast as an ordinary one into the twisted module.
+\end{physics}
+\begin{status}Proved (definitions with all axioms discharged), unconditional.\end{status}
+
+\subsection{Li's single-mode spanning lemma}\label{ch12:sec:li}
+
+\begin{theorem}[Li's lemma]\label{ch12:thm:li}
+In a weak module, for all $u,v\in W$, $n,p\in\Z$ and $x$,
+\begin{equation*}
+  v_{(p)}u_{(n)}x\;\in\;\operatorname{span}\{a_{(q)}x \;:\; a\in W,\ q\in\Z\}.
+\end{equation*}
+Consequently $\mathrm{modeSpan}(U)=\operatorname{span}\{a_{(q)}x:a\in W,q\in\Z,x\in U\}$ is a
+submodule for every set $U$, and it contains $U$.
+\end{theorem}
+File \leanpath{VOA/Moonshine/SigmaExistGeneric.lean}.
+\begin{leancode}
+theorem act_act_mem_span {P : Type*} [AddCommGroup P] [Module ℂ P] (A : WeakModule W P) (x : P)
+    (u v : 𝒱) (n p : ℤ) :
+    A.act v p (A.act u n x) ∈ span ℂ {y | ∃ a : 𝒱, ∃ q : ℤ, y = A.act a q x}
+
+noncomputable def modeSpan {P : Type*} [AddCommGroup P] [Module ℂ P] (A : WeakModule W P)
+    (U : Set P) : Submodule ℂ P :=
+  span ℂ {y | ∃ a : 𝒱, ∃ q : ℤ, ∃ x ∈ U, y = A.act a q x}
+
+theorem act_mem_modeSpan {P : Type*} [AddCommGroup P] [Module ℂ P] (A : WeakModule W P)
+    (U : Set P) (v : 𝒱) (p : ℤ) {y : P} (hy : y ∈ modeSpan A U) : A.act v p y ∈ modeSpan A U
+
+theorem subset_modeSpan {P : Type*} [AddCommGroup P] [Module ℂ P] (A : WeakModule W P)
+    (U : Set P) {x : P} (hx : x ∈ U) : x ∈ modeSpan A U
+\end{leancode}
+\begin{dictionary}
+\begin{itemize}
+\item No hypothesis on $u,v,n,p,x$: the statement holds in every weak module.  This is the
+  module analogue of the vacuum trick of Chapter~\ref{ch:11} (where $x=\mathbf 1$ and
+  $a_{(q)}\mathbf 1$ ranges over all of $W$).
+\item ``$\mathrm{modeSpan}$ is a submodule'' is \lean{act_mem_modeSpan}: stability under every
+  $v_{(p)}$.  With \lean{subset_modeSpan} (from $\mathbf 1_{(-1)}=\mathrm{id}$), $\mathrm{modeSpan}(U)$
+  is the submodule generated by $U$.
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+Li's lemma says that the span of all modes of all fields applied to a set of states is already closed under field action: acting with one more field mode on a descendant stays among the descendants of the same states. It is the algebraic form of the fact that the Hilbert space generated from the ground states by the fields is a representation, with no new states reachable by repeated action; it rests on the Jacobi identity (associativity of the OPE), not on physical input.
+\end{physics}
+\begin{proof}[Proof on paper]
+Let $K$ be such that $u_{(k)}x=0$ for $k\ge K$, and induct on $K-n$; if $n\ge K$ there is nothing
+to prove.  Choose $m\ge0$ with $v_{(m+i)}x=0$ for all $i\ge0$ and put $\ell=p-m$.  The Jacobi
+identity of the module, in its mode form, reads
+\begin{equation*}
+ \sum_{i\ge0}(-1)^i\binom{\ell}{i}\Big(v_{(\ell+m-i)}u_{(n+i)}x - (-1)^\ell u_{(\ell+n-i)}v_{(m+i)}x\Big)
+ \;=\;\sum_{i\ge0}\binom{m}{i}\,(v_{(\ell+i)}u)_{(m+n-i)}x .
+\end{equation*}
+The second term on the left vanishes by the choice of $m$.  The right side is a combination of single
+modes $a_{(q)}x$ with $a=v_{(\ell+i)}u$.  On the left, the $i=0$ term is $v_{(p)}u_{(n)}x$, and the terms
+$i\ge1$ are $v_{(p-i)}u_{(n+i)}x$, which lie in the span by the induction hypothesis ($K-(n+i)<K-n$).
+Hence the $i=0$ term does too.  For the consequence: a spanning vector of $\mathrm{modeSpan}(U)$ is
+$a_{(q)}x$, and $v_{(p)}a_{(q)}x$ is in the span of single modes on $x$ by the lemma.
+\end{proof}
+\begin{status}Proved, unconditional, \texttt{\#print axioms}-clean (re-run).\end{status}
+
+\subsection{The generic top-level theorem}
+
+\begin{definition}[Test span]\label{ch12:def:testspan}
+For a weak module $B$, a set $G\subseteq W$ of letters, a subspace $\Omega\le M$ and $\varphi:M\to N$:
+$Y_G=\operatorname{span}\{c_{(r)}\varphi x : c\in G,\ r\in\Z,\ x\in\Omega\}$.
+\end{definition}
+File \leanpath{VOA/Moonshine/SigmaExistGeneric.lean}.
+\begin{leancode}
+noncomputable def testSpan (B : WeakModule W N) (G : Set 𝒱) (Ω : Submodule ℂ M)
+    (φ : M →ₗ[ℂ] N) : Submodule ℂ N :=
+  span ℂ {y | ∃ c ∈ G, ∃ r : ℤ, ∃ x ∈ Ω, y = B.act c r (φ x)}
+\end{leancode}
+
+\begin{physics}
+The test span is the collection of states produced from the image of the ground states by the modes of the chosen light fields; it is the set of descendants against which the target's pairing is tested for nondegeneracy. Technical bookkeeping step in the compatibility check.
+\end{physics}
+
+\begin{theorem}[Annihilator compatibility from the top level]\label{ch12:thm:annCompat_of_top}
+Let $A$, $B$ be weak $W$-modules on $M$, $N$; $\beta$ a bilinear form on $N$; $\Omega\le M$;
+$\varphi:M\to N$ and $P:M\to M$ linear; $G\subseteq W$.  Assume:
+\begin{enumerate}[label=(\roman*)]
+\item (top-level compatibility) for every $k$, every $a\in W_k$, every $q\in\Z$ and all
+  $x,x'\in\Omega$: $\beta(a_{(q)}\varphi x,\varphi x') = \beta(\varphi(P(a_{(q)}x)),\varphi x')$;
+\item (invariance on $G$) for every $c\in G$ and $r\in\Z$ there are finitely many $a_i\in W$, $q_i\in\Z$,
+  $t_i\in\C$ with $\beta(y,c_{(r)}y')=\beta(\sum_i t_i\,a_{i\,(q_i)}y,\,y')$ for all $y,y'\in N$;
+\item (nondegeneracy) if $y$ lies in the submodule of $B$ generated by $\varphi(\Omega)$ and
+  $\beta(y,z)=0$ for all $z\in Y_G$, then $y=0$.
+\end{enumerate}
+Then for every $x_0\in\Omega$, $(x_0,\varphi x_0)$ is annihilator-compatible for the untwisted
+actions of all of $W$ on $A$ and on $B$.
+\end{theorem}
+File \leanpath{VOA/Moonshine/SigmaExistGeneric.lean}.
+\begin{leancode}
+theorem annCompat_of_top (A : WeakModule W M) (B : WeakModule W N)
+    (β : LinearMap.BilinForm ℂ N) (Ω : Submodule ℂ M) (φ : M →ₗ[ℂ] N) (P : M →ₗ[ℂ] M)
+    (G : Set 𝒱)
+    (hZO : ∀ (k : ℤ) (a : 𝒱), a ∈ W.grading k → ∀ (q : ℤ), ∀ x ∈ Ω, ∀ x' ∈ Ω,
+      β (B.act a q (φ x)) (φ x') = β (φ (P (A.act a q x))) (φ x'))
+    (hadj : ∀ c ∈ G, ∀ r : ℤ, ∃ (n : ℕ) (a : ℕ → 𝒱) (q : ℕ → ℤ) (t : ℕ → ℂ), ∀ y y' : N,
+      β y (B.act c r y') = β (∑ i ∈ Finset.range n, t i • B.act (a i) (q i) y) y')
+    (hnd : ∀ y ∈ modeSpan B (φ '' Ω), (∀ z ∈ testSpan B G Ω φ, β y z = 0) → y = 0)
+    {x₀ : M} (hx₀ : x₀ ∈ Ω) :
+    AnnCompat (fun a q => mode (A.YM a) q) (fun a q => mode (B.YM a) q) id Set.univ x₀ (φ x₀)
+\end{leancode}
+\begin{dictionary}
+\begin{itemize}
+\item \lean{LinearMap.BilinForm ℂ N} is a bilinear form $\beta:N\times N\to\C$; \lean{β y z} is
+  $\beta(y,z)$.  No symmetry is assumed.
+\item \lean{hZO} is (i), quantified over homogeneous letters (\lean{a ∈ W.grading k}); since both
+  sides are linear in $a$, this is equivalent to (i) for all $a$.  $P$ is arbitrary in the theorem;
+  in applications it is the projection to weight $2$, and then (i) is the zero-mode intertwining
+  property (see Lemma~\ref{ch12:lem:hZO} below).
+\item \lean{hadj} is (ii): a finite sum indexed by \lean{Finset.range n}, i.e.\ $i=0,\dots,n-1$.
+  Note the order of quantifiers: the coefficients may depend on $c$ and $r$ but not on $y,y'$.
+\item \lean{hnd} is (iii): \lean{modeSpan B (φ '' Ω)} is the submodule of $B$ generated by the
+  image $\varphi(\Omega)$ (Theorem~\ref{ch12:thm:li}).
+\item The conclusion is \lean{AnnCompat} with twist \lean{id}: both modules are acted on by the
+  same letters without twist.  The $\sigma$-twist is put into $B$ by using $B=$ \lean{twistModule};
+  Lemma~\ref{ch12:lem:twistiff} shows the two formulations agree.
+\item Could the theorem be vacuous?  If $\varphi=0$, then $Y_G=0$ and (iii) forces every $y$ in the
+  generated submodule to vanish, which is automatic since that submodule is $0$; the conclusion is
+  then the trivial compatibility with $y_0=0$.  So the theorem is consistent with $\varphi=0$, and
+  any non-triviality must come from the hypotheses of the Leech application: there, (iii) is proved
+  using that $\varphi(\Omega)$ contains a \emph{cyclic vector} of the target sector.
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+This theorem says that to verify that the triality is consistent on an entire sector, it is enough to check zero-mode compatibility on the ground states together with invariance and nondegeneracy of the pairing: if the zero modes of all fields intertwine on the ground states, then so do all modes on all descendants. This is the sector-level incarnation of the principle that a symmetry is determined by its action on the ground states, and is the engine of the whole reduction.
+\end{physics}
+\begin{proof}[Proof on paper]
+Let $Z\le M\oplus N$ be the submodule generated by $\Gamma=\{(x,\varphi x):x\in\Omega\}$; by
+Theorem~\ref{ch12:thm:li} applied to $A\oplus B$, $Z$ is spanned by the pairs
+$(a_{(q)}x,a_{(q)}\varphi x)$, $x\in\Omega$.
+
+\emph{Step 1.}  For fixed $x'\in\Omega$, the functional $\lambda(m,y)=\beta(y,\varphi x')-\beta(\varphi
+Pm,\varphi x')$ vanishes on $Z$: it is linear and vanishes on each spanning pair, by (i) (decompose
+$a$ into homogeneous components).
+
+\emph{Step 2.}  Hence if $(0,y)\in Z$ then $\beta(y,\varphi x')=0$ for all $x'\in\Omega$.
+
+\emph{Step 3.}  Let $(0,y)\in Z$, $c\in G$, $r\in\Z$, $x'\in\Omega$.  By (ii),
+$\beta(y,c_{(r)}\varphi x')=\beta(y',\varphi x')$ with $y'=\sum t_ia_{i(q_i)}y$.  Since $Z$ is a
+submodule, $(0,y')=\sum t_i a_{i(q_i)}(0,y)\in Z$, so Step~2 gives $\beta(y',\varphi x')=0$.  Thus
+$y\perp Y_G$.
+
+\emph{Step 4.}  The second components of elements of $Z$ lie in the submodule generated by
+$\varphi(\Omega)$.  By (iii), $(0,y)\in Z$ implies $y=0$.
+
+\emph{Conclusion.}  For a formal combination $f$ of words, $(\mathrm{ev}_{x_0}f,\mathrm{ev}_{\varphi
+x_0}f)$ is the same combination of words applied to $(x_0,\varphi x_0)\in\Gamma$, hence lies in $Z$.
+If $\mathrm{ev}_{x_0}f=0$, Step~4 gives $\mathrm{ev}_{\varphi x_0}f=0$.
+\end{proof}
+\begin{status}
+Proved, unconditional, \texttt{\#print axioms} $=$ [\lean{propext}, \lean{Classical.choice},
+\lean{Quot.sound}] (re-run for this chapter).  No Verma module, no \lean{VOA.pbw}.
+\end{status}
+
+\begin{lemma}[Twists can be moved into the action]\label{ch12:lem:twistiff}
+$\mathrm{AnnCompat}(\rho,\tau,g,S,x_0,y_0)$ holds iff
+$\mathrm{AnnCompat}(\rho,\tau\circ g,\mathrm{id},S,x_0,y_0)$ holds, where $(\tau\circ g)_{a,q}=\tau_{g(a),q}$.
+\end{lemma}
+File \leanpath{VOA/Moonshine/SigmaExistGeneric.lean}.
+\begin{leancode}
+theorem annCompat_twist_iff {A' : Type*} (ρ : A' → ℤ → M →ₗ[ℂ] M) (τ : A' → ℤ → N →ₗ[ℂ] N)
+    (g : A' → A') (S : Set A') (x₀ : M) (y₀ : N) :
+    AnnCompat ρ τ g S x₀ y₀ ↔ AnnCompat ρ (fun a q => τ (g a) q) id S x₀ y₀
+\end{leancode}
+
+\begin{physics}
+A twist by a symmetry on the source side is equivalent to an untwisted statement for the sector seen through the twisted action. Technical bookkeeping step that lets the compatibility check be done with the untwisted-action machinery.
+\end{physics}
+\begin{proof}[Proof on paper]
+Both sides evaluate a word $w$ as $\tau_{g(u_1),n_1}\cdots\tau_{g(u_k),n_k}y_0$.
+\end{proof}
+\begin{status}Proved, unconditional.\end{status}
+
+\subsection{The Leech instance: modules and the form}
+
+\begin{definition}\label{ch12:def:AVATBTs}
+As weak $V_0^+$-modules: $A_V=V_\Leech^+$ (restriction of the adjoint module), $A_T=(V_\Leech^T)^+$
+(restriction of \lean{plusModule}), and $B_{T}^{\sigma}=A_T^\sigma$, i.e.\ $(V_\Leech^T)^+$ with
+$u$ acting as $(\sigma u)_{(n)}$.
+\end{definition}
+File \leanpath{VOA/Moonshine/SigmaExistLeech.lean}.
+\begin{leancode}
+noncomputable def AV : WeakModule V0P VPlus := V0Sub.restrictWeakModule (adjointWeakModule leechVOAPlus)
+
+noncomputable def AT : WeakModule V0P TP := V0Sub.restrictWeakModule plusModule.toWeakModule
+
+noncomputable def BTs : WeakModule V0P TP := twistModule AT v0Sigma
+
+theorem mode_BTs (u : V0Sub.carrier) (n : ℤ) : mode (BTs.YM u) n = actT (sig u) n
+\end{leancode}
+(\leanpath{VOA/Moonshine/SigmaExistLeech.lean}.)
+\begin{dictionary}
+\lean{V0Sub.restrictWeakModule} restricts a $V_\Leech^+$-module to the subalgebra $V_0^+$; its modes
+are those of the original module (\lean{mode_AV}, \lean{mode_AT}: \lean{actV}, \lean{actT}).
+\lean{mode_BTs} confirms the twist.
+\end{dictionary}
+
+\begin{physics}
+The three modules are the charged sector $V_\Leech^+$, the twisted sector $(V_\Leech^T)^+$, and the twisted sector viewed through the triality (its fields relabelled by $\sigma$). Together they are the state spaces between which the triality operator is supposed to act, and the third is how the twisted-intertwiner condition becomes an ordinary module-map condition.
+\end{physics}
+
+\begin{theorem}[The form on the twisted sectors]\label{ch12:thm:TPForm}
+(a) $T_0^+\perp T_1^+$ for \lean{TPForm}.  (b) \lean{TPForm} is nondegenerate on each $T_s^+$: if
+$y\in T_s^+$ and $\langle y,z\rangle=0$ for all $z\in T_s^+$, then $y=0$.
+\end{theorem}
+File \leanpath{VOA/Moonshine/SigmaExistLeech.lean}.
+\begin{leancode}
+theorem TPForm_frame_orth {x y : TP} (hx : x ∈ TPframe 0) (hy : y ∈ TPframe 1) : TPForm x y = 0
+
+theorem TPForm_eq_zero_of_frame {s : ZMod 2} {y : TP} (hy : y ∈ TPframe s)
+    (h : ∀ z ∈ TPframe s, TPForm y z = 0) : y = 0
+\end{leancode}
+
+\begin{physics}
+The invariant bilinear form on the twisted sectors is the physical inner product: distinct twisted sectors are orthogonal (they are superselection sectors), and the form is nondegenerate on each, so every nonzero state has a nonzero overlap with some other state. Nondegeneracy is what allows a state to be detected by its two-point functions, which is the input to the compatibility criterion above.
+\end{physics}
+\begin{proof}[Proof on paper]
+(a) $J=c^{-1}e_w$ is self-adjoint for the form on $T$: $\langle e_wt,t'\rangle = (-1)^{|w|^2/2}\langle
+t,e_wt'\rangle$ up to the normalisation $c$, and $|w|^2/2=4$ is even, so the sign is $+1$.  The form on
+$S[\theta]\otimes T$ is the tensor product, so $1\otimes J$ is self-adjoint.  If $Jx=x$, $Jy=-y$ then
+$\langle x,y\rangle=\langle Jx,y\rangle=\langle x,Jy\rangle=-\langle x,y\rangle$.  (b) The form is
+nondegenerate on all of $(V_\Leech^T)^+$ (Chapter~\ref{ch:09}); $(V_\Leech^T)^+=T_0^+\oplus T_1^+$;
+if $y\in T_s^+$ is orthogonal to $T_s^+$ it is orthogonal to $T_{s+1}^+$ by (a), hence to everything.
+\end{proof}
+\begin{status}Proved, unconditional.\end{status}
+
+\begin{lemma}[Invariance for the twisted target]\label{ch12:lem:hadj}
+For homogeneous $c\in V_0^+$ of weight $k$ and $r\in\Z$, the adjoint of $c_{(r)}$ in $B_T^\sigma$ for
+\lean{TPForm} is $\sum_{j=0}^{k}\frac{(-1)^k}{j!}\,(a_j)_{(2k-r-2-j)}$ in $B_T^\sigma$, where
+$a_j=\sigma(L_1^j\sigma c)$.
+\end{lemma}
+File \leanpath{VOA/Moonshine/SigmaExistLeech.lean}.
+\begin{leancode}
+def homLetters : Set V0Sub.carrier := {c | ∃ k : ℤ, (c : VPlus) ∈ leechVOAPlus.grading k}
+
+theorem hadj_BTs : ∀ c ∈ homLetters, ∀ r : ℤ, ∃ (n : ℕ) (a : ℕ → V0Sub.carrier) (q : ℕ → ℤ)
+    (t : ℕ → ℂ), ∀ y y' : TP,
+      TPForm y (BTs.act c r y') = TPForm (∑ i ∈ Finset.range n, t i • BTs.act (a i) (q i) y) y'
+\end{leancode}
+\begin{dictionary}
+This is hypothesis (ii) of Theorem~\ref{ch12:thm:annCompat_of_top} with $G=$ homogeneous letters.
+In $B_T^\sigma$ the letter $c$ acts as $(\sigma c)_{(r)}$; FHL invariance of \lean{TPForm} (recalled in
+\S\ref{ch12:sec:recall}) expresses the adjoint through $(L_1^j\sigma c)_{(\cdot)}$, and to write these
+as $B_T^\sigma$-modes one feeds the letters $\sigma(L_1^j\sigma c)$, using $\sigma^2=1$.  $L_1$
+preserves $V_0^+$ because $\omega\in V_0^+$.
+\end{dictionary}
+
+\begin{physics}
+This gives the BPZ-type adjoint of a field mode in the twisted sector (the mode with weight-shifted index and the $L_1$-corrections, as for any quasi-primary field), expressing invariance of the inner product under the field action. Technical step in the nondegeneracy argument.
+\end{physics}
+\begin{status}Proved, unconditional.\end{status}
+
+\subsection{The named residuals \texorpdfstring{\lean{TopSigmaV3}}{TopSigmaV3} and \texorpdfstring{\lean{TopSigmaTT}}{TopSigmaTT}}
+
+Write $\Omega_3=(V_3^+)_2$ and $\Omega_{T,s'}=(T_{s'}^+)_2$ for the top levels (both of dimension
+$49152$).
+
+\begin{definition}[Top-level $\sigma$-datum on $V_3^+$]\label{ch12:def:TopSigmaV3}
+A linear $\varphi:V_\Leech^+\to(V_\Leech^T)^+$ is a \emph{top-level $\sigma$-datum into $T_s^+$} if
+\begin{enumerate}[label=(\alph*)]
+\item $\varphi(\Omega_3)\subseteq T_s^+$;
+\item $\varphi(\Omega_3)\subseteq((V_\Leech^T)^+)_2$;
+\item for every $k$, every $a\in(V_0^+)_k$ and every $x\in\Omega_3$:
+  $\varphi(o(a)x)=o(\sigma a)\varphi(x)$, where $o(a)=a_{(k-1)}$;
+\item there are $0\neq t_0\in T_s$ and $x\in\Omega_3$ with $\varphi(x)=h_0(-\tfrac12)\mathbf 1\otimes t_0$.
+\end{enumerate}
+\end{definition}
+File \leanpath{VOA/Moonshine/SigmaExistLeech.lean}.
+\begin{leancode}
+noncomputable def OmegaV3 : Submodule ℂ VPlus := frameSector 1 ⊓ leechVOAPlus.grading 2
+
+structure TopSigmaV3 (s : ZMod 2) (φ : VPlus →ₗ[ℂ] TP) : Prop where
+  /-- `φ` maps the top level of `V₃⁺` into `T_s⁺`. -/
+  maps_frame : ∀ x ∈ OmegaV3, φ x ∈ TPframe s
+  /-- `φ` maps the top level into weight 2. -/
+  maps_weight : ∀ x ∈ OmegaV3, φ x ∈ plusModule.weight (2 : ℂ)
+  /-- Zero-mode intertwining: `φ (o(a) x) = o(σ a) φ x` for every homogeneous `a ∈ V₀⁺`. -/
+  zero_mode : ∀ (k : ℤ) (a : V0Sub.carrier), (a : VPlus) ∈ leechVOAPlus.grading k →
+    ∀ x ∈ OmegaV3, φ (actV a (k - 1) x) = actT (sig a) (k - 1) (φ x)
+  /-- `φ` hits a cyclic vector `h₀(−½)𝟙 ⊗ t₀` of `T_s⁺`. -/
+  hits_cyclic : ∃ t₀ : TLeechT, t₀ ∈ leechFrameT s ∧ t₀ ≠ 0 ∧ ∃ x ∈ OmegaV3, φ x = x0T t₀
+\end{leancode}
+\begin{dictionary}
+\begin{itemize}
+\item \lean{⊓} is intersection of subspaces: \lean{OmegaV3} $=V_3^+\cap(V_\Leech^+)_2=\Omega_3$.
+\item A \lean{structure} with \lean{Prop} fields is a conjunction of four clauses, named
+  (a)--(d) above in order.
+\item In \lean{zero_mode}, $k$ is the weight of $a$, and \lean{actV a (k - 1)} is $a_{(k-1)}=o(a)$; on
+  the target, $\sigma a$ has the same weight, so \lean{actT (sig a) (k - 1)} is $o(\sigma a)$.  The
+  clause is quantified over \emph{all} weights $k$ and all homogeneous $a$: an infinite family of
+  finite-dimensional identities.
+\item \lean{plusModule.weight (2 : ℂ)} is the weight-two space of $(V_\Leech^T)^+$.
+\item \lean{hits_cyclic} uses \lean{x0T t₀}, defined in Theorem~\ref{ch12:thm:cyc}.
+\item Every clause is \emph{necessary} for $\varphi=\Phi|_{\Omega_3}$ when $\Phi$ is a non-zero
+  $\sigma$-twisted map $V_3^+\to T_s^+$ (for (d), up to choosing the cyclic vector in the image;
+  for (c) see \lean{IsSigmaV3T.zero_mode} below).  So the definition is not stronger than what is
+  true.
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+The top-level datum records the triality only on the ground states of the sector: a map of the lowest-weight space $\Omega_3$ to the lowest-weight space of the target that intertwines the zero modes $o(a)$ with the rotated zero modes $o(\sigma a)$, together with a nonzero hit on the cyclic vector. This is the ``top-level'' (ground-state) data of the sector, to be read as a representation of the Zhu algebra; condition (d) excludes $\varphi=0$, the trivial intertwiner. The residual is the one remaining unproved input to the existence of the twisted triality, which the rest of the chapter reduces to checks on a few light fields.
+\end{physics}
+
+\begin{warning}
+\textbf{The $\varphi=0$ trap.}  Without \lean{hits_cyclic}, $\varphi=0$ satisfies the other three
+clauses, and the reduction would produce the trivial intertwiner $\Phi=0$, which is useless for
+$\Vnat$ (it is the analogue of the square-zero trap of Chapter~\ref{ch:10}).  The clause is
+there on purpose; it is also exactly what makes the nondegeneracy hypothesis (iii) of
+Theorem~\ref{ch12:thm:annCompat_of_top} provable: the test span $Y_G$ then contains all
+$u_{(n)}x_{t_0}$, which span $T_s^+$ by Theorem~\ref{ch12:thm:cyc}.
+\end{warning}
+
+\begin{lemma}[Top-level compatibility from zero modes]\label{ch12:lem:hZO}
+If $\varphi$ satisfies \lean{TopSigmaV3 s}, then hypothesis (i) of Theorem~\ref{ch12:thm:annCompat_of_top}
+holds for $A=A_V$, $B=B_T^\sigma$, $\beta=$ \lean{TPForm}, $\Omega=\Omega_3$ and $P=\pi_2$ the projection of
+$V_\Leech^+$ onto weight $2$.
+\end{lemma}
+File \leanpath{VOA/Moonshine/SigmaExistLeech.lean}.
+\begin{leancode}
+theorem hZO_V3 {s : ZMod 2} {φ : VPlus →ₗ[ℂ] TP} (hφ : TopSigmaV3 s φ) :
+    ∀ (k : ℤ) (a : V0Sub.carrier), a ∈ V0P.grading k → ∀ (q : ℤ), ∀ x ∈ OmegaV3, ∀ x' ∈ OmegaV3,
+      TPForm (BTs.act a q (φ x)) (φ x')
+        = TPForm (φ (piHom leechVOAPlus 2 (AV.act a q x))) (φ x')
+\end{leancode}
+
+\begin{physics}
+The zero-mode condition on the ground states implies the top-level matrix-element identity needed for the compatibility theorem: the zero modes of all fields, which in the Hamiltonian picture are the only operators that map the ground-state space to itself, transport correctly under $\varphi$. Technical step relating the Zhu-algebra datum to the pairing identity.
+\end{physics}
+\begin{proof}[Proof on paper]
+$a_{(q)}x$ has weight $k+2-q-1$.  If $q=k-1$ this is $2$, $\pi_2$ is the identity on it, and the
+identity is clause (c).  Otherwise $\pi_2(a_{(q)}x)=0$, and $(\sigma a)_{(q)}\varphi x$ has weight
+$\neq2$, so it is orthogonal to the weight-two vector $\varphi x'$ (different $L_0$-eigenspaces are
+orthogonal for an invariant form, \lean{TPForm_weightOrth}).
+\end{proof}
+\begin{status}Proved, unconditional.\end{status}
+
+\begin{theorem}[The residual gives annihilator compatibility]\label{ch12:thm:annCompatV3}
+If $\varphi$ satisfies \lean{TopSigmaV3 s}, then for every $x_0\in\Omega_3$, $(x_0,\varphi x_0)$ is
+annihilator-compatible for $(\mathrm{act}_V,\mathrm{act}_T,\sigma)$ with all letters.
+\end{theorem}
+File \leanpath{VOA/Moonshine/SigmaExistLeech.lean}.
+\begin{leancode}
+theorem annCompat_V3_of_top {s : ZMod 2} {φ : VPlus →ₗ[ℂ] TP} (hφ : TopSigmaV3 s φ) {x₀ : VPlus}
+    (hx₀ : x₀ ∈ OmegaV3) : AnnCompat actV actT sig Set.univ x₀ (φ x₀)
+\end{leancode}
+
+\begin{physics}
+Given the ground-state datum (the zero modes intertwine and the image is nonzero), the triality is consistent on the whole charged sector: there is no violated null relation. This is the sector-level payoff of knowing the symmetry on the ground states alone.
+\end{physics}
+\begin{proof}[Proof on paper]
+Lemma~\ref{ch12:lem:twistiff}, then Theorem~\ref{ch12:thm:annCompat_of_top} with
+Lemmas~\ref{ch12:lem:hZO} and \ref{ch12:lem:hadj}.  For (iii): the submodule generated by
+$\varphi(\Omega_3)$ lies in $T_s^+$ by clause (a) and stability; the test span contains every
+$(\sigma\sigma a)_{(n)}x_{t_0}=a_{(n)}x_{t_0}$ (clause (d)), so it contains $T_s^+$; and
+Theorem~\ref{ch12:thm:TPForm}(b) applies.
+\end{proof}
+\begin{status}Proved; conditional only on its explicit hypothesis \lean{TopSigmaV3 s φ}.\end{status}
+
+\subsection{The explicit cyclic vector and the existence theorem}
+
+To apply Theorem~\ref{ch12:thm:sigma_exists_iff} the cyclic vector $x_\beta$ must lie in the top
+level, so $|\beta|^2=4$ with $\beta\notin\Leech_0$.  The library takes
+\begin{equation*}
+ \beta_2 = u - w = (5,1^{23})-(8,0^{23}) = (-3,1^{23})\quad(\sqrt8\text{-coordinates}),\qquad
+ |\beta_2|^2=\tfrac{9+23}{8}=4 .
+\end{equation*}
+File \leanpath{VOA/Moonshine/SigmaExistLeech.lean}.
+\begin{leancode}
+noncomputable def β₂ : leech.carrier := uβ - frameW
+
+theorem β₂_not_mem : β₂ ∉ lambda0
+
+theorem form_β₂ : leech.form β₂ β₂ = 4
+
+theorem frameX0P_β₂_mem : frameX0P β₂ ∈ OmegaV3
+\end{leancode}
+\begin{dictionary}
+\lean{uβ} is the odd Leech vector $(5,1^{23})$ and \lean{frameW} is $w=(8,0^{23})\in\Leech_0$.
+$\beta_2\notin\Leech_0$ because $u\notin\Leech_0$ ($u_0=5$ is odd) and $w\in\Leech_0$.  The norm is
+computed by evaluating a $24$-term dot product in the kernel (\lean{decide +kernel}).
+\end{dictionary}
+\begin{status}Proved, unconditional.\end{status}
+
+\begin{theorem}[$\sigma$ on $V_3^+$ from the residual]\label{ch12:thm:sigmaV3T_exists_of_top}
+If $\varphi$ satisfies \lean{TopSigmaV3 s}, there is a $\sigma$-twisted intertwiner
+$\Phi:V_\Leech^+\to(V_\Leech^T)^+$ on $V_3^+$ with $\Phi=\varphi$ on $\Omega_3$, and $\Phi$ hits a cyclic
+vector $x_{t_0}$ of $T_s^+$ ($0\neq t_0\in T_s$).
+\end{theorem}
+File \leanpath{VOA/Moonshine/SigmaExistLeech.lean}.
+\begin{leancode}
+theorem sigmaV3T_exists_of_top {s : ZMod 2} {φ : VPlus →ₗ[ℂ] TP} (hφ : TopSigmaV3 s φ) :
+    ∃ Φ : VPlus →ₗ[ℂ] TP, IsSigmaV3T Φ ∧ (∀ x ∈ OmegaV3, Φ x = φ x) ∧
+      ∃ t₀ : TLeechT, t₀ ∈ leechFrameT s ∧ t₀ ≠ 0 ∧ ∃ x ∈ OmegaV3, Φ x = x0T t₀
+
+theorem sigmaV3T_exists_of_top' (h : ∃ s φ, TopSigmaV3 s φ) :
+    ∃ (s : ZMod 2) (Φ : VPlus →ₗ[ℂ] TP), IsSigmaV3T Φ ∧
+      ∃ t₀ : TLeechT, t₀ ∈ leechFrameT s ∧ t₀ ≠ 0 ∧ ∃ x ∈ OmegaV3, Φ x = x0T t₀
+\end{leancode}
+\begin{dictionary}
+\begin{itemize}
+\item The conclusion has three parts: $\Phi$ is $\sigma$-twisted for \emph{all} letters and modes; it
+  extends $\varphi$ on the top level; it is non-zero (hits a cyclic vector of $T_s^+$).
+\item The statement does not assert $\Phi(V_3^+)\subseteq T_s^+$; that follows (stability and
+  cyclicity) and is not needed in this form downstream.
+\item The primed version is the ``$\exists s$'' form required by \S\ref{ch12:sec:golayE}.
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+From the ground-state datum one obtains the triality operator on the charged sector, agreeing with $\varphi$ on the ground states and landing on a cyclic ground state of the twisted sector. This is the step where an operator that intertwines two sectors is actually constructed from its ground-state data, and it is nonzero because the datum hits a nonzero state.
+\end{physics}
+\begin{proof}[Proof on paper]
+By Theorem~\ref{ch12:thm:annCompatV3} at $x_0=x_{\beta_2}$ and Theorem~\ref{ch12:thm:sigma_exists_iff},
+there is $\Phi$ with $\Phi(x_{\beta_2})=\varphi(x_{\beta_2})$.  On $\Omega_3$, $\Phi=\varphi$: the weight-two
+part of $u_{(n)}x_{\beta_2}$ is $o(a)x_{\beta_2}$ summed over the homogeneous components $a$ of $u$
+for which $n=\mathrm{wt}\,a-1$; since $V_3^+$ is spanned by the $u_{(n)}x_{\beta_2}$, $\Omega_3$ is spanned
+by the vectors $o(a)x_{\beta_2}$; and both $\Phi$ and $\varphi$ send $o(a)x_{\beta_2}$ to
+$o(\sigma a)\varphi(x_{\beta_2})$ (twisted intertwining for $\Phi$, clause (c) for $\varphi$).  Then
+clause (d) for $\varphi$ gives the cyclic vector in the image of $\Phi$.
+\end{proof}
+\begin{status}Proved; conditional only on the explicit hypothesis \lean{TopSigmaV3 s φ}.
+\texttt{\#print axioms} re-run: [\lean{propext}, \lean{Classical.choice}, \lean{Quot.sound}].
+The hypothesis is discharged in Chapter~\ref{ch:13}.\end{status}
+
+\begin{theorem}[Necessity of the zero-mode clause]\label{ch12:thm:necessity}
+Every $\sigma$-twisted $\Phi$ on $V_3^+$ satisfies $\Phi(o(a)x)=o(\sigma a)\Phi(x)$ for $x\in\Omega_3$
+(and similarly on $T_{s'}^+$).
+\end{theorem}
+File \leanpath{VOA/Moonshine/SigmaExistLeech.lean}.
+\begin{leancode}
+theorem IsSigmaV3T.zero_mode {Φ : VPlus →ₗ[ℂ] TP} (hΦ : IsSigmaV3T Φ) (k : ℤ) (a : V0Sub.carrier)
+    (x : VPlus) (hx : x ∈ OmegaV3) : Φ (actV a (k - 1) x) = actT (sig a) (k - 1) (Φ x)
+\end{leancode}
+\begin{dictionary}
+Here $k$ is arbitrary (not tied to the weight of $a$): the statement is the intertwining
+property at mode $k-1$, stronger than needed.
+\end{dictionary}
+
+\begin{physics}
+Any triality operator on the sector must satisfy the zero-mode intertwining on the ground states, so the zero-mode clause in the top-level datum cannot be weakened: the datum is not only sufficient but necessary. It is the statement that the ground-state data are exactly what the symmetry operator restricts to.
+\end{physics}
+\begin{status}Proved, unconditional.\end{status}
+
+\paragraph{The twisted-to-twisted sector.}  The same reduction is proved for maps out of $T_{s'}^+$.
+
+\begin{definition}\label{ch12:def:TopSigmaTT}
+$\Omega_{T,s'}=T_{s'}^+\cap((V_\Leech^T)^+)_2$; a top-level $\sigma$-datum $T_{s'}^+\to T_s^+$ is
+$\varphi:(V_\Leech^T)^+\to(V_\Leech^T)^+$ with the four clauses of Definition~\ref{ch12:def:TopSigmaV3},
+$\Omega_3$ replaced by $\Omega_{T,s'}$ and $\mathrm{act}_V$ by $\mathrm{act}_T$.
+\end{definition}
+File \leanpath{VOA/Moonshine/SigmaExistLeech.lean}.
+\begin{leancode}
+noncomputable def OmegaT (s' : ZMod 2) : Submodule ℂ TP := TPframe s' ⊓ plusModule.weight (2 : ℂ)
+
+structure TopSigmaTT (s' s : ZMod 2) (φ : TP →ₗ[ℂ] TP) : Prop where
+  /-- `φ` maps the top level of `T_{s'}⁺` into `T_s⁺`. -/
+  maps_frame : ∀ x ∈ OmegaT s', φ x ∈ TPframe s
+  /-- `φ` maps the top level into weight 2. -/
+  maps_weight : ∀ x ∈ OmegaT s', φ x ∈ plusModule.weight (2 : ℂ)
+  /-- Zero-mode intertwining for every homogeneous `a ∈ V₀⁺`. -/
+  zero_mode : ∀ (k : ℤ) (a : V0Sub.carrier), (a : VPlus) ∈ leechVOAPlus.grading k →
+    ∀ x ∈ OmegaT s', φ (actT a (k - 1) x) = actT (sig a) (k - 1) (φ x)
+  /-- `φ` hits a cyclic vector of `T_s⁺`. -/
+  hits_cyclic : ∃ t₀ : TLeechT, t₀ ∈ leechFrameT s ∧ t₀ ≠ 0 ∧ ∃ x ∈ OmegaT s', φ x = x0T t₀
+
+theorem sigmaTT_exists_of_top {s' s : ZMod 2} {φ : TP →ₗ[ℂ] TP} (hφ : TopSigmaTT s' s φ)
+    {t₀' : TLeechT} (ht₀' : t₀' ∈ leechFrameT s') (h0' : t₀' ≠ 0) :
+    ∃ Φ : TP →ₗ[ℂ] TP, IsSigmaTT s' Φ ∧ (∀ x ∈ OmegaT s', Φ x = φ x) ∧
+      ∃ t₀ : TLeechT, t₀ ∈ leechFrameT s ∧ t₀ ≠ 0 ∧ ∃ x ∈ OmegaT s', Φ x = x0T t₀
+\end{leancode}
+\begin{dictionary}
+The source cyclic vector is $x_{t_0'}$ with $0\neq t_0'\in T_{s'}$ (hypotheses \lean{ht₀'},
+\lean{h0'}), which is in the top level because $h_0(-\tfrac12)\mathbf 1\otimes t_0'$ has weight
+$\tfrac12+\tfrac32=2$ (\lean{x0T_mem_weight}).  The weight-$2$ projection on the target is
+\lean{projT2}.  FLM's case is $s'=s$, $T_3^+\to T_3^+$; the theorem allows any pair.
+\end{dictionary}
+
+\begin{physics}
+The same ground-state datum, now for maps between two twisted sectors $T_{s'}^+\to T_s^+$, with the ground-state space the weight-two part of the twisted sector. It is the analogue of the charged-sector datum for the twisted-to-twisted part of the triality.
+\end{physics}
+\begin{proof}[Proof on paper]
+Identical to Theorem~\ref{ch12:thm:sigmaV3T_exists_of_top}, with $A_T$ in place of $A_V$.
+\end{proof}
+\begin{status}Proved; conditional only on \lean{TopSigmaTT s' s φ} and the choice of $t_0'$.\end{status}
+
+\section{From the top level to Zhu generators}\label{ch12:sec:zhugen}
+
+Clause (c) of \lean{TopSigmaV3} still quantifies over all homogeneous $a\in V_0^+$.  Zhu's easy
+direction reduces it to generators.
+
+\begin{definition}[Zhu generation]\label{ch12:def:zhugen}
+A set $G\subseteq V_0^+$ \emph{Zhu-generates} $V_0^+$ if every subspace $S\le V_0^+$ with $\mathbf
+1\in S$, $\chtwelveO(V_0^+)\subseteq S$, $G\subseteq S$ and $S\ast S\subseteq S$ is all of $V_0^+$.
+Equivalently --- using Zhu's theorem that $\chtwelveO(V_0^+)$ is a two-sided ideal, so that $\ast$ descends to
+an associative product on $A(V_0^+)$ (Chapter~\ref{ch:L12}) --- the images of $G$ and $\mathbf 1$ generate
+$A(V_0^+)$ as an algebra.
+\end{definition}
+File \leanpath{VOA/Moonshine/SigmaExistZhu.lean}.
+\begin{leancode}
+def ZhuGenerated (G : Set V0Sub.carrier) : Prop :=
+  ∀ S : Submodule ℂ V0Sub.carrier, V0P.vacuum ∈ S → O V0P ≤ S →
+    (∀ a ∈ S, ∀ b ∈ S, zhuMul V0P a b ∈ S) → G ⊆ S → S = ⊤
+\end{leancode}
+(\leanpath{VOA/Moonshine/SigmaExistZhu.lean}.)
+\begin{dictionary}
+\begin{itemize}
+\item \lean{⊤} is the whole space.  The definition quantifies over subspaces of $V_0^+$ containing
+  $\chtwelveO$, which correspond bijectively to subspaces of $A(V_0^+)$; ``closed under $\ast$''
+  is closure of the corresponding subspace under the product.  So the ``equivalently'' holds
+  \emph{given} that $\ast$ descends to $A(V)$; the Lean definition does not need that fact.
+\item Not vacuous: $G=V_0^+$ trivially Zhu-generates; $G=\emptyset$ does not (the subspace
+  $\C\mathbf 1+\chtwelveO(V_0^+)$ is $\ast$-closed and proper, since $A(V_0^+)$ is not
+  one-dimensional: it has $16$ inequivalent irreducible modules, cf.\ \S\ref{ch12:sec:numerics};
+  $\ast$-closedness of $\C\mathbf 1+\chtwelveO$ uses Zhu's theorem that $\chtwelveO$ is a two-sided ideal ---
+  this non-vacuity remark is argued on paper, not in Lean).  The weight-two statement proved below is
+  therefore a genuine statement.
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+Zhu generation by a set $G$ of light fields says that the zero modes of $G$, together with the identity, already generate the full algebra of zero modes $A(V_0^+)$; equivalently, if an operator commutes with $o(g)$ for all $g\in G$ on the ground states, it commutes with every zero mode. In physical terms, a few light (low-weight) fields act irreducibly on the ground states of every sector, so checking the symmetry on them suffices. It is the key finite check that replaces an infinite one.
+\end{physics}
+
+\begin{definition}[The ordinary modules]\label{ch12:def:ordmods}
+$M_{V3}=V_3^+$, $M_{T,s'}=T_{s'}^+$ as ordinary $V_0^+$-modules, and $M_T^\sigma=(V_\Leech^T)^+$ with the
+$\sigma$-twisted action, also ordinary (twisting by an automorphism keeps the grading since
+$\sigma\omega=\omega$).
+\end{definition}
+File \leanpath{VOA/Moonshine/SigmaExistZhu.lean}.
+\begin{leancode}
+noncomputable def twistOrd (N : OrdVModule W M) (g : Aut W) : OrdVModule W M where
+  toWeakModule := twistModule N.toWeakModule g
+  weight := N.weight  isInternal := N.isInternal
+  ...
+noncomputable def MV3 : OrdVModule V0P (frameSector 1) := OrdVModule.submodule N0 P3
+
+noncomputable def MTsrc (s' : ZMod 2) : OrdVModule V0P (TPframe s') := OrdVModule.submodule NT (PT s')
+
+noncomputable def MT : OrdVModule V0P TP := twistOrd NT v0Sigma
+\end{leancode}
+\begin{dictionary}
+\lean{N0} and \lean{NT} are $V_\Leech^+$ (adjoint module) and $(V_\Leech^T)^+$ restricted to $V_0^+$ as
+ordinary modules; \lean{P3} and \lean{PT s'} are $V_3^+$ and $T_{s'}^+$ as $V_0^+$-stable subspaces
+(Lemma~\ref{ch12:lem:stab}); \lean{OrdVModule.submodule} gives a stable graded subspace the induced
+ordinary-module structure.  In \lean{twistOrd} the weight spaces are unchanged, which is correct because
+$L_0$ is the zero mode of $\omega=\sigma\omega$.
+\end{dictionary}
+
+\begin{physics}
+The three sectors regarded as ordinary modules: graded by energy with finite-dimensional energy levels and a ground level, with the twisted version a module because the triality preserves the stress tensor (the energy). Technical setup that lets Zhu's zero-mode analysis apply to the sectors.
+\end{physics}
+
+\begin{theorem}[Lowest weight $2$]\label{ch12:thm:lowest}
+$M_{V3}$, $M_{T,s'}$ and $M_T^\sigma$ have lowest weight $2$.
+\end{theorem}
+File \leanpath{VOA/Moonshine/SigmaExistZhu.lean}.
+\begin{leancode}
+theorem isLowestWeight_MV3 : IsLowestWeight MV3 (2 : ℂ)
+
+theorem isLowestWeight_MT : IsLowestWeight MT (2 : ℂ)
+
+theorem isLowestWeight_MTsrc (s' : ZMod 2) : IsLowestWeight (MTsrc s') (2 : ℂ)
+\end{leancode}
+
+\begin{physics}
+The ground energy of each of the three sectors is $2$: the lowest-weight states are weight-two states, so the ground-state space is the space of weight-two primaries (a Griess-algebra-type space in the Moonshine setting). Together with Zhu's easy direction, the zero modes act on this weight-two space.
+\end{physics}
+\begin{proof}[Proof on paper]
+$V_\Leech^+$ has weights $0,2,3,\dots$: weight $0$ is $\C\mathbf 1\subset V_0^+$ (so meets $V_3^+$ only in
+$0$), weight $1$ is zero ($\Leech$ has no roots and $\theta$ kills $h(-1)\mathbf 1$).  For
+$(V_\Leech^T)^+$ the weights are $2,3,\dots$ (\S\ref{ch12:sec:recall}).
+\end{proof}
+\begin{status}Proved, unconditional.\end{status}
+
+\begin{theorem}[Zero modes from Zhu generators]\label{ch12:thm:oMod_intertwine}
+Let $N_1,N_2$ be ordinary $V_0^+$-modules of lowest weight $2$, $\psi:N_1\to N_2$ linear with
+$\psi((N_1)_2)\subseteq(N_2)_2$, and $G$ Zhu-generating.  If $\psi\,o(g)=o(g)\,\psi$ on $(N_1)_2$ for
+$g\in G$, then $\psi\,o(a)=o(a)\,\psi$ on $(N_1)_2$ for all $a\in V_0^+$.
+\end{theorem}
+File \leanpath{VOA/Moonshine/SigmaExistZhu.lean}.
+\begin{leancode}
+theorem oMod_intertwine_of_zhuGenerated {M₁ M₂ : Type} [AddCommGroup M₁] [Module ℂ M₁]
+    [AddCommGroup M₂] [Module ℂ M₂] (N₁ : OrdVModule V0P M₁) (N₂ : OrdVModule V0P M₂)
+    (h₁ : IsLowestWeight N₁ (2 : ℂ)) (h₂ : IsLowestWeight N₂ (2 : ℂ)) (ψ : M₁ →ₗ[ℂ] M₂)
+    (hψw : ∀ x ∈ N₁.weight (2 : ℂ), ψ x ∈ N₂.weight (2 : ℂ)) {G : Set V0Sub.carrier}
+    (hG : ZhuGenerated G)
+    (hGψ : ∀ g ∈ G, ∀ x ∈ N₁.weight (2 : ℂ), ψ (oMod N₁ g x) = oMod N₂ g (ψ x)) :
+    ∀ a : V0Sub.carrier, ∀ x ∈ N₁.weight (2 : ℂ), ψ (oMod N₁ a x) = oMod N₂ a (ψ x)
+\end{leancode}
+
+\begin{physics}
+If a map between the ground-state spaces of two sectors commutes with the zero modes of the light generating fields, then it commutes with every zero mode. This is the payoff of Zhu generation: a finite list of light-field checks, the zero modes of weight-two fields, gives intertwining with the entire zero-mode algebra on the ground states.
+\end{physics}
+\begin{proof}[Proof on paper]
+Let $S=\{a : \psi o(a)=o(a)\psi\text{ on }(N_1)_2\}$, a subspace.  It contains $\mathbf 1$ ($o(\mathbf
+1)=\mathrm{id}$), $\chtwelveO(V_0^+)$ (both zero modes vanish on top levels, Theorem~\ref{ch12:thm:easy}),
+$G$ by hypothesis, and is $\ast$-closed: $\psi o(a\ast b)=\psi o(a)o(b) = o(a)\psi o(b)=o(a)o(b)\psi=o(a\ast
+b)\psi$ on $(N_1)_2$, using that $o(b)$ preserves the top level.  So $S$ is everything.
+\end{proof}
+\begin{status}Proved, unconditional.\end{status}
+
+\begin{theorem}[\lean{TopSigmaV3} from Zhu generators]\label{ch12:thm:topSigmaV3_of_zhuGenerated}
+Let $\varphi$ satisfy clauses (a), (b), (d) of Definition~\ref{ch12:def:TopSigmaV3}, let $G$ be
+Zhu-generating, and suppose every $g\in G$ is homogeneous of some weight $k$ with
+$\varphi(o(g)x)=o(\sigma g)\varphi(x)$ on $\Omega_3$.  Then $\varphi$ satisfies \lean{TopSigmaV3 s}.
+Likewise for \lean{TopSigmaTT}.
+\end{theorem}
+File \leanpath{VOA/Moonshine/SigmaExistZhu.lean}.
+\begin{leancode}
+theorem topSigmaV3_of_zhuGenerated {s : ZMod 2} {φ : VPlus →ₗ[ℂ] TP}
+    (hf : ∀ x ∈ OmegaV3, φ x ∈ TPframe s) (hw : ∀ x ∈ OmegaV3, φ x ∈ plusModule.weight (2 : ℂ))
+    {G : Set V0Sub.carrier} (hG : ZhuGenerated G)
+    (hGφ : ∀ g ∈ G, ∃ k : ℤ, (g : VPlus) ∈ leechVOAPlus.grading k ∧
+      ∀ x ∈ OmegaV3, φ (actV g (k - 1) x) = actT (sig g) (k - 1) (φ x))
+    (hc : ∃ t₀ : TLeechT, t₀ ∈ leechFrameT s ∧ t₀ ≠ 0 ∧ ∃ x ∈ OmegaV3, φ x = x0T t₀) :
+    TopSigmaV3 s φ
+
+theorem topSigmaTT_of_zhuGenerated {s' s : ZMod 2} {φ : TP →ₗ[ℂ] TP}
+    (hf : ∀ x ∈ OmegaT s', φ x ∈ TPframe s) (hw : ∀ x ∈ OmegaT s', φ x ∈ plusModule.weight (2 : ℂ))
+    {G : Set V0Sub.carrier} (hG : ZhuGenerated G)
+    (hGφ : ∀ g ∈ G, ∃ k : ℤ, (g : VPlus) ∈ leechVOAPlus.grading k ∧
+      ∀ x ∈ OmegaT s', φ (actT g (k - 1) x) = actT (sig g) (k - 1) (φ x))
+    (hc : ∃ t₀ : TLeechT, t₀ ∈ leechFrameT s ∧ t₀ ≠ 0 ∧ ∃ x ∈ OmegaT s', φ x = x0T t₀) :
+    TopSigmaTT s' s φ
+\end{leancode}
+\begin{dictionary}
+\lean{hGφ} requires each letter of $G$ to be homogeneous; for $G=(V_0^+)_2$ that holds with $k=2$.
+The proof applies Theorem~\ref{ch12:thm:oMod_intertwine} to $N_1=M_{V3}$, $N_2=M_T^\sigma$, where
+$o_{N_2}(a)=o(\sigma a)$; the zero mode of the twisted module is the zero mode of $\sigma a$.
+\end{dictionary}
+
+\begin{physics}
+The ground-state datum of the triality need only be checked on the light generators: if the zero modes of the generating fields intertwine, the full top-level residual follows. This reduces the existence of the twisted triality to the chapter's headline statement that the weight-two fields Zhu-generate, together with these finite checks.
+\end{physics}
+\begin{status}Proved; conditional only on the displayed hypotheses.  No \lean{VOA.pbw}: only the
+easy direction of Zhu's theory is used.\end{status}
+
+\begin{warning}
+\textbf{Weak generation does not reduce the top-level clause.}  The library proves that
+$V_\Leech^+$ is generated, under all $n$-th products, by the $e^\beta+e^{-\beta}$
+(\lean{leechPlus_generated}, Chapter~\ref{ch:04}).  That is useless here: $o(a_{(n)}b)$ on $\Omega$ is not
+determined by $o(a)$ and $o(b)$ on $\Omega$ (the Borcherds identity involves the higher levels).  Only
+Zhu generation ($\ast$ modulo $\chtwelveO$) reduces the zero-mode clause to generators.  Weak
+generation suffices only for a map already defined on the whole module.
+\end{warning}
+
+\section{Which generators? A numerical experiment}\label{ch12:sec:numerics}
+
+Before proving any Zhu generation statement one must decide which $G$ to aim for.  In rank one,
+$A(M(1)^+)$ needs a weight-four element $J$ besides $\omega$ (Example~\ref{ch12:ex:heis}), so it was
+not clear that weight two suffices for $V_0^+\cong V_{\Leech_0}^+$.  A numerical and combinatorial
+experiment (\texttt{scripts/moonshine/numerics/zhu/zhu.py}; \texttt{Notes/ZhuGeneratorTest.md})
+answered the question.  \emph{Nothing in this section is a Lean theorem}; it is recorded because it
+fixed the target of the Lean work and because it exposed two traps.
+
+Let $B$ be the associative algebra generated by the zero modes $o(u)$, $u\in(V_0^+)_2$.  The space
+$(V_0^+)_2$ has dimension $49428=300+49128$: the $\binom{24}{2}+24=300$ Fock states $h_a(-1)h_b(-1)\mathbf 1$
+($a\le b$) and the $98256/2=49128$ lattice states $u_\gamma=e^\gamma+\theta e^\gamma$ for the $98256$ norm-four $\gamma\in\Leech_0$,
+taken up to sign.
+
+\paragraph{The top of $V_3^+$.}  It is spanned by $e^n$, $n\in\Leech_0+\lambda_3$ with $|n|^2=4$
+($98304$ vectors).  The zero modes act by
+\begin{equation*}
+ o(h_ah_b)e^n = n_an_b\,e^n,\qquad o(e^\gamma)e^n = \begin{cases}\epsilon(\gamma,n)e^{n+\gamma}&\langle\gamma,n\rangle=-2,\\ 0&\text{otherwise,}\end{cases}
+\end{equation*}
+(coordinates in an orthonormal basis of $\Leech\otimes\mathbb{R}$, i.e.\ $\sqrt8$-coordinates divided by
+$\sqrt8$, in which $\langle n,n'\rangle=n\cdot n'$).  The joint eigenvalues $nn^{\mathsf T}$ determine $n$ up to sign, so $B$
+contains the projector onto each $\mathrm{span}\{e^n,e^{-n}\}$.  An exact machine check shows that
+the graph on the $98304$ vectors with edges $\langle n,n'\rangle=2$ ($226\,099\,200$ directed edges)
+is connected; in particular every $n$ is joined to $-n$.  Hence $B$ contains all matrix units of
+$V_3^+$'s top, i.e.\ $B=\End((V_3^+)_2)$, and (by the antidiagonal holonomy of a loop from $n$ to
+$-n$) $V_3^+\not\cong V_3^-$ as $B$-modules.
+
+\paragraph{The twisted top $h(-\tfrac12)\otimes X$.}  Here $o(h_ah_b)=\tfrac12(E_{ab}+E_{ba})+\tfrac18\delta_{ab}$
+and $o(u_\gamma)=2\cdot2^{-4}(1-gg^{\mathsf T})\otimes e_\gamma$.  The symmetric matrices generate
+$M_{24}$; and $400$ random norm-four vectors already generate $\Leech_0$ over $\Z$ (exact Hermite normal
+form: covolume $8192=2^{13}$), so the $e_\gamma$ generate the extraspecial group, which acts
+irreducibly on $X$.  Hence again $B=\End(\text{top})$.
+
+\paragraph{All sixteen tops.}  The same reasoning shows that $B$ acts irreducibly on the tops of all
+$16$ irreducible $V_0^+$-modules and separates them, so $B$ maps onto
+$\bigoplus_{i=1}^{16}\End(\text{top}_i)$, of dimension $1+3\cdot24^2+6\cdot2048^2+6\cdot49152^2 =
+14\,520\,682\,177$.  (Irreducibility alone does not give Zhu generation; see the circularity warning below.)  If
+$A(V_0^+)\cong\bigoplus_{i=1}^{16}\End(\text{top}_i)$ (rationality and the
+classification of Abe--Dong--Li; \emph{cited, not checked}), it would follow that $(V_0^+)_2$
+Zhu-generates.  So \textbf{no weight-four $J$ is needed}; the rank-one obstruction is removed by the
+lattice part.
+
+\begin{warning}
+\textbf{The circularity trap.}  Irreducibility of the tops under $B$ does \emph{not} prove the
+zero-mode clause.  For a top-level map $\varphi$, the weight-two part of the module generated by the
+graph of $\varphi$ is a $B$-submodule of $\Omega_1\oplus\Omega_2\cong\Omega_1^2$, hence either the graph
+(which gives the clause) or everything (which means $\Omega_1\not\cong\Omega_2^\sigma$ as $A(V_0^+)$-modules).
+Excluding the second case needs information about $A(V_0^+)$ beyond $B$: Zhu generation, or the
+classification.  ``Tops irreducible $\Rightarrow$ \lean{ZhuGenerated}'' is circular.  What
+irreducibility does give is uniqueness of $\varphi$ up to a scalar.
+\end{warning}
+
+\begin{warning}
+\textbf{$V_0^+$ is not strongly generated by weight two.}  Strong generation by $(V_0^+)_2$ would mean
+$(V_0^+)_3=L_{-1}(V_0^+)_2$ (normal-ordered products of weight-two states start at weight four, and
+$(V_0^+)_1=0$).  But the Fock part of $(V_0^+)_3$ is spanned by the $24\cdot24=576$ states
+$h_a(-2)h_b(-1)\mathbf 1$, while $L_{-1}$ of the $300$ Fock weight-two states gives at most $300$.  So the
+classical lemma ``strong generators are Zhu generators'' does not apply, and the proof must use the
+$0$-th products $a_{(0)}b$ (\S\ref{ch12:sec:filtered}).  Also: low-order traces $\tr o(u)$, $\tr o(u)o(v)$
+on random samples do \emph{not} distinguish $V_3^+$ from $V_3^-$: that distinction lives in a long loop
+$n\to-n$.
+\end{warning}
+
+\section{A filtered criterion for Zhu generation}\label{ch12:sec:filtered}
+
+We now prove, for an arbitrary VOA $W$, a sufficient condition for Zhu generation that refers only to
+the vertex algebra and not to $\ast$ or $\chtwelveO$.
+
+\subsection{The filtration and three leading-term identities}
+
+\begin{definition}\label{ch12:def:Fl}
+$F_{<n}=\bigoplus_{k<n}W_k$.
+\end{definition}
+File \leanpath{VOA/Moonshine/ZhuGenFiltration.lean}.
+\begin{leancode}
+noncomputable def Fl (n : ℤ) : Submodule ℂ 𝒱 := ⨆ (k : ℤ) (_ : k < n), W.grading k
+\end{leancode}
+(\leanpath{VOA/Moonshine/ZhuGenFiltration.lean}, namespace \lean{VOA.Moonshine.ZhuGen}.)
+\begin{dictionary}
+\lean{⨆} is the supremum (sum) of subspaces, here over $k<n$.  Since the grading is a direct sum,
+this is $\bigoplus_{k<n}W_k$.
+\end{dictionary}
+
+\begin{physics}
+The filtration by weight is the organisation of states by energy: $F_{<n}$ consists of all states of energy below $n$, so higher-energy states are measured modulo lower ones. This is the standard way to organise a VOA by oscillator number or conformal weight, and lets leading terms be compared.
+\end{physics}
+
+The key observation is that, \emph{modulo lower weight}, the three basic constructions have simple
+leading terms.  For homogeneous $a\in W_p$, $b\in W_q$ ($p,q\ge0$):
+\begin{itemize}
+\item $a\ast b = a_{(-1)}b+\sum_{i\ge1}\binom pi a_{(i-1)}b$, and $a_{(i-1)}b$ has weight $p+q-i$; so
+  $a\ast b\equiv a_{(-1)}b \pmod{F_{<p+q}}$;
+\item $\mathrm{Pres}(a,p,b,k)\equiv a_{(-2-k)}b\pmod{F_{<p+q+1+k}}$;
+\item the commutator $a\ast b-b\ast a\equiv a_{(0)}b\pmod{\chtwelveO(W)+F_{<p+q-1}}$.
+\end{itemize}
+
+\begin{lemma}\label{ch12:lem:leading}
+For $a\in W_p$, $b\in W_q$:
+\begin{enumerate}[label=(\alph*)]
+\item $a\ast b-a_{(-1)}b\in F_{<p+q}$;
+\item if $p\in\N$, $a_{(-2-k)}b-\mathrm{Pres}(a,p,b,k)\in F_{<p+q+1+k}$ for all $k\in\N$;
+\item $T^jy\in\chtwelveO(W)+X$ for every subspace $X$ containing the homogeneous vector $y$, where
+  $T=L_{-1}$.
+\end{enumerate}
+\end{lemma}
+File \leanpath{VOA/Moonshine/ZhuGenFiltration.lean}.
+\begin{leancode}
+theorem zhuMul_sub_normal_mem {p q : ℤ} {a b : 𝒱} (ha : a ∈ W.grading p) (hb : b ∈ W.grading q) :
+    zhuMul W a b - W.smul a (-1) b ∈ Fl W (p + q)
+
+theorem smul_sub_Pres_mem {p : ℕ} {q : ℤ} {a b : 𝒱} (ha : a ∈ W.grading (p : ℤ))
+    (hb : b ∈ W.grading q) (k : ℕ) :
+    W.smul a (-2 - k) b - Pres W p a b k ∈ Fl W (p + q + 1 + k)
+
+theorem Tpow_mem {w : ℤ} {y : 𝒱} (hy : y ∈ W.grading w) {X : Submodule ℂ 𝒱} (hyX : y ∈ X)
+    (j : ℕ) : (W.toPreVertexAlgebra.T ^ j) y ∈ O W ⊔ X
+\end{leancode}
+
+\begin{physics}
+Modulo lower energy, the Zhu product is the ordinary normal-ordered product, and the higher modes are equal to the higher residues up to lower-energy corrections. These are the leading-term (top-energy) identities used to peel off the highest-energy part of a state in the filtered argument.
+\end{physics}
+\begin{proof}[Proof on paper]
+(a), (b): all non-leading terms are $a_{(m)}b$ with $m$ larger than the leading index, of weight
+$p+q-m-1$ below the bound.  (c): $Ty\equiv-wy$ modulo $\chtwelveO$ (Lemma~\ref{ch12:lem:Ocontents}(a)),
+and inductively $T^jy\equiv(-1)^j w(w+1)\cdots(w+j-1)\,y$.
+\end{proof}
+\begin{status}Proved, unconditional.\end{status}
+
+\begin{theorem}[Filtered commutator formula]\label{ch12:thm:comm}
+For $a\in W_p$, $b\in W_q$ with $p,q\ge0$,
+\begin{equation*}
+  a\ast b - b\ast a - a_{(0)}b \;\in\; \chtwelveO(W) + F_{<p+q-1}.
+\end{equation*}
+\end{theorem}
+File \leanpath{VOA/Moonshine/ZhuGenFiltration.lean}.
+\begin{leancode}
+theorem zhuMul_comm_sub_zero_mem {p q : ℤ} {a b : 𝒱} (ha : a ∈ W.grading p)
+    (hb : b ∈ W.grading q) (hp : 0 ≤ p) (hq : 0 ≤ q) :
+    zhuMul W a b - zhuMul W b a - W.smul a 0 b ∈ O W ⊔ Fl W (p + q - 1)
+\end{leancode}
+\begin{dictionary}
+\lean{O W ⊔ Fl W (p + q - 1)} is the sum of subspaces $\chtwelveO(W)+F_{<p+q-1}$.  Note that
+$a_{(0)}b$ has weight $p+q-1$, so the statement is that the commutator equals $a_{(0)}b$ \emph{exactly
+at its own weight}, modulo $\chtwelveO$.  Zhu's exact formula $a\ast b-b\ast a\equiv\Res_z
+Y(a,z)b(1+z)^{p-1}$ implies this; the filtered form is all we need and is proved directly.
+\end{dictionary}
+
+\begin{physics}
+The commutator of two zero modes is, to leading order in the energy filtration, the zero mode of the Lie-type product $a_{(0)}b$, i.e.\ the zero-mode algebra is a deformation quantisation of a commutative filtered algebra, with lower-energy corrections. This is the filtered version of $[o(a),o(b)]=o(a_{(0)}b)$ and is used to control the noncommutative terms.
+\end{physics}
+\begin{proof}[Proof on paper]
+Work modulo $X=\chtwelveO+F_{<p+q-1}$.  From the definition of $\ast$, keeping the two top terms:
+\begin{equation*}
+ a\ast b\equiv a_{(-1)}b + p\,a_{(0)}b,\qquad b\ast a\equiv b_{(-1)}a+q\,b_{(0)}a .
+\end{equation*}
+Skew-symmetry $Y(b,z)a=e^{zT}Y(a,-z)b$ gives, in modes,
+$b_{(n)}a=\sum_{j\ge0}\frac{(-1)^{n+1+j}}{j!}T^j(a_{(n+j)}b)$.  For $n=-1$ and $n=0$, the terms with
+$n+j\ge1$ have $a_{(n+j)}b$ of weight $<p+q-1$, and $T^j$ of them lies in $X$ by
+Lemma~\ref{ch12:lem:leading}(c).  So
+\begin{equation*}
+ b_{(-1)}a\equiv a_{(-1)}b - T(a_{(0)}b),\qquad b_{(0)}a\equiv -a_{(0)}b .
+\end{equation*}
+Finally $T(a_{(0)}b)\equiv-(p+q-1)\,a_{(0)}b$ modulo $\chtwelveO$
+(Lemma~\ref{ch12:lem:Ocontents}(a), as $a_{(0)}b$ has weight $p+q-1$).  Substituting,
+\begin{align*}
+ b\ast a &\equiv \big(a_{(-1)}b+(p+q-1)\,a_{(0)}b\big) - q\,a_{(0)}b \;=\; a_{(-1)}b+(p-1)\,a_{(0)}b,\\
+ a\ast b-b\ast a &\equiv \big(p-(p-1)\big)\,a_{(0)}b \;=\; a_{(0)}b .
+\end{align*}
+The coefficient $p-(p+q-1)+q=1$ is what makes the $0$-th products available.
+\end{proof}
+\begin{status}Proved, unconditional, no \lean{VOA.pbw}.\end{status}
+
+\subsection{Weight-raising products and the criterion}
+
+\begin{definition}[Weight-raising products of lower-weight states]\label{ch12:def:lowerProd}
+For $n\in\Z$, $\mathrm{lowerProd}(n)$ is the set of $a_{(m)}b$ with $a\in W_p$, $b\in W_q$,
+$p,q<n$, $m\le0$ and $p+q-m-1=n$.
+\end{definition}
+File \leanpath{VOA/Moonshine/ZhuGenFiltration.lean}.
+\begin{leancode}
+def lowerProd (n : ℤ) : Set 𝒱 :=
+  {x | ∃ p q m : ℤ, p < n ∧ q < n ∧ m ≤ 0 ∧ p + q - m - 1 = n ∧
+    ∃ a ∈ W.grading p, ∃ b ∈ W.grading q, x = W.smul a m b}
+\end{leancode}
+\begin{dictionary}
+The condition $p+q-m-1=n$ says $a_{(m)}b\in W_n$.  The condition $m\le0$ is the content: the allowed
+products are the normal-ordered ones ($m=-1$), the higher ones ($m\le-2$), and the $0$-th products
+($m=0$).  Products with $m\ge1$ are excluded; they are not controlled by $\ast$.
+\end{dictionary}
+
+\begin{physics}
+The set of states of energy $n$ obtainable by acting with a raising mode on two states of strictly lower energy: the states of energy $n$ that are generated by the field product of lighter ones. It is the basic notion of ``composite'' as opposed to ``generating'' state at that level.
+\end{physics}
+
+\begin{theorem}[The filtered criterion]\label{ch12:thm:eq_top_of_lowerSpan}
+Let $G\subseteq W$.  If $W_n\subseteq\operatorname{span}(G\cup\mathrm{lowerProd}(n))$ for every
+$n\ge1$, then every subspace $S$ with $\mathbf 1\in S$, $\chtwelveO(W)\subseteq S$, $S\ast S\subseteq S$
+and $G\subseteq S$ equals $W$.
+\end{theorem}
+File \leanpath{VOA/Moonshine/ZhuGenFiltration.lean}.
+\begin{leancode}
+theorem lowerProd_subset {S : Submodule ℂ 𝒱} (hO : O W ≤ S)
+    (hmul : ∀ a ∈ S, ∀ b ∈ S, zhuMul W a b ∈ S) {n : ℤ} (hF : Fl W n ≤ S) :
+    lowerProd W n ⊆ S
+
+theorem eq_top_of_lowerSpan (G : Set 𝒱)
+    (hG : ∀ n : ℤ, 0 < n → W.grading n ≤ span ℂ (G ∪ lowerProd W n))
+    (S : Submodule ℂ 𝒱) (h1 : W.vacuum ∈ S) (hO : O W ≤ S)
+    (hmul : ∀ a ∈ S, ∀ b ∈ S, zhuMul W a b ∈ S) (hGS : G ⊆ S) : S = ⊤
+\end{leancode}
+\begin{dictionary}
+\begin{itemize}
+\item The criterion is stated for any VOA $W$; in it, $W_0$ is spanned by $\mathbf 1$
+  (\lean{vacuum_grade}, part of the library's VOA axioms) and negative weights vanish
+  (\lean{positivity}).
+\item It concludes Zhu generation in the sense of Definition~\ref{ch12:def:zhugen} (stated for $W$).
+\item It is a \emph{sufficient} condition only: cancellations of leading terms could in principle give
+  more.  A numerical failure of the hypothesis would not refute Zhu generation.
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+If every state of energy $n$ is a combination of the generators and of products of lighter states, then the generators already generate everything under the Zhu product. This is an induction on energy: composite states are produced by products of lighter ones, so only the generators at the lowest level need to be supplied.
+\end{physics}
+\begin{proof}[Proof on paper]
+\lean{lowerProd_subset}: if $F_{<n}\subseteq S$ and $a_{(m)}b\in\mathrm{lowerProd}(n)$ then $a,b\in S$.
+For $m=-1$: $a_{(-1)}b = a\ast b - (a\ast b-a_{(-1)}b)$, a $\ast$-product in $S$ minus an element of
+$F_{<n}$.  For $m=-2-k$: $a_{(m)}b = \mathrm{Pres}+(\text{element of }F_{<n})$ with $\mathrm{Pres}\in\chtwelveO$.
+For $m=0$: $a_{(0)}b = (a\ast b-b\ast a) - (\text{element of }\chtwelveO+F_{<n})$ by
+Theorem~\ref{ch12:thm:comm}.  Main theorem: induction on $n$ shows $W_n\subseteq S$; $W_0=\C\mathbf 1$;
+for $n\ge1$, $W_n$ is spanned by $G$ and by $\mathrm{lowerProd}(n)\subseteq S$.
+\end{proof}
+\begin{status}Proved, unconditional, \texttt{\#print axioms}-clean (re-run), no \lean{VOA.pbw}.\end{status}
+
+\begin{remark}
+Why this route is natural: modulo lower weight, the leading terms of elements of $\chtwelveO$ are
+$a_{(-2-k)}b$ and $L_{-1}a$; those of $\ast$ are $a_{(-1)}b$; those of commutators are $a_{(0)}b$.
+The criterion is the associated-graded form of Zhu generation, and it splits weight by weight and,
+for lattice VOAs, charge by charge.
+\end{remark}
+
+\section{Zhu generation of \texorpdfstring{$V_0^+$}{V₀⁺}: reduction to three sectors}\label{ch12:sec:sectorsplit}
+
+\subsection{The residual for \texorpdfstring{$V_0^+$}{V₀⁺}}
+
+\begin{definition}\label{ch12:def:weightTwo}
+$G_2=(V_0^+)_2$.  The residual \lean{V0LowerSpanned}: for every $n\ge3$,
+$(V_0^+)_n\subseteq\operatorname{span}\mathrm{lowerProd}_{V_0^+}(n)$.
+\end{definition}
+File \leanpath{VOA/Moonshine/ZhuGenV0.lean}.
+\begin{leancode}
+def weightTwo : Set V0Sub.carrier := {g | g ∈ V0P.grading 2}
+
+theorem V0P_grading_one : V0P.grading 1 = ⊥
+
+def V0LowerSpanned : Prop :=
+  ∀ n : ℤ, 3 ≤ n → V0P.grading n ≤ span ℂ (lowerProd V0P n)
+
+theorem zhuGenerated_weightTwo_of_lowerSpanned (h : V0LowerSpanned) : ZhuGenerated weightTwo
+\end{leancode}
+(\leanpath{VOA/Moonshine/ZhuGenV0.lean}, namespace \lean{VOA.Moonshine.SigmaExist}.)
+\begin{dictionary}
+\begin{itemize}
+\item \lean{V0P.grading n} is $(V_0^+)_n$, the weight-$n$ part of $V_0^+$ for its own VOA structure;
+  membership is the same as membership of the underlying vector in $(V_\Leech^+)_n$
+  (\lean{mem_V0P_grading_iff}).
+\item Weights $1$ and $2$ are free: $(V_0^+)_1=0$ (\lean{V0P_grading_one}) and $(V_0^+)_2=G_2$.
+  So the hypothesis of Theorem~\ref{ch12:thm:eq_top_of_lowerSpan} reduces to $n\ge3$.
+\item \lean{V0LowerSpanned} is a statement about the vertex algebra $V_0^+$ alone, strictly stronger
+  than \lean{ZhuGenerated weightTwo}.
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+The generators are the full weight-two space $(V_0^+)_2$, i.e.\ the lightest nontrivial fields; the residual \lean{V0LowerSpanned} states that all states of energy at least three are composites of lighter states. This is the finite generation of the chiral algebra by its weight-two fields, in the Moonshine setting the Griess algebra.
+\end{physics}
+\begin{status}\lean{zhuGenerated_weightTwo_of_lowerSpanned}: proved, conditional only on its
+hypothesis (which is proved below).\end{status}
+
+\begin{theorem}[The $\sigma$-residuals with weight-two letters]\label{ch12:thm:of_lowerSpanned}
+Under \lean{V0LowerSpanned}, \lean{TopSigmaV3 s φ} follows from clauses (a), (b), (d) and the
+zero-mode identities $\varphi(g_{(1)}x)=(\sigma g)_{(1)}\varphi(x)$ for $g\in(V_0^+)_2$, $x\in\Omega_3$; similarly
+for \lean{TopSigmaTT}.
+\end{theorem}
+File \leanpath{VOA/Moonshine/ZhuGenV0.lean}.
+\begin{leancode}
+theorem topSigmaV3_of_lowerSpanned {s : ZMod 2} {φ : VPlus →ₗ[ℂ] TP}
+    (hf : ∀ x ∈ OmegaV3, φ x ∈ TPframe s) (hw : ∀ x ∈ OmegaV3, φ x ∈ plusModule.weight (2 : ℂ))
+    (hL : V0LowerSpanned)
+    (hGφ : ∀ g ∈ weightTwo, ∀ x ∈ OmegaV3, φ (actV g 1 x) = actT (sig g) 1 (φ x))
+    (hc : ∃ t₀ : TLeechT, t₀ ∈ leechFrameT s ∧ t₀ ≠ 0 ∧ ∃ x ∈ OmegaV3, φ x = x0T t₀) :
+    TopSigmaV3 s φ
+\end{leancode}
+\begin{dictionary}For $g$ of weight $2$, $o(g)=g_{(1)}$: \lean{actV g 1}.\end{dictionary}
+
+\begin{physics}
+Once all heavier states are composites, the twisted-triality datum needs to be checked only for the zero modes of the weight-two fields, namely $g_{(1)}$. This is the form in which the top-level residual is attacked in the rest of the chapter.
+\end{physics}
+\begin{status}Proved, conditional on the displayed hypotheses.\end{status}
+
+\subsection{Word states and the sector decomposition}
+
+$V_\Leech$ is spanned by word states $h_{a_1}(-n_1)\cdots h_{a_r}(-n_r)\otimes e^\gamma$.  In the library a
+word is a list $l$ of pairs $(i,a)$ meaning $h_a(-i-1)$, and \lean{wordWt l} $=\sum(i+1)$ is its Fock
+weight.
+
+\begin{definition}\label{ch12:def:wordV0}
+For $\gamma\in\Leech_0$ and a word $l$, $w_0(l,\gamma)=P(h_{a_1}(-i_1-1)\cdots\otimes e^\gamma)\in V_0^+$,
+$P=\tfrac12(1+\theta)$.
+\end{definition}
+File \leanpath{VOA/Moonshine/ZhuGenSectors.lean}.
+\begin{leancode}
+noncomputable def wordV0 (l : List (ℕ × Fin (rank leech))) {γ : leech.carrier} (hγ : γ ∈ lambda0) :
+    V0Sub.carrier :=
+  ⟨plusProj (wordStateLatGen leech l γ), plusProj_word_mem_V0 l hγ⟩
+
+theorem V0P_grading_le_span_wordV0 (n : ℤ) : V0P.grading n ≤ span ℂ (wordSet n)
+\end{leancode}
+(\leanpath{VOA/Moonshine/ZhuGenSectors.lean}.)
+\begin{dictionary}
+\lean{wordSet n} is the set of $w_0(l,\gamma)$ with $\gamma\in\Leech_0$ and total weight
+\lean{wordWt l} $+\tfrac12|\gamma|^2=n$.  The theorem: these span $(V_0^+)_n$.  (Proof on paper:
+project a spanning set of $(V_\Leech)_n$ by $\tfrac12(1+g)$ and $P$; charges outside $\Leech_0$ are killed.)
+\end{dictionary}
+
+\begin{physics}
+A word state is the lattice vertex-operator state built by applying a word of oscillator creation operators to the charge-$\gamma$ lattice state $e^\gamma$ and projecting onto the $\theta$-invariant part. It is the basis state of the orbifold's untwisted sector: oscillators on a ground state of charge $\gamma$, with the average over $\theta$ the orbifold projection.
+\end{physics}
+
+\begin{definition}[The three sector residuals]\label{ch12:def:sectors}
+\begin{itemize}
+\item \lean{FockSpanned}: every $w_0(l,0)$ of weight $\ge3$ lies in $\operatorname{span}\mathrm{lowerProd}$ of its weight;
+\item \lean{ExcitedSpanned}: every $w_0(l,\gamma)$ with $\gamma\neq0$ and $l$ non-empty does;
+\item \lean{GroundSpanned}: every $x_\gamma$, $\gamma\in\Leech_0$, $|\gamma|^2\ge6$, does.
+\end{itemize}
+\end{definition}
+File \leanpath{VOA/Moonshine/ZhuGenSectors.lean}.
+\begin{leancode}
+def FockSpanned : Prop :=
+  ∀ l : List (ℕ × Fin (rank leech)), 3 ≤ (wordWt l : ℤ) →
+    wordV0 l lambda0.zero_mem ∈ span ℂ (lowerProd V0P (wordWt l))
+
+def ExcitedSpanned : Prop :=
+  ∀ (l : List (ℕ × Fin (rank leech))) (γ : leech.carrier) (hγ : γ ∈ lambda0), γ ≠ 0 → l ≠ [] →
+    wordV0 l hγ ∈ span ℂ (lowerProd V0P ((wordWt l : ℤ) + LatGen.halfNorm leech γ))
+
+def GroundSpanned : Prop :=
+  ∀ (γ : leech.carrier) (hγ : γ ∈ lambda0), 6 ≤ leech.form γ γ →
+    x0 hγ ∈ span ℂ (lowerProd V0P (LatGen.halfNorm leech γ))
+
+theorem v0LowerSpanned_of_sectors (hF : FockSpanned) (hE : ExcitedSpanned) (hG : GroundSpanned) :
+    V0LowerSpanned
+\end{leancode}
+\begin{dictionary}
+\begin{itemize}
+\item \lean{LatGen.halfNorm leech γ} is $\tfrac12|\gamma|^2$ (an integer since $\Leech$ is even);
+  \lean{leech.form γ γ} is $|\gamma|^2$.
+\item \lean{x0 hγ} is $x_\gamma=e^\gamma+e^{-\gamma}$ regarded as an element of $V_0^+$; note
+  $w_0([],\gamma)=\tfrac12x_\gamma$ (\lean{wordV0_nil}).
+\item Ground states of norm $4$ have weight $2$ and are in $G_2$; norm $\ge6$ is the residual.  Fock
+  states of weight $\le2$ are in $\C\mathbf 1+G_2$; charged excited states have weight $\ge3$
+  automatically.  So the three residuals cover all of \lean{wordSet n}, $n\ge3$.
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+The decomposition of $V_0^+$ by charge: states with zero charge (pure oscillator, ``Fock'', states of the free bosons), excited states of non-zero charge (oscillators on a charged ground state), and the charged ground states themselves. The three residuals say that in each class every state above weight two is a composite of lighter states; this is the case analysis in terms of the frame-charge sectors of the $24$ bosons.
+\end{physics}
+\begin{status}\lean{v0LowerSpanned_of_sectors}: proved; conditional only on the three named
+hypotheses, all of which are proved later in this chapter.\end{status}
+
+\subsection{Products of ground states}
+
+Recall the lattice cocycle (Chapter~\ref{ch:03}, section ``Even lattices and the FLM 2-cocycle''): the vertex operators
+of $V_L$ use the twisted group algebra $\C_\varepsilon[L]$, $e^\alpha\cdot e^\beta=\varepsilon(\alpha,\beta)e^{\alpha+\beta}$,
+where $\varepsilon:L\times L\to\{\pm1\}$ is a bimultiplicative 2-cocycle, built from a chosen $\Z$-basis of $L$,
+with $\varepsilon(\alpha,\beta)\varepsilon(\beta,\alpha)=(-1)^{\langle\alpha,\beta\rangle}$.  In Lean it is
+\lean{latticeCocycle L α β} (\leanpath{VOA/Foundations/LatticeCocycle.lean}), with \lean{latticeCocycle_sq}
+($\varepsilon^2=1$, same file) and \lean{latticeCocycle_neg_left}, \lean{latticeCocycle_neg_right},
+\lean{latticeCocycle_neg_neg} ($\varepsilon$ is unchanged by negating either argument, by bimultiplicativity;
+\leanpath{VOA/Moonshine/LatticeInvolution.lean}).  Below $\epsilon=\varepsilon$.  For lattice vectors the
+products of charged vacua are explicit:
+$e^\alpha_{(n)}e^\beta=\epsilon(\alpha,\beta)\,S_d(\alpha)\otimes e^{\alpha+\beta}$ with
+$d=-n-1-\langle\alpha,\beta\rangle$, where $S_d(\alpha)$ is the degree-$d$ Schur polynomial in the
+$h_\alpha(-j)$ (zero for $d<0$, $1$ for $d=0$).  Symmetrising over $\pm$ gives:
+
+\begin{theorem}[Ground-state products]\label{ch12:thm:groundprod}
+For $\alpha,\beta\in\Leech$:
+\begin{enumerate}[label=(\alph*)]
+\item if $\langle\alpha,\beta\rangle=-1$: $x_{\alpha(0)}x_\beta=\epsilon(\alpha,\beta)\,x_{\alpha+\beta}$;
+\item if $\langle\alpha,\beta\rangle=0$: $x_{\alpha(-1)}x_\beta=\epsilon(\alpha,\beta)\,(x_{\alpha+\beta}+x_{\alpha-\beta})$;
+\item if $\langle\alpha,\beta\rangle=k\ge1$: $x_{\alpha(-k-1)}x_\beta=\epsilon(\alpha,\beta)\big(x_{\alpha+\beta}+2P(S_{2k}(\alpha)\otimes e^{\alpha-\beta})\big)$.
+\end{enumerate}
+\end{theorem}
+Files \leanpath{VOA/Moonshine/ZhuGenLattice.lean}, \leanpath{VOA/Moonshine/ZhuGenGround.lean} (in order of the declarations below).
+\begin{leancode}
+theorem frameX0P_smul_zero_of_form_neg_one {α β : leech.carrier} (h : leech.form α β = -1) :
+    leechVOAPlus.smul (frameX0P α) 0 (frameX0P β) = latticeCocycle leech α β • frameX0P (α + β)
+
+theorem frameX0P_smul_neg_one_of_form_zero {α β : leech.carrier} (h : leech.form α β = 0) :
+    leechVOAPlus.smul (frameX0P α) (-1) (frameX0P β)
+      = latticeCocycle leech α β • (frameX0P (α + β) + frameX0P (α - β))
+
+theorem frameX0P_smul_of_form_pos {α β : leech.carrier} {k : ℕ} (h : leech.form α β = k) :
+    ((leechVOAPlus.smul (frameX0P α) (-(k : ℤ) - 1) (frameX0P β) : VPlus) : LatModuleGen leech)
+      = latticeCocycle leech α β • (frameX0 (α + β)
+        + (2 : ℂ) • (plusProj (latStateGen leech (vSchur leech α (2 * k)) (α - β)) :
+            LatModuleGen leech))
+\end{leancode}
+(\leanpath{VOA/Moonshine/ZhuGenLattice.lean} for (a), (b); \leanpath{VOA/Moonshine/ZhuGenGround.lean}
+for (c).)
+\begin{dictionary}
+\begin{itemize}
+\item \lean{latticeCocycle leech α β} is the sign $\epsilon(\alpha,\beta)=\pm1$ of the lattice VOA
+  (Chapter~\ref{ch:03}); \lean{vSchur leech α d} is $S_d(\alpha)$; \lean{latStateGen leech p γ} is
+  $p\otimes e^\gamma$.
+\item (c) is stated in $V_\Leech$ (after two coercions) because its right side involves
+  \lean{frameX0} and the image of \lean{plusProj}.
+\item The proofs use $\epsilon(-\alpha,-\beta)=\epsilon(\alpha,\beta)$ and
+  $\epsilon(-\alpha,\beta)=\epsilon(\alpha,-\beta)=\epsilon(\alpha,\beta)$, properties of the library's
+  cocycle established in Chapter~\ref{ch:03}.
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+These are the OPE coefficients of charged vertex operators $e^\alpha(z)e^\beta(w)\sim\epsilon(\alpha,\beta)(z-w)^{\langle\alpha,\beta\rangle}e^{\alpha+\beta}(w)$: when the inner product is $-1$ the leading term gives a single new charged state, for $0$ and positive inner product the expansion produces the sum of the charge $\alpha+\beta$ state and corrections. They show how a charged ground state is obtained from lighter ones by a single field product.
+\end{physics}
+\begin{proof}[Proof on paper]
+Expand $x_{\alpha(n)}x_\beta$ into four terms $e^{\pm\alpha}_{(n)}e^{\pm\beta}$.  In (a) with $n=0$:
+$e^\alpha_{(0)}e^\beta$ has $d=-1+1=0$ and gives $\epsilon e^{\alpha+\beta}$; the cross terms have
+$\langle\alpha,-\beta\rangle=1$, $d=-2<0$, and vanish; $e^{-\alpha}_{(0)}e^{-\beta}$ gives $\epsilon
+e^{-\alpha-\beta}$.  In (b) with $n=-1$ all four terms have $d=0$.  In (c) with $n=-k-1$: the like-sign
+terms have $d=0$, the cross terms $d=2k$, and $\theta$ sends $S_{2k}(\alpha)\otimes e^{\alpha-\beta}$ to the
+other cross term ($S_{2k}$ is even in $\alpha$).
+\end{proof}
+\begin{status}Proved, unconditional.\end{status}
+
+\begin{definition}[Ground relations and the lattice residual]\label{ch12:def:GroundRel}
+$\mathrm{GroundRel}(n)$ is the set of the following elements, for $\alpha,\beta\in\Leech_0\setminus0$
+with $\tfrac12|\alpha+\beta|^2=n$: $x_{\alpha+\beta}$ if $\langle\alpha,\beta\rangle=-1$ or
+$\langle\alpha,\beta\rangle\ge1$; $x_{\alpha+\beta}+x_{\alpha-\beta}$ if $\langle\alpha,\beta\rangle=0$.
+\lean{GroundLattice}: every $x_\gamma$, $\gamma\in\Leech_0$, $|\gamma|^2\ge6$, is in the span of
+$\mathrm{GroundRel}(\tfrac12|\gamma|^2)$.
+\end{definition}
+File \leanpath{VOA/Moonshine/ZhuGenGround.lean}.
+\begin{leancode}
+def GroundRel (n : ℤ) : Set V0Sub.carrier :=
+  {x | ∃ (α β : leech.carrier) (hα : α ∈ lambda0) (hβ : β ∈ lambda0), α ≠ 0 ∧ β ≠ 0 ∧
+      LatGen.halfNorm leech (α + β) = n ∧
+      ((leech.form α β = -1 ∨ 1 ≤ leech.form α β) ∧ x = x0 (lambda0.add_mem hα hβ) ∨
+        leech.form α β = 0 ∧ x = x0 (lambda0.add_mem hα hβ) + x0 (lambda0.sub_mem hα hβ))}
+
+def GroundLattice : Prop :=
+  ∀ (γ : leech.carrier) (hγ : γ ∈ lambda0), 6 ≤ leech.form γ γ →
+    x0 hγ ∈ span ℂ (GroundRel (LatGen.halfNorm leech γ))
+
+theorem groundSpanned_of_lattice (hF : FockSpanned) (hE : ExcitedSpanned) (hL : GroundLattice) :
+    GroundSpanned
+
+theorem zhuGenerated_weightTwo_of_residuals (hF : FockSpanned) (hE : ExcitedSpanned)
+    (hL : GroundLattice) : ZhuGenerated weightTwo
+\end{leancode}
+\begin{dictionary}
+\begin{itemize}
+\item \lean{GroundRel} is a set of vectors, but each vector is described by lattice data only; since
+  the $x_\gamma$ ($\gamma$ up to sign) are linearly independent, \lean{GroundLattice} is a combinatorial
+  statement about $\Leech_0$: every $\gamma$ of norm $\ge6$ is either a ``direct'' sum
+  $\gamma=\alpha+\beta$ with $\langle\alpha,\beta\rangle\in\{-1\}\cup[1,\infty)$, or is reached by a
+  combination of $k=0$ relations.
+\item $\alpha=\beta$ is \emph{allowed} (no $\alpha\neq\beta$ condition).  This matters; see the warning.
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+The relations are the lattice combination rules for the charged ground states in the OPE: a ground state at lattice vector $\alpha+\beta$ is a field-product of ground states at $\alpha$ and $\beta$ (up to $\pm$ sign combinations when the vectors are orthogonal). \lean{GroundLattice} states that every heavy ground state, of norm at least six, arises this way, a purely lattice-combinatorial fact about the Leech sublattice.
+\end{physics}
+\begin{proof}[Proof on paper]
+Each element of $\mathrm{GroundRel}(n)$ is in $\operatorname{span}\mathrm{lowerProd}(n)$: by
+Theorem~\ref{ch12:thm:groundprod}, $x_\alpha$ and $x_\beta$ have weights $\tfrac12|\alpha|^2,\tfrac12|\beta|^2<n$
+(norms $\ge4$ since $\Leech$ has no roots), the product has mode $\le0$, and the extra term in (c) is
+$P(S_{2k}(\alpha)\otimes e^{\alpha-\beta})$, a charge-$(\alpha-\beta)$ state with $2k$ oscillators, which is
+in the span by \lean{ExcitedSpanned} (or, when $\alpha=\beta$, by \lean{FockSpanned}).
+\end{proof}
+\begin{status}Proved; conditional only on the named hypotheses, all proved below.\end{status}
+
+\begin{warning}
+\textbf{Do not exclude $\alpha=\beta$.}  For $\gamma=2\alpha$ with $|\alpha|^2=4$ ($|\gamma|^2=16$), the only
+partner with $\langle\alpha,\gamma-\alpha\rangle\ge1$ is $\alpha=\gamma/2$ (checked by
+\texttt{e4\_check.py}).  The cross term is then a charge-zero Fock state, so \lean{FockSpanned}, not
+\lean{ExcitedSpanned}, is needed.  An early draft of \lean{GroundRel} required $\alpha\neq\beta$ and was
+too weak.
+
+\textbf{Ground states only come from ground states.}  A product $a_{(m)}b$ with a Fock-excited source
+has Fock-excited leading part (the Fock weight of the result is at least that of the sources), so
+\lean{GroundLattice} is necessary for the filtered criterion, not merely convenient.
+\end{warning}
+
+\section{The Fock sectors: \texorpdfstring{\lean{ExcitedSpanned}}{ExcitedSpanned} and \texorpdfstring{\lean{FockSpanned}}{FockSpanned}}\label{ch12:sec:fock}
+
+Both Fock residuals are proved using a single kind of left factor: the \emph{quadratic Heisenberg
+states}
+\begin{equation*}
+  q_{a,i;b,j} \;=\; h_a(-i-1)h_b(-j-1)\mathbf 1 \in V_0^+\qquad (a,b\in\{0,\dots,23\},\ i,j\ge0),
+\end{equation*}
+of weight $i+j+2$ (they are $\theta$-even and have charge $0$, so they lie in $V_0^+$).  Notation: the
+Fock space is the polynomial ring $\C[X(i,a)]$, where $X(i,a)$ stands for the creation operator
+$h_a(-i-1)$; a state $p\otimes e^\gamma$ has Fock weight $\sum(i+1)$ and \emph{degree} (number of
+oscillators) $\deg p$.
+
+\subsection{The modes of a quadratic state}
+
+The vertex operator of $q_{a,i;b,j}$ is the normal-ordered product
+$:\!\tfrac{1}{i!}\partial^ih_a(z)\,\tfrac1{j!}\partial^jh_b(z)\!:$.  On the charge-$\gamma$ sector the
+boson modes are
+\begin{equation*}
+  h_a(k)\;=\;\begin{cases} X(-k-1,a)\cdot & k<0 \ (\text{creation}),\\
+  \langle e_a,\gamma\rangle & k=0\ (\text{momentum}),\\
+  k\,\partial/\partial X(k-1,a) & k>0\ (\text{annihilation}).\end{cases}
+\end{equation*}
+
+\begin{definition}\label{ch12:def:quadF}
+For $s\in\Z$ let $\mathrm{quadF}_\gamma(a,i;b,j;s)$ be the operator on the Fock factor of the charge-$\gamma$
+sector given by
+\begin{equation*}
+ \mathrm{quadF}(s)\,p \;=\;\sum_{m\in\Z}\;:\!g^i_a(m)\,g^j_b(s-m)\!:\;p,\qquad
+ g^i_a(m) = \frac{1}{i!}\prod_{l=0}^{i-1}(m+1+l)\cdot h_a(-m-i-1),
+\end{equation*}
+normal ordered (the factor with non-negative index acts first).
+\end{definition}
+File \leanpath{VOA/Moonshine/FockSpanOps.lean}.
+\begin{leancode}
+noncomputable def hOp (γ : leech.carrier) (a : Fin (rank leech)) (k : ℤ) : Module.End ℂ Fk :=
+  oscN (rank leech) 1 a k + if k = 0 then chargeCoord leech γ a • LinearMap.id else 0
+
+noncomputable def cf (i : ℕ) (j : ℤ) : ℂ :=
+  ((i.factorial : ℂ))⁻¹ * (((∏ m ∈ Finset.range i, (j + 1 + (m : ℤ))) : ℤ) : ℂ)
+
+noncomputable def gOp (γ : leech.carrier) (a : Fin (rank leech)) (i : ℕ) (j : ℤ) :
+    Module.End ℂ Fk :=
+  cf i j • hOp γ a (-(j + i) - 1)
+
+noncomputable def qTerm (γ : leech.carrier) (a : Fin (rank leech)) (i : ℕ) (b : Fin (rank leech))
+    (j : ℕ) (s m : ℤ) (p : Fk) : Fk :=
+  if 0 ≤ m then gOp γ a i m (gOp γ b j (s - m) p) else gOp γ b j (s - m) (gOp γ a i m p)
+
+noncomputable def quadF (γ : leech.carrier) (a : Fin (rank leech)) (i : ℕ) (b : Fin (rank leech))
+    (j : ℕ) (s : ℤ) (p : Fk) : Fk :=
+  ∑ᶠ m, qTerm γ a i b j s m p
+
+theorem smul_quad (γ : leech.carrier) (a : Fin (rank leech)) (i : ℕ) (b : Fin (rank leech))
+    (j : ℕ) (n : ℤ) (p : Fk) :
+    leechVOA.smul (latStateGen leech (X (i, a) * X (j, b) : Fk) 0) n (latStateGen leech p γ)
+      = latStateGen leech (quadF γ a i b j (-n - 1) p) γ
+\end{leancode}
+(\leanpath{VOA/Moonshine/FockSpanOps.lean}, namespace \lean{VOA.Moonshine.FockSpan}.)
+\begin{dictionary}
+\begin{itemize}
+\item \lean{Fk} is the Fock space $\C[X(i,a)]$ (\lean{FockN (rank leech)}, $24$ colours);
+  \lean{oscN} is the oscillator $h_a(k)$ without zero-mode momentum; \lean{chargeCoord leech γ a} is the
+  momentum $\langle e_a,\gamma\rangle$ in an orthonormal frame.  \lean{hOp} is the boson mode on the
+  charge-$\gamma$ sector.
+\item \lean{cf i j} is the coefficient of $(i!)^{-1}\partial^i$ acting on $z^{-j-i-1}$: the field
+  $\frac1{i!}\partial^ih(z)$ has $m$-th coefficient $\mathrm{cf}(i,m)\,h(-m-i-1)$ in the convention
+  $\sum_m(\cdot)_m z^m$ used by the library's normal-ordered product.
+\item \lean{qTerm} with the test \lean{0 ≤ m} is the normal ordering.  \lean{∑ᶠ} is a sum with finite
+  support (proved finite in the library).
+\item \lean{smul_quad}: the $n$-th product $q_{(n)}(p\otimes e^\gamma)$ equals $\mathrm{quadF}(-n-1)p\otimes e^\gamma$.
+  The index $s=-n-1$ is the exponent convention for fields; mode $n$ of the field is the
+  coefficient of $z^{-n-1}$.
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+$\mathrm{quadF}(s)$ is the mode of a normal-ordered bilinear in the oscillator currents, $:\!\partial^iX^a\,\partial^jX^b\!:$, acting on the charge-$\gamma$ Fock space. These are the modes of the quadratic composite fields (the stress tensor is the diagonal case), the lightest composite fields of the free-boson theory, acting on the oscillator part of a charged sector.
+\end{physics}
+\begin{proof}[Proof on paper]
+The vertex operator of $h_a(-i-1)h_b(-j-1)\mathbf 1$ in a lattice VOA is, by reconstruction, the normal
+ordered product of $\frac1{i!}\partial^ih_a(z)$ and $\frac1{j!}\partial^jh_b(z)$.  Reading off the
+coefficient of $z^{-n-1}$ gives the formula.  Charge is preserved since the field has charge zero.
+\end{proof}
+\begin{status}Proved, unconditional.\end{status}
+
+\begin{theorem}[Leading term, commutators and vacuum values]\label{ch12:thm:quadfacts}
+On the charge-$\gamma$ sector:
+\begin{enumerate}[label=(\alph*)]
+\item (leading term) if $p$ has degree $\le d$ and weight $w$, then
+  $\mathrm{quadF}(0)p - X(i,a)X(j,b)p$ has degree $\le d+1$ and weight $w+i+j+2$;
+\item (commutator, weight-one legs) for $s\ge-1$,
+  $[\mathrm{quadF}(a,0;b,0;s),X(t,c)]=(t+1)\big(\delta_{cb}X(t+s+2,a)+\delta_{ca}X(t+s+2,b)\big)$;
+\item $(h_ah_b)_{(0)}e^\gamma = \gamma_b\,h_a(-1)e^\gamma+\gamma_a\,h_b(-1)e^\gamma$;
+\item $(h_a(-1)h_c(-j-1)\mathbf 1)_{(-1)}e^\gamma = \big(X(0,a)X(j,c)+(-1)^j\gamma_c X(j+1,a)+(j+1)\gamma_aX(j+1,c)\big)e^\gamma$.
+\end{enumerate}
+\end{theorem}
+File \leanpath{VOA/Moonshine/FockSpanOps.lean}.
+\begin{leancode}
+noncomputable def Fdw (d : ℕ) (w : ℤ) : Submodule ℂ Fk :=
+  restrictTotalDegree (ℕ × Fin (rank leech)) ℂ d ⊓ gradingZN (rank leech) w
+
+theorem quadF_lead (γ : leech.carrier) (a : Fin (rank leech)) (i : ℕ) (b : Fin (rank leech))
+    (j : ℕ) {d : ℕ} {w : ℤ} {p : Fk} (hp : p ∈ Fdw d w) :
+    quadF γ a i b j 0 p - X (i, a) * X (j, b) * p ∈ Fdw (d + 1) (w + i + j + 2)
+
+theorem quadF_X_mul (γ : leech.carrier) (a b : Fin (rank leech)) {s : ℤ} (hs : -1 ≤ s) (t : ℕ)
+    (c : Fin (rank leech)) (p : Fk) :
+    quadF γ a 0 b 0 s (X (t, c) * p) = X (t, c) * quadF γ a 0 b 0 s p
+      + (if c = b then ((t : ℂ) + 1) • (X (((t : ℤ) + s + 2).toNat, a) * p) else 0)
+      + (if c = a then ((t : ℂ) + 1) • (X (((t : ℤ) + s + 2).toNat, b) * p) else 0)
+
+theorem quadF_D_one (γ : leech.carrier) (a b : Fin (rank leech)) :
+    quadF γ a 0 b 0 (-1) 1
+      = chargeCoord leech γ b • (X (0, a) : Fk) + chargeCoord leech γ a • (X (0, b) : Fk)
+
+theorem quadF_lead_one (γ : leech.carrier) (a c : Fin (rank leech)) (j : ℕ) :
+    quadF γ a 0 c j 0 1
+      = X (0, a) * X (j, c) + ((-1 : ℂ) ^ j * chargeCoord leech γ c) • (X (j + 1, a) : Fk)
+        + (((j : ℂ) + 1) * chargeCoord leech γ a) • (X (j + 1, c) : Fk)
+\end{leancode}
+\begin{dictionary}
+\begin{itemize}
+\item \lean{Fdw d w} is the space of Fock polynomials of total degree $\le d$ and weight $w$
+  (\lean{restrictTotalDegree}, \lean{gradingZN}).
+\item \lean{quadF … 0} is the $(-1)$-mode (as $s=-n-1=0$), and \lean{quadF … (-1)} is the $0$-mode.
+  \lean{1 : Fk} is the Fock vacuum, so (c), (d) are values on $e^\gamma$.  \lean{.toNat} only converts
+  the non-negative index $t+s+2$ to a natural number.
+\item $\gamma_a$ denotes \lean{chargeCoord leech γ a}.
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+The leading term of the bilinear mode is the product of two creation operators, so it raises oscillator number by two; its commutator with a creation operator is linear (the quadratic field acts on the oscillators like a Bogoliubov-type generator), and its action on the charged vacuum is fixed by the charge through the zero mode $\gamma_a$. These are the standard free-boson computations used to show that bilinears reach all states with few oscillators.
+\end{physics}
+\begin{proof}[Proof on paper]
+(a) The $m=0$ summand of $\mathrm{quadF}(0)$ is the product of the two creation operators
+$X(i,a)X(j,b)$.  Every other summand either contains a factor with coefficient $\mathrm{cf}=0$ (the
+product $\prod_l(m+1+l)$ vanishes for $-i\le m\le-1$), or pairs one creation with one
+annihilation/zero mode, raising the degree by at most one.  (b) Only annihilation operators
+contribute to the commutator; $[h_b(k),X(t,c)]=k\,\delta_{cb}\delta_{k,t+1}$ picks the terms
+$m=t+s+2$ and $m=-t-2$.  (c), (d) On the vacuum all annihilators vanish, so only summands with the
+annihilating factor replaced by a momentum survive: these are written out.
+\end{proof}
+\begin{status}Proved, unconditional.\end{status}
+
+\subsection{The target spaces and the degree ascent}
+
+\begin{definition}\label{ch12:def:Tsub}
+For $\gamma\in\Leech_0$ and $n$, $T_\gamma(n)$ is the space of Fock polynomials $p$ with
+$P(p\otimes e^\gamma)\in\operatorname{span}\mathrm{lowerProd}_{V_0^+}(n)$.
+\end{definition}
+File \leanpath{VOA/Moonshine/FockSpanBase.lean}.
+\begin{leancode}
+noncomputable def Tsub {γ : leech.carrier} (hγ : γ ∈ lambda0) (n : ℤ) : Submodule ℂ Fk :=
+  (span ℂ (lowerProd V0P n)).comap (excitedV0 hγ)
+\end{leancode}
+
+\begin{physics}
+$T_\gamma(n)$ is the space of oscillator states, on the charge-$\gamma$ ground state, that are already composites at energy $n$. The spanning arguments aim to show that it is everything of the right weight, i.e.\ that all oscillator excitations are generated by lighter composites.
+\end{physics}
+(\leanpath{VOA/Moonshine/FockSpanBase.lean}.)  Here \lean{excitedV0 hγ} is the linear map $p\mapsto
+P(p\otimes e^\gamma)\in V_0^+$ (\leanpath{VOA/Moonshine/ZhuGenGround.lean}) and \lean{comap} is the preimage.
+
+\begin{lemma}[The basic spanning step and the degree ascent]\label{ch12:lem:ascent}
+(a) If $q$ has weight $i+j+2<n$, $p\otimes e^\gamma$ has weight $w+\tfrac12|\gamma|^2<n$, $m\le0$ and the total
+is $n$, then $\mathrm{quadF}(-m-1)p\in T_\gamma(n)$.
+(b) If $T_\gamma(n)$ contains all weight-$w$ states of degree $\le d_0$, and for every $D\ge d_0$ the
+monomials $X(v_1)X(v_2)m'$ of degree $D+1$ lie in $T_\gamma(n)$ whenever all weight-$w$ states of
+degree $\le D$ do, then $T_\gamma(n)$ contains every weight-$w$ state.
+(c) The inductive step of (b) holds whenever $m'\otimes e^\gamma$ has positive weight.
+\end{lemma}
+File \leanpath{VOA/Moonshine/FockSpanBase.lean}.
+\begin{leancode}
+theorem quadF_mem_Tsub (i j : ℕ) (a b : Fin (rank leech)) {γ : leech.carrier} (hγ : γ ∈ lambda0)
+    {n m : ℤ} (hm : m ≤ 0) {w : ℕ} {p : Fk} (hp : p ∈ gradingWN (rank leech) w)
+    (h1 : (i : ℤ) + j + 2 < n) (h2 : (w : ℤ) + LatGen.halfNorm leech γ < n)
+    (h3 : ((i : ℤ) + j + 2) + ((w : ℤ) + LatGen.halfNorm leech γ) - m - 1 = n) :
+    quadF γ a i b j (-m - 1) p ∈ Tsub hγ n
+
+theorem step_quad {γ : leech.carrier} (hγ : γ ∈ lambda0) (n : ℤ) (D : ℕ) (w : ℕ)
+    (hn : n = (w : ℤ) + LatGen.halfNorm leech γ)
+    (IH : Fdw D w ≤ Tsub hγ n) (v1 v2 : ℕ × Fin (rank leech)) (s' : (ℕ × Fin (rank leech)) →₀ ℕ)
+    (hdeg : s'.degree + 1 = D) (hw : (v1.1 : ℤ) + v2.1 + 2 + (wt s' : ℤ) = w)
+    (hpos : 1 ≤ (wt s' : ℤ) + LatGen.halfNorm leech γ) :
+    (X v1 * X v2 * monomial s' 1 : Fk) ∈ Tsub hγ n
+\end{leancode}
+\begin{dictionary}
+\begin{itemize}
+\item In (a), \lean{gradingWN (rank leech) w} is the weight-$w$ Fock space; (a) says the product
+  $q_{(m)}P(p\otimes e^\gamma)$, which equals $P(\mathrm{quadF}(-m-1)p\otimes e^\gamma)$ because $q$ is
+  $\theta$-even, is a lowerProd element.
+\item In \lean{step_quad}, a monomial is given by its exponent vector \lean{s'}; \lean{s'.degree} is its
+  degree and \lean{wt s'} its weight.  \lean{hpos} is the positivity of the weight of
+  $m'\otimes e^\gamma$, needed so that the product has two lower-weight factors.
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+Acting with a bilinear field raises the degree (oscillator number) by two; this lemma packages the induction in which the all-states-of-degree-at-most-$D$ hypothesis lifts to degree $D+1$ using two creation operators at a time. It is the oscillator-number induction on the Fock space.
+\end{physics}
+\begin{proof}[Proof on paper]
+(a) is the definition of $\mathrm{lowerProd}$ together with Definition~\ref{ch12:def:quadF}.
+(b) Induction on degree: a monomial of degree $D+1>d_0\ge1$ factors as $X(v_1)X(v_2)m'$.  (c) By
+Theorem~\ref{ch12:thm:quadfacts}(a), $(q_{v_1v_2})_{(-1)}P(m'\otimes e^\gamma)=P(X(v_1)X(v_2)m'\otimes
+e^\gamma)+(\text{degree}\le D)$; the left side is in the span by (a), the correction by the induction
+hypothesis.
+\end{proof}
+\begin{status}Proved, unconditional.  (\lean{Fdw_le_of_ascent} is part (b).)\end{status}
+
+\subsection{Charged excited states}
+
+By the ascent, only degree one must be done by hand.  Fix $\gamma\in\Leech_0\setminus0$, $N=|\gamma|^2\ge4$
+(even).  In the quotient by $T_\gamma(n)$ write $\varphi_a=[X(\tau+1,a)]$ for the degree-one state
+$h_a(-\tau-2)e^\gamma$, and $T=\tau+1$, $\varepsilon=(-1)^\tau$.
+
+\begin{theorem}[Charged degree one]\label{ch12:thm:charged}
+For $\gamma\in\Leech_0\setminus0$ and all $t,c$: $h_c(-t-1)e^\gamma$ lies in $T_\gamma(t+1+\tfrac12|\gamma|^2)$.
+Consequently \lean{ExcitedSpanned} holds.
+\end{theorem}
+File \leanpath{VOA/Moonshine/FockSpanCharged.lean}.
+\begin{leancode}
+theorem charged_algebra {M : Type*} [AddCommGroup M] [Module ℂ M] {ι : Type*} [Fintype ι]
+    [DecidableEq ι] (g : ι → ℂ) (φ : ι → M) (T ε N : ℂ) (hN : ∑ c, g c * g c = N)
+    (hR : ∀ a b c, ((if c = b then T • φ a else 0) + (if c = a then T • φ b else 0))
+      - (ε * g c) • (g b • φ a + g a • φ b) - (2 * T * g a * g b) • φ c = 0)
+    (h1 : T - ε * N - T * N ≠ 0) (h2 : T - ε * N ≠ 0) (hg : ∃ b, g b ≠ 0) : ∀ a, φ a = 0
+
+theorem charged_deg_one {γ : leech.carrier} (hγ : γ ∈ lambda0) (hγ0 : γ ≠ 0) (t : ℕ)
+    (c : Fin (rank leech)) :
+    (X (t, c) : Fk) ∈ Tsub hγ ((t : ℤ) + 1 + LatGen.halfNorm leech γ)
+
+theorem excitedSpanned : ExcitedSpanned
+\end{leancode}
+(\leanpath{VOA/Moonshine/FockSpanCharged.lean}.)
+\begin{dictionary}
+\begin{itemize}
+\item \lean{charged_algebra} is a lemma of pure linear algebra: from the family of relations
+  \lean{hR} and two non-vanishing coefficients it concludes $\varphi=0$.  It is stated for any finite
+  colour set $\iota$ and any vector space $M$ (applied to the quotient by $T_\gamma(n)$).
+\item \lean{X (t, c)} is $h_c(-t-1)$ applied to the Fock vacuum, so \lean{charged_deg_one} is the
+  displayed statement.  \lean{excitedSpanned} has no hypotheses: it is the unconditional
+  proof of the residual of Definition~\ref{ch12:def:sectors}.
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+On a charged ground state, a single oscillator excitation $\alpha_{-t-1}e^\gamma$ is already a composite of lighter states, by acting with a bilinear. Consequently all states with oscillators on a nonzero-charge ground state are composites, the excited-sector residual. Physically: the charged sectors carry no new generators above their ground states.
+\end{physics}
+\begin{proof}[Proof on paper]
+\emph{Bottom case $t=0$.}  By Theorem~\ref{ch12:thm:quadfacts}(c) the $0$-mode products
+$(h_ah_b)_{(0)}e^\gamma=\gamma_bh_a(-1)e^\gamma+\gamma_ah_b(-1)e^\gamma$ are in the span.  So in the quotient,
+$\gamma_b\varphi_a+\gamma_a\varphi_b=0$ for all $a,b$.  Pick $b$ with $\gamma_b\neq0$: $a=b$ gives $\varphi_b=0$, then
+all $\varphi_a=0$.
+
+\emph{General $t=\tau+1$.}  Two families of products are available:
+\begin{itemize}
+\item the $(-1)$-modes $(h_a(-1)h_c(-\tau-1)\mathbf 1)_{(-1)}e^\gamma$, which by
+  Theorem~\ref{ch12:thm:quadfacts}(d) give
+  $[X(0,a)X(\tau,c)] = -\big(\varepsilon\gamma_c\varphi_a+T\gamma_a\varphi_c\big)$;
+\item the $0$-modes $(h_ah_b)_{(0)}\big(h_c(-\tau-1)e^\gamma\big)$, which by (b), (c) equal
+  $T(\delta_{cb}\varphi_a+\delta_{ca}\varphi_b)+\gamma_bX(0,a)X(\tau,c)+\gamma_aX(0,b)X(\tau,c)$ in the quotient.
+\end{itemize}
+Substituting the first into the second gives, for all colours $a,b,c$,
+\begin{equation*}
+ T(\delta_{cb}\varphi_a+\delta_{ca}\varphi_b)-\varepsilon\gamma_c(\gamma_b\varphi_a+\gamma_a\varphi_b)-2T\gamma_a\gamma_b\varphi_c = 0 .
+\end{equation*}
+Contract with $\gamma_c$ (using $\sum_c\gamma_c^2=N$) and put $\Phi=\sum_c\gamma_c\varphi_c$:
+$(T-\varepsilon N)(\gamma_b\varphi_a+\gamma_a\varphi_b)-2T\gamma_a\gamma_b\Phi=0$.  Contract once more with $a=b$ summed
+against $\gamma_a$: $2(T-\varepsilon N-TN)\Phi=0$.  The coefficients are non-zero because $N\ge4$ is even:
+if $\tau$ is even, $T-N-TN<0$ and $T-N$ is odd; if $\tau$ is odd, $T+N>0$ and $T+N-TN=0$ would force
+$(T-1)(N-1)=1$.  So $\Phi=0$, then $\gamma_b\varphi_a+\gamma_a\varphi_b=0$, then $\varphi=0$ as in the bottom case.
+Finally \lean{ExcitedSpanned} follows from degree one by the ascent of Lemma~\ref{ch12:lem:ascent}
+(the source $m'\otimes e^\gamma$ always has positive weight since $\tfrac12|\gamma|^2\ge2$).
+\end{proof}
+\begin{status}\lean{excitedSpanned}: proved, unconditional, \texttt{\#print axioms} $=$
+[\lean{propext}, \lean{Classical.choice}, \lean{Quot.sound}] (re-run).\end{status}
+
+\begin{warning}
+\textbf{Weight-two quadratics alone fail in charged degree one}, and so does the approximate leading
+term: the exact vacuum formula of Theorem~\ref{ch12:thm:quadfacts}(d), with both momentum
+corrections, is what makes the linear algebra close.  An earlier plan (\texttt{Notes/ZhuGeneration.md}
+§4.2) used four separate tools and a change of basis to a vector $z\perp\gamma$; the contraction
+argument above replaced it.
+\end{warning}
+
+\subsection{The charge-zero sector \texorpdfstring{$M(1)^+$}{M(1)+}}
+
+In charge zero the momentum vanishes, so the $0$-modes of weight-two quadratics are derivations
+$D_{ab}=(h_ah_b)_{(0)}$ of $\C[X]$ with $[D_{ab},X(t,c)]=(t+1)(\delta_{cb}X(t+1,a)+\delta_{ca}X(t+1,b))$.
+Odd-degree states project to $0$ under $P$, so degree $1$ is trivial; degree $\ge3$ follows from the
+ascent; everything rests on degree two (the \emph{bilinears} $X(i,c)X(j,f)$, weight $i+j+2=n\ge3$).
+
+\begin{theorem}[The bilinears and \lean{FockSpanned}]\label{ch12:thm:fock}
+Every charge-zero bilinear of weight $n\ge3$ lies in $T_0(n)$.  Consequently \lean{FockSpanned} holds.
+\end{theorem}
+File \leanpath{VOA/Moonshine/FockSpanFock.lean}.
+\begin{leancode}
+theorem diag_algebra {M : Type*} [AddCommGroup M] [Module ℂ M] {ι : Type*} (n : ℕ) (hn : 3 ≤ n)
+    (W : ι → ℕ → M) (c0 c1 : ι) (h01 : c0 ≠ c1) (hthird : ∀ c g : ι, ∃ e, e ≠ c ∧ e ≠ g)
+    (hb : ∀ c e, c ≠ e → ∀ k, 1 ≤ k → k ≤ n - 2 →
+      (k : ℂ) • W c k + ((n - 1 - k : ℕ) : ℂ) • W e (k - 1) = 0)
+    (hsym : ∀ c k, k ≤ n - 2 → W c k = W c (n - 2 - k))
+    (hc : 4 ≤ n → ∀ c e, c ≠ e → ((n - 3 : ℕ) : ℂ) • W c 0 + W e 2 = 0) :
+    ∀ c k, k ≤ n - 2 → W c k = 0
+
+theorem quadN0_cancel {c e : Fin (rank leech)} (hce : c ≠ e) (L : ℕ) :
+    quadF 0 c 0 e 0 0 (X (0, c) * X (L, e) : Fk) - quadF 0 c 0 c 0 0 (X (0, e) * X (L, e) : Fk)
+      = ((L : ℂ) + 1) • (X (0, c) * X (L + 2, c) : Fk) + (X (2, e) * X (L, e) : Fk)
+
+theorem fock_bilinear {n : ℕ} (hn : 3 ≤ n) (v1 v2 : ℕ × Fin (rank leech))
+    (hw : v1.1 + v2.1 + 2 = n) : (X v1 * X v2 : Fk) ∈ T0 n
+
+theorem fockSpanned : FockSpanned
+\end{leancode}
+(\leanpath{VOA/Moonshine/FockSpanFock.lean}.)
+\begin{dictionary}
+\begin{itemize}
+\item \lean{T0 n} is $T_0(n)$, the charge-zero case of \lean{Tsub}.  In \lean{fock_bilinear}, $v_1=(i,c)$,
+  $v_2=(j,f)$ and \lean{hw} is ``weight $n$''.
+\item \lean{diag_algebra}: $W(c,k)$ stands for the class of the diagonal bilinear
+  $V_c(k)=X(k,c)X(n-2-k,c)$.  \lean{hthird} (a third colour avoiding any two) holds because there are
+  $24\ge3$ colours (\lean{exists_third}).  \lean{hb}, \lean{hsym}, \lean{hc} are the three families of
+  relations described in the proof.
+\item \lean{quadN0_cancel} is the ``degree-four cancellation'': $\mathrm{quadF}(\cdot;0)$ is the
+  $(-1)$-mode.  \lean{fockSpanned} has no hypotheses.
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+In the charge-zero (neutral) sector every bilinear of weight at least three is a composite of lighter fields, so the pure-oscillator part of the orbifold algebra is generated by its weight-two (and lighter) bilinears, namely the Virasoro-type field and its relatives. This is the neutral half of the Fock-sector residual, free-boson bookkeeping for the $24$ oscillators.
+\end{physics}
+\begin{proof}[Proof on paper]
+\emph{Off-diagonal} $X(i,c)X(j,f)$, $c\neq f$, $i\ge1$: choose a third colour $e\notin\{c,f\}$; then
+$D_{ce}\big(X(i-1,e)X(j,f)\big)=i\,X(i,c)X(j,f)$, a $0$-mode of a weight-two state on a weight-$(n-1)$
+state.  (If $i=0$, swap the factors; $j\ge1$ since $n\ge3$.)
+
+\emph{Diagonal} $V_c(k)=X(k,c)X(n-2-k,c)$.  For $c\neq e$ and $1\le k\le n-2$,
+\begin{equation*}
+  D_{ce}\big(X(k-1,e)X(n-2-k,c)\big) = k\,V_c(k)+(n-1-k)\,V_e(k-1)
+\end{equation*}
+is in the span.  Also $V_c(k)=V_c(n-2-k)$.  Comparing two colours $c,g$ via a third $e$ shows that
+modulo the span $V_c(k)$ does not depend on $c$; then the relations become the recursion
+$kV(k)+(n-1-k)V(k-1)\equiv0$ for $1\le k\le n-2$.  For $n=3$ the case $k=1$ and the symmetry
+$V(0)=V(1)$ give $2V(0)\equiv0$.  For $n\ge4$ one more relation is needed, because the recursion and
+the symmetry alone leave room for a non-zero solution in rank one: this is the deficiency behind the $J$
+of $A(M(1)^+)$ (Example~\ref{ch12:ex:heis}); numerically, rank one is deficient by exactly one dimension
+at weight $4$.  The extra relation is the degree-four cancellation, available because there are at
+least two colours:
+\begin{equation*}
+ (h_ch_e)_{(-1)}\big(X(0,c)X(n-4,e)\big)-(h_ch_c)_{(-1)}\big(X(0,e)X(n-4,e)\big) = (n-3)\,V_c(0)+V_e(2),
+\end{equation*}
+in which the degree-four leading terms $X(0,c)X(0,e)X(0,c)X(n-4,e)$ cancel between the two products,
+leaving only single contractions.  Combining it with the recursion at $k=1$ and $k=2$ gives $(n-3)\,n\,V(0)\equiv0$, so $V(0)\equiv0$
+and inductively $V(k)\equiv0$.  Degree $\ge3$ follows by the ascent (the source $m'$ has degree $\ge1$, hence
+positive weight); degree one is zero after projection.
+\end{proof}
+\begin{status}\lean{fockSpanned}: proved, unconditional, \texttt{\#print axioms}-clean (re-run).  Rank
+$\ge3$ is used (three colours); rank $24$ is available.\end{status}
+
+\begin{example}[Weight three]\label{ch12:ex:weight3}
+$(V_0^+)_3$ has Fock part spanned by the $576$ states $h_a(-2)h_b(-1)\mathbf 1$.  For $a\neq b$ choose $e\notin\{a,b\}$:
+$(h_ah_e)_{(0)}\big(h_e(-1)h_b(-1)\mathbf 1\big)=h_a(-2)h_b(-1)\mathbf 1$, a $0$-th product of two weight-two states.
+For $a=b$: with $n=3$, $V_a(1)=X(1,a)X(0,a)=h_a(-2)h_a(-1)\mathbf 1$ and $V_a(0)=V_a(1)$ by symmetry; the
+relation with $k=1$ reads $V_a(1)+V_e(0)\equiv0$, i.e.\ $2V(1)\equiv0$ after identifying colours.  (Of course
+$h_a(-2)h_a(-1)\mathbf 1=\tfrac12L_{-1}(h_a(-1)^2\mathbf 1)$ is also directly an $L_{-1}$-image.)  None of the
+off-diagonal states is in $L_{-1}(V_0^+)_2$: this is the failure of strong generation, rescued by $0$-th
+products.
+\end{example}
+
+\paragraph{Numerical cross-check.}  Before the Lean proof, \texttt{fock\_lowerprod.py} (exact arithmetic
+modulo $2^{31}-1$) confirmed: rank one is deficient by exactly one dimension at weight $4$ only; ranks
+$2$, $3$, $4$ are full through weights $11$, $9$, $8$.  \texttt{charged\_lowerprod.py} found full rank in
+every charged case tested (ranks $1$--$4$; the only failure, $|\gamma|^2=2$, does not occur in $\Leech_0$).
+These are evidence, superseded by the proofs above.
+
+\section{The ground states: Golay combinatorics}\label{ch12:sec:ground}
+
+What remains is \lean{GroundLattice}, a purely combinatorial statement about $\Leech_0$.  We work in
+the coordinates \eqref{ch12:eq:Acoords}: $\Leech_0\cong A=\{g\in\Z^{24}: g\bmod2\in\chtwelveG,\ 4\mid\sum
+g_i\}$, $\langle g,h\rangle=\tfrac12g\cdot h$.  In these coordinates: $|\gamma|^2\ge6\iff g\cdot g\ge12$;
+norm-four vectors have $g\cdot g=8$; $\langle\alpha,\beta\rangle=-1\iff a\cdot b=-2$.
+
+\subsection{Facts about the Golay code}
+
+The extended binary Golay code $\chtwelveG\subset\mathbb F_2^{24}$ (Lean: \lean{Code.golay}, constructed in
+Chapter~\ref{ch:02}) is a doubly even, self-dual $[24,12,8]$ code containing the all-ones word, with $759$
+words of weight $8$ (\emph{octads}).  These facts are proved in Chapter~\ref{ch:02}; here we derive the
+further facts the ground-state argument needs.  Subsets of $\{0,\dots,23\}$ are identified with words via
+their indicator \lean{ind}.
+
+\begin{definition}\label{ch12:def:octad}
+An \emph{octad} is a set $O$ of size $8$ whose indicator lies in $\chtwelveG$.
+\end{definition}
+File \leanpath{VOA/Moonshine/GroundLatticeGolay.lean}.
+\begin{leancode}
+def ind (A : Finset (Fin 24)) : Fin 24 → ZMod 2 := fun j => if j ∈ A then 1 else 0
+
+def IsOct (O : Finset (Fin 24)) : Prop := ind O ∈ golay ∧ O.card = 8
+\end{leancode}
+
+\begin{physics}
+An octad is a set of eight of the $24$ coordinates, i.e.\ eight of the 24 bosons, whose indicator lies in the Golay code. Octads label the minimal charged ground states (lattice vectors of the Leech lattice with shape $(\pm 2^8,0^{16})$), the frame-charge bookkeeping of the $24$ bosons.
+\end{physics}
+(\leanpath{VOA/Moonshine/GroundLatticeGolay.lean}, namespace \lean{VOA.Moonshine.GroundLat}.)
+
+\begin{theorem}[Golay facts]\label{ch12:thm:golayfacts}
+\begin{enumerate}[label=(\alph*)]
+\item Every codeword has weight $0,8,12,16$ or $24$.
+\item Two distinct octads meet in at most $4$ points.
+\item \textbf{(Steiner system $S(5,8,24)$, existence)} Every $5$-subset of the coordinates lies in an
+  octad.
+\item A word of even weight not in $\chtwelveG$ has odd intersection with some octad.
+\item A codeword of weight $12$ or $16$ meets some octad in exactly $6$ points.
+\item Every $4$-set meets some octad in exactly $3$ points.
+\end{enumerate}
+\end{theorem}
+File \leanpath{VOA/Moonshine/GroundLatticeGolay.lean}.
+\begin{leancode}
+theorem golay_weight_cases {c : Fin 24 → ZMod 2} (hc : c ∈ golay) :
+    weight c = 0 ∨ weight c = 8 ∨ weight c = 12 ∨ weight c = 16 ∨ weight c = 24
+
+theorem octad_inter_le {O₁ O₂ : Finset (Fin 24)} (h₁ : IsOct O₁) (h₂ : IsOct O₂) (hne : O₁ ≠ O₂) :
+    (O₁ ∩ O₂).card ≤ 4
+
+theorem steiner {T : Finset (Fin 24)} (hT : T.card = 5) : ∃ O, IsOct O ∧ T ⊆ O
+
+theorem exists_octad_dot_ne_zero {x : Fin 24 → ZMod 2} (hx : x ∉ golay) (hw : Even (weight x)) :
+    ∃ O, IsOct O ∧ ind O ⬝ᵥ x ≠ 0
+
+theorem exists_octad_inter_six {C : Finset (Fin 24)} (hC : ind C ∈ golay)
+    (h : C.card = 12 ∨ C.card = 16) : ∃ O, IsOct O ∧ (O ∩ C).card = 6
+
+theorem exists_octad_inter_three {S : Finset (Fin 24)} (hS : S.card = 4) :
+    ∃ O, IsOct O ∧ (O ∩ S).card = 3
+\end{leancode}
+\begin{dictionary}
+\begin{itemize}
+\item \lean{Finset (Fin 24)} is a finite subset of $\{0,\dots,23\}$; \lean{card} its size;
+  \lean{weight} the Hamming weight.  \lean{⬝ᵥ} is the dot product over $\mathbb F_2$, so
+  \lean{ind O ⬝ᵥ x ≠ 0} means $|O\cap\mathrm{supp}\,x|$ is odd.
+\item (c) is only the existence half of $S(5,8,24)$ (uniqueness of the octad is not stated or needed).
+\item All are about the library's specific code \lean{golay}; they hold for every extended Golay code but
+  are proved here from the four properties listed above (doubly even, self-dual, minimum weight $8$,
+  $759$ octads), with no enumeration of codewords.
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+These are the standard combinatorial facts about the Golay code: codeword weights, intersections of octads, and the Steiner system $S(5,8,24)$ (every five coordinates in a unique octad). In the lattice picture they classify how the frame charges of the $24$ bosons combine into Leech-lattice ground states of low norm; they are pure combinatorics with no dynamical content, used to guarantee that every heavy lattice vector has a decomposition into lighter ones.
+\end{physics}
+\begin{proof}[Proof on paper]
+(a) Weights are divisible by $4$ (doubly even); non-zero weights are $\ge8$; and $c+\mathbf 1$ is a codeword
+of weight $24-\mathrm{wt}\,c$, so weights $\le 23$ other than $0$ are also $\le16$ ($24-\mathrm{wt}\ge8$).
+(b) $|O_1\triangle O_2|+2|O_1\cap O_2|=16$ and $O_1\triangle O_2$ is a non-zero codeword, so
+$|O_1\triangle O_2|\ge8$ and $|O_1\cap O_2|\le4$.
+
+(c) \emph{By counting.}  Each octad contains $\binom85=56$ five-subsets, and by (b) no five-subset lies in
+two octads.  So the octads contain $759\cdot56=42504$ distinct five-subsets.  But
+$\binom{24}5=42504$.  Hence every five-subset is in an octad.
+
+(d) By self-duality $x\notin\chtwelveG=\chtwelveG^\perp$, so some codeword $y$ has $y\cdot x=1$.  If
+$\mathrm{wt}\,y=8$, done.  If $\mathrm{wt}\,y=16$, then $y+\mathbf 1$ is an octad and $(y+\mathbf
+1)\cdot x=y\cdot x$ because $x$ has even weight.  If $\mathrm{wt}\,y=12$ (a \emph{dodecad}), $y$ is a sum of
+two octads (take an octad $O$ meeting $y$ in $\ge5$ points by (c); then $O\triangle y$ has weight
+$20-2|O\cap y|\le10$, so it is an octad), and one of the two has odd product with $x$.  ($\mathrm{wt}\,y\in\{0,24\}$
+is impossible: $0\cdot x=0$ and $\mathbf 1\cdot x=\mathrm{wt}\,x=0$.)
+
+(e) Take an octad $O$ meeting $C$ in $\ge5$ points.  The intersection sizes are constrained by
+$|O\triangle C|=8+|C|-2|O\cap C|\in\{0,8,12,16,24\}$: for $|C|=12$ this forces $|O\cap C|\in\{2,4,6\}$, so
+$6$; for $|C|=16$ it forces $\{4,6,8\}$, so $6$ or $8$.  In the remaining case $O\subseteq C$, $|C|=16$:
+take $T\subset O$ with $|T|=3$, a point $c_5\in C\setminus O$ and a point $d\notin C$; the octad $O'$
+through the five points $T\cup\{c_5,d\}$ meets $C$ in $4$ to $7$ points, hence in $4$ or $6$; and $4$ is
+impossible, since then $O\cap O'=T$ would have $3$ points, while octads meet in an even number of points
+(again from the weight constraint).
+
+(f) Let $S=\{s_1,\dots,s_4\}$.  Choose $p\notin S$ and the octad $O_1\supseteq S\cup\{p\}$, then $q\notin O_1$
+and the octad $O_2\supseteq\{s_1,s_2,s_3,p,q\}$.  If $s_4\in O_2$ then $O_1\cap O_2\supseteq S\cup\{p\}$ has
+$5$ points, contradicting (b) ($O_1\neq O_2$ as $q\in O_2\setminus O_1$).  So $O_2\cap S=\{s_1,s_2,s_3\}$.
+\end{proof}
+\begin{status}All proved, unconditional, \texttt{\#print axioms}-clean (re-run for \lean{steiner}).  No
+\lean{decide} over the $4096$ codewords: the only computational input is the weight enumerator fact
+$759$ from Chapter~\ref{ch:02}.\end{status}
+
+\subsection{The lattice statement in Golay coordinates}
+
+\begin{definition}[Direct and triangle relations]\label{ch12:def:direct}
+For $g\in\Z^{24}$:
+\begin{itemize}
+\item $\mathrm{Direct}(g)$: there is $a\in A\setminus0$ with $g-a\neq0$ and $a\cdot(g-a)=-2$ or
+  $a\cdot(g-a)\ge2$;
+\item $\mathrm{ZeroRel}(u,v)$: $u=a+b$, $v=a-b$ with $a,b\in A\setminus0$ and $a\cdot b=0$;
+\item $\mathrm{Tri}(g)$: there are $g',g''$ with $\mathrm{ZeroRel}(g,g')$, $\mathrm{ZeroRel}(g',g'')$,
+  $\mathrm{ZeroRel}(g'',g)$.
+\end{itemize}
+\end{definition}
+File \leanpath{VOA/Moonshine/GroundLatticeCoord.lean}.
+\begin{leancode}
+def Direct (g : Fin 24 → ℤ) : Prop :=
+  ∃ a ∈ subA, a ≠ 0 ∧ g - a ≠ 0 ∧ (a ⬝ᵥ (g - a) = -2 ∨ 2 ≤ a ⬝ᵥ (g - a))
+
+def ZeroRel (u v : Fin 24 → ℤ) : Prop :=
+  ∃ a ∈ subA, ∃ b ∈ subA, a ≠ 0 ∧ b ≠ 0 ∧ a ⬝ᵥ b = 0 ∧ a + b = u ∧ a - b = v
+
+def Tri (g : Fin 24 → ℤ) : Prop :=
+  ∃ g' g'', ZeroRel g g' ∧ ZeroRel g' g'' ∧ ZeroRel g'' g
+\end{leancode}
+(\leanpath{VOA/Moonshine/GroundLatticeCoord.lean}.)
+\begin{dictionary}
+\begin{itemize}
+\item \lean{subA} is $A$; \lean{⬝ᵥ} the integer dot product, i.e.\ $2\langle\cdot,\cdot\rangle$.  So
+  $\mathrm{Direct}(g)$ says $\gamma=\alpha+\beta$ with $\alpha,\beta\in\Leech_0\setminus0$ and
+  $\langle\alpha,\beta\rangle=-1$ or $\ge1$: a ground relation of the first kind.  $\mathrm{ZeroRel}(u,v)$
+  is the $k=0$ relation $x_u+x_v$.
+\item $\mathrm{Direct}$ does not require $g\in A$ (it follows when $g$ is a sum of two elements of $A$).
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+The relations describe when a lattice vector $g$ can be written as a sum $a+b$ of two non-zero lattice vectors with prescribed inner product $a\cdot b$, that is, as a product of two charged ground states ($-2$ or at least $2$), or through a three-step cycle of orthogonal decompositions (the triangle). They are the OPE channels of charge-$a$ and charge-$b$ vertex operators in coordinates, in the frame-charge bookkeeping.
+\end{physics}
+
+\begin{theorem}[Ground-lattice theorem in coordinates]\label{ch12:thm:groundLatticeA}
+Every $g\in A$ with $g\cdot g\ge12$ satisfies $\mathrm{Direct}(g)$ or $\mathrm{Tri}(g)$.
+\end{theorem}
+File \leanpath{VOA/Moonshine/GroundLatticeCoord.lean}.
+\begin{leancode}
+theorem groundLatticeA : ∀ g ∈ subA, 12 ≤ g ⬝ᵥ g → Direct g ∨ Tri g
+\end{leancode}
+
+The proof is a case analysis on the shape of $g$.  First, some constructions.
+
+\paragraph{Pair vectors.}  For $i\neq j$ and signs, $a=2(\pm e_i\pm e_j)\in A$ (it is $0\bmod 2$ and its sum
+is $0$ or $\pm4$), $a\cdot a=8$, and with the signs of $g_i,g_j$, $a\cdot g=2(|g_i|+|g_j|)$.  Since
+$a\cdot(g-a)=a\cdot g-8$, this gives $\mathrm{Direct}(g)$ as soon as $a\cdot g=6$ or $a\cdot g\ge10$, i.e.\ as
+soon as \emph{some pair has $|g_i|+|g_j|=3$ or $\ge5$} (\lean{direct_of_pair}).
+
+\paragraph{Octad vectors.}  For an octad $O$, a point $p\in O$ and signs $\sigma_j=\mathrm{sgn}\,g_j$ on
+$O\setminus p$, there is a choice $\sigma_p=\pm1$ such that $a=\sigma\cdot\mathbf 1_O\in A$ (the sum
+$\sum_O\sigma_j$ must be $\equiv0\bmod4$; flipping $\sigma_p$ changes it by $2$); then $a\cdot a=8$ and
+$a\cdot g=\sigma_pg_p+\sum_{O\setminus p}|g_j|$ (\lean{exists_octVec}).
+
+\paragraph{The shapes.}  If no pair has $|g_i|+|g_j|\in\{3\}\cup[5,\infty)$, then (when not all coordinates are
+odd) one of: $g=\pm4e_i$; all $|g_j|\in\{0,2\}$; all $|g_j|\le1$ with some $g_j=0$.
+
+\begin{itemize}
+\item \textbf{$|g_j|\in\{0,2\}$, support $S$.}  Each entry $\pm2$ contributes $2\bmod4$ to $\sum g_j$, so
+  $4\mid\sum g_j$ forces $|S|$ even, and $g\cdot g=4|S|\ge12$ gives $|S|\ge4$.  If $|S|=4$, an octad meeting $S$
+  in $3$ points (Theorem~\ref{ch12:thm:golayfacts}(f)) and $p\in O\setminus S$ give $a\cdot g=2\cdot3=6$.
+  If $|S|\ge5$, an octad meeting $S$ in $\ge5$ points (by (c)) gives $a\cdot g\ge10$, choosing $p\notin S$
+  when possible and otherwise using $\sigma_pg_p\ge-2$ (\lean{direct_even2}).
+\item \textbf{$|g_j|\le1$, some $g_j=0$.}  Then $g\bmod2$ is the indicator of the support $C$, a codeword
+  of weight $12$ or $16$ (it is $\ge12$ by the norm, and $<24$).  An octad meeting $C$ in $6$ points
+  (Theorem~\ref{ch12:thm:golayfacts}(e)) gives $a\cdot g=6$ (\lean{direct_le_one}).
+\item \textbf{$g=\pm4e_i$ (family $E_1$).}  No direct relation exists.  But
+  $4e_i = 2(e_i+e_j)+2(e_i-e_j)$ with orthogonal summands, so $\mathrm{ZeroRel}(\pm4e_i,4e_j)$; the
+  triangle $\pm4e_i\to4e_{i+1}\to4e_{i+2}\to\pm4e_i$ gives $\mathrm{Tri}$ (\lean{e1_tri}).
+\item \textbf{All coordinates odd.}  Let $\tau(g)=\{j:g_j\equiv3\bmod4\}$.
+  \begin{itemize}
+  \item If $\tau(g)\notin\chtwelveG$: $\tau(g)$ has even size (from $4\mid\sum g_j$), so by (d) some octad $O$
+    meets it oddly.  Take $p\in O$ minimising $|g_p|$; then $a\cdot g\ge -|g_p|+7|g_p|\ge6$, and a mod-$4$
+    computation shows $a\cdot g\equiv2\bmod4$; hence $a\cdot g=6$ or $\ge10$ (\lean{odd_direct}).
+  \item If $\tau(g)\in\chtwelveG$: for any codeword $C\notin\{\emptyset,\Omega\}$, flipping the signs of $g$ on
+    $C$ is a $\mathrm{ZeroRel}$ step: $g=(g-g|_C)+g|_C$ and $\mathrm{flip}_C\,g=(g-g|_C)-g|_C$, where $g|_C\in
+    A$ because $\tau(g)\in\chtwelveG$ makes the sum over $C$ divisible by $4$, and the two pieces have disjoint
+    supports, hence are orthogonal (\lean{zeroRel_flip}).  Flipping on $C_1$, then $C_2$, then $C_1\triangle
+    C_2$ returns to $g$: a triangle (\lean{odd_tri}, with $C_1,C_2$ two explicit rows of the generator
+    matrix).
+  \end{itemize}
+\end{itemize}
+
+\begin{dictionary}
+\textbf{The exceptional families, and why the uniform $\tau$-criterion is the right formulation.}  The
+route notes (\texttt{Notes/ZhuGeneration.md} §4.3) isolated three families with no direct relation at
+all (confirmed by exhaustive enumeration, \texttt{e3\_relations.py}):
+\begin{itemize}
+\item $E_1=\{\pm4e_i\}$ ($|\gamma|^2=8$);
+\item $E_2=\{(\pm1)^{24}:\text{negative set}\in\chtwelveG\}$ ($|\gamma|^2=12$);
+\item $E_3=\{s+2s_ie_i : s\in\{\pm1\}^{24},\ N(s)\triangle\{i\}\in\chtwelveG\}$ ($|\gamma|^2=16$; one
+  orbit of $98304$ vectors), $N(s)$ the negative set.
+\end{itemize}
+For $g\in E_2$, $\tau(g)$ is the negative set; for $g\in E_3$ ($g_i=\pm3$), $\tau(g)=N(s)\triangle\{i\}$ (if
+$s_i=1$, $g_i=3\in\tau$ and $i\notin N$; if $s_i=-1$, $g_i=-3\equiv1$ and $i\in N$).  So $E_2\cup E_3$ is
+contained in $\{g\text{ all odd}:\tau(g)\in\chtwelveG\}$, and the Lean proof treats this whole set by the
+triangle argument, whether or not a direct relation also exists.  This is a simplification over the
+notes, not a weakening: $\mathrm{Tri}$ is a valid route for every such $g$.
+\end{dictionary}
+
+\begin{physics}
+Every Leech sublattice vector of norm at least twelve (in coordinates) either decomposes directly as a sum of two lighter vectors with inner product $-2$ or at least $2$, or through a triangle of orthogonal decompositions. Physically: every heavy charged ground state is a field product of lighter ones, because its lattice vector has a suitable decomposition. Pure combinatorics of the Golay code and the Steiner system.
+\end{physics}
+
+\begin{status}\lean{groundLatticeA}: proved, unconditional.  Only small kernel \lean{decide}s are used
+(on \lean{Fin 24}, on \lean{ZMod 2}, and on the values of two rows of the generator matrix).\end{status}
+
+\begin{warning}
+\textbf{Random sampling misses $E_2$ and $E_3$.}  The first numerical check (\texttt{ground\_states.py}:
+random placements of every magnitude pattern up to $|\gamma|^2=28$, $60$ per pattern) found only $E_1$.
+$E_2$ and $E_3$ are single \emph{sign classes} (codeword sign patterns), which random signs essentially
+never hit.  Lattice conditions on $\Leech_0$ must be checked by orbit structure or exhaustively, not by
+sampling.
+\end{warning}
+
+\subsection{Transport to the vertex algebra}
+
+\begin{theorem}[\lean{GroundLattice} holds]\label{ch12:thm:groundLattice}
+\lean{GroundLattice} (Definition~\ref{ch12:def:GroundRel}) is true.
+\end{theorem}
+File \leanpath{VOA/Moonshine/GroundLattice.lean}.
+\begin{leancode}
+noncomputable def iotaA (a : ↥Leech.subA) : leech.carrier := (lambda0Equiv a : leech.carrier)
+
+theorem groundLattice : GroundLattice
+
+theorem zhuGenerated_weightTwo_of_fock_excited (hF : FockSpanned) (hE : ExcitedSpanned) :
+    ZhuGenerated weightTwo
+\end{leancode}
+(\leanpath{VOA/Moonshine/GroundLattice.lean}, namespace \lean{VOA.Moonshine.SigmaExist}.)
+\begin{dictionary}
+\lean{iotaA} is the isometric inclusion $A\to\Leech_0\subset\Leech$ with $\langle\iota a,\iota
+b\rangle=(a\cdot b)/2$.  \lean{groundLattice} has no hypotheses.
+\end{dictionary}
+
+\begin{physics}
+Transport of the coordinate statement to the vertex algebra: every heavy ground state of the sector is a combination of OPE products of lighter charged ground states. In field-theory language, the charged ground states of norm at least six carry no new generators; they are generated from lighter ones, which is the ground-state residual.
+\end{physics}
+\begin{proof}[Proof on paper]
+Given $\gamma\in\Leech_0$ with $|\gamma|^2\ge6$, let $g=\iota^{-1}\gamma$; $g\cdot g=2|\gamma|^2\ge12$.  A
+$\mathrm{Direct}$ witness $a$ gives $\gamma=\iota a+\iota(g-a)$, a ground relation of the first kind.  A
+$\mathrm{ZeroRel}(u,v)$ gives the relation $x_u+x_v$, and $|u|^2=|v|^2$ (as $a\perp b$), so all three
+relations of a triangle have the right weight; then
+\begin{equation*}
+ x_g=\tfrac12\big[(x_g+x_{g'})-(x_{g'}+x_{g''})+(x_{g''}+x_g)\big]
+\end{equation*}
+lies in the span.  (This is why a triangle, an odd cycle, is needed: with all relation signs $+$, a path
+or even cycle would only give alternating sums.)
+\end{proof}
+\begin{status}Proved, unconditional, \texttt{\#print axioms} $=$ [\lean{propext},
+\lean{Classical.choice}, \lean{Quot.sound}] (re-run).\end{status}
+
+\section{The headline: \texorpdfstring{$V_0^+$}{V₀⁺} is Zhu-generated by weight two}\label{ch12:sec:headline}
+
+\begin{theorem}[R-gen]\label{ch12:thm:zhuGenerated_weightTwo}
+Every subspace of $V_0^+$ that contains $\mathbf 1$, $\chtwelveO(V_0^+)$ and $(V_0^+)_2$, and is closed under
+Zhu's product, is all of $V_0^+$.
+\end{theorem}
+File \leanpath{VOA/Moonshine/ZhuGenerated.lean}.
+\begin{leancode}
+theorem zhuGenerated_weightTwo : SigmaExist.ZhuGenerated SigmaExist.weightTwo :=
+  FockSpan.zhuGenerated_weightTwo_of_groundLattice SigmaExist.groundLattice
+\end{leancode}
+(\leanpath{VOA/Moonshine/ZhuGenerated.lean}, namespace \lean{VOA.Moonshine}.)
+\begin{dictionary}
+\begin{itemize}
+\item Unfolding: \lean{ZhuGenerated} is Definition~\ref{ch12:def:zhugen}, \lean{weightTwo} is
+  $(V_0^+)_2$ (Definition~\ref{ch12:def:weightTwo}), \lean{zhuMul} and \lean{O} are
+  Definitions~\ref{ch12:def:zhumul}, \ref{ch12:def:O} applied to the VOA \lean{V0P} $=V_0^+$.
+\item The one-line proof term is itself informative: R-gen is the assembly
+  \lean{FockSpanned} $\wedge$ \lean{ExcitedSpanned} $\wedge$ \lean{GroundLattice} $\Rightarrow$ R-gen,
+  with the three inputs \lean{fockSpanned}, \lean{excitedSpanned}, \lean{groundLattice}.
+\item No hypotheses.  The statement is not vacuous (Definition~\ref{ch12:def:zhugen}).  It is
+  consistent with the numerical experiment of \S\ref{ch12:sec:numerics} and with the literature
+  classification of $A(V_{\Leech_0}^+)$, neither of which is used.
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+The weight-two fields Zhu-generate the whole chiral algebra: the zero modes of the weight-two fields, with the identity, already generate the algebra of zero modes acting on the ground states of every sector. Combined with the earlier reduction, it means that to extend the triality to the twisted sectors one only needs to check the intertwining on the zero modes of the weight-two fields; it is the unconditional input that makes the three sector residuals together sufficient.
+\end{physics}
+\begin{proof}[Proof on paper]
+Theorem~\ref{ch12:thm:eq_top_of_lowerSpan} (filtered criterion) reduces to \lean{V0LowerSpanned};
+\S\ref{ch12:sec:sectorsplit} reduces that to the Fock, charged-excited and ground sectors;
+Theorems~\ref{ch12:thm:fock}, \ref{ch12:thm:charged} and \ref{ch12:thm:groundLattice} prove them.
+\end{proof}
+\begin{status}
+\textbf{Proved, unconditional.}  Re-run for this chapter, via \texttt{lake env lean
+-DmaxSynthPendingDepth=3} on a scratch file importing \lean{VOA.Moonshine.ZhuGenerated}:
+\begin{plaincode}
+'VOA.Moonshine.zhuGenerated_weightTwo' depends on axioms: [propext, Classical.choice, Quot.sound]
+\end{plaincode}
+No \lean{VOA.pbw}.  The file is imported by the umbrella \leanpath{VOA/Moonshine.lean}; for an earlier
+commit the project's build record reports the aggregate \texttt{lake build} green (10343 jobs; not re-run for this chapter).
+\end{status}
+
+\paragraph{What it buys.}  Combining Theorems~\ref{ch12:thm:zhuGenerated_weightTwo},
+\ref{ch12:thm:topSigmaV3_of_zhuGenerated} and \ref{ch12:thm:sigmaV3T_exists_of_top}: to construct $\sigma$ on
+$V_3^+$ (and likewise on $T_{s'}^+$) it suffices to give one linear map $\varphi$ on the
+$49152$-dimensional top level which maps into $(T_s^+)_2$, hits a cyclic vector, and intertwines
+$o(g)=g_{(1)}$ with $o(\sigma g)$ for the $49428$ weight-two letters $g$.  Chapter~\ref{ch:13} supplies
+$\varphi$ and proves those identities (\lean{topSigma_both}), using \lean{zhuGenerated_G2}, which is
+\lean{zhuGenerated_weightTwo} for the letter set \lean{G2} $=$ \lean{weightTwo} (\lean{G2_eq_weightTwo :
+G2 = weightTwo := rfl}).
+
+\section{Dead ends and traps}\label{ch12:sec:deadends}
+
+\begin{warning}
+Collected from the route notes, with the evidence:
+\begin{enumerate}
+\item \textbf{Which \lean{TPframe} is $T_0$?}  Undetermined by the definitions
+  (Theorem~\ref{ch12:thm:golayE}); state results with $\exists s$.
+\item \textbf{Dong--Jiang / Verma route} carries \lean{BottomProjection}, supplied only by \lean{VOA.pbw};
+  replaced by the graph argument (\S\ref{ch12:sec:whynotverma}).
+\item \textbf{$\varphi=0$} satisfies all clauses but \lean{hits_cyclic}; that clause is essential.
+\item \textbf{Gram route} (\lean{annCompat_of_gram}) needs source Gram data too; unnecessary.
+\item \textbf{Weak generation} (\lean{leechPlus_generated}) does not reduce the top-level clause.
+\item \textbf{Tops irreducible $\Rightarrow$ Zhu generated} is circular.
+\item \textbf{Strong generation fails}: Fock part of weight $3$ has dimension $576>300$.
+\item \textbf{Rank one fails} at weight $4$ ($J$); the degree-four cancellation needs two colours.
+\item \textbf{Charged degree one} needs the exact vacuum formula, not weight-two quadratics alone.
+\item \textbf{$\alpha=\beta$ must be allowed} in \lean{GroundRel}.
+\item \textbf{Random sign sampling misses $E_2$, $E_3$.}
+\item \textbf{Low-order traces} do not separate $V_3^\pm$.
+\item The filtered criterion is \emph{sufficient only}: do not record a numerical failure of it as a
+  failure of Zhu generation.
+\end{enumerate}
+\end{warning}
+
+\section{Referee's checklist}\label{ch12:sec:checklist}
+
+``uncond.'' $=$ no hypothesis that is an unproved datum; $\ast$ $=$ \texttt{\#print axioms} re-run for
+this chapter, result [\lean{propext}, \lean{Classical.choice}, \lean{Quot.sound}].  None of the
+declarations uses \lean{VOA.pbw}.
+
+{\footnotesize
+\begin{longtable}{>{\raggedright\arraybackslash}p{4.4cm}>{\raggedright\arraybackslash}p{5.2cm}>{\raggedright\arraybackslash}p{2.4cm}>{\raggedright\arraybackslash}p{2.2cm}}
+\toprule
+Lean declaration & intended meaning & hypotheses & status / check\\
+\midrule
+\endhead
+\lean{zhuMul}, \lean{O}, \lean{Pres_mem_O} & Zhu product, $\chtwelveO(V)$, higher residues in $\chtwelveO$ & $a$ homogeneous & def./uncond.; Defs.~\ref{ch12:def:zhumul}, \ref{ch12:def:O}, Lem.~\ref{ch12:lem:Ocontents}\\
+\lean{oMod_zhuMul_lowest_all}, \lean{O_le_ker_rhoLW} & $o(u\ast v)=o(u)o(v)$, $o(\chtwelveO)=0$ on top & lowest weight $h$ & uncond.; Thm.~\ref{ch12:thm:easy}\\
+\lean{IsTwInt}, \lean{eqOn_of_cyclic}, \lean{comp_eqOn_id} & twisted intertwiner; uniqueness; involutivity & single-mode cyclic & uncond.; Thms.~\ref{ch12:thm:eqOn_of_cyclic}, \ref{ch12:thm:comp_eqOn_id}\\
+\lean{AnnCompat}, \lean{exists_twInt_iff}$^\ast$ & existence $\Leftrightarrow$ annihilator compatibility & stable, cyclic & uncond.; Thm.~\ref{ch12:thm:exists_twInt_iff}\\
+\lean{annCompat_of_gram} & Gram criterion (unused) & Gram, nondeg. & uncond.; Thm.~\ref{ch12:thm:gram}\\
+\lean{IsSigmaV3T}, \lean{IsSigmaTT}, \lean{IsSigmaTV} & $\sigma$-twisted maps on the sectors & --- & def.; Def.~\ref{ch12:def:issigma}\\
+\lean{IsSigmaV3T.eqOn}, \lean{.L0_comm} & uniqueness from $x_\beta$; $L_0$-commutation & $\beta\notin\Leech_0$ & uncond.; Thm.~\ref{ch12:thm:sectoruniq}\\
+\lean{sigmaV3T_exists_iff}, \lean{sigmaTT_exists_iff} & existence $\Leftrightarrow$ compatibility on sectors & cyclic vector & uncond.; Thm.~\ref{ch12:thm:sigma_exists_iff}\\
+\lean{sigma_involutive_V3} & $\Psi\Phi=\mathrm{id}$ from cyclic vector & as stated & uncond.; Thm.~\ref{ch12:thm:invol}\\
+\lean{golayE_not_determined}$^\ast$ & spec of \lean{golayE} does not fix its value at $w$ & none & uncond.; Thm.~\ref{ch12:thm:golayE}\\
+\lean{prodModule}, \lean{twistModule} & $A\oplus B$, $B^g$ as weak modules & none & def.; Def.~\ref{ch12:def:prod_twist}\\
+\lean{act_act_mem_span}$^\ast$, \lean{act_mem_modeSpan} & Li's single-mode spanning & none & uncond.; Thm.~\ref{ch12:thm:li}\\
+\lean{annCompat_of_top}$^\ast$ & top-level data $\Rightarrow$ compatibility & (i)--(iii) & uncond. reduction; Thm.~\ref{ch12:thm:annCompat_of_top}\\
+\lean{TPForm_frame_orth}, \lean{TPForm_eq_zero_of_frame} & $T_0^+\perp T_1^+$; nondegenerate on $T_s^+$ & none & uncond.; Thm.~\ref{ch12:thm:TPForm}\\
+\lean{TopSigmaV3}, \lean{TopSigmaTT} & named top-level residuals (four clauses) & --- & def.; Defs.~\ref{ch12:def:TopSigmaV3}, \ref{ch12:def:TopSigmaTT}\\
+\lean{sigmaV3T_exists_of_top}$^\ast$, \lean{sigmaTT_exists_of_top}$^\ast$ & residual $\Rightarrow$ non-zero $\sigma$-twisted map & \lean{TopSigma…} & conditional (discharged in Ch.~\ref{ch:13}); Thm.~\ref{ch12:thm:sigmaV3T_exists_of_top}\\
+\lean{ZhuGenerated} & Zhu generation, on $V$ & --- & def.; Def.~\ref{ch12:def:zhugen}\\
+\lean{oMod_intertwine_of_zhuGenerated} & zero modes from generators & lowest wt.\ 2, $G$ Zhu-gen. & uncond.; Thm.~\ref{ch12:thm:oMod_intertwine}\\
+\lean{topSigmaV3_of_zhuGenerated}$^\ast$, \lean{topSigmaTT_of_zhuGenerated} & residual from Zhu generators & as stated & conditional; Thm.~\ref{ch12:thm:topSigmaV3_of_zhuGenerated}\\
+\lean{zhuMul_comm_sub_zero_mem} & $a\ast b-b\ast a\equiv a_{(0)}b$ & $p,q\ge0$ & uncond.; Thm.~\ref{ch12:thm:comm}\\
+\lean{lowerProd}, \lean{eq_top_of_lowerSpan}$^\ast$ & filtered criterion for Zhu generation & spanning hyp. & uncond. reduction; Thm.~\ref{ch12:thm:eq_top_of_lowerSpan}\\
+\lean{V0LowerSpanned}, \lean{zhuGenerated_weightTwo_of_lowerSpanned} & spanning residual $\Rightarrow$ R-gen & residual & reduction; Def.~\ref{ch12:def:weightTwo}\\
+\lean{FockSpanned}, \lean{ExcitedSpanned}, \lean{GroundSpanned}, \lean{v0LowerSpanned_of_sectors} & sector split & residuals & reduction; Def.~\ref{ch12:def:sectors}\\
+\lean{frameX0P_smul_…} (three) & ground-state products & $\langle\alpha,\beta\rangle=-1,0,k$ & uncond.; Thm.~\ref{ch12:thm:groundprod}\\
+\lean{GroundRel}, \lean{GroundLattice}, \lean{zhuGenerated_weightTwo_of_residuals} & lattice residual; assembly & residuals & reduction; Def.~\ref{ch12:def:GroundRel}\\
+\lean{smul_quad}, \lean{quadF_lead}, \lean{quadF_lead_one} & quadratic-state modes & none & uncond.; Def.~\ref{ch12:def:quadF}, Thm.~\ref{ch12:thm:quadfacts}\\
+\lean{Tsub}, \lean{step_quad} & degree ascent & as stated & uncond.; Lem.~\ref{ch12:lem:ascent}\\
+\lean{excitedSpanned}$^\ast$ & charged excited states spanned & none & uncond.; Thm.~\ref{ch12:thm:charged}\\
+\lean{fockSpanned}$^\ast$ & charge-zero states spanned & none & uncond.; Thm.~\ref{ch12:thm:fock}\\
+\lean{steiner}$^\ast$ and Golay facts & $S(5,8,24)$ existence etc. & as stated & uncond.; Thm.~\ref{ch12:thm:golayfacts}\\
+\lean{groundLatticeA} & Direct or Triangle in $A$-coordinates & $g\in A$, $g\cdot g\ge12$ & uncond.; Thm.~\ref{ch12:thm:groundLatticeA}\\
+\lean{groundLattice}$^\ast$ & \lean{GroundLattice} holds & none & uncond.; Thm.~\ref{ch12:thm:groundLattice}\\
+\lean{zhuGenerated_weightTwo}$^\ast$ & $(V_0^+)_2$ Zhu-generates $V_0^+$ & none & \textbf{uncond.}; Thm.~\ref{ch12:thm:zhuGenerated_weightTwo}\\
+\bottomrule
+\end{longtable}
+}
+
+The axiom check was produced by:
+\begin{plaincode}
+lake env lean -DmaxSynthPendingDepth=3 Ch12Axioms.lean
+'VOA.Moonshine.zhuGenerated_weightTwo' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.SigmaExist.annCompat_of_top' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.SigmaExist.sigmaV3T_exists_of_top' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.SigmaExist.sigmaTT_exists_of_top' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.SigmaExist.topSigmaV3_of_zhuGenerated' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.SigmaExist.groundLattice' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.GroundLat.steiner' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.FockSpan.fockSpanned' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.FockSpan.excitedSpanned' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.ZhuGen.eq_top_of_lowerSpan' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.TrialityTw.golayE_not_determined' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.TrialityTw.exists_twInt_iff' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.SigmaExist.act_act_mem_span' depends on axioms: [propext, Classical.choice, Quot.sound]
+\end{plaincode}
+
+\section{Notes and references}\label{ch12:sec:refs}
+
+\paragraph{Zhu's algebra.}  Y.~Zhu, \emph{Modular invariance of characters of vertex operator
+algebras}, J.\ Amer.\ Math.\ Soc.\ 9 (1996), 237--302, introduced $A(V)$, the product $\ast$,
+$\chtwelveO(V)$ and the correspondence between $A(V)$-modules and top levels (Theorems~2.1.2 and
+2.2.1 there).  I.~B.~Frenkel and Y.~Zhu, \emph{Vertex operator algebras associated to representations
+of affine and Virasoro algebras}, Duke Math.\ J.\ 66 (1992), 123--168, contains the higher residues
+$\mathrm{Pres}$ (their Lemma~2.1.2) and the bimodule technique used in Chapter~\ref{ch:14}.
+C.~Dong, H.~Li and G.~Mason, \emph{Vertex operator algebras and associative algebras}, J.\ Algebra 206
+(1998), 67--96 (arXiv:q-alg/9612010), give the generalised Verma modules $M(U)$ and $L(U)$ and the higher
+Zhu algebras $A_n(V)$; the library's version (Dong--Jiang) is treated in Chapter~\ref{ch:L13}.  The
+presentation of $\ast$ and $\chtwelveO$ follows T.~Gannon, \emph{Moonshine beyond the Monster},
+Cambridge University Press, 2006, §5.3.  Li's single-mode spanning lemma: H.~Li, \emph{Local systems of
+vertex operators, vertex superalgebras and modules}, J.\ Pure Appl.\ Algebra 109 (1996), 143--195
+(arXiv:hep-th/9406185).
+
+\paragraph{The orbifold $V_L^+$ and its Zhu algebra.}  C.~Dong and K.~Nagatomo, \emph{Classification of
+irreducible modules for the vertex operator algebra $M(1)^+$}, J.\ Algebra 216 (1999), 384--404
+(arXiv:math/9806051), where $A(M(1)^+)$ is generated by $\omega$ and $J$.  T.~Abe and C.~Dong,
+\emph{Classification of irreducible modules for the vertex operator algebra $V_L^+$: general case},
+J.\ Algebra 273 (2004), 657--685 (arXiv:math/0210160); T.~Abe, C.~Dong and H.~Li, \emph{Fusion rules for
+the vertex operator algebras $M(1)^+$ and $V_L^+$}, Comm.\ Math.\ Phys.\ 253 (2005), 171--219
+(arXiv:math/0310425).  These classification results are \emph{cited, not used}: the Lean proof of
+Zhu generation is independent of them.
+
+\paragraph{The triality.}  I.~Frenkel, J.~Lepowsky and A.~Meurman, \emph{Vertex Operator Algebras and
+the Monster}, Academic Press, 1988, chapters 11--13.  L.~Dolan, P.~Goddard and P.~Montague, \emph{Conformal
+field theories, representations and lattice constructions}, Comm.\ Math.\ Phys.\ 179 (1996), 61--120
+(arXiv:hep-th/9410029), §§6--7, where $\sigma$ on the twisted sectors is obtained non-constructively.
+A modern account of the sixteen irreducible $V_\Leech^{++}$-modules and the lifting of the triality is in G.~H\"ohn and M.~Seysen, ``The order of the Monster finite simple group'', arXiv:2508.01037 (2025), \S2.2.
+
+\paragraph{The Golay code and the Steiner system.}  J.~H.~Conway and N.~J.~A.~Sloane, \emph{Sphere
+Packings, Lattices and Groups}, 3rd ed., Springer, 1999, chapters 3, 10 and 11 (the Golay code, the
+Steiner system $S(5,8,24)$, octads and dodecads, and the Leech lattice in Golay coordinates).  The counting
+proof of the existence half of $S(5,8,24)$ given in Theorem~\ref{ch12:thm:golayfacts}(c) is the classical
+one ($759\binom85=\binom{24}5$).
+
+\paragraph{Project records.}  \texttt{Notes/TrialityTwisted.md}, \texttt{Notes/SigmaExistence.md},
+\texttt{Notes/ZhuGeneratorTest.md}, \texttt{Notes/ZhuGeneration.md}, and the ``Status'' sections of
+\texttt{Notes/M8GluingPlan.md} from ``M8g twisted half'' to ``R-gen CLOSED''; numerical scripts in
+\texttt{scripts/moonshine/numerics/zhu/} and \texttt{zhugen/}.

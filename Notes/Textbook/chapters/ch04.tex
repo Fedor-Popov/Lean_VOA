@@ -1,0 +1,2419 @@
+\chapter{The involution \texorpdfstring{$\theta$}{theta} and the fixed-point algebra \texorpdfstring{$V_\Lambda^+$}{V+}}\label{ch:04}
+
+\providecommand{\chfourone}{\mathbf{1}}
+
+This chapter documents the release of the LeanVOA library named in the front matter; every Lean quotation below is checked by \texttt{scripts/textbook/sync.py}
+to occur verbatim (up to whitespace and comments) in the source files of that release. Checks
+that were run at an earlier state of the library and not re-run for this edition are marked as such.
+The Moonshine module of Frenkel, Lepowsky and Meurman is assembled from two halves,
+\begin{equation*}
+  \Vnat \;=\; V_\Leech^{+}\;\oplus\;(V_\Leech^{T})^{+},
+\end{equation*}
+an \emph{untwisted} half and a \emph{twisted} half. This chapter is entirely about the first
+summand. Starting from the Leech lattice vertex operator algebra $V_\Leech$ (constructed in
+Chapter~\ref{ch:03}) we lift the isometry $-1$ of the lattice to an automorphism $\theta$ of
+$V_\Leech$, form the subalgebra $V_\Leech^+$ of $\theta$-fixed vectors, and establish everything the
+later chapters need to know about it:
+\begin{enumerate}[label=(\roman*)]
+\item $\theta$ is a genuine VOA automorphism of order exactly two
+  (\S\ref{ch04:sec:theta}--\S\ref{ch04:sec:aut});
+\item $V_\Leech^+$ is a vertex operator algebra of central charge $24$ (\S\ref{ch04:sec:plus});
+\item $(V_\Leech^+)_1 = 0$, $\dim (V_\Leech^+)_2 = 98580$, $\dim (V_\Leech^+)_3 = 10745856$, and
+  more generally an exact formula for every $\dim(V_\Leech^+)_k$
+  (\S\ref{ch04:sec:wtone}--\S\ref{ch04:sec:gradeddim});
+\item $V_\Leech^+$ is generated, as a vertex algebra, by the vectors $e^\beta+e^{-\beta}$
+  (\S\ref{ch04:sec:generation});
+\item the canonical invariant bilinear form of $V_\Leech^+$ is nondegenerate on every weight space,
+  proved by writing down an explicit form on all of $V_\Leech$ (\S\ref{ch04:sec:form}).
+\end{enumerate}
+Item (v) is the input that makes the twisted-by-twisted operator $\overline W$ of
+Chapter~\ref{ch:09} nondegenerate, which in turn is what distinguishes $\Vnat$ from a degenerate
+``square-zero'' impostor with the same graded dimension; we shall only point at that use here.
+
+\paragraph{The physical picture.} A rank-$24$ lattice VOA is the chiral half of the conformal
+field theory of $24$ free bosons $X^a(z)$ compactified on the torus $\mathbb R^{24}/\Leech$. Its
+states are oscillator excitations $h_{a}(-n)$ of the bosons, dressed by a momentum (``charge'')
+$\alpha\in\Leech$. The reflection $X\mapsto -X$ of the torus is a symmetry: it flips the sign of every
+oscillator and of every momentum. The quantum operator that implements this reflection is $\theta$.
+Gauging the reflection (``orbifolding'') has two effects on the space of states: one keeps only the
+reflection-invariant states of the original theory --- this is $V_\Leech^+$ --- and one adds a
+\emph{twisted sector} of strings closed only up to the reflection --- that is $(V_\Leech^T)^+$,
+the subject of Chapters~\ref{ch:06}--\ref{ch:08}. Seen this way, this chapter computes the
+\emph{projected untwisted sector}: which states survive the projection, how many there are at
+each energy, how they are generated, and which inner product they carry.
+
+\paragraph{How to read this chapter.} Every definition and theorem is presented with the
+Fidelity Protocol of the book: the mathematical statement, then the Lean declaration copied
+verbatim from the repository, then a fidelity check (in a box titled ``From the mathematics to the
+Lean statement'') that decodes every symbol and hypothesis, then a proof on paper, then the
+machine status. The files of this chapter are, in \leanpath{VOA/Moonshine/},
+\leanpath{LatticeInvolution.lean}, \leanpath{PlusWeightOne.lean}, \leanpath{PlusWeightTwo.lean},
+\leanpath{LatticeGradedDim.lean}, \leanpath{GenerationFock.lean}, \leanpath{Generation.lean},
+\leanpath{NondegFock.lean}, \leanpath{NondegLattice.lean} and \leanpath{NondegLeech.lean}.
+
+\begin{status}
+All statements quoted in this chapter are in files imported by the umbrella
+\leanpath{VOA/Moonshine.lean} (checked at an earlier commit, when this chapter was first
+written, and again in the working tree of a pre-release build commit); the
+aggregate \texttt{lake build} recorded by the project for that earlier state was green
+(10343 jobs; not re-run for this chapter). While writing this chapter the command
+\texttt{lake env lean -DmaxSynthPendingDepth=3} was run on a scratch file importing
+\leanpath{VOA.Moonshine.NondegLeech} and \leanpath{VOA.Moonshine.LatticeGradedDim}, printing the
+axioms of nineteen headline declarations of the chapter (\lean{thetaLat_mode},
+\lean{thetaAut_sq}, \lean{thetaAut_ne_one}, \lean{leechTheta_ne_one},
+\lean{mem_leechVOAPlus_iff}, \lean{leechVOAPlus_centralCharge}, \lean{leechVOAPlus_grading_one},
+the four dimension theorems at weights $2$ and $3$, \lean{hasProd_fockGenFun},
+\lean{hasProd_fockSignedGenFun}, \lean{two_mul_finrank_plusK_eq_signed},
+\lean{leechPlus_generated}, \lean{latForm_nondeg}, \lean{latForm_Yeαvec},
+\lean{leechBV_eq_plusForm}, \lean{leechBV_gradedNondeg}). Every one printed exactly
+\texttt{[propext, Classical.choice, Quot.sound]}: Lean's three standard axioms, and in particular
+\emph{not} \lean{VOA.pbw} (the PBW theorem of Chapter~\ref{ch:L02}; a project axiom in earlier versions of the library, now a theorem). No theorem of the chapter has an unproved datum
+among its hypotheses; the only hypotheses anywhere are evenness and positive-definiteness of a
+lattice, which for the Leech lattice are themselves proved theorems.
+\end{status}
+
+%======================================================================
+\section{What we take from the lattice VOA}\label{ch04:sec:recall}
+
+The lattice VOA $V_L$ is constructed in Chapter~\ref{ch:03}. To keep this chapter self-contained
+we recall every definition that appears in a statement below, with its Lean source. A reader who
+has just read Chapter~\ref{ch:03} may skim this section.
+
+\subsection{Lattices}
+
+\begin{definition}[Integral lattice]\label{ch04:def:lattice}
+An \emph{integral lattice} is a free $\Z$-module $L$ of finite rank together with a symmetric
+$\Z$-bilinear form $\langle\cdot,\cdot\rangle:L\times L\to\Z$. It is \emph{even} if
+$\langle v,v\rangle\in 2\Z$ for all $v$, and \emph{positive-definite} if $\langle v,v\rangle>0$ for
+$v\neq0$. The \emph{half-norm} of $\alpha$ is $\tfrac12\langle\alpha,\alpha\rangle$, an integer
+when $L$ is even; it will be the conformal weight of $e^\alpha$.
+\end{definition}
+
+In Lean an integral lattice is the structure \lean{VOA.IntegralLattice} (carrier a free, finitely
+generated $\Z$-module, symmetric form \lean{L.form}), with the predicates \lean{L.Even} and
+\lean{L.PosDef} (\leanpath{VOA/Foundations/Lattices.lean}); these are quoted verbatim and decoded in
+Definitions~\ref{ch02:def:voalattice}, \ref{ch02:def:voaevenposdef} and~\ref{l02:def:lattice}.
+The half-norm is
+\begin{leancode}
+-- VOA/Examples/LatticeGenGrading.lean
+noncomputable def halfNorm (α : L.carrier) : ℤ := L.form α α / 2
+\end{leancode}
+
+\begin{dictionary}
+\lean{L.form α β} is $\langle\alpha,\beta\rangle$. \lean{halfNorm} uses integer division
+\lean{/ 2}; this equals $\tfrac12\langle\alpha,\alpha\rangle$ exactly when $\langle\alpha,\alpha\rangle$
+is even, which is why every theorem that uses \lean{halfNorm} as a conformal weight carries the
+hypothesis \lean{hEven : L.Even} (the library records $2\cdot$\lean{halfNorm L α}
+$=\langle\alpha,\alpha\rangle$ as \lean{two_halfNorm}, under \lean{hEven}). The \emph{rank}
+\lean{rank L} is \lean{Module.finrank ℤ L.carrier}, the number of elements of a $\Z$-basis.
+\end{dictionary}
+
+\begin{physics}
+An even lattice is the data of the momentum (charge) lattice of a chiral boson compactified on the torus $\mathbb R^r/L$: the evenness condition says the vertex operator $:\!e^{i\alpha\cdot X}\!:$ has integer conformal weight $\tfrac12\langle\alpha,\alpha\rangle$ (so the fields are mutually local, with integer spin), and positive-definiteness says the energy is bounded below. The Leech lattice is special in having no vectors of norm $2$, i.e.\ no extra weight-one currents, so the torus theory has only the $24$ abelian $U(1)$ currents $\partial X^a$. Heuristic, not part of the proof.
+\end{physics}
+
+The Leech lattice enters through the declaration \lean{VOA.Moonshine.leech}. It is the Leech
+lattice of the vendored library in the directory \leanpath{VOA/LatticesAndCodes/}
+(Chapter~\ref{ch:02}), transported into the structure above:
+\begin{leancode}
+-- VOA/Moonshine/LeechLatticeVOA.lean
+noncomputable abbrev leech : VOA.IntegralLattice.{0} := ofEbeling Leech.lattice
+theorem leech_even : leech.Even := ofEbeling_even _ Leech.lattice_isEven
+theorem leech_posDef : leech.PosDef := ofEbeling_posDef _ Leech.lattice_isPosDef
+theorem leech_rank : rank leech = 24 := Leech.lattice_rank
+theorem leech_no_roots (v : leech.carrier) : leech.form v v ≠ 2 := Leech.lattice_no_roots v
+\end{leancode}
+These facts --- even, positive-definite, rank $24$, no vectors of norm $2$ --- together with the
+counts $\#\{\alpha:\langle\alpha,\alpha\rangle=4\}=196560$ (\lean{Leech.repCount_four}) and
+$\#\{\alpha:\langle\alpha,\alpha\rangle=6\}=16773120$ (\lean{Leech.repCount_six}) are the only
+properties of $\Leech$ used in this chapter. All are proved theorems of the vendored library
+(Chapter~\ref{ch:02}).
+
+\subsection{The Fock space}
+
+\begin{definition}[Rank-$r$ Fock space]\label{ch04:def:fock}
+Let $r\ge0$. The Fock space of $r$ free bosons is the polynomial ring
+\begin{equation*}
+  F_r=\C\big[\,x_{(m,a)} : m\in\N,\ a\in\{0,\dots,r-1\}\,\big],
+\end{equation*}
+where the variable $x_{(m,a)}$ stands for the creation operator $h_a(-m-1)$ applied to the vacuum
+$1$. The oscillators act by
+\begin{equation*}
+  h_a(-n)=\text{multiplication by }x_{(n-1,a)}\ (n\ge1),\qquad
+  h_a(n)=n\,\frac{\partial}{\partial x_{(n-1,a)}}\ (n\ge1),\qquad h_a(0)=0,
+\end{equation*}
+so that $[h_a(m),h_b(n)]=m\,\delta_{ab}\,\delta_{m+n,0}$. The \emph{weight} of the monomial
+$x^d=\prod x_{(m,a)}^{d_{(m,a)}}$ is $\sum (m+1)\,d_{(m,a)}$, its \emph{degree} is
+$\sum d_{(m,a)}$ (the number of oscillators), and $(F_r)_w$ is the span of the monomials of
+weight $w$.
+\end{definition}
+
+\begin{leancode}
+-- VOA/Examples/HeisenbergNFock.lean
+abbrev FockN (r : ℕ) : Type := MvPolynomial (ℕ × Fin r) ℂ
+
+noncomputable def oscN (r : ℕ) (k : ℂ) (a : Fin r) (n : ℤ) : FockN r →ₗ[ℂ] FockN r :=
+  if n < 0 then mulXN (-n - 1).toNat a
+  else if 0 < n then (n : ℂ) • k • pderivLMN (n - 1).toNat a
+  else 0
+
+def weightFnN {r : ℕ} : ℕ × Fin r → ℕ := fun u => u.1 + 1
+
+def gradingWN (r : ℕ) (w : ℕ) : Submodule ℂ (FockN r) :=
+  weightedHomogeneousSubmodule ℂ weightFnN w
+
+-- VOA/Examples/HeisenbergNVertex.lean
+noncomputable def gradingZN (r : ℕ) (n : ℤ) : Submodule ℂ (FockN r) :=
+  if 0 ≤ n then gradingWN r n.toNat else ⊥
+\end{leancode}
+
+\begin{dictionary}
+\lean{MvPolynomial (ℕ × Fin r) ℂ} is Mathlib's polynomial ring over $\C$ in variables indexed by
+pairs $(m,a)$ with $m\in\N$ and $a\in\{0,\dots,r-1\}$ (\lean{Fin r}). The variable
+\lean{X (m,a)} is $x_{(m,a)}=h_a(-m-1)\chfourone$: the index is shifted by one, $m=0$ being the
+first creation mode $h_a(-1)$. \lean{oscN r k a n} is $h_a(n)$ at level $k$; every use in this
+chapter has $k=1$. \lean{mulXN i a} multiplies by \lean{X (i,a)} and \lean{pderivLMN i a} is
+$\partial/\partial x_{(i,a)}$; \lean{→ₗ[ℂ]} denotes a $\C$-linear map. A monomial is recorded by its
+exponent function $d$ with finite support (Mathlib's \lean{(ℕ × Fin r) →₀ ℕ}); its weight is
+\lean{Finsupp.weight weightFnN d} $=\sum(m+1)d_{(m,a)}$ and its degree is \lean{d.degree}
+$=\sum d_{(m,a)}$. \lean{gradingWN r w} is the subspace (\lean{Submodule}) of polynomials all of whose
+monomials have weight $w$ (Mathlib's ``weighted-homogeneous'' submodule); \lean{gradingZN} extends
+the index to $\Z$ by the zero subspace \lean{⊥} in negative weight.
+\end{dictionary}
+
+\begin{physics}
+The Fock space is the space of oscillator excitations of $r$ free chiral bosons about the vacuum: a monomial is a state with $\deg d$ quanta, and its weight is the total energy $\sum(m+1)d_{(m,a)}$ in units where $h_a(-n)$ raises $L_0$ by $n$. The generating function of monomials by weight is the partition function of $r$ free bosons, $\prod(1-q^n)^{-r}$, computed later in this chapter. The relation $[h_a(m),h_b(n)]=m\,\delta_{ab}\delta_{m+n,0}$ is the canonical commutation relation of the current $i\partial X^a$.
+\end{physics}
+
+\subsection{The lattice VOA as a vector space}
+
+\begin{definition}[$V_L$ as a graded vector space]\label{ch04:def:VL}
+For an integral lattice $L$ of rank $r$, put $\C\{L\}=\bigoplus_{\alpha\in L}\C e^\alpha$ (a vector
+space with basis $e^\alpha$; no product is needed in this chapter) and
+\begin{equation*}
+  V_L = F_r\otimes_{\C} \C\{L\}.
+\end{equation*}
+The vector $p\otimes e^\alpha$ has \emph{Fock weight} $w$ if $p\in(F_r)_w$, \emph{charge} $\alpha$,
+and \emph{conformal weight} $w+\tfrac12\langle\alpha,\alpha\rangle$. The weight-$k$ space is
+\begin{equation*}
+  (V_L)_k=\bigoplus_{\alpha\in L}(F_r)_{k-\frac12\langle\alpha,\alpha\rangle}\otimes e^\alpha .
+\end{equation*}
+We write $e^\alpha$ also for the ``charged vacuum'' $1\otimes e^\alpha$; $e^0$ is the vacuum.
+\end{definition}
+
+\begin{leancode}
+-- VOA/Examples/LatticeGenModule.lean
+noncomputable abbrev LatModuleGen : Type :=
+  HeisenbergN.FockN (rank L) ⊗[ℂ] (L.carrier →₀ ℂ)
+noncomputable def eGen (α : L.carrier) : L.carrier →₀ ℂ := Finsupp.single α 1
+noncomputable def latStateGen (p : HeisenbergN.FockN (rank L)) (α : L.carrier) : LatModuleGen L :=
+  p ⊗ₜ[ℂ] eGen L α
+noncomputable def latChargeGen (α : L.carrier) : LatModuleGen L :=
+  latStateGen L (HeisenbergN.vacuumN (rank L)) α
+
+-- VOA/Examples/LatticeGenGrading.lean
+noncomputable def mkEα (α : L.carrier) : HeisenbergN.FockN (rank L) →ₗ[ℂ] LatModuleGen L :=
+  (TensorProduct.mk ℂ (HeisenbergN.FockN (rank L)) (L.carrier →₀ ℂ)).flip (eGen L α)
+noncomputable def bigradα (wα : ℤ × L.carrier) : Submodule ℂ (LatModuleGen L) :=
+  (HeisenbergN.gradingZN (rank L) wα.1).map (mkEα L wα.2)
+noncomputable def gradingLatGen (k : ℤ) : Submodule ℂ (LatModuleGen L) :=
+  ⨆ α : L.carrier, bigradα L (k - halfNorm L α, α)
+\end{leancode}
+
+\begin{dictionary}
+\lean{L.carrier →₀ ℂ} (finitely supported functions $L\to\C$) is the vector space $\C\{L\}$, and
+\lean{eGen L α} is the basis vector $e^\alpha$. \lean{⊗[ℂ]} is the algebraic tensor product over
+$\C$ and \lean{p ⊗ₜ x} an elementary tensor. \lean{latChargeGen L α} is $1\otimes e^\alpha$.
+\lean{mkEα L α} is the map $p\mapsto p\otimes e^\alpha$, and \lean{bigradα L (w,α)} is its image of
+$(F_r)_w$, i.e.\ $(F_r)_w\otimes e^\alpha$. \lean{gradingLatGen L k} is the sum (\lean{⨆}, the
+supremum of subspaces) of these over all $\alpha$ with $w=k-\tfrac12\langle\alpha,\alpha\rangle$. That
+this sum is direct and that the spaces exhaust $V_L$ is proved in Chapter~\ref{ch:03}.
+\end{dictionary}
+
+\begin{physics}
+$V_L=F_r\otimes\C\{L\}$ is the full chiral state space of the compact boson on $\mathbb R^r/L$: oscillators tensored with a momentum eigenstate $e^\alpha=\,:\!e^{i\alpha\cdot X}\!:(0)\,|0\rangle$. Under the state--operator correspondence, $p\otimes e^\alpha$ is the local operator obtained by dressing the vertex operator $:\!e^{i\alpha\cdot X}\!:$ with derivatives of $X$; its $L_0$ eigenvalue is the oscillator level plus the momentum energy $\tfrac12\langle\alpha,\alpha\rangle=\tfrac12 p^2$. This is a statement about the Hilbert space only; the OPEs are defined in Chapter~\ref{ch:03}.
+\end{physics}
+
+\subsection{Formal distributions and modes}
+
+\begin{definition}[Formal distributions, modes, $n$-th products]\label{ch04:def:mode}
+A \emph{formal distribution} with values in a vector space $\mathcal W$ is a family
+$f=(f_t)_{t\in\Z}$, thought of as $f(z)=\sum_t f_t z^t$. For a field
+$Y(u,z)=\sum_n u_{(n)}z^{-n-1}$ the \emph{$n$-th mode} $u_{(n)}$ is the coefficient of
+$z^{-n-1}$, and the \emph{$n$-th product} of a vertex algebra is $u_{(n)}v$.
+\end{definition}
+
+In Lean these are \lean{FormalDist 𝒲} $=$ \lean{ℤ → 𝒲} (\leanpath{VOA/Foundations/FormalSeries.lean}),
+\lean{mode f m = f (-m - 1)} (\leanpath{VOA/Foundations/FormalCalculus.lean}),
+\lean{V.smul u n v} $:=$ \lean{mode (V.Y u) n v} (\leanpath{VOA/Core/VertexAlgebra.lean}) and
+\lean{W.L n} $:=$ \lean{mode (W.Y W.conformalVector) (n + 1)}
+(\leanpath{VOA/Core/VertexOperatorAlgebra.lean}); they are quoted verbatim in
+Definitions~\ref{l01:def:formaldist}, \ref{l01:def:mode}, \ref{l03:def:smulT} and
+Section~\ref{l04:sec:conv}.
+
+\begin{dictionary}
+\lean{f t} is the coefficient of $z^t$; hence \lean{mode f n = f (-n-1)} is the coefficient of
+$z^{-n-1}$, i.e.\ \lean{mode (Y u) n} is $u_{(n)}$. \lean{V.smul u n v} is $u_{(n)}v$ (the name
+``smul'' is historical and has nothing to do with scalar multiplication). \lean{W.L n} is
+$L_n=\omega_{(n+1)}$. The structures \lean{PreVertexAlgebra} and \lean{VertexOperatorAlgebra}
+(fields \lean{Y}, \lean{vacuum}, \lean{conformalVector}, \lean{grading}, \lean{centralCharge} and
+the axioms) are defined in Definitions~\ref{l03:def:VA} and~\ref{l03:def:VOA}; \lean{W.grading k} is the weight space $W_k$, a
+subspace of $W$.
+\end{dictionary}
+
+\begin{physics}
+A formal distribution $Y(u,z)=\sum u_{(n)}z^{-n-1}$ is a chiral quantum field expanded in its Laurent modes, and $u_{(n)}v$ is the coefficient of $(z-w)^{-n-1}$ in the OPE $Y(u,z)v(w)$. The negative products ($n<0$) are the regular (normal-ordered) terms, and $n\ge0$ the singular ones, so $u_{(0)}v$ is the simple-pole term, $u_{(1)}v$ the double pole, and so on. Identity $L_n=\omega_{(n+1)}$ says $L_n$ are the Laurent modes of the stress tensor $T(z)=\sum L_nz^{-n-2}$.
+\end{physics}
+
+\subsection{The vertex operators of charged vacua}
+
+The heart of the lattice construction is the vertex operator of $e^\alpha$. Embed $L$ in $\mathbb{R}^r$
+by an orthonormal frame, so that each $\alpha$ has real coordinates $\alpha_b$ ($b=0,\dots,r-1$)
+with $\sum_b\alpha_b\beta_b=\langle\alpha,\beta\rangle$. Put $\alpha(n)=\sum_b\alpha_b h_b(n)$. Then
+\begin{equation}\label{ch04:eq:Yealpha}
+  Y(e^\alpha,z)\,(p\otimes e^\beta)
+  =\varepsilon(\alpha,\beta)\, z^{\langle\alpha,\beta\rangle}\,
+  E^-(\alpha,z)E^+(\alpha,z)\,p\otimes e^{\alpha+\beta},
+\end{equation}
+where
+\begin{gather*}
+  E^-(\alpha,z)=\exp\Big(\sum_{n\ge1}\frac{\alpha(-n)}{n}z^n\Big)=\sum_{N\ge0}S_N(\alpha)z^N,
+  \\
+  E^+(\alpha,z)=\exp\Big(-\sum_{n\ge1}\frac{\alpha(n)}{n}z^{-n}\Big)=\sum_{N\ge0}E^+(\alpha)_{-N}z^{-N},
+\end{gather*}
+the $S_N(\alpha)\in F_r$ are the \emph{Schur polynomials} in the $\alpha(-n)$ (for example
+$S_1(\alpha)=\alpha(-1)$, $S_2(\alpha)=\tfrac12(\alpha(-1)^2+\alpha(-2))$), and $\varepsilon$ is the
+cocycle of \S\ref{ch04:sec:cocycle}. The product $EE(\alpha,z):=E^-(\alpha,z)E^+(\alpha,z)$ is the
+``boson dressing''. Physically, \eqref{ch04:eq:Yealpha} is the normal-ordered exponential
+$:\!e^{i\alpha\cdot X(z)}\!:$ of the free bosons times the momentum-shift operator $e^\alpha
+z^{\alpha(0)}$.
+
+\begin{leancode}
+-- VOA/Examples/LatticeGenChargeFields.lean
+noncomputable def chargeCoord (α : L.carrier) (b : Fin (rank L)) : ℂ :=
+  (orthCoord L α (rankEquiv L b) : ℂ)
+noncomputable def vVar (α : L.carrier) (m : ℕ) : HeisenbergN.FockN (rank L) :=
+  ∑ a : Fin (rank L), chargeCoord L α a • (MvPolynomial.X ((m, a)) : HeisenbergN.FockN (rank L))
+noncomputable def vSchur (α : L.carrier) : ℕ → HeisenbergN.FockN (rank L)
+  | 0 => 1
+  | (N+1) => ((N+1 : ℂ))⁻¹ • ∑ m ∈ Finset.range (N+1), vVar L α m * vSchur α (N - m)
+noncomputable def aExpVec (α : L.carrier) : ℕ → End ℂ (HeisenbergN.FockN (rank L))
+  | 0 => LinearMap.id
+  | (N+1) => ((N+1 : ℂ))⁻¹ • ∑ m ∈ Finset.range (N+1),
+      (-(chargeOsc L α (m+1 : ℤ))).comp (aExpVec α (N - m))
+
+-- VOA/Examples/LatticeGenVertex.lean
+noncomputable def EminusVecField (α : L.carrier) : FormalDist (End ℂ (FockN (rank L))) :=
+  fun t => if 0 ≤ t then EminusVec L α t.toNat else 0
+noncomputable def EplusVecField (α : L.carrier) : FormalDist (End ℂ (FockN (rank L))) :=
+  fun t => if t ≤ 0 then aExpVec L α (-t).toNat else 0
+noncomputable def EEVec (α : L.carrier) : FormalDist (End ℂ (FockN (rank L))) :=
+  nprod (EminusVecField_isField L α) (EplusVecField_isField L α)
+
+theorem Yeαvec_tmul (α β : L.carrier) (t : ℤ) (p : FockN (rank L)) :
+    Yeαvec L α t (latStateGen L p β)
+      = latticeCocycle L α β • latStateGen L (EEVec L α (t - L.form α β) p) (α + β)
+\end{leancode}
+
+\begin{dictionary}
+\lean{chargeCoord L α b} is the real coordinate $\alpha_b$ (cast to $\C$);
+\lean{vVar L α m} $=\sum_b\alpha_b x_{(m,b)}=\alpha(-m-1)\chfourone$; \lean{vSchur L α N} is $S_N(\alpha)$,
+defined by Newton's recursion $(N+1)S_{N+1}=\sum_{m=0}^{N}\alpha(-m-1)S_{N-m}$, which is the
+coefficientwise form of $\tfrac{d}{dz}E^-=(\sum_n\alpha(-n)z^{n-1})E^-$. \lean{EminusVec L α N} is
+multiplication by $S_N(\alpha)$, and \lean{aExpVec L α N} is $E^+(\alpha)_{-N}$ (same recursion with
+$-\alpha(m+1)$; \lean{chargeOsc L α m} is the operator $\alpha(m)$). Thus
+\lean{EminusVecField L α t} is the coefficient of $z^t$ in $E^-(\alpha,z)$ (zero for $t<0$) and
+\lean{EplusVecField L α t} the coefficient of $z^t$ in $E^+(\alpha,z)$ (zero for $t>0$).
+\lean{nprod} is the normal-ordered product $:\!a(z)b(z)\!:$ of two fields in the same variable,
+defined coefficientwise (Chapter~\ref{ch:01}); here, with $a=E^-$ (only creation operators) and
+$b=E^+$ (only annihilation operators), it is simply the product $E^-(\alpha,z)E^+(\alpha,z)$.
+Finally \lean{Yeαvec L α t} is the coefficient of $z^t$ in $Y(e^\alpha,z)$, and \lean{Yeαvec_tmul}
+says it is $\varepsilon(\alpha,\beta)$ times the coefficient of $z^{t-\langle\alpha,\beta\rangle}$ of
+$EE(\alpha,z)$: this is \eqref{ch04:eq:Yealpha} read coefficientwise.
+\end{dictionary}
+
+The full vertex map \lean{YfullGen L hEven hPos} of $V_L$ is produced in Chapter~\ref{ch:03} by a
+reconstruction theorem. For this chapter we need exactly one fact about it: on spanning ``word
+states'' it is given by explicit fields. A \emph{word} is a finite list
+$l=[(i_1,a_1),\dots,(i_k,a_k)]$, of length $|l|=k$, and the \emph{word state} is
+\begin{equation*}
+  w(l,\alpha)=h_{a_1}(-i_1-1)\cdots h_{a_k}(-i_k-1)\,e^\alpha .
+\end{equation*}
+The word states span $V_L$ (\lean{wordStateLatGen_span}). The \emph{word field} is the iterated
+normal-ordered product
+\begin{equation*}
+  Y_{\mathrm{word}}(l,\alpha)(z)
+  =\;:\!\tfrac{1}{i_1!}\partial^{i_1}h_{a_1}(z)\;:\!\cdots
+  :\!\tfrac{1}{i_k!}\partial^{i_k}h_{a_k}(z)\,Y(e^\alpha,z)\!:\cdots\!:\;,
+\end{equation*}
+where $h_a(z)=\sum_n h_a(n)z^{-n-1}$ is the current on $V_L$ \emph{including} its zero mode
+$h_a(0)$, which acts on $p\otimes e^\beta$ by the momentum coordinate $\beta_a$.
+
+\begin{leancode}
+-- VOA/Examples/LatticeGenVOAInstance.lean
+theorem YfullGen_word (hEven : L.Even) (hPos : L.PosDef) (l : List (ℕ × Fin (rank L)))
+    (α : L.carrier) :
+    YfullGen L hEven hPos (wordStateLatGen L l α) = YwordLatGen L l α
+\end{leancode}
+
+The lattice VOA is \lean{latticeVOAGen L hEven hPos} (Chapter~\ref{ch:03}), with
+\lean{grading := gradingLatGen L}, \lean{Y := YfullGen L hEven hPos}, vacuum $e^0$ and conformal
+vector $\omega=\tfrac12\sum_a h_a(-1)^2\chfourone\otimes e^0$ (\lean{omegaLatGen L}); and
+\begin{leancode}
+-- VOA/Moonshine/LeechLatticeVOA.lean
+noncomputable def leechVOA : VertexOperatorAlgebra (LatGen.LatModuleGen leech) :=
+  LatGen.latticeVOAGen leech leech_even leech_posDef
+theorem leechVOA_centralCharge : leechVOA.centralCharge = 24
+theorem leechVOA_grading_one :
+    leechVOA.grading 1 = LatGen.bigradα leech (1, 0)
+\end{leancode}
+The last statement, proved in Chapter~\ref{ch:03} from \lean{leech_no_roots}, says
+$(V_\Leech)_1=(F_{24})_1\otimes e^0=\operatorname{span}\{h_a(-1)\chfourone\otimes e^0\}$: since
+$\Leech$ has no norm-$2$ vectors, no $e^\alpha$ has weight $1$.
+
+\subsection{The cocycle}\label{ch04:sec:cocycle}
+
+\begin{definition}[The basis cocycle]\label{ch04:def:cocycle}
+Fix a $\Z$-basis $B_1,\dots,B_r$ of $L$ and write $\alpha=\sum_i\alpha_iB_i$ with $\alpha_i\in\Z$.
+The \emph{cocycle exponent} and \emph{cocycle} are
+\begin{equation*}
+  c(\alpha,\beta)=\sum_{j<i}\langle B_i,B_j\rangle\,\alpha_i\beta_j\in\Z,\qquad
+  \varepsilon(\alpha,\beta)=(-1)^{c(\alpha,\beta)}\in\{\pm1\}.
+\end{equation*}
+\end{definition}
+
+\begin{leancode}
+-- VOA/Foundations/LatticeCocycle.lean
+noncomputable def cocExp (α β : L.carrier) : ℤ :=
+  ∑ i : Fin n, ∑ j : Fin n,
+    (if j < i then L.form (B i) (B j) else 0) * B.repr α i * B.repr β j
+noncomputable def cocycle (α β : L.carrier) : ℂ := (-1 : ℂ) ^ (cocExp L B α β)
+noncomputable def latticeBasis :
+    Basis (Fin (Fintype.card (Module.Free.ChooseBasisIndex ℤ L.carrier))) ℤ L.carrier :=
+  (Module.Free.chooseBasis ℤ L.carrier).reindex (Fintype.equivFin _)
+noncomputable def latticeCocycle (α β : L.carrier) : ℂ := cocycle L (latticeBasis L) α β
+
+theorem latticeCocycle_add_left (α α' β : L.carrier) :
+    latticeCocycle L (α + α') β = latticeCocycle L α β * latticeCocycle L α' β
+theorem latticeCocycle_add_right (α β β' : L.carrier) :
+    latticeCocycle L α (β + β') = latticeCocycle L α β * latticeCocycle L α β'
+theorem latticeCocycle_sq (α β : L.carrier) :
+    latticeCocycle L α β * latticeCocycle L α β = 1
+theorem latticeCocycle_comm (hEven : L.Even) (α β : L.carrier) :
+    latticeCocycle L α β * latticeCocycle L β α = (-1 : ℂ) ^ (L.form α β)
+\end{leancode}
+
+\begin{dictionary}
+\lean{B.repr α i} is the $i$-th coordinate $\alpha_i$ of $\alpha$ in the basis $B$.
+\lean{latticeBasis L} is \emph{some} basis, obtained from Mathlib's \lean{Module.Free.chooseBasis}
+--- a choice made by the axiom of choice, which cannot be computed with. Every property of
+$\varepsilon$ the library uses is proved for an \emph{arbitrary} basis, so the choice is harmless
+for correctness; but a quantity depending on the basis itself (we meet one in
+\S\ref{ch04:sec:form}, namely $\varepsilon(\alpha,\alpha)$) cannot be evaluated. $\varepsilon$ is
+bimultiplicative (being $(-1)$ to a bilinear form), a sign, and for even $L$ satisfies the
+commutator relation $\varepsilon(\alpha,\beta)\varepsilon(\beta,\alpha)=(-1)^{\langle\alpha,\beta\rangle}$,
+because $c(\alpha,\beta)+c(\beta,\alpha)=\langle\alpha,\beta\rangle-\sum_i\langle B_i,B_i\rangle
+\alpha_i\beta_i$ and the diagonal correction is even.
+\end{dictionary}
+
+\begin{physics}
+The sign $\varepsilon(\alpha,\beta)$ is the standard Klein-factor (cocycle) correction in the bosonic construction of lattice vertex operators: without it, vertex operators $:\!e^{i\alpha\cdot X}\!:$ and $:\!e^{i\beta\cdot X}\!:$ would commute rather than anticommute when $\langle\alpha,\beta\rangle$ is odd, violating locality. Physically the cocycle is a gauge-like convention, and different choices of basis give isomorphic theories; this is why only the commutator $(-1)^{\langle\alpha,\beta\rangle}$ matters. Heuristic.
+\end{physics}
+
+\begin{example}[Two bases, two cocycles, one commutator]\label{ch04:ex:cocycle}
+Take the $A_2$ root lattice, with basis $B_1,B_2$ and Gram matrix
+$\left(\begin{smallmatrix}2&-1\\-1&2\end{smallmatrix}\right)$. The only off-diagonal entry with
+$j<i$ is $\langle B_2,B_1\rangle=-1$, so $c(\alpha,\beta)=-\alpha_2\beta_1$ and
+$\varepsilon(\alpha,\beta)=(-1)^{\alpha_2\beta_1}$. Thus $\varepsilon(B_1,B_2)=1$ and
+$\varepsilon(B_2,B_1)=-1$. If instead the basis is listed in the opposite order ($B_1'=B_2$,
+$B_2'=B_1$), the same recipe gives $\varepsilon'(\alpha,\beta)=(-1)^{\alpha_1\beta_2}$, so
+$\varepsilon'(B_1,B_2)=-1$ and $\varepsilon'(B_2,B_1)=1$: a \emph{different function}. But the
+commutator is the same, $\varepsilon(B_1,B_2)\varepsilon(B_2,B_1)=\varepsilon'(B_1,B_2)\varepsilon'(B_2,B_1)
+=-1=(-1)^{\langle B_1,B_2\rangle}$, and so are bimultiplicativity, $\varepsilon^2=1$ and
+$\varepsilon(-\alpha,\beta)=\varepsilon(\alpha,\beta)$. These are the only properties of $\varepsilon$
+that the lattice VOA and this chapter use, and they hold for every basis. This is what ``the choice
+is harmless'' means: changing the basis changes $\varepsilon$, and the resulting VOAs are isomorphic,
+but no theorem quoted here depends on which basis was chosen. A quantity like
+$\varepsilon(\alpha,\alpha)$ does depend on the basis in general, and \S\ref{ch04:sec:form} is careful
+never to assume a value for it.
+\end{example}
+
+%======================================================================
+\section{The Fock involution \texorpdfstring{$\sigma$}{sigma}}\label{ch04:sec:sigma}
+
+The reflection $X\mapsto-X$ negates every oscillator. On the Fock space it is therefore the
+algebra automorphism negating every variable.
+
+\begin{definition}[Fock involution]\label{ch04:def:sigma}
+$\sigma:F_r\to F_r$ is the unique $\C$-algebra homomorphism with $\sigma(x_{(m,a)})=-x_{(m,a)}$.
+\end{definition}
+
+\begin{physics}
+$\sigma$ is the action of the reflection $X^a\mapsto-X^a$ on the oscillator part of the Hilbert space: each creation operator $\alpha^a_{-n}$ flips sign, so a state with $k$ quanta acquires $(-1)^k$. This is the oscillator half of the $\mathbb Z_2$ global symmetry of the free bosons, and it is the reflection that will be gauged in the orbifold.
+\end{physics}
+
+\begin{proposition}\label{ch04:prop:sigma}
+(a) $\sigma^2=1$. (b) $\sigma\,h_a(n)=-h_a(n)\,\sigma$ for all $a$ and all $n\in\Z$.
+(c) On a monomial, $\sigma(x^d)=(-1)^{\deg d}x^d$.
+\end{proposition}
+
+\begin{leancode}
+-- VOA/Moonshine/LatticeInvolution.lean
+noncomputable def sigmaAlg : FockN r →ₐ[ℂ] FockN r := MvPolynomial.aeval (fun v => -(X v : FockN r))
+
+theorem sigmaAlg_involutive : Function.Involutive (sigmaAlg r)
+
+noncomputable def sigmaN : FockN r ≃ₗ[ℂ] FockN r :=
+  LinearEquiv.ofInvolutive (sigmaAlg r).toLinearMap (sigmaAlg_involutive r)
+
+theorem sigmaN_oscN (k : ℂ) (a : Fin r) (n : ℤ) (p : FockN r) :
+    sigmaN r (oscN r k a n p) = -oscN r k a n (sigmaN r p)
+
+-- VOA/Moonshine/PlusWeightOne.lean
+theorem sigmaN_monomial (d : (ℕ × Fin r) →₀ ℕ) :
+    sigmaN r (monomial d 1) = (-1 : ℂ) ^ d.degree • monomial d 1
+\end{leancode}
+
+\begin{dictionary}
+\lean{→ₐ[ℂ]} is a $\C$-algebra homomorphism; \lean{MvPolynomial.aeval f} is the homomorphism
+sending each variable $v$ to $f(v)$, here $-x_v$. \lean{Function.Involutive g} means $g(g(p))=p$ for
+all $p$. \lean{≃ₗ[ℂ]} is a $\C$-linear bijection (linear equivalence), and
+\lean{LinearEquiv.ofInvolutive} packages an involutive linear map as one, with itself as inverse.
+\lean{sigmaN_oscN} is (b), for every level $k$ (we only use $k=1$). \lean{monomial d 1} is $x^d$
+and \lean{sigmaN_monomial} is (c). Same as the textbook statements; no hypotheses.
+\end{dictionary}
+
+\begin{physics}
+Part (b) says the current $i\partial X^a$ is odd under the symmetry, which is exactly how $\sigma$ implements $X\mapsto-X$ on the modes. Part (c) says the symmetry charge of a state is the parity of its number of oscillators; it is the statement that the $\mathbb Z_2$ quantum number is computed by counting quanta.
+\end{physics}
+
+\paragraph{Proof.} (a) $\sigma^2$ is an algebra homomorphism fixing every variable, hence the
+identity. (b) If $n<0$, $h_a(n)$ is multiplication by a variable $x$, and
+$\sigma(xp)=\sigma(x)\sigma(p)=-x\,\sigma(p)$. If $n>0$, $h_a(n)$ is a multiple of a partial
+derivative $\partial_v$, and $\sigma\partial_v=-\partial_v\sigma$: both $\sigma\partial_v\sigma^{-1}$
+and $-\partial_v$ are derivations of $F_r$, and they agree on the generators
+($\sigma\partial_v\sigma^{-1}x_w=\sigma\partial_v(-x_w)=-\delta_{vw}$). If $n=0$ both sides vanish.
+(c) is multiplicativity: $\sigma(x^d)=\prod(-x_{(m,a)})^{d_{(m,a)}}$.\qed
+
+\begin{status}
+Proved, no hypotheses (\leanpath{VOA/Moonshine/LatticeInvolution.lean},
+\leanpath{VOA/Moonshine/PlusWeightOne.lean}).
+\end{status}
+
+%======================================================================
+\section{Lifting \texorpdfstring{$-1$}{-1}: the cocycle needs no correction}\label{ch04:sec:theta}
+
+On $V_L=F_r\otimes\C\{L\}$ the reflection should act by $\sigma$ on oscillators and by
+$e^\alpha\mapsto e^{-\alpha}$ on momenta. Before defining this map we should ask whether it has a
+chance of commuting with the vertex operators, and \eqref{ch04:eq:Yealpha} shows where the danger
+lies: conjugating $Y(e^\alpha,z)$ by such a map produces $Y(e^{-\alpha},z)$ only \emph{up to the
+ratio} $\varepsilon(\alpha,\beta)/\varepsilon(-\alpha,-\beta)$ on the sector $e^{\beta}$. For a general
+$2$-cocycle this ratio is not $1$, and the textbook theory (Frenkel--Lepowsky--Meurman, \S10.4)
+corrects the lift by a sign function $\eta:L\to\{\pm1\}$, $e^\alpha\mapsto\eta(\alpha)e^{-\alpha}$. For
+the library's cocycle no correction is needed.
+
+\begin{proposition}\label{ch04:prop:cocneg}
+For every integral lattice $L$ and all $\alpha,\beta\in L$:
+$\varepsilon(-\alpha,\beta)=\varepsilon(\alpha,\beta)=\varepsilon(\alpha,-\beta)$; hence
+$\varepsilon(-\alpha,-\beta)=\varepsilon(\alpha,\beta)$.
+\end{proposition}
+
+\begin{leancode}
+-- VOA/Moonshine/LatticeInvolution.lean
+theorem latticeCocycle_neg_left (α β : L.carrier) :
+    latticeCocycle L (-α) β = latticeCocycle L α β
+theorem latticeCocycle_neg_right (α β : L.carrier) :
+    latticeCocycle L α (-β) = latticeCocycle L α β
+theorem latticeCocycle_neg_neg (α β : L.carrier) :
+    latticeCocycle L (-α) (-β) = latticeCocycle L α β
+\end{leancode}
+
+\begin{dictionary}
+No hypothesis on $L$, not even evenness: the statement is about the specific cocycle
+\lean{latticeCocycle} of Definition~\ref{ch04:def:cocycle}, and it is literally the textbook
+statement ``$\varepsilon$ is invariant under $-1$''. It \emph{would be false} for a general
+normalized $2$-cocycle with the same commutator map; that is why the textbook needs $\eta$. The
+library escapes because its $\varepsilon$ is \emph{bimultiplicative}, not merely a cocycle.
+\end{dictionary}
+
+\begin{physics}
+This is a statement about the sign (Klein-factor) conventions only: reflecting both momenta leaves the cocycle sign unchanged. Physically it means the reflection $\alpha\mapsto-\alpha$ does not need an extra momentum-dependent phase to be a symmetry of the operator algebra, which for a general cocycle choice would be required (the correcting function of FLM). A convention check, not a new physical effect.
+\end{physics}
+
+\paragraph{Proof.} By multiplicativity in the first slot,
+$\varepsilon(\alpha,\beta)\varepsilon(-\alpha,\beta)=\varepsilon(0,\beta)=1$, and
+$\varepsilon(\alpha,\beta)^2=1$; so $\varepsilon(-\alpha,\beta)=\varepsilon(\alpha,\beta)$. Equivalently,
+$c(-\alpha,\beta)=-c(\alpha,\beta)$ and $(-1)^{-c}=(-1)^c$. The right slot is identical.\qed
+
+\begin{warning}
+This is a place where a convention could silently break the construction. If the lattice VOA had
+been built with a cocycle that is only a cocycle --- for instance
+$\varepsilon'(\alpha,\beta)=\varepsilon(\alpha,\beta)\,\eta(\alpha+\beta)\eta(\alpha)^{-1}\eta(\beta)^{-1}$
+for a sign function $\eta$ that is not a character, which gives an isomorphic VOA but is not
+bimultiplicative --- then the naive lift below would \emph{not} be an automorphism and one would
+need the correcting function of FLM~\S10.4. The project roadmap records this as a known trap
+(``a non-bimultiplicative cocycle would need a correcting function on $\Lambda$''). The safeguard
+here is that Theorem~\ref{ch04:thm:thetamode} below is proved: whatever one believes about
+cocycles, the machine has checked that the map commutes with all vertex operators.
+\end{warning}
+
+\begin{status}
+Proved, no hypotheses (\leanpath{VOA/Moonshine/LatticeInvolution.lean}).
+\end{status}
+
+\begin{definition}[The lift $\theta$ of $-1$]\label{ch04:def:theta}
+$\theta:V_L\to V_L$ is the linear map $\theta(p\otimes e^\alpha)=\sigma(p)\otimes e^{-\alpha}$,
+i.e.\ $\theta=\sigma\otimes\iota$ where $\iota(e^\alpha)=e^{-\alpha}$.
+\end{definition}
+
+\begin{physics}
+$\theta$ is the full reflection $X\to-X$ acting on states: oscillators flip sign (this is $\sigma$) and a state of momentum $\alpha$ is sent to momentum $-\alpha$. It is the unitary-type operator implementing a $\mathbb Z_2$ global symmetry of the compactified bosons, and is the lift of the lattice isometry $-1$ to the chiral algebra. Heuristic: on the torus $\mathbb R^{24}/\Leech$ the point-group element $-1$ is a symmetry for every lattice.
+\end{physics}
+
+\begin{proposition}\label{ch04:prop:thetabasic}
+$\theta^2=1$; $\theta$ fixes the vacuum $e^0$ and the conformal vector $\omega$; and $\theta$
+preserves each weight space $(V_L)_k$.
+\end{proposition}
+
+\begin{leancode}
+-- VOA/Moonshine/LatticeInvolution.lean
+noncomputable def thetaLat : LatModuleGen L ≃ₗ[ℂ] LatModuleGen L :=
+  TensorProduct.congr (sigmaN (rank L)) (Finsupp.domLCongr (Equiv.neg L.carrier))
+
+theorem thetaLat_tmul (p : FockN (rank L)) (α : L.carrier) :
+    thetaLat L (p ⊗ₜ[ℂ] eGen L α) = sigmaN (rank L) p ⊗ₜ[ℂ] eGen L (-α)
+
+theorem thetaLat_involutive : Function.Involutive (thetaLat L)
+theorem thetaLat_vacuum : thetaLat L (latVacuumGen L) = latVacuumGen L
+theorem thetaLat_omega : thetaLat L (omegaLatGen L) = omegaLatGen L
+theorem thetaLat_mem_gradingLatGen {k : ℤ} {x : LatModuleGen L} (hx : x ∈ gradingLatGen L k) :
+    thetaLat L x ∈ gradingLatGen L k
+\end{leancode}
+
+\begin{dictionary}
+\lean{TensorProduct.congr f g} is $f\otimes g$ for linear equivalences $f,g$;
+\lean{Finsupp.domLCongr (Equiv.neg L.carrier)} is the linear equivalence of $\C\{L\}$ induced by the
+bijection $\alpha\mapsto-\alpha$ of basis indices, i.e.\ $e^\alpha\mapsto e^{-\alpha}$. This is spelled
+out by \lean{thetaLat_tmul}, which is Definition~\ref{ch04:def:theta} verbatim, with \emph{no}
+correcting sign. \lean{latVacuumGen L} is $e^0$ and \lean{omegaLatGen L} is $\omega$. The four
+remaining statements are the four parts of the proposition.
+\end{dictionary}
+
+\begin{physics}
+These three facts are what one expects of a symmetry in a CFT: it squares to one (a $\mathbb Z_2$), leaves the vacuum invariant (the vacuum is not spontaneously broken), leaves the stress tensor $T=\omega$ invariant (so the symmetry commutes with the Virasoro algebra and with $L_0$), and hence acts on each energy level. The last point is what permits decomposing every weight space into $\pm1$ eigenspaces.
+\end{physics}
+
+\paragraph{Proof.} $\theta^2=\sigma^2\otimes\iota^2=1$. $\theta(1\otimes e^0)=\sigma(1)\otimes
+e^0=1\otimes e^0$. The conformal vector $\tfrac12\sum_a h_a(-1)^2\chfourone\otimes e^0$ is quadratic
+in the oscillators, so $\sigma$ fixes it. Finally $\sigma$ preserves Fock weight and
+$\tfrac12\langle-\alpha,-\alpha\rangle=\tfrac12\langle\alpha,\alpha\rangle$, so $(F_r)_w\otimes e^\alpha$
+goes to $(F_r)_w\otimes e^{-\alpha}$, of the same conformal weight.\qed
+
+\begin{status}
+Proved, no hypotheses (\leanpath{VOA/Moonshine/LatticeInvolution.lean}).
+\end{status}
+%======================================================================
+\section{\texorpdfstring{$\theta$}{theta} commutes with every vertex operator}\label{ch04:sec:intertw}
+
+The central fact about $\theta$ is that it is compatible with the whole vertex algebra structure:
+\begin{equation}\label{ch04:eq:thetaY}
+  \theta\,Y(u,z)\,\theta^{-1}=Y(\theta u,z)\qquad\text{for all }u\in V_L .
+\end{equation}
+To state the intermediate steps conveniently we introduce a small piece of language.
+
+\begin{definition}[Intertwining of formal distributions]\label{ch04:def:intertw}
+Let $g$ be a linear endomorphism of a vector space $V$, $c\in\C$, and let $A(z),B(z)$ be formal
+distributions with coefficients in $\End(V)$. We say that \emph{$g$ intertwines $A$ with $B$ up
+to $c$}, written $gA=c\,Bg$, if $g\,A_t\,x=c\,B_t\,g\,x$ for every coefficient index $t$ and every
+$x\in V$; that is, $gA(z)=c\,B(z)g$ as formal series.
+\end{definition}
+
+\begin{leancode}
+-- VOA/Moonshine/LatticeInvolution.lean
+def Intertw (g : End ℂ V) (c : ℂ) (A B : FormalDist (End ℂ V)) : Prop :=
+  ∀ (t : ℤ) (x : V), g (A t x) = c • B t (g x)
+\end{leancode}
+
+\begin{dictionary}
+\lean{End ℂ V} is the space of $\C$-linear maps $V\to V$. \lean{A t} is the coefficient of $z^t$
+of $A(z)$; the definition is word for word Definition~\ref{ch04:def:intertw}. It is a
+coefficientwise identity, so it involves no convergence questions.
+\end{dictionary}
+
+\begin{physics}
+This is only bookkeeping language: ``$g$ intertwines $A$ with $B$'' says that conjugating the field $A(z)$ by the symmetry operator $g$ gives the field $c\,B(z)$, i.e.\ the field transforms covariantly under the symmetry. It is the mode-level form of the statement that a global symmetry $g$ maps local operators to local operators, $g\,\mathcal O(z)\,g^{-1}=(g\mathcal O)(z)$.
+\end{physics}
+
+The calculus of this relation consists of three closure properties, each immediate from the
+definition:
+\begin{enumerate}[label=(\alph*)]
+\item if $gA=c\,Bg$ then $g\,\partial A=c\,(\partial B)\,g$ and $g(eA)=c\,(eB)g$ for scalars $e$;
+\item if $ga=c\,a'g$ and $gb=d\,b'g$ for fields $a,b,a',b'$, then
+  $g\,{:}ab{:}=cd\,{:}a'b'{:}\,g$ for the normal-ordered products.
+\end{enumerate}
+For (b): the coefficient of the normal-ordered product is a (locally finite) sum of products
+$a_mb_n$ or $b_na_m$ with the same ordering rule on both sides, and $g$ passes through each factor
+picking up $c$ and $d$.
+
+\begin{theorem}[$\theta$ intertwines the vertex operators]\label{ch04:thm:thetamode}
+Let $L$ be even and positive-definite. Then for all $u,v\in V_L$ and $n\in\Z$,
+\begin{equation*}
+  \theta\big(u_{(n)}v\big)=(\theta u)_{(n)}(\theta v),
+\end{equation*}
+equivalently \eqref{ch04:eq:thetaY}.
+\end{theorem}
+
+\begin{leancode}
+-- VOA/Moonshine/LatticeInvolution.lean
+theorem thetaLat_YfullGen (u : LatModuleGen L) (t : ℤ) (x : LatModuleGen L) :
+    thetaLat L (YfullGen L hEven hPos u t x)
+      = YfullGen L hEven hPos (thetaLat L u) t (thetaLat L x)
+
+theorem thetaLat_mode (u : LatModuleGen L) (n : ℤ) (v : LatModuleGen L) :
+    thetaLat L (mode (YfullGen L hEven hPos u) n v)
+      = mode (YfullGen L hEven hPos (thetaLat L u)) n (thetaLat L v)
+\end{leancode}
+
+\begin{dictionary}
+Section variables: \lean{(L : IntegralLattice) (hEven : L.Even) (hPos : L.PosDef)}. These are
+exactly the hypotheses under which the lattice VOA exists (Chapter~\ref{ch:03}), so they cost
+nothing. \lean{YfullGen L hEven hPos u t} is the coefficient of $z^t$ of $Y(u,z)$ for the
+\emph{actual} vertex map of the lattice VOA \lean{latticeVOAGen L hEven hPos} (not a model of it),
+and \lean{mode (YfullGen … u) n v} is $u_{(n)}v$. The first statement is \eqref{ch04:eq:thetaY}
+coefficientwise, the second is the mode form. All variables are universally quantified. The
+statement is the textbook one; it could only have been vacuous if the lattice VOA were degenerate,
+which it is not (Chapter~\ref{ch:03} computes its graded dimension).
+\end{dictionary}
+
+\begin{physics}
+This is the statement that $\theta$ is a symmetry of the full OPE algebra: $\theta\,Y(u,z)\,\theta^{-1}=Y(\theta u,z)$ says that applying the reflection to a correlator is the same as reflecting each inserted operator, so all OPE data (all structure constants) are invariant under $X\to-X$. For the vertex operators, $\theta:\;:\!e^{i\alpha\cdot X}\!:\;\mapsto\;:\!e^{-i\alpha\cdot X}\!:$ and $\partial X\mapsto-\partial X$. The point of the theorem is that no extra anomalous phase appears; this holds because the cocycle is bimultiplicative (Proposition~\ref{ch04:prop:cocneg}).
+\end{physics}
+
+\paragraph{Proof.} The usual textbook proof goes through Goddard's uniqueness theorem: the field
+$\theta Y(u,z)\theta^{-1}$ is local with respect to all $Y(v,z)$ and creates $\theta u$ from the vacuum,
+hence equals $Y(\theta u,z)$. We give instead a direct proof, which needs no uniqueness theorem,
+because the vertex map of $V_L$ is \emph{known} on a spanning set: $Y(w(l,\alpha),z)$ is the word
+field $Y_{\mathrm{word}}(l,\alpha)$. Both sides of \eqref{ch04:eq:thetaY} are linear in $u$, and the
+word states span $V_L$, so it suffices to prove, for every word $l$ and every $\alpha$,
+\begin{equation}\label{ch04:eq:wordconj}
+  \theta\,Y_{\mathrm{word}}(l,\alpha)\,\theta^{-1}=(-1)^{|l|}\,Y_{\mathrm{word}}(l,-\alpha)
+  \qquad\text{and}\qquad \theta\,w(l,\alpha)=(-1)^{|l|}w(l,-\alpha),
+\end{equation}
+since then $\theta Y(w(l,\alpha),z)\theta^{-1}=(-1)^{|l|}Y(w(l,-\alpha),z)=Y(\theta w(l,\alpha),z)$.
+
+\emph{Step 1: the dressing.} $\sigma S_N(\alpha)=S_N(-\alpha)$, since $S_N(\alpha)$ is a polynomial in
+the $\alpha(-n)$ and $\sigma\alpha(-n)=-\alpha(-n)=(-\alpha)(-n)$. Likewise
+$\sigma\,E^+(\alpha)_{-N}=E^+(-\alpha)_{-N}\,\sigma$, because $E^+(\alpha)_{-N}$ is a polynomial in the
+annihilation operators $\alpha(n)$, and $\sigma\alpha(n)=-\alpha(n)\sigma=(-\alpha)(n)\sigma$ by
+Proposition~\ref{ch04:prop:sigma}(b). Hence by (b) of the calculus,
+$\sigma\,EE(\alpha,z)=EE(-\alpha,z)\,\sigma$.
+
+\emph{Step 2: the charged vacua.} On $p\otimes e^\beta$, using \eqref{ch04:eq:Yealpha},
+\begin{align*}
+  \theta\,Y(e^\alpha,z)(p\otimes e^\beta)
+  &=\varepsilon(\alpha,\beta)z^{\langle\alpha,\beta\rangle}\,\sigma EE(\alpha,z)p\otimes e^{-\alpha-\beta}
+  =\varepsilon(\alpha,\beta)z^{\langle\alpha,\beta\rangle}\,EE(-\alpha,z)\sigma p\otimes e^{-\alpha-\beta},\\
+  Y(e^{-\alpha},z)\,\theta(p\otimes e^\beta)
+  &=\varepsilon(-\alpha,-\beta)z^{\langle-\alpha,-\beta\rangle}\,EE(-\alpha,z)\sigma p\otimes e^{-\alpha-\beta}.
+\end{align*}
+The two agree by Proposition~\ref{ch04:prop:cocneg} and $\langle-\alpha,-\beta\rangle=\langle\alpha,\beta\rangle$.
+So $\theta Y(e^\alpha,z)\theta^{-1}=Y(e^{-\alpha},z)$: the case $l=[\,]$ of \eqref{ch04:eq:wordconj}.
+
+\emph{Step 3: the currents.} $\theta h_a(z)\theta^{-1}=-h_a(z)$, including the zero mode: for
+$n\neq0$ this is Proposition~\ref{ch04:prop:sigma}(b), and $h_a(0)$ acts on $p\otimes e^\beta$ by
+$\beta_a$, while $\theta$ moves $p\otimes e^\beta$ to the sector $-\beta$, where $h_a(0)$ acts by
+$-\beta_a$. By (a), $\theta\big(\tfrac1{i!}\partial^ih_a\big)\theta^{-1}=-\tfrac1{i!}\partial^ih_a$.
+
+\emph{Step 4: induction on the word.} By (b), each additional letter of the word contributes one
+factor $-1$, which gives the first half of \eqref{ch04:eq:wordconj}. The second half is
+$\theta\big(h_{a_1}(-i_1-1)\cdots e^\alpha\big)=(-1)^k\,h_{a_1}(-i_1-1)\cdots e^{-\alpha}$, by
+Proposition~\ref{ch04:prop:sigma}(b) once more.\qed
+
+\paragraph{Remark (what the proof uses).} The argument uses three things: the cocycle identity of
+Proposition~\ref{ch04:prop:cocneg}, the explicit form \eqref{ch04:eq:Yealpha} of $Y(e^\alpha,z)$, and the
+fact that the vertex map is determined on word states by word fields. It does not use locality or
+any uniqueness theorem. Physically, Step 2 is the statement that
+$:\!e^{i\alpha\cdot X}\!:\;\mapsto\;:\!e^{-i\alpha\cdot X}\!:$ under $X\mapsto -X$, and Step 3 that
+$\partial X\mapsto-\partial X$.
+
+\begin{status}
+\lean{thetaLat_mode}: proved, unconditional given \lean{hEven}, \lean{hPos};
+\texttt{\#print axioms} gives \texttt{[propext, Classical.choice, Quot.sound]} (checked while
+writing this chapter). File \leanpath{VOA/Moonshine/LatticeInvolution.lean}.
+\end{status}
+
+%======================================================================
+\section{\texorpdfstring{$\theta$}{theta} as an automorphism of order two}\label{ch04:sec:aut}
+
+\begin{definition}[VOA automorphism]\label{ch04:def:aut}
+An \emph{automorphism} of a VOA $W$ is a linear bijection $g:W\to W$ with
+$g(u_{(n)}v)=(gu)_{(n)}(gv)$ for all $u,v,n$, $g\chfourone=\chfourone$ and $g\omega=\omega$. The
+automorphisms form a group $\Aut(W)$ under composition.
+\end{definition}
+
+In Lean this is the structure \lean{Aut W} (\leanpath{VOA/Core/Automorphism.lean}), quoted
+verbatim and decoded in Definition~\ref{l04:def:aut}: a linear equivalence \lean{toLinearEquiv}
+with fields \lean{map_smul'} ($g(u_{(n)}v)=(gu)_{(n)}(gv)$ for all $u,n,v$), \lean{map_vacuum}
+and \lean{map_omega}.
+
+\begin{dictionary}
+Exactly Definition~\ref{ch04:def:aut} (Gannon \S5.2.1). Fixing $\omega$ forces $g$ to commute with
+all $L_n=\omega_{(n+1)}$, hence to preserve the grading. The group structure (\lean{*} is
+composition, \lean{1} the identity) is defined in the same file; two automorphisms are equal as
+soon as their underlying linear maps are (\lean{Aut.ext}).
+\end{dictionary}
+
+\begin{physics}
+An automorphism of a VOA is a global (chiral) symmetry of the 2d CFT: a linear map on states preserving the vacuum, the stress tensor and all OPEs, so that it commutes with $L_n$ and acts on correlators by transforming every insertion. The group $\Aut(W)$ is the group of such symmetries; for the Moonshine module it is the Monster, but here we are only constructing one $\mathbb Z_2$ in the abelian-torus theory.
+\end{physics}
+
+\begin{theorem}\label{ch04:thm:thetaAut}
+Let $L$ be even and positive-definite. Then $\theta\in\Aut(V_L)$, $\theta^2=1$, and if $L\neq0$
+then $\theta\neq1$. For the Leech lattice, $\theta_\Leech:=\theta\in\Aut(V_\Leech)$ satisfies
+$\theta_\Leech^2=1\neq\theta_\Leech$.
+\end{theorem}
+
+\begin{leancode}
+-- VOA/Moonshine/LatticeInvolution.lean
+noncomputable def thetaAut : Aut (latticeVOAGen L hEven hPos) where
+  toLinearEquiv := thetaLat L
+  map_smul' u n v := thetaLat_mode L hEven hPos u n v
+  map_vacuum := thetaLat_vacuum L
+  map_omega := thetaLat_omega L
+
+theorem thetaAut_sq : thetaAut L hEven hPos * thetaAut L hEven hPos = 1
+theorem thetaAut_ne_one (hL : ∃ α : L.carrier, α ≠ 0) : thetaAut L hEven hPos ≠ 1
+
+noncomputable def leechTheta : Aut leechVOA := thetaAut leech leech_even leech_posDef
+theorem leechTheta_sq : leechTheta * leechTheta = 1 := thetaAut_sq leech leech_even leech_posDef
+theorem leechTheta_ne_one : leechTheta ≠ 1
+\end{leancode}
+
+\begin{dictionary}
+The definition of \lean{thetaAut} is shown in full because it is informative: the four fields are
+the linear map of Definition~\ref{ch04:def:theta} and the three proofs
+Theorem~\ref{ch04:thm:thetamode} and Proposition~\ref{ch04:prop:thetabasic}. Since
+\lean{W.smul u n v} is by definition \lean{mode (W.Y u) n v} and \lean{(latticeVOAGen …).Y} is
+\lean{YfullGen …}, the field \lean{map_smul'} is literally \lean{thetaLat_mode}. The hypothesis
+\lean{hL} of \lean{thetaAut_ne_one} says $L\neq0$; without it the statement is false ($L=0$ gives
+$V_L=F_0=\C$ and $\theta=1$). For $\Leech$ it is supplied by rank $24$. \lean{leechVOA} is
+\lean{latticeVOAGen leech leech_even leech_posDef}, so \lean{leechTheta} is literally $\theta$ for
+$\Leech$.
+\end{dictionary}
+
+\begin{physics}
+So $\theta$ is a genuine $\mathbb Z_2$ global symmetry of the torus CFT on $\mathbb R^{24}/\Leech$, of order exactly two (it acts nontrivially, e.g.\ $\partial X^a\mapsto-\partial X^a$, so it is not secretly trivial). This is precisely the symmetry one would orbifold by in the ``$\mathbb R^{24}/(\Leech\rtimes\mathbb Z_2)$'' construction of the Moonshine module.
+\end{physics}
+
+\paragraph{Proof.} The automorphism property is Theorem~\ref{ch04:thm:thetamode} together with
+Proposition~\ref{ch04:prop:thetabasic}; $\theta^2=1$ is the involutivity of
+Proposition~\ref{ch04:prop:thetabasic}. If $\alpha\neq0$ then $\theta e^\alpha=e^{-\alpha}$, and
+$e^{-\alpha}\neq e^{\alpha}$ because $-\alpha\neq\alpha$: a lattice is torsion-free, so $2\alpha=0$
+forces $\alpha=0$.\qed
+
+\begin{status}
+\lean{thetaAut}, \lean{thetaAut_sq}, \lean{thetaAut_ne_one}, \lean{leechTheta},
+\lean{leechTheta_sq}, \lean{leechTheta_ne_one}: proved; \texttt{\#print axioms} for
+\lean{thetaAut_sq}, \lean{thetaAut_ne_one}, \lean{leechTheta_ne_one} is
+\texttt{[propext, Classical.choice, Quot.sound]}. Unconditional (the hypotheses \lean{hEven},
+\lean{hPos}, \lean{hL} are discharged for $\Leech$).
+\end{status}
+
+%======================================================================
+\section{The fixed-point algebra \texorpdfstring{$V_\Lambda^+$}{V+}}\label{ch04:sec:plus}
+
+\begin{definition}[Sub-VOA; fixed-point sub-VOA]\label{ch04:def:orbifold}
+A \emph{vertex operator subalgebra} of a VOA $W$ is a subspace $S$ containing $\chfourone$ and
+$\omega$, closed under all $n$-th products, and \emph{graded}: if $v\in S$ then each homogeneous
+component of $v$ lies in $S$. It is itself a VOA with the restricted vertex map, the same vacuum,
+conformal vector and central charge, and grading $S_n=S\cap W_n$. For a subgroup
+$G\le\Aut(W)$ the \emph{fixed-point subalgebra} (or \emph{orbifold}) is
+$W^G=\{v\in W: gv=v\ \forall g\in G\}$.
+\end{definition}
+
+\begin{leancode}
+-- VOA/Modularity/Twisted.lean
+structure VOASubalgebra (W : VertexOperatorAlgebra 𝒱) where
+  carrier : Submodule ℂ 𝒱
+  vacuum_mem : W.vacuum ∈ carrier
+  conformal_mem : W.conformalVector ∈ carrier
+  smul_mem : ∀ u ∈ carrier, ∀ (n : ℤ), ∀ v ∈ carrier, W.smul u n v ∈ carrier
+  graded : ∀ (n : ℤ), ∀ v ∈ carrier, piHom W n v ∈ carrier
+
+def gradingS (n : ℤ) : Submodule ℂ S.carrier := (W.grading n).comap S.carrier.subtype
+
+def orbifold (G : Subgroup (Aut W)) : VOASubalgebra W where
+  carrier :=
+    { carrier := {v | ∀ g ∈ G, g v = v}
+      ... }
+  ...
+
+noncomputable def orbifoldVOA (G : Subgroup (Aut W)) :
+    VertexOperatorAlgebra (orbifold G).carrier :=
+  (orbifold G).toVOA
+
+theorem orbifoldVOA_centralCharge (G : Subgroup (Aut W)) :
+    (orbifoldVOA G).centralCharge = W.centralCharge := rfl
+\end{leancode}
+
+\begin{dictionary}
+In the display, ``\lean{...}'' marks omitted \emph{proof} fields of \lean{orbifold} (that the set
+is a subspace, contains $\chfourone$ and $\omega$, is closed under products and graded); the only data
+is the carrier $\{v\mid\forall g\in G,\ gv=v\}$, exactly $W^G$. \lean{piHom W n v} is the
+weight-$n$ component of $v$. \lean{(orbifold G).carrier} is a \lean{Submodule}; as a type,
+\lean{↥(orbifold G).carrier} (written with the coercion arrow \lean{↥}) is the set of its elements
+$v$ packaged with their membership proof, and the VOA \lean{orbifoldVOA G} lives on that type. Its
+weight spaces are \lean{gradingS n}, the elements of $S$ lying in $W_n$ (\lean{comap} along the
+inclusion \lean{subtype}). \lean{toVOA} (Definition~\ref{l04:def:subalg}) restricts all structure. The central
+charge equality is definitional (\lean{rfl}).
+\end{dictionary}
+
+\begin{physics}
+Taking $W^G$ is the projection of the Hilbert space onto $G$-invariant states, the first step of orbifolding a CFT by a global symmetry group $G$. The invariant states close under the OPE and contain the identity and stress tensor, so the result is again a chiral algebra with the same central charge $c$; it is a smaller algebra, whose missing operators are recovered (as a different representation) in the twisted sectors. Heuristic: one also has to add the twisted sectors to get a modular invariant theory, which is the content of the later chapters.
+\end{physics}
+
+\begin{definition}[$V_\Leech^+$]\label{ch04:def:VPlus}
+$V_\Leech^+:=V_\Leech^{\langle\theta\rangle}=\{v\in V_\Leech:\theta v=v\}$, with the VOA structure of
+Definition~\ref{ch04:def:orbifold}.
+\end{definition}
+
+\begin{leancode}
+-- VOA/Moonshine/LatticeInvolution.lean
+theorem mem_orbifold_zpowers_iff {𝒱 : Type*} [AddCommGroup 𝒱] [Module ℂ 𝒱]
+    {W : VertexOperatorAlgebra 𝒱} (g : Aut W) (v : 𝒱) :
+    v ∈ (orbifold (Subgroup.zpowers g)).carrier ↔ g v = v
+
+noncomputable def leechVOAPlus :
+    VertexOperatorAlgebra (orbifold (Subgroup.zpowers leechTheta)).carrier :=
+  orbifoldVOA (Subgroup.zpowers leechTheta)
+
+theorem mem_leechVOAPlus_iff (v : LatModuleGen leech) :
+    v ∈ (orbifold (Subgroup.zpowers leechTheta)).carrier ↔ thetaLat leech v = v :=
+  mem_orbifold_zpowers_iff leechTheta v
+
+theorem leechVOAPlus_centralCharge : leechVOAPlus.centralCharge = 24
+
+-- VOA/Moonshine/FrameSectors.lean
+abbrev VPlus : Type := ↥(orbifold (Subgroup.zpowers leechTheta)).carrier
+\end{leancode}
+
+\begin{dictionary}
+\lean{Subgroup.zpowers g} is the cyclic subgroup $\{g^k:k\in\Z\}$ generated by $g$; here
+$\{1,\theta\}$. \lean{mem_orbifold_zpowers_iff} says that being fixed by the whole cyclic group is
+the same as being fixed by its generator, so \lean{mem_leechVOAPlus_iff} identifies the carrier
+with $\{v:\theta v=v\}$, i.e.\ Definition~\ref{ch04:def:VPlus}. \lean{VPlus} is the type of
+elements of $V_\Leech^+$ used in later files. The weight spaces of \lean{leechVOAPlus} are
+$(V_\Leech^+)_k=V_\Leech^+\cap(V_\Leech)_k$ by \lean{gradingS}. How could this be vacuous? If $\theta$
+were the identity, $V_\Leech^+$ would be all of $V_\Leech$ and every subsequent dimension statement
+would be wrong; \lean{leechTheta_ne_one} and the dimension $98580\neq196884$ below rule this out.
+\end{dictionary}
+
+\begin{physics}
+$V_\Leech^+$ is the untwisted $\mathbb Z_2$-invariant sector of the orbifold of the $24$-boson torus theory by the reflection: the operators that survive the projection $P=\tfrac12(1+\theta)$ onto states with even $X\to-X$ parity. Its states are the even combinations such as $\cos(\alpha\cdot X)$ and products of an even number of oscillators; the central charge stays $24$ since the stress tensor $\tfrac12(\partial X)^2$ is even.
+\end{physics}
+
+\paragraph{Proof.} If $gv=v$ then $g^kv=v$ for every $k\in\Z$ (for negative $k$ apply $g^{-1}$ to
+$gv=v$). The central charge is that of $V_\Leech$, which is $\operatorname{rank}\Leech=24$.\qed
+
+\begin{status}
+\lean{leechVOAPlus} is a definition; \lean{mem_leechVOAPlus_iff} and
+\lean{leechVOAPlus_centralCharge} are proved, \texttt{\#print axioms}
+\texttt{[propext, Classical.choice, Quot.sound]}. Unconditional.
+\end{status}
+
+\begin{remark}[Why the fixed points form a VOA, physically and mathematically]
+If $\theta u=u$ and $\theta v=v$ then $\theta(u_{(n)}v)=u_{(n)}v$, so $V^+$ is closed under all
+products; $\chfourone$ and $\omega$ are fixed; and $\theta$ preserves weights, so components of fixed
+vectors are fixed. In CFT language: a symmetry commuting with the stress tensor can be used to
+project the theory, and the projected chiral algebra is again a chiral algebra with the same
+Virasoro central charge. Nothing more is needed for Definition~\ref{ch04:def:orbifold}. What is
+\emph{not} automatic is that $V^+$ is ``large'' --- that it remembers enough of $V$ to be useful
+--- and the rest of this chapter makes that precise.
+\end{remark}
+
+\begin{remark}[The projection]\label{ch04:rem:proj}
+The map $P=\tfrac12(1+\theta):V_\Leech\to V_\Leech^+$ is a projection onto $V_\Leech^+$ (it fixes
+$V_\Leech^+$ and kills the $(-1)$-eigenspace $V_\Leech^-$), and $V_\Leech=V_\Leech^+\oplus V_\Leech^-$. On
+basis vectors, $P(p\otimes e^\alpha)=\tfrac12(p\otimes e^\alpha+\sigma p\otimes e^{-\alpha})$.
+\begin{leancode}
+-- VOA/Moonshine/Generation.lean
+noncomputable def plusProj : LatModuleGen leech →ₗ[ℂ] VPlus :=
+  LinearMap.codRestrict _ ((1 / 2 : ℂ) • (LinearMap.id + (thetaLat leech).toLinearMap))
+    (fun v => by simpa using half_add_theta_mem_plus v)
+theorem plusProj_of_mem (v : VPlus) : plusProj (v : LatModuleGen leech) = v
+\end{leancode}
+\lean{LinearMap.codRestrict} regards the map $\tfrac12(1+\theta)$, whose image lies in $V_\Leech^+$,
+as a map into $V_\Leech^+$; \lean{plusProj_of_mem} says $P$ is the identity on $V_\Leech^+$
+(\lean{(v : LatModuleGen leech)} is $v$ regarded as a vector of $V_\Leech$).
+\end{remark}
+
+%======================================================================
+\section{Weight one: \texorpdfstring{$(V_\Lambda^+)_1=0$}{(V+)1 = 0}}\label{ch04:sec:wtone}
+
+\begin{lemma}\label{ch04:lem:degwt}
+(a) Every monomial satisfies $\deg d\le\operatorname{weight}d$. (b) Consequently $\sigma=-1$ on
+$(F_r)_1$.
+\end{lemma}
+
+\begin{leancode}
+-- VOA/Moonshine/PlusWeightOne.lean
+theorem degree_le_weight (d : (ℕ × Fin r) →₀ ℕ) :
+    d.degree ≤ Finsupp.weight weightFnN d
+
+theorem sigmaN_weight_one {p : FockN r} (hp : p ∈ gradingWN r 1) : sigmaN r p = -p
+\end{leancode}
+
+\begin{dictionary}
+\lean{d.degree} and \lean{Finsupp.weight weightFnN d} are the degree and weight of
+Definition~\ref{ch04:def:fock}. The hypothesis \lean{hp} says $p\in(F_r)_1$. Same as the textbook
+statement.
+\end{dictionary}
+
+\begin{physics}
+This is the elementary observation that at energy $1$ the only oscillator state is a single quantum $\alpha^a_{-1}|0\rangle$: there is no room for two quanta. A single quantum is odd under $X\to-X$, so the whole level is odd.
+\end{physics}
+
+\paragraph{Proof.} (a) Every variable has weight $m+1\ge1$. (b) A weight-$1$ monomial has degree
+$\le1$ and is nonconstant, hence has degree $1$; so it is some $x_{(0,a)}=h_a(-1)\chfourone$, and
+$\sigma$ multiplies it by $-1$. Extend linearly.\qed
+
+\begin{theorem}[$(V_\Leech^+)_1=0$]\label{ch04:thm:wtone}
+The weight-one space of $V_\Leech^+$ is zero.
+\end{theorem}
+
+\begin{leancode}
+-- VOA/Moonshine/PlusWeightOne.lean
+theorem leechVOAPlus_grading_one : leechVOAPlus.grading 1 = ⊥
+\end{leancode}
+
+\begin{dictionary}
+\lean{leechVOAPlus.grading 1} is $(V_\Leech^+)_1=V_\Leech^+\cap(V_\Leech)_1$ (Definition~\ref{ch04:def:orbifold});
+\lean{⊥} is the zero subspace. No hypotheses. This is one half of the statement $\Vnat_1=0$ of the
+final theorem; the other half is that the twisted sector starts in weight $3/2$, so that its
+$\theta$-fixed part starts in weight $2$ (Chapters~\ref{ch:07}--\ref{ch:08}).
+\end{dictionary}
+
+\begin{physics}
+There are no weight-one operators left in the orbifold: the only weight-one fields of the torus theory are the $24$ $U(1)$ currents $\partial X^a$ (since $\Leech$ has no norm-$2$ vectors, there are no charged currents $e^{i\alpha\cdot X}$), and they all change sign under the reflection. Hence no continuous symmetry survives the projection, which is the CFT form of the statement that the Monster has no continuous part: $V_1=0$ means no Kac--Moody currents.
+\end{physics}
+
+\paragraph{Proof.} By \lean{leechVOA_grading_one}, every $x\in(V_\Leech)_1$ is $p\otimes e^0$ with
+$p\in(F_{24})_1$. Then $\theta x=\sigma p\otimes e^0=-x$ by Lemma~\ref{ch04:lem:degwt}. If moreover
+$\theta x=x$, then $2x=0$, so $x=0$.\qed
+
+\begin{example}[Weight one, concretely]
+$(V_\Leech)_1$ has basis $h_0(-1)e^0,\dots,h_{23}(-1)e^0$, the $24$ ``currents'' of the free bosons;
+this is the Lie algebra $\C^{24}$ of the torus $\mathbb{R}^{24}/\Leech$ of continuous symmetries, abelian
+since there are no roots. All of them are odd under the reflection. Compare with a lattice
+\emph{with} roots, e.g.\ the $E_8$ lattice: there $(V_{E_8})_1$ has dimension $8+240=248$ (the Lie
+algebra $E_8$), and the $\theta$-fixed part is spanned by the $120$ vectors $e^\alpha+e^{-\alpha}$
+($\alpha$ a root, one per pair $\pm\alpha$), the fixed algebra of the Chevalley involution. The
+\emph{absence of roots} is exactly what makes $(V_\Leech^+)_1=0$, and it is the first sign that the
+Monster, unlike the symmetry groups of lattice theories, has no continuous part.
+\end{example}
+
+\begin{status}
+\lean{leechVOAPlus_grading_one}: proved, unconditional, \texttt{\#print axioms}
+\texttt{[propext, Classical.choice, Quot.sound]} (\leanpath{VOA/Moonshine/PlusWeightOne.lean}).
+\end{status}
+%======================================================================
+\section{Weight two: 196884 and 98580}\label{ch04:sec:wttwo}
+
+The weight-$2$ space of $\Vnat$ is the Griess algebra, of dimension $196884$. Its untwisted part
+is $(V_\Leech^+)_2$. We first compute $(V_\Leech)_2$ and then split it under $\theta$.
+
+\subsection{The weight-two space of a rootless lattice VOA}
+
+A Fock monomial of weight $2$ is either $x_{(1,a)}=h_a(-2)\chfourone$ (one oscillator of weight $2$;
+$r$ of them) or $x_{(0,a)}x_{(0,b)}=h_a(-1)h_b(-1)\chfourone$ (two oscillators of weight $1$; one for
+each unordered pair $\{a,b\}$ with repetition allowed, so $\binom{r+1}{2}$ of them).
+
+\begin{proposition}\label{ch04:prop:fockwt2}
+$\dim(F_r)_2=r+\binom{r+1}{2}$. Moreover $\sigma=-1$ on the linear states $h_a(-2)\chfourone$ and
+$\sigma=+1$ on the quadratic states $h_a(-1)h_b(-1)\chfourone$.
+\end{proposition}
+
+\begin{leancode}
+-- VOA/Moonshine/PlusWeightTwo.lean
+theorem finrank_gradingWN_two : finrank ℂ (gradingWN r 2) = r + (r + 1).choose 2
+
+noncomputable def quadFock : Submodule ℂ (FockN r) :=
+  Submodule.span ℂ (Set.range (wt2Mon r ∘ Sum.inr))
+noncomputable def linFock : Submodule ℂ (FockN r) :=
+  Submodule.span ℂ (Set.range (wt2Mon r ∘ Sum.inl))
+theorem sigmaN_of_mem_quadFock {p : FockN r} (hp : p ∈ quadFock r) : sigmaN r p = p
+theorem sigmaN_of_mem_linFock {p : FockN r} (hp : p ∈ linFock r) : sigmaN r p = -p
+\end{leancode}
+
+\begin{dictionary}
+\lean{finrank ℂ U} is the dimension of the subspace $U$ over $\C$ (Mathlib's \lean{Module.finrank};
+it is $0$ for infinite-dimensional spaces, which is why each finite-dimensionality is proved
+separately in the library and why a dimension statement here is a real statement).
+\lean{(r + 1).choose 2} is $\binom{r+1}{2}$. \lean{wt2Mon r} enumerates the weight-$2$ monomials by
+the disjoint union $\{0..r-1\}\sqcup\mathrm{Sym}^2\{0..r-1\}$: \lean{Sum.inl a} is $h_a(-2)\chfourone$
+and \lean{Sum.inr s(a,b)} is $h_a(-1)h_b(-1)\chfourone$; \lean{Submodule.span ℂ (Set.range f)} is the
+span of the image of $f$.
+\end{dictionary}
+
+\begin{physics}
+At level $2$ the oscillator states are of two kinds: one quantum of energy $2$ (the field $\partial^2X^a$) and two quanta of energy $1$ (the bilinears $\partial X^a\partial X^b$, symmetric in $a,b$). The reflection flips the sign of the first and fixes the second, because a state with an even number of quanta is invariant. This sorting is the core of the splitting of the weight-two space into $\theta=\pm1$.
+\end{physics}
+
+\begin{theorem}[Weight two of a rootless lattice VOA]\label{ch04:thm:wt2rootless}
+Let $L$ be even, positive-definite, with no vectors of norm $2$. Then
+\begin{equation*}
+  (V_L)_2=(F_r)_2\otimes e^0\;\oplus\bigoplus_{\langle\alpha,\alpha\rangle=4}\C e^\alpha,
+  \qquad
+  \dim(V_L)_2=r+\binom{r+1}{2}+\#\{\alpha\in L:\langle\alpha,\alpha\rangle=4\}.
+\end{equation*}
+For the Leech lattice, $\dim(V_\Leech)_2=24+300+196560=196884$.
+\end{theorem}
+
+\begin{leancode}
+-- VOA/Moonshine/PlusWeightTwo.lean
+noncomputable def normFour (hPos : L.PosDef) : Finset L.carrier := (normFour_finite L hPos).toFinset
+theorem mem_normFour (hPos : L.PosDef) {α : L.carrier} : α ∈ normFour L hPos ↔ L.form α α = 4
+noncomputable def chargeFour (hPos : L.PosDef) : Submodule ℂ (LatModuleGen L) :=
+  ⨆ α ∈ normFour L hPos, bigradα L (0, α)
+
+theorem gradingLatGen_two_of_rootless (hEven : L.Even) (hPos : L.PosDef)
+    (hR : ∀ v : L.carrier, L.form v v ≠ 2) :
+    gradingLatGen L 2 = bigradα L (2, 0) ⊔ chargeFour L hPos
+
+theorem finrank_gradingLatGen_two (hEven : L.Even) (hPos : L.PosDef)
+    (hR : ∀ v : L.carrier, L.form v v ≠ 2) :
+    finrank ℂ (gradingLatGen L 2)
+      = rank L + (rank L + 1).choose 2 + (normFour L hPos).card
+
+theorem leechVOA_finrank_grading_two : finrank ℂ (leechVOA.grading 2) = 196884
+\end{leancode}
+
+\begin{dictionary}
+\lean{normFour L hPos} is the finite set (\lean{Finset}) of norm-$4$ vectors; finiteness needs
+positive-definiteness (\lean{normFour_finite}), and \lean{.card} is its cardinality.
+\lean{bigradα L (0, α)} $=\C e^\alpha$, \lean{bigradα L (2, 0)} $=(F_r)_2\otimes e^0$, and \lean{⊔} is
+the sum of subspaces (it is direct, which the dimension formula uses). \lean{hR} is ``no roots''.
+For Leech, \lean{leechVOA.grading 2} is by definition \lean{gradingLatGen leech 2}, and the three
+hypotheses are \lean{leech_even}, \lean{leech_posDef}, \lean{leech_no_roots}; the count $196560$ is
+\lean{Leech.repCount_four}. The textbook statement and the Lean one agree. The result is
+\emph{not} vacuous in the way a dimension count could be (e.g.\ by computing \lean{finrank} of an
+infinite-dimensional space as $0$): the space is proved finite-dimensional and the number is
+positive.
+\end{dictionary}
+
+\begin{physics}
+The weight-two operators of the torus theory are of three types: the oscillator descendants $\partial^2X^a$, the bilinears $\partial X^a\partial X^b$ ($24+300$ of them), and the vertex operators $:\!e^{i\alpha\cdot X}\!:$ with $\tfrac12\langle\alpha,\alpha\rangle=2$, one for each of the $196560$ minimal vectors of $\Leech$. The total $196884=24+300+196560$ is the dimension of the weight-two space of $V_\Leech$, which numerically coincides with that of the Moonshine module's Griess algebra. This coincidence reflects that both characters equal $J+\text{const}$, and is not used in proofs.
+\end{physics}
+
+\paragraph{Proof.} A summand $(F_r)_{2-\frac12\langle\alpha,\alpha\rangle}\otimes e^\alpha$ is nonzero only if
+$\tfrac12\langle\alpha,\alpha\rangle\le2$, i.e.\ $\langle\alpha,\alpha\rangle\in\{0,2,4\}$. Norm $0$ means
+$\alpha=0$, giving $(F_r)_2\otimes e^0$; norm $2$ does not occur; norm $4$ gives
+$(F_r)_0\otimes e^\alpha=\C e^\alpha$. Count dimensions with Proposition~\ref{ch04:prop:fockwt2}; for
+$r=24$, $\binom{25}{2}=300$.\qed
+
+\subsection{The \texorpdfstring{$\theta$}{theta}-split and the counting trick}
+
+\begin{theorem}[Weight two of $V_L^+$]\label{ch04:thm:plustwo}
+Let $L$ be even, positive-definite and rootless, and let $S$ be a set containing exactly one
+vector from each pair $\{\alpha,-\alpha\}$ of norm-$4$ vectors. Then
+\begin{gather*}
+  (V_L)_2^{+}=\operatorname{span}\{h_a(-1)h_b(-1)e^0\}\oplus\bigoplus_{\alpha\in S}\C(e^\alpha+e^{-\alpha}),
+  \\
+  \dim(V_L)_2^+=\binom{r+1}{2}+\#S=\binom{r+1}{2}+\tfrac12\#\{\langle\alpha,\alpha\rangle=4\}.
+\end{gather*}
+For the Leech lattice, $\dim(V_\Leech^+)_2=300+98280=98580$.
+\end{theorem}
+
+\begin{leancode}
+-- VOA/Moonshine/PlusWeightTwo.lean
+noncomputable def plusTwo : Submodule ℂ (LatModuleGen L) :=
+  gradingLatGen L 2 ⊓ LinearMap.ker ((thetaLat L).toLinearMap - LinearMap.id)
+noncomputable def halfFour : Finset L.carrier :=
+  (normFour L hPos).filter fun α => WellOrderingRel α (-α)
+theorem card_normFour_eq : (normFour L hPos).card = 2 * (halfFour L hPos).card
+
+theorem finrank_plusTwo (hEven : L.Even) (hR : ∀ v : L.carrier, L.form v v ≠ 2) :
+    finrank ℂ (plusTwo L) = (rank L + 1).choose 2 + (halfFour L hPos).card
+
+noncomputable def leechVOAPlusGradingTwoEquiv : leechVOAPlus.grading 2 ≃ₗ[ℂ] plusTwo leech
+theorem leechVOAPlus_finrank_grading_two : finrank ℂ (leechVOAPlus.grading 2) = 98580
+\end{leancode}
+
+\begin{dictionary}
+\lean{plusTwo L} is $(V_L)_2\cap\ker(\theta-1)$ (\lean{⊓} is intersection, \lean{LinearMap.ker} the
+kernel), i.e.\ the $\theta$-fixed vectors of weight $2$ in $V_L$. \lean{halfFour L hPos} is the set
+$S$: \lean{WellOrderingRel} is a well-order on $L$ supplied by the axiom of choice, and $S$ keeps
+$\alpha$ when $\alpha$ precedes $-\alpha$; any choice of one vector per pair would do, and
+\lean{card_normFour_eq} records $\#S=\tfrac12\#\{\langle\alpha,\alpha\rangle=4\}$. In
+\lean{finrank_plusTwo}, \lean{hPos} is a section variable. The linear equivalence
+\lean{leechVOAPlusGradingTwoEquiv} identifies the weight-$2$ space of the VOA \lean{leechVOAPlus}
+(whose elements live in the subtype \lean{VPlus}) with the subspace \lean{plusTwo leech} of
+$V_\Leech$; this is how a statement about the abstract VOA is reduced to the concrete subspace, and
+it is what makes the final \lean{leechVOAPlus_finrank_grading_two} a statement about the actual
+VOA $V_\Leech^+$ and not merely about a subspace defined by hand.
+\end{dictionary}
+
+\begin{physics}
+The weight-two $\theta$-even states are the $300$ bilinears $\partial X^a\partial X^b$ (which include the stress tensor $\omega=\tfrac12\sum_a\partial X^a\partial X^a$) together with the $98280$ cosine combinations $:\!(e^{i\alpha\cdot X}+e^{-i\alpha\cdot X})\!:\;\sim\cos(\alpha\cdot X)$, one for each pair $\pm\alpha$ of minimal vectors. The $\theta$-odd ones, $\partial^2X^a$ and $\sin(\alpha\cdot X)$, are projected out. So $\dim(V_\Leech^+)_2=300+98280=98580$ is the untwisted contribution to the Griess algebra of $\Vnat$, whose remaining $98304=24\cdot2^{12}$ states come from the twisted sector. The counting trick is a pure linear algebra device with no direct physical meaning.
+\end{physics}
+
+\paragraph{Proof: the counting trick.} Write $D=\dim(V_L)_2=r+\binom{r+1}2+2\#S$
+(Theorem~\ref{ch04:thm:wt2rootless} and $\#\{\langle\alpha,\alpha\rangle=4\}=2\#S$), and put
+$V^\pm=(V_L)_2\cap\ker(\theta\mp1)$, the fixed and the odd subspace. The argument has four steps.
+
+\emph{Step (i): $V^+\cap V^-=0$.} If $x\in V^+\cap V^-$ then $x=\theta x=-x$, so $2x=0$ and $x=0$.
+
+\emph{Step (ii): an upper bound for the sum.} Since $V^+$ and $V^-$ meet only in $0$, their sum
+$V^++V^-$ is direct, so $\dim V^++\dim V^-=\dim(V^+\oplus V^-)$. And $V^+\oplus V^-$ is a subspace of
+$(V_L)_2$. Hence
+\begin{equation}\label{ch04:eq:upper}
+  \dim V^++\dim V^-\le D .
+\end{equation}
+
+\emph{Step (iii): a lower bound for each.} The quadratic states $h_a(-1)h_b(-1)e^0$ (there are
+$\binom{r+1}2$, linearly independent) are fixed by $\theta$ (Proposition~\ref{ch04:prop:fockwt2}), and
+for $\alpha\in S$ so is $e^\alpha+e^{-\alpha}=e^\alpha+\theta e^\alpha$. These $\binom{r+1}2+\#S$ vectors are
+linearly independent: the $e^\alpha+e^{-\alpha}$ for distinct $\alpha\in S$ involve disjoint pairs of basis
+vectors $e^{\pm\alpha}$ (that is why $S$ contains only one vector of each pair), and they live in
+nonzero charge sectors, while the quadratic states live in charge $0$. So
+$\dim V^+\ge\binom{r+1}2+\#S$. In the same way the $r$ states $h_a(-2)e^0$ and the $\#S$ vectors
+$e^\alpha-e^{-\alpha}$ are independent and lie in $V^-$, so $\dim V^-\ge r+\#S$.
+
+\emph{Step (iv): squeeze.} Adding the two lower bounds of (iii),
+\begin{equation*}
+  \dim V^++\dim V^-\ \ge\ \Big(\tbinom{r+1}2+\#S\Big)+\big(r+\#S\big)=D .
+\end{equation*}
+Together with \eqref{ch04:eq:upper}, $\dim V^++\dim V^-=D$. Now if either lower bound were strict,
+say $\dim V^+>\binom{r+1}2+\#S$, then adding $\dim V^-\ge r+\#S$ would give
+$\dim V^++\dim V^->D$, contradicting \eqref{ch04:eq:upper}. So both lower bounds are equalities:
+$\dim V^+=\binom{r+1}2+\#S$ and $\dim V^-=r+\#S$. (As a by-product, the exhibited vectors are bases,
+and $(V_L)_2=V^+\oplus V^-$.)\qed
+
+The trick avoids computing a trace or a projection: we never need to show that the exhibited
+vectors \emph{span} the fixed space, because the dimension count forces it.
+
+\begin{example}[The weight-two spaces of $V_\Leech$, in a table]\label{ch04:ex:wt2}
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+states & number & $\theta$ & contributes to \\
+\midrule
+$h_a(-2)e^0$ & $24$ & $-1$ & $V^-$\\
+$h_a(-1)h_b(-1)e^0$, $a\le b$ & $300$ & $+1$ & $V^+$\\
+$e^\alpha+e^{-\alpha}$, $\alpha\in S$ & $98280$ & $+1$ & $V^+$\\
+$e^\alpha-e^{-\alpha}$, $\alpha\in S$ & $98280$ & $-1$ & $V^-$\\
+\midrule
+total & $196884$ & & $98580+98304$\\
+\bottomrule
+\end{tabular}
+\end{center}
+Thus $\dim(V_\Leech^+)_2=98580$ and $\dim(V_\Leech^-)_2=98304$. The number $196884$ appears here as
+$\dim(V_\Leech)_2$, \emph{before} any orbifolding; the Griess algebra $\Vnat_2$ has the same
+dimension for a different reason: $98580+98304$ where now $98304=2^{12}\cdot24$ is the dimension of
+the weight-$2$ part of the twisted sector, $(F^{T})_{1/2}\otimes T$ with $\dim T=2^{12}$ (Chapter~\ref{ch:08}).
+That $\dim(V_\Leech^-)_2=24+98280$ coincides with $2^{12}\cdot24$ is a numerical observation
+--- equivalently $\dim(V_\Leech)_2=\dim\Vnat_2$ --- and it is \emph{not} used anywhere in the
+library; it reflects the fact that both $V_\Leech$ and $\Vnat$ have characters equal to $J$ plus a
+constant (\S\ref{ch04:sec:gradeddim}).
+\end{example}
+
+\begin{status}
+\lean{finrank_gradingLatGen_two}, \lean{finrank_plusTwo}: proved for every even positive-definite
+rootless lattice. \lean{leechVOA_finrank_grading_two} ($196884$) and
+\lean{leechVOAPlus_finrank_grading_two} ($98580$): proved, unconditional; \texttt{\#print axioms}
+\texttt{[propext, Classical.choice, Quot.sound]}. The file \leanpath{LatticeGradedDim.lean} also
+re-derives both numbers from the general formulas of the next section
+(\lean{leechVOA_finrank_grading_two_theta}, \lean{leechVOAPlus_finrank_grading_two_theta}), an
+internal consistency check.
+\end{status}
+
+%======================================================================
+\section{The graded dimension of \texorpdfstring{$V_L$}{VL} and of \texorpdfstring{$V_L^+$}{VL+}}\label{ch04:sec:gradeddim}
+
+\subsection{Coloured partitions}
+
+\begin{definition}[Fock counts]\label{ch04:def:fockcount}
+For $r,w\in\N$ let $P(r,w)$ be the number of monomials of weight $w$ in $F_r$ --- the number of
+$r$-coloured partitions of $w$ --- and let $P^+(r,w)$, $P^-(r,w)$ be the numbers of those of even,
+respectively odd, degree. The \emph{signed count} is $P^{\mathrm{s}}(r,w)=P^+(r,w)-P^-(r,w)$.
+\end{definition}
+
+\begin{leancode}
+-- VOA/Examples/HeisenbergNVertex.lean
+def weightDegSetN (r w : ℕ) : Set ((ℕ × Fin r) →₀ ℕ) :=
+  {d : (ℕ × Fin r) →₀ ℕ | Finsupp.weight weightFnN d = w}
+
+-- VOA/Moonshine/LatticeGradedDim.lean
+def fockSetEven (w : ℕ) : Set ((ℕ × Fin r) →₀ ℕ) :=
+  {d | Finsupp.weight weightFnN d = w ∧ Even d.degree}
+def fockSetOdd (w : ℕ) : Set ((ℕ × Fin r) →₀ ℕ) :=
+  {d | Finsupp.weight weightFnN d = w ∧ Odd d.degree}
+noncomputable def fockCount (w : ℕ) : ℕ := (weightDegSetN r w).ncard
+noncomputable def fockCountEven (w : ℕ) : ℕ := (fockSetEven r w).ncard
+noncomputable def fockCountOdd (w : ℕ) : ℕ := (fockSetOdd r w).ncard
+noncomputable def fockSigned (r w : ℕ) : ℤ := ∑ d ∈ fockFinset r w, (-1 : ℤ) ^ d.degree
+
+theorem finrank_gradingWN (w : ℕ) : finrank ℂ (gradingWN r w) = fockCount r w
+theorem fockSigned_eq (r w : ℕ) :
+    fockSigned r w = (fockCountEven r w : ℤ) - fockCountOdd r w
+\end{leancode}
+
+\begin{dictionary}
+\lean{Set.ncard} is the cardinality of a set as a natural number (and $0$ for infinite sets ---
+again a potential source of vacuity; here the sets are finite, \lean{weightDegSetN_finite}).
+\lean{fockCount r w}, \lean{fockCountEven}, \lean{fockCountOdd} are $P$, $P^+$, $P^-$;
+\lean{fockFinset r w} is the same set of exponents as a \lean{Finset}, and
+\lean{fockSigned r w} $=\sum_d(-1)^{\deg d}=P^{\mathrm s}(r,w)$. \lean{finrank_gradingWN} says that
+the monomials of weight $w$ form a basis of $(F_r)_w$. Since $\sigma(x^d)=(-1)^{\deg d}x^d$,
+$P^{\mathrm s}(r,w)$ is the trace of $\sigma$ on $(F_r)_w$; the library never forms this trace and
+works with the counts directly.
+\end{dictionary}
+
+\begin{physics}
+$P(r,w)$ is the number of states at energy $w$ of $r$ free chiral bosons, and $P^+,P^-$ separate them by $\mathbb Z_2$ parity (even or odd number of quanta). The low values $1,\,r,\,r+\binom{r+1}2,\dots$ are the first terms of the partition function $q^{r/24}\eta(q)^{-r}$ of the bosons. For $r=24$ they give $1,24,324,3200,\dots$, the coefficients of $\eta^{-24}$, the familiar spectrum of the bosonic string.
+\end{physics}
+
+\begin{proposition}[Small weights]\label{ch04:prop:smallwt}
+$P(r,0)=1$, $P(r,1)=r$, $P(r,2)=r+\binom{r+1}2$, $P(r,3)=r+r^2+\binom{r+2}3$; and
+$P^-(r,2)=r$, $P^+(r,2)=\binom{r+1}2$, $P^+(r,3)=r^2$, $P^-(r,3)=r+\binom{r+2}3$.
+\end{proposition}
+
+\begin{leancode}
+-- VOA/Moonshine/LatticeGradedDim.lean
+theorem fockCount_zero : fockCount r 0 = 1
+theorem fockCount_one : fockCount r 1 = r
+theorem fockCount_two : fockCount r 2 = r + (r + 1).choose 2
+theorem fockCountOdd_two : fockCountOdd r 2 = r
+theorem fockCountEven_two : fockCountEven r 2 = (r + 1).choose 2
+theorem fockCountEven_three : fockCountEven r 3 = r * r
+theorem fockCountOdd_three : fockCountOdd r 3 = r + (r + 2).choose 3
+theorem fockCount_three : fockCount r 3 = r + r * r + (r + 2).choose 3
+\end{leancode}
+
+\begin{physics}
+These are the oscillator excitations at level $3$ of $r$ bosons: a quantum of energy $3$, a quantum of energy $2$ together with one of energy $1$, or three quanta of energy $1$. The parity counts $P^\pm$ record how the $\mathbb Z_2$ symmetry acts; the difference $P^+-P^-=\operatorname{tr}\theta$ is the term that will appear in the twisted partition function.
+\end{physics}
+
+\paragraph{Proof.} Enumerate the monomials. Weight $3$: $h_a(-3)$ ($r$, degree $1$, odd),
+$h_a(-2)h_b(-1)$ ($r^2$, ordered pairs since the two oscillators have different weights; degree $2$,
+even), $h_a(-1)h_b(-1)h_c(-1)$ (multisets of size $3$: $\binom{r+2}3$; degree $3$, odd).\qed
+
+For $r=24$: $P(24,3)=24+576+2600=3200$, $P^+(24,3)=576$, $P^-(24,3)=2624$.
+
+\subsection{Generating functions}
+
+\begin{theorem}[Fock generating functions]\label{ch04:thm:genfun}
+In the ring $\C[[q]]$ of formal power series,
+\begin{equation*}
+  \sum_{w\ge0}P(r,w)q^w=\prod_{n\ge1}(1-q^n)^{-r},
+  \qquad
+  \sum_{w\ge0}\big(P^+(r,w)-P^-(r,w)\big)q^w=\prod_{n\ge1}(1+q^n)^{-r},
+\end{equation*}
+the infinite products converging in the $q$-adic (coefficientwise) topology.
+\end{theorem}
+
+\begin{leancode}
+-- VOA/Moonshine/LatticeGradedDim.lean
+noncomputable def fockGenFun (r : ℕ) : PowerSeries ℂ := PowerSeries.mk fun w => (fockCount r w : ℂ)
+noncomputable def fockSignedGenFun (r : ℕ) : PowerSeries ℂ :=
+  PowerSeries.mk fun w => (fockSigned r w : ℂ)
+
+open scoped PowerSeries.WithPiTopology in
+theorem hasProd_fockGenFun (r : ℕ) :
+    HasProd (fun i : ℕ => ((1 - (PowerSeries.X : ℂ⟦X⟧) ^ (i + 1))⁻¹) ^ r) (fockGenFun r)
+
+open scoped PowerSeries.WithPiTopology in
+theorem hasProd_fockSignedGenFun (r : ℕ) :
+    HasProd (fun i : ℕ => ((1 + (PowerSeries.X : ℂ⟦X⟧) ^ (i + 1))⁻¹) ^ r)
+      (fockSignedGenFun r)
+\end{leancode}
+
+\begin{dictionary}
+\lean{PowerSeries ℂ} $=$ \lean{ℂ⟦X⟧} is $\C[[q]]$ with the variable called $X$;
+\lean{PowerSeries.mk f} is $\sum_w f(w)X^w$. \lean{⁻¹} is the inverse in $\C[[q]]$ (which exists for
+$1\mp X^{i+1}$, constant term $1$). \lean{HasProd f a} is Mathlib's statement that the infinite
+product $\prod_{i\in\N}f(i)$ converges (unconditionally, along finite subsets) to $a$, for the
+topology fixed by \lean{open scoped PowerSeries.WithPiTopology}: the product topology on the
+coefficient sequence, i.e.\ coefficientwise convergence where each coefficient is eventually
+constant. This is the standard meaning of an infinite product of formal power series. The index
+shift $i\mapsto i+1$ makes $n=i+1$ run over $n\ge1$. The statements are exactly
+Theorem~\ref{ch04:thm:genfun}.
+\end{dictionary}
+
+\begin{physics}
+The first identity is the partition function of $r$ free chiral bosons, $Z_{\mathrm{osc}}=\operatorname{tr}\,q^{L_0}=\prod_n(1-q^n)^{-r}$ (each mode $\alpha_{-n}$ is a harmonic oscillator of energy $n$, contributing $(1-q^n)^{-1}$). The second is the same trace with the reflection $\theta$ inserted, $\operatorname{tr}\,\theta\,q^{L_0}=\prod_n(1+q^n)^{-r}$, since each excitation then contributes $\sum_j(-q^n)^j$. These traces are the building blocks of the orbifold partition function $\tfrac12(Z+\operatorname{tr}\theta q^{L_0})$.
+\end{physics}
+
+\paragraph{Proof.} For one colour, $\prod_{n\ge1}(1-q^n)^{-1}=\prod_n\sum_{j\ge0}q^{nj}$ is Euler's
+generating function of partitions: choosing $j_n$ parts equal to $n$ for each $n$. A one-colour
+monomial $\prod_m x_{(m,0)}^{d_m}$ is exactly the partition with $d_m$ parts equal to $m+1$, so
+$\sum_wP(1,w)q^w$ is Euler's series. For $r$ colours, a monomial is an $r$-tuple of one-colour
+monomials and weights add, so the generating function is the $r$-th power. For the signed count,
+attach $(-1)^{j}$ to $j$ parts equal to $n$: $\sum_j(-1)^jq^{nj}=(1+q^n)^{-1}$, and the total sign is
+$(-1)^{\deg}$ because the degree is the number of parts. In Lean the one-colour case is reduced to
+Mathlib's partition generating function by an explicit bijection between monomials and
+partitions.\qed
+
+\begin{example}[Low coefficients for $r=24$]\label{ch04:ex:fock24}
+\begin{equation*}
+  \prod_{n\ge1}(1-q^n)^{-24}=1+24q+324q^2+3200q^3+\cdots,\qquad
+  \prod_{n\ge1}(1+q^n)^{-24}=1-24q+276q^2-2048q^3+\cdots.
+\end{equation*}
+Check against Proposition~\ref{ch04:prop:smallwt}: $324=24+300$, $276=300-24$, $3200=24+576+2600$,
+$-2048=576-2624$. (Directly: the $q^3$ coefficient of $\prod(1+q^n)^{-24}$ is
+$-\binom{26}3+24\cdot24-24=-2600+576-24=-2048$.)
+\end{example}
+
+\subsection{The dimension formulas}
+
+\begin{theorem}[Graded dimension of $V_L$]\label{ch04:thm:dimVL}
+Let $L$ be even and positive-definite of rank $r$. For every $k\in\N$,
+\begin{equation*}
+  \dim(V_L)_k=\sum_{n=0}^{k}\#\{\alpha\in L:\langle\alpha,\alpha\rangle=2n\}\cdot P(r,k-n),
+\end{equation*}
+the coefficient of $q^k$ in $\Theta_L(q)\prod_{n\ge1}(1-q^n)^{-r}$, where
+$\Theta_L(q)=\sum_{\alpha\in L}q^{\langle\alpha,\alpha\rangle/2}$ is the theta series of $L$.
+\end{theorem}
+
+\begin{leancode}
+-- VOA/Moonshine/LatticeGradedDim.lean
+noncomputable def normEq (m : ℤ) : Finset L.carrier := (normEq_finite L hPos m).toFinset
+theorem mem_normEq {m : ℤ} {α : L.carrier} : α ∈ normEq L hPos m ↔ L.form α α = m
+
+theorem finrank_gradingLatGen_eq_sum_theta (hEven : L.Even) (k : ℕ) :
+    finrank ℂ (gradingLatGen L k)
+      = ∑ n ∈ Finset.range (k + 1), (normEq L hPos (2 * n)).card * fockCount (rank L) (k - n)
+\end{leancode}
+
+\begin{dictionary}
+Section variables \lean{(L : IntegralLattice) (hPos : L.PosDef)}. \lean{normEq L hPos m} is the
+finite set of vectors of norm $m$. \lean{Finset.range (k + 1)} is $\{0,\dots,k\}$; \lean{k - n} is
+natural-number subtraction, which is honest here since $n\le k$. \lean{gradingLatGen L k} has
+\lean{k : ℕ} coerced to $\Z$. The formula is Theorem~\ref{ch04:thm:dimVL} verbatim; the identification
+with the $q^k$ coefficient of the product series is the Cauchy product of
+Theorem~\ref{ch04:thm:genfun} with $\Theta_L$, made in Chapter~\ref{ch:05} where characters are
+treated as power series.
+\end{dictionary}
+
+\begin{physics}
+This is the partition function of the compact boson as a lattice sum: $\operatorname{tr}\,q^{L_0-r/24}=\Theta_L(q)/\eta(q)^r$, with the momentum sum $\Theta_L$ over the lattice times the oscillator contribution. For the Leech lattice, $\Theta_\Leech/\eta^{24}=J+24$ up to the usual $q^{-1}$ shift, i.e.\ $q^{-1}+24+196884\,q+\cdots$; the constant $24$ is the $24$ currents, to be removed by the orbifold.
+\end{physics}
+
+\paragraph{Proof.} $(V_L)_k=\bigoplus_\alpha(F_r)_{k-\frac12\langle\alpha,\alpha\rangle}\otimes e^\alpha$, the
+sum being over the finitely many $\alpha$ with $\tfrac12\langle\alpha,\alpha\rangle\le k$; the summand has
+dimension $P(r,k-\tfrac12\langle\alpha,\alpha\rangle)$. Group the $\alpha$ by $n=\tfrac12\langle\alpha,\alpha\rangle$.\qed
+
+\begin{theorem}[Graded dimension of $V_L^+$]\label{ch04:thm:dimVLplus}
+With $L$ as above, let $(V_L)_k^\pm$ be the $\pm1$-eigenspaces of $\theta$ on $(V_L)_k$. Then
+\begin{equation*}
+  2\dim(V_L)_k^+=\dim(V_L)_k+P^+(r,k)-P^-(r,k),
+\end{equation*}
+i.e.\ $\dim(V_L)_k^+=\tfrac12\big(\dim(V_L)_k+\tr(\theta|(V_L)_k)\big)$ with
+$\tr(\theta|(V_L)_k)=P^{\mathrm s}(r,k)$, the coefficient of $q^k$ in $\prod_{n\ge1}(1+q^n)^{-r}$.
+Explicitly, with $S$ a set of representatives of the pairs $\pm\alpha\neq0$ of half-norm $\le k$,
+\begin{equation*}
+  \dim(V_L)_k^\pm=P^\pm(r,k)+\sum_{\alpha\in S}P\big(r,k-\tfrac12\langle\alpha,\alpha\rangle\big).
+\end{equation*}
+\end{theorem}
+
+\begin{leancode}
+-- VOA/Moonshine/LatticeGradedDim.lean
+noncomputable def plusK (k : ℤ) : Submodule ℂ (LatModuleGen L) :=
+  gradingLatGen L k ⊓ LinearMap.ker ((thetaLat L).toLinearMap - LinearMap.id)
+noncomputable def minusK (k : ℤ) : Submodule ℂ (LatModuleGen L) :=
+  gradingLatGen L k ⊓ LinearMap.ker ((thetaLat L).toLinearMap + LinearMap.id)
+noncomputable def halfLE (k : ℤ) : Finset L.carrier :=
+  (normLE L hPos k).filter fun α => WellOrderingRel α (-α)
+
+theorem finrank_plusK_minusK (hEven : L.Even) (k : ℕ) :
+    finrank ℂ (plusK L k) = fockCountEven (rank L) k
+        + ∑ α ∈ halfLE L hPos k, fockCount (rank L) ((k : ℤ) - halfNorm L α).toNat ∧
+      finrank ℂ (minusK L k) = fockCountOdd (rank L) k
+        + ∑ α ∈ halfLE L hPos k, fockCount (rank L) ((k : ℤ) - halfNorm L α).toNat
+
+theorem two_mul_finrank_plusK_eq_signed (L : IntegralLattice) (hPos : L.PosDef) (hEven : L.Even)
+    (k : ℕ) :
+    2 * (finrank ℂ (plusK L k) : ℤ) = finrank ℂ (gradingLatGen L k) + fockSigned (rank L) k
+
+noncomputable def leechVOAPlusGradingEquiv (k : ℤ) : leechVOAPlus.grading k ≃ₗ[ℂ] plusK leech k
+\end{leancode}
+
+\begin{dictionary}
+\lean{plusK L k}, \lean{minusK L k} are $(V_L)^\pm_k$. \lean{normLE L hPos k} is the finite set
+$\{\alpha:\tfrac12\langle\alpha,\alpha\rangle\le k\}$ and \lean{halfLE} keeps one of each pair $\pm\alpha$
+(it excludes $\alpha=0$, which is its own negative). \lean{.toNat} truncates an integer to $\N$;
+harmless because $k-\tfrac12\langle\alpha,\alpha\rangle\ge0$ for $\alpha\in$ \lean{normLE}. The equation
+\lean{two_mul_finrank_plusK_eq_signed} is stated in $\Z$ (the cast \lean{(… : ℤ)}) because
+$P^{\mathrm s}$ can be negative. \lean{leechVOAPlusGradingEquiv k} identifies the weight-$k$ space
+of the VOA $V_\Leech^+$ with \lean{plusK leech k}, exactly as in weight $2$.
+\end{dictionary}
+
+\begin{physics}
+The dimension of the invariant subspace at each level is $\tfrac12(\dim+\operatorname{tr}\theta)$, i.e.\ the projection onto the untwisted $\mathbb Z_2$-even sector $\tfrac12(Z+\operatorname{tr}\theta q^{L_0})$ of an orbifold partition function. Only the neutral (zero-momentum) sector contributes to $\operatorname{tr}\theta$, because $\theta$ exchanges every charged sector $\alpha\ne0$ with its partner $-\alpha$, so charged states are off-diagonal and have zero trace. In this way the formula keeps the $98280$ pairs of cosine states at weight $2$ and kills the sine ones.
+\end{physics}
+
+\paragraph{Proof.} The counting trick of Theorem~\ref{ch04:thm:plustwo}, in every weight. In charge
+$0$, $\theta=\sigma\otimes1$ acts on monomials by $(-1)^{\deg}$, so $(F_r)_k^{\mathrm{even}}\otimes e^0$
+is fixed and $(F_r)_k^{\mathrm{odd}}\otimes e^0$ is anti-fixed. For $\alpha\in S$, the map
+$x\mapsto x\pm\theta x$ is injective on $(F_r)_{k-\frac12\langle\alpha,\alpha\rangle}\otimes e^\alpha$ (its image
+has a component in the sector $\alpha$, where $\theta x$ has none) and lands in $(V_L)^\pm_k$. These
+lower bounds for $\dim(V_L)^+_k$ and $\dim(V_L)^-_k$ add up to $P(r,k)+2\sum_{\alpha\in S}P(\dots)=\dim(V_L)_k$,
+so both are equalities. Subtracting the two equalities gives the trace form. Physically: the
+nonzero charge sectors come in pairs $\{\alpha,-\alpha\}$ swapped by $\theta$ and contribute nothing to
+the trace; only the neutral sector, where $\theta=(-1)^{\#\text{oscillators}}$, contributes.\qed
+
+\begin{theorem}[Weight three]\label{ch04:thm:wt3}
+$\dim(V_\Leech)_3=21493760$ and $\dim(V_\Leech^+)_3=10745856$.
+\end{theorem}
+
+\begin{leancode}
+-- VOA/Moonshine/LatticeGradedDim.lean
+theorem leechVOA_finrank_grading_three : finrank ℂ (leechVOA.grading 3) = 21493760
+theorem leechVOAPlus_finrank_grading_three : finrank ℂ (leechVOAPlus.grading 3) = 10745856
+\end{leancode}
+
+\begin{dictionary}
+No hypotheses; the inputs are the Leech counts $\#\{\langle\alpha,\alpha\rangle=0,2,4,6\}=1,0,196560,16773120$
+(\lean{leech_normEq_zero_card}, \dots, \lean{leech_normEq_six_card}, from
+\lean{Leech.repCount_four} and \lean{Leech.repCount_six}).
+\end{dictionary}
+
+\begin{physics}
+This is the next level of the same untwisted orbifold sector: $10745856$ states at energy $3$ survive the $\mathbb Z_2$ projection out of $21493760$. Adding the twisted-sector count of Chapter~\ref{ch:08} gives the full weight-three Moonshine space and matches the coefficient $21493760$ of $q^2$ in $J(q)$. Heuristic, as a consistency check on the physics of the orbifold.
+\end{physics}
+
+\paragraph{Proof.} By Theorem~\ref{ch04:thm:dimVL} with $r=24$:
+\begin{align*}
+  \dim(V_\Leech)_3&=1\cdot P(24,3)+0\cdot P(24,2)+196560\cdot P(24,1)+16773120\cdot P(24,0)\\
+  &=3200+4717440+16773120=21493760 .
+\end{align*}
+By Theorem~\ref{ch04:thm:dimVLplus}, $2\dim(V_\Leech^+)_3=21493760+576-2624=21491712$, so
+$\dim(V_\Leech^+)_3=10745856$.\qed
+
+\begin{example}[The character of $V_\Leech$ and its twin]\label{ch04:ex:char}
+Theorem~\ref{ch04:thm:dimVL} gives
+\begin{equation*}
+  \sum_k\dim(V_\Leech)_kq^{k-1}=\frac{\Theta_\Leech(q)}{q\prod_n(1-q^n)^{24}}
+  =q^{-1}+24+196884q+21493760q^2+\cdots=J(q)+24,
+\end{equation*}
+using $\Theta_\Leech=1+196560q^2+16773120q^3+\cdots$ (in the variable $q^{\langle\alpha,\alpha\rangle/2}$,
+the norm-$4$ vectors at $q^2$). For the $\theta$-trace, $\sum_k\tr(\theta|(V_\Leech)_k)q^{k-1}
+=q^{-1}\prod_n(1+q^n)^{-24}=q^{-1}-24+276q-2048q^2+\cdots$. Hence
+\begin{equation*}
+  \sum_k\dim(V_\Leech^+)_kq^{k-1}=q^{-1}+0+98580q+10745856q^2+\cdots .
+\end{equation*}
+Adding the twisted contribution $98304q+10747904q^2+\cdots$ of Chapter~\ref{ch:08} gives
+$q^{-1}+196884q+21493760q^2+\cdots=J(q)$: the miracle that the constant term $24$ is removed and
+nothing else changes. The full identity for every coefficient is proved in Chapter~\ref{ch:05}.
+\end{example}
+
+\begin{status}
+\lean{finrank_gradingLatGen_eq_sum_theta}, \lean{finrank_plusK_minusK},
+\lean{two_mul_finrank_plusK_eq_signed}, \lean{hasProd_fockGenFun},
+\lean{hasProd_fockSignedGenFun}: proved for every even positive-definite $L$ (and every $r$).
+\lean{leechVOA_finrank_grading_three}, \lean{leechVOAPlus_finrank_grading_three}: proved,
+unconditional. \texttt{\#print axioms} for all of these: \texttt{[propext, Classical.choice,
+Quot.sound]}. (The weight-$3$ proofs use the kernel-checked \lean{decide} to evaluate
+$\binom{26}{3}=2600$, not \lean{native_decide}.)
+\end{status}
+%======================================================================
+\section{Generation: \texorpdfstring{$V_\Lambda^+$}{V+} is generated by the \texorpdfstring{$e^\beta+e^{-\beta}$}{e(b)+e(-b)}}\label{ch04:sec:generation}
+
+\subsection{Why generation is needed}
+
+Several later constructions define a structure (an invariant bilinear form, an intertwining
+operator) and must check a compatibility with the action of \emph{every} $u\in V_\Leech^+$. Checking
+it directly for every $u$ is hopeless; checking it on a generating set is easy, provided one knows
+that the set of $u$ for which the compatibility holds is closed under $n$-th products. The form
+of \S\ref{ch04:sec:form} below and the form \lean{TPForm} on the twisted sector
+(Chapter~\ref{ch:09}) are both handled this way. What is needed is therefore a precise generation
+theorem.
+
+\begin{definition}\label{ch04:def:xbeta}
+For $\beta\in\Leech$ put $x_\beta=e^\beta+e^{-\beta}\in V_\Leech^+$. (It is $\theta$-fixed since
+$\theta e^\beta=e^{-\beta}$; note $x_0=2e^0$ and $x_{-\beta}=x_\beta$.)
+\end{definition}
+
+\begin{leancode}
+-- VOA/Moonshine/CyclicFrameSectors.lean
+noncomputable def frameX0 (β : leech.carrier) : LatModuleGen leech :=
+  latChargeGen leech β + latChargeGen leech (-β)
+noncomputable def frameX0P (β : leech.carrier) : VPlus := ⟨frameX0 β, frameX0_mem_plus β⟩
+\end{leancode}
+
+\begin{dictionary}
+\lean{frameX0 β} is $x_\beta$ as a vector of $V_\Leech$; \lean{frameX0P β} is the same vector as an
+element of $V_\Leech^+$, i.e.\ paired (\lean{⟨…, …⟩}) with the proof \lean{frameX0_mem_plus β} that it
+is $\theta$-fixed. (The name comes from the Golay-frame chapter, where $x_\beta$ with special $\beta$
+is used as a cyclic vector.)
+\end{dictionary}
+
+\begin{physics}
+The operator $x_\beta=e^\beta+e^{-\beta}\sim2\cos(\beta\cdot X)$ is the $\mathbb Z_2$-even combination of a vertex operator and its reflection: the simplest local operators that survive the orbifold projection with nonzero momentum. For $\beta$ of norm $4$ these are the weight-two cosine operators of the Griess algebra; for general $\beta$ they have higher weight $\tfrac12\langle\beta,\beta\rangle$.
+\end{physics}
+
+\begin{theorem}[Generation]\label{ch04:thm:gen}
+Let $S\subseteq V_\Leech^+$ be a linear subspace such that $\chfourone\in S$, $u_{(n)}v\in S$ for all
+$u,v\in S$ and $n\in\Z$, and $x_\beta\in S$ for every $\beta\in\Leech$. Then $S=V_\Leech^+$.
+\end{theorem}
+
+\begin{leancode}
+-- VOA/Moonshine/Generation.lean
+theorem leechPlus_generated : ∀ S : Submodule ℂ VPlus, leechVOAPlus.vacuum ∈ S →
+    (∀ u ∈ S, ∀ v ∈ S, ∀ n : ℤ, leechVOAPlus.smul u n v ∈ S) →
+    (∀ β : leech.carrier, frameX0P β ∈ S) → S = ⊤
+\end{leancode}
+
+\begin{dictionary}
+\lean{S : Submodule ℂ VPlus} is a linear subspace of $V_\Leech^+$. The three hypotheses are, in
+order: $\chfourone\in S$; closure under all $n$-th products of $V_\Leech^+$ (\lean{leechVOAPlus.smul u n v}
+$=u_{(n)}v$, computed in $V_\Leech$ since the sub-VOA has the restricted vertex map);
+$x_\beta\in S$ for all $\beta$. The conclusion \lean{S = ⊤} is $S=V_\Leech^+$ (\lean{⊤} is the whole
+space). This is the standard meaning of ``the $x_\beta$ generate $V_\Leech^+$ as a vertex algebra''.
+Note: generation is in the sense of \emph{$n$-th products}, for \emph{all} $\beta\in\Leech$ (not only
+the minimal ones), and the vacuum hypothesis is redundant ($x_0=2\chfourone$). The statement could
+have been weak in two ways, neither of which occurs: it is not restricted to a subset of
+$V_\Leech^+$, and it does not assume $S$ is a VOA (only a subspace).
+\end{dictionary}
+
+\begin{physics}
+The theorem says that the chiral algebra of the orbifold is the OPE closure of the cosine operators: every $\theta$-even operator, including the bilinears $\partial X^a\partial X^b$ and the stress tensor, arises by repeatedly taking OPE coefficients (modes $u_{(n)}v$) of the cosines $\cos(\beta\cdot X)$. Heuristically: the OPE of $\cos(\beta\cdot X)$ with itself produces the $\partial X\partial X$ terms in its regular part. This closure property is what allows checking invariance (of a bilinear form, of an intertwiner) on a small set of generating fields rather than on all of $V_\Leech^+$.
+\end{physics}
+
+\begin{warning}
+Generation by $n$-th products is \emph{weaker} than what is needed in another part of the project.
+The Zhu-algebra arguments of Chapter~\ref{ch:12} need \emph{Zhu generation}. Recall (it is
+defined and discussed there) that Zhu's algebra is $A(V)=V/O(V)$ with an associative product $a*b$
+built from the modes of $Y(a,z)$; a set $G$ is \emph{Zhu-generating} if every subspace containing
+$\chfourone$, $O(V)$ and $G$ and closed under $*$ is all of $V$ (library: \lean{ZhuGenerated} in
+\leanpath{VOA/Moonshine/SigmaExistZhu.lean}). This closes under a single specific bilinear product
+modulo $O(V)$, not under all $n$-th products, so neither notion implies the other in an obvious way.
+The project recorded as a dead end that weak ($n$-th product) generation does NOT
+reduce the top-level clause there to generators. Theorem~\ref{ch04:thm:gen} is used only for the
+invariance arguments of \S\ref{ch04:sec:form} and Chapter~\ref{ch:09}, where $n$-th product
+generation is exactly the right notion.
+\end{warning}
+
+\subsection{The proof}
+
+The proof is elementary and works for every even positive-definite lattice; only the names are
+Leech-specific in the library. Let $P=\tfrac12(1+\theta)$ be the projection of
+Remark~\ref{ch04:rem:proj} and let $G=P^{-1}(S)\subseteq V_\Leech$. Since $P$ is the identity on
+$V_\Leech^+$, it suffices to show $G=V_\Leech$, i.e.\ that every $p\otimes e^\gamma$ lies in $G$. We
+show this by induction on the Fock weight $w$ of $p$, for all charges $\gamma$ at once.
+
+\emph{Base.} $w=0$: $P(e^\gamma)=\tfrac12x_\gamma\in S$.
+
+\emph{Step 1: the safe step --- why it is needed.} The only tool we have for producing new
+elements of $S$ is the product: if $s\in S$ then $x_{a\,(n)}s\in S$. We would like to use this to
+show that $e^a_{(n)}v\in G$ whenever $v\in G$, because the operators $e^a_{(n)}$ on $V_\Leech$ are
+completely explicit, by \eqref{ch04:eq:Yealpha}. The difficulty is that $x_a=e^a+e^{-a}$ is a
+\emph{sum}, and $P(v)$ is a sum too, so $x_{a\,(n)}P(v)$ has four terms of which we only want one
+(and its $\theta$-mirror image). The safe step is the observation that for $n$ large enough the
+two unwanted ``cross terms'' vanish identically, so that $x_{a\,(n)}P(v)$ is exactly $P(e^a_{(n)}v)$.
+
+\emph{When does $e^b_{(n)}$ kill a vector?} From \eqref{ch04:eq:Yealpha}, for $q$ of Fock weight $w$
+and any $b,c\in\Leech$,
+\begin{equation}\label{ch04:eq:eamode}
+  e^b_{(n)}(q\otimes e^c)=\varepsilon(b,c)\,EE(b)_{t}\,q\otimes e^{b+c},\qquad t=-n-1-\langle b,c\rangle,
+\end{equation}
+where $EE(b)_t$ is the coefficient of $z^t$ in $EE(b,z)=E^-(b,z)E^+(b,z)$. (The mode $u_{(n)}$ is the
+coefficient of $z^{-n-1}$, and the factor $z^{\langle b,c\rangle}$ shifts the index.) Multiplying out,
+$EE(b)_t=\sum_{N-M=t,\ N,M\ge0}S_N(b)\,E^+(b)_{-M}$. The operator $E^+(b)_{-M}$ is a polynomial in
+annihilation operators of total weight $M$, so it lowers the Fock weight by exactly $M$ and kills
+$q$ if $M>w$. Thus only terms with $M\le w$ survive, and for them $t=N-M\ge-M\ge-w$. In other words,
+\begin{equation}\label{ch04:eq:kill}
+  t<-w\ \Longrightarrow\ EE(b)_tq=0,\qquad\text{i.e.}\qquad
+  n\ge w-\langle b,c\rangle\ \Longrightarrow\ e^b_{(n)}(q\otimes e^c)=0
+\end{equation}
+(the two conditions agree: $-n-1-\langle b,c\rangle<-w\iff n>w-1-\langle b,c\rangle\iff n\ge w-\langle b,c\rangle$).
+Physically this is the statement that the operator product $e^b(z)\,(q\otimes e^c)(0)$ has a pole of
+order at most $w-\langle b,c\rangle$: the momenta contribute $z^{\langle b,c\rangle}$ and the oscillators of $q$
+can lower this by at most $w$.
+
+\begin{lemma}[Safe step]\label{ch04:lem:safe}
+If $q\in(F_{24})_w$ and $n\ge w+\langle a,c\rangle$, then
+$\;x_{a\,(n)}\,P(q\otimes e^c)=P\big(e^a_{(n)}(q\otimes e^c)\big)$.
+\end{lemma}
+
+\begin{leancode}
+-- VOA/Moonshine/Generation.lean
+theorem plusProj_smul (a c : leech.carrier) {n : ℤ} {w : ℕ} {q : FockN (rank leech)}
+    (hq : q ∈ gradingWN (rank leech) w) (hn : (w : ℤ) + leech.form a c ≤ n) :
+    plusProj (leechVOA.smul (latChargeGen leech a) n (latStateGen leech q c))
+      = leechVOAPlus.smul (frameX0P a) n (plusProj (latStateGen leech q c))
+\end{leancode}
+
+\begin{dictionary}
+\lean{plusProj} is $P$; the left side is $P(e^a_{(n)}(q\otimes e^c))$, computed in $V_\Leech$; the
+right side is $x_{a\,(n)}P(q\otimes e^c)$, computed in $V_\Leech^+$. The hypotheses are $q\in(F_{24})_w$
+and $n\ge w+\langle a,c\rangle$.
+\end{dictionary}
+
+\begin{physics}
+This lemma is a statement about when the OPE of a cosine $x_a=e^a+e^{-a}$ with a projected state keeps only the ``direct'' term: for a high enough mode number $n$ the cross terms, in which the momenta add rather than cancel, have an OPE with too weak a pole to appear, since $e^b(z)\,(q\otimes e^c)(0)$ has a pole of order at most $w-\langle b,c\rangle$. It is a pole-order estimate for the OPE of lattice vertex operators and helps one extract a single exponential from a cosine. Technical lemma.
+\end{physics}
+
+\paragraph{Proof.} Expand $x_{a\,(n)}\cdot2P(q\otimes e^c)=(e^a+e^{-a})_{(n)}(q\otimes e^c+\sigma q\otimes
+e^{-c})$ into four terms. The cross term $e^{-a}_{(n)}(q\otimes e^c)$ is \eqref{ch04:eq:kill} with
+$b=-a$: it vanishes when $n\ge w-\langle -a,c\rangle=w+\langle a,c\rangle$. The cross term
+$e^{a}_{(n)}(\sigma q\otimes e^{-c})$ is \eqref{ch04:eq:kill} with $b=a$, charge $-c$ and the
+weight-$w$ vector $\sigma q$: it vanishes when $n\ge w-\langle a,-c\rangle=w+\langle a,c\rangle$. Both
+conditions are the hypothesis of the lemma. The remaining two are
+$e^a_{(n)}(q\otimes e^c)$ and its image under $\theta$ (Theorem~\ref{ch04:thm:thetamode}:
+$\theta(e^a_{(n)}(q\otimes e^c))=e^{-a}_{(n)}(\sigma q\otimes e^{-c})$). Their sum is
+$2P(e^a_{(n)}(q\otimes e^c))$.\qed
+
+Consequently: \emph{if $q\otimes e^c\in G$ and $n\ge w+\langle a,c\rangle$, then
+$e^a_{(n)}(q\otimes e^c)\in G$} (because $P$ of it is $x_{a(n)}$ applied to an element of $S$).
+
+\begin{example}[The safe step in rank one]\label{ch04:ex:saferank1}
+Let $L=\Z\alpha$ with $\langle\alpha,\alpha\rangle=4$ (rank one, rootless), and take $a=\alpha$, $c=-\alpha$,
+$q=1$ (so $w=0$). Then $P(e^{-\alpha})=\tfrac12x_\alpha$, and the lemma's condition is
+$n\ge0+\langle\alpha,-\alpha\rangle=-4$. Compute the four terms of $x_{\alpha\,(n)}x_\alpha$ with
+\eqref{ch04:eq:eamode}, where $t=-n-1-\langle b,c\rangle$:
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+term & $\langle b,c\rangle$ & $t$ & value\\
+\midrule
+$e^{\alpha}_{(n)}e^{-\alpha}$ (wanted) & $-4$ & $3-n$ & $\varepsilon\,S_{3-n}(\alpha)\otimes e^0$\\
+$e^{-\alpha}_{(n)}e^{\alpha}$ (its $\theta$-image) & $-4$ & $3-n$ & $\varepsilon\,S_{3-n}(-\alpha)\otimes e^0$\\
+$e^{\alpha}_{(n)}e^{\alpha}$ (cross) & $4$ & $-n-5$ & $\varepsilon\,S_{-n-5}(\alpha)\otimes e^{2\alpha}$\\
+$e^{-\alpha}_{(n)}e^{-\alpha}$ (cross) & $4$ & $-n-5$ & $\varepsilon\,S_{-n-5}(-\alpha)\otimes e^{-2\alpha}$\\
+\bottomrule
+\end{tabular}
+\end{center}
+(Here $q=1$, so $E^+$ acts trivially and $EE(b)_t1=S_t(b)$, which is $0$ for $t<0$; $\varepsilon$ denotes
+the relevant sign $\pm1$.) For $n\ge-4$ the cross terms have $t=-n-5<0$ and vanish, so
+$x_{\alpha\,(n)}x_\alpha=\varepsilon\,(S_{3-n}(\alpha)+S_{3-n}(-\alpha))\otimes e^0=2\varepsilon P(S_{3-n}(\alpha)\otimes e^0)$:
+exactly the lemma. For $n=1$ this is $\varepsilon\,\alpha(-1)^2\chfourone$, as in Example~\ref{ch04:ex:genwt2}.
+For the unsafe value $n=-5$, however, the cross terms are $\varepsilon\,(e^{2\alpha}+e^{-2\alpha})$: the product
+is still an element of $S$, but it is \emph{no longer} $P$ of $e^\alpha_{(-5)}e^{-\alpha}$, and we learn
+nothing about the latter. This is the whole content of the lemma, and every entry of the table can
+be checked from \eqref{ch04:eq:eamode} and $S_N(-\alpha)=\sigma S_N(\alpha)$ alone.
+\end{example}
+
+\emph{Step 2: leading terms.} Fix a target weight $w\ge1$ and assume (induction hypothesis) that
+all $p\otimes e^c$ with Fock weight $<w$ lie in $G$, for all $c$. For $d\ge0$ and $q$ of weight $k$,
+\begin{equation}\label{ch04:eq:EEexpand}
+  EE(a)_d\,q=\sum_{s=0}^{k}S_{d+s}(a)\,E^+(a)_{-s}\,q ,
+\end{equation}
+the $s=0$ term being $S_d(a)q$ and the others involving $E^+(a)_{-s}q$ of lower weight $k-s$.
+
+\begin{leancode}
+-- VOA/Moonshine/GenerationFock.lean
+theorem EEVec_expand (α : L.carrier) {w : ℕ} {p : FockN (rank L)}
+    (hp : p ∈ gradingWN (rank L) w) (d : ℕ) :
+    EEVec L α (d : ℤ) p
+      = ∑ r ∈ Finset.range (w + 1), vSchur L α (d + r) * aExpVec L α r p
+\end{leancode}
+
+Call $a$ \emph{safe} for $(\gamma,w)$ if $2\langle a,\gamma-a\rangle+w+1\le0$. Take a safe $a$, $d\ge1$, $q$
+of weight $k=w-d$, and $c=\gamma-a$. With $n=-d-1-\langle a,c\rangle$, \eqref{ch04:eq:eamode} and
+\eqref{ch04:eq:EEexpand} give
+\begin{equation*}
+  e^a_{(n)}(q\otimes e^c)=\varepsilon(a,c)\sum_{s=0}^kS_{d+s}(a)E^+(a)_{-s}q\otimes e^\gamma,
+\end{equation*}
+and the safe-step condition $n\ge k+\langle a,c\rangle$ is exactly safety: substituting
+$n=-d-1-\langle a,c\rangle$ it reads $-d-1-\langle a,c\rangle\ge k+\langle a,c\rangle$, i.e.\
+$2\langle a,c\rangle+d+k+1\le0$, i.e.\ (since $d+k=w$ and $c=\gamma-a$) $2\langle a,\gamma-a\rangle+w+1\le0$; $q\otimes e^c\in G$ by the induction hypothesis
+($k<w$). So the left side is in $G$ by Step 1. By a downward induction on $k$ (the terms with $s\ge1$
+have the same shape with larger $d$ and smaller $k$) we get
+\begin{equation*}
+  S_d(a)\,q\otimes e^\gamma\in G\qquad\text{for all safe }a,\ d\ge1,\ q\in(F_{24})_{w-d}.
+\end{equation*}
+
+\emph{Step 3: linearisation.} We want a single oscillator $a_0(-d)$ rather than the Schur
+polynomial $S_d(a)$. Replace $a$ by $ka_0$ with $a_0\neq0$ and $k\in\N$: since
+$\langle ka_0,\gamma-ka_0\rangle=k\langle a_0,\gamma\rangle-k^2\langle a_0,a_0\rangle\to-\infty$, the vector
+$ka_0$ is safe for all large $k$. And $S_d(ka_0)$ is a polynomial in $k$,
+\begin{equation*}
+  S_d(ka_0)=\sum_{i}k^i\,s_i,\qquad s_1=\tfrac1d\,a_0(-d)\chfourone,
+\end{equation*}
+because $S_d$ is built from $\tfrac1n a_0(-n)$ by the exponential series, and only the term with a
+single oscillator is linear in $k$.
+
+\begin{leancode}
+-- VOA/Moonshine/GenerationFock.lean
+noncomputable def schurPoly (α : L.carrier) : ℕ → Polynomial (FockN (rank L))
+  | 0 => 1
+  | (N + 1) => ((N + 1 : ℂ))⁻¹ • ∑ m ∈ Finset.range (N + 1),
+      Polynomial.C (vVar L α m) * (Polynomial.X * schurPoly α (N - m))
+theorem schurPoly_eval (α : L.carrier) (k : ℕ) (N : ℕ) :
+    (schurPoly L α N).eval (algebraMap ℂ (FockN (rank L)) (k : ℂ)) = vSchur L (k • α) N
+theorem schurPoly_coeff_one (α : L.carrier) (N : ℕ) :
+    (schurPoly L α (N + 1)).coeff 1 = ((N + 1 : ℂ))⁻¹ • vVar L α N
+theorem mem_of_forall_sum_pow_smul_mem {M : Type*} [AddCommGroup M] [Module ℂ M]
+    (G : Submodule ℂ M) (v : ℕ → M) (D K : ℕ)
+    (h : ∀ k : ℕ, K ≤ k → ∑ i ∈ Finset.range (D + 1), ((k : ℂ) ^ i) • v i ∈ G) :
+    ∀ i ∈ Finset.range (D + 1), v i ∈ G
+\end{leancode}
+
+\begin{dictionary}
+\lean{schurPoly L α N} is the polynomial in an auxiliary variable $T$ (\lean{Polynomial.X}) with
+coefficients in $F_r$ obtained by putting $T$ in front of every $\alpha(-m-1)$ in the Newton
+recursion; \lean{schurPoly_eval} says evaluating at $T=k$ gives $S_N(k\alpha)$, and
+\lean{schurPoly_coeff_one} identifies the linear coefficient as $\tfrac1{N+1}\alpha(-N-1)\chfourone$.
+\lean{mem_of_forall_sum_pow_smul_mem} is the interpolation lemma: if a polynomial with coefficients
+$v_i$ in a vector space takes values in a subspace $G$ at infinitely many integers, then every
+$v_i$ lies in $G$.
+\end{dictionary}
+
+The interpolation lemma (proof: pass to the quotient by $G$ and apply any linear functional; a
+scalar polynomial with infinitely many roots is zero) applied to $k\mapsto S_d(ka_0)q\otimes e^\gamma$
+gives $a_0(-d)q\otimes e^\gamma\in G$. Letting $a_0$ run over a basis of $\Leech$ --- whose real
+coordinates form an invertible matrix, so the $a_0(-d)$ span all oscillators $h_b(-d)$ --- we get
+$h_b(-d)q\otimes e^\gamma\in G$ for every $b$, $d\ge1$ and $q$ of weight $w-d$. Every monomial of
+weight $w\ge1$ has this form, which completes the induction.\qed
+
+\begin{example}[Weight two by hand]\label{ch04:ex:genwt2}
+Here is the argument in its simplest instance, without scaling. Take $a\in\Leech$, $a\neq0$, and
+$n=\langle a,a\rangle-3$. Then
+\begin{equation*}
+  x_{a\,(n)}x_a=e^a_{(n)}e^{-a}+e^{-a}_{(n)}e^{a}+e^a_{(n)}e^a+e^{-a}_{(n)}e^{-a}.
+\end{equation*}
+By \eqref{ch04:eq:eamode}, $e^a_{(n)}e^{-a}=\varepsilon(a,-a)EE(a)_{2}\chfourone\otimes e^0=\varepsilon(a,a)S_2(a)$,
+and similarly $e^{-a}_{(n)}e^a=\varepsilon(a,a)S_2(-a)$. The last two terms involve $EE(\pm a)_{2-2\langle a,a\rangle}$,
+which kills $\chfourone$ since $2-2\langle a,a\rangle<0$. Since $S_2(\pm a)=\tfrac12(a(-1)^2\pm a(-2))\chfourone$,
+\begin{equation*}
+  x_{a\,(\langle a,a\rangle-3)}\,x_a=\varepsilon(a,a)\,a(-1)^2\chfourone\otimes e^0 .
+\end{equation*}
+So every $a(-1)^2\chfourone$ lies in the subalgebra generated by the $x_\beta$, and by polarization
+$(a+b)(-1)^2-a(-1)^2-b(-1)^2=2a(-1)b(-1)$, so do all quadratic states $h_a(-1)h_b(-1)\chfourone$
+(the $a(-1)$ for $a$ in a lattice basis span $\operatorname{span}\{h_b(-1)\}$). Together with the
+$x_\beta$ of norm $4$, this is all of $(V_\Leech^+)_2$ (Example~\ref{ch04:ex:wt2}). The general proof
+is this computation, organised: polarization is replaced by the interpolation in $k$, which also
+handles the higher Schur polynomials.
+\end{example}
+
+\begin{remark}[Why no spherical-design input is needed]\label{ch04:rem:design}
+Sharper statements are available in the literature: $V_\Leech^+$ is generated by its weight-$2$
+space (the Griess algebra), that is, by the quadratic states and the $x_\beta$ with $\beta$ of norm $4$
+only. Proving that version from the $196560$ minimal vectors alone requires averaging identities over
+the shell $\Leech_4$ --- the fact that the minimal vectors form a spherical design, which makes sums
+such as $\sum_{\beta\in\Leech_4}\beta(-1)^2$ proportional to the Casimir $\sum_bh_b(-1)^2$ --- to manufacture
+the Fock states. The library proves a weaker statement that suffices for every use: generation by the
+$x_\beta$ for \emph{all} $\beta$. Because all multiples $ka_0$ are allowed, the scaling argument of Step 3
+replaces any averaging over a shell, and no property of $\Leech$ beyond evenness and
+positive-definiteness is used. The cost is nil, since both consumers (\lean{plusForm_fhlInv} below
+and \lean{TPForm_fhlInv} in Chapter~\ref{ch:09}) verify their compatibility at $x_\beta$ uniformly
+in $\beta$. The design-based route was not attempted in Lean; this remark records why it was not needed.
+\end{remark}
+
+\begin{status}
+\lean{leechPlus_generated}: proved, unconditional; \texttt{\#print axioms}
+\texttt{[propext, Classical.choice, Quot.sound]}. Files \leanpath{VOA/Moonshine/Generation.lean}
+and \leanpath{GenerationFock.lean}. (When this chapter was first written, the docstring of \leanpath{Generation.lean} said the file
+was ``not wired into the \texttt{VOA/Moonshine.lean} umbrella''; that note was already stale --- the umbrella
+imported it. The docstring has since been corrected and now says the file is imported by the umbrella.)
+\end{status}
+%======================================================================
+\section{The invariant form: nondegeneracy of the canonical form on \texorpdfstring{$V_\Lambda^+$}{V+}}\label{ch04:sec:form}
+
+\subsection{What has to be proved, and why}
+
+Every VOA $W$ with $W_0=\C\chfourone$ and $L_1W_1=0$ carries a unique \emph{invariant bilinear form}
+normalized by $(\chfourone|\chfourone)=1$ (Li's theorem; in the library, Theorem~\ref{l04:thm:canonical}). For
+$V_\Leech^+$ this canonical form is used in Chapter~\ref{ch:09} to define the operator $\overline W$ of
+twisted$\times$twisted$\to$untwisted type as the \emph{adjoint} of an operator $W$. Such an adjoint
+exists and is unique only if the form is nondegenerate on every weight space. So we need:
+
+\begin{center}
+\emph{the canonical invariant form of $V_\Leech^+$ is nondegenerate on each $(V_\Leech^+)_k$.}
+\end{center}
+
+The textbook proof is: $V_\Leech^+$ is simple, and the invariant form of a simple VOA is nondegenerate
+(its radical is an ideal). The library has the second half (\lean{invariantForm_nondegenerate_FHL})
+but not simplicity of $V_\Leech^+$, which is a substantial theorem (Dong--Griess type). The route
+taken instead is explicit: write down a form on all of $V_\Leech$, check by hand that it is
+nondegenerate, $\theta$-invariant and invariant at the generators $x_\beta$, restrict it to
+$V_\Leech^+$, use Theorem~\ref{ch04:thm:gen} to get full invariance, and conclude by uniqueness that
+it \emph{is} the canonical form.
+
+\subsection{Invariant forms in the library}
+
+\begin{definition}[Invariant bilinear form]\label{ch04:def:invform}
+Let $W$ be a VOA. A bilinear form $(\cdot|\cdot)$ on $W$ is \emph{(fully) invariant} if for every
+homogeneous $u\in W_{\mathrm{wt}}$, all $n\in\Z$ and $a,b\in W$,
+\begin{equation}\label{ch04:eq:FHL}
+  (u_{(n)}a\,|\,b)=(-1)^{\mathrm{wt}}\sum_{j=0}^{\mathrm{wt}}\frac{1}{j!}
+  \big(a\,\big|\,(L_1^ju)_{(2\mathrm{wt}-n-2-j)}\,b\big),
+\end{equation}
+the mode form of $(Y(u,z)a|b)=(a|Y(e^{zL_1}(-z^{-2})^{L_0}u,z^{-1})b)$ (Frenkel--Huang--Lepowsky).
+For a \emph{primary} $u$ ($L_1u=0$) only $j=0$ survives:
+$(u_{(n)}a|b)=(-1)^{\mathrm{wt}}(a|u_{(2\mathrm{wt}-n-2)}b)$. The form is \emph{normalized} if
+$(\chfourone|\chfourone)=1$. The same formula, with $u_{(n)}$ the action on a module $M$ and the
+form on $M$, defines invariance of a form on a module at $u$.
+\end{definition}
+
+\begin{leancode}
+-- VOA/Core/BilinearForm.lean
+structure InvariantForm (W : VertexOperatorAlgebra 𝒱) where
+  form : LinearMap.BilinForm ℂ 𝒱
+  virasoro_adj : ∀ (n : ℤ) (a b : 𝒱), form (W.L n a) b = form a (W.L (-n) b)
+
+def Normalized (B : InvariantForm W) : Prop := B.NormalizedAt 1
+def NormalizedAt (B : InvariantForm W) (κ : ℂ) : Prop :=
+  B.form W.vacuum W.vacuum = κ
+
+abbrev IsFullyInvariant (B : InvariantForm W) : Prop :=
+  ∀ (wt : ℤ) (u : 𝒱), u ∈ W.grading wt → ∀ (n : ℤ) (a b : 𝒱),
+    B.form (W.smul u n a) b
+      = (-1 : ℂ) ^ wt • ∑ j ∈ Finset.range (wt.toNat + 1), ((j.factorial : ℂ)⁻¹) •
+          B.form a (W.smul (((W.L 1) ^ j) u) (2 * wt - n - 2 - (j : ℤ)) b)
+
+def leftRadical (B : InvariantForm W) : Submodule ℂ 𝒱 := LinearMap.ker B.form
+
+-- VOA/Core/InvariantFormFHL2.lean
+noncomputable def canonicalInvariantForm (hne : W.vacuum ≠ 0)
+    (hqp : ∀ v, v ∈ W.grading 1 → W.L 1 v = 0) : InvariantForm W :=
+  canFormFHL hne (canDiagonal_unconditional hne hqp)
+
+theorem invariantForm_unique_FHL (hne : W.vacuum ≠ 0)
+    (hqp : ∀ v, v ∈ W.grading 1 → W.L 1 v = 0) {B : InvariantForm W}
+    (hB : B.IsFullyInvariant) (hn : B.Normalized) :
+    B.form = (canonicalInvariantForm hne hqp).form
+
+-- VOA/Moonshine/InvFormClosure.lean
+def FHLInv (N : OrdVModule W M) (B : LinearMap.BilinForm ℂ M) (wt : ℤ) (u : 𝒱) : Prop :=
+  ∀ (n : ℤ) (a b : M), B (mode (N.YM u) n a) b
+    = (-1 : ℂ) ^ wt • ∑ j ∈ Finset.range (wt.toNat + 1), ((j.factorial : ℂ)⁻¹) •
+        B a (mode (N.YM (((W.L 1) ^ j) u)) (2 * wt - n - 2 - (j : ℤ)) b)
+
+-- VOA/Moonshine/WbarRiesz.lean
+noncomputable def gradForm (W : VertexOperatorAlgebra 𝒱) (B : LinearMap.BilinForm ℂ 𝒱) (k : ℤ) :
+    LinearMap.BilinForm ℂ (W.grading k) :=
+  B.compl₁₂ (W.grading k).subtype (W.grading k).subtype
+def GradedNondeg (W : VertexOperatorAlgebra 𝒱) (B : LinearMap.BilinForm ℂ 𝒱) : Prop :=
+  ∀ k : ℤ, (gradForm W B k).Nondegenerate
+\end{leancode}
+
+\begin{dictionary}
+\lean{LinearMap.BilinForm ℂ 𝒱} is a bilinear form $\mathcal V\times\mathcal V\to\C$, applied as
+\lean{B a b}. An \lean{InvariantForm} in the library is a bilinear form with the Virasoro
+adjointness $(L_na|b)=(a|L_{-n}b)$ only; the full condition \eqref{ch04:eq:FHL} is the separate
+predicate \lean{IsFullyInvariant}, with $u$ in the first slot, the sum truncated at $j\le\mathrm{wt}$
+(\lean{wt.toNat + 1} terms; harmless since $L_1^ju=0$ for $j>\mathrm{wt}$ in a CFT-type VOA), and
+\lean{(-1 : ℂ) ^ wt} the sign. \lean{FHLInv N B wt u} is \eqref{ch04:eq:FHL} for one $u$ acting on a
+module \lean{N} (\lean{N.YM u} is the module vertex operator); with \lean{N = adjointModule W}, the
+VOA as a module over itself (\lean{YM = Y}), it is \eqref{ch04:eq:FHL} on $W$ for that $u$.
+\lean{canonicalInvariantForm hne hqp} is the canonical normalized fully invariant form; its
+hypotheses are $\chfourone\neq0$ and $L_1W_1=0$. \lean{invariantForm_unique_FHL} is uniqueness: any
+fully invariant normalized form equals it (``unconditional'' in the library: no further
+hypotheses). \lean{leftRadical} is $\{a:(a|\cdot)=0\}$. \lean{GradedNondeg W B} says the restriction
+of $B$ to each weight space $W_k$ (\lean{gradForm}: compose both slots with the inclusion) is
+nondegenerate in Mathlib's sense (\lean{Nondegenerate}: only $0$ pairs to zero with everything).
+\end{dictionary}
+
+\begin{leancode}
+-- VOA/Moonshine/WbarLeech.lean
+noncomputable def leechBVForm : InvariantForm leechVOAPlus :=
+  canonicalInvariantForm leechVOAPlus_vacuum_ne_zero leechVOAPlus_L1_one
+noncomputable abbrev leechBV : LinearMap.BilinForm ℂ SkewVP := leechBVForm.form
+theorem leechBV_gradedNondeg_of_isSimple (hsimple : leechVOAPlus.IsSimple) :
+    GradedNondeg leechVOAPlus leechBV
+\end{leancode}
+
+\begin{dictionary}
+\lean{leechBV} is the canonical form of $V_\Leech^+$ (\lean{SkewVP} is another name for the same
+type \lean{VPlus}). Its two hypotheses are discharged: $\chfourone\neq0$, and $L_1$ vanishes on
+$(V_\Leech^+)_1=0$ (Theorem~\ref{ch04:thm:wtone}). \lean{leechBV_gradedNondeg_of_isSimple} is the
+textbook route, \emph{conditional} on simplicity of $V_\Leech^+$, which the library does not prove;
+it is superseded by the unconditional Theorem~\ref{ch04:thm:hnd} below and is not used downstream.
+\end{dictionary}
+
+\begin{physics}
+An invariant bilinear form is the BPZ two-point pairing of states: $(a|b)=\langle a|b\rangle$ computed by conjugating $a$ to the point at infinity, $(Y(u,z)a|b)=(a|Y(e^{zL_1}(-z^{-2})^{L_0}u,z^{-1})b)$. It encodes the two-point function $\langle\phi(\infty)\phi(0)\rangle$ of a chiral field, with the factor $(-1)^{\mathrm{wt}}$ coming from the inversion $z\mapsto-1/z$. Existence and uniqueness (with $(\mathbf 1|\mathbf 1)=1$) mean that two-point functions are fixed by the conformal structure once the vacuum is normalised. Note this form is bilinear, not Hermitian, and is not positive-definite; unitarity (positive-definiteness) holds only on a real form, which is not used here.
+\end{physics}
+
+\subsection{The Fock form}
+
+\begin{definition}[The Fock form]\label{ch04:def:uform}
+On $F_r$ define the bilinear form $F$ by declaring the monomials orthogonal and
+\begin{equation*}
+  F(x^d,x^d)=\prod_{(m,a)}\big(-(m+1)\big)^{d_{(m,a)}}\,d_{(m,a)}!\,.
+\end{equation*}
+\end{definition}
+
+\begin{leancode}
+-- VOA/Moonshine/NondegFock.lean
+noncomputable def uVar (v : ℕ × Fin r) : ℂ := -((v.1 : ℂ) + 1)
+noncomputable def uWt (d : (ℕ × Fin r) →₀ ℕ) : ℂ :=
+  d.prod fun v m => uVar v ^ m * (m.factorial : ℂ)
+noncomputable def uForm (r : ℕ) : LinearMap.BilinForm ℂ (FockN r) :=
+  Finsupp.lsum ℂ fun d => LinearMap.smulRight LinearMap.id (uWt d • lcoeff ℂ d)
+
+theorem uForm_symm (p q : FockN r) : uForm r p q = uForm r q p
+theorem uForm_oscN (b : Fin r) (n : ℤ) (p q : FockN r) :
+    uForm r (oscN r 1 b n p) q = -uForm r p (oscN r 1 b (-n) q)
+theorem uForm_sigmaN (p q : FockN r) : uForm r (sigmaN r p) (sigmaN r q) = uForm r p q
+theorem uWt_ne_zero (d : (ℕ × Fin r) →₀ ℕ) : uWt d ≠ 0
+theorem uForm_EEVec (γ : L.carrier) (t : ℤ) (y y' : FockN (rank L)) :
+    uForm (rank L) (EEVec L γ t y) y' = uForm (rank L) y (EEVec L γ (-t) y')
+\end{leancode}
+
+\begin{dictionary}
+\lean{uVar (m,a)} $=-(m+1)$ and \lean{uWt d} $=\prod(-(m+1))^{d}\,d!$ (\lean{d.prod} is the product
+over the support of $d$). \lean{uForm} is defined on a polynomial $p=\sum_dp_dx^d$ in the first slot
+by $F(p,q)=\sum_dp_d\,\mathrm{uWt}(d)\,q_d$ (\lean{lcoeff ℂ d} extracts the coefficient $q_d$): this is
+Definition~\ref{ch04:def:uform}. The four theorems say: $F$ is symmetric; $h_b(n)^t=-h_b(-n)$ for
+every $n\in\Z$ (the adjoint for $F$); $\sigma$ is an isometry; and every monomial has nonzero norm.
+The last line is the transpose of the dressing: $F(EE(\gamma)_ty,y')=F(y,EE(\gamma)_{-t}y')$, i.e.\
+$EE(\gamma,z)^t=EE(\gamma,z^{-1})$.
+\end{dictionary}
+
+\begin{physics}
+The Fock form is the two-point function of the oscillator states: it makes $\alpha^a_{-n}$ and $\alpha^a_n$ conjugate up to the BPZ sign, $(\alpha_n)^t=-\alpha_{-n}$, while a positive Hermitian inner product uses $\alpha_n^\dagger=\alpha_{-n}$. The two differ by the sign $(-1)^{\mathrm{wt}}$ for a weight-$1$ current (the BPZ sign), and each oscillator contributes $-(m+1)$ to the norm. The form is nondegenerate on the Fock space because there are no null states among the oscillator excitations of free bosons.
+\end{physics}
+
+\paragraph{Why the minus sign.} We derive the norms from \eqref{ch04:eq:FHL} in three steps.
+\emph{(1) Specialize the formula.} Take $u=h_b(-1)\chfourone$. It has weight $\mathrm{wt}=1$, and it
+is primary: $L_1u$ would have weight $0$ and charge $0$ and be odd under $\sigma$, but the only
+weight-$0$ state is $\chfourone$, which is even; so $L_1u=0$ and only $j=0$ survives in
+\eqref{ch04:eq:FHL}. Its field is $Y(u,z)=h_b(z)=\sum_nh_b(n)z^{-n-1}$, so $u_{(n)}=h_b(n)$. With
+$\mathrm{wt}=1$ the index on the right is $2\cdot1-n-2=-n$, and \eqref{ch04:eq:FHL} becomes
+\begin{equation*}
+  (h_b(n)a\,|\,b)=(-1)^1\,(a\,|\,h_b(-n)b)=-(a\,|\,h_b(-n)b)\qquad\text{for all }n,a,b .
+\end{equation*}
+\emph{(2) Evaluate on the simplest vectors.} Take $n=-1$, $a=\chfourone$, $b=h_b(-1)\chfourone$. Then
+$h_b(-1)a=h_b(-1)\chfourone$ and $h_b(1)b=h_b(1)h_b(-1)\chfourone=[h_b(1),h_b(-1)]\chfourone=\chfourone$, so
+\begin{equation*}
+  (h_b(-1)\chfourone\,|\,h_b(-1)\chfourone)=-(\chfourone\,|\,\chfourone)=-1 .
+\end{equation*}
+\emph{(3) Iterate.} For a general monomial, move one creation operator $h_b(-m-1)$ from the left
+slot to the right; it becomes $-h_b(m+1)=-(m+1)\partial/\partial x_{(m,b)}$, and differentiating
+$x_{(m,b)}^{k}$ gives $k\,x_{(m,b)}^{k-1}$. Each removed oscillator therefore contributes a factor
+$-(m+1)$ and the multiplicities contribute $d_{(m,b)}!$, which is the norm formula of
+Definition~\ref{ch04:def:uform}; monomials with different exponents pair to $0$ because the
+derivatives run out. So the form is forced by invariance, minus sign included. Physically: the BPZ conjugation of a weight-$h$
+quasi-primary carries the sign $(-1)^h$, so for the current $J=i\partial X$ one gets $J_n^t=-J_{-n}$,
+whereas the \emph{Hermitian} (unitary) adjoint is $J_n^\dagger=J_{-n}$. The library's invariant form is
+the bilinear (BPZ) one.
+
+\begin{warning}
+The ``positive'' Fock form, $h(n)^t=+h(-n)$ (the restriction to real vectors of the familiar
+positive-definite inner product of the Fock space), is \emph{not} invariant in the sense of
+\eqref{ch04:eq:FHL}: it violates the weight-$1$ case just computed. The project first met this on the
+twisted sector, where the sign was checked by computer algebra (the positive form fails, the
+negative one works); the same convention is forced here. A form chosen for convenience with the
+wrong sign would have made Theorem~\ref{ch04:thm:hnd} below false or vacuous.
+\end{warning}
+
+\paragraph{Proof of the Fock-form properties.} Symmetry and $\sigma$-invariance are clear from the
+diagonal definition (monomials are $\sigma$-eigenvectors with eigenvalue $\pm1$). For $n=-(m+1)<0$:
+$F(x_{(m,b)}x^d,x^{d+e_{(m,b)}})=-(m+1)(d_{(m,b)}+1)F(x^d,x^d)$, while
+$h_b(m+1)x^{d+e_{(m,b)}}=(m+1)(d_{(m,b)}+1)x^d$; this is $F(h_b(n)p,q)=-F(p,h_b(-n)q)$ on monomials,
+and the case $n>0$ follows by symmetry. For the dressing: $EE(\gamma,z)$ is determined by its
+commutator with the oscillators, $[h_b(n),EE(\gamma)_t]=\gamma_b\,EE(\gamma)_{t-n}$ ($n\neq0$), and by its
+values on the vacuum, $EE(\gamma)_t\chfourone=S_t(\gamma)$ (or $0$ for $t<0$). Transposing the commutator with
+$h_b(n)^t=-h_b(-n)$ shows that $EE(\gamma)_{-t}$ satisfies the transposed relation, and the vacuum
+values match since $F(S_t(\gamma),1)=\delta_{t,0}$. Induction on monomials gives the identity.\qed
+
+\begin{status}
+\lean{uForm_symm}, \lean{uForm_oscN}, \lean{uForm_sigmaN}, \lean{uWt_ne_zero}, \lean{uForm_EEVec}:
+proved, no hypotheses (\leanpath{VOA/Moonshine/NondegFock.lean}).
+\end{status}
+
+\subsection{The charge sign and the lattice form}
+
+To extend $F$ to $V_L$ we pair the charge sector $\alpha$ with $-\alpha$:
+$B(p\otimes e^\alpha,q\otimes e^\beta)=\delta_{\alpha+\beta,0}\,c(\alpha)\,F(p,q)$ for some signs $c(\alpha)$.
+Which $c$? Test invariance at the primary $u=e^\gamma$ of weight $N=\tfrac12\langle\gamma,\gamma\rangle$:
+$(e^\gamma_{(n)}x|y)=(-1)^N(x|e^\gamma_{(2N-n-2)}y)$. With $x=p\otimes e^\beta$, $y=q\otimes e^{-\gamma-\beta}$
+and \eqref{ch04:eq:Yealpha}, the dressings on the two sides are matched by \lean{uForm_EEVec}
+(the indices are $t$ and $-t$), and what remains is
+\begin{equation*}
+  \varepsilon(\gamma,\beta)\,c(\gamma+\beta)=(-1)^N\varepsilon(\gamma,-\gamma-\beta)\,c(\beta)
+  =(-1)^N\varepsilon(\gamma,\gamma)\varepsilon(\gamma,\beta)\,c(\beta),
+\end{equation*}
+using bimultiplicativity and Proposition~\ref{ch04:prop:cocneg}. So $c(\gamma+\beta)=(-1)^N\varepsilon(\gamma,\gamma)c(\beta)$,
+and with $c(0)=1$ the unique solution is
+\begin{equation*}
+  c(\alpha)=(-1)^{\langle\alpha,\alpha\rangle/2}\,\varepsilon(\alpha,\alpha).
+\end{equation*}
+
+\begin{proposition}[The charge sign]\label{ch04:prop:chsign}
+For even $L$, $c$ is a character of $L$ with values in $\{\pm1\}$: $c(0)=1$, $c(\alpha+\beta)=c(\alpha)c(\beta)$,
+$c(-\alpha)=c(\alpha)$.
+\end{proposition}
+
+\begin{leancode}
+-- VOA/Moonshine/NondegLattice.lean
+noncomputable def chSign (α : L.carrier) : ℂ :=
+  (-1 : ℂ) ^ (LatGen.halfNorm L α) * latticeCocycle L α α
+theorem chSign_zero : chSign L 0 = 1
+theorem chSign_neg (α : L.carrier) : chSign L (-α) = chSign L α
+theorem chSign_add (hEven : L.Even) (α β : L.carrier) :
+    chSign L (α + β) = chSign L α * chSign L β
+\end{leancode}
+
+\begin{dictionary}
+\lean{chSign L α} is $c(\alpha)$, with \lean{halfNorm} as in Definition~\ref{ch04:def:lattice}.
+\lean{hEven} is needed in \lean{chSign_add} (through the commutator relation and $\tfrac12\langle\cdot,\cdot\rangle$
+being additive up to $\langle\alpha,\beta\rangle$).
+\end{dictionary}
+
+\begin{physics}
+The charge sign $c(\alpha)=(-1)^{\langle\alpha,\alpha\rangle/2}\varepsilon(\alpha,\alpha)$ is the phase in the two-point function $\langle e^{-\alpha}\,e^{\alpha}\rangle$ of a vertex operator with its conjugate: it comes from the BPZ inversion $(-1)^{\mathrm{wt}}$ for weight $\tfrac12\langle\alpha,\alpha\rangle$ and the Klein-factor sign. The fact that $c$ is a character says the sign conventions compose consistently under fusion of momenta, as charge is conserved in the OPE. Convention bookkeeping; no new dynamical content.
+\end{physics}
+
+\paragraph{Proof.} $c(\alpha+\beta)=(-1)^{N_\alpha+N_\beta+\langle\alpha,\beta\rangle}\varepsilon(\alpha,\alpha)
+\varepsilon(\alpha,\beta)\varepsilon(\beta,\alpha)\varepsilon(\beta,\beta)=c(\alpha)c(\beta)$ by the commutator relation
+$\varepsilon(\alpha,\beta)\varepsilon(\beta,\alpha)=(-1)^{\langle\alpha,\beta\rangle}$. Evenness under $-1$ is
+Proposition~\ref{ch04:prop:cocneg}.\qed
+
+\begin{warning}[title={Trap: the charge sign is not constant, in general}]
+In the literature one usually normalizes $\varepsilon(\alpha,\alpha)=(-1)^{\langle\alpha,\alpha\rangle/2}$; then $c\equiv1$
+and the lattice part of the form is simply $(e^\alpha|e^{-\alpha})=1$. The library's basis cocycle does
+not satisfy this normalization in general: in coordinates,
+$c(\alpha)=(-1)^{\sum_i\frac12\langle B_i,B_i\rangle\alpha_i}$ (the off-diagonal terms of
+$\tfrac12\langle\alpha,\alpha\rangle$ cancel against $c(\alpha,\alpha)$, and $\alpha_i^2\equiv\alpha_i$ mod $2$),
+which is the trivial character only if every basis vector has norm divisible by $4$. Since the basis
+is chosen by \lean{Module.Free.chooseBasis}, nobody can say which case occurs. A form with constant
+$c\equiv1$ was the natural first guess and is \emph{wrong} for this cocycle; the project's status
+notes record this correction (``NOT constant, because the library's basis cocycle does not satisfy
+$\varepsilon(\gamma,\gamma)=(-1)^{\langle\gamma,\gamma\rangle/2}$''). Defining $c$ by the formula above makes
+every statement true for \emph{every} basis, which is the only safe option.
+\end{warning}
+
+\begin{definition}[The lattice form]\label{ch04:def:latform}
+For even $L$, define the bilinear form $B$ on $V_L$ by
+\begin{equation*}
+  B(p\otimes e^\alpha,q\otimes e^\beta)=\delta_{\alpha+\beta,0}\;c(\alpha)\;F(p,q).
+\end{equation*}
+\end{definition}
+
+\begin{leancode}
+-- VOA/Moonshine/NondegLattice.lean
+noncomputable def chForm : LinearMap.BilinForm ℂ (L.carrier →₀ ℂ) :=
+  Finsupp.lsum ℂ fun α => LinearMap.smulRight LinearMap.id (chSign L α • Finsupp.lapply (-α))
+noncomputable def latForm : LinearMap.BilinForm ℂ (LatModuleGen L) :=
+  (uForm (rank L)).tmul (chForm L)
+
+theorem latForm_state (p q : FockN (rank L)) (α β : L.carrier) :
+    latForm L (latStateGen L p α) (latStateGen L q β)
+      = (if α + β = 0 then chSign L α else 0) * uForm (rank L) p q
+theorem latForm_symm (x y : LatModuleGen L) : latForm L x y = latForm L y x
+\end{leancode}
+
+\begin{dictionary}
+\lean{chForm} is the form on $\C\{L\}$ with $(e^\alpha,f)=c(\alpha)f(-\alpha)$, i.e.\
+$(e^\alpha,e^\beta)=\delta_{\alpha+\beta,0}c(\alpha)$ (\lean{Finsupp.lapply (-α)} evaluates at $-\alpha$).
+\lean{BilinForm.tmul} is the tensor product of two bilinear forms. \lean{latForm_state} is
+Definition~\ref{ch04:def:latform} on basis vectors, and the form is symmetric (using
+$c(-\alpha)=c(\alpha)$).
+\end{dictionary}
+
+\begin{physics}
+This is the BPZ two-point function on the full torus theory: it pairs momentum $\alpha$ with $-\alpha$ (charge conservation: the two-point function is nonzero only for neutral total charge) and the Fock part by the oscillator form. It is the two-point function of the vertex operators $e^\alpha$ and $e^{-\alpha}$ times the oscillator two-point function.
+\end{physics}
+
+\begin{theorem}[Properties of the lattice form]\label{ch04:thm:latform}
+Let $L$ be even. Then:
+\begin{enumerate}[label=(\alph*)]
+\item (invariance at $e^\gamma$) for all $\gamma\in L$, $n\in\Z$ and $x,y\in V_L$, with
+  $N=\tfrac12\langle\gamma,\gamma\rangle$,
+  \begin{equation*}B(e^\gamma_{(n)}x,y)=(-1)^NB(x,e^\gamma_{(2N-n-2)}y);\end{equation*}
+\item (nondegeneracy) if $x\neq0$ there is $y$ with $B(x,y)\neq0$;
+\item ($\theta$-invariance) $B(\theta x,\theta y)=B(x,y)$;
+\item (orthogonality) distinct weight spaces of $V_L$ are $B$-orthogonal.
+\end{enumerate}
+\end{theorem}
+
+\begin{leancode}
+-- VOA/Moonshine/NondegLattice.lean
+theorem latForm_Yeαvec (hEven : L.Even) (γ : L.carrier) (n : ℤ) (x y : LatModuleGen L) :
+    latForm L (mode (Yeαvec L γ) n x) y
+      = (-1 : ℂ) ^ (LatGen.halfNorm L γ) *
+          latForm L x (mode (Yeαvec L γ) (2 * LatGen.halfNorm L γ - n - 2) y)
+theorem latForm_nondeg (x : LatModuleGen L) (hx : x ≠ 0) : ∃ y, latForm L x y ≠ 0
+theorem latForm_thetaLat (x y : LatModuleGen L) :
+    latForm L (thetaLat L x) (thetaLat L y) = latForm L x y
+theorem latForm_orth_grading {m n : ℤ} (hmn : m ≠ n) {x y : LatModuleGen L}
+    (hx : x ∈ gradingLatGen L m) (hy : y ∈ gradingLatGen L n) : latForm L x y = 0
+\end{leancode}
+
+\begin{dictionary}
+In (a), \lean{mode (Yeαvec L γ) n} is $e^\gamma_{(n)}$: \lean{Yeαvec L γ} is the vertex operator of
+$e^\gamma$ in the lattice VOA (it is \lean{YfullGen} of the empty word, \lean{YfullGen_word} with
+$l=[\,]$; for Leech this is recorded as \lean{leechVOA_Y_latChargeGen}). $e^\gamma$ is primary of weight
+$N$, so (a) is \eqref{ch04:eq:FHL} at $u=e^\gamma$. (a) needs only evenness (not positive-definiteness);
+(b)--(d) need no hypothesis beyond the section variable \lean{L}. (b) is nondegeneracy on the whole
+space; since weight spaces are orthogonal (d) and finite-dimensional for positive-definite $L$, this
+is equivalent to nondegeneracy on each weight space.
+\end{dictionary}
+
+\begin{physics}
+(a) is the BPZ-invariance of the two-point function at the vertex operator $e^\gamma$: moving $e^\gamma$ from one slot to the other costs $(-1)^N$ and reverses the mode number. (b) says the two-point function has no null states: every nonzero state has a nonzero overlap with some partner. (c) says reflection is an isometry (the form is $\mathbb Z_2$-invariant), so that $V^+$ and $V^-$ are orthogonal. (d) is orthogonality of different energy levels, as for any two-point function of states of definite conformal weight.
+\end{physics}
+
+\paragraph{Proof.} (a) On basis vectors this is the computation that determined $c$, run backwards.
+(b) Write $x$ in the basis $x^d\otimes e^\alpha$; pick a pair $(d,\alpha)$ with nonzero coefficient. Then
+$B(x,x^d\otimes e^{-\alpha})=\text{coefficient}\cdot c(-\alpha)\cdot\mathrm{uWt}(d)\neq0$, since the basis
+vectors $x^{d'}\otimes e^{\alpha'}$ pair with $x^d\otimes e^{-\alpha}$ only for $(d',\alpha')=(d,\alpha)$.
+(c) $\sigma$ is an $F$-isometry and $c(-\alpha)=c(\alpha)$. (d) The pairing is between sectors $\alpha$ and
+$-\alpha$, which have the same half-norm, and $F$ pairs only equal Fock weights.\qed
+
+\begin{example}[The lattice form in low weight]
+In weight $1$: $B(h_a(-1)e^0,h_b(-1)e^0)=-\delta_{ab}$. In weight $2$, the basis of
+Example~\ref{ch04:ex:wt2} is orthogonal with
+\begin{gather*}
+  B(h_a(-2)e^0,h_a(-2)e^0)=-2,\qquad B(h_a(-1)^2e^0,h_a(-1)^2e^0)=(-1)^2\,2!=2,\\
+  B(h_a(-1)h_b(-1)e^0,h_a(-1)h_b(-1)e^0)=1\ (a\neq b),\qquad
+  B(e^\alpha\pm e^{-\alpha},e^\alpha\pm e^{-\alpha})=\pm2c(\alpha).
+\end{gather*}
+All are nonzero: the form is nondegenerate on $(V_\Leech)_2$ and, separately, on $(V_\Leech^+)_2$ and
+$(V_\Leech^-)_2$. On $(V_\Leech)_2$ the form is indefinite (both $2$ and $-2$ occur), as is to be
+expected of a bilinear BPZ form; definiteness is never used.
+\end{example}
+
+\begin{status}
+\lean{latForm_Yeαvec}, \lean{latForm_nondeg}, \lean{latForm_thetaLat},
+\lean{latForm_orth_grading}: proved, unconditional (hypothesis \lean{L.Even} where shown);
+\texttt{\#print axioms} for \lean{latForm_nondeg} and \lean{latForm_Yeαvec}:
+\texttt{[propext, Classical.choice, Quot.sound]} (\leanpath{VOA/Moonshine/NondegLattice.lean}).
+\end{status}
+
+\subsection{Restriction to \texorpdfstring{$V_\Lambda^+$}{V+} and identification with the canonical form}
+
+\begin{definition}\label{ch04:def:plusform}
+$B^+$ is the restriction of $B$ (for $L=\Leech$) to $V_\Leech^+$.
+\end{definition}
+
+\begin{leancode}
+-- VOA/Moonshine/NondegLeech.lean
+noncomputable def plusForm : LinearMap.BilinForm ℂ VPlus :=
+  (Nondeg.latForm leech).compl₁₂ (orbifold (Subgroup.zpowers leechTheta)).carrier.subtype
+    (orbifold (Subgroup.zpowers leechTheta)).carrier.subtype
+
+theorem plusForm_fhlInv_frameX0P (β : leech.carrier) :
+    FHLInv (adjointModule leechVOAPlus) plusForm (LatGen.halfNorm leech β) (frameX0P β)
+theorem plusForm_fhlInv {wt : ℤ} {u : VPlus} (hu : u ∈ leechVOAPlus.grading wt) :
+    FHLInv (adjointModule leechVOAPlus) plusForm wt u
+
+noncomputable def plusInvForm : InvariantForm leechVOAPlus where
+  form := plusForm
+  virasoro_adj := ...
+theorem plusInvForm_isFullyInvariant : plusInvForm.IsFullyInvariant
+theorem plusInvForm_normalized : plusInvForm.Normalized
+
+theorem leechBV_eq_plusForm : leechBV = plusForm :=
+  (invariantForm_unique_FHL leechVOAPlus_vacuum_ne_zero leechVOAPlus_L1_one
+    plusInvForm_isFullyInvariant plusInvForm_normalized).symm
+\end{leancode}
+
+\begin{dictionary}
+\lean{compl₁₂ f g} composes the two slots of a form with linear maps, here both the inclusion
+$V_\Leech^+\hookrightarrow V_\Leech$: so \lean{plusForm} is $B^+$. \lean{plusForm_fhlInv_frameX0P}
+is \eqref{ch04:eq:FHL} for $u=x_\beta$ (of weight $\tfrac12\langle\beta,\beta\rangle$) on $V_\Leech^+$;
+\lean{plusForm_fhlInv} is \eqref{ch04:eq:FHL} for every homogeneous $u\in V_\Leech^+$.
+\lean{plusInvForm} packages $B^+$ as an \lean{InvariantForm} (the Virasoro field, elided as
+``\lean{...}'', is a proof); it is fully invariant and normalized. The one-line proof of
+\lean{leechBV_eq_plusForm} is shown because it is the argument: uniqueness of the normalized fully
+invariant form. Note that this identifies the \emph{abstractly defined} canonical form \lean{leechBV}
+with the explicit $B^+$; nothing about \lean{leechBV} is assumed.
+\end{dictionary}
+
+\begin{physics}
+$B^+$ is the BPZ two-point pairing of the orbifold's chiral algebra, restricted from the parent torus theory to the $\theta$-even states. It is the natural inner product on the untwisted sector: correlators in the orbifold of $\mathbb Z_2$-even operators are the same as in the parent theory, so the two-point functions are inherited. The proof that this restricted form is the canonical one uses the generation theorem: invariance at the cosines $x_\beta$ propagates to the whole algebra by the OPE.
+\end{physics}
+
+\paragraph{Proof.} \emph{Invariance at $x_\beta$.} $x_\beta=e^\beta+e^{-\beta}$ is primary (it is a sum
+of primaries of the same weight), so \eqref{ch04:eq:FHL} at $x_\beta$ is the sum of
+Theorem~\ref{ch04:thm:latform}(a) for $\gamma=\pm\beta$.
+
+\emph{Invariance for all $u$.} Let $I\subseteq V_\Leech^+$ be the span of the homogeneous $u$ for which
+\eqref{ch04:eq:FHL} holds. It contains $\chfourone$, and it is closed under $n$-th products: this is
+the classical argument of Frenkel--Huang--Lepowsky, which derives invariance at $u_{(m)}v$ from
+invariance at $u$ and $v$ via the Jacobi identity (the adjoint operator $Y(e^{zL_1}(-z^{-2})^{L_0}u,z^{-1})$
+satisfies the opposite Jacobi identity), using that distinct weight spaces are orthogonal
+(Theorem~\ref{ch04:thm:latform}(d)). It is proved generically in the library
+(\lean{fhlInv_of_generates}, Chapter~\ref{ch:09}). By Theorem~\ref{ch04:thm:gen}, $I=V_\Leech^+$.
+
+\emph{Virasoro adjointness} is the slice $u=\omega$ of full invariance: $\omega$ has weight $2$ and
+$L_1\omega\in(V_\Leech^+)_1=0$, so \eqref{ch04:eq:FHL} reads $(L_na|b)=(a|L_{-n}b)$.
+\emph{Normalization}: $B(e^0,e^0)=c(0)F(1,1)=1$. \emph{Identification}: uniqueness.\qed
+
+\begin{theorem}[Nondegeneracy of the canonical form of $V_\Leech^+$]\label{ch04:thm:hnd}
+The canonical invariant form of $V_\Leech^+$ has zero radical, and is nondegenerate on every weight
+space $(V_\Leech^+)_k$.
+\end{theorem}
+
+\begin{leancode}
+-- VOA/Moonshine/NondegLeech.lean
+theorem plusForm_nondeg (x : VPlus) (hx : x ≠ 0) : ∃ y : VPlus, plusForm x y ≠ 0
+theorem leechBVForm_leftRadical : InvariantForm.leftRadical leechBVForm = ⊥
+theorem leechBV_gradedNondeg : GradedNondeg leechVOAPlus leechBV
+\end{leancode}
+
+\begin{dictionary}
+\lean{leechBVForm} is the canonical form of $V_\Leech^+$ (\lean{leechBV} is its underlying bilinear
+form); \lean{leftRadical … = ⊥} says its radical is zero, and \lean{leechBV_gradedNondeg} is
+nondegeneracy on each weight space (Definition: \lean{GradedNondeg}). No hypotheses. This is
+precisely the statement called \lean{hnd} in the project notes, the residual that made the operator
+$\overline W$ of Chapter~\ref{ch:09} conditional before it was discharged. How could it have been
+vacuous? If the form were identically zero, nondegeneracy would fail outright; if it were a form
+chosen by hand rather than the canonical one, it would not be the form used by $\overline W$ ---
+\lean{leechBV_eq_plusForm} closes that gap.
+\end{dictionary}
+
+\begin{physics}
+Nondegeneracy of the two-point pairing means the chiral algebra has no null states: no nonzero operator has vanishing two-point function with all operators of the same weight. In CFT terms this is the absence of a nontrivial ideal of null fields (the algebra is simple-like at the level of the invariant form), which is what is needed to define adjoints and conjugate operators in the orbifold. The proof is the physical argument in disguise: the parent theory is nondegenerate and $\theta$ is an isometry, so the pairing of an invariant state with itself and with the projected partner cannot vanish. Positive-definiteness is not claimed (the form is a BPZ bilinear form, indefinite on the complex space).
+\end{physics}
+
+\paragraph{Proof.} Let $x\in V_\Leech^+$, $x\neq0$. By Theorem~\ref{ch04:thm:latform}(b) there is $y\in V_\Leech$
+with $B(x,y)\neq0$. Then $Py=\tfrac12(y+\theta y)\in V_\Leech^+$ and, using $\theta x=x$ and
+$\theta$-invariance,
+\begin{equation*}
+  B(x,Py)=\tfrac12\big(B(x,y)+B(\theta x,\theta y)\big)=B(x,y)\neq0 .
+\end{equation*}
+So $B^+$, which is the canonical form, has zero radical. Since distinct weight spaces are orthogonal
+and each is finite-dimensional, a vector of $(V_\Leech^+)_k$ pairing to zero with $(V_\Leech^+)_k$ pairs
+to zero with everything; hence nondegeneracy on each weight space.\qed
+
+\begin{remark}[Consequences, deferred]
+With Theorem~\ref{ch04:thm:hnd} the adjoint $\overline W$ of the skew intertwiner $W$ exists, and the
+library's \lean{leechWbar_adj'}, \lean{leechWbar_comm'}, \lean{leechWbar_local'},
+\lean{leechWbar_homCov'} (also in \leanpath{NondegLeech.lean}) hold without hypotheses. Their
+statements and meaning belong to Chapter~\ref{ch:09}. Nondegeneracy is also what lets the project
+prove $\overline W\neq0$, which excludes the square-zero extension
+$V_\Leech^+\ltimes(V_\Leech^T)^+$ --- a VOA with $c=24$, $V_1=0$, $\dim V_2=196884$ and graded
+dimension $J$, but not simple and not $\Vnat$.
+\end{remark}
+
+\begin{status}
+\lean{plusForm_fhlInv}, \lean{leechBV_eq_plusForm}, \lean{plusForm_nondeg},
+\lean{leechBVForm_leftRadical}, \lean{leechBV_gradedNondeg}: proved, unconditional. \texttt{\#print
+axioms} for \lean{leechBV_eq_plusForm} and \lean{leechBV_gradedNondeg}: \texttt{[propext,
+Classical.choice, Quot.sound]}. Simplicity of $V_\Leech^+$ is \emph{not} proved and is not needed.
+(When this chapter was first written, the file docstring of \leanpath{NondegLeech.lean} said the file was not yet
+imported by the umbrella; that note was already stale --- it was imported. The docstring has since been
+corrected.)
+\end{status}
+%======================================================================
+\section{Traps and dead ends of this chapter, collected}\label{ch04:sec:traps}
+
+For the referee's convenience we collect the points where the formalization could have gone wrong,
+and what prevents it.
+\begin{enumerate}[label=(\arabic*)]
+\item \emph{Cocycle convention} (\S\ref{ch04:sec:theta}). The naive lift
+  $p\otimes e^\alpha\mapsto\sigma p\otimes e^{-\alpha}$ is an automorphism only because the library's
+  cocycle is bimultiplicative; for a general cocycle a correcting function is needed. Certified by the
+  proved \lean{thetaLat_mode}.
+\item \emph{Triviality of $\theta$} (\S\ref{ch04:sec:aut}). If $\theta$ were the identity, $V_\Leech^+$
+  would be $V_\Leech$. Excluded by \lean{leechTheta_ne_one} and $98580\neq196884$.
+\item \emph{Dimension statements and \lean{finrank}} (\S\ref{ch04:sec:wttwo}). Mathlib's
+  \lean{finrank} is $0$ on infinite-dimensional spaces and \lean{Set.ncard} is $0$ on infinite sets,
+  so a careless dimension statement could be ``true'' for the wrong reason. All spaces and sets
+  counted here are proved finite, and all counts are positive.
+\item \emph{Abstract versus concrete weight spaces.} The numbers are proved for
+  \lean{leechVOAPlus.grading k}, the weight spaces of the VOA itself, via the explicit linear
+  equivalences \lean{leechVOAPlusGradingTwoEquiv} and \lean{leechVOAPlusGradingEquiv} with the
+  concrete subspaces \lean{plusTwo}, \lean{plusK}.
+\item \emph{$n$-th product generation is not Zhu generation} (\S\ref{ch04:sec:generation}).
+  Theorem~\ref{ch04:thm:gen} must not be used where Zhu generation is needed (Chapter~\ref{ch:12}).
+\item \emph{Sign of the Fock form} (\S\ref{ch04:sec:form}). The positive Fock form is not invariant;
+  the negative (BPZ) one is.
+\item \emph{Constant charge sign} (\S\ref{ch04:sec:form}). The choice $(e^\alpha|e^{-\alpha})=1$ is wrong
+  for the library's cocycle; the sign $c(\alpha)=(-1)^{\langle\alpha,\alpha\rangle/2}\varepsilon(\alpha,\alpha)$ is
+  right for every basis.
+\item \emph{Nondegeneracy via simplicity} (\S\ref{ch04:sec:form}). The textbook route needs
+  simplicity of $V_\Leech^+$, not in the library; the conditional
+  \lean{leechBV_gradedNondeg_of_isSimple} exists but is superseded by the unconditional
+  \lean{leechBV_gradedNondeg}.
+\item \emph{Stale docstrings (since corrected).} When this chapter was first written, the module docstrings of
+  \leanpath{Generation.lean} and \leanpath{NondegLeech.lean} said these files were not wired into the
+  umbrella, although they were; at a pre-release build commit both docstrings say the files are imported.
+\end{enumerate}
+
+%======================================================================
+\section{Referee's checklist}\label{ch04:sec:checklist}
+
+All entries are in \leanpath{VOA/Moonshine/}; ``uncond.'' means: no hypothesis that is an unproved
+datum, and \texttt{\#print axioms} $=$ \texttt{[propext, Classical.choice, Quot.sound]} where it was
+run (marked $\ast$).
+
+{\footnotesize
+\begin{longtable}{>{\raggedright\arraybackslash}p{5.7cm}>{\raggedright\arraybackslash}p{4.4cm}>{\raggedright\arraybackslash}p{2.1cm}>{\raggedright\arraybackslash}p{1.9cm}}
+\toprule
+Lean declaration & intended meaning & hypotheses & status / check\\
+\midrule
+\endhead
+\lean{latticeCocycle_neg_neg} & $\varepsilon(-\alpha,-\beta)=\varepsilon(\alpha,\beta)$ & none & uncond.; Prop.~\ref{ch04:prop:cocneg}\\
+\lean{thetaLat}, \lean{thetaLat_tmul} & $\theta(p\otimes e^\alpha)=\sigma p\otimes e^{-\alpha}$, no correcting sign & none & definition; Def.~\ref{ch04:def:theta}\\
+\lean{thetaLat_mode}$^\ast$ & $\theta(u_{(n)}v)=(\theta u)_{(n)}(\theta v)$ & $L$ even, pos.-def. & uncond.; Thm.~\ref{ch04:thm:thetamode}\\
+\lean{thetaAut}, \lean{thetaAut_sq}$^\ast$ & $\theta\in\Aut(V_L)$, $\theta^2=1$ & $L$ even, pos.-def. & uncond.; Thm.~\ref{ch04:thm:thetaAut}\\
+\lean{thetaAut_ne_one}$^\ast$ & $\theta\neq1$ & $L\neq0$ & uncond.; Thm.~\ref{ch04:thm:thetaAut}\\
+\lean{leechTheta}, \lean{leechTheta_ne_one}$^\ast$ & $\theta_\Leech\in\Aut V_\Leech$, $\neq1$ & none & uncond.; Thm.~\ref{ch04:thm:thetaAut}\\
+\lean{leechVOAPlus} & $V_\Leech^+=V_\Leech^{\langle\theta\rangle}$ as a VOA & none & definition; Def.~\ref{ch04:def:VPlus}\\
+\lean{mem_leechVOAPlus_iff}$^\ast$ & $v\in V_\Leech^+\iff\theta v=v$ & none & uncond.; \S\ref{ch04:sec:plus}\\
+\lean{leechVOAPlus_centralCharge}$^\ast$ & $c(V_\Leech^+)=24$ & none & uncond.; \S\ref{ch04:sec:plus}\\
+\lean{leechVOAPlus_grading_one}$^\ast$ & $(V_\Leech^+)_1=0$ & none & uncond.; Thm.~\ref{ch04:thm:wtone}\\
+\lean{finrank_gradingLatGen_two} & $\dim(V_L)_2=r+\binom{r+1}2+\#L_4$ & even, pos.-def., rootless & uncond.; Thm.~\ref{ch04:thm:wt2rootless}\\
+\lean{finrank_plusTwo} & $\dim(V_L^+)_2=\binom{r+1}2+\tfrac12\#L_4$ & even, pos.-def., rootless & uncond.; Thm.~\ref{ch04:thm:plustwo}\\
+\lean{leechVOA_finrank_grading_two}$^\ast$ & $\dim(V_\Leech)_2=196884$ & none & uncond.; Thm.~\ref{ch04:thm:wt2rootless}\\
+\lean{leechVOAPlus_finrank_grading_two}$^\ast$ & $\dim(V_\Leech^+)_2=98580$ & none & uncond.; Thm.~\ref{ch04:thm:plustwo}\\
+\lean{finrank_gradingWN} & $\dim(F_r)_w=P(r,w)$ & none & uncond.; Def.~\ref{ch04:def:fockcount}\\
+\lean{hasProd_fockGenFun}$^\ast$ & $\sum P(r,w)q^w=\prod(1-q^n)^{-r}$ & none & uncond.; Thm.~\ref{ch04:thm:genfun}\\
+\lean{hasProd_fockSignedGenFun}$^\ast$ & $\sum(P^+-P^-)q^w=\prod(1+q^n)^{-r}$ & none & uncond.; Thm.~\ref{ch04:thm:genfun}\\
+\lean{finrank_gradingLatGen_eq_sum_theta} & $\dim(V_L)_k=\sum_n\#L_{2n}P(r,k-n)$ & even, pos.-def. & uncond.; Thm.~\ref{ch04:thm:dimVL}\\
+\lean{two_mul_finrank_plusK_eq_signed}$^\ast$ & $2\dim(V_L^+)_k=\dim(V_L)_k+P^{\mathrm s}(r,k)$ & even, pos.-def. & uncond.; Thm.~\ref{ch04:thm:dimVLplus}\\
+\lean{leechVOA_finrank_grading_three}$^\ast$ & $\dim(V_\Leech)_3=21493760$ & none & uncond.; Thm.~\ref{ch04:thm:wt3}\\
+\lean{leechVOAPlus_finrank_grading_three}$^\ast$ & $\dim(V_\Leech^+)_3=10745856$ & none & uncond.; Thm.~\ref{ch04:thm:wt3}\\
+\lean{leechPlus_generated}$^\ast$ & the $x_\beta$ ($\beta\in\Leech$) generate $V_\Leech^+$ under $n$-th products & none & uncond.; Thm.~\ref{ch04:thm:gen}\\
+\lean{uForm_oscN}, \lean{uForm_EEVec} & Fock form: $h(n)^t=-h(-n)$, $EE(z)^t=EE(z^{-1})$ & none & uncond.; Def.~\ref{ch04:def:uform}\\
+\lean{chSign_add} & $c(\alpha)=(-1)^{N_\alpha}\varepsilon(\alpha,\alpha)$ is a character & $L$ even & uncond.; Prop.~\ref{ch04:prop:chsign}\\
+\lean{latForm_Yeαvec}$^\ast$ & invariance of $B$ at every $e^\gamma$ & $L$ even & uncond.; Thm.~\ref{ch04:thm:latform}\\
+\lean{latForm_nondeg}$^\ast$ & $B$ nondegenerate on $V_L$ & none & uncond.; Thm.~\ref{ch04:thm:latform}\\
+\lean{latForm_thetaLat} & $\theta$ is a $B$-isometry & none & uncond.; Thm.~\ref{ch04:thm:latform}\\
+\lean{plusForm_fhlInv} & $B^+$ fully invariant on $V_\Leech^+$ & none & uncond.; \S\ref{ch04:sec:form}\\
+\lean{leechBV_eq_plusForm}$^\ast$ & canonical form of $V_\Leech^+$ $=B^+$ & none & uncond.; \S\ref{ch04:sec:form}\\
+\lean{leechBV_gradedNondeg}$^\ast$ & canonical form nondegenerate on each $(V_\Leech^+)_k$ (``\lean{hnd}'') & none & uncond.; Thm.~\ref{ch04:thm:hnd}\\
+\lean{leechBV_gradedNondeg_of_isSimple} & same, from simplicity & $V_\Leech^+$ simple (open) & conditional, superseded\\
+\bottomrule
+\end{longtable}
+}
+
+%======================================================================
+\section*{Notes and references}\addcontentsline{toc}{section}{Notes and references}\label{ch04:sec:notes}
+
+The involution $\theta$, the fixed-point algebra $V_\Leech^+$ and the decomposition
+$\Vnat=V_\Leech^+\oplus(V_\Leech^T)^+$ are due to I.~Frenkel, J.~Lepowsky and A.~Meurman, \emph{Vertex
+Operator Algebras and the Monster}, Pure and Applied Mathematics 134, Academic Press, Boston, 1988;
+the lift of $-1$ with its correcting function is \S10.4 there (the book also treats the central
+extensions and cocycles, the graded dimensions and the invariant forms used in this chapter). The earlier
+announcement is I.~Frenkel, J.~Lepowsky, A.~Meurman, \emph{A natural representation of the
+Fischer--Griess Monster with the modular function $J$ as character}, Proc.\ Natl.\ Acad.\ Sci.\ USA
+81 (1984) 3256--3260. Lattice vertex operators and their cocycles go back to R.~Borcherds,
+\emph{Vertex algebras, Kac--Moody algebras, and the Monster}, Proc.\ Natl.\ Acad.\ Sci.\ USA 83 (1986)
+3068--3071, and to the physics of I.~Frenkel and V.~Kac, \emph{Basic representations of affine Lie
+algebras and dual resonance models}, Invent.\ Math.\ 62 (1980) 23--66, and G.~Segal,
+\emph{Unitary representations of some infinite-dimensional groups}, Comm.\ Math.\ Phys.\ 80 (1981)
+301--342.
+
+Invariant bilinear forms on VOAs and the contragredient formula \eqref{ch04:eq:FHL} are from
+I.~Frenkel, Y.-Z.~Huang, J.~Lepowsky, \emph{On axiomatic approaches to vertex operator algebras and
+modules}, Mem.\ Amer.\ Math.\ Soc.\ 104 (1993), no.~494; uniqueness and the criterion $L_1V_1=0$ are
+from H.~Li, \emph{Symmetric invariant bilinear forms on vertex operator algebras}, J.\ Pure Appl.\
+Algebra 96 (1994) 279--297. The textbook treatment followed by the library is T.~Gannon,
+\emph{Moonshine beyond the Monster}, Cambridge University Press, 2006, Chapter~5 (lattice VOAs in
+\S5.2--5.3, the involution in \S5.3.6). For the structure of $V_L^+$ (simplicity, generation by low
+weights, representations) see C.~Dong and R.~Griess, \emph{Rank one lattice type vertex operator
+algebras and their automorphism groups}, J.\ Algebra 208 (1998) 262--275; C.~Dong and K.~Nagatomo,
+\emph{Representations of vertex operator algebra $V_L^+$ for rank one lattice $L$}, Comm.\ Math.\
+Phys.\ 202 (1999) 169--195; and T.~Abe, C.~Dong, H.~Li, \emph{Fusion rules for the vertex operator
+algebras $M(1)^+$ and $V_L^+$}, Comm.\ Math.\ Phys.\ 253 (2005) 171--219 (arXiv:math/0310425). The
+orbifold viewpoint in physics is L.~Dixon, J.~Harvey, C.~Vafa, E.~Witten, \emph{Strings on orbifolds},
+Nucl.\ Phys.\ B 261 (1985) 678--686, and for $\Vnat$ L.~Dixon, P.~Ginsparg, J.~Harvey, \emph{Beauty
+and the beast: superconformal symmetry in a Monster module}, Comm.\ Math.\ Phys.\ 119 (1988)
+221--241. The spherical-design property of the Leech minimal vectors mentioned in
+Remark~\ref{ch04:rem:design} is in J.~H.~Conway and N.~J.~A.~Sloane, \emph{Sphere Packings, Lattices
+and Groups}, 3rd ed., Springer, 1999, and B.~Venkov's chapter there.
+
+The Lean material of this chapter was written in the LeanVOA project (repository maintainers
+F.~K.~Popov and L.~Rastelli), files \leanpath{VOA/Moonshine/LatticeInvolution.lean} through
+\leanpath{NondegLeech.lean}; the route choices recorded here (no correcting sign, the counting trick
+instead of traces, generation by all $x_\beta$ via scaling, and the explicit lattice form in place of
+simplicity) are documented in the project's
+\texttt{Notes/MonsterRoadmap.md} and the ``Status'' sections of \texttt{Notes/M8GluingPlan.md}.

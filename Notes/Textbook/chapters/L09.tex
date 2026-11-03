@@ -1,0 +1,2105 @@
+\chapter{Graded first-order rigidity of affine \texorpdfstring{$\mathfrak{sl}_2$}{sl(2)}: Linshaw--Qi and admissible levels}\label{ch:L09}
+
+\providecommand{\lninesl}{\mathfrak{sl}_2}
+\providecommand{\lnineg}{\mathfrak{g}}
+\providecommand{\lnineV}{\mathcal{V}}
+\providecommand{\lnineone}{\mathbf{1}}
+\providecommand{\lnineDer}{\operatorname{Der}}
+\providecommand{\lninead}{\operatorname{ad}}
+\providecommand{\lninehat}{\widehat{\mathfrak{sl}}_2}
+
+This chapter documents the release of the library named in the front matter. The chapter was first written against an earlier commit (the ``documented
+commit'' of the historical records below); the mathematics it describes was completed in the commit
+immediately before that one (``Prove uniform negative-admissible affine sl2 graded
+rigidity''). Quotations from the repository are printed in \texttt{leancode} boxes, which
+\texttt{scripts/textbook/sync.py} checks to occur verbatim in the source files of the release
+(docstrings and comments are omitted from the quotations, never the code);
+tool output is printed in plain boxes.
+
+The question of this chapter is easy to state. Take the simple affine vertex operator algebra
+$L_k(\lninesl)$ --- the chiral algebra of the $SU(2)$ Wess--Zumino--Witten model at level $k$ --- and
+ask whether its operator product expansion can be deformed. Not deformed by a change of
+coordinates (renaming the fields, which changes nothing), but genuinely: is there a one-parameter
+family of vertex algebras $V_t$, with $V_0 = L_k(\lninesl)$, that is not just $L_k(\lninesl)$ in
+disguise? A VOA with no such infinitesimal family is called \emph{rigid}. The library works to first
+order and with gradings: its notion is \emph{graded first-order rigidity} (deformations over
+$\C[t]/(t^2)$, the vertex operation deformed, the vacuum fixed, the weight grading respected; a
+deformation is trivial when it is the coboundary of a grade-preserving, vacuum-fixing $\varphi$). Every
+rigidity statement in this chapter is meant in that sense, and nothing is claimed about formal,
+ungraded or grading-moving deformations. The library proves:
+
+\begin{theorem}[informal; precise form in Theorem~\ref{l09:thm:headline}]
+Let $p,q$ be coprime positive integers with $2 \le p < 2q$, and put $k = p/q - 2$. Then every
+graded first-order deformation of the simple affine VOA $L_k(\lninesl)$ is trivial.
+\end{theorem}
+\begin{physics}
+The $SU(2)$ WZW model at level $k$ is the CFT of a string moving on the group manifold $SU(2)\cong S^3$
+with $k$ units of $H$-flux; its holomorphic currents $J^a(z)$ generate $L_k(\lninesl)$. At negative fractional
+$k$ the corresponding CFTs are non-unitary (negative central charge $c = 3k/(k+2)$, e.g.\ $c=-6$ at $k=-4/3$).
+The theorem says such a chiral algebra admits no infinitesimal change of its OPEs other than field
+redefinitions: there is no ``chiral conformal manifold'' through it. A physicist expects this because the
+only continuous parameter of the current OPE \eqref{l09:eq:currentOPE} is $k$, and at admissible $k$ the
+null-vector relations exist only at that value. This is a heuristic; the proof is below.
+\end{physics}
+
+
+The levels covered are exactly the \emph{negative admissible} levels of Kac and Wakimoto:
+$k = -4/3$, $-1/2$, $-8/5$, $-2/3$, $-12/7$, $-5/4$, \ldots{} (every rational number $k\in(-2,0)$
+whose shifted level $k+2$ has numerator at least $2$ in lowest terms). The case $k=-4/3$ is
+Theorem~5.1 of Linshaw and Qi (arXiv:2601.12017); the uniform statement is new in this library.
+
+\begin{status}
+The headline is \lean{VOA.AffineSl2GeneralRigidity.negative_admissible_graded_rigidity} in
+\leanpath{VOA/Examples/AffineSl2AdmissibleRigidity.lean}. Its only hypotheses are the four numerical
+conditions $2\le p$, $0<q$, $\gcd(p,q)=1$, $p<2q$; no singular-vector, determinant, character,
+representation-theoretic or reconstruction premise remains. The Linshaw--Qi level is separately
+\lean{VOA.LQ43.L43_graded_rigidity} (no hypotheses at all). While writing this chapter,
+\texttt{\#print axioms} was re-run on both (with \texttt{lake env lean -DmaxSynthPendingDepth=3}
+against the built tree), and on every other headline declaration of the chapter; the answer was in
+every case \texttt{[propext, Classical.choice, Quot.sound]}. The PBW theorem \lean{VOA.pbw} (Chapter~\ref{ch:L02}; formerly a project axiom, now a theorem) is
+\emph{not} used anywhere in this chapter's results, even though they concern an affine
+Lie-algebra construction: the affine vacuum module is shown nonzero through a PBW theorem
+\emph{proved} by Wakimoto triangularity, not through \lean{VOA.pbw}. Both theorems are therefore
+\emph{unconditional} statements of graded first-order rigidity. Two caveats from the release audit
+(\texttt{Notes/Textbook/referee/RELEASE\_AUDIT\_RIGIDITY.md}) accompany them: only graded first-order
+deformations are covered, and the non-vacuity of the rigidity notion (that some VOA fails it) was argued on
+paper only. The second caveat has since been discharged: the library proves that the universal Virasoro VOA
+$V(c,0)$ is not graded rigid, for every $c$ (\lean{VOA.}\allowbreak\lean{VirPoly.}\allowbreak\lean{not_}\allowbreak\lean{isRigidGraded_}\allowbreak\lean{virasoroVOA}; the witness $\partial_cY$ moves the
+central charge, which \lean{FirstOrderDeformation} permits; Section~\ref{l09:sec:deform}, second warning). The full record is in
+Section~\ref{l09:sec:verification}.
+\end{status}
+
+\paragraph{How to read this chapter.}
+Every definition and theorem appears as a mathematical statement, then its Lean declaration
+copied verbatim, then a fidelity-check box (titled \emph{From the mathematics to the Lean
+statement}) that decodes the Lean, lists every hypothesis, traces every defined term to its
+definition, compares with the literature, and says how the statement could have been wrong or
+vacuous. Proofs are explained on paper. Sections~\ref{l09:sec:affine}--\ref{l09:sec:deform} set up
+the objects (affine $\lninesl$, admissible levels, deformations); Section~\ref{l09:sec:whitehead} is
+the Lie-algebra cohomology needed to normalise a deformation;
+Section~\ref{l09:sec:lq} is the story of Linshaw--Qi's Theorem~5.1, including the
+\emph{tautological bundled hypothesis} that an earlier revision of the library carried and how it
+was removed; Sections~\ref{l09:sec:uniform}--\ref{l09:sec:headline} give the uniform proof;
+Section~\ref{l09:sec:boundary} describes the (conditional) boundary-level $C_2$ programme that lives
+in the same files. The chapter ends with the verification record, the referee's checklist, and
+notes and references.
+
+\paragraph{A physicist's preview.}
+In a two-dimensional conformal field theory, the chiral algebra is the algebra of holomorphic
+fields and their operator product expansions (OPEs). For the $SU(2)$ WZW model the chiral algebra
+is generated by three currents $J^e(z), J^h(z), J^f(z)$ with OPE
+\begin{equation}\label{l09:eq:currentOPE}
+  J^a(z)\,J^b(w) \sim \frac{k\,\kappa(a,b)}{(z-w)^2} + \frac{J^{[a,b]}(w)}{z-w},
+\end{equation}
+where $\kappa$ is the normalised Killing form. The OPE has exactly two pieces of data: the
+structure constants of $\lninesl$ (which cannot change continuously --- $\lninesl$ is rigid as a Lie
+algebra) and the number $k$ in the double pole. A first-order deformation of the OPE therefore
+has, morally, one candidate direction: \emph{change the level}, $k \mapsto k + \delta t$. For the
+\emph{universal} affine algebra $V^k(\lninesl)$ this is a genuine deformation --- the algebras
+$V^{k+t}(\lninesl)$ form an honest family. For the \emph{simple} quotient $L_k(\lninesl)$ at an
+admissible level something new happens: $L_k$ is defined by imposing a null-vector relation
+$s = 0$, and the null vector exists only at that particular $k$. Changing the level breaks the
+null relation, so the deformation is inconsistent unless $\delta = 0$. The whole chapter is the
+rigorous version of this sentence: the pole parameter $\delta$ is shown to be well defined (after a
+gauge fixing that uses Whitehead's lemma), the null relations are shown to force
+$\delta \cdot P'(k) = 0$ for an explicit polynomial $P$, and the Kac determinant is used to show
+$P'(k)\neq 0$.
+
+\section{Affine \texorpdfstring{$\mathfrak{sl}_2$}{sl(2)} and its simple quotients}\label{l09:sec:affine}
+
+This section recalls, with the Lean source, the objects in the headline theorem. The detailed
+construction of the affine VOA (reconstruction, Sugawara vector, Wakimoto realisation, PBW
+theorem) is Chapter~\ref{ch:L08}; the general notions of vertex operator algebra, ideals and
+simplicity are in Chapters~\ref{ch:L03} and~\ref{ch:L04}. Here we give what a reader needs to parse every statement.
+
+\subsection{The Lie algebra \texorpdfstring{$\mathfrak{sl}_2$}{sl(2)} and its normalised Killing form}
+
+$\lninesl$ is the three-dimensional complex Lie algebra with basis $e,f,h$ and brackets
+\begin{equation*}
+  [h,e] = 2e,\qquad [h,f] = -2f,\qquad [e,f] = h .
+\end{equation*}
+Its invariant symmetric bilinear forms form a one-dimensional space; the \emph{normalised Killing
+form} $\kappa$ is the one with $\kappa(e,f) = \kappa(f,e) = 1$, $\kappa(h,h) = 2$ and all other basis
+pairings zero (it is $\tfrac14$ of the Killing form $\operatorname{tr}(\lninead x\,\lninead y)$, and
+equals the trace form $\operatorname{tr}(xy)$ in the defining $2\times 2$ representation). The
+library realises $\lninesl$ as coordinate vectors, with the colour convention $e=0$, $f=1$, $h=2$:
+
+\begin{leancode}
+abbrev Sl2 : Type := Fin 3 → ℂ
+\end{leancode}
+\begin{leancode}
+def kappa : Fin 3 → Fin 3 → ℂ
+  | 0, 1 => 1
+  | 1, 0 => 1
+  | 2, 2 => 2
+  | _, _ => 0
+\end{leancode}
+(\leanpath{VOA/Examples/AffineSl2.lean}; the bracket is defined there by the structure constants
+$f^{ab}{}_c$ above, and \lean{kappaForm} is the bilinear form with matrix \lean{kappa}, proved
+invariant as \lean{kappaForm_isInvariant}.)
+
+\subsection{The affine Lie algebra and the vacuum module}
+
+The affine Lie algebra $\lninehat = \lninesl\otimes\C[t,t^{-1}] \oplus \C C \oplus \C\ell_0$ has
+brackets
+\begin{equation}\label{l09:eq:affinebracket}
+  [x\otimes t^m, y\otimes t^n] = [x,y]\otimes t^{m+n} + m\,\kappa(x,y)\,\delta_{m+n,0}\,C,
+  \qquad C \text{ central},
+\end{equation}
+and $\ell_0$ the degree derivation. We write $J^a_m$ for the action of $a\otimes t^m$. Fix a complex
+number $k$, the \emph{level}. The \emph{vacuum module} (also called the generalised Verma module
+induced from the trivial $\lninesl$-module) is
+\begin{equation*}
+  V^k(\lninesl) = U(\lninehat)\big/ J(k),\qquad
+  J(k) = \text{left ideal generated by } x\otimes t^n\ (n\ge 0),\ C - k,\ \ell_0 .
+\end{equation*}
+Its vacuum $\lnineone$ is the class of $1$; it is annihilated by all non-negative modes, and $C$
+acts as $k$. By the PBW theorem, $V^k(\lninesl)$ has basis the ordered monomials
+$J^{a_1}_{-n_1}\cdots J^{a_r}_{-n_r}\lnineone$ with all $n_i\ge 1$; the grading by $L_0$ (energy) is
+$\sum n_i$. The library builds exactly this quotient (\leanpath{VOA/Foundations/AffineLie.lean}):
+
+\begin{leancode}
+def vacuumGens (k : ℂ) : Set (UEnv 𝔤 κ hκ) :=
+  {a | (∃ (x : 𝔤) (n : ℤ), 0 ≤ n ∧ a = ι ℂ (ofLoop κ hκ x n))
+        ∨ a = ι ℂ (C κ hκ) - algebraMap ℂ (UEnv 𝔤 κ hκ) k
+        ∨ a = ι ℂ (ell0 κ hκ)}
+\end{leancode}
+\begin{leancode}
+noncomputable def vacuumIdeal (k : ℂ) : Submodule (UEnv 𝔤 κ hκ) (UEnv 𝔤 κ hκ) :=
+  Submodule.span _ (vacuumGens κ hκ k)
+\end{leancode}
+\begin{leancode}
+abbrev vacuumSpace (k : ℂ) : Type _ := UEnv 𝔤 κ hκ ⧸ vacuumIdeal κ hκ k
+\end{leancode}
+and, for $\lninesl$, gives the carrier a (historically chosen, slightly misleading) name:
+\begin{leancode}
+noncomputable abbrev WakModule (k : ℂ) : Type :=
+  vacuumSpace kappaForm kappaForm_isInvariant k
+\end{leancode}
+
+\begin{dictionary}
+\lean{UEnv 𝔤 κ hκ} is Mathlib's universal enveloping algebra of the affine Lie algebra
+\lean{AffineLie 𝔤 κ hκ}; \lean{ι ℂ} is the canonical map $\lnineg\to U(\lnineg)$;
+\lean{ofLoop κ hκ x n} is $x\otimes t^n$; \lean{C κ hκ} is the central element and \lean{ell0} the
+degree derivation. \lean{Submodule.span _ S} with the ring $U$ acting on itself on the left is the
+\emph{left} ideal generated by $S$, and \lean{⧸} is the quotient module. So \lean{vacuumSpace k} is
+literally $U(\lninehat)/J(k)$ as above. The name \lean{WakModule} is a historical artefact: the
+type is the universal vacuum module $V^k(\lninesl)$, \emph{not} a Wakimoto (free-field) module. The
+Wakimoto realisation enters only as a tool for proving that this module is nonzero and has a PBW
+basis.
+\end{dictionary}
+
+\begin{warning}
+\textbf{Where \lean{VOA.pbw} could have entered, and why it does not.} A quotient $U/J$ by a left
+ideal can be zero (if $1\in J$); a VOA structure on the zero module satisfies every axiom, so
+every theorem about it would be vacuously true. The library's PBW theorem
+\lean{VOA.pbw} (Chapter~\ref{ch:L02}; an axiom in earlier versions of the library) asserts precisely that affine vacuum vectors are nonzero, and
+one lemma in \leanpath{VOA/Examples/AffineSl2VOAInstance.lean} (\lean{closed_vacuum_ne_zero}) uses it.
+The results of this chapter avoid that lemma: they take nonvanishing from
+\lean{AffineSl2BoundaryMaximalIdeal.affineSl2_vacuum_ne_zero}, which is proved from the affine PBW
+basis \lean{AffineSl2WakimotoLiLeading.affineSl2PBWBasis}, itself proved (Chapter~\ref{ch:L08}) by
+leading-term triangularity in the Wakimoto realisation. The \texttt{\#print axioms} record of
+Section~\ref{l09:sec:verification} confirms that no result here reaches \lean{VOA.pbw}.
+\end{warning}
+
+\subsection{The universal affine VOA and its simple quotient}
+
+For $k\neq -2$ (the \emph{critical} level is $k = -h^\vee = -2$) the Sugawara vector
+\begin{equation*}
+  \omega = \frac{1}{2(k+2)}\Bigl(\tfrac12 h_{-1}h_{-1} + e_{-1}f_{-1} + f_{-1}e_{-1}\Bigr)\lnineone
+\end{equation*}
+makes $V^k(\lninesl)$ a vertex operator algebra of central charge $c = 3k/(k+2)$, with state--field
+map determined by $Y(J^a_{-1}\lnineone, z) = \sum_n J^a_n z^{-n-1}$. The library's closed instance is
+\lean{AffineVOA.affineSl2VOA_closed k hk} (\leanpath{VOA/Examples/AffineSl2Virasoro.lean}, built in
+Chapter~\ref{ch:L08}); this chapter abbreviates it:
+
+\begin{leancode}
+noncomputable abbrev universal := affineSl2VOA_closed k hk
+\end{leancode}
+\begin{leancode}
+noncomputable abbrev simple := QuotVOA.maxQuotientVOA (universal k hk)
+\end{leancode}
+(\leanpath{VOA/Examples/AffineSl2GeneralRigidityBasis.lean}, under \lean{variable (k : ℂ) (hk : k + 2 ≠ 0)}.)
+Here the simple quotient is formed by the general construction of Chapter~\ref{ch:L04}:
+
+\begin{leancode}
+def maxGradedIdeal (W : VertexOperatorAlgebra 𝒱) : Submodule ℂ 𝒱 :=
+  sSup (ProperGradedIdeals W)
+\end{leancode}
+\begin{leancode}
+def maxQuotientVOA (W : VertexOperatorAlgebra 𝒱) :
+    VertexOperatorAlgebra (𝒱 ⧸ maxGradedIdeal W) :=
+  quotientVOA W (maxGradedIdeal W) (maxGradedIdeal_isIdeal W) (maxGradedIdeal_isGradedIdeal W)
+\end{leancode}
+(both in \leanpath{VOA/Core/QuotientVOA.lean}), with ideals and simplicity defined by
+(\lean{IsIdeal}, \lean{IsSimple} in \leanpath{VOA/Core/BilinearForm.lean}; \lean{IsGradedIdeal} in
+\leanpath{VOA/Core/QuotientVOA.lean}):
+
+\begin{leancode}
+def IsIdeal (W : VertexOperatorAlgebra 𝒱) (I : Submodule ℂ 𝒱) : Prop :=
+  ∀ (u v : 𝒱) (n : ℤ), v ∈ I → W.smul u n v ∈ I
+\end{leancode}
+\begin{leancode}
+def IsGradedIdeal (W : VertexOperatorAlgebra 𝒱) (I : Submodule ℂ 𝒱) : Prop :=
+  I = ⨆ n : ℤ, I ⊓ W.grading n
+\end{leancode}
+\begin{leancode}
+def IsSimple (W : VertexOperatorAlgebra 𝒱) : Prop :=
+  (⊤ : Submodule ℂ 𝒱) ≠ ⊥ ∧ ∀ I : Submodule ℂ 𝒱, W.IsIdeal I → I = ⊥ ∨ I = ⊤
+\end{leancode}
+
+\begin{definition}\label{l09:def:Lk}
+For $k\neq-2$, $L_k(\lninesl) := V^k(\lninesl)/\mathcal{I}_k$, where $\mathcal{I}_k$ is the sum of all
+proper graded ideals of $V^k(\lninesl)$ (the maximal proper graded ideal). In Lean,
+$L_k(\lninesl)$ is \lean{AffineSl2GeneralRigidity.simple k hk}.
+\end{definition}
+\begin{physics}
+$V^k(\lninesl)$ is the chiral algebra generated freely by the currents subject only to the OPE
+\eqref{l09:eq:currentOPE}; $L_k(\lninesl)$ is obtained by setting all null states (states orthogonal to
+everything under the BPZ/Shapovalov pairing) to zero, which is what a physical CFT with a nondegenerate
+two-point function does. The Sugawara vector $\omega$ is the stress tensor $T(z) = \frac{1}{2(k+2)}(J J)(z)$
+built from the currents; $V_1$ is the space of conserved currents, here the $SU(2)$ symmetry currents.
+\end{physics}
+
+
+\begin{dictionary}
+\lean{W.smul u n v} is the $n$-th product $u_{(n)}v$, i.e.\ the coefficient of $z^{-n-1}$ in
+$Y(u,z)v$ (Chapter~\ref{ch:L03}). An \lean{IsIdeal} is a subspace closed under left multiplication by
+all modes of all states (for a VOA, skew-symmetry makes left ideals two-sided). \lean{IsGradedIdeal I}
+says $I$ is the sum of its homogeneous pieces. \lean{ProperGradedIdeals W} (in
+\leanpath{VOA/Core/QuotientVOA.lean}) is the set of graded ideals not containing the vacuum; its
+supremum \lean{sSup} is again a proper graded ideal (a graded ideal is proper iff its weight-zero
+part, which is inside $\C\lnineone$, is zero, and that property is preserved under sums). So
+\lean{maxGradedIdeal} is the maximal proper graded ideal and \lean{maxQuotientVOA} the quotient VOA,
+as in the textbook. \lean{IsSimple} quantifies over \emph{all} ideals, graded or not, and requires
+the algebra to be nonzero. The library proves, for every non-critical $k$:
+\end{dictionary}
+
+\begin{leancode}
+theorem simple_vacuum_ne_zero : (simple k hk).vacuum ≠ 0 :=
+  SimpleQuot.maxQuotientVOA_vacuum_ne_zero (universal k hk)
+    (AffineSl2BoundaryMaximalIdeal.affineSl2_vacuum_ne_zero k hk)
+\end{leancode}
+\begin{leancode}
+theorem simple_isSimple : (simple k hk).IsSimple :=
+  QuotVOA.isSimple_maxQuotientVOA' _
+    (AffineSl2BoundaryMaximalIdeal.affineSl2_vacuum_ne_zero k hk)
+\end{leancode}
+
+\begin{remark}
+The library does not need, and does not prove, a presentation of $L_k(\lninesl)$ by generators
+and relations (for example, that $\mathcal{I}_k$ is generated by a single singular vector). The
+quotient is defined intrinsically, which is the safest possible choice for a rigidity theorem: the
+object is the standard $L_k(\lninesl)$ by definition, not ``$V^k$ modulo whatever relation we wrote
+down''. The cost is that facts about $\mathcal{I}_k$ have to be extracted from its definition; the
+main tool for that is Li's theorem that $\mathcal{I}_k$ equals the radical of the invariant bilinear
+form (Chapter~\ref{ch:L04}), used repeatedly below.
+\end{remark}
+
+\subsection{The weight-one space: the currents survive}
+
+The weight-one space of $L_k(\lninesl)$ is spanned by the images of the three currents
+$J^a_{-1}\lnineone$. For $k \neq 0$ they remain linearly independent: if
+$\sum_a c_a J^a_{-1}\lnineone \in \mathcal{I}_k$, apply the positive modes $J^b_1$, which map into
+weight zero; since $J^b_1 J^a_{-1}\lnineone = k\,\kappa(b,a)\lnineone$ and $\lnineone\notin\mathcal{I}_k$,
+nondegeneracy of $\kappa$ and $k\neq0$ force all $c_a=0$. (At $k=0$ the opposite happens: the
+currents are null, $L_0(\lninesl)=\C$, and $V_1 = 0$.) The library records the result as an
+$\lninesl$-triple basis of the weight-one Lie algebra:
+
+\noindent File \leanpath{VOA/Examples/AffineSl2GeneralRigidityBasis.lean}.
+\begin{leancode}
+theorem simple_sl2BasisOnWeightOne (hk0 : k ≠ 0) : Sl2BasisOnWeightOne (simple k hk) :=
+  ⟨(simple_weightOneBasis k hk hk0), (simple_weightOneTriple k hk hk0)⟩
+\end{leancode}
+where (\leanpath{VOA/Examples/AffineSl2Rigidity43.lean})
+\begin{leancode}
+def Sl2BasisOnWeightOne {𝒱 : Type*} [AddCommGroup 𝒱] [Module ℂ 𝒱]
+    (W : VertexOperatorAlgebra 𝒱) : Prop :=
+  ∃ b : Module.Basis (Fin 3) ℂ ↥(W.grading 1), IsSl2Triple (b 1) (b 0) (b 2)
+\end{leancode}
+
+\begin{dictionary}
+\lean{W.grading 1} is the weight-one subspace $V_1$ (Chapter~\ref{ch:L03}); \lean{↥} turns the
+submodule into a type. \lean{Module.Basis (Fin 3) ℂ ↥(W.grading 1)} is a basis of $V_1$ indexed by
+$\{0,1,2\}$, and Mathlib's \lean{IsSl2Triple h e f} says $[e,f]=h$, $[h,e]=2e$, $[h,f]=-2f$ and
+$h\ne0$, for the Lie bracket on $V_1$ given by $[a,b] = a_{(0)}b$ (Chapter~\ref{ch:L04}). Note the
+argument order: \lean{IsSl2Triple (b 1) (b 0) (b 2)} means $b_0 = e$, $b_1 = h$, $b_2 = f$. So
+\lean{Sl2BasisOnWeightOne W} is the statement ``$V_1\cong\lninesl$ as Lie algebras''. The theorem
+\lean{simple_sl2BasisOnWeightOne} needs $k\ne0$, and this is the only reason the headline theorem
+excludes $k=0$.
+\end{dictionary}
+
+\section{Admissible levels}\label{l09:sec:admissible}
+
+\subsection{From integrable to admissible}
+
+At a non-negative integer level $k$, $L_k(\lninesl)$ is the chiral algebra of the unitary $SU(2)_k$
+WZW model: it is rational and $C_2$-cofinite, it has exactly $k+1$ irreducible modules (spins
+$0,\tfrac12,\ldots,\tfrac k2$), and its maximal ideal is generated by the single singular vector
+$(e_{-1})^{k+1}\lnineone$. Kac and Wakimoto (1988) discovered that a much larger set of levels
+shares the most striking feature of the integrable case --- a finite set of highest-weight modules
+whose characters span a representation of $SL_2(\Z)$ --- although the resulting theories are not
+unitary.
+
+\begin{definition}[Kac--Wakimoto]\label{l09:def:admissible}
+A level $k\in\C$ is \emph{admissible} for $\lninesl$ if
+\begin{equation*}
+  k + 2 = \frac{p}{q},\qquad p,q\in\Z_{>0},\qquad \gcd(p,q) = 1,\qquad p\ge 2 .
+\end{equation*}
+It is \emph{negative admissible} if moreover $k<0$, i.e.\ $p<2q$; it is \emph{boundary admissible} if
+$p = 2$ (the smallest allowed numerator, which forces $q$ odd).
+\end{definition}
+\begin{physics}
+Admissible levels are the fractional levels at which the $\widehat{\mathfrak{sl}}_2$ characters still
+form a finite-dimensional representation of the modular group $SL_2(\Z)$ (Kac--Wakimoto), so they define
+non-unitary CFTs with a modular-invariant set of characters: fractional-level $SL(2)$ WZW models, appearing in
+Polyakov's 2d gravity, in the Drinfeld--Sokolov/coset description of the $(p,q)$ Virasoro minimal models,
+and as chiral algebras of 4d $\mathcal{N}=2$ Argyres--Douglas theories. Negative admissible means negative
+level, where the theory is necessarily non-unitary.
+\end{physics}
+
+
+The shift by $2$ is the dual Coxeter number $h^\vee$ of $\lninesl$; for a general simple
+$\lnineg$ the condition reads $k+h^\vee = p/q$ with $p\ge h^\vee$ (when $q$ is prime to the lacing
+number). The integrable levels are the case $q = 1$, $p = k+2\ge2$. The bound $p\ge2$ is not
+decoration: $k = -3/2$ ($k+2 = 1/2$) is not admissible.
+
+\begin{leancode}
+def AdmissibleLevel (k : ℂ) : Prop :=
+  ∃ p q : ℕ, 2 ≤ p ∧ 1 ≤ q ∧ Nat.Coprime p q ∧ k + 2 = (p : ℂ) / (q : ℂ)
+\end{leancode}
+(\leanpath{VOA/Examples/AdmissibleLevel.lean}, namespace \lean{VOA.Admissible}.)
+
+\begin{dictionary}
+\lean{∃ p q : ℕ} quantifies over natural numbers; \lean{Nat.Coprime p q} is $\gcd(p,q)=1$; the casts
+\lean{(p : ℂ)} embed $\N\subset\C$, and \lean{/} is division in $\C$. This is exactly
+Definition~\ref{l09:def:admissible} with $q\ge1$ (the inclusive convention that makes integrable
+levels admissible; some papers impose $q\ge2$ to talk only about fractional levels, and the file
+docstring records that a future fractional-only notion must say \lean{1 < q} explicitly). The
+witnesses are unique (\lean{AdmissibleLevel.witness_unique}), so ``the'' $p$ and $q$ of an
+admissible level are well defined. \emph{Note for the referee:} the headline theorem does
+\emph{not} use this predicate; it takes $p$ and $q$ as explicit natural numbers with the same
+conditions plus $p<2q$ (Section~\ref{l09:sec:headline}). The predicate is used for the examples
+and for the arithmetic lemmas below.
+\end{dictionary}
+
+The library records the elementary consequences:
+
+\begin{leancode}
+theorem AdmissibleLevel.add_two_ne_zero {k : ℂ} (h : AdmissibleLevel k) : k + 2 ≠ 0 := by
+\end{leancode}
+\begin{leancode}
+theorem admissibleLevel_boundary (m : ℕ) :
+    AdmissibleLevel (-2 + 2 / ((2 * m + 1 : ℕ) : ℂ)) := by
+\end{leancode}
+\begin{leancode}
+theorem centralChargeA_of_add_two_eq {k p q : ℂ} (hp : p ≠ 0) (hq : q ≠ 0)
+    (hk : k + 2 = p / q) : centralChargeA k = 3 - 6 * q / p := by
+\end{leancode}
+and the named examples \lean{admissibleLevel_neg_four_thirds} ($(p,q) = (2,3)$),
+\lean{admissibleLevel_neg_half} ($(3,2)$), \lean{admissibleLevel_neg_eight_fifths} ($(2,5)$),
+\lean{admissibleLevel_natCast} ($k = n$, $(p,q) = (n+2,1)$). All are pure arithmetic, proved by
+\lean{norm_num}/\lean{omega}.
+
+\begin{example}\label{l09:ex:levels}
+The first negative admissible levels, ordered by denominator, with central charge
+$c = 3k/(k+2) = 3 - 6q/p$:
+\begin{center}
+\begin{tabular}{cccccc}
+\toprule
+$q$ & $p$ & $k = p/q-2$ & $c$ & boundary? & weight of first singular vector $q(p-1)$\\
+\midrule
+$2$ & $3$ & $-1/2$ & $-1$ & no & $4$\\
+$3$ & $2$ & $-4/3$ & $-6$ & yes & $3$\\
+$3$ & $4$ & $-2/3$ & $-3/2$ & no & $9$\\
+$3$ & $5$ & $-1/3$ & $-3/5$ & no & $12$\\
+$4$ & $3$ & $-5/4$ & $-5$ & no & $8$\\
+$4$ & $5$ & $-3/4$ & $-9/5$ & no & $16$\\
+$4$ & $7$ & $-1/4$ & $-3/7$ & no & $24$\\
+$5$ & $2$ & $-8/5$ & $-12$ & yes & $5$\\
+\bottomrule
+\end{tabular}
+\end{center}
+(For $q = 1$ the condition $2\le p<2$ is empty: integrable levels are never negative.) At
+$k=-1/2$ the algebra $L_{-1/2}(\lninesl)$ is the $\Z_2$-orbifold of the $\beta\gamma$ system; at
+$k=-4/3$ its representation theory was constructed by Adamovi\'c (2005), and in
+the physics literature it appears as the chiral algebra of the $(A_1,D_3)$ Argyres--Douglas theory;
+more generally the boundary levels $k = -4n/(2n+1)$ are associated with the $(A_1,D_{2n+1})$
+theories (Creutzig; Beem--Rastelli and collaborators). These identifications are background, not
+used below.
+\end{example}
+
+\subsection{The vacuum singular vector at an admissible level}
+
+Why do admissible levels make $V^k(\lninesl)$ non-simple? The Kac--Kazhdan criterion says that a
+Verma module of highest weight $\hat\lambda$ over $\lninehat$ has a singular vector of weight
+$\hat\lambda - n\beta$ whenever $\beta$ is a positive real root and
+\begin{equation}\label{l09:eq:KK}
+  2(\hat\lambda+\hat\rho,\beta) = n(\beta,\beta),\qquad n\in\Z_{>0} .
+\end{equation}
+For the vacuum, $\hat\lambda = k\Lambda_0$, and with the standard normalisation
+$(\alpha,\alpha) = 2$, $(\delta,\Lambda_0) = 1$, $\hat\rho = 2\Lambda_0 + \alpha/2$, the positive real roots
+are $m\delta + \alpha$ ($m\ge0$) and $m\delta - \alpha$ ($m\ge1$), with
+\begin{equation*}
+  (\hat\lambda+\hat\rho, m\delta+\alpha) = m(k+2) + 1,\qquad
+  (\hat\lambda+\hat\rho, m\delta-\alpha) = m(k+2) - 1 .
+\end{equation*}
+The root $\alpha$ itself ($m=0$) gives $n = 1$ for every $k$: this is the singular vector
+$f_0\lnineone$, which is already zero in $V^k$ (it is what distinguishes the vacuum module from the
+Verma module). At $k+2 = p/q$, the condition for $\beta = m\delta - \alpha$ is $mp/q - 1 = n$, i.e.\
+$mp = q(n+1)$; by coprimality $m = \ell q$ and $n = \ell p - 1$, and the smallest solution is
+\begin{equation}\label{l09:eq:firstsing}
+  \beta = q\delta - \alpha,\quad n = p-1:\qquad
+  \text{a singular vector of energy } q(p-1) \text{ and } h_0\text{-weight } 2(p-1).
+\end{equation}
+For $\beta = m\delta+\alpha$ the condition $mp + q = nq$ forces $m = \ell q$, $n = \ell p + 1$ and energy
+strictly above $q(p-1)$. At $k=-4/3$ this is the weight-three singular vector of $h_0$-weight $2$
+found by Adamovi\'c (Section~\ref{l09:sec:lq}); for integrable $k$ ($q=1$) it is $(e_{-1})^{k+1}\lnineone$.
+Kac--Wakimoto and Malikov--Feigin--Fuchs give explicit formulas; Adamovi\'c--Milas proved that this
+vector generates the maximal ideal. None of these literature facts is \emph{assumed} by the
+headline theorem: the uniform proof (Section~\ref{l09:sec:determinant}) works with a determinant
+instead of an explicit singular vector. The arithmetic half of \eqref{l09:eq:firstsing} is proved
+as stated (\leanpath{VOA/Examples/AffineSl2AdmissibleRootArithmetic.lean}):
+
+\begin{leancode}
+theorem first_minus_resonance_unique {p q m r : ℕ} (hp : 2 ≤ p) (hq : 0 < q)
+    (hm : 0 < m) (hcop : p.Coprime q) (he : m*p = q*(r+1))
+    (hbound : m*r ≤ q*(p-1)) : m=q ∧ r=p-1 := by
+\end{leancode}
+\begin{leancode}
+theorem plus_resonance_energy_gt {p q m r : ℕ} (hp : 2 ≤ p) (hq : 0 < q)
+    (hm : 0 < m) (hcop : p.Coprime q) (he : m*p+q=q*r) :
+    q*(p-1) < m*r := by
+\end{leancode}
+
+\begin{dictionary}
+In \lean{first_minus_resonance_unique}, $m$ is the $\delta$-coefficient of the root $m\delta-\alpha$,
+$r$ is the multiplicity $n$ of \eqref{l09:eq:KK} (so \lean{he} is $mp = q(n+1)$), and \lean{m*r} is
+the energy $m\cdot n$ of the corresponding singular weight; the conclusion is that the only
+solution with energy at most $q(p-1)$ is $m = q$, $n = p-1$. The natural-number subtraction
+\lean{p-1} is honest because $p\ge2$. \lean{plus_resonance_energy_gt} says the other root family
+only resonates above that energy. Both are statements about integers only; the file docstring
+stresses that ``this proves arithmetic only, not an affine determinant formula or existence of a
+singular state''.
+\end{dictionary}
+
+\subsection{Physics: WZW models at fractional level}
+
+The admissible $L_k(\lninesl)$ are the chiral algebras of $SL(2)$ WZW models at fractional level,
+which appeared in Polyakov's light-cone two-dimensional gravity ($SL(2,\mathbb{R})$ current algebra
+at level $k$ with $k+2$ rational), in the coset and Drinfeld--Sokolov constructions of Virasoro
+minimal models (the quantum Hamiltonian reduction of $L_k(\lninesl)$ at $k+2 = p/q$ is the $(p,q)$
+minimal model, with $c_{\mathrm{Vir}} = 1 - 6(p-q)^2/(pq)$; the library has the arithmetic as
+\lean{VOA.DSsl2.dsCentralCharge_eq_minimalModel}), and more recently as chiral algebras of
+four-dimensional $\mathcal{N}=2$ superconformal theories. They are not rational in the usual sense
+(they have infinitely many irreducible weak modules), not $C_2$-cofinite, but \emph{quasi-lisse}:
+the associated variety is the nilpotent cone of $\lninesl$ (Arakawa; a literature fact, not formalised in the
+library: associated varieties and quasi-lisseness are not defined there, see Chapter~\ref{ch:L16}). Rigidity
+is then a non-trivial statement precisely because none of the usual finiteness properties is
+available: Linshaw and Qi's abstract emphasises that their $-4/3$ result shows ``neither
+$C_2$-cofiniteness nor rationality is a necessary condition for deformation rigidity''.
+
+\section{First-order deformations and graded rigidity}\label{l09:sec:deform}
+
+The general deformation theory of the library is the subject of Chapter~\ref{ch:L07}, where it is
+applied to the Virasoro minimal models. To keep this chapter self-contained we recall every
+definition the headline uses, with its Lean source (\leanpath{VOA/Core/Deformation.lean} and
+\leanpath{VOA/Core/DeformationGraded.lean}).
+
+\subsection{The idea}
+
+Let $V$ be a vertex operator algebra with state--field map $Y$. Let $R = \C[t]/(t^2)$ be the ring of
+dual numbers and $V_R = R\otimes_\C V = V\oplus tV$. A \emph{first-order deformation} of $V$ is a
+bilinear map
+\begin{equation*}
+  Y_1 : V\otimes V \to V((x)),\qquad u\otimes v\mapsto Y_1(u,x)v = \sum_n u^1_{(n)}v\,x^{-n-1},
+\end{equation*}
+such that $Y^t(u,x) := Y(u,x) + t\,Y_1(u,x)$, extended $R$-bilinearly, makes $V_R$ a vertex algebra
+over $R$ with the same vacuum $\lnineone$. Expanding each vertex-algebra axiom in powers of $t$, the
+$t^0$ part is the axiom for $V$ and the $t^1$ part is a linear condition on $Y_1$: $Y_1$ is a
+\emph{2-cocycle}. A \emph{trivial} deformation is one obtained from $Y$ by an $R$-linear change of
+coordinates $1 + t\varphi$ of $V_R$, which gives
+\begin{equation}\label{l09:eq:cobdy}
+  Y_1(u,x)v = (\delta\varphi)(u,x)v := Y(\varphi u,x)v - \varphi\bigl(Y(u,x)v\bigr) + Y(u,x)\varphi v;
+\end{equation}
+these are the \emph{coboundaries}. Rigidity is ``every cocycle is a coboundary'', i.e.\ the
+vanishing of the second deformation cohomology. Physically: a first-order deformation is an
+infinitesimal change of the OPE coefficients compatible with associativity (crossing), and it is
+trivial when it is undone by an infinitesimal field redefinition. A rigid chiral algebra has no
+infinitesimal moduli at all --- in particular it cannot sit inside a continuous family of chiral
+algebras, which is the chiral-algebra analogue of ``no exactly marginal deformations''.
+
+\subsection{The Lean definitions}
+
+\begin{leancode}
+structure FirstOrderDeformation (W : VertexOperatorAlgebra 𝒱) where
+  Y1 : 𝒱 →ₗ[ℂ] (End ℂ 𝒱)⟦z^±⟧
+  truncation : ∀ u v : 𝒱, ∃ N : ℤ, ∀ n : ℤ, N ≤ n → mode (Y1 u) n v = 0
+  vacuum_Y1 : Y1 W.vacuum = 0
+  creation : ∀ (u : 𝒱) (n : ℤ), -1 ≤ n → mode (Y1 u) n W.vacuum = 0
+  jacobi : ∀ (u v x : 𝒱) (ℓ m n : ℤ),
+      (∑ᶠ i : ℤ, (negOnePow i * cbz ℓ i) •
+          (mode (Y1 u) (ℓ + m - i) (W.smul v (n + i) x)
+            + W.smul u (ℓ + m - i) (mode (Y1 v) (n + i) x)
+            - negOnePow ℓ •
+              (mode (Y1 v) (ℓ + n - i) (W.smul u (m + i) x)
+                + W.smul v (ℓ + n - i) (mode (Y1 u) (m + i) x))))
+        = ∑ᶠ i : ℤ, cbz m i •
+            (W.smul (mode (Y1 u) (ℓ + i) v) (m + n - i) x
+              + mode (Y1 (W.smul u (ℓ + i) v)) (m + n - i) x)
+\end{leancode}
+\begin{leancode}
+def smul₁ (D : FirstOrderDeformation W) (u : 𝒱) (n : ℤ) (v : 𝒱) : 𝒱 := mode (D.Y1 u) n v
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Shape.} \lean{(End ℂ 𝒱)⟦z^±⟧} is the space of two-sided formal series with coefficients in
+$\End(V)$ (Chapter~\ref{ch:L01}); \lean{𝒱 →ₗ[ℂ] …} is a $\C$-linear map, so \lean{Y1} is linear in
+$u$ and (coefficientwise) in $v$: the bilinear $Y_1$ above. \lean{mode f n = f (-n-1)} (the
+coefficient of $z^{-n-1}$), so \lean{D.smul₁ u n v} is $u^1_{(n)}v$.
+\textbf{The four fields.} \lean{truncation} is the $t$-part of ``$Y(u,x)v$ has finitely many
+negative powers'' (Y1 lands in $V((x))$). \lean{vacuum_Y1} is the $t$-part of $Y^t(\lnineone,x) =
+\mathrm{id}$. \lean{creation} is the $t$-part of $u^t_{(n)}\lnineone = 0$ for $n\ge0$ and
+$u^t_{(-1)}\lnineone = u$, i.e.\ $u^1_{(n)}\lnineone = 0$ for $n\ge-1$. \lean{jacobi} is the
+$t$-linear part of the Borcherds identity (Chapter~\ref{ch:L03}): \lean{cbz ℓ i} is the binomial
+coefficient $\binom{\ell}{i}$ ($0$ for $i<0$), \lean{negOnePow i} is $(-1)^i$, \lean{∑ᶠ} is a finite
+sum; on each side the single $Y_1$ is inserted in each possible slot (Leibniz rule).
+\textbf{Could the sums be vacuous?} Mathlib defines \lean{∑ᶠ} of an infinite-support family to be
+$0$, which would make \lean{jacobi} read $0=0$. The library proves both supports finite
+(\lean{jacobiLHS_support_finite}, \lean{jacobiRHS_support_finite}), so the axiom is the genuine
+identity. \textbf{What is \emph{not} imposed.} The conformal vector, the operator $L_0$ and the
+translation operator $T = L_{-1}$ are not required to be preserved; nor is any grading condition.
+Gradedness is a separate predicate (next).
+\end{dictionary}
+
+\noindent File \leanpath{VOA/Core/Deformation.lean}.
+\begin{leancode}
+def IsGraded (D : FirstOrderDeformation W) : Prop :=
+  ∀ (k ℓ : ℤ) (u : 𝒱), u ∈ W.grading k → ∀ (v : 𝒱), v ∈ W.grading ℓ → ∀ (n : ℤ),
+    D.smul₁ u n v ∈ W.grading (k + ℓ - n - 1)
+\end{leancode}
+\noindent File \leanpath{VOA/Core/Deformation.lean}.
+\begin{leancode}
+def GradePreserving (W : VertexOperatorAlgebra 𝒱) (φ : 𝒱 →ₗ[ℂ] 𝒱) : Prop :=
+  ∀ (k : ℤ) (u : 𝒱), u ∈ W.grading k → φ u ∈ W.grading k
+\end{leancode}
+\noindent File \leanpath{VOA/Core/Deformation.lean}.
+\begin{leancode}
+def IsCoboundary (W : VertexOperatorAlgebra 𝒱) (f : 𝒱 →ₗ[ℂ] (End ℂ 𝒱)⟦z^±⟧) : Prop :=
+  ∃ φ : 𝒱 →ₗ[ℂ] 𝒱, φ W.vacuum = 0 ∧ GradePreserving W φ ∧
+    ∀ (u : 𝒱) (n : ℤ) (v : 𝒱),
+      mode (f u) n v = W.smul (φ u) n v - φ (W.smul u n v) + W.smul u n (φ v)
+\end{leancode}
+\noindent File \leanpath{VOA/Core/Deformation.lean}.
+\begin{leancode}
+def IsTrivial (D : FirstOrderDeformation W) : Prop := IsCoboundary W D.Y1
+\end{leancode}
+\noindent File \leanpath{VOA/Core/Deformation.lean}.
+\begin{leancode}
+def IsRigid (W : VertexOperatorAlgebra 𝒱) : Prop :=
+  ∀ D : FirstOrderDeformation W, D.IsTrivial
+\end{leancode}
+\noindent File \leanpath{VOA/Core/DeformationGraded.lean}.
+\begin{leancode}
+def IsRigidGraded (W : VertexOperatorAlgebra 𝒱) : Prop :=
+  ∀ D : FirstOrderDeformation W, D.IsGraded → D.IsTrivial
+\end{leancode}
+
+\begin{definition}\label{l09:def:rigid}
+A first-order deformation $D$ is \emph{graded} if $u^1_{(n)}v \in V_{a+b-n-1}$ whenever $u\in V_a$,
+$v\in V_b$ (the same weight rule as $u_{(n)}v$). It is \emph{trivial} if $Y_1 = \delta\varphi$ as in
+\eqref{l09:eq:cobdy} for some linear $\varphi:V\to V$ that preserves every $V_n$ and kills $\lnineone$.
+$V$ is \emph{graded rigid} (in full: \emph{graded first-order rigid}) if every graded first-order
+deformation is trivial. In this chapter ``graded rigid'' always means graded first-order rigid.
+\end{definition}
+\begin{physics}
+A graded first-order deformation is an infinitesimal change of all OPE coefficients that keeps conformal
+weights fixed and keeps the OPE associative (crossing-symmetric) to first order; a trivial one is an
+infinitesimal field redefinition $\phi\mapsto\phi + t\varphi(\phi)$. In a full CFT, deformations are generated by
+exactly marginal operators; for a chiral algebra, the analogous question is whether the OPE data have
+moduli. In a full CFT with currents $J$, $\bar J$, the current--current operator $J\bar J$ is the standard
+exactly marginal deformation (it changes the radius of a free boson); at the purely chiral level, the
+simplest non-trivial deformation is moving the level of the universal algebra $V^k$, which is a continuous
+parameter there (for a compact WZW model the level is quantised, but the chiral algebra does not know that). Graded rigidity says there are no such moduli.
+\end{physics}
+
+
+\begin{dictionary}
+\lean{IsGraded} is literally the weight rule, for all integers $k,\ell,n$. \lean{IsCoboundary} is
+\eqref{l09:eq:cobdy} mode by mode: $u^1_{(n)}v = (\varphi u)_{(n)}v - \varphi(u_{(n)}v) +
+u_{(n)}(\varphi v)$. The conditions $\varphi\lnineone = 0$ (so the vacuum is unchanged by
+$1+t\varphi$) and grade preservation are the standard ones. \lean{IsRigidGraded} is
+Definition~\ref{l09:def:rigid}: universally quantified over \emph{all} graded deformations.
+\textbf{Comparison with Linshaw--Qi.} In their paper (arXiv:2601.12017v2, \S2) a first-order
+deformation is a $Y_1$ making $\C[t]/(t^2)\otimes V$ a grading-restricted vertex algebra \emph{with
+the grading operator and the derivative operator preserved}; a deformation is trivial when
+$Y_1 = \delta\varphi$ for a grading-preserving $\varphi$ with $\varphi(\lnineone)=0$. The library's
+trivial deformations are the same. The library's class of graded deformations is \emph{larger}: it
+does not require the translation operator to be preserved ($u^1_{(-2)}\lnineone$ may be nonzero).
+Since \lean{IsRigidGraded} asserts triviality for every member of a larger class, \textbf{the Lean
+notion of graded rigidity is at least as strong as Linshaw--Qi's} (it implies theirs). It is not
+weaker in any respect. Besides $T$, the conformal vector is not part of the data either: a deformation may
+make $\omega$ stop being conformal. In standard terms, \lean{IsRigidGraded W} is the vanishing of the graded
+second deformation cohomology $H^2$ of $W$ as a vertex algebra with the vacuum fixed --- the same gauge group
+as Linshaw--Qi (grade-preserving $\varphi$, $\varphi\lnineone = 0$) and a larger class of deformations. So
+\lean{L43_graded_rigidity} below is Linshaw--Qi's Theorem~5.1 in their own sense, not merely an analogue.
+\end{dictionary}
+
+\begin{example}[the scaling coboundary]\label{l09:ex:scaling}
+For every VOA, $\varphi = L_0$ preserves the grading and kills $\lnineone$, so $\delta(L_0)$ is a
+trivial graded deformation. On homogeneous $u\in V_a$, $v\in V_b$,
+\begin{equation*}
+  \delta(L_0)(u)_{(n)}v = a\,u_{(n)}v - (a+b-n-1)\,u_{(n)}v + b\,u_{(n)}v = (n+1)\,u_{(n)}v .
+\end{equation*}
+In Lean this is \lean{NonzeroDeform.scalingDeformation} with
+\noindent File \leanpath{VOA/Examples/NonzeroDeformation.lean}.
+\begin{leancode}
+theorem smul₁_scalingDeformation_homog (W : VertexOperatorAlgebra 𝒱) {a b : ℤ} {u v : 𝒱}
+    (hu : u ∈ W.grading a) (hv : v ∈ W.grading b) (n : ℤ) :
+    (scalingDeformation W).smul₁ u n v = ((n : ℂ) + 1) • W.smul u n v := by
+\end{leancode}
+This one example will refute two of the hypotheses that an earlier version of the library carried
+(Section~\ref{l09:sec:lq}). Note also that $\delta(L_0)$ does not preserve the translation operator
+(\lean{smul₁_scaling_conformal_vacuum}: $\omega^1_{(-2)}\lnineone = -L_{-3}\lnineone$), which
+illustrates the remark above that the library's deformation class is larger than Linshaw--Qi's.
+\end{example}
+
+\begin{warning}
+\textbf{\lean{IsRigid} is the wrong target.} \lean{IsRigid} quantifies over \emph{all}
+first-order deformations, graded or not, while coboundaries must be grade-preserving. The
+coboundary $\delta(L_1)$ of the non-grade-preserving operator $L_1$ is a legitimate (ungraded)
+deformation of every VOA, and it is not of the form $\delta\varphi$ with $\varphi$ grade-preserving
+whenever $L_1$ acts nontrivially; the library proves this for Virasoro as
+\lean{VOA.NonzeroDeform.not_isRigid_virasoroVOA}: \lean{IsRigid} fails for every universal Virasoro
+VOA $V(c,0)$, for this definitional reason (Chapter~\ref{ch:L07}). Since a trivial deformation is
+automatically graded (\lean{NonzeroDeform.isGraded_of_isTrivial}), any nonzero $\delta(L_1)$ refutes
+\lean{IsRigid}; on $L_k(\lninesl)$, $k\neq0$, one computes on paper
+$\delta(L_1)(L_{-1}J,-2,\lnineone) = 2L_{-1}J - L_1L_{-1}^2J = -4L_{-1}J\neq0$ for a current $J$, so
+\lean{IsRigid} fails there too (this instance is not formalised). \lean{IsRigid} must never be quoted as
+true. The headline is therefore stated for \lean{IsRigidGraded}, the graded first-order notion, which is at
+least as strong as the notion Linshaw--Qi use.
+\end{warning}
+
+\begin{warning}
+\textbf{A non-vacuity point the referee should know.} A rigidity theorem is a universal statement,
+so it would be worthless if, through some defect, \emph{no} VOA could ever have a non-trivial graded
+deformation in this formalism. Three facts speak against that. (i) Deformations exist in abundance:
+every coboundary $\delta\varphi$ with $\varphi\lnineone=0$ is one (\lean{NonzeroDeform.deformOf}), so
+\lean{FirstOrderDeformation} is not an empty or degenerate type. (ii) The \emph{weaker}
+conclusions that would follow from a defect are refuted: the free boson has graded deformations in
+``pole form'' with nonzero pole (Section~\ref{l09:sec:lq}, \lean{not_normalisedPoleVanishes_heisenberg}).
+(iii) For the universal Virasoro VOA $V(c,0)$, ``$\partial/\partial c$ is a non-trivial graded deformation'' is
+proved in full. $Y_1 = \partial_cY$, computed on the $c$-independent PBW basis of the universal $V(c,0)$, is a
+graded first-order deformation with $\omega^1_{(1)}\omega = 0$ and $\omega^1_{(3)}\omega = \frac12\lnineone$. In
+Lean, every coboundary on a VOA with $V_2 = \C\omega$ has $(\omega^1_{(1)}\omega,\omega^1_{(3)}\omega) =
+(2\mu\omega,\mu c\lnineone)$ for one scalar $\mu$ (\lean{VOA.VirCDef.cmode_conformal_of_isCoboundary}), so such a
+deformation is non-trivial (\lean{VOA.VirCDef.not_isTrivial_of_omega_witness},
+\lean{VOA.VirCDef.not_isTrivial_of_isCDeformation},
+\lean{VOA.VirCDef.not_isRigidGraded_of_isCDeformation}; all quoted, with their status, in
+Chapter~\ref{ch:L07}, Remark on non-vacuity).
+When this chapter was first written, the $c$-deformation was not constructed
+(\lean{IsCDeformation c} had no inhabitant), so non-vacuity was argued on paper only. That item is now resolved:
+\lean{VOA.}\allowbreak\lean{VirPoly.}\allowbreak\lean{cDeformation} constructs $\partial_cY$ on $V(c,0)$,
+\lean{VOA.}\allowbreak\lean{VirPoly.}\allowbreak\lean{isCDeformation_}\allowbreak\lean{cDeformation} proves that it inhabits
+\lean{IsCDeformation c}, and \lean{VOA.}\allowbreak\lean{VirPoly.}\allowbreak\lean{not_}\allowbreak\lean{isRigidGraded_}\allowbreak\lean{virasoroVOA} proves
+\lean{¬ Deform.IsRigidGraded (virasoroVOA c)} for every $c\in\C$
+(\leanpath{VOA/\allowbreak Examples/\allowbreak VirasoroCDefFinal.lean}; Chapter~\ref{ch:L07},
+Section~\ref{l07:sec:nonvacuity}). The caveat that remains concerns its scope: $\partial_cY$ does not preserve the central
+term of $\omega_{(3)}\omega$ (it moves $c$), which the library's \lean{FirstOrderDeformation} allows; this is the same
+convention under which the rigidity theorems of this chapter are proved. (Other non-rigid VOAs certainly exist on paper,
+e.g.\ $V^k(\lninesl)$ itself, deformed along $k$; the library does not formalise that one.)
+\end{warning}
+
+\subsection{Regularity and the pole}
+
+For weight-one states $a,b$ (currents), a graded deformation has
+$a^1_{(n)}b\in V_{1-n}$, which is zero for $n\ge2$ (no negative weights). So the singular part of
+$Y_1(a,x)b$ has only two coefficients: $a^1_{(0)}b\in V_1$ (a correction to the Lie bracket) and
+$a^1_{(1)}b\in V_0 = \C\lnineone$ (a correction to the level).
+
+\noindent File \leanpath{VOA/Core/Deformation.lean}.
+\begin{leancode}
+def Regular (D : FirstOrderDeformation W) : Prop :=
+  ∀ a ∈ W.grading 1, ∀ b ∈ W.grading 1, ∀ n : ℤ, 0 ≤ n → D.smul₁ a n b = 0
+\end{leancode}
+\noindent File \leanpath{VOA/Core/Deformation.lean}.
+\begin{leancode}
+def poleVec (D : FirstOrderDeformation W) (a b : 𝒱) : 𝒱 := D.smul₁ a 1 b
+\end{leancode}
+\begin{leancode}
+def FirstOrderDeformation.InPoleForm (D : FirstOrderDeformation W) : Prop :=
+  ∀ a ∈ W.grading 1, ∀ b ∈ W.grading 1, D.smul₁ a 0 b = 0
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2Rigidity43.lean}.
+\begin{leancode}
+theorem regular_iff_zero_one {𝒱 : Type*} [AddCommGroup 𝒱] [Module ℂ 𝒱]
+    {W : VertexOperatorAlgebra 𝒱} (D : Deform.FirstOrderDeformation W) (hD : D.IsGraded) :
+    D.Regular ↔ ∀ a ∈ W.grading 1, ∀ b ∈ W.grading 1,
+      D.smul₁ a 0 b = 0 ∧ D.smul₁ a 1 b = 0 := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{Regular} is ``$Y_1(a,x)b$ has no negative powers of $x$ for weight-one $a,b$'': in the
+index convention \lean{mode f n = f(-n-1)}, negative powers $x^{-n-1}$ are exactly $n\ge0$ (the
+library also proves the literal coefficient form, \lean{regular_iff}). Since $a = a_{(-1)}\lnineone$,
+$Y_1(a,x)b$ is Linshaw--Qi's $Y_1(a(-1)\lnineone,x)b(-1)\lnineone$, and quantifying over all of $V_1$
+is equivalent to quantifying over their generators by bilinearity. \lean{poleVec a b} is the
+$x^{-2}$ coefficient $a^1_{(1)}b$ (proved \lean{poleVec_eq_coeff}); for graded $D$ it lies in
+$V_0$ (\lean{poleVec_mem_grading_zero}). \lean{InPoleForm} says the $x^{-1}$ coefficient vanishes on
+currents: the first clause of Linshaw--Qi's equation (3). \lean{regular_iff_zero_one} is the
+mode count just explained (VOA positivity kills $n\ge2$).
+\end{dictionary}
+
+\section{Weight-one cohomology: normalising a deformation}\label{l09:sec:whitehead}
+
+\leanpath{VOA/Core/WeightOneCohomology.lean} proves the step that Linshaw--Qi perform silently in
+their equation (3) (citing Kovalchuk--Qi \S6.2): every graded deformation can be changed by a
+coboundary so that the $x^{-1}$ coefficient on currents vanishes. It is pure Lie theory of $V_1$.
+
+\subsection{Chevalley--Eilenberg cochains in degree two}
+
+For a Lie algebra $\lnineg$ acting on itself by the adjoint action, a \emph{1-cochain} is a linear
+map $\psi:\lnineg\to\lnineg$ and a \emph{2-cochain} is an alternating bilinear map
+$\omega:\lnineg\times\lnineg\to\lnineg$. The differentials are
+\begin{align*}
+  (d_{12}\psi)(x,y) &= [x,\psi y] - [y,\psi x] - \psi[x,y],\\
+  (d_{23}\omega)(x,y,z) &= [x,\omega(y,z)] - [y,\omega(x,z)] + [z,\omega(x,y)]
+     - \omega([x,y],z) + \omega([x,z],y) - \omega([y,z],x).
+\end{align*}
+$\omega$ is a \emph{cocycle} if $d_{23}\omega = 0$; $H^2(\lnineg,\lnineg) = $ cocycles$/d_{12}($1-cochains$)$.
+Mathlib provides the cochain spaces and these two differentials
+(\lean{LieModule.Cohomology.twoCochain}, \lean{d₁₂}, \lean{d₂₃}, \lean{twoCocycle}, by Carnahan) but no
+cohomology groups and no Whitehead lemma. The library therefore states vanishing as ``every
+cocycle is a coboundary'':
+
+\begin{leancode}
+def WeightOneH2Vanishes (W : VertexOperatorAlgebra 𝒱) : Prop :=
+  ∀ ω : twoCochain ℂ ↥(W.grading 1) ↥(W.grading 1),
+    ω ∈ twoCocycle ℂ ↥(W.grading 1) ↥(W.grading 1) →
+      ∃ ψ : oneCochain ℂ ↥(W.grading 1) ↥(W.grading 1),
+        d₁₂ ℂ ↥(W.grading 1) ↥(W.grading 1) ψ = ω
+\end{leancode}
+\begin{leancode}
+def CentrelessWeightOne (W : VertexOperatorAlgebra 𝒱) : Prop :=
+  ∀ z : ↥(W.grading 1), (∀ x : ↥(W.grading 1), ⁅z, x⁆ = 0) → z = 0
+\end{leancode}
+
+\begin{dictionary}
+The Lie algebra is $V_1$ with bracket \lean{⁅u, v⁆} $= u_{(0)}v$ (\lean{coe_bracket_gradingOne};
+the Lie structure on $V_1$ is Chapter~\ref{ch:L04}). \lean{twoCochain ℂ L M} is Mathlib's space of
+alternating bilinear maps $L\times L\to M$, \lean{oneCochain} the linear maps, and \lean{d₁₂},
+\lean{twoCocycle} as displayed above (the file docstring checks that Mathlib's sign convention is
+$d_{12}\psi(x,y) = [x,\psi y]-[y,\psi x]-\psi[x,y]$). So \lean{WeightOneH2Vanishes W} is
+$H^2(V_1,V_1) = 0$ and \lean{CentrelessWeightOne W} is $Z(V_1) = 0$. Neither mentions any
+deformation, any mode other than $(0)$, or anything outside $V_1$: they are invariants of the Lie
+algebra $V_1$ alone.
+\end{dictionary}
+
+\begin{theorem}[Whitehead's second lemma for $\lninesl$]\label{l09:thm:whitehead}
+If a complex Lie algebra $\lnineg$ has a basis $(e,h,f)$ forming an $\lninesl$-triple, then every
+2-cocycle $\omega\in Z^2(\lnineg,\lnineg)$ is $d_{12}\psi$ for some $\psi$; and $Z(\lnineg)=0$.
+\end{theorem}
+\begin{physics}
+$H^2(\lnineg,\lnineg)=0$ is the statement that a semisimple Lie algebra has no infinitesimal deformations of
+its bracket: the symmetry algebra of the currents cannot be continuously deformed. Physically, the
+single-pole term $J^{[a,b]}/(z-w)$ of the current OPE cannot be changed except by a rotation of the current
+basis.
+\end{physics}
+
+
+\begin{leancode}
+theorem whitehead2_of_sl2Basis (b : Basis (Fin 3) ℂ g) (ht : IsSl2Triple (b 1) (b 0) (b 2))
+    (ω : twoCochain ℂ g g) (hω : ω ∈ twoCocycle ℂ g g) :
+    ∃ ψ : oneCochain ℂ g g, d₁₂ ℂ g g ψ = ω := by
+\end{leancode}
+\begin{leancode}
+theorem weightOneH2Vanishes_of_sl2Basis (W : VertexOperatorAlgebra 𝒱)
+    (b : Basis (Fin 3) ℂ ↥(W.grading 1)) (ht : IsSl2Triple (b 1) (b 0) (b 2)) :
+    WeightOneH2Vanishes W :=
+  fun ω hω => Sl2Whitehead.whitehead2_of_sl2Basis b ht ω hω
+\end{leancode}
+
+\begin{proof}[Proof on paper]
+Write $\omega(e,h) = A_1e+A_2h+A_3f$, $\omega(e,f) = B_1e+B_2h+B_3f$, $\omega(h,f) = C_1e+C_2h+C_3f$.
+Evaluate $d_{23}\omega(e,h,f) = 0$. The three terms $\omega([\cdot,\cdot],\cdot)$ cancel identically:
+$[e,h] = -2e$ and $[h,f] = -2f$ contribute $+2\omega(e,f)$ and $-2\omega(e,f)$, and $[e,f] = h$
+contributes $\omega(h,h)=0$. What remains, $[e,\omega(h,f)] - [h,\omega(e,f)] + [f,\omega(e,h)] = 0$,
+expands in the basis to exactly three scalar equations,
+\begin{equation*}
+  C_2 + B_1 = 0,\qquad C_3 = A_1,\qquad B_3 + A_2 = 0 .
+\end{equation*}
+Now take
+\begin{equation*}
+  \psi e = \bigl(B_2 - \tfrac{A_1}{2}\bigr)e + \tfrac{A_3}{4}f,\qquad
+  \psi h = C_2 e - \tfrac{A_1}{2}h + A_2 f,\qquad
+  \psi f = \tfrac{C_1}{4}e .
+\end{equation*}
+For general $\psi e = p_1e+p_2h+p_3f$, $\psi h = q_1e+q_2h+q_3f$, $\psi f = r_1e+r_2h+r_3f$ one computes
+\begin{align*}
+  d_{12}\psi(e,h) &= -2q_2\,e + (q_3+2p_2)\,h + 4p_3\,f,\\
+  d_{12}\psi(e,f) &= -(2r_2+q_1)\,e + (p_1+r_3-q_2)\,h - (2p_2+q_3)\,f,\\
+  d_{12}\psi(h,f) &= 4r_1\,e + (q_1+2r_2)\,h - 2q_2\,f,
+\end{align*}
+and substituting the chosen $\psi$ and the three cocycle relations reproduces $\omega$ on the three
+basis pairs, hence everywhere. The solution is unique up to a three-parameter family, which is
+$\lnineDer(\lninesl) = \lninead(\lninesl)$. Centrelessness: if $[z,x] = 0$ for all $x$, then $[z,f] = 0$
+kills the $e$- and $h$-coefficients of $z$, and $[z,e]=0$ kills the $f$-coefficient.
+\end{proof}
+
+\subsection{The bridge: a graded deformation gives a 2-cocycle}
+
+For a graded deformation, $a^1_{(0)}b\in V_{1+1-0-1} = V_1$ for $a,b\in V_1$, so
+$\omega(a,b) := a^1_{(0)}b$ is a bilinear map $V_1\times V_1\to V_1$. The $\ell=m=n=0$ case of the
+deformed Jacobi identity reads
+\begin{equation}\label{l09:eq:jacobi000}
+  \omega(u,[v,x]) + [u,\omega(v,x)] - \omega(v,[u,x]) - [v,\omega(u,x)]
+  = [\omega(u,v),x] + \omega([u,v],x).
+\end{equation}
+Setting $u=v$ gives $[\omega(a,a),x] = 0$: $\omega(a,a)$ is central, hence zero when $V_1$ is
+centreless, so $\omega$ is alternating. Using that, \eqref{l09:eq:jacobi000} rearranges to
+$d_{23}\omega = 0$.
+
+\noindent File \leanpath{VOA/Core/WeightOneCohomology.lean}.
+\begin{leancode}
+theorem weightOneCochain_mem_twoCocycle (D : FirstOrderDeformation W) (hD : D.IsGraded)
+    (hZ : W.CentrelessWeightOne) :
+    weightOneCochain D hD hZ ∈ twoCocycle ℂ ↥(W.grading 1) ↥(W.grading 1) := by
+\end{leancode}
+\noindent File \leanpath{VOA/Core/WeightOneCohomology.lean}.
+\begin{leancode}
+theorem coboundary_weightOne_eq_d₁₂ (ψ : ↥(W.grading 1) →ₗ[ℂ] ↥(W.grading 1))
+    (a b : ↥(W.grading 1)) :
+    W.smul (extendWeightOne W ψ (a : 𝒱)) 0 (b : 𝒱)
+        - extendWeightOne W ψ (W.smul (a : 𝒱) 0 (b : 𝒱))
+        + W.smul (a : 𝒱) 0 (extendWeightOne W ψ (b : 𝒱))
+      = ((d₁₂ ℂ ↥(W.grading 1) ↥(W.grading 1) ψ a b : ↥(W.grading 1)) : 𝒱) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{weightOneCochain D hD hZ} is $\omega(a,b) = a^1_{(0)}b$ packaged as an alternating cochain;
+its alternation proof uses the centrelessness hypothesis \lean{hZ}, exactly as in the paper argument
+(the file warns that skew-symmetry of $\omega$ is \emph{not} free --- the alternative would be a port
+of the whole skew-symmetry theory to the deformed setting). \lean{extendWeightOne W ψ} is the
+extension of $\psi:V_1\to V_1$ by zero on the other weight spaces, which is grade-preserving and
+kills the vacuum (\lean{gradePreserving_extendWeightOne}, \lean{extendWeightOne_vacuum}). The second
+theorem says that the VOA coboundary $\delta\varphi$ of that extension, restricted to mode $0$ on
+$V_1$, is literally Mathlib's $d_{12}\psi$: the signs agree on the nose.
+\end{dictionary}
+
+\begin{corollary}[normalisation]\label{l09:cor:normalise}
+If $V_1\cong\lninesl$, every graded deformation $D$ differs by a graded coboundary from a graded
+deformation $E$ in pole form ($a^1_{(0)}b = 0$ on $V_1$).
+\end{corollary}
+\begin{physics}
+This is a gauge fixing: by redefining the currents one can always assume the deformation does not touch
+the single pole of $J^aJ^b$, i.e.\ keeps the symmetry algebra $SU(2)$ fixed. What is left is the double
+pole: a possible change of the level $k\mapsto k+\delta t$, the only physically meaningful parameter.
+\end{physics}
+
+
+\begin{proof}[Proof on paper]
+By the bridge, $\omega = a^1_{(0)}b$ is a cocycle; by Theorem~\ref{l09:thm:whitehead}, $\omega =
+d_{12}\psi$; with $\varphi$ the extension of $\psi$ by zero, $E := D - \delta\varphi$ is graded (coboundaries
+of grade-preserving maps are graded) and its mode-$0$ part on $V_1$ is $\omega - d_{12}\psi = 0$.
+\end{proof}
+
+\paragraph{Why the normalisation matters.} Before normalisation, the pole coefficient
+$a^1_{(1)}b$ is not an invariant of the deformation class: the trivial deformation $\delta(L_0)$ of
+Example~\ref{l09:ex:scaling} has $a^1_{(1)}b = 2a_{(1)}b = 2k\kappa(a,b)\lnineone$, a nonzero ``level
+change'' that is pure gauge. After normalisation the residual gauge freedom preserving
+$a^1_{(0)}b = 0$ consists of $\varphi$ with $\varphi|_{V_1}\in\lnineDer(V_1) = \lninead(V_1)$, and invariance of
+$\kappa$ shows these do not change the pole. So only after normalisation is ``the level change
+$\delta$'' a well-defined quantity. This is the conceptual heart of the split of Linshaw--Qi's
+theorem in the next section.
+
+\section{Linshaw--Qi Theorem 5.1 at \texorpdfstring{$k=-4/3$}{k=-4/3}, and the bundled hypothesis}\label{l09:sec:lq}
+
+\subsection{The source}
+
+A.~R.~Linshaw and F.~Qi, \emph{Deformation rigidity of some simple affine VOAs},
+arXiv:2601.12017 (v2), prove two rigidity theorems: Theorem~4.1, every simple affine VOA at a
+positive integer level admits only trivial deformations; and Theorem~5.1, the simple affine VOA
+$L_{-4/3}(\lninesl)$ admits only trivial deformations. Both rest on their Theorem~3.1:
+\emph{if $V$ is a simple affine VOA and $Y_1(a(-1)\lnineone,x)b(-1)\lnineone$ is regular (has no negative
+powers of $x$) for all $a,b\in\lnineg$, then $Y_1$ is trivial.} The proof of Theorem~5.1 then shows,
+using the weight-three singular vector at $k=-4/3$, that the singular part of $Y_1$ on currents
+vanishes. They conjecture that rigidity holds for every simple affine $L_k(\lnineg)$ that differs
+from $V^k(\lnineg)$.
+
+The library contains two developments of Theorem~5.1: a \emph{split} conditional assembly
+(file \leanpath{AffineSl2Rigidity43.lean}), which was the vehicle for discovering and
+repairing two defective formalisations, and the final \emph{unconditional} proof
+(file \leanpath{AffineSl2RigidityComplete.lean} and companions), both in \leanpath{VOA/Examples/}. Both are documented here,
+because the first is where the ``tautological bundled hypothesis'' mentioned in the library map
+lives.
+
+\subsection{The object \texorpdfstring{$L_{-4/3}(\mathfrak{sl}_2)$}{L(-4/3)}}
+
+\begin{leancode}
+noncomputable def L43 :
+    VertexOperatorAlgebra (WakModule (-4 / 3 : ℂ) ⧸ QuotVOA.maxGradedIdeal voaSl2Adm) :=
+  QuotVOA.maxQuotientVOA voaSl2Adm
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2VOAInstance.lean}.
+\begin{leancode}
+noncomputable def voaSl2Adm : VertexOperatorAlgebra (WakModule (-4 / 3 : ℂ)) :=
+  affineSl2VOA_closed (-4 / 3 : ℂ) admLevel_noncritical
+\end{leancode}
+
+\begin{dictionary}
+\lean{voaSl2Adm} is the universal $V^{-4/3}(\lninesl)$ (\lean{admLevel_noncritical} is the proof of
+$-4/3+2\neq0$), and \lean{L43} its quotient by the maximal proper graded ideal, i.e.\ exactly
+Definition~\ref{l09:def:Lk} at $k=-4/3$. It is definitionally the same object as
+\lean{AffineSl2GeneralRigidity.simple (-4/3) _} (the two differ only in the proof of
+non-criticality, and proofs are irrelevant), so the uniform theorem of Section~\ref{l09:sec:headline}
+at $(p,q) = (2,3)$ is about the same algebra --- up to the propositional, not syntactic, equality
+$2/3 - 2 = -4/3$ of the level.
+\end{dictionary}
+
+Non-vacuity of anything said about \lean{L43} requires that it be nonzero, simple, and a
+\emph{proper} quotient of $V^{-4/3}$ (otherwise one would be proving rigidity of the universal
+algebra, which is false). All three are proved, $\lean{pbw}$-free:
+
+\begin{leancode}
+theorem L43_isSimple : L43.IsSimple :=
+  QuotVOA.isSimple_maxQuotientVOA' voaSl2Adm vacuum_ne_zero
+\end{leancode}
+\begin{leancode}
+theorem maxGradedIdeal_ne_bot : QuotVOA.maxGradedIdeal voaSl2Adm ≠ ⊥ := by
+\end{leancode}
+\begin{leancode}
+theorem mkQ_sl2Singular_eq_zero :
+    (QuotVOA.maxGradedIdeal voaSl2Adm).mkQ Sl2Sing.sl2Singular = 0 := by
+\end{leancode}
+The singular vector is the one printed by Linshaw--Qi (after Adamovi\'c),
+\begin{equation}\label{l09:eq:sing43}
+  s = -48\,h_{-1}e_{-2}\lnineone + 36\,e_{-1}^2f_{-1}\lnineone - 6\,h_{-2}e_{-1}\lnineone
+      + 9\,h_{-1}^2e_{-1}\lnineone + 80\,e_{-3}\lnineone ,
+\end{equation}
+and the library proves it equal to its own independently derived vector:
+\begin{leancode}
+theorem lqVector_eq_sl2Singular : lqVector (-4 / 3 : ℂ) = Sl2Sing.sl2Singular := by
+\end{leancode}
+
+\begin{proof}[Proof on paper of properness]
+The canonical invariant bilinear form $(\cdot|\cdot)$ on $V^k$ (normalised by $(\lnineone|\lnineone)=1$)
+exists because $L_1V_1 = 0$ (the currents are quasi-primary). For a weight-one quasi-primary $u$,
+invariance collapses to $(u_{(n)}a\,|\,b) = -(a\,|\,u_{(-n)}b)$. Every weight-3 vector is a combination of
+states $J^a_{-m}y$ with $m\ge1$; hence $(J^a_{-m}y\,|\,s) = -(y\,|\,J^a_ms) = 0$ because $s$ is
+annihilated by all positive modes. States of other weights are orthogonal to $s$ for weight reasons.
+So $s$ lies in the radical of the form, which by Li's theorem is the maximal graded ideal. Finally
+$s\neq0$, proved in the Wakimoto free-field realisation (\lean{Wak.sl2Singular_ne_zero}).
+\end{proof}
+
+\begin{warning}
+\textbf{A documentation error corrected.} An older file (\leanpath{Examples/AffineSl2Singular.lean} \S D)
+claimed a ``discrepancy with the reported literature form'' of \eqref{l09:eq:sing43}. That was a
+miscount: it reordered $h_{-1}e_{-2}\lnineone = e_{-2}h_{-1}\lnineone + 2e_{-3}\lnineone$ but forgot that
+$9h_{-1}^2e_{-1}\lnineone$ also contributes to the $e_{-2}h_{-1}\lnineone$ monomial
+($h_{-1}^2e_{-1}\lnineone = M_5+4M_2+4M_1$). \lean{lqVector_eq_sl2Singular} is the machine refutation;
+there is no discrepancy.
+\end{warning}
+
+\subsection{The linear algebra of Linshaw--Qi \S5.3, and an erratum}
+
+Linshaw--Qi reduce Theorem~5.1 to five linear equations (10)--(14) in sixteen unknowns: fifteen
+coordinates $a_i,b_i,c_i$ of three unknown weight-3 vectors and the pole constant $c$. The library
+transcribes them twice:
+
+\noindent File \leanpath{VOA/Examples/AffineSl2Rigidity43.lean}.
+\begin{leancode}
+structure CorrectedSystem (a₁ a₂ a₃ a₄ a₅ b₁ b₂ b₃ b₄ b₅ c₁ c₂ c₃ c₄ c₅ c : ℂ) : Prop where
+  eq10 : 84 * a₃ + 168 * a₄ - 28 * a₅ - 18 * b₃ - 36 * b₄ + 6 * b₅
+      - 72 * c₃ - 144 * c₄ + 24 * c₅ + 72 * c = 0
+  eq11 : -42 * a₂ - 56 * a₄ + 9 * b₂ + 12 * b₄ + 36 * c₂ + 48 * c₄ + 9 * c = 0
+  eq12 : -42 * a₁ - 56 * a₃ + 9 * b₁ + 12 * b₃ + 36 * c₁ + 48 * c₃ - 6 * c = 0
+  eq13 : 84 * a₂ - 560 * a₄ + 168 * a₅ - 18 * b₂ + 120 * b₄ - 36 * b₅
+      - 72 * c₂ + 480 * c₄ - 144 * c₅ + 36 * c = 0
+  eq14 : 84 * a₁ - 280 * a₂ - 168 * a₃ + 784 * a₄ - 336 * a₅ - 18 * b₁ + 60 * b₂ + 36 * b₃
+      - 168 * b₄ + 72 * b₅ - 72 * c₁ + 240 * c₂ + 144 * c₃ - 672 * c₄ + 288 * c₅ - 96 * c = 0
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2Rigidity43.lean}.
+\begin{leancode}
+theorem c_eq_zero_certificate : (1890 : ℂ) * c = 0 := by
+  linear_combination 30 * h.eq10 - 14 * h.eq11 + 18 * h.eq12 + 23 * h.eq13 + 9 * h.eq14
+\end{leancode}
+(and \lean{PrintedSystem}, identical except that \lean{eq10} ends in \lean{12 * c}).
+
+\begin{warning}
+\textbf{Erratum in the source.} Equation (10) is printed with constant term $+12c$; the paper's own
+\S5.1 display gives $+72c$, and the fifteen other coefficients of (10) are correct. The printed
+elimination is internally consistent with the wrong $12$ and ends with $10c = 0$; the corrected one
+gives $210c=0$. The conclusion $c=0$ is unaffected. The one-line certificate: the covector
+$\lambda = (30,-14,18,23,9)$ annihilates all fifteen $a_i,b_i,c_i$ columns, so $\lambda\cdot(10,\ldots,14)$
+is $1890c = 0$ (corrected) or $90c=0$ (printed). Moreover the unknowns enter only through
+$P_i = 42a_i - 9b_i - 36c_i$, and the solution space is $c=0$ with $(P_1,\ldots,P_5)\in\C\cdot(8,-12,-6,9,36)$
+--- the coordinates of $s$ itself in the paper's basis (\lean{PrintedSystem.reduced},
+\lean{sl2Singular_eq_lqBasis}). This is an internal consistency check the paper does not make. A
+further caution recorded in the file: (10)--(12) are components in $\{e_{-1}f_{-1}\lnineone, h_{-2}\lnineone,
+h_{-1}h_{-1}\lnineone\}$ but (13)--(14) in $\{h_{-1}e_{-1}\lnineone, e_{-2}\lnineone\}$, a silent switch of basis.
+\end{warning}
+
+These theorems are statements about complex numbers; they say nothing about deformations until
+the five equations are derived from a deformation, which is the hard part.
+
+\subsection{The split assembly}
+
+The library's conditional form of Theorem~5.1 separates three inputs:
+
+\noindent File \leanpath{VOA/Examples/AffineSl2Rigidity43.lean}.
+\begin{leancode}
+def RegularImpliesTrivialGraded {𝒱 : Type*} [AddCommGroup 𝒱] [Module ℂ 𝒱]
+    (W : VertexOperatorAlgebra 𝒱) : Prop :=
+  ∀ D : Deform.FirstOrderDeformation W, D.IsGraded → D.Regular → D.IsTrivial
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2Rigidity43.lean}.
+\begin{leancode}
+def NormalisedPoleVanishes {𝒱 : Type*} [AddCommGroup 𝒱] [Module ℂ 𝒱]
+    (W : VertexOperatorAlgebra 𝒱) : Prop :=
+  ∀ D : Deform.FirstOrderDeformation W, D.IsGraded → D.InPoleForm →
+    ∀ a ∈ W.grading 1, ∀ b ∈ W.grading 1, D.poleVec a b = 0
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2Rigidity43.lean}.
+\begin{leancode}
+theorem isRigidGraded_of_split {𝒱 : Type*} [AddCommGroup 𝒱] [Module ℂ 𝒱]
+    (W : VertexOperatorAlgebra 𝒱) (hZ : W.CentrelessWeightOne)
+    (h31 : RegularImpliesTrivialGraded W) (h1 : W.WeightOneH2Vanishes)
+    (h2 : NormalisedPoleVanishes W) : Deform.IsRigidGraded W := by
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2Rigidity43.lean}.
+\begin{leancode}
+theorem isRigidGraded_of_sl2Basis {𝒱 : Type*} [AddCommGroup 𝒱] [Module ℂ 𝒱]
+    (W : VertexOperatorAlgebra 𝒱) (hb : Sl2BasisOnWeightOne W)
+    (h31 : RegularImpliesTrivialGraded W) (h2 : NormalisedPoleVanishes W) :
+    Deform.IsRigidGraded W :=
+  isRigidGraded_of_split W (centrelessWeightOne_of_sl2Basis' W hb) h31
+    (weightOneH2Vanishes_of_sl2Basis' W hb) h2
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2Rigidity43.lean}.
+\begin{leancode}
+theorem L43_isRigidGraded (hb : Sl2BasisOnWeightOne L43) (h31 : RegularImpliesTrivialGraded L43)
+    (h2 : NormalisedPoleVanishes L43) : Deform.IsRigidGraded L43 :=
+  isRigidGraded_of_sl2Basis L43 hb h31 h2
+\end{leancode}
+
+\begin{theorem}[split form of Linshaw--Qi Theorem 5.1]\label{l09:thm:split}
+For any VOA $W$ with centreless $V_1$: if (Theorem~3.1) every graded regular deformation is trivial,
+(Piece~1) $H^2(V_1,V_1) = 0$, and (Piece~2) every graded deformation in pole form has vanishing pole
+on $V_1$, then $W$ is graded rigid.
+\end{theorem}
+\begin{physics}
+In physics language: (Piece~1) the symmetry algebra cannot change; (Piece~2) the level cannot change; and
+(Theorem~3.1) once both current OPEs are unchanged, the whole chiral algebra is unchanged, because it is
+generated by the currents (states are normal-ordered products of currents, and their OPEs follow from the
+current OPE by Wick-type rules). The split separates the Lie-theoretic and the level-dependent input.
+\end{physics}
+
+
+\begin{proof}[Proof on paper]
+Given graded $D$, Corollary~\ref{l09:cor:normalise} gives $E = D-\delta\varphi$ graded in pole form; Piece~2
+kills its pole, so $E$ is regular by \lean{regular_iff_zero_one}; Theorem~3.1 makes $E$ trivial; and
+$D = E + \delta\varphi$ is a sum of coboundaries.
+\end{proof}
+
+\begin{dictionary}
+\lean{RegularImpliesTrivialGraded W} is Linshaw--Qi's Theorem~3.1 \emph{as a property of a
+specific} $W$ (with the gradedness that the paper assumes throughout made explicit, since in Lean
+gradedness is a predicate). \lean{NormalisedPoleVanishes W} is their \S5 computation: its input is a
+deformation \emph{already normalised} (\lean{InPoleForm}), its conclusion is that the pole
+\lean{poleVec} vanishes. The three hypotheses of \lean{L43_isRigidGraded} are all now
+\emph{theorems} at \lean{L43}: \lean{L43_sl2BasisOnWeightOne}, \lean{L43_regularImpliesTrivialGraded},
+and \lean{L43_normalisedPoleVanishes} (next subsection), so the conditional form has been fully
+discharged.
+\end{dictionary}
+
+\subsection{The two dead ends: a vacuous hypothesis and a tautological one}\label{l09:sec:deadends}
+
+The split exists because two earlier formalisations of the same theorem were wrong in instructive
+ways. Both are recorded in \leanpath{VOA/Examples/AffineSl2RigidityCollapse.lean} as theorems.
+
+\begin{warning}
+\textbf{Dead end 1: a refutable hypothesis (vacuous headline).} The first version took as its \S5
+hypothesis
+\begin{leancode}
+def GradedImpliesRegular (W : VertexOperatorAlgebra 𝒱) : Prop :=
+  ∀ D : Deform.FirstOrderDeformation W, D.IsGraded → D.Regular
+\end{leancode}
+``every graded deformation is regular''. This is \textbf{false} at $L_{-4/3}$, so a theorem
+assuming it proves nothing. The counterexample is the trivial deformation $\delta(L_0)$ of
+Example~\ref{l09:ex:scaling}: at $n=0$ it has $a^1_{(0)}b = a_{(0)}b$, and $h_{(0)}e = 2e\ne0$. Even
+the weakening \lean{GradedImpliesPoleZero} (``the pole vanishes for every graded deformation'')
+fails: at $n=1$, $f^1_{(1)}e = 2f_{(1)}e = 2k\lnineone\neq 0$.
+\begin{leancode}
+theorem not_gradedImpliesRegular_L43 : ¬ GradedImpliesRegular LQ43.L43 := by
+\end{leancode}
+\begin{leancode}
+theorem not_gradedImpliesPoleZero_L43 : ¬ GradedImpliesPoleZero LQ43.L43 := by
+\end{leancode}
+The lesson: coboundaries are graded cocycles and are generically not regular, so no statement of
+the form ``every graded cocycle is regular'' can hold. Linshaw--Qi do not claim it --- their
+equation (3) already presupposes the normalisation of Section~\ref{l09:sec:whitehead}.
+\end{warning}
+
+\begin{warning}
+\textbf{Dead end 2: the tautological bundled hypothesis.} The repair was
+the predicate \lean{GradedRegularUpToCoboundary}, written $\mathrm{GRUC}(W)$ below:
+\begin{equation*}
+  \mathrm{GRUC}(W):\quad \forall D \text{ graded},\ \exists E \text{ graded, regular, with }
+  Y_1^D - Y_1^E \text{ a coboundary}.
+\end{equation*}
+This is true and non-vacuous, but it is \textbf{equivalent to the conclusion for a trivial reason}:
+if $W$ is graded rigid, take $E = 0$. The derivation $\mathrm{IsRigidGraded}(W)\Rightarrow
+\mathrm{GRUC}(W)$ uses nothing about $W$, and the file at the time literally
+proved the equivalence. A headline ``$\mathrm{GRUC}(L_{-4/3}) \Rightarrow
+\mathrm{IsRigidGraded}(L_{-4/3})$'' is bookkeeping: it bundles the normalisation (Piece~1, pure Lie
+theory of $V_1$) with the computation (Piece~2, where the level and the singular vector enter) into
+one existential statement whose content is the theorem itself. This is what the library map calls
+the ``tautological bundled hypothesis''. The predicate and all its supporting lemmas
+(\lean{GradedRegularUpToCoboundary}, \lean{trivial_satisfies}, \lean{gradedRegularUpToCoboundary_iff_isRigidGraded}, \ldots)
+were \emph{deleted}, not merely superseded; they did not exist at the documented commit, and a pre-release build commit has
+no such declarations either (the names survive only in a docstring of \leanpath{AffineSl2Rigidity43.lean} that
+records this dead end).
+\end{warning}
+
+\paragraph{What ``non-tautological'' can mean.} At a fixed $W$, \emph{any} true hypothesis is
+logically equivalent to any true conclusion, so ``not implied by the conclusion'' is not a usable
+criterion. The criterion with content is \emph{uniform derivability}: is there a proof of
+$\forall W,\ \mathrm{IsRigidGraded}(W)\Rightarrow H(W)$ that uses nothing about $W$? Because rigidity
+turns every graded $D$ into a coboundary, this amounts to asking whether the \emph{coboundary
+content} of $H$ (its restriction to $D = \delta\varphi$) holds for every $W$. For the deleted predicate
+it did (take $E=0$). For the split pieces it does not, and the library proves this:
+
+\begin{leancode}
+theorem not_normalisedPoleVanishes_heisenberg (k : ℂ) (hk : k ≠ 0) :
+    ¬ LQ43.NormalisedPoleVanishes (heisenbergVOA k hk) := fun h =>
+\end{leancode}
+\begin{leancode}
+theorem not_trivial_satisfies_piece2 :
+    ¬ (∀ (𝒲 : Type) [AddCommGroup 𝒲] [Module ℂ 𝒲] (V : VertexOperatorAlgebra 𝒲)
+        (D : Deform.FirstOrderDeformation V), D.IsTrivial → D.IsGraded → D.InPoleForm →
+        ∀ a ∈ V.grading 1, ∀ b ∈ V.grading 1, D.poleVec a b = 0) := fun H =>
+\end{leancode}
+\begin{leancode}
+theorem no_uniform_derivation_piece2 (k : ℂ) (hk : k ≠ 0)
+    (H : ∀ (𝒲 : Type) [AddCommGroup 𝒲] [Module ℂ 𝒲] (V : VertexOperatorAlgebra 𝒲),
+      Deform.IsRigidGraded V → LQ43.NormalisedPoleVanishes V) :
+    ¬ Deform.IsRigidGraded (heisenbergVOA k hk) :=
+\end{leancode}
+
+\begin{dictionary}
+At the rank-one free boson (Heisenberg VOA at level $k\neq0$, Chapter~\ref{ch:L05}), $V_1 = \C\alpha$ is
+abelian, so $\delta(L_0)$ is automatically in pole form ($a^1_{(0)}b = a_{(0)}b = 0$), yet its pole is
+$\alpha^1_{(1)}\alpha = 2k\lnineone\ne0$. Hence Piece~2 is \emph{false} for the free boson, and its
+coboundary content (\lean{not_trivial_satisfies_piece2}, the exact analogue of the deleted
+\lean{trivial_satisfies}) is refutable. Consequently a uniform derivation of Piece~2 from rigidity
+would refute graded rigidity of the free boson (\lean{no_uniform_derivation_piece2}). Physically:
+for a free boson a level change is pure gauge (rescale $\alpha$), whereas for $\lninesl$ the bracket
+$[h,e]=2e$ pins the normalisation of the currents, so the level cannot be rescaled away. Piece~2
+thus encodes a genuine, $W$-specific fact. The same $\delta(L_0)$ cannot refute Piece~2 at
+$L_{-4/3}$, because there it is not in pole form ($h_{(0)}e\neq0$):
+\lean{scalingDeformation_not_inPoleForm_L43}. Similarly \lean{no_uniform_derivation_sl2Basis}
+(instantiated at the triplet algebra $\mathcal{W}(2)$, whose $V_1=0$) shows the $\lninesl$-basis
+hypothesis is not uniformly derivable from rigidity either.
+\end{dictionary}
+
+\begin{warning}
+\textbf{The residual, stated plainly (from the source).} At $L_{-4/3}$ and \emph{given}
+$V_1\cong\lninesl$, Piece~2 is still mathematically \emph{equivalent} to graded rigidity: rigidity turns
+a deformation in pole form into $\delta\varphi$ with $\varphi|_{V_1}$ a derivation; Whitehead's first lemma
+makes it $\lninead x$; invariance of $\kappa$ kills the pole. This is unavoidable --- the conclusion of
+\S5 \emph{is} ``the normalised pole vanishes'' --- and it is not the repaired defect: this
+derivation consumes the $\lninesl$ structure and a second Whitehead lemma, rather than using nothing
+about $W$. In any case the point is now moot for the headline results: the conditional split is no
+longer needed, because \lean{L43_graded_rigidity} below and the uniform theorem prove rigidity
+\emph{without} assuming Piece~2, by deriving \S5's \emph{input} (the singular-vector relation) from
+the definition of $L_k$.
+\end{warning}
+
+\begin{warning}
+\textbf{An over-general predicate, recorded but not repaired.} \lean{RegularImpliesTrivialGraded W}
+is stated for an arbitrary VOA $W$, whereas Theorem~3.1 assumes $W$ simple affine. For $W$ with
+$V_1 = 0$ regularity is vacuous and the predicate would assert full graded rigidity, which is
+morally false (e.g.\ for Virasoro $V(c,0)$, along $\partial_c$). This does not affect any result of this
+chapter: the predicate is only ever \emph{proved}, never assumed, and only at affine $\lninesl$
+quotients (\lean{L43_regularImpliesTrivialGraded}, \lean{simple_regularImpliesTrivialGraded}). A
+reader should simply not cite \lean{isRigidGraded_of_split} as ``Theorem 3.1'' for general $W$.
+\end{warning}
+
+\subsection{The unconditional theorem at \texorpdfstring{$-4/3$}{-4/3}}
+
+\begin{leancode}
+theorem singular_central_polynomial (δ : ℂ) (v : Q) :
+    let K : End ℂ (Q × Q) := kk • 1 + δ • tangentShift
+    (24960 : ℂ) • K (v, 0) + (27360 : ℂ) • (K ^ 2) (v, 0) +
+      (6480 : ℂ) • (K ^ 3) (v, 0) = (0, (-13440 * δ) • v) := by
+\end{leancode}
+\begin{leancode}
+theorem L43_normalisedPoleVanishes : NormalisedPoleVanishes L43 := by
+\end{leancode}
+\begin{leancode}
+theorem L43_graded_rigidity : Deform.IsRigidGraded L43 :=
+  L43_isRigidGraded_of_normalisedPoleVanishes L43_normalisedPoleVanishes
+\end{leancode}
+(\leanpath{VOA/Examples/AffineSl2RigidityComplete.lean}; \lean{kk} is local notation for $-4/3$,
+\lean{Q} for the carrier of \lean{L43}, \lean{tangentShift} is $(x_0,x_1)\mapsto(0,x_0)$ on $Q\times Q$, i.e.\
+multiplication by $t$ on $Q\oplus tQ$.)
+
+\begin{theorem}[Graded first-order rigidity of $L_{-4/3}(\lninesl)$; Linshaw--Qi, Theorem 5.1]\label{l09:thm:L43}
+Every graded first-order deformation of $L_{-4/3}(\lninesl)$ is trivial.
+\end{theorem}
+\begin{physics}
+$L_{-4/3}(\lninesl)$, central charge $-6$, is the chiral algebra associated with the $(A_1,D_3)$ Argyres--Douglas
+theory (physics literature). Its null state at weight 3 encodes a relation among the currents that holds
+only at $k=-4/3$; any attempt to move the level violates it at first order, with rate proportional to the
+derivative $-13440$ of the null-norm polynomial $240k(3k+4)(9k+26)$. Hence no deformation.
+\end{physics}
+
+
+\begin{proof}[Proof on paper]
+Normalise (Corollary~\ref{l09:cor:normalise}); it remains to show the normalised pole vanishes
+(Piece~2), after which regular reconstruction (Section~\ref{l09:sec:uniform}) finishes. In pole form the
+pole is $a^1_{(1)}b = \kappa(a,b)\delta\lnineone$ for a single scalar $\delta$, and the lifted currents
+$\tilde J^a_n = J^a_n + tJ^{a,1}_n$ on $Q\oplus tQ$ satisfy the affine relations with central element
+$K = k + \delta t$. Pair the singular word: the expression of $s$ in lifted currents, applied to the
+vacuum, and then paired with the vacuum through the adjoint word, can be evaluated in two ways. By
+normal ordering in the affine algebra with central element $K$ it equals
+$240K(3K+4)(9K+26)$ applied to the vacuum --- the displayed cubic $24960K + 27360K^2 + 6480K^3$ ---
+whose value at $K = -4/3 + \delta t$ is $0 + t(-13440\delta)$, because $k=-4/3$ is a simple root of the
+cubic. On the other hand, since $s=0$ in $L_{-4/3}$, the lifted word lands in $tQ$, and the adjoint
+relation makes its pairing vanish (\lean{actual_singular_pairing_obstruction}). Hence
+$-13440\delta = 0$.
+\end{proof}
+
+The factor $(3K+4)$ in $240K(3K+4)(9K+26)$ is the reason the singular vector exists exactly at
+$k=-4/3$; the \emph{simplicity} of that root is what makes the tangent coefficient nonzero. This is
+the special case of the uniform mechanism of the next two sections, where ``simple root of an
+explicit cubic'' is replaced by ``simple root of a Gram determinant''.
+
+\section{The uniform machinery at every nonzero non-critical level}\label{l09:sec:uniform}
+
+The files \leanpath{AffineSl2General*.lean} and \leanpath{AffineSl2UniformObstruction.lean} redo every
+step of the $-4/3$ proof except the final singular-vector computation, \emph{for every level} $k$ with
+$k\ne0$ and $k\ne-2$. They are stated under \lean{variable (k : ℂ) (hk : k + 2 ≠ 0) (hk0 : k ≠ 0)}. No
+admissibility enters until Section~\ref{l09:sec:determinant}.
+
+\subsection{The first-order extension as a module}
+
+A first-order deformation $D$ of $W$ makes $W_R = W\oplus tW$ a vertex algebra over $R=\C[t]/(t^2)$. The
+library models $W\oplus tW$ as the product $W\times W$, a pair $(x_0,x_1)$ standing for $x_0 + tx_1$. The
+lifted modes and the full product are
+\begin{equation*}
+  \tilde u_{(n)}(x_0,x_1) = \bigl(u_{(n)}x_0,\ u^1_{(n)}x_0 + u_{(n)}x_1\bigr),\qquad
+  (x_0,x_1)_{(n)}(y_0,y_1) = \bigl(x_{0(n)}y_0,\ x_{0(n)}y_1 + x_{1(n)}y_0 + x^1_{0(n)}y_0\bigr),
+\end{equation*}
+(\lean{liftedMode}, \lean{Deform.Reconstruction.product}) and multiplication by $t$ is
+\lean{tangentShift}$\,(x_0,x_1) = (0,x_0)$.
+
+\subsection{Step A: regular deformations are trivial (Theorem 3.1 at every level)}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2GeneralRegularReconstruction.lean}.
+\begin{leancode}
+theorem simple_regular_isTrivial (D : FirstOrderDeformation (simple k hk))
+    (hD : D.IsGraded) (hreg : D.Regular) : D.IsTrivial := by
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2GeneralRegularReconstruction.lean}.
+\begin{leancode}
+theorem simple_regularImpliesTrivialGraded : RegularImpliesTrivialGraded (simple k hk) :=
+  (simple_regular_isTrivial k hk hk0)
+\end{leancode}
+The general reconstruction criterion behind it (\leanpath{VOA/Core/DeformationReconstruction.lean}):
+\begin{leancode}
+theorem isTrivial_of_closed_lift (S : Submodule ℂ (V × V))
+    (hsimple : W.IsSimple) (hclosed : ModeClosed D S)
+    (hsurj : Function.Surjective (reduction S))
+    (hsep : (0, W.vacuum) ∉ S) (hvac : (W.vacuum, 0) ∈ S)
+    (hgrade : GradeClosed W S) : D.IsTrivial := by
+\end{leancode}
+
+\begin{proof}[Proof on paper]
+\emph{The criterion.} Suppose $S\subseteq W\oplus tW$ is closed under all deformed products, contains
+$(\lnineone,0)$ but not $(0,\lnineone)$, surjects onto $W$ under $(x_0,x_1)\mapsto x_0$, and is closed
+under homogeneous components. The kernel of the projection on $S$ is $\{(0,y)\}\cap S$; its second
+coordinates form an ideal of $W$ (closure under products with lifts of all states), not containing
+$\lnineone$, hence zero by simplicity. So the projection is an isomorphism $S\cong W$; writing its
+inverse as $x\mapsto(x,\psi x)$, closure under products says exactly that $u^1_{(n)}v = (\delta(-\psi))$
+\ldots, i.e.\ $D$ is the coboundary of a grade-preserving $\varphi$ with $\varphi\lnineone = 0$.
+\emph{The carrier.} If $D$ is regular, the lifted currents satisfy the affine relations at the
+\emph{same} level $k$ on $W\oplus tW$ (the deformed commutator has no correction to either the bracket
+or the central term), and they annihilate $(\lnineone,0)$ in non-negative modes. By the universal
+property of the vacuum module there is a map $\mathrm{ev}: V^k(\lninesl)\to W\oplus tW$ sending
+$J^{a_1}_{-n_1}\cdots\lnineone$ to $\tilde J^{a_1}_{-n_1}\cdots(\lnineone,0)$. Take $S$ its image. Its first
+coordinate is the quotient map $V^k\to L_k$, hence surjective; it respects energy, so its weight-zero
+part is $\C(\lnineone,0)$, which excludes $(0,\lnineone)$; it is closed under current modes and, by the
+iterate (associativity) identity, under all deformed products. This replaces the step in Linshaw--Qi
+where they cite Lian's Theorem~4.11 to conclude $W_{(0)} = \C\lnineone$; the library's file records a
+concern that the citation may be circular (Lian's category assumes one-dimensional weight-zero
+space) and shows the step is obtained directly from the universal property of $V^k(\lnineg)$.
+\end{proof}
+
+\begin{warning}
+\textbf{Provenance (recorded in the source).} Linshaw--Qi state that the proof of Theorem~3.1 in v2 was
+contributed by an AI model, in a revision prompted by errors in v1, and it cites Lian for $W_{(0)} =
+\C\lnineone$. The library does not rely on that proof: \lean{simple_regular_isTrivial} is proved
+independently, with the universal-property argument above.
+\end{warning}
+
+\subsection{Step B: the single level parameter}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2GeneralDeformationPole.lean}.
+\begin{leancode}
+theorem simple_existsUnique_pole_parameter (D : FirstOrderDeformation (simple k hk))
+    (hD : D.IsGraded) (hnorm : D.InPoleForm) :
+    ∃! δ : ℂ, ∀ a b : (simple k hk).grading 1,
+      D.poleVec a b = ((currentPairing k hk hk0) a b * δ) • (simple k hk).vacuum := by
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2GeneralNormalizedRepresentation.lean}.
+\begin{leancode}
+theorem simple_exists_normalized_representation (D : FirstOrderDeformation (simple k hk))
+    (hD : D.IsGraded) (hnorm : D.InPoleForm) :
+    ∃ (δ : ℂ) (ρ : AffSl2 →ₗ⁅ℂ⁆ End ℂ ((WakModule k ⧸ I) × (WakModule k ⧸ I))),
+      (∀ a b : (simple k hk).grading 1, D.poleVec a b = ((currentPairing k hk hk0) a b * δ) • (simple k hk).vacuum) ∧
+      (∀ x n, ρ (ofLoop kappaForm kappaForm_isInvariant x n) =
+        liftedMode D ((affineCurrent k hk hk0) x) n) ∧
+      ρ (AffineLie.C kappaForm kappaForm_isInvariant) =
+        k • (1 : End ℂ ((WakModule k ⧸ I) × (WakModule k ⧸ I))) + δ • tangentShift ∧
+      ρ (ell0 kappaForm kappaForm_isInvariant) = liftedDegree (W := (simple k hk)) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{currentPairing k hk hk0 a b} is $\kappa(a,b)$ computed in the proved basis $(e,h,f)$ of $V_1$ (entries
+$\kappa(e,f)=\kappa(f,e) = 1$, $\kappa(h,h)=2$). \lean{∃! δ} is unique existence. So the first theorem says: for a
+graded deformation in pole form, $a^1_{(1)}b = \delta\,\kappa(a,b)\lnineone$ for one scalar $\delta$. The second
+packages the lifted currents as a Lie algebra homomorphism \lean{ρ} from $\lninehat$
+(\lean{AffSl2}; \lean{→ₗ⁅ℂ⁆} is a Lie algebra morphism) to $\End(Q\times Q)$, with $Q$ the carrier of
+$L_k$ and \lean{I} the maximal ideal; the central element acts as $k + \delta t$ and $\ell_0$ as the lifted
+degree operator. \lean{affineCurrent} identifies $\lninesl$ (coordinate colours) with $V_1$.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+For graded $D$ in pole form, $a^1_{(1)}b\in V_0 = \C\lnineone$, giving a bilinear form $\beta$ on $V_1$
+with $a^1_{(1)}b = \beta(a,b)\lnineone$. The $\ell=0$ case of the deformed Jacobi identity is the deformed
+commutator formula
+\begin{equation*}
+  [\tilde a_m, \tilde b_n] = \widetilde{[a,b]}_{m+n} + m\bigl(k\kappa(a,b) + t\,\beta(a,b)\bigr)\delta_{m+n,0},
+\end{equation*}
+(\lean{poleForm_current_commutator}); its Jacobi identity in the Lie algebra makes $\beta$ invariant,
+and every invariant form on $\lninesl$ is a multiple $\delta\kappa$ (\lean{exists_currentPole_sl2}).
+Uniqueness: $\beta(e,f) = \delta$ and $\lnineone\neq0$.
+\end{proof}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2GeneralDeformationPole.lean}.
+\begin{leancode}
+theorem simple_isRigidGraded_of_normalisedPoleVanishes
+    (hvan : NormalisedPoleVanishes (simple k hk)) : IsRigidGraded (simple k hk) :=
+  isRigidGraded_of_sl2Basis (simple k hk) (simple_sl2BasisOnWeightOne k hk hk0)
+    (simple_regularImpliesTrivialGraded k hk hk0) hvan
+\end{leancode}
+So, at every nonzero non-critical level, graded rigidity of $L_k(\lninesl)$ is reduced to: \emph{the
+level parameter $\delta$ of every normalised graded deformation vanishes.}
+
+\subsection{Step C: word pairings are polynomials in the level}
+
+For a word $w = ((a_1,n_1),\ldots,(a_r,n_r))$ write $J_w = J^{a_1}_{n_1}\cdots J^{a_r}_{n_r}$. In any
+representation of $\lninehat$ in which the vacuum is killed by non-negative modes, the vacuum
+coefficient of $J_w\lnineone$ is computed by moving annihilation operators to the right with
+\eqref{l09:eq:affinebracket}; the result is a polynomial $P_w(C)$ in the central element. For the
+lifted representation $C = k + \delta t$, so the vacuum pairing is $P_w(k+\delta t) = P_w(k) + t\,\delta P_w'(k)$.
+
+\noindent File \leanpath{VOA/Examples/AffineSl2GeneralPairing.lean}.
+\begin{leancode}
+theorem simple_normalized_word_tangent (D : FirstOrderDeformation (simple k hk))
+    (hD : D.IsGraded) (hnorm : D.InPoleForm) (δ : ℂ)
+    (hδ : ∀ a b : (simple k hk).grading 1,
+      D.poleVec a b = (currentPairing k hk hk0 a b * δ) • (simple k hk).vacuum)
+    (w : List (Fin 3 × ℤ)) :
+    (simpleForm k hk).form (simple k hk).vacuum
+      (liftedCurrentWord k hk D w ((simple k hk).vacuum,0)).2 =
+        (NormalOrdering.wordPolynomial w).derivative.eval k * δ := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{simpleForm k hk} is the canonical invariant bilinear form of $L_k$ with $(\lnineone|\lnineone)=1$
+(exists because the currents are quasi-primary, \lean{simple_quasiPrimary}). \lean{liftedCurrentWord
+k hk D w} is $\tilde J_w$ on $Q\times Q$ (leftmost letter acting last), applied to $(\lnineone,0)$; \lean{.2}
+takes the $t$-coefficient. \lean{NormalOrdering.wordPolynomial w} is the universal normal-ordering
+polynomial $P_w$, and \lean{.derivative.eval k} is $P_w'(k)$. The statement: the $t$-part of the
+vacuum pairing of $\tilde J_w(\lnineone,0)$ is $\delta P'_w(k)$.
+\end{dictionary}
+
+\subsection{Step D: two relations give an obstruction}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2UniformObstruction.lean}.
+\begin{leancode}
+theorem graded_rigidity_of_relations {ι κ : Type*} [Fintype ι] [Fintype κ]
+    (u : ι → List (Fin 3 × ℤ)) (c : ι → ℂ)
+    (v : κ → List (Fin 3 × ℤ)) (d : κ → ℂ)
+    (hc : ∑ i, c i • currentWord k hk (u i) (simple k hk).vacuum = 0)
+    (hd : ∑ j, d j • currentWord k hk (v j) (simple k hk).vacuum = 0)
+    (hp : (relationPairPolynomial u c v d).derivative.eval k ≠ 0) :
+    IsRigidGraded (simple k hk) := by
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2UniformObstruction.lean}.
+\begin{leancode}
+noncomputable def relationPairPolynomial {ι κ : Type*} [Fintype ι] [Fintype κ]
+    (u : ι → List (Fin 3 × ℤ)) (c : ι → ℂ)
+    (v : κ → List (Fin 3 × ℤ)) (d : κ → ℂ) : Polynomial ℂ :=
+  ∑ i, ∑ j, (c i * d j) • wordGramPolynomial (u i) (v j)
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2UniformObstruction.lean}.
+\begin{leancode}
+noncomputable def wordGramPolynomial (u v : List (Fin 3 × ℤ)) : Polynomial ℂ :=
+  ((-1:ℂ)^u.length) • NormalOrdering.wordPolynomial (adjointIndices u ++ v)
+\end{leancode}
+
+\begin{theorem}[relation obstruction]\label{l09:thm:relations}
+Let $k\ne0,-2$. Suppose $\sum_i c_i J_{u_i}\lnineone = 0$ and $\sum_j d_jJ_{v_j}\lnineone = 0$ in $L_k(\lninesl)$
+(two \emph{relations}), and let $P(C) = \sum_{i,j}c_id_j\,G_{u_i,v_j}(C)$ be their Gram polynomial, where
+$G_{u,v}(k) = (J_u\lnineone\,|\,J_v\lnineone)$. If $P'(k)\neq0$, then $L_k(\lninesl)$ is graded rigid.
+\end{theorem}
+\begin{physics}
+A relation is a null-state equation among normal-ordered current products. Its Gram polynomial is the
+two-point function of two such composite operators as a function of the level. If the level could drift,
+$k\to k+\delta t$, the relation would have to persist, so this two-point function would have to stay zero;
+its first-order change $\delta P'(k)$ must vanish. Transversality $P'(k)\neq0$ is the statement that the
+null relation genuinely ``pins'' the level.
+\end{physics}
+
+
+\begin{dictionary}
+\lean{currentWord k hk w} is $J_w$ acting on $L_k$, so \lean{hc}, \lean{hd} are the two relations;
+\lean{Fintype ι} makes the sums finite. \lean{wordGramPolynomial u v} is the polynomial whose value
+at $k$ is $(J_u\lnineone|J_v\lnineone)$ (proved as \lean{wordGramPolynomial_eval}): the adjoint of
+$J^a_n$ for the invariant bilinear form is $-J^a_{-n}$ (\emph{same} colour, opposite mode,
+\lean{adjointIndices}, one sign per letter). The two relations may differ (\lean{u} and \lean{v}
+independent), which matters because the bilinear form pairs opposite $h_0$-weights. The polynomial
+is constructed uniformly by normal ordering; \lean{hp} is its derivative at the level.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+Normalise $D$ and let $\delta$ be its level parameter. Lift the column relation:
+$\tilde v := \sum_jd_j\tilde J_{v_j}(\lnineone,0)$ has first coordinate $\sum_jd_jJ_{v_j}\lnineone = 0$, so
+$\tilde v = (0,y)$ is a pure tangent vector. Pair it against the row: the vacuum coefficient of
+$\sum_ic_i\tilde J_{u_i}^{\dagger}\tilde v$ has $t$-part $\sum_ic_i(\lnineone\,|\,J_{u_i}^\dagger y) =
+(\sum_ic_iJ_{u_i}\lnineone\,|\,y) = 0$ by the row relation (\lean{actual_word_relation_obstruction}). But by
+Step~C the same quantity is the $t$-part of $P(k+\delta t)$, namely $\delta P'(k)$
+(\lean{relationPair_tangent}). Hence $\delta P'(k) = 0$, so $\delta = 0$, and
+\lean{simple_isRigidGraded_of_normalisedPoleVanishes} applies.
+\end{proof}
+
+Physically this is the precise version of the preview: the relations hold at level $k$; a
+deformation that moves the level to $k+\delta t$ must preserve them; their Gram pairing changes at
+rate $\delta P'(k)$; so a level change is forbidden whenever the relations are ``transverse'' to the
+level ($P'(k)\neq0$). For the free boson there are no relations, and the level change is allowed (as
+pure gauge); for $V^k(\lninesl)$ there are no relations, and the level change is a genuine deformation.
+
+\section{The Kac determinant and a simple root}\label{l09:sec:determinant}
+
+It remains to produce, at each negative admissible level, two relations with $P'(k)\ne0$. The library
+does this without writing down any singular vector, by a determinant argument.
+
+\subsection{From a simple determinant root to two relations}
+
+\begin{lemma}[kernel pair]\label{l09:lem:kernelpair}
+Let $M(X)$ be a square matrix of polynomials over an integral domain, and $z$ a simple root of
+$\det M$: $\det M(z) = 0\neq(\det M)'(z)$. Then there are vectors $r,s$ with $r^{\mathsf T}M(z) = 0$,
+$M(z)s = 0$ and $r^{\mathsf T}M'(z)s\neq0$.
+\end{lemma}
+\begin{physics}
+Purely technical: it extracts, from the vanishing of the Kac--Kazhdan determinant (the norm-matrix of
+descendant states) at a given level, two null states whose mutual two-point function changes at first order
+when the level is moved. It is the linear-algebra step of the null-vector argument.
+\end{physics}
+
+
+\noindent File \leanpath{VOA/Core/PolynomialMatrixSimpleRoot.lean}.
+\begin{leancode}
+theorem kernel_pair_of_simple_root [NoZeroDivisors R]
+    (M : Matrix ι ι R[X]) (z : R)
+    (hz : M.det.eval z = 0) (hd : M.det.derivative.eval z ≠ 0) :
+    ∃ r c : ι → R,
+      (∀ j, ∑ i, r i * (M i j).eval z = 0) ∧
+      (∀ i, ∑ j, (M i j).eval z * c j = 0) ∧
+      (∑ i, ∑ j, (r i * c j) * (M i j).derivative.eval z) ≠ 0 := by
+\end{leancode}
+
+\begin{proof}[Proof on paper]
+Let $A = \operatorname{adj}M$. From $AM = MA = \det M\cdot 1$ at $z$: $A(z)M(z) = M(z)A(z) = 0$. Differentiate
+$MA = \det M\cdot1$ and multiply by $A(z)$ on both sides: $A(z)M'(z)A(z) = (\det M)'(z)A(z)$ (the
+term with $A'$ is killed by $M(z)A(z)=0$). Since $(\det M)'(z)\neq0$, $A(z)\neq0$ (by Jacobi's formula
+$(\det M)' = \operatorname{tr}(A M')$). Pick $(a,b)$ with $A(z)_{ab}\neq0$ and take $r$ = row $a$ of $A(z)$,
+$s$ = column $b$; then $r^{\mathsf T}M'(z)s = (A(z)M'(z)A(z))_{ab} = (\det M)'(z)A(z)_{ab}\neq0$.
+\end{proof}
+
+Apply this to the Gram matrix of the invariant form on a weight space of $V^k(\lninesl)$. The left
+kernel vector $r$ gives a combination of PBW states in the radical of the form --- hence in the maximal
+ideal by Li's theorem --- hence a relation in $L_k$; similarly the right kernel vector. And
+$r^{\mathsf T}M'(k)s$ is exactly the derivative of their Gram polynomial. One subtlety: the
+\emph{Shapovalov} form of a Verma module is contravariant for the Chevalley anti-involution ($e_n^\dagger
+= f_{-n}$), while the VOA's invariant bilinear form has $(J^a_n)^\dagger = -J^a_{-n}$. They differ by the
+Chevalley automorphism $\theta$ ($e\mapsto -f$, $f\mapsto-e$, $h\mapsto-h$), which the library constructs on
+$V^k$ (\lean{vacuumChevalley}) and shows preserves the maximal ideal (\lean{vacuumChevalley_ideal_iff});
+one of the two kernel vectors is therefore twisted by $\theta$. The resulting statement:
+
+\begin{leancode}
+theorem graded_rigidity_of_vacuum_simple_root (hk0 : k≠0) (n : ℕ) (c : ℤ)
+    (hz : (vacuumChevalleyPolynomial n c).det.eval k=0)
+    (hd : (vacuumChevalleyPolynomial n c).det.derivative.eval k≠0) :
+    Deform.IsRigidGraded (simple k hk) := by
+\end{leancode}
+(\leanpath{VOA/Examples/AffineSl2VacuumSimpleRoot.lean}, a Chapter~\ref{ch:L08} file.)
+
+\begin{dictionary}
+\lean{vacuumChevalleyPolynomial n c} is a square matrix of polynomials in one variable $X$ (the level),
+indexed by \lean{JointIndex n (2*c)}: the PBW monomials of $V^X(\lninesl)$ of energy $n$ and
+$h_0$-weight $2c$ (\lean{currentEnergy}, \lean{currentCharge}, with $e,f,h$ contributing $+2,-2,0$). Its
+$(i,j)$ entry is the normal-ordering polynomial of the vacuum pairing of the $i$-th and $j$-th
+monomials with the Chevalley adjoint convention. \lean{.det.eval k} and \lean{.det.derivative.eval k}
+are $\det M(k)$ and $(\det M)'(k)$. The theorem: \emph{if the level is a simple root of one such
+vacuum Gram determinant, $L_k(\lninesl)$ is graded rigid} (at any nonzero non-critical $k$).
+\end{dictionary}
+
+\subsection{Locating a simple root: the Kac determinant with the horizontal factor removed}
+
+Which block, and why is the root simple? By \eqref{l09:eq:firstsing}, at $k+2 = p/q$ the first new
+singular vector of $V^k$ has energy $n = q(p-1)$ and $h_0$-weight $2(p-1)$, so take $c = p-1$. The
+Gram determinant of $V^k$ in that block is controlled by the Kac--Kazhdan determinant of the Verma
+module $M(k,\lambda)$ of highest weight $(k,\lambda)$, as a polynomial in $\lambda$. At $\lambda = 0$ the Verma
+determinant vanishes identically in $k$ because of the horizontal singular vector $f_0v$, which spans a
+copy of $M(k,-2)$ inside $M(k,0)$; the vacuum module is the quotient by it. Extracting the first
+nonvanishing coefficient in $\lambda$ gives the polynomial identity
+
+\noindent File \leanpath{VOA/Examples/AffineSl2KacVacuumCoefficient.lean}.
+\begin{leancode}
+theorem affine_vacuum_polynomial_identity (n : ℕ) (c : ℤ)
+    (hc : 0<2*(n : ℤ)-c) :
+    (vacuumChevalleyPolynomial n c).det*affineMinusTwoPolynomial n (c+1)=
+      Polynomial.C (vacuumDeterminantScale n c)*affineLeadingPolynomial n c*affineVacuumProduct n c := by
+\end{leancode}
+\begin{equation}\label{l09:eq:detidentity}
+  \det M^{\mathrm{vac}}_{n,c}(k)\cdot \det M^{(-2)}_{n,c+1}(k)
+  = \sigma_{n,c}\cdot \Lambda_{n,c}(k)\cdot \prod_{\beta\ne\alpha,\ r}\bigl(\text{real-root factor}_{\beta,r}(k)\bigr)^{\mathrm{mult}} ,
+\end{equation}
+where $M^{(-2)}$ is the Gram block of $M(k,-2)$, $\sigma\neq0$ is a combinatorial scale, $\Lambda(k)$ is a
+product of oscillator factors that is nonzero at every non-critical level
+(\lean{affineLeadingPolynomial_eval_ne_zero}), and the product (\lean{affineVacuumProduct}) runs over
+the real-root labels of the Kac--Kazhdan formula \emph{other than the horizontal one}, each factor
+being the affine-linear function of $k$ that vanishes exactly when \eqref{l09:eq:KK} holds, raised to
+the dimension of the corresponding shifted weight space. This identity is a Chapter~\ref{ch:L08}
+result (the Kac determinant is proved there from the screening/Wakimoto construction); this chapter
+uses it as a proved theorem.
+
+\noindent File \leanpath{VOA/Examples/AffineSl2AdmissibleKacLabels.lean}.
+\begin{leancode}
+theorem admissible_zero_labels (p q : ℕ) (hp : 2≤p) (hq : 0<q)
+    (hcop : p.Coprime q) (i : (Fin 3×ℕ)×ℕ)
+    (hi : i∈affineKacLabels (q*(p-1)) ((p : ℤ)-1))
+    (hz : realRootWeight ((p : ℂ)/q) i=0) :
+    i=((1,0),0) ∨ i=((0,q-1),p-2) := by
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2AdmissibleVacuumRoot.lean}.
+\begin{leancode}
+theorem admissible_first_multiplicity (p q : ℕ) (hp : 2≤p) (hq : 0<q) :
+    affineKacMultiplicity (q*(p-1)) ((p : ℤ)-1) ((0,q-1),p-2)=1 := by
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2AdmissibleVacuumRoot.lean}.
+\begin{leancode}
+theorem affineMinusTwoPolynomial_admissible_ne_zero (p q : ℕ) (hp : 2≤p) (hq : 0<q)
+    (hcop : p.Coprime q) :
+    (affineMinusTwoPolynomial (q*(p-1)) (p : ℤ)).eval ((p : ℂ)/q-2)≠0 := by
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2AdmissibleVacuumRoot.lean}.
+\begin{leancode}
+theorem vacuumChevalleyDeterminant_admissible_simple (p q : ℕ) (hp : 2≤p) (hq : 0<q)
+    (hcop : p.Coprime q) :
+    (vacuumChevalleyPolynomial (q*(p-1)) ((p : ℤ)-1)).det.eval ((p : ℂ)/q-2)=0 ∧
+    (vacuumChevalleyPolynomial (q*(p-1)) ((p : ℤ)-1)).det.derivative.eval ((p : ℂ)/q-2)≠0 := by
+\end{leancode}
+
+\begin{dictionary}
+A Kac label \lean{((a,m),r) : (Fin 3×ℕ)×ℕ} encodes a real root and an occurrence: colour \lean{a = 0}
+is the family $(m+1)\delta-\alpha$, colour \lean{1} the family $m\delta+\alpha$ (with \lean{((1,0),0)} the
+horizontal root $\alpha$ at its first occurrence), and \lean{r+1} the multiplicity $n$ in
+\eqref{l09:eq:KK}. \lean{realRootWeight t i} is the affine-linear function of the shifted level
+$t = k+2$ that vanishes on the Kac--Kazhdan hyperplane. \lean{admissible_zero_labels} says: in the
+block of energy $q(p-1)$ and charge $p-1$, at $t = p/q$, \emph{only two} labels vanish --- the
+horizontal one (removed in \lean{affineVacuumProduct}) and \lean{((0,q-1),p-2)}, i.e.\ $\beta = q\delta-\alpha$
+with $n = p-1$, which is \eqref{l09:eq:firstsing}. \lean{admissible_first_multiplicity} says that
+factor occurs to the first power (the shifted weight space is the vacuum line only).
+\lean{affineMinusTwoPolynomial_admissible_ne_zero} says $\det M^{(-2)}\neq0$ at the admissible level.
+\lean{(p : ℂ)/q-2} is $k$. Coprimality is used in \lean{admissible_zero_labels} (through the
+resonance arithmetic) and in the nonvanishing of the $M(k,-2)$ determinant.
+\end{dictionary}
+
+\begin{proof}[Proof on paper that the root is simple]
+Evaluate \eqref{l09:eq:detidentity} at $k = p/q-2$. The right side has exactly one vanishing factor,
+the linear factor $-q\bigl(X - (p/q-2)\bigr)$ to the first power (\lean{admissible_first_root_polynomial});
+everything else on the right is nonzero, and $\det M^{(-2)}(k)\neq0$. Hence $\det M^{\mathrm{vac}}(k) = 0$.
+Differentiate the identity and evaluate at $k$: the left side gives $(\det M^{\mathrm{vac}})'(k)\det M^{(-2)}(k)$
+(the other term has the factor $\det M^{\mathrm{vac}}(k)=0$); the right side gives
+$\sigma\Lambda(k)\cdot(-q)\cdot(\text{other factors at }k)\neq0$ (the terms differentiating the other factors are
+multiplied by the vanishing linear factor). So $(\det M^{\mathrm{vac}})'(k)\neq0$.
+\end{proof}
+
+\begin{remark}
+Nothing here asserts that the kernel is spanned by ``the'' singular vector, nor that the maximal ideal
+is generated by it; and no character formula is used. The determinant only certifies that \emph{some}
+radical vector exists in the block, transversally to the level. This is exactly what the deformation
+argument needs, and it is why the uniform proof is shorter than a proof via Adamovi\'c--Milas.
+\end{remark}
+
+\section{The headline theorem}\label{l09:sec:headline}
+
+\begin{leancode}
+theorem admissible_level_noncritical (p q : ℕ) (hp : 2≤p) (hq : 0<q) :
+    (p : ℂ)/q-2+2≠0 := by
+\end{leancode}
+\begin{leancode}
+theorem negative_admissible_level_ne_zero (p q : ℕ) (hq : 0<q) (hneg : p<2*q) :
+    (p : ℂ)/q-2≠0 :=
+\end{leancode}
+\begin{leancode}
+theorem negative_admissible_graded_rigidity (p q : ℕ) (hp : 2≤p) (hq : 0<q)
+    (hcop : p.Coprime q) (hneg : p<2*q) :
+    Deform.IsRigidGraded (simple ((p : ℂ)/q-2) (admissible_level_noncritical p q hp hq)) :=
+\end{leancode}
+(\leanpath{VOA/Examples/AffineSl2AdmissibleRigidity.lean}, namespace \lean{VOA.AffineSl2GeneralRigidity}.
+The proof is shown in full because it is informative: it is the composition of the simple-root theorem
+of Section~\ref{l09:sec:determinant} with the rigidity criterion.)
+
+\begin{theorem}[graded first-order rigidity at negative admissible levels]\label{l09:thm:headline}
+Let $p,q\in\N$ with $p\ge2$, $q\ge1$, $\gcd(p,q)=1$ and $p<2q$, and let $k = p/q-2$. Then every graded
+first-order deformation of the simple affine vertex operator algebra $L_k(\lninesl)$ is trivial: for
+every $Y_1$ satisfying the order-$t$ vertex-algebra axioms and the weight rule, there is a linear
+$\varphi:L_k\to L_k$ preserving each weight space, with $\varphi\lnineone = 0$ and $Y_1 = \delta\varphi$.
+\end{theorem}
+\begin{physics}
+For every negative fractional admissible level, the chiral algebra of the fractional-level $SU(2)$ WZW
+model has no chiral moduli: its OPE data are isolated. Equivalently, one cannot continuously connect two such
+theories at different admissible levels through a family of chiral algebras, which is consistent with the
+levels being discrete (rational) labels fixed by modularity. The universal $V^k$, by contrast, has the level
+as a modulus. Rigidity here is not explained by unitarity or rationality ($L_k$ is neither), but by the null
+vector of energy $q(p-1)$.
+\end{physics}
+
+
+\begin{dictionary}
+\textbf{The variables.} \lean{p q : ℕ} are natural numbers. \lean{hp : 2≤p} is $p\ge2$ (the
+admissibility bound $p\ge h^\vee$); \lean{hq : 0<q} is $q\ge1$; \lean{hcop : p.Coprime q} is
+$\gcd(p,q)=1$; \lean{hneg : p<2*q} is $p<2q$, equivalently $k = p/q-2 < 0$. These are exactly
+``$k$ negative admissible'' (Definition~\ref{l09:def:admissible}); no further hypothesis is present.
+\textbf{The level.} \lean{(p : ℂ)/q-2} is $k = p/q-2$ computed in $\C$ (the cast \lean{(p : ℂ)} and the
+coercion of \lean{q} to $\C$). \lean{admissible_level_noncritical p q hp hq} is the proof of $k+2\ne0$
+required to form the algebra; it is a proof term, and by proof irrelevance its choice cannot
+matter. \textbf{The object.} \lean{simple k hk} is
+\lean{QuotVOA.maxQuotientVOA (affineSl2VOA_closed k hk)}: the quotient of the \emph{universal} affine
+VOA $V^k(\lninesl)$ (Sugawara conformal vector, $c = 3k/(k+2)$) by its maximal proper graded ideal,
+i.e.\ the \emph{simple} quotient $L_k(\lninesl)$ (Definition~\ref{l09:def:Lk}). It is proved simple and
+nonzero (\lean{simple_isSimple}, \lean{simple_vacuum_ne_zero}) and its weight-one space is $\lninesl$
+(\lean{simple_sl2BasisOnWeightOne}). \textbf{The conclusion.} \lean{Deform.IsRigidGraded} is
+Definition~\ref{l09:def:rigid}: for all \lean{D : FirstOrderDeformation (simple k hk)} with
+\lean{D.IsGraded}, \lean{D.IsTrivial}. \textbf{Quantifier order.} $\forall p\,q$, (hypotheses)
+$\Rightarrow \forall D$ graded, $\exists\varphi$: the coboundary $\varphi$ may depend on $D$, as it must.
+\textbf{Same, stronger or weaker than the literature?} At $(p,q) = (2,3)$ it is Linshaw--Qi
+Theorem~5.1, in a form at least as strong as theirs (Section~\ref{l09:sec:deform}: the library allows
+deformations of the translation operator, theirs does not; the trivial ones agree). For all other
+negative admissible levels it is new; it confirms, for $\lninesl$ and $k<0$, Linshaw--Qi's conjecture
+that $L_k(\lnineg)\neq V^k(\lnineg)$ implies rigidity. It is \emph{about the simple quotient}, not the
+universal algebra, and that matters: $V^k(\lninesl)$ is not rigid (the level is a genuine deformation
+parameter), so a theorem about $V^k$ would have been false.
+\textbf{How could it have been vacuous, and why it is not.} (a) \emph{Zero algebra:} excluded,
+$\lnineone\neq0$, proved without \lean{VOA.pbw}. (b) \emph{Trivially rigid algebra:} $L_k$ is the genuine
+simple quotient with $V_1\cong\lninesl$ and the non-zero level $k$, so the obvious candidate deformation
+(change of level) is a real constraint; the analogous statement fails for the free boson
+(\lean{not_normalisedPoleVanishes_heisenberg}) and for $V^k$ (mathematically). (c) \emph{Unsatisfiable
+hypotheses:} the hypotheses are numerical and satisfied, e.g.\ by $(2,3)$, $(3,2)$, $(2,5)$; the
+library also states $k=-4/3$ directly (\lean{L43_graded_rigidity}). (d) \emph{An empty deformation
+class:} \lean{FirstOrderDeformation} is the full space of cocycles, with finite Jacobi sums. (e)
+\emph{A hidden premise:} \texttt{\#print axioms} shows only Lean's standard axioms, and the statement
+has no structure-valued hypothesis (no \lean{BottomProjection}-type datum). The general
+non-vacuity caveat recorded in Section~\ref{l09:sec:deform} is now closed: the library exhibits $V(c,0)$ with a
+non-trivial graded deformation (\lean{VOA.}\allowbreak\lean{VirPoly.}\allowbreak\lean{not_}\allowbreak\lean{isRigidGraded_}\allowbreak\lean{virasoroVOA}).
+\end{dictionary}
+
+\begin{status}
+\lean{VOA.AffineSl2GeneralRigidity.negative_admissible_graded_rigidity}: \textbf{graded first-order
+rigidity, unconditional} (hypotheses are only the numerical admissibility conditions; non-vacuity of the
+notion machine-checked via \lean{VOA.}\allowbreak\lean{VirPoly.}\allowbreak\lean{not_}\allowbreak\lean{isRigidGraded_}\allowbreak\lean{virasoroVOA}). \texttt{\#print axioms}:
+\texttt{[propext, Classical.choice, Quot.sound]}; no \lean{VOA.pbw}. Re-run for this chapter.
+\end{status}
+
+\begin{proof}[Proof on paper, assembled]
+Let $D$ be graded. (1) $V_1\cong\lninesl$ since $k\neq0$; normalise $D$ by Whitehead
+(Section~\ref{l09:sec:whitehead}). (2) The normalised $D$ has a unique level parameter $\delta$, and the
+lifted currents represent $\lninehat$ at level $k+\delta t$ (Step B). (3) At $k+2 = p/q$, the vacuum Gram
+determinant in energy $q(p-1)$, $h_0$-weight $2(p-1)$, has a simple zero at $k$
+(Section~\ref{l09:sec:determinant}); its adjugate gives two relations in $L_k$ whose Gram polynomial has
+nonzero derivative. (4) The relations force $\delta P'(k) = 0$, so $\delta=0$ (Step D). (5) Then the
+normalised deformation is regular, hence trivial by reconstruction (Step A), and $D$ is trivial.
+\end{proof}
+
+\subsection{Every admissible level: the hypothesis \texorpdfstring{$p<2q$}{p<2q} is used only for \texorpdfstring{$k\ne0$}{k != 0}}\label{l09:sec:alladmissible}
+
+\begin{sloppypar}In the proof of the headline the hypothesis \lean{hneg : p<2*q} enters only to show $k\neq0$; the
+simple-root theorem \lean{vacuumChevalleyDeterminant_admissible_simple} needs only $p\ge2$, $q\ge1$, $\gcd(p,q)=1$.
+Since $k = 0$ means $p = 2q$, which with coprimality forces $(p,q) = (2,1)$, the same argument proves rigidity at
+\emph{every admissible level except $k=0$}, including the positive integral levels (Linshaw--Qi's Theorem~4.1 for
+$\lninesl$) and the positive fractional ones (e.g.\ $k = 1/2$). The library states this form, and the headline is
+its specialization to $p<2q$.\end{sloppypar}
+
+\begin{theorem}[Graded first-order rigidity at every admissible level]\label{l09:thm:alladmissible}
+Let $p,q$ be coprime positive integers with $p\ge2$ and $p\neq2q$, and put $k=p/q-2$. Then every graded first-order
+deformation of the simple affine VOA $L_k(\lninesl)$ is trivial.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak AffineSl2AdmissibleRigidity.lean}.
+\begin{leancode}
+theorem admissible_graded_rigidity (p q : ℕ) (hp : 2≤p) (hq : 0<q)
+    (hcop : p.Coprime q) (hne : p ≠ 2*q) :
+    Deform.IsRigidGraded (simple ((p : ℂ)/q-2) (admissible_level_noncritical p q hp hq)) := by
+\end{leancode}
+
+\begin{dictionary}
+The statement is that of Theorem~\ref{l09:thm:headline} with \lean{hneg : p<2*q} replaced by \lean{hne : p ≠ 2*q},
+which excludes only $k=0$, where $L_0(\lninesl)=\C$. The headline
+\lean{negative_admissible_graded_rigidity} is proved from it, discharging \lean{hne} from \lean{hneg} by \lean{omega}.
+\end{dictionary}
+
+\begin{status}
+Proved; \texttt{\#print axioms}: \lean{[propext, Classical.choice, Quot.sound]} (re-run on the release build of
+3~November~2026). No hypothesis beyond the four numerical conditions.
+\end{status}
+
+\begin{physics}
+At positive integral $k$ this is the chiral algebra of the unitary $SU(2)$ WZW model; at fractional admissible $k$ it is
+a non-unitary CFT. Either way the current OPE admits no infinitesimal deformation other than field redefinitions.
+\end{physics}
+
+\begin{remark}\label{l09:rem:extension}
+Combined with the Gorelik--Kac criterion (for $\lninesl$, $V^k$ is non-simple at non-critical $k$ exactly when
+$k+2\in\Q_{>0}$ has numerator at least $2$, i.e.\ $k$ admissible --- a literature fact, not formalised here), this
+means that for $\lninesl$ Linshaw--Qi's conjecture ``$L_k\neq V^k\Rightarrow$ rigid'' holds at every non-critical
+level except $k=0$, where $L_0 = \C$ and the conjecture is trivial. This combines a library theorem with a literature
+fact; the combination is not a library theorem.
+\end{remark}
+
+\section{The boundary-admissible \texorpdfstring{$C_2$}{C2} programme (conditional)}\label{l09:sec:boundary}
+
+The files \leanpath{AffineSl2Boundary*.lean} assigned to this chapter are not about deformations. They
+concern the \emph{Zhu $C_2$ algebra} (Poisson algebra) $R_V = V/C_2(V)$, $C_2(V) =
+\operatorname{span}\{u_{(-2)}v\}$, of the boundary-admissible algebras $L_k(\lninesl)$,
+$k = -2 + 2/(2n+1)$, which governs their associated variety and quasi-lisse property (on paper; associated varieties are not formalised,
+see Chapters~\ref{ch:L11} and~\ref{ch:L16}).
+
+\begin{warning}[title={Superseded: now proved unconditionally for every boundary level}]
+This section records the conditional programme as it stood when the chapter was written. The Arakawa--Dai campaign
+has since proved, for every $m\ge1$ and $k=-2+2/(2m+1)$ and with no hypothesis, the exact presentation of the $C_2$
+algebra of the actual simple VOA (\lean{AffineSl2BoundaryClassicalFreeness.baseC2AlgEquiv}), classical freeness and the
+full vacuum character, bundled as the single theorem
+\lean{VOA.}\allowbreak\lean{AffineSl2BoundaryClassicalFreeness.}\allowbreak\lean{arakawaDai_theorem_1_1}
+(\leanpath{VOA/\allowbreak Examples/\allowbreak AffineSl2BoundaryTheorem11.lean}); see Chapter~\ref{ch:L20}. The conditional statements below remain true and proved, but they are no
+longer the state of the art.
+\end{warning}
+
+For the universal algebra $R_{V^k(\lninesl)} = \operatorname{Sym}(\lninesl)
+= \C[e,h,f]$; with $\mathrm{Cas} = h^2+4ef$ the expected answer (Arakawa--Jiang--Moreau, and the
+classical literature) is
+\begin{equation*}
+  R_{L_k(\lninesl)} \cong \C[e,h,f]\big/\bigl(\mathrm{Cas}^n e,\ \mathrm{Cas}^n h,\ \mathrm{Cas}^n f\bigr),\qquad
+  k = -2+\tfrac{2}{2n+1}.
+\end{equation*}
+These results are \textbf{conditional}: the library proves the presentation \emph{from} a named
+representation-theoretic input (that the maximal ideal is generated by the singular vector, the
+Adamovi\'c--Milas theorem), which it deliberately does not install as an axiom.
+
+\noindent File \leanpath{VOA/Examples/AffineSl2BoundaryC2.lean}.
+\begin{leancode}
+def boundaryIdeal (n : ℕ) : Ideal SymSl2 :=
+  Ideal.span
+    ({casSym ^ n * eSym, casSym ^ n * hSym, casSym ^ n * fSym} : Set SymSl2)
+\end{leancode}
+\noindent File \leanpath{VOA/Commutative/Presentation.lean}.
+\begin{leancode}
+def IsExactPresentation (I : Ideal A) (φ : A →ₐ[R] B) : Prop :=
+  RingHom.ker φ = I
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2BoundaryC2Wakimoto.lean}.
+\begin{leancode}
+theorem exactPresentation43_of_maximalGeneration
+    (hmax : QuotVOA.maxGradedIdeal
+        (AffineVOA.affineSl2VOA_closed (-4 / 3 : ℂ) AffineVOA.Inst.admLevel_noncritical) =
+      SingVec.idealGen
+        (AffineVOA.affineSl2VOA_closed (-4 / 3 : ℂ) AffineVOA.Inst.admLevel_noncritical)
+        Sl2Sing.sl2Singular) :
+    Presentation.IsExactPresentation (AffineSl2BoundaryC2.boundaryIdeal 1)
+      (AffineSl2BoundaryC2.quotientSymbol (-4 / 3 : ℂ) AffineVOA.Inst.admLevel_noncritical
+        (QuotVOA.maxGradedIdeal
+          (AffineVOA.affineSl2VOA_closed (-4 / 3 : ℂ) AffineVOA.Inst.admLevel_noncritical))
+        (QuotVOA.maxGradedIdeal_isIdeal _)
+        (QuotVOA.maxGradedIdeal_isGradedIdeal _)) :=
+  exactPresentation_of_classicalData (classicalData43 hmax)
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2BoundaryMaximalIdeal.lean}.
+\begin{leancode}
+def OnlyVacuumAffinePrimitives (s : WakModule k) : Prop :=
+  ∀ v : WakModule k ⧸ idealGen (W k hk) s,
+    SingularQuotientAffinePrimitive k hk s v →
+      v ∈ ℂ ∙ (quotientBySingular (W k hk) s).vacuum
+\end{leancode}
+
+\begin{dictionary}
+\lean{SymSl2} is \lean{MvPolynomial (Fin 3) ℂ}, the polynomial ring $\C[e,f,h]$, and \lean{casSym} is
+$h^2+4ef$. \lean{boundaryIdeal n} is $(\mathrm{Cas}^ne,\mathrm{Cas}^nh,\mathrm{Cas}^nf)$ (for $n=1$ it equals the
+earlier \lean{casIdeal}, \lean{boundaryIdeal_one}). \lean{quotientSymbol k hk I …} is the composite
+$\C[e,f,h] = R_{V^k}\to R_{V^k/I}$, which is surjective (\lean{quotientSymbol_surjective}).
+\lean{IsExactPresentation I φ} is $\ker\varphi = I$; together with surjectivity it gives
+$R_{L_k}\cong\C[e,f,h]/I$ (\lean{boundarySimpleQuotientEquiv_of_singularC2Image}).
+\lean{SingVec.idealGen W s} is the VOA ideal generated by $s$. So
+\lean{exactPresentation43_of_maximalGeneration} reads: \emph{if} the maximal ideal of $V^{-4/3}$ is
+generated by the weight-3 singular vector, \emph{then} $R_{L_{-4/3}}\cong\C[e,f,h]/(\mathrm{Cas}\,e,\mathrm{Cas}\,h,\mathrm{Cas}\,f)$.
+The same holds at $k=-8/5$ (\lean{exactPresentation85_of_maximalGeneration}, $n=2$, with the
+weight-5 singular vector). \lean{OnlyVacuumAffinePrimitives s}: in $V^k/(s)$, every affine primitive
+vector (nonzero, killed by all positive modes and by $e_0$) lies on the vacuum line. The library proves
+this is \emph{equivalent} to maximal generation (\lean{affineVacuumMaximalSubmoduleGenerated_of_onlyVacuumAffinePrimitives},
+\lean{exactPresentation43_of_onlyVacuumAffinePrimitives}), so the sharpest remaining external input is
+that primitive-uniqueness statement; the existence of primitives in every nonzero proper current
+submodule is proved internally. The general-$n$ interface (\lean{AffineSl2BoundarySingularFamily}:
+structures \lean{Candidate}, \lean{PrimitiveCriterionData}, \lean{AdamovicMilasData},
+\lean{ClassicalData}) carries the singular-vector data as structure fields; concrete instances exist only
+for $n = 1,2$ ($p = 3,5$).
+\end{dictionary}
+
+\begin{proof}[Proof on paper of the conditional presentation]
+Three steps, all proved. (1) For a graded ideal $I$, $\ker(R_W\to R_{W/I})$ is the image of $I$ in $R_W$
+(\lean{ker_A₂quot_eq_idealImage}). (2) Lower bound: the image of an ideal is a Poisson ideal; the
+leading symbol of $s$ is a nonzero multiple of $e\,\mathrm{Cas}^n$ (computed for $n=1,2$), and applying the
+horizontal lowering bracket twice produces $\mathrm{Cas}^nh$ and $\mathrm{Cas}^nf$, so the boundary ideal is
+contained in the kernel. (3) Upper bound: for a vector killed by all positive current modes, the
+ideal it generates is spanned by \emph{non-positive} current words applied to it
+(\lean{singularCurrentPBWSpanning_of_SingP}); modulo $C_2$, modes $\le-2$ vanish, $-1$ is multiplication
+by a symbol and $0$ is the horizontal Poisson bracket, which preserves the boundary ideal. Injectivity
+of $\C[e,f,h]\to R_{V^k}$ (the universal PBW theorem, proved via Wakimoto) converts equality of images
+into the exact kernel.
+\end{proof}
+
+\begin{status}
+\lean{exactPresentation43_of_maximalGeneration}, \lean{exactPresentation85_of_maximalGeneration},
+and the \lean{_of_onlyVacuumAffinePrimitives} and \lean{_of_currentIrreducible} variants:
+\textbf{conditional} on the displayed hypothesis (maximal generation / primitive uniqueness /
+irreducibility of the singular quotient), which is a published theorem (Adamovi\'c--Milas, Theorem
+3.1.4) not formalised here. \texttt{\#print axioms} for the $-4/3$ statement (re-run):
+\texttt{[propext, Classical.choice, Quot.sound]}. Nothing in this section is used by the rigidity
+theorems.
+\end{status}
+
+\begin{warning}
+\textbf{What the free-field route does not give.} An Adamovi\'c inverse-DS/free-field realisation shows
+that the candidate singular vector lies in the maximal ideal
+(\lean{mem_maxGradedIdeal_of_adamovic_freeField}), but \emph{not} that it generates it: the descended
+map $V^k/(s)\to$ (free fields) is injective exactly when no further subsingular vectors exist, which a
+finite check of $s\mapsto0$ cannot see (\lean{onlyVacuumAffinePrimitives_iff_strictDescent},
+\lean{strictDescent_iff_maximalGeneration}). Treating ``$s$ vanishes in the free-field realisation'' as
+``$s$ generates the maximal ideal'' would be an over-claim.
+\end{warning}
+
+\section{A cited hypothesis: admissible partitions}\label{l09:sec:partitions}
+
+\leanpath{VOA/Examples/AdmissiblePartitions.lean} is assigned here by name but belongs to the
+graded-unitarity programme for the Virasoro boundary minimal models $L(c_{2,2n+1},0)$
+(Chapter~\ref{ch:L19}). Its purpose is to make one imported combinatorial input visible as a named
+proposition, rather than proving anything:
+
+\begin{leancode}
+def AdmissibleBasisHyp (c : ℂ) (a : ℕ → ℕ → ℕ) : Prop :=
+  ∀ N p : ℕ, finrank ℂ (goodFil c p (N : ℤ)) = ∑ r ∈ Finset.range (p + 1), a N r
+\end{leancode}
+
+\begin{dictionary}
+\lean{goodFil c p N} is the $p$-th step of the length filtration on the weight-$N$ space of the simple
+Virasoro quotient, and \lean{finrank} its dimension; \lean{a N r} is a \emph{parameter} intended to be
+the number of Salazar's admissible partitions of $N$ of length $r$ (arXiv:2405.07126v3, Theorem~0.1).
+The predicate is the Andrews--Gordon/Salazar refined character. It is \textbf{not proved} and is carried
+as a hypothesis by every statement that uses it; \lean{a} is deliberately not yet a definition. The
+file also records (as a docstring, numerically checked at $c=-22/5$, $N=6$) that the companion
+\lean{FlagBasisHyp} must order the basis compatibly with length: reversing the order flips the Gram
+pivot signs. None of this is related to affine rigidity.
+\end{dictionary}
+
+\section{Verification record}\label{l09:sec:verification}
+
+All axiom checks were run for this chapter on a scratch file importing the relevant modules of the
+already-built tree, with the command (never a bare \texttt{lake env lean}, which can drop
+\texttt{maxSynthPendingDepth}):
+
+\begin{plaincode}
+export PATH="$HOME/.elan/bin:$PATH"
+lake env lean -DmaxSynthPendingDepth=3 <scratchpad>/L09/Ax.lean
+\end{plaincode}
+
+with output (one line per declaration, abbreviated by namespace):
+
+\begin{plaincode}
+'VOA.AffineSl2GeneralRigidity.negative_admissible_graded_rigidity' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.LQ43.L43_graded_rigidity' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.LQ43.L43_isRigidGraded' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.LQ43.isRigidGraded_of_split' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.LQ43.CorrectedSystem.c_eq_zero' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.LQ43.lqVector_eq_sl2Singular' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.LQ43.maxGradedIdeal_ne_bot' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.LQ43.L43_isSimple' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.VertexOperatorAlgebra.weightOneH2Vanishes_of_sl2Basis' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Deform.weightOneCochain_mem_twoCocycle' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Sl2Whitehead.whitehead2_of_sl2Basis' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.AffineSl2GeneralRigidity.graded_rigidity_of_vacuum_simple_root' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.AffineSl2GeneralRigidity.simple_vacuum_ne_zero' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.AffineSl2GeneralRigidity.simple_sl2BasisOnWeightOne' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.AffineSl2GeneralRigidity.simple_regularImpliesTrivialGraded' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Wak.Charged.vacuumChevalleyDeterminant_admissible_simple' depends on axioms: [propext, Classical.choice, Quot.sound]
+\end{plaincode}
+
+and from a second scratch file (importing \leanpath{AffineSl2BoundaryC2Wakimoto},
+\leanpath{AffineSl2RigidityCollapse}, \leanpath{AffineSl2AdmissibleRigidity}):
+
+\begin{plaincode}
+'VOA.AffineSl2BoundaryC2Wakimoto.exactPresentation43_of_maximalGeneration' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.AffineSl2BoundaryC2Wakimoto.exactPresentation85_of_maximalGeneration' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.AffineSl2RigidityCollapse.not_gradedImpliesRegular_L43' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.AffineSl2RigidityCollapse.not_gradedImpliesPoleZero_L43' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.AffineSl2RigidityCollapse.not_normalisedPoleVanishes_heisenberg' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.AffineSl2RigidityCollapse.no_uniform_derivation_piece2' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.AffineSl2RigidityCollapse.not_trivial_satisfies_piece2' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.PolynomialMatrix.kernel_pair_of_simple_root' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.AffineSl2GeneralRigidity.simple_regular_isTrivial' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.AffineSl2GeneralRigidity.simple_isSimple' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.AffineSl2GeneralRigidity.graded_rigidity_of_relations' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.AffineSl2GeneralRigidity.simple_existsUnique_pole_parameter' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Wak.Charged.admissible_zero_labels' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Wak.Charged.affine_vacuum_polynomial_identity' depends on axioms: [propext, Classical.choice, Quot.sound]
+\end{plaincode}
+
+(Lean prints long lists over several lines; they are joined here.) The all-admissible theorem (Theorem~\ref{l09:thm:alladmissible}) gives the same three axioms. No full
+\texttt{lake build} was run for this chapter (the tree was already built at the documented commit);
+the project's build record for the commit that completed the mathematics reports an
+aggregate build of 9{,}989 jobs and a full axiom audit of 3{,}310 reports, and the commit message of
+the documented commit reports an aggregate build of 10{,}343 jobs with \texttt{check\_repository.py} and
+\texttt{run\_axiom\_audits.py} passing. Those are the source's claims; the axiom lists above are what
+this chapter's author re-confirmed.
+
+\textbf{Re-run 2026-10-27.} At a later commit (branch \texttt{deligne-lean}; not re-run for this edition), with the same command on a
+scratch file, \texttt{\#print axioms} gave exactly \texttt{[propext, Classical.choice, Quot.sound]} for
+\lean{VOA.LQ43.L43_graded_rigidity}, \lean{VOA.AffineSl2GeneralRigidity.negative_admissible_graded_rigidity},
+\lean{VOA.VirCDef.cmode_conformal_of_isCoboundary}, \lean{VOA.VirCDef.not_isTrivial_of_omega_witness},
+\lean{VOA.VirCDef.not_isTrivial_of_isCDeformation}, \lean{VOA.VirCDef.not_isRigidGraded_of_isCDeformation} and
+\lean{VOA.NonzeroDeform.not_isRigid_virasoroVOA}. No aggregate \texttt{lake build} was run.
+
+Release audit 2026-10-27: \texttt{Notes/Textbook/referee/RELEASE\_AUDIT\_RIGIDITY.md}. Its verdict on
+\lean{VOA.LQ43.L43_graded_rigidity} is ``announceable with caveats'' (graded first-order only; non-vacuity
+argued on paper only). The non-vacuity caveat was removed afterwards by \lean{VOA.}\allowbreak\lean{VirPoly.}\allowbreak\lean{not_}\allowbreak\lean{isRigidGraded_}\allowbreak\lean{virasoroVOA}
+(release follow-ups audit \texttt{Notes/Textbook/referee/RELEASE\_AUDIT\_FOLLOWUPS.md}, 2026-10-28, which reports
+standard axioms for it; not re-run for this chapter). The audit also confirms that the comparison with Linshaw--Qi in Section~\ref{l09:sec:deform}
+is correct: the Lean notion implies theirs.
+
+\section{Referee's checklist}\label{l09:sec:checklist}
+
+``Uncond.''\ means the hypotheses listed are ordinary mathematical hypotheses of the statement (no
+unestablished datum); $\ast$ marks a \texttt{\#print axioms} run for this chapter with result
+\texttt{[propext, Classical.choice, Quot.sound]}. No entry uses \lean{VOA.pbw}. Namespaces:
+\lean{GR} = \lean{VOA.AffineSl2GeneralRigidity}, \lean{LQ} = \lean{VOA.LQ43},
+\lean{RC} = \lean{VOA.AffineSl2RigidityCollapse}.
+
+{\footnotesize
+\begin{longtable}{>{\raggedright\arraybackslash}p{4.6cm}>{\raggedright\arraybackslash}p{5.0cm}>{\raggedright\arraybackslash}p{2.4cm}>{\raggedright\arraybackslash}p{2.4cm}}
+\toprule
+Lean declaration & intended meaning & hypotheses & status / check\\
+\midrule
+\endhead
+\lean{Deform.FirstOrderDeformation}, \lean{IsGraded}, \lean{IsCoboundary}, \lean{IsTrivial}, \lean{IsRigidGraded} & first-order deformations, weight rule, coboundaries $\delta\varphi$, graded rigidity & -- & defs.; Def.~\ref{l09:def:rigid}, Sec.~\ref{l09:sec:deform}\\
+\lean{Admissible.AdmissibleLevel} & $k+2 = p/q$, $\gcd=1$, $p\ge2$, $q\ge1$ & -- & def.; Def.~\ref{l09:def:admissible}\\
+\lean{GR.simple} & $L_k(\lninesl) = V^k/\mathcal{I}_k$ & $k\ne-2$ & def.; Def.~\ref{l09:def:Lk}\\
+\lean{GR.simple_isSimple}$^\ast$, \lean{GR.simple_vacuum_ne_zero}$^\ast$ & $L_k$ simple and nonzero & $k\ne-2$ & uncond., pbw-free; Sec.~\ref{l09:sec:affine}\\
+\lean{GR.simple_sl2BasisOnWeightOne}$^\ast$ & $V_1(L_k)\cong\lninesl$ & $k\ne0,-2$ & uncond.; Sec.~\ref{l09:sec:affine}\\
+\lean{Sl2Whitehead.whitehead2_of_sl2Basis}$^\ast$ & $H^2(\lninesl,\lninesl)=0$ & $\lninesl$-triple basis & uncond.; Thm.~\ref{l09:thm:whitehead}\\
+\lean{Deform.weightOneCochain_mem_twoCocycle}$^\ast$ & $a^1_{(0)}b$ is a CE 2-cocycle & graded, $Z(V_1)=0$ & uncond.; Sec.~\ref{l09:sec:whitehead}\\
+\lean{LQ.CorrectedSystem.c_eq_zero}$^\ast$ & LQ eqs.\ (10)--(14) force $c=0$ (erratum fixed) & the 5 equations & uncond.; Sec.~\ref{l09:sec:lq}\\
+\lean{LQ.lqVector_eq_sl2Singular}$^\ast$, \lean{LQ.maxGradedIdeal_ne_bot}$^\ast$ & LQ's singular vector $=$ library's; $L_{-4/3}\ne V^{-4/3}$ & none & uncond.; Sec.~\ref{l09:sec:lq}\\
+\lean{LQ.isRigidGraded_of_split}$^\ast$ & Thm.~3.1 $+$ Piece 1 $+$ Piece 2 $\Rightarrow$ rigid & \lean{hZ,h31,h1,h2} & cond.\ (assembly lemma); Thm.~\ref{l09:thm:split}\\
+\lean{LQ.L43_isRigidGraded}$^\ast$ & LQ Thm.~5.1, split form & \lean{hb,h31,h2} (all now proved) & cond., discharged; Thm.~\ref{l09:thm:split}\\
+\lean{RC.not_gradedImpliesRegular_L43}$^\ast$, \lean{RC.not_gradedImpliesPoleZero_L43}$^\ast$ & dead end 1: naive \S5 hypothesis is false & none & uncond.; Sec.~\ref{l09:sec:deadends}\\
+\lean{RC.not_normalisedPoleVanishes_heisenberg}$^\ast$, \lean{RC.no_uniform_derivation_piece2}$^\ast$, \lean{RC.not_trivial_satisfies_piece2}$^\ast$ & Piece 2 is not tautological (fails for free boson) & $k\ne0$ & uncond.; Sec.~\ref{l09:sec:deadends}\\
+\lean{LQ.L43_graded_rigidity}$^\ast$ & \textbf{Linshaw--Qi Thm.~5.1}: $L_{-4/3}$ graded first-order rigid & none & \textbf{uncond.}; Thm.~\ref{l09:thm:L43}\\
+\lean{GR.simple_regular_isTrivial}$^\ast$ & regular graded deformations of $L_k$ trivial (Thm.~3.1) & $k\ne0,-2$ & uncond.; Sec.~\ref{l09:sec:uniform}\\
+\lean{GR.simple_existsUnique_pole_parameter}$^\ast$ & unique level parameter $\delta$ & graded, pole form & uncond.; Sec.~\ref{l09:sec:uniform}\\
+\lean{GR.graded_rigidity_of_relations}$^\ast$ & two relations with $P'(k)\ne0$ $\Rightarrow$ rigid & relations, $P'(k)\neq0$ & uncond.\ criterion; Thm.~\ref{l09:thm:relations}\\
+\lean{PolynomialMatrix.kernel_pair_of_simple_root}$^\ast$ & simple det root $\Rightarrow$ kernel pair with $r^{\mathsf T}M's\ne0$ & simple root & uncond.; Lem.~\ref{l09:lem:kernelpair}\\
+\lean{GR.graded_rigidity_of_vacuum_simple_root}$^\ast$ & simple root of vacuum Gram det $\Rightarrow$ rigid & $k\ne0,-2$, simple root & uncond.\ criterion; Sec.~\ref{l09:sec:determinant}\\
+\lean{vacuumChevalleyDeterminant_admissible_simple}$^\ast$ (ns.\ \lean{Wak.Charged}) & at $k=p/q-2$ the block $(q(p-1),p-1)$ det has a simple root & $p\ge2$, $q\ge1$, coprime & uncond.; Sec.~\ref{l09:sec:determinant}\\
+\lean{GR.negative_admissible_graded_rigidity}$^\ast$ & \textbf{$L_k(\lninesl)$ graded first-order rigid for all negative admissible $k$} & $2\le p<2q$, $q\ge1$, coprime & \textbf{uncond.}; Thm.~\ref{l09:thm:headline}\\
+\lean{exactPresentation43_of_maximalGeneration}$^\ast$ (and \lean{85}; ns.\ \lean{AffineSl2BoundaryC2Wakimoto}) & $R_{L_k}\cong\C[e,f,h]/(\mathrm{Cas}^n\cdot)$ at $k=-4/3,-8/5$ & maximal generation (Adamovi\'c--Milas) & \textbf{cond.}; Sec.~\ref{l09:sec:boundary}\\
+\lean{AdmissiblePartitions.AdmissibleBasisHyp} & Salazar refined character & -- & cited hypothesis, unproved; Sec.~\ref{l09:sec:partitions}\\
+\bottomrule
+\end{longtable}}
+
+\paragraph{Points a referee should weigh.}
+(1) The headline is about the \emph{simple} quotient, defined intrinsically; it is at least as strong as
+Linshaw--Qi's notion (Section~\ref{l09:sec:deform}). (2) The ``tautological bundled hypothesis'' of the
+library map refers to a \emph{deleted} predicate; no current headline depends on it, and the
+remaining conditional split has been fully discharged (Section~\ref{l09:sec:deadends}). (3) The
+hypothesis $p<2q$ is used only to get $k\neq0$; the library also states the theorem for all admissible
+$k\neq0$ (Theorem~\ref{l09:thm:alladmissible}). (4) $V(c,0)$ is proved not graded rigid, for every $c$ (\lean{not_isRigidGraded_virasoroVOA}); the notion is
+non-vacuous (Section~\ref{l09:sec:deform}, second warning). (5)
+\lean{RegularImpliesTrivialGraded} is over-general as a predicate on arbitrary $W$ but is only ever
+proved at affine $\lninesl$ quotients. (6) Every rigidity statement here is
+\emph{graded first-order}; the ungraded \lean{IsRigid} is false for every $V(c,0)$ and is never claimed.
+
+\section{Notes and references}\label{l09:sec:notes}
+
+\begin{sloppypar}
+\begin{itemize}[leftmargin=1.5em]
+\item A.~R.~Linshaw and F.~Qi, \emph{Deformation rigidity of some simple affine VOAs},
+  arXiv:2601.12017 (v2, 2026). Theorem~3.1 (regular $\Rightarrow$ trivial), Theorem~4.1 (positive
+  integral levels), Theorem~5.1 ($L_{-4/3}(\lninesl)$), equations (3) and (10)--(14), and the conjecture
+  that $L_k(\lnineg)\neq V^k(\lnineg)$ implies rigidity. The erratum in (10) is recorded in
+  Section~\ref{l09:sec:lq}.
+\item V.~Kovalchuk and F.~Qi, \emph{First-order deformations of freely generated vertex algebras},
+  arXiv:2408.16309 --- the deformation complex and the $H^2(\lnineg,\lnineg) = 0$ normalisation (\S6.2).
+\item V.~G.~Kac and M.~Wakimoto, \emph{Modular invariant representations of infinite-dimensional Lie
+  algebras and superalgebras}, Proc.\ Natl.\ Acad.\ Sci.\ USA \textbf{85} (1988) 4956--4960 --- admissible
+  levels and weights.
+\item V.~G.~Kac and D.~A.~Kazhdan, \emph{Structure of representations with highest weight of infinite-dimensional
+  Lie algebras}, Adv.\ Math.\ \textbf{34} (1979) 97--108 --- the determinant formula and \eqref{l09:eq:KK}.
+\item F.~G.~Malikov, B.~L.~Feigin and D.~B.~Fuchs, \emph{Singular vectors in Verma modules over Kac--Moody
+  algebras}, Funct.\ Anal.\ Appl.\ \textbf{20} (1986) 103--113.
+\item I.~B.~Frenkel and Y.~Zhu, \emph{Vertex operator algebras associated to representations of affine and
+  Virasoro algebras}, Duke Math.\ J.\ \textbf{66} (1992) 123--168 --- the affine VOAs $V^k(\lnineg)$ and
+  $L_k(\lnineg)$.
+\item D.~Adamovi\'c and A.~Milas, \emph{Vertex operator algebras associated to modular invariant representations
+  for $A_1^{(1)}$}, Math.\ Res.\ Lett.\ \textbf{2} (1995) 563--575 --- the maximal ideal at admissible
+  level is generated by the singular vector (their Theorem~3.1.4, the external input of
+  Section~\ref{l09:sec:boundary}).
+\item D.~Adamovi\'c, \emph{A construction of admissible $A_1^{(1)}$-modules of level $-4/3$}, J.\ Pure Appl.\
+  Algebra \textbf{196} (2005) 119--134 --- the weight-3 singular vector \eqref{l09:eq:sing43}.
+\item H.~Li, \emph{Symmetric invariant bilinear forms on vertex operator algebras}, J.\ Pure Appl.\ Algebra
+  \textbf{96} (1994) 279--297 --- the radical of the invariant form is the maximal ideal.
+\item B.~H.~Lian, \emph{On the classification of simple vertex operator algebras}, Comm.\ Math.\ Phys.\
+  \textbf{163} (1994) 307--357 --- cited by Linshaw--Qi for $W_{(0)}=\C\lnineone$; the library avoids it.
+\item M.~Gorelik and V.~G.~Kac, \emph{On simplicity of vacuum modules}, Adv.\ Math.\ \textbf{211} (2007)
+  621--677 --- criterion for $V^k(\lnineg)$ to be simple (used only in Remark~\ref{l09:rem:extension}).
+\item T.~Arakawa, \emph{Rationality of admissible affine vertex algebras in the category $\mathcal{O}$},
+  Duke Math.\ J.\ \textbf{165} (2016) 67--93, arXiv:1207.4857; T.~Arakawa, C.~Jiang and A.~Moreau,
+  on the $C_2$ algebras of affine VOAs at boundary admissible levels (the symbol nonvanishing used in
+  \lean{ClassicalData}).
+\item D.~Salazar, arXiv:2405.07126v3 (refined characters of the boundary Virasoro minimal models via Andrews--Gordon) --- the input
+  named \lean{AdmissibleBasisHyp}.
+\item C.~Beem, M.~Lemos, P.~Liendo, W.~Peelaers, L.~Rastelli and B.~C.~van Rees, \emph{Infinite chiral
+  symmetry in four dimensions}, Comm.\ Math.\ Phys.\ \textbf{336} (2015) 1359--1433, arXiv:1312.5344 ---
+  chiral algebras of 4d $\mathcal{N}=2$ theories; T.~Creutzig, \emph{W-algebras for Argyres--Douglas
+  theories}, arXiv:1701.05926 --- boundary admissible $L_k(\lninesl)$ and $(A_1,D_{2n+1})$ theories.
+\item A.~M.~Polyakov, \emph{Quantum gravity in two dimensions}, Mod.\ Phys.\ Lett.\ A \textbf{2} (1987)
+  893 --- fractional-level $SL(2)$ current algebra in 2d gravity.
+\item Library sources: \leanpath{VOA/Examples/AffineSl2Rigidity43.lean} (split, erratum, dead ends),
+  \leanpath{VOA/Examples/AffineSl2RigidityCollapse.lean} (refutation certificates),
+  \leanpath{VOA/Core/WeightOneCohomology.lean} (Whitehead), \leanpath{VOA/Examples/AffineSl2General*.lean}
+  and \leanpath{AffineSl2UniformObstruction.lean} (uniform machinery),
+  \leanpath{VOA/Examples/AffineSl2Admissible*.lean} (admissible arithmetic, simple root, headline);
+  the book's catalogue of dead ends, Section~\ref{ch15:sec:deadends}.
+\end{itemize}
+\end{sloppypar}

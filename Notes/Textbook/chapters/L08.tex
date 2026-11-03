@@ -1,0 +1,3115 @@
+\chapter[Affine \texorpdfstring{$\mathfrak{sl}_2$}{sl(2)}: construction, Wakimoto, Verma, Kac]{Affine \texorpdfstring{$\mathfrak{sl}_2$}{sl(2)}: construction, Verma modules, Wakimoto realisation, screening, non-simplicity}\label{ch:L08}
+\begingroup\setlength{\emergencystretch}{3em}\sloppy
+
+\providecommand{\leightsl}{\mathfrak{sl}_2}
+\providecommand{\leighthat}{\widehat{\mathfrak{sl}}_2}
+\providecommand{\leightvac}{|0\rangle}
+\providecommand{\leightV}{\mathcal{V}}
+\providecommand{\leightU}{\mathcal{U}}
+\providecommand{\leightad}{\operatorname{ad}}
+\providecommand{\leightM}{\mathcal{M}}
+\providecommand{\leightFock}{\mathcal{F}}
+
+This chapter documents the release of the LeanVOA library named in the front matter. Every Lean quotation in a \texttt{leancode} box is checked by
+\texttt{scripts/textbook/sync.py} to occur verbatim in the source files of that release (up to
+whitespace; docstrings and comments are omitted from the quotations, never code). The chapter was first
+written against an earlier state of the library (``the snapshot'' below); checks that were run at an earlier state of the library and not re-run for this edition are marked as such. Tool output and shell
+commands are
+printed in plain boxes. The chapter covers the 133 files assigned to it in
+\texttt{Notes/Textbook/assignment.txt}: \leanpath{VOA/Examples/Affine.lean},
+\leanpath{VOA/Examples/AffineSimpleQuotient.lean}, the files \leanpath{VOA/Examples/AffineSl2*.lean}
+not assigned to Chapters~\ref{ch:L09} and~\ref{ch:L16}, and the files
+\leanpath{VOA/Examples/Wakimoto*.lean}.
+
+\paragraph{What the chapter is about.}
+The affine Lie algebra $\leighthat$ is the symmetry algebra of the $SU(2)$ Wess--Zumino--Witten
+(WZW) model, and the vertex operator algebras built from it --- the \emph{universal affine VOA}
+$V^k(\leightsl)$ and its \emph{simple quotient} $L_k(\leightsl)$ --- are the chiral algebras of that
+model at level $k$. They are also the simplest non-abelian VOAs, and the testing ground for almost
+every structural question about VOAs. The library contains a complete construction of
+$V^k(\leightsl)$ and a substantial body of representation theory around it. Concretely, this chapter
+presents:
+\begin{enumerate}
+\item the \textbf{universal affine VOA} $V^k(\leightsl)$ at every non-critical level $k\neq-2$, with
+  the \textbf{Sugawara conformal vector} and central charge $c = 3k/(k+2)$, as a genuine instance
+  of the library's \lean{VertexOperatorAlgebra} structure (\lean{AffineVOA.}\allowbreak\lean{affineSl2VOA_}\allowbreak\lean{closed},
+  Section~\ref{l08:sec:voa});
+\item the \textbf{Wakimoto free-field realisation} of $\leighthat$ on a $\beta\gamma$ system tensored
+  with a free boson, built as an honest Lie-algebra representation on a polynomial ring
+  (\lean{Wak.wakRho}, Section~\ref{l08:sec:wakimoto});
+\item the \textbf{Poincar\'e--Birkhoff--Witt basis} of $V^k(\leightsl)$ at every non-critical level,
+  proved without \lean{VOA.pbw} (then an axiom; it is now a theorem, and its corollary \lean{pbwBasis_holds} gives the PBW
+  basis for every $\mathfrak g$ and every level, Chapter~\ref{ch:L02}), by a leading-term argument in the Wakimoto
+  realisation (\lean{AffineSl2WakimotoLiLeading.}\allowbreak\lean{affineSl2PBWBasis}, Section~\ref{l08:sec:pbw});
+\item explicit \textbf{singular vectors} of $V^k(\leightsl)$ at the admissible levels $k=-4/3$
+  (weight~$3$) and $k=-8/5$ (weight~$5$), each with the theorem that \emph{the level is forced},
+  their nonvanishing via the Wakimoto realisation, and their $C_2$ symbols (powers of the Casimir);
+  and, checked in Lean for this chapter outside the library, the integrable-level vector
+  $e_{-1}^{N+1}\leightvac$ (Section~\ref{l08:sec:singular});
+\item the theorem that \textbf{$V^{-8/5}(\leightsl)$ is not simple} (\lean{Sl2NotSimple85.}\allowbreak\lean{not_}\allowbreak\lean{isSimple_}\allowbreak\lean{85}),
+  i.e.\ that $L_{-8/5}(\leightsl)$ is a proper quotient, \lean{pbw}-free (Section~\ref{l08:sec:notsimple});
+\item \textbf{Verma modules} $M(k,\lambda)$ of $\leighthat$ at every pair of complex parameters, their
+  PBW bases, their contravariant (Shapovalov) forms, \textbf{screening} constructions of singular
+  vectors, and the full \textbf{Kac--Kazhdan determinant formula} for $\leighthat$ at every complex
+  level, including its vacuum specialisation used in Chapter~\ref{ch:L09}
+  (Sections~\ref{l08:sec:verma}--\ref{l08:sec:kac}).
+\end{enumerate}
+
+\begin{status}
+\textbf{Trust summary} (details in Section~\ref{l08:sec:verification}). \texttt{\#print axioms} was
+run for this chapter on 96 headline declarations with
+\texttt{lake env lean -DmaxSynthPendingDepth=3} against the built tree. Every result listed above
+reports exactly \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}: the closed VOA, the Wakimoto
+representation, the PBW basis, the singular vectors and their nonvanishing, non-simplicity at
+$k=-8/5$, the Verma and Kac-determinant theorems. At the snapshot, \lean{VOA.pbw} (then an axiom) appeared in exactly
+the declarations that use the lemma \lean{AffineVOA.}\allowbreak\lean{vacuumA_}\allowbreak\lean{ne_}\allowbreak\lean{zero} (a restatement of
+\lean{AffineLie.}\allowbreak\lean{vacuumVector_}\allowbreak\lean{ne_}\allowbreak\lean{zero}, i.e.\ the field \lean{affineVacuum} of \lean{VOA.pbw}): that lemma
+itself, \lean{AffineVOA.}\allowbreak\lean{Inst.}\allowbreak\lean{closed_}\allowbreak\lean{vacuum_}\allowbreak\lean{ne_}\allowbreak\lean{zero} and \lean{voaSl2Adm_}\allowbreak\lean{vacuum_}\allowbreak\lean{ne_}\allowbreak\lean{zero}, the
+independence lemmas of \leanpath{VOA/Examples/AffineSl2Indep.lean}, and \lean{Wak.M_indep_sing} which
+uses one of them. Each of these has a \lean{pbw}-free replacement elsewhere in the chapter. In
+a later run, after \lean{VOA.pbw} became a theorem (not re-run for this edition), all of them reported the three standard axioms only (re-probed: \lean{vacuumA_ne_zero},
+\lean{closed_vacuum_ne_zero}, \lean{voaSl2Adm_vacuum_ne_zero}, \lean{Sl2Indep.Q_indep},
+\lean{indep_iff_sl2Singular_ne_zero}, \lean{Wak.M_indep_sing}), because \lean{VOA.pbw} is a theorem. The affine
+$\leightsl$ files use it only through \lean{vacuumVector_ne_zero}.
+\end{status}
+
+\paragraph{How to read this chapter.}
+Every definition and theorem is presented as in the rest of the book: mathematical statement, the
+Lean source (with its file), a box \emph{From the mathematics to the Lean statement} that decodes it
+and checks it against the intended statement, a \emph{Physical meaning} box, a proof on paper, and a
+\emph{What the machine verified} box. The files contain several thousand declarations; we present
+every definition on which a headline depends and the headline theorems, and summarise the
+supporting infrastructure in Section~\ref{l08:sec:infrastructure}. Prerequisites: vertex
+algebras, modes, fields and locality (Chapters~\ref{ch:L01} and~\ref{ch:L03}); the affine Kac--Moody algebra, its vacuum
+module, the PBW theorem \lean{VOA.pbw} and \lean{PBWBasis} (now proved by \lean{pbwBasis_holds}) (Chapter~\ref{ch:L02});
+reconstruction (Chapter~\ref{ch:L03}); ideals, maximal quotients, invariant forms and singular
+vectors (Chapter~\ref{ch:L04}). Chapter~\ref{ch:L09} (rigidity) builds on this one and recalls some
+of its definitions.
+
+\paragraph{A physicist's preview.}
+The $SU(2)$ WZW model at level $k$ has three holomorphic currents $J^a(z)$, $a\in\{e,f,h\}$, with
+operator product expansion
+\begin{equation}\label{l08:eq:JJ}
+  J^a(z)\,J^b(w) \sim \frac{k\,\kappa(a,b)}{(z-w)^2} + \frac{\sum_c f^{ab}{}_c\,J^c(w)}{z-w},
+\end{equation}
+where $f^{ab}{}_c$ are the structure constants of $\leightsl$ and $\kappa$ its normalised Killing form.
+The double pole is a \emph{Schwinger term}; its coefficient is the level. In modes
+$J^a(z) = \sum_n J^a_n z^{-n-1}$ the OPE is the affine bracket
+\begin{equation}\label{l08:eq:affine}
+  [J^a_m, J^b_n] = \sum_c f^{ab}{}_c\, J^c_{m+n} + m\,k\,\kappa(a,b)\,\delta_{m+n,0}.
+\end{equation}
+The stress tensor is quadratic in the currents (Sugawara):
+$T(z) = \frac{1}{2(k+2)}\sum_{a,b}\kappa^{ab}(J^aJ^b)(z)$, with central charge $c = 3k/(k+2)$; the
+denominator $k+h^\vee = k+2$ shows that at the \emph{critical level} $k=-2$ there is no stress tensor.
+At non-negative integer $k$ the theory is unitary and rational; its chiral algebra is $L_k(\leightsl)$,
+obtained from $V^k(\leightsl)$ by setting the null state $(J^e_{-1})^{k+1}\leightvac$ to zero, which
+truncates the allowed spins to $0,\frac12,\ldots,\frac k2$ (the \emph{fusion rules}). At the
+\emph{admissible} fractional levels of Kac--Wakimoto (such as $k=-4/3$ and $k=-8/5$) there are null
+vectors too, at higher weight. Wakimoto discovered that all of this can be written in terms of free
+fields: a bosonic ghost pair $\beta,\gamma$ and one free boson $\phi$; null vectors are then produced by
+\emph{screening operators}, contour integrals of free-field currents that commute with
+$\leighthat$. The library formalises each of these physical statements as a theorem; the chapter
+explains which, in what form, and with what status.
+
+%======================================================================
+\section{The current algebra on the vacuum module}\label{l08:sec:currents}
+%======================================================================
+
+\subsection{The Lie algebra \texorpdfstring{$\mathfrak{sl}_2$}{sl(2)} in coordinates}
+
+\begin{definition}[$\leightsl$, its structure constants and normalised Killing form]\label{l08:def:sl2}
+$\leightsl$ is the complex Lie algebra with basis $e,f,h$ and brackets $[h,e]=2e$, $[h,f]=-2f$,
+$[e,f]=h$. Writing $[x_a,x_b] = \sum_c f^{ab}{}_c\,x_c$ for $(x_0,x_1,x_2) = (e,f,h)$, the nonzero
+structure constants are $f^{he}{}_e = 2$, $f^{eh}{}_e=-2$, $f^{hf}{}_f=-2$, $f^{fh}{}_f=2$,
+$f^{ef}{}_h=1$, $f^{fe}{}_h=-1$. The \emph{normalised Killing form} is the symmetric invariant form with
+$\kappa(e,f)=\kappa(f,e)=1$, $\kappa(h,h)=2$ and all other basis pairings zero; it equals the trace
+form $\tr(xy)$ in the defining representation and $\frac14$ of the Killing form
+$\tr(\leightad x\,\leightad y)$.
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2.lean}.
+\begin{leancode}
+abbrev colE : Fin 3 := 0
+abbrev colF : Fin 3 := 1
+abbrev colH : Fin 3 := 2
+
+def fabc : Fin 3 → Fin 3 → Fin 3 → ℂ
+  | 2, 0, 0 => 2    -- ⁅h,e⁆ = 2e
+  | 0, 2, 0 => -2   -- ⁅e,h⁆ = -2e
+  | 2, 1, 1 => -2   -- ⁅h,f⁆ = -2f
+  | 1, 2, 1 => 2    -- ⁅f,h⁆ = 2f
+  | 0, 1, 2 => 1    -- ⁅e,f⁆ = h
+  | 1, 0, 2 => -1   -- ⁅f,e⁆ = -h
+  | _, _, _ => 0
+
+def kappa : Fin 3 → Fin 3 → ℂ
+  | 0, 1 => 1
+  | 1, 0 => 1
+  | 2, 2 => 2
+  | _, _ => 0
+
+abbrev Sl2 : Type := Fin 3 → ℂ
+
+noncomputable def basis (a : Fin 3) : Sl2 := Pi.single a 1
+
+def brComp (x y : Sl2) (c : Fin 3) : ℂ := ∑ a, ∑ b, x a * y b * fabc a b c
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2.lean}.
+\begin{leancode}
+noncomputable abbrev AffSl2 : Type := AffineLie Sl2 kappaForm kappaForm_isInvariant
+
+noncomputable abbrev WakModule (k : ℂ) : Type :=
+  vacuumSpace kappaForm kappaForm_isInvariant k
+
+noncomputable def J (k : ℂ) (a : Fin 3) (m : ℤ) : Module.End ℂ (WakModule k) :=
+  vacuumRho kappaForm kappaForm_isInvariant k (ofLoop kappaForm kappaForm_isInvariant (basis a) m)
+\end{leancode}
+
+\begin{dictionary}
+\textbf{The Lie algebra.} \lean{Sl2 := Fin 3 → ℂ} is $\C^3$ with coordinates indexed by
+\lean{Fin 3} $=\{0,1,2\}$, read as $(e,f,h)$; \lean{basis a} is the $a$-th standard basis vector
+(\lean{Pi.single a 1}). The bracket is defined (instance \lean{Bracket Sl2 Sl2}, not displayed) by
+$\lean{⁅x, y⁆} c = \lean{brComp x y c} = \sum_{a,b}x_ay_bf^{ab}{}_c$, and the file proves the Lie
+axioms (\lean{lie_self_sl2}, \lean{leibniz_lie_sl2}) by a finite case analysis, producing Mathlib
+instances \lean{LieRing Sl2}, \lean{LieAlgebra ℂ Sl2}. The table \lean{fabc} is exactly the list in
+Definition~\ref{l08:def:sl2} (the comments in the source spell out each line). \lean{kappaForm}
+(not displayed; it is the bilinear form $\kappa(x,y)=\sum_{a,b}x_ay_b\,\lean{kappa a b}$) is proved
+symmetric and invariant, $\kappa([x,y],z) = \kappa(x,[y,z])$, as \lean{kappaForm_isInvariant}.
+
+\textbf{The affine algebra and the vacuum module.} \lean{AffineLie 𝔤 κ hκ} is the affine Kac--Moody
+algebra $\widehat{\mathfrak g} = \mathfrak g\otimes\C[t,t^{-1}]\oplus\C C\oplus\C\ell_0$ of
+Chapter~\ref{ch:L02} (Definition~\ref{l02:def:affine}); \lean{ofLoop κ hκ x m} is $x\otimes t^m$.
+\lean{vacuumSpace κ hκ k} is the vacuum module $V^k(\mathfrak g) = U(\widehat{\mathfrak g})/J(k)$, where
+the left ideal $J(k)$ is generated by $x\otimes t^n$ ($n\ge0$), $C-k$ and $\ell_0$
+(Definition~\ref{l02:def:vacuum}), and \lean{vacuumRho} is the action of $\widehat{\mathfrak g}$ on it
+by left multiplication. So \lean{J k a m} is the operator $J^a_m$ by which $x_a\otimes t^m$ acts on
+$V^k(\leightsl)$.
+
+\textbf{A misleading name.} \lean{WakModule k} is \emph{not} a Wakimoto module. It is the universal
+vacuum module $V^k(\leightsl)$; the name is historical. The Wakimoto (free-field) module is the
+polynomial ring \lean{Wak.WakFock} of Section~\ref{l08:sec:wakimoto}.
+
+\textbf{Same as the textbook?} Yes. The only conventions to keep in mind are the colour labels
+$0,1,2 = e,f,h$ (\lean{colE}, \lean{colF}, \lean{colH}) and the normalisation of $\kappa$, which
+fixes what ``level $k$'' means: with this $\kappa$, $k\in\Z_{\ge0}$ are the integrable levels and the
+dual Coxeter number is $h^\vee=2$, as in Kac's book and in Di Francesco--Mathieu--S\'en\'echal.
+\end{dictionary}
+
+\begin{physics}
+$e,f,h$ are the raising, lowering and Cartan generators of the complexified $SU(2)$ symmetry;
+$\frac12h$ is the spin projection $J^3$, so a state of $h$-eigenvalue $2j$ has $J^3=j$. The form
+$\kappa$ is the normalisation in which the root $\alpha$ (the $h$-eigenvalue of $e$) has length
+squared $2$. The
+vacuum module $V^k(\leightsl)$ is the space of states generated from the vacuum by the current modes
+$J^a_{-n}$, $n\ge1$, with no relation imposed beyond the current algebra itself --- the ``Verma
+module of the vacuum'' of the WZW model.
+\end{physics}
+
+\begin{status}
+Definitions. \lean{kappaForm_isInvariant}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (run for
+this chapter).
+\end{status}
+
+\subsection{The affine commutator}
+
+\begin{theorem}[The affine bracket on $V^k(\leightsl)$]\label{l08:thm:currentcomm}
+For every $k\in\C$, all colours $a,b$ and all $m,n\in\Z$, as operators on $V^k(\leightsl)$,
+\begin{equation*}
+  J^a_mJ^b_n - J^b_nJ^a_m = \sum_c f^{ab}{}_c\,J^c_{m+n} + \delta_{m+n,0}\,m\,k\,\kappa(a,b)\,\mathrm{id}.
+\end{equation*}
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2.lean}.
+\begin{leancode}
+theorem current_comm (k : ℂ) (a b : Fin 3) (m n : ℤ) :
+    J k a m * J k b n - J k b n * J k a m
+      = (∑ c, fabc a b c • J k c (m + n))
+        + (if m + n = 0 then ((m : ℂ) * k * kappa a b) • LinearMap.id else 0) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{*} on \lean{Module.}\allowbreak\lean{End ℂ (WakModule k)} is composition, so the left side is the commutator
+$[J^a_m,J^b_n]$. \lean{•} is scalar multiplication and \lean{LinearMap.id} the identity. The central
+term carries the factor $m$ of the \emph{left} mode; for $[f_m,e_n]$ this gives
+$-h_{m+n}+m\,k\,\delta_{m+n,0}$, a convention the singular-vector files flag as the one place where a
+slip would flip a sign. The statement holds for \emph{every} $k$, including the critical level; it is a
+statement about the module $U(\leighthat)/J(k)$, which is nonzero (Section~\ref{l08:sec:grading}),
+so it is not vacuous.
+\end{dictionary}
+
+\begin{physics}
+This is the mode form \eqref{l08:eq:affine} of the current OPE \eqref{l08:eq:JJ}: the first term is the
+classical Poisson bracket of $SU(2)$ charges, the second the quantum anomaly (Schwinger term) whose
+coefficient $k$ is the level. In the WZW model on $SU(2)$, $k$ is the integer coefficient of the
+Wess--Zumino term.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+$\lean{vacuumRho}$ is a Lie algebra homomorphism, so $[J^a_m,J^b_n]$ is the action of
+$[x_a\otimes t^m,x_b\otimes t^n] = [x_a,x_b]\otimes t^{m+n} + m\,\kappa(x_a,x_b)\delta_{m+n,0}C$
+(the affine bracket of Chapter~\ref{ch:L02}). Expand $[x_a,x_b] = \sum_cf^{ab}{}_cx_c$; and $C$ acts on
+the vacuum module as $k$, because $C-k$ lies in the defining ideal and $C$ is central.
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{AffineVOA.}\allowbreak\lean{current_}\allowbreak\lean{comm}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (run for this
+chapter). Unconditional; \lean{pbw}-free.
+\end{status}
+
+\subsection{Current fields and locality}
+
+\begin{definition}[Current field]\label{l08:def:Jfield}
+$J^a(z) := \sum_{m\in\Z}J^a_m z^{-m-1}$, a formal distribution with coefficients in
+$\End V^k(\leightsl)$.
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2.lean}.
+\begin{leancode}
+noncomputable def Jfield (k : ℂ) (a : Fin 3) : FormalDist (Module.End ℂ (WakModule k)) :=
+  fun j => J k a (-j - 1)
+
+theorem Jfield_mode (k : ℂ) (a : Fin 3) (m : ℤ) : mode (Jfield k a) m = J k a m := by
+\end{leancode}
+
+\begin{dictionary}
+A \lean{FormalDist A} is a function $\Z\to A$ indexed by the \emph{exponent of $z$}
+(Chapter~\ref{ch:L01}, Definition~\ref{l01:def:formaldist}); the library's mode convention is
+\lean{mode f n = f (-n-1)} (Definition~\ref{l01:def:mode}). Here the coefficient of $z^j$ is
+$J^a_{-j-1}$, so the coefficient of $z^{-m-1}$ is $J^a_m$, and \lean{Jfield_mode} records
+$\lean{mode (Jfield k a) m} = J^a_m$. This is the textbook field.
+\end{dictionary}
+
+\begin{physics}
+$J^a(z)$ is the holomorphic current of the WZW model; $J^a_m$ is its $m$-th Fourier mode on the
+cylinder. Modes with $m<0$ create states, modes with $m>0$ annihilate the vacuum.
+\end{physics}
+
+\begin{status}
+Definition; \lean{Jfield_mode} is axiom-clean.
+\end{status}
+
+\begin{theorem}[Mutual locality of the currents]\label{l08:thm:Jlocal}
+For all colours $a,b$:
+$[J^a(z),J^b(w)] = \sum_cf^{ab}{}_cJ^c(w)\,\delta(z/w) + k\,\kappa(a,b)\,\partial_w\delta(z/w)$,
+and consequently $(z-w)^2[J^a(z),J^b(w)] = 0$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2.lean}.
+\begin{leancode}
+theorem bracketDist_Jfield_eq (k : ℂ) (a b : Fin 3) :
+    bracketDist (Jfield k a) (Jfield k b)
+      = deltaDeriv 0 (opeCoeff0 k a b) + deltaDeriv 1 (opeCoeff1 k a b) := by
+
+theorem Jfield_self_local (k : ℂ) (a b : Fin 3) :
+    mulBySubPow 2 (bracketDist (Jfield k a) (Jfield k b)) = 0 := by
+
+theorem Jfield_local (k : ℂ) (a b : Fin 3) : Local (Jfield k a) (Jfield k b) :=
+  ⟨2, Jfield_self_local k a b⟩
+\end{leancode}
+
+\begin{dictionary}
+\lean{bracketDist a b} is the two-variable distribution $[a(z),b(w)]$; \lean{deltaDeriv j c} is
+$c(w)\,\partial_w^{(j)}\delta(z/w)$ in the divided-power normalisation; \lean{mulBySubPow N} multiplies
+by $(z-w)^N$; \lean{Local a b} says some power of $(z-w)$ kills the commutator
+(Chapter~\ref{ch:L01}, Definition~\ref{l01:def:bracket}).
+\lean{opeCoeff0 k a b} is the distribution $\sum_cf^{ab}{}_cJ^c(w)$ and \lean{opeCoeff1 k a b} the
+constant $k\,\kappa(a,b)\,\mathrm{id}$ (defined in the same file). So the first theorem is the
+OPE~\eqref{l08:eq:JJ} in its delta-function form, and \lean{Jfield_local} is locality with order~$2$.
+\end{dictionary}
+
+\begin{physics}
+The two terms are the simple and double poles of the current--current OPE. Locality of order two
+says the OPE has at most a double pole --- currents have conformal weight one.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Coefficientwise, the commutator of the $z^m$ and $w^n$ coefficients is the affine bracket of
+Theorem~\ref{l08:thm:currentcomm}, which is the coefficient of $z^mw^n$ in the right side.
+$(z-w)\delta(z/w)=0$ and $(z-w)^2\partial_w\delta(z/w)=0$.
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{AffineVOA.}\allowbreak\lean{Jfield_}\allowbreak\lean{local}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (run for this
+chapter).
+\end{status}
+
+%======================================================================
+\section{The energy grading, the vacuum, and where the PBW theorem enters}\label{l08:sec:grading}
+%======================================================================
+
+\begin{definition}[Energy grading of $V^k(\leightsl)$]\label{l08:def:grading}
+$\ell_0$ acts on $V^k(\leightsl)$ diagonalisably with eigenvalues $-d$, $d\in\Z_{\ge0}$
+(Chapter~\ref{ch:L02}, Section~\ref{l02:sec:grading}). For $n\in\Z$ let $V^k_n$ be the
+$\ell_0$-eigenspace of eigenvalue $-n$: the states of \emph{conformal weight} (energy) $n$. The vacuum
+is $\leightvac$, the class of $1\in U(\leighthat)$.
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2VOA.lean}.
+\begin{leancode}
+noncomputable def ell0OpA (k : ℂ) : End ℂ (WakModule k) :=
+  ell0Op kappaForm kappaForm_isInvariant k
+
+noncomputable def gradingZA (k : ℂ) (n : ℤ) : Submodule ℂ (WakModule k) :=
+  Module.End.eigenspace (ell0OpA k) (-(n : ℂ))
+
+noncomputable def vacuumA (k : ℂ) : WakModule k :=
+  vacuumVector kappaForm kappaForm_isInvariant k
+
+theorem gradingZA_isInternal (k : ℂ) : DirectSum.IsInternal (gradingZA k) :=
+
+theorem gradingZA_finiteDimensional (k : ℂ) (n : ℤ) :
+    FiniteDimensional ℂ (gradingZA k n) :=
+
+theorem gradingZA_zero_eq_smul_vacuum (k : ℂ) :
+    gradingZA k 0 = (ℂ ∙ vacuumA k) :=
+
+theorem gradingZA_positivity (k : ℂ) (n : ℤ) (hn : n < 0) : gradingZA k n = ⊥ := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{Module.}\allowbreak\lean{End.}\allowbreak\lean{eigenspace T μ} is $\ker(T-\mu)$. The sign is deliberate: $\ell_0$ is the
+\emph{degree derivation}, $[\ell_0,x\otimes t^m] = m\,x\otimes t^m$, so a creation mode $J^a_{-m}$
+lowers the $\ell_0$-eigenvalue by $m$; the energy is $-\ell_0$. \lean{DirectSum.IsInternal} says
+$V^k = \bigoplus_n V^k_n$ (Mathlib's internal direct sum). \lean{ℂ ∙ v} is the line spanned by $v$;
+\lean{⊥} is the zero subspace. So the four theorems say: the grading is a direct-sum decomposition
+with finite-dimensional pieces, $V^k_0 = \C\leightvac$, and $V^k_n = 0$ for $n<0$ --- the CFT-type
+conditions of Chapter~\ref{ch:L03} (Definition~\ref{l03:def:VOA}, (VOA4)). None of these needs
+$\leightvac\ne0$: if the module were zero they would hold trivially.
+\end{dictionary}
+
+\begin{physics}
+$V^k_n$ is the space of states of energy $L_0 = n$ in the vacuum sector; its dimension is the
+coefficient of $q^n$ in the vacuum character $\prod_{m\ge1}(1-q^m)^{-3}$ (for the universal algebra).
+Finite-dimensionality and boundedness below are what make the character a $q$-series.
+\end{physics}
+
+\begin{status}
+All four: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}; definitions axiom-free.
+\end{status}
+
+\begin{theorem}[Nonvanishing of the vacuum, via \texttt{VOA.pbw}]\label{l08:thm:vacpbw}
+$\leightvac\ne0$ in $V^k(\leightsl)$ for every $k\in\C$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2VOA.lean}.
+\begin{leancode}
+theorem vacuumA_ne_zero (k : ℂ) : vacuumA k ≠ 0 :=
+  vacuumVector_ne_zero kappaForm kappaForm_isInvariant k
+\end{leancode}
+
+\begin{dictionary}
+The proof term is the whole proof: it is the library lemma \lean{AffineLie.}\allowbreak\lean{vacuumVector_}\allowbreak\lean{ne_}\allowbreak\lean{zero} of
+Chapter~\ref{ch:L02} (Theorem~\ref{l02:thm:vacne}), which in turn is \emph{literally} the field
+\lean{affineVacuum} of the theorem \lean{VOA.pbw} (formerly a project axiom, now a theorem; proved by relative PBW,
+Chapter~\ref{ch:L02}, Theorem~\ref{l02:thm:vacind}). It is valid at every $k$, including $k=-2$.
+\end{dictionary}
+
+\begin{physics}
+The universal current algebra has a vacuum. Physically obvious; mathematically, a quotient of
+$U(\leighthat)$ by a left ideal could be zero, and ruling this out is the PBW theorem.
+\end{physics}
+
+\begin{warning}[title={The zero module satisfies every VOA axiom}]
+The library's \lean{VertexOperatorAlgebra} structure (Chapter~\ref{ch:L03},
+Definition~\ref{l03:def:VOA}) has no field asserting $\leightvac\ne0$. On the zero vector space every
+axiom holds. A theorem about $V^k(\leightsl)$ that silently relied on a degenerate carrier would be
+vacuous. Nonvanishing is therefore always a separate, explicit statement, and this chapter tracks
+which proof of it each result uses:
+\begin{itemize}
+\item \lean{AffineVOA.}\allowbreak\lean{vacuumA_}\allowbreak\lean{ne_}\allowbreak\lean{zero} (above) uses \lean{VOA.pbw};
+\item \lean{Wak.}\allowbreak\lean{vacuumA_}\allowbreak\lean{ne_}\allowbreak\lean{zero_}\allowbreak\lean{free} (Theorem~\ref{l08:thm:vacfree}) proves the same for $k\ne-2$ from
+  the Wakimoto realisation, without \lean{VOA.pbw};
+\item \lean{AffineSl2WakimotoLiLeading.}\allowbreak\lean{affineSl2PBWBasis} (Theorem~\ref{l08:thm:pbw}) gives a full
+  basis for $k\ne-2$, again without \lean{VOA.pbw}.
+\end{itemize}
+At the critical level $k=-2$ the library's proofs of $\leightvac\ne0$ are \lean{vacuumA_ne_zero} (through the theorem
+\lean{VOA.pbw}) and \lean{pbwBasis_holds}.
+\end{warning}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{AffineVOA.}\allowbreak\lean{vacuumA_}\allowbreak\lean{ne_}\allowbreak\lean{zero}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound, VOA.}\allowbreak\lean{pbw]} (run for
+this chapter at the snapshot, when \lean{VOA.pbw} was an axiom); re-probed at a later commit, after \lean{VOA.pbw} became a theorem (not re-run for this edition):
+\lean{[propext, Classical.choice, Quot.sound]}. Uses the theorem \lean{VOA.pbw}.
+\end{status}
+
+\begin{proposition}[Current modes shift the weight; regularity]\label{l08:prop:Jgrading}
+$J^a_m$ maps $V^k_n$ into $V^k_{n-m}$; hence $J^a_m v = 0$ when $v\in V^k_n$ and $m>n$, and for every
+state $v$ there is $B$ with $J^a_mv=0$ for all $m\ge B$.
+\end{proposition}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2VOA.lean}.
+\begin{leancode}
+theorem J_mem_gradingZA (k : ℂ) (a : Fin 3) (m n : ℤ) {v : WakModule k}
+    (hv : v ∈ gradingZA k n) : J k a m v ∈ gradingZA k (n - m) := by
+
+theorem J_gradingZA_eq_zero (k : ℂ) (a : Fin 3) {m n : ℤ} (hmn : n < m) {v : WakModule k}
+    (hv : v ∈ gradingZA k n) : J k a m v = 0 := by
+\end{leancode}
+
+\begin{dictionary}
+Exactly as stated. The second follows from the first and \lean{gradingZA_positivity}. The arbitrary-state
+version is \lean{J_regularity} in the same file, which makes \lean{Jfield k a} a \emph{field} in the
+sense of Chapter~\ref{ch:L01} (Definition~\ref{l01:def:field}): applied to any state, only finitely many
+negative powers of $z$ survive.
+\end{dictionary}
+
+\begin{physics}
+$J^a_m$ carries energy $-m$: annihilation modes lower the energy, and nothing has negative energy.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+$[\ell_0,J^a_m] = mJ^a_m$; if $\ell_0v=-nv$ then $\ell_0J^a_mv = (m-n)J^a_mv$.
+\end{proof}
+
+\begin{status}
+Both: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}.
+\end{status}
+%======================================================================
+\section{The Sugawara construction}\label{l08:sec:sugawara}
+%======================================================================
+
+\subsection{The Sugawara field and the central charge}
+
+\begin{definition}[Sugawara field, Virasoro modes, conformal vector, central charge]\label{l08:def:sugawara}
+Let $\kappa^{ab}$ be the inverse matrix of $\kappa$: $\kappa^{ef}=\kappa^{fe}=1$, $\kappa^{hh}=\frac12$.
+For $k\ne-2$ the \emph{Sugawara field} is
+\begin{equation}\label{l08:eq:sugawara}
+  T(z) = \frac{1}{2(k+h^\vee)}\sum_{a,b}\kappa^{ab}\,{:}J^a(z)J^b(z){:}
+  = \frac{1}{2(k+2)}\Bigl({:}J^eJ^f{:}+{:}J^fJ^e{:}+\tfrac12{:}J^hJ^h{:}\Bigr)(z),
+\end{equation}
+with $h^\vee = 2$ the dual Coxeter number of $\leightsl$. Its modes are $L_n$, $T(z) = \sum_nL_nz^{-n-2}$.
+The conformal vector is $\omega = L_{-2}\leightvac$, and the central charge is
+$c(k) = \dfrac{k\dim\leightsl}{k+h^\vee} = \dfrac{3k}{k+2}$.
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2VOA.lean}.
+\begin{leancode}
+noncomputable def kappaInv : Fin 3 → Fin 3 → ℂ
+  | 0, 1 => 1
+  | 1, 0 => 1
+  | 2, 2 => 1/2
+  | _, _ => 0
+
+def dualCoxeter : ℂ := 2
+
+def dimSl2 : ℂ := 3
+
+noncomputable def sugawaraField (k : ℂ) : FormalDist (End ℂ (WakModule k)) :=
+  (2 * (k + dualCoxeter))⁻¹ •
+    ∑ a : Fin 3, ∑ b : Fin 3,
+      kappaInv a b • nprod (Jfield_isField k a) (Jfield_isField k b)
+
+noncomputable def Lsug (k : ℂ) (n : ℤ) : End ℂ (WakModule k) :=
+  mode (sugawaraField k) (n + 1)
+
+noncomputable def omegaA (k : ℂ) : WakModule k := Lsug k (-2) (vacuumA k)
+
+noncomputable def centralChargeA (k : ℂ) : ℂ := dimSl2 * k / (k + dualCoxeter)
+
+theorem centralChargeA_eq (k : ℂ) : centralChargeA k = 3 * k / (k + 2) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{nprod ha hb} is the normally ordered product ${:}a(z)b(z){:}$ of two fields
+(Chapter~\ref{ch:L03}; it needs the witnesses \lean{Jfield_isField} that the currents are fields,
+Proposition~\ref{l08:prop:Jgrading}). \lean{kappaInv} is the inverse of the matrix \lean{kappa}
+(\lean{kappaInv_kappa} proves $\sum_b\kappa(a,b)\kappa^{bc} = \delta_{ac}$). The prefactor
+\lean{(2 * (k + dualCoxeter))⁻¹} is $1/(2(k+2))$.
+
+\textbf{Mode indices.} $T$ has conformal weight $2$, so $L_n$ is the coefficient of $z^{-n-2}$, which
+in the library's convention is \lean{mode T (n + 1)}: indeed \lean{mode T (n+1)} is the coefficient of
+$z^{-(n+1)-1}$. Hence \lean{Lsug k n} $= L_n$ and \lean{omegaA k} $= L_{-2}\leightvac$, the state
+$\omega = \frac{1}{2(k+2)}\sum_{a,b}\kappa^{ab}J^a_{-1}J^b_{-1}\leightvac$ (proved as
+\lean{omegaA_creation_form} in \leanpath{VOA/Examples/AffineSl2Virasoro.lean}).
+
+\textbf{The critical level.} In Lean, $0^{-1} = 0$. At $k=-2$ the definition therefore does
+\emph{not} fail; it silently produces $T = 0$. Every theorem below about $T$ carries the hypothesis
+\lean{hk : k + 2 ≠ 0}, and at $k=-2$ the Sugawara identities are false for this $T$ (see the warning
+after Theorem~\ref{l08:thm:Lcomm}). \lean{centralChargeA_eq} holds for all $k$ in the same
+convention (both sides are $0$ at $k=-2$).
+\end{dictionary}
+
+\begin{physics}
+Equation~\eqref{l08:eq:sugawara} is the Sugawara stress tensor of the WZW model. The shift
+$k\mapsto k+h^\vee$ in the denominator is a quantum effect: classically one would write $1/(2k)$; the
+normal ordering of the double pole of $J^aJ^b$ produces the Casimir of the adjoint representation,
+$2h^\vee$, which renormalises it. For $k\in\Z_{\ge0}$ one gets $c = 0, 1, \frac32, \frac95, 2,\ldots$;
+$c=1$ at $k=1$ is the $SU(2)_1$ theory of a free boson at the self-dual radius. At $k=-4/3$, $c=-6$; at
+$k=-8/5$, $c=-12$.
+\end{physics}
+
+\begin{status}
+Definitions. \lean{centralChargeA_eq}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}.
+\end{status}
+
+\subsection{The Sugawara operators act as derivations on the currents}
+
+\begin{theorem}[Translation covariance of the currents]\label{l08:thm:Lcomm}
+Let $k\ne-2$. Then $[L_{-1},J^c_\mu] = -\mu\,J^c_{\mu-1}$ for every colour $c$ and $\mu\in\Z$. Equivalently,
+$[L_{-1},J^c(z)] = \partial_zJ^c(z)$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2Reconstruction.lean}.
+\begin{leancode}
+noncomputable def Ltrans (k : ℂ) : End ℂ (WakModule k) := Lsug k (-1)
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2CurrentCovStruct.lean}.
+\begin{leancode}
+theorem Lcomm_current (k : ℂ) (hk : k + 2 ≠ 0) (c : Fin 3) (μ : ℤ) (x : WakModule k) :
+    (Ltrans k * J k c μ - J k c μ * Ltrans k) x = ((-μ : ℤ) : ℂ) • J k c (μ - 1) x := by
+
+theorem Jfield_DCovariant (k : ℂ) (hk : k + 2 ≠ 0) (a : Fin 3) :
+    Reconstruction.DCovariant (Ltrans k) (Jfield k a) := by
+\end{leancode}
+\noindent File \leanpath{VOA/Core/ReconstructionExistence.lean}.
+\begin{leancode}
+def DCovariant (T : End ℂ V) (a : FormalDist (End ℂ V)) : Prop :=
+  ∀ m : ℤ, T * a m - a m * T = ((m + 1 : ℤ)) • a (m + 1)
+\end{leancode}
+
+\begin{dictionary}
+\lean{Ltrans k} $= L_{-1}$. \lean{DCovariant T a} says $[T,a_m] = (m+1)a_{m+1}$ for the coefficient
+$a_m$ of $z^m$; since $\partial_z\sum_ma_mz^m = \sum_m(m+1)a_{m+1}z^m$, this is $[T,a(z)] = \partial_za(z)$
+(Chapter~\ref{ch:L03}, Definition~\ref{l03:def:dcov}). With $a = J^c$ and $a_m = J^c_{-m-1}$ it is
+$[L_{-1},J^c_{-m-1}] = (m+1)J^c_{-m-2}$, i.e.\ \lean{Lcomm_current} with $\mu=-m-1$.
+The hypothesis $k+2\ne0$ is necessary, see the warning.
+\end{dictionary}
+
+\begin{physics}
+$L_{-1}$ generates translations $z\mapsto z+\epsilon$; the theorem says the currents transform as
+fields under translation. Together with Theorem~\ref{l08:thm:L0} below it says $J^a(z)$ is a primary
+field of conformal weight one with respect to the Sugawara stress tensor --- the defining property of
+the WZW currents, and the reason the Sugawara $T$ is ``the'' stress tensor.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Write $L_{-1} = \frac{1}{2(k+2)}\sum_{a,b}\kappa^{ab}\sum_p{:}J^a_{-1-p}J^b_p{:}$ and compute
+$[L_{-1},J^c_\mu]$ with the Leibniz rule and Theorem~\ref{l08:thm:currentcomm}. Two contributions arise.
+The \emph{central} terms give $2\mu k\,J^c_{\mu-1}$ (each of the two factors of the quadratic
+contributes $\mu k\kappa(\cdot,c)$, contracted with $\kappa^{ab}$). The \emph{structure-constant} terms
+give $\sum_{a,b}\kappa^{ab}f^{\cdot\cdot}{}_\cdot$-contractions; naively they cancel by
+antisymmetry of $f$ against symmetry of $\kappa^{ab}$, but normal ordering spoils the cancellation
+on a finite ``band'' of $\mu$ modes, and re-ordering those produces the quadratic Casimir of the
+adjoint representation, $\sum_{a,b,d}\kappa^{ab}f^{ad}{}_{e}f^{bc}{}_d$-type contraction $= 2h^\vee = 4$, times
+$\mu J^c_{\mu-1}$. Altogether $[\sum\kappa^{ab}{:}J^aJ^b{:}_{-1},J^c_\mu] = -2\mu(k+2)J^c_{\mu-1}$, and the
+prefactor $\frac1{2(k+2)}$ gives $-\mu J^c_{\mu-1}$. (The source calls the band computation the
+\emph{flip-band telescoping}; it lives in \leanpath{VOA/Examples/AffineSl2CurrentCovStruct.lean}.)
+\end{proof}
+
+\begin{warning}[title={The critical level}]
+The file \leanpath{AffineSl2CurrentCov.lean} records that the covariance identity is \emph{false} at
+$k=-2$ (checked independently in Mathematica on 168 cases, per the source): there the prefactor is
+$(2\cdot0)^{-1} = 0$ in Lean, so $L_{-1}=0$, while $-\mu J^c_{\mu-1}\ne0$. This is the formal shadow of
+the physical fact that at the critical level the Sugawara vector is \emph{central} (it commutes with
+all currents) rather than a stress tensor. The hypothesis \lean{hk} is therefore not a convenience; it
+is the correct hypothesis.
+\end{warning}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{AffineVOA.}\allowbreak\lean{SugawaraCov.}\allowbreak\lean{Lcomm_}\allowbreak\lean{current}, \lean{VOA.}\allowbreak\lean{AffineVOA.}\allowbreak\lean{SugawaraCov.}\allowbreak\lean{Jfield_}\allowbreak\lean{DCovariant}:
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (run for this chapter). Unconditional for $k\ne-2$.
+\end{status}
+
+\begin{theorem}[The Sugawara $L_0$ is the energy]\label{l08:thm:L0}
+Let $k\ne-2$. Then $L_0 = -\ell_0$ on $V^k(\leightsl)$; equivalently $L_0v = nv$ for $v\in V^k_n$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2L0Cov.lean}.
+\begin{leancode}
+theorem Lsug0_comm_current (k : ℂ) (hk : k + 2 ≠ 0) (c : Fin 3) (μ : ℤ) (x : WakModule k) :
+    (Lsug k 0 * J k c μ - J k c μ * Lsug k 0) x = ((-μ : ℤ) : ℂ) • J k c μ x := by
+
+theorem Lsug0_eq_negEll0OpA (k : ℂ) (hk : k + 2 ≠ 0) : Lsug k 0 = -ell0OpA k := by
+
+theorem hYA_L0 (k : ℂ) (hk : k + 2 ≠ 0) {n : ℤ} (v : WakModule k) (hv : v ∈ gradingZA k n) :
+    mode (YA k hk (omegaA k)) 1 v = (n : ℂ) • v := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{Lsug0_comm_current} is $[L_0,J^c_\mu] = -\mu J^c_\mu$: the currents have weight one.
+\lean{Lsug0_eq_negEll0OpA} is the operator identity $L_0 = -\ell_0$. \lean{hYA_L0} is the form
+consumed by the VOA axiom (VOA2): \lean{YA k hk} is the vertex map of Section~\ref{l08:sec:voa}, and
+\lean{mode (YA k hk (omegaA k)) 1} $= \omega_{(1)} = L_0$ (the file proves \lean{YA k hk (omegaA k)} is
+the Sugawara field).
+\end{dictionary}
+
+\begin{physics}
+The Sugawara $L_0$ counts energy: the stress tensor built from the currents generates the same time
+translations as the grading by mode number. This is why the WZW Hamiltonian is quadratic in the
+currents.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+The same computation as Theorem~\ref{l08:thm:Lcomm}, for the mode $L_0$, gives
+$[L_0,J^c_\mu] = -\mu J^c_\mu$ (the central contribution is $2\mu k$, the Casimir contribution $4\mu$,
+total $2\mu(k+2)$, divided by $2(k+2)$). $L_0\leightvac = 0$ since every term of $L_0$ has an
+annihilation mode on the right after normal ordering. The creation monomials
+$J^{a_1}_{-n_1}\cdots J^{a_r}_{-n_r}\leightvac$ span $V^k$ (Chapter~\ref{ch:L02},
+Theorem~\ref{l02:thm:span}); on them both $L_0$ and $-\ell_0$ act by $\sum n_i$, by induction on $r$.
+\end{proof}
+
+\begin{status}
+All three: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}; unconditional for $k\ne-2$.
+\end{status}
+
+%======================================================================
+\section{The universal affine VOA \texorpdfstring{$V^k(\mathfrak{sl}_2)$}{V\^{}k(sl2)}}\label{l08:sec:voa}
+%======================================================================
+
+\subsection{Reconstruction of the vertex map}
+
+A VOA needs a vertex operator $Y(v,z)$ for \emph{every} state $v$, not just for the currents. The
+textbook construction (reconstruction theorem; Chapter~\ref{ch:L03}, Theorem~\ref{l03:thm:reconstruct})
+assigns to the creation monomial
+$J^{a_1}_{-i_1-1}\cdots J^{a_r}_{-i_r-1}\leightvac$ the iterated normal-ordered product
+${:}\partial^{(i_1)}J^{a_1}(z)\cdots\partial^{(i_r)}J^{a_r}(z){:}$, where $\partial^{(i)} = \partial^i/i!$.
+The difficulty is well-definedness: monomials are not linearly independent (they satisfy the affine
+relations), so the assignment must respect relations. The library's reconstruction theorem needs
+only that the monomials \emph{span} and that the candidate fields are mutually local and
+translation-covariant; well-definedness then follows from Goddard's uniqueness theorem.
+
+\begin{definition}[Creation words and their fields]\label{l08:def:words}
+For a list $\ell = [(a_1,i_1),\ldots,(a_r,i_r)]$ of colours and depths, the \emph{word state} is
+$J^{a_1}_{-i_1-1}\cdots J^{a_r}_{-i_r-1}\leightvac$ and the \emph{word field} is
+${:}\partial^{(i_1)}J^{a_1}(z)\cdots{:}\partial^{(i_r)}J^{a_r}(z)\,\mathrm{id}{:}\cdots{:}$ (right-nested
+normal ordering, ending with the identity field).
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2VOA.lean}.
+\begin{leancode}
+noncomputable def wordStateA (k : ℂ) : List (Fin 3 × ℕ) → WakModule k
+  | [] => vacuumA k
+  | (ai :: rest) => J k ai.1 (-(ai.2 : ℤ) - 1) (wordStateA k rest)
+
+noncomputable def YwordA (k : ℂ) (l : List (Fin 3 × ℕ)) :
+    FormalDist (End ℂ (WakModule k)) := (YwordAF k l).1
+\end{leancode}
+
+\begin{dictionary}
+A pair \lean{(a, i)} stands for the creation mode $J^a_{-i-1}$; the head of the list is the leftmost
+(outermost) operator. \lean{YwordAF} (same file, not displayed) builds the right-nested normal-ordered
+product of the scaled derivatives \lean{genFieldA k a i} $=\frac1{i!}\partial_z^iJ^a(z)$, starting from
+the identity field \lean{idFieldA}, together with a proof that the result is a field; \lean{YwordA}
+forgets the proof.
+\end{dictionary}
+
+\begin{physics}
+State--field correspondence: the state $J^a_{-i-1}\leightvac$ corresponds to the field
+$\frac1{i!}\partial^iJ^a(z)$, and products of creation modes correspond to normal-ordered products
+of fields.
+\end{physics}
+
+\begin{status}
+Definitions; axiom-free.
+\end{status}
+
+\begin{theorem}[Existence of the vertex map]\label{l08:thm:YA}
+Let $k\ne-2$. There is a linear map $Y : V^k(\leightsl)\to\End(V^k(\leightsl))[[z^{\pm1}]]$ such that
+$Y(\text{word state}) = \text{word field}$ for every word; every $Y(u,z)$ is a field; all $Y(u,z)$ are
+mutually local; $Y(u,z)\leightvac = u + O(z)$ (creation); and $[L_{-1},Y(u,z)] = \partial_zY(u,z)$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2Reconstruction.lean}.
+\begin{leancode}
+theorem affineYA_of_currentCov (k : ℂ)
+    (hJ : ∀ a : Fin 3, Reconstruction.DCovariant (Ltrans k) (Jfield k a)) :
+    ∃ YA : WakModule k →ₗ[ℂ] FormalDist (End ℂ (WakModule k)),
+      (∀ l : List (Fin 3 × ℕ), YA (wordStateA k l) = YwordA k l) ∧
+      (∀ u : WakModule k, IsField (YA u)) ∧
+      (∀ u v : WakModule k, Local (YA u) (YA v)) ∧
+      (∀ u : WakModule k, (YA u) 0 (vacuumA k) = u) ∧
+      (∀ u : WakModule k, ∀ q : ℤ, q < 0 → (YA u) q (vacuumA k) = 0) ∧
+      (∀ u : WakModule k, Reconstruction.DCovariant (Ltrans k) (YA u)) :=
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2Assembly.lean}.
+\begin{leancode}
+noncomputable def YAspec (k : ℂ) (hk : k + 2 ≠ 0) :=
+  affineYA_of_currentCov k (fun a => SugawaraCov.Jfield_DCovariant k hk a)
+
+noncomputable def YA (k : ℂ) (hk : k + 2 ≠ 0) :
+    WakModule k →ₗ[ℂ] FormalDist (End ℂ (WakModule k)) :=
+  (YAspec k hk).choose
+\end{leancode}
+
+\begin{dictionary}
+\lean{→ₗ[ℂ]} is a $\C$-linear map. \lean{(YA u) 0 (vacuumA k) = u} reads: the coefficient of $z^0$ of
+$Y(u,z)\leightvac$ is $u$; \lean{(YA u) q (vacuumA k) = 0} for $q<0$: no negative powers. Together this
+is the creation axiom $Y(u,z)\leightvac\in u+zV[[z]]$. The hypothesis \lean{hJ} of
+\lean{affineYA_of_currentCov} is exactly the covariance of Theorem~\ref{l08:thm:Lcomm}, which
+\lean{YAspec} supplies for $k\ne-2$; so \lean{YA k hk} is unconditional. \lean{.choose} picks the witness
+(it is unique by Goddard uniqueness, though uniqueness is not needed). The file
+\leanpath{AffineSl2Reconstruction.lean} is assigned to Chapter~\ref{ch:L09} but its single theorem is
+quoted here because the construction depends on it; its proof is one application of the generic
+\lean{Reconstruction.}\allowbreak\lean{reconstruct} of Chapter~\ref{ch:L03}, fed with spanning (\lean{wordStateA_span}),
+locality (Dong's lemma applied to Theorem~\ref{l08:thm:Jlocal}) and the vacuum properties.
+\end{dictionary}
+
+\begin{physics}
+Every state of the WZW vacuum sector has a local field, and all these fields are mutually local:
+the chiral algebra is closed under OPE.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+This is the reconstruction theorem (Kac, \emph{Vertex algebras for beginners}, Thm.~4.5): a cyclic
+module spanned by monomials in the modes of mutually local, translation-covariant fields that create
+the generating states from the vacuum carries a unique vertex algebra structure with those fields.
+Well-definedness: if a linear combination of word states vanishes, the corresponding combination of
+word fields is a translation-covariant field that annihilates the vacuum at $z^0$, hence is zero by
+Goddard uniqueness.
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{AffineVOA.}\allowbreak\lean{affineYA_}\allowbreak\lean{of_}\allowbreak\lean{currentCov}, \lean{VOA.AffineVOA.YA}: \lean{[propext, Classical.}\allowbreak\lean{choice,
+Quot.}\allowbreak\lean{sound]} (run for this chapter).
+\end{status}
+
+\subsection{The Virasoro relations and the closed instance}
+
+\begin{theorem}[Currents are primary; the Sugawara Virasoro algebra]\label{l08:thm:vir}
+Let $k\ne-2$ and $L_n = \omega_{(n+1)}$ for the vertex map of Theorem~\ref{l08:thm:YA}. Then
+$L_1J^c_{-1}\leightvac = 0$ for every colour $c$, and
+\begin{equation*}
+  [L_m,L_n] = (m-n)L_{m+n} + \delta_{m+n,0}\frac{m^3-m}{12}\,c(k),\qquad c(k)=\frac{3k}{k+2}.
+\end{equation*}
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2Virasoro.lean}.
+\begin{leancode}
+theorem current_primary (k : ℂ) (hk : k + 2 ≠ 0) (c : Fin 3) :
+    mode (YA k hk (omegaA k)) 2 (J k c (-1) (vacuumA k)) = 0 := by
+
+theorem hYA_virasoro (k : ℂ) (hk : k + 2 ≠ 0) (m n : ℤ) :
+    ⁅mode (YA k hk (omegaA k)) (m + 1), mode (YA k hk (omegaA k)) (n + 1)⁆
+      = ((m : ℂ) - n) • mode (YA k hk (omegaA k)) (m + n + 1)
+        + (if m + n = 0 then
+            (((m : ℂ) ^ 3 - m) / 12 * centralChargeA k) • (1 : End ℂ (WakModule k))
+           else 0) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{mode (YA k hk (omegaA k)) (m + 1)} is $\omega_{(m+1)} = L_m$; \lean{⁅·,·⁆} is the commutator of
+endomorphisms. The statement is \emph{verbatim} the field \lean{virasoro} of the library's
+\lean{VertexOperatorAlgebra} structure (Definition~\ref{l03:def:VOA}), with
+\lean{centralChargeA k} $= 3k/(k+2)$. \lean{current_primary} is $L_1J^c_{-1}\leightvac = 0$ (mode
+index $2$ is $\omega_{(2)} = L_1$).
+\end{dictionary}
+
+\begin{physics}
+The stress tensor built from the currents satisfies the Virasoro algebra with the WZW central charge
+$c = k\dim\mathfrak g/(k+h^\vee)$. For $k\to\infty$, $c\to3$: three free bosons (the semiclassical
+limit of the sigma model on $S^3$).
+\end{physics}
+
+\begin{proof}[Proof on paper]
+By the Borcherds commutator formula (Chapter~\ref{ch:L03}, Theorem~\ref{l03:thm:comm}),
+$[L_m,L_n] = \sum_{j\ge0}\binom{m+1}{j}(\omega_{(j)}\omega)_{(m+n+2-j)}$, and $\omega_{(j)}\omega$ has
+weight $3-j$, so only $j\le3$ contribute. One computes the four OPE coefficients:
+$\omega_{(0)}\omega = L_{-1}\omega$ (translation), $\omega_{(1)}\omega = 2\omega$ (Theorem~\ref{l08:thm:L0}),
+$\omega_{(2)}\omega = 0$, and $\omega_{(3)}\omega = \frac c2\leightvac$. For the last two, write
+$\omega = \frac1{2(k+2)}\sum\kappa^{ab}J^a_{-1}J^b_{-1}\leightvac$ and use that the currents are
+primary of weight one ($[L_m,J^c_\mu] = -\mu J^c_{m+\mu}$, derived from $L_{-1}$-covariance,
+$L_0$-grading and $L_1J^c_{-1}\leightvac = 0$): $L_2(J^a_{-1}J^b_{-1}\leightvac) = k\kappa(a,b)\leightvac$, so
+$\omega_{(3)}\omega = L_2\omega = \frac{k}{2(k+2)}\sum_{a,b}\kappa^{ab}\kappa(a,b)\leightvac
+= \frac{3k}{2(k+2)}\leightvac$; and $L_1(J^a_{-1}J^b_{-1}\leightvac) = \sum_df^{ab}{}_dJ^d_{-1}\leightvac$,
+which is killed by the symmetric contraction with $\kappa^{ab}$. Substituting gives the Virasoro
+relation.
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{AffineVOA.}\allowbreak\lean{Vir.}\allowbreak\lean{current_}\allowbreak\lean{primary}, \lean{VOA.}\allowbreak\lean{AffineVOA.}\allowbreak\lean{Vir.}\allowbreak\lean{hYA_}\allowbreak\lean{virasoro}:
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (run for this chapter).
+\end{status}
+
+\begin{definition}[The universal affine VOA $V^k(\leightsl)$]\label{l08:def:Vk}
+For $k\ne-2$, $V^k(\leightsl)$ is the vertex operator algebra on the vacuum module with grading
+$V^k_n$, vacuum $\leightvac$, vertex map $Y$ of Theorem~\ref{l08:thm:YA}, conformal vector $\omega$ and
+central charge $3k/(k+2)$.
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2VOA.lean}.
+\begin{leancode}
+noncomputable def affineSl2VOA (k : ℂ) (_hk : k + 2 ≠ 0)
+    (YA : WakModule k →ₗ[ℂ] FormalDist (End ℂ (WakModule k)))
+    (hYA_vac : YA (vacuumA k) = (1 : (End ℂ (WakModule k))⟦z^±⟧))
+    (hYA_grading : ∀ {p q : ℤ} (u : WakModule k), u ∈ gradingZA k p →
+        ∀ (v : WakModule k), v ∈ gradingZA k q → ∀ (n : ℤ),
+        mode (YA u) n v ∈ gradingZA k (p + q - n - 1))
+    (hYA_creation : ∀ u : WakModule k,
+        mode (YA u) (-1) (vacuumA k) = u ∧
+          ∀ n : ℤ, 0 ≤ n → mode (YA u) n (vacuumA k) = 0)
+    (hYA_local : ∀ u v : WakModule k, Local (YA u) (YA v))
+    (hYA_reg : ∀ u v : WakModule k, ∃ N : ℤ, ∀ n : ℤ, N ≤ n → mode (YA u) n v = 0)
+    (hYA_omega_mem : omegaA k ∈ gradingZA k 2)
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2Virasoro.lean}.
+\begin{leancode}
+noncomputable def affineSl2VOA_closed (k : ℂ) (hk : k + 2 ≠ 0) :
+    VertexOperatorAlgebra (WakModule k) :=
+  affineSl2VOA k hk (YA k hk) (YA_vacuum k hk)
+    (fun {_ _} u hu v hv n => hYA_grading k hk u hu v hv n)
+    (YA_creation k hk) (YA_local k hk) (YA_regularity k hk) (omegaA_mem k)
+    (Vir.hYA_virasoro k hk) (fun {_} v hv => hYA_L0 k hk v hv) (hYA_translation k hk)
+
+theorem affineSl2VOA_closed_central_charge (k : ℂ) (hk : k + 2 ≠ 0) :
+    (affineSl2VOA_closed k hk).centralCharge = 3 * k / (k + 2) :=
+  centralChargeA_eq k
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/Affine.lean}.
+\begin{leancode}
+theorem affineSl2VOA_centralCharge (k : ℂ) :
+    AffineVOA.centralChargeA k = 3 * k / (k + 2) :=
+  AffineVOA.centralChargeA_eq k
+\end{leancode}
+
+\begin{dictionary}
+\textbf{The shell and the closed instance.} \lean{affineSl2VOA} (only its first hypotheses are shown;
+the remaining ones are \lean{hYA_virasoro}, \lean{hYA_L0}, \lean{hYA_translation}, of exactly the shape of
+the corresponding \lean{VertexOperatorAlgebra} fields) is a \emph{constructor}: given a vertex map and
+proofs of the nine $Y$-dependent axioms, it fills in every other field with the proved data of
+Section~\ref{l08:sec:grading} (grading, finite dimensionality, vacuum, $V_0=\C\leightvac$, positivity,
+conformal vector \lean{omegaA k}, central charge \lean{centralChargeA k}). The closed instance
+\lean{affineSl2VOA_}\allowbreak\lean{closed k hk} supplies all nine hypotheses with proved theorems; there is \emph{no}
+remaining hypothesis except $k+2\ne0$. The hypothesis \lean{_hk} of the shell is unused in its body
+(hence the underscore); it is used by the proofs fed to it.
+
+\textbf{Is it the textbook $V^k(\leightsl)$?} The carrier is $U(\leighthat)/J(k)$, the vacuum is the
+class of $1$, the grading is by $-\ell_0$, the conformal vector is the Sugawara vector, and
+$Y(J^a_{-1}\leightvac,z) = J^a(z)$ (Theorem~\ref{l08:thm:nondeg} below). By the uniqueness part of
+reconstruction there is only one vertex algebra structure on this module with these generating
+fields, so this is Frenkel--Zhu's $V^k(\leightsl)$ (often written $V_k(\mathfrak g)$ or $N_{\mathfrak g}(k,0)$).
+
+\textbf{The Affine.lean theorem.} \lean{affineSl2VOA_}\allowbreak\lean{centralCharge} in
+\leanpath{VOA/Examples/Affine.lean} (namespace \lean{VOA}) restates \lean{centralChargeA_eq}; the module docstring of that file is \emph{stale} (it still describes the
+reconstruction as missing and the vacuum as pbw-dependent), see Section~\ref{l08:sec:docs}.
+\end{dictionary}
+
+\begin{physics}
+$V^k(\leightsl)$ is the chiral algebra of the $SU(2)$ WZW model \emph{before} null vectors are removed:
+it is consistent as an algebra of local fields at every non-critical level, but at special levels
+(integrable, admissible) it is reducible, and the physical theory uses its simple quotient.
+\end{physics}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{AffineVOA.}\allowbreak\lean{affineSl2VOA_}\allowbreak\lean{closed}, \lean{VOA.}\allowbreak\lean{AffineVOA.}\allowbreak\lean{affineSl2VOA_}\allowbreak\lean{closed_}\allowbreak\lean{central_}\allowbreak\lean{charge},
+\lean{VOA.}\allowbreak\lean{affineSl2VOA_}\allowbreak\lean{centralCharge}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (run for this
+chapter). \textbf{The closed VOA does not use \lean{VOA.pbw}.} (An older docstring claimed it did; the
+source records the correction of 22 August 2026, and the audit above confirms it.)
+\end{status}
+
+\subsection{Non-degeneracy checks}
+
+Because the zero module satisfies every axiom, a referee should ask whether the closed instance could
+be degenerate in some other way --- for instance a vertex map that collapses states. The library
+answers this directly.
+
+\begin{theorem}[The vertex map is faithful and restricts to the currents]\label{l08:thm:nondeg}
+Let $k\ne-2$. (i) $Y$ is injective. (ii) $Y(\leightvac,z)=\mathrm{id}$ and
+$Y(J^a_{-1}\leightvac,z) = J^a(z)$; hence $(J^a_{-1}\leightvac)_{(n)} = J^a_n$. (iii) The VOA modes of
+the current states satisfy the affine bracket.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2VOAInstance.lean}.
+\begin{leancode}
+theorem YA_injective : Function.Injective (YA k hk) := by
+
+noncomputable def currentState (a : Fin 3) : WakModule k := J k a (-1) (vacuumA k)
+
+theorem Y_currentState_eq_Jfield (a : Fin 3) :
+    (affineSl2VOA_closed k hk).Y (currentState k a) = Jfield k a :=
+
+theorem smul_currentState_eq_J (a : Fin 3) (n : ℤ) (v : WakModule k) :
+    (affineSl2VOA_closed k hk).smul (currentState k a) n v = J k a n v := by
+
+theorem smul_currentState_comm (a b : Fin 3) (m n : ℤ) (v : WakModule k) :
+    (affineSl2VOA_closed k hk).smul (currentState k a) m
+        ((affineSl2VOA_closed k hk).smul (currentState k b) n v)
+      - (affineSl2VOA_closed k hk).smul (currentState k b) n
+        ((affineSl2VOA_closed k hk).smul (currentState k a) m v)
+      = (∑ c, fabc a b c • J k c (m + n) v)
+        + (if m + n = 0 then ((m : ℂ) * k * kappa a b) • v else 0) := by
+\end{leancode}
+
+\begin{dictionary}
+The file works under \lean{variable (k : ℂ) (hk : k + 2 ≠ 0)}. \lean{W.smul u n v} is $u_{(n)}v$
+(Chapter~\ref{ch:L03}). (i) holds because $u$ is recovered from $Y(u,z)$ as the $z^0$ coefficient of
+$Y(u,z)\leightvac$. (ii)--(iii) tie the abstract VOA structure back to the affine Lie algebra. The
+companion \lean{closed_vacuum_ne_zero} (same file) is \lean{vacuumA_ne_zero k} and therefore uses
+\lean{VOA.pbw}; downstream results that need $\leightvac\ne0$ were written, while \lean{VOA.pbw} was an
+axiom, to use a Wakimoto-side statement instead (they do; Sections~\ref{l08:sec:wakimoto}--\ref{l08:sec:notsimple}).
+\end{dictionary}
+
+\begin{physics}
+The state $J^a_{-1}\leightvac$ corresponds to the field $J^a(z)$ --- the most basic instance of the
+state--field correspondence in a current algebra; and the OPE of the corresponding fields reproduces
+the current algebra.
+\end{physics}
+
+\begin{status}
+All displayed: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (run for this chapter).
+\lean{VOA.}\allowbreak\lean{AffineVOA.}\allowbreak\lean{Inst.}\allowbreak\lean{closed_}\allowbreak\lean{vacuum_}\allowbreak\lean{ne_}\allowbreak\lean{zero}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound,
+VOA.}\allowbreak\lean{pbw]} at the snapshot, when \lean{VOA.pbw} was an axiom; re-probed at a later commit, after \lean{VOA.pbw} became a theorem (not re-run for this edition):
+\lean{[propext, Classical.choice, Quot.sound]}. Uses the theorem \lean{VOA.pbw}. The file also instantiates $k=-4/3$ as \lean{voaSl2Adm} with
+\lean{voaSl2Adm_}\allowbreak\lean{centralCharge : voaSl2Adm.}\allowbreak\lean{centralCharge = -6} (axiom-clean).
+\end{status}
+
+%======================================================================
+\section{The simple quotient and the singular-vector bridge}\label{l08:sec:simple}
+%======================================================================
+
+The simple quotient is defined, for every VOA, as the quotient by the maximal proper graded ideal
+\lean{QuotVOA.maxGradedIdeal} (Chapter~\ref{ch:L04}). For $V^k(\leightsl)$ the library's object is
+\lean{AffineSl2GeneralRigidity.}\allowbreak\lean{simple k hk := QuotVOA.}\allowbreak\lean{maxQuotientVOA (affineSl2VOA_}\allowbreak\lean{closed k hk)}, recalled
+with its Lean source in Chapter~\ref{ch:L09} (Definition~\ref{l09:def:Lk}). It is proved simple and
+nonzero for every $k\ne-2$ without \lean{VOA.pbw}. The file \leanpath{VOA/Examples/AffineSimpleQuotient.lean}
+of this chapter supplies the generic link between singular vectors and that maximal ideal.
+
+\begin{theorem}[Properness test and singular-vector bridge]\label{l08:thm:bridge}
+Let $W$ be a VOA with $\leightvac\ne0$. (i) An ideal $I$ is proper iff $\leightvac\notin I$ iff
+$I\cap W_0 = 0$. (ii) If moreover $L_1W_1 = 0$ and $s$ is a strongly singular vector of some
+positive weight, then $s$ lies in the maximal ideal, maps to $0$ in the simple quotient, the maximal
+ideal is nonzero, and the quotient map $W\to W/\max$ is not injective.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/AffineSimpleQuotient.lean}.
+\begin{leancode}
+theorem tfae_proper (hI : W.IsIdeal I) (hvac : W.vacuum ≠ 0) :
+    List.TFAE [I ≠ ⊤, W.vacuum ∉ I, I ⊓ W.grading 0 = ⊥] := by
+
+theorem maxQuotientVOA_vacuum_ne_zero (hvac : W.vacuum ≠ 0) :
+    (maxQuotientVOA W).vacuum ≠ 0 := by
+
+theorem mkQ_eq_zero_of_stronglySingular (hvac : W.vacuum ≠ 0)
+    (hqp : ∀ v, v ∈ W.grading 1 → W.L 1 v = 0) {k : ℤ} {s : 𝒱}
+    (hs : IsStronglySingularOfWeight W k s) : (maxGradedIdeal W).mkQ s = 0 :=
+
+theorem maxGradedIdeal_ne_bot_of_stronglySingular (hvac : W.vacuum ≠ 0)
+    (hqp : ∀ v, v ∈ W.grading 1 → W.L 1 v = 0) {k : ℤ} {s : 𝒱}
+    (hs : IsStronglySingularOfWeight W k s) : maxGradedIdeal W ≠ ⊥ :=
+
+theorem mkQ_not_injective_of_stronglySingular (hvac : W.vacuum ≠ 0)
+    (hqp : ∀ v, v ∈ W.grading 1 → W.L 1 v = 0) {k : ℤ} {s : 𝒱}
+    (hs : IsStronglySingularOfWeight W k s) :
+    ¬ Function.Injective (maxGradedIdeal W).mkQ := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{IsStronglySingularOfWeight W k s} (Chapter~\ref{ch:L04}, Definition~\ref{l04:def:singular}) says
+$s\ne0$, $k>0$, $s\in W_k$, and $u_{(n)}s = 0$ for every $u\in W_m$ and $n\ge m$ (every mode that does
+not raise the weight kills $s$). \lean{(maxGradedIdeal W).mkQ} is the quotient map onto the simple
+quotient. \lean{hqp} ($L_1W_1 = 0$) is needed to build the canonical invariant bilinear form whose
+radical is the maximal ideal (Li's theorem, Chapter~\ref{ch:L04}, Theorem~\ref{l04:thm:lirad}). \lean{List.TFAE} says the listed propositions are pairwise equivalent; \lean{⊤} is the whole space. All hypotheses are explicit and are discharged for
+$V^k(\leightsl)$ in Section~\ref{l08:sec:notsimple}.
+\end{dictionary}
+
+\begin{physics}
+A null state --- one orthogonal to every state under the two-point function --- is set to zero in the
+physical theory; the simple quotient is the chiral algebra with all null states removed. The theorem
+says that a highest-weight state of positive weight is null and is removed.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+(i) An ideal containing a nonzero vector of $W_0 = \C\leightvac$ contains $\leightvac$, and then
+$u = u_{(-1)}\leightvac$ for all $u$. (ii) For strongly singular $s$, invariance of the canonical form
+moves every mode to the other side and lowers weight, so $s$ pairs to zero with everything; it is in the
+radical, which is the maximal ideal (Li).
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{SimpleQuot.}\allowbreak\lean{mkQ_}\allowbreak\lean{eq_}\allowbreak\lean{zero_}\allowbreak\lean{of_}\allowbreak\lean{stronglySingular}, \lean{VOA.}\allowbreak\lean{SimpleQuot.}\allowbreak\lean{maxQuotientVOA_}\allowbreak\lean{vacuum_}\allowbreak\lean{ne_}\allowbreak\lean{zero}:
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (run for this chapter); the others in the block share
+the same proof route.
+\end{status}
+
+\begin{warning}[title={A documentation-only definition of $L_k(\mathfrak{sl}_2)$}]
+The text of \leanpath{VOA/Examples/AffineSimpleQuotient.lean} contains a section ``\S4 The recipe''
+with apparently Lean declarations \lean{AffineSimple.}\allowbreak\lean{affineSl2Simple}, \lean{affineSl2Simple_}\allowbreak\lean{isSimple},
+\lean{maxIdealAff}, \ldots, using \lean{vacuumA_ne_zero}. \textbf{These are inside a docstring} (a Markdown
+code block in a \lean{/-! ... -/} comment); they are not compiled, and no declaration named
+\lean{affineSl2Simple} exists in the library (a search of all \lean{VOA/} sources confirms it). A referee
+must not cite them. The compiled simple quotient is \lean{AffineSl2GeneralRigidity.}\allowbreak\lean{simple}
+(Chapter~\ref{ch:L09}), whose nonvanishing is \lean{AffineSl2BoundaryMaximalIdeal.}\allowbreak\lean{affineSl2_}\allowbreak\lean{vacuum_}\allowbreak\lean{ne_}\allowbreak\lean{zero},
+derived from the Wakimoto PBW basis of Theorem~\ref{l08:thm:pbw}. Had the recipe been compiled as
+written, it would have used \lean{VOA.pbw} (at the time an axiom).
+\end{warning}
+%======================================================================
+\section{The Wakimoto free-field realisation}\label{l08:sec:wakimoto}
+%======================================================================
+
+\subsection{Why free fields}
+
+Every positive statement about $V^k(\leightsl)$ --- that a vector is nonzero, that some vectors are
+linearly independent --- is hard to prove inside $U(\leighthat)/J(k)$, because elements of a quotient
+are only known up to the ideal. Wakimoto's idea (1986), developed by Feigin and Frenkel, is to
+represent $\leighthat$ on a \emph{free} Fock space, where vectors are polynomials and nonvanishing can
+be read off coefficients. If a representation $\rho$ on a Fock space $\leightFock$ has a vector $\Omega$
+satisfying the vacuum conditions, then $u\leightvac\mapsto\rho(u)\Omega$ is a well-defined
+$\leighthat$-map $V^k(\leightsl)\to\leightFock$, and any vector with nonzero image is nonzero. The library
+builds this map, and then pushes it all the way to a PBW basis.
+
+\subsection{The free fields}
+
+\begin{definition}[The Wakimoto Fock space and the free-field modes]\label{l08:def:wakfock}
+Let $\leightFock = \C[b_1,b_2,\ldots;\,c_0,c_1,\ldots;\,A_1,A_2,\ldots]$, the polynomial ring in three
+infinite families of variables. Define operators
+\begin{align*}
+  \beta_m &= \begin{cases} b_{-m}\cdot & m\le-1,\\ \partial/\partial c_m & m\ge0,\end{cases}
+  &\gamma_n &= \begin{cases} c_{-n}\cdot & n\le0,\\ -\partial/\partial b_n & n\ge1,\end{cases}\\
+  a_m &= \begin{cases} A_{-m}\cdot & m\le-1,\\ 2(k+2)\,m\,\partial/\partial A_m & m\ge0.\end{cases}
+\end{align*}
+Then $[\beta_m,\gamma_n] = \delta_{m+n,0}$, $[a_m,a_n] = 2(k+2)\,m\,\delta_{m+n,0}$, and all other brackets of
+free-field modes vanish. The Fock vacuum is the constant polynomial $1$.
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/WakimotoFree.lean}.
+\begin{leancode}
+abbrev WakFock : Type := MvPolynomial (Fin 3 × ℕ) ℂ
+
+noncomputable def bV (i : ℤ) : WakFock := if 1 ≤ i then X ((0 : Fin 3), (i - 1).toNat) else 0
+
+noncomputable def cV (j : ℤ) : WakFock := if 0 ≤ j then X ((1 : Fin 3), j.toNat) else 0
+
+noncomputable def aV (i : ℤ) : WakFock := if 1 ≤ i then X ((2 : Fin 3), (i - 1).toNat) else 0
+
+noncomputable def Bet (m : ℤ) : Module.End ℂ WakFock :=
+  if m ≤ -1 then mulL (bV (-m)) else cD m
+
+noncomputable def Gam (n : ℤ) : Module.End ℂ WakFock :=
+  if n ≤ 0 then mulL (cV (-n)) else -(bD n)
+
+noncomputable def Aos (k : ℂ) (m : ℤ) : Module.End ℂ WakFock :=
+  if m ≤ -1 then mulL (aV (-m)) else ((2 * (k + 2)) * (m : ℂ)) • aD m
+
+theorem Bet_Gam_lie (m n : ℤ) :
+    ⁅Bet m, Gam n⁆ = if m + n = 0 then (1 : Module.End ℂ WakFock) else 0 := by
+
+theorem Aos_Aos_lie (k : ℂ) (m n : ℤ) :
+    ⁅Aos k m, Aos k n⁆
+      = if m + n = 0 then ((2 * (k + 2)) * (m : ℂ)) • (1 : Module.End ℂ WakFock) else 0 := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{MvPolynomial (Fin 3 × ℕ) ℂ} is the polynomial ring in variables \lean{X (a, i)}: family
+$a=0$ is $b_{i+1}$, family $1$ is $c_i$, family $2$ is $A_{i+1}$ (note the shift by one in families
+$0$ and $2$, handled by \lean{bV}, \lean{aV}, which return $0$ for out-of-range indices). \lean{mulL Q}
+is multiplication by $Q$; \lean{bD i}, \lean{cD j}, \lean{aD i} are the partial derivatives
+$\partial/\partial b_i$, $\partial/\partial c_j$, $\partial/\partial A_i$, extended by $0$. So
+\lean{Bet}, \lean{Gam}, \lean{Aos} are exactly $\beta$, $\gamma$, $a$ of Definition~\ref{l08:def:wakfock}
+(including $a_0 = 0$: the boson has zero momentum on this module). The theorems are the canonical
+commutation relations.
+\end{dictionary}
+
+\begin{physics}
+$\beta(z),\gamma(z)$ are a bosonic ghost system of weights $(1,0)$ --- equivalently, coordinates on
+the flag manifold $SL_2/B\supset\C$ and its conjugate momentum --- and $a(z) = \sqrt{2(k+2)}\,\partial\phi(z)$
+is a rescaled free boson. The rescaling removes all square roots, so every structure constant is a
+polynomial in $k$ with integer coefficients. Note that $\gamma_0$ is a \emph{creation} operator
+(multiplication by $c_0$): the Wakimoto vacuum is the module of polynomial functions on the big cell.
+\end{physics}
+
+\begin{status}
+\lean{Bet_Gam_lie}, \lean{Aos_Aos_lie}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (run for this
+chapter).
+\end{status}
+
+\subsection{The Wakimoto currents}
+
+\begin{definition}[Wakimoto currents]\label{l08:def:wakcur}
+With normal-ordered composites ${:}\beta\gamma{:}_n$, ${:}\gamma\gamma{:}_n$, ${:}a\gamma{:}_n$,
+${:}\beta\gamma\gamma{:}_n$ (creation modes to the left), set
+\begin{equation}\label{l08:eq:wakimoto}
+  e_n = \beta_n,\qquad h_n = -2{:}\beta\gamma{:}_n + a_n,\qquad
+  f_n = -{:}\beta\gamma\gamma{:}_n + {:}a\gamma{:}_n - k\,n\,\gamma_n .
+\end{equation}
+In field language: $e(z)=\beta(z)$, $h(z) = -2{:}\beta\gamma{:}(z)+a(z)$,
+$f(z) = -{:}\beta\gamma\gamma{:}(z) + {:}a\gamma{:}(z) + k\,\partial\gamma(z)$.
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/WakimotoFree.lean}.
+\begin{leancode}
+noncomputable def bgFam (n p : ℤ) : Module.End ℂ WakFock :=
+  if p ≤ -1 then Bet p * Gam (n - p) else Gam (n - p) * Bet p
+
+noncomputable def BG (n : ℤ) : Module.End ℂ WakFock := opSum (bgFam n)
+
+noncomputable def Ecur (n : ℤ) : Module.End ℂ WakFock := Bet n
+
+noncomputable def Hcur (k : ℂ) (n : ℤ) : Module.End ℂ WakFock := (-2 : ℂ) • BG n + Aos k n
+
+noncomputable def Fcur (k : ℂ) (n : ℤ) : Module.End ℂ WakFock :=
+  -BGG n + AG k n - (k * (n : ℂ)) • Gam n
+
+noncomputable def Jw (k : ℂ) (a : Fin 3) (n : ℤ) : Module.End ℂ WakFock :=
+  if a = 0 then Ecur n else if a = 1 then Fcur k n else Hcur k n
+\end{leancode}
+
+\begin{dictionary}
+\lean{opSum T} is the operator $P\mapsto\sum_{p\in\Z}T_p(P)$; it is well defined when the family is
+\emph{locally finite} (\lean{LocFin T}: on each polynomial only finitely many $T_p$ act nonzero), which
+\lean{bgFam_locFin} etc.\ prove (the bound comes from the largest variable index in $P$, \lean{NB P}). The
+summand \lean{bgFam n p} is $\beta_p\gamma_{n-p}$ if $p\le-1$ (creation $\beta$ to the left) and
+$\gamma_{n-p}\beta_p$ otherwise: this is normal ordering. \lean{GG}, \lean{AG}, \lean{BGG} are built the
+same way (\lean{BGG n} sums $\beta_p\,{:}\gamma\gamma{:}_{n-p}$ normally ordered). The mode of
+$k\,\partial\gamma$ is $(\partial\gamma)_n = -n\gamma_n$, which gives the last term of \lean{Fcur}. \lean{Jw}
+indexes the three currents by colour, matching \lean{colE, colF, colH}.
+\end{dictionary}
+
+\begin{physics}
+This is the Wakimoto realisation: the $\leightsl$ currents written in free fields, i.e.\ the
+\emph{bosonisation} of the $SU(2)$ WZW model. The quadratic term ${:}\beta\gamma\gamma{:}$ is the
+classical vector field $\gamma^2\partial_\gamma$ on $\mathbb{P}^1$ (the action of $f$ on the flag
+manifold); ${:}a\gamma{:}$ and $k\partial\gamma$ are quantum corrections that make the algebra close with
+level $k$. The boson $\phi$ carries the Cartan direction and its background charge (encoded in the
+coefficient $2(k+2)$) is what makes the free-field stress tensor reproduce $c = 3k/(k+2) =
+2 + (1 - 6/(k+2))$: the $\beta\gamma$ system contributes $2$ and the boson with background charge the
+rest.
+\end{physics}
+
+\begin{status}
+Definitions; axiom-free.
+\end{status}
+
+\begin{theorem}[The Wakimoto currents satisfy the affine algebra]\label{l08:thm:Jwcomm}
+For $k\ne-2$, all colours $a,b$ and all $m,n$:
+$[J^a_m,J^b_n] = \sum_cf^{ab}{}_cJ^c_{m+n} + m\,k\,\kappa(a,b)\delta_{m+n,0}$ for the currents
+\eqref{l08:eq:wakimoto} on $\leightFock$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/WakimotoFree.lean}.
+\begin{leancode}
+theorem rel_ef (k : ℂ) (m n : ℤ) :
+    ⁅Ecur m, Fcur k n⁆
+      = Hcur k (m + n)
+        + (if m + n = 0 then ((m : ℂ) * k) • (1 : Module.End ℂ WakFock) else 0) := by
+
+theorem rel_hh (k : ℂ) (hk : k + 2 ≠ 0) (m n : ℤ) :
+    ⁅Hcur k m, Hcur k n⁆
+      = if m + n = 0 then ((2 : ℂ) * k * (m : ℂ)) • (1 : Module.End ℂ WakFock) else 0 := by
+
+theorem Jw_comm (k : ℂ) (hk : k + 2 ≠ 0) (a b : Fin 3) (m n : ℤ) :
+    ⁅Jw k a m, Jw k b n⁆
+      = (∑ c, AffineVOA.fabc a b c • Jw k c (m + n))
+        + (if m + n = 0 then ((m : ℂ) * k * AffineVOA.kappa a b) •
+            (1 : Module.End ℂ WakFock) else 0) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{Jw_comm} is \emph{literally} the statement of \lean{AffineVOA.current_comm}
+(Theorem~\ref{l08:thm:currentcomm}) with \lean{J} replaced by \lean{Jw} and the identity written as
+\lean{1}; it uses the same \lean{fabc} and \lean{kappa}. \lean{rel_ef} holds for every $k$; \lean{rel_hh}
+(and \lean{rel_hf}, \lean{rel_ff}) need $k\ne-2$. That is a feature of the \emph{proof}, see below,
+not of the mathematics at $k=-2$; the realisation itself degenerates there because $[a_m,a_n]=0$.
+\end{dictionary}
+
+\begin{physics}
+The free-field currents close into the current algebra at level $k$. The double pole of $h(z)h(w)$
+receives $-4\cdot\!$ (from the $\beta\gamma$ loop) $+\,2(k+2)$ (from the boson): $2k$. The ghost loop
+shifts the level by $-h^\vee$, which is why the boson must carry $k+h^\vee$.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+The brackets $[e,e]$, $[h,e]$, $[e,f]$ follow by pushing the commutator through the (locally finite)
+sums and collapsing with the canonical relations. For the remaining three the library uses a
+\emph{rigidity} argument instead of expanding quartic expressions: if an operator $S$ on $\leightFock$
+commutes with all $\beta_r$, $\gamma_u$, $a_u$, then $S$ commutes with multiplication by every variable,
+so $S$ is multiplication by $S(1)$, and $S(1)$ has all partial derivatives zero (this is where the
+annihilators $a_u = 2(k+2)u\,\partial_{A_u}$ must be nonzero, i.e.\ $k\ne-2$); hence $S$ is a scalar
+(\lean{exists_}\allowbreak\lean{smul_}\allowbreak\lean{id_}\allowbreak\lean{of_}\allowbreak\lean{lie_}\allowbreak\lean{modes}). Apply this to $S = [h_m,h_n] - (\text{expected})$, whose
+commutators with the free fields are computed to vanish; the scalar is then fixed by one vacuum
+matrix element, $[h_m,h_{-m}]1 = 2km\cdot1$, or forced to vanish by a nonzero eigenvalue under the
+charge or weight grading.
+\end{proof}
+
+\begin{status}
+\lean{VOA.Wak.rel_ef}, \lean{VOA.Wak.rel_hh}, \lean{VOA.Wak.rel_ff}, \lean{VOA.Wak.Jw_comm}:
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (run for this chapter).
+\end{status}
+
+\subsection{The representation and the evaluation map}
+
+\begin{definition}[Wakimoto representation and vacuum evaluation]\label{l08:def:wakrho}
+For $k\ne-2$, $\rho_W : \leighthat\to\End\leightFock$ sends $x\otimes t^n\mapsto\sum_ax_aJ^a_n$,
+$C\mapsto k$, $\ell_0\mapsto-D_{\mathrm{wt}}$, where $D_{\mathrm{wt}}$ is the weight operator ($b_i, A_i$
+have weight $i$, $c_j$ weight $j$). The vacuum evaluation is $\mathrm{val}_W(u) = \rho_W(u)\cdot1$ for
+$u\in U(\leighthat)$.
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/WakimotoFree.lean}.
+\begin{leancode}
+noncomputable def wakRho (k : ℂ) (hk : k + 2 ≠ 0) :
+    AffineVOA.AffSl2 →ₗ⁅ℂ⁆ Module.End ℂ WakFock :=
+
+noncomputable def evAlgW (k : ℂ) (hk : k + 2 ≠ 0) : UW →ₐ[ℂ] Module.End ℂ WakFock :=
+  UniversalEnvelopingAlgebra.lift ℂ (wakRho k hk)
+
+noncomputable def valW (k : ℂ) (hk : k + 2 ≠ 0) : UW →ₗ[ℂ] WakFock where
+  toFun w := evAlgW k hk w (1 : WakFock)
+\end{leancode}
+
+\begin{dictionary}
+\lean{→ₗ⁅ℂ⁆} is a Lie algebra homomorphism (Mathlib's \lean{LieHom}); its \lean{map_lie'} field, proved
+in the source, is the content of Theorem~\ref{l08:thm:Jwcomm} plus the bracket with $\ell_0$ and $C$.
+\lean{UW} is $U(\leighthat)$; \lean{UniversalEnvelopingAlgebra.}\allowbreak\lean{lift} extends a Lie map to an algebra map
+(the universal property of $U$). So \lean{wakRho} is a genuine representation of the full affine Lie
+algebra including centre and derivation, and \lean{valW} is $u\mapsto\rho_W(u)1$.
+\end{dictionary}
+
+\begin{physics}
+The Fock space of $\beta\gamma$ and $\phi$ is a module of the WZW current algebra: the Wakimoto module
+(here at zero boson momentum, the module that receives the vacuum module).
+\end{physics}
+
+\begin{status}
+Definitions; \lean{VOA.Wak.wakRho}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}.
+\end{status}
+
+\begin{theorem}[\texorpdfstring{\lean{pbw}}{pbw}-free nonvanishing of the vacuum]\label{l08:thm:vacfree}
+For $k\ne-2$: $\mathrm{val}_W$ kills the vacuum ideal $J(k)$, hence descends to a linear map
+$V^k(\leightsl)\to\leightFock$ sending $\leightvac\mapsto1$ and intertwining every $J^a_m$ with the
+Wakimoto current; in particular $\leightvac\ne0$ in $V^k(\leightsl)$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/WakimotoFree.lean}.
+\begin{leancode}
+theorem valW_vacuumIdeal (k : ℂ) (hk : k + 2 ≠ 0) (w : UW)
+    (hw : w ∈ AffineLie.vacuumIdeal AffineVOA.kappaForm AffineVOA.kappaForm_isInvariant k) :
+    valW k hk w = 0 := by
+
+theorem vacuumA_ne_zero_free (k : ℂ) (hk : k + 2 ≠ 0) : AffineVOA.vacuumA k ≠ 0 := by
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2PBWWakimotoReduction.lean}.
+\begin{leancode}
+def vacuumToWak : WakModule k →ₗ[ℂ] Wak.WakFock :=
+  (((vacuumIdeal kappaForm kappaForm_isInvariant k).restrictScalars ℂ).liftQ
+      (Wak.valW k hk) (fun _ hw ↦ LinearMap.mem_ker.mpr (Wak.valW_vacuumIdeal k hk _ hw))).comp
+    (Submodule.Quotient.restrictScalarsEquiv ℂ
+      (vacuumIdeal kappaForm kappaForm_isInvariant k)).symm.toLinearMap
+
+@[simp] theorem vacuumToWak_vacuum : vacuumToWak k hk (vacuumA k) = 1 := by
+
+theorem vacuumToWak_J (a : Fin 3) (m : ℤ) (v : WakModule k) :
+    vacuumToWak k hk (J k a m v) = Wak.Jw k a m (vacuumToWak k hk v) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{vacuumIdeal} is the left ideal $J(k)$ of Definition~\ref{l02:def:vacuum}. \lean{liftQ} descends a
+linear map through a quotient once the kernel contains the submodule; \lean{restrictScalars} and
+\lean{restrictScalarsEquiv} only convert the $U$-module quotient into a $\C$-vector-space quotient. The
+file declares \lean{variable (k : ℂ) (hk : k + 2 ≠ 0)}. The nonvanishing proof is three lines: if
+$\leightvac=0$ then $1\in J(k)$, so $\mathrm{val}_W(1) = 1 = 0$ in $\leightFock$, absurd.
+\end{dictionary}
+
+\begin{physics}
+The universal vacuum module maps to the Wakimoto Fock space, vacuum to vacuum: the free-field theory
+contains the WZW vacuum sector. This is the bosonisation map at the level of states.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+The generators of $J(k)$ are $x\otimes t^n$ ($n\ge0$), $C-k$, $\ell_0$. On $1\in\leightFock$:
+nonnegative modes of all three Wakimoto currents kill $1$ (each term ends with an annihilator);
+$C-k$ acts as $0$; $\ell_0$ acts as $-D_{\mathrm{wt}}$, and $D_{\mathrm{wt}}1=0$. A left ideal generated
+by elements killing $1$ kills $1$.
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{Wak.}\allowbreak\lean{valW_}\allowbreak\lean{vacuumIdeal}, \lean{VOA.}\allowbreak\lean{Wak.}\allowbreak\lean{vacuumA_}\allowbreak\lean{ne_}\allowbreak\lean{zero_}\allowbreak\lean{free},
+\lean{VOA.}\allowbreak\lean{AffineSl2PBWWakimotoReduction.}\allowbreak\lean{vacuumToWak_}\allowbreak\lean{J}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}
+(run for this chapter). \textbf{\lean{pbw}-free}; this is the replacement for
+Theorem~\ref{l08:thm:vacpbw} at $k\ne-2$.
+\end{status}
+
+%======================================================================
+\section{The PBW basis by Wakimoto triangularity}\label{l08:sec:pbw}
+%======================================================================
+
+\subsection{The target statement}
+
+Chapter~\ref{ch:L02} (Definition~\ref{l02:def:pbwbasis}) defines the named hypothesis
+\lean{PBWBasis κ hκ b k}: the \emph{ordered creation monomials}
+$v_\mu = \prod_{(i,n)\uparrow}(b_i\otimes t^{-n-1})^{\mu(i,n)}\leightvac$, indexed by finitely supported
+$\mu$ on $\{e,f,h\}\times\N$ ordered lexicographically (colour first, then depth), form a basis of
+$V^k(\mathfrak g)$. Spanning is the easy half.
+
+\begin{proposition}[Spanning and the reduction to independence]\label{l08:prop:pbwreduce}
+For every $k$, the ordered creation states span $V^k(\leightsl)$, so \lean{PBWBasis} for the basis
+$(e,f,h)$ is equivalent to their linear independence. For $k\ne-2$ it suffices that their images in
+the Wakimoto Fock space be linearly independent.
+\end{proposition}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2UniversalC2PBW.lean}.
+\begin{leancode}
+def orderedCreationState (mu : PBWLetter →₀ ℕ) : WakModule k :=
+  AffineLie.negWord kappaForm kappaForm_isInvariant k
+    (pbwWord (Pi.basisFun ℂ (Fin 3)) mu)
+
+theorem orderedCreationState_span_eq_top :
+    Submodule.span ℂ (Set.range (orderedCreationState k)) = ⊤ := by
+
+theorem pbwBasis_iff_orderedCreationState_linearIndependent :
+    PBWBasis kappaForm kappaForm_isInvariant (Pi.basisFun ℂ (Fin 3)) k ↔
+      LinearIndependent ℂ (orderedCreationState k) := by
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2PBWWakimotoReduction.lean}.
+\begin{leancode}
+def wakimotoWordState : List (Fin 3 × ℕ) → Wak.WakFock
+  | [] => 1
+  | (a, n) :: l => Wak.Jw k a (-((n : ℤ)) - 1) (wakimotoWordState l)
+
+def wakimotoOrderedCreationState : ((Fin 3 ×ₗ ℕ) →₀ ℕ) → Wak.WakFock :=
+  fun mu ↦ wakimotoWordState k (orderedPBWColorWord mu)
+
+theorem pbwBasis_of_wakimotoOrderedCreationState_linearIndependent
+    (hk : k + 2 ≠ 0)
+    (hli : LinearIndependent ℂ (wakimotoOrderedCreationState k)) :
+    PBWBasis kappaForm kappaForm_isInvariant (Pi.basisFun ℂ (Fin 3)) k := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{PBWLetter} is \lean{Fin 3 ×ₗ ℕ} (colour, depth, lexicographic). \lean{pbwWord} and \lean{negWord}
+are the ordered word and its creation monomial of Chapter~\ref{ch:L02}; \lean{Pi.basisFun ℂ (Fin 3)}
+is the basis $(e,f,h)$. \lean{wakimotoOrderedCreationState k mu} applies the \emph{Wakimoto} currents
+$J^a_{-n-1}$ of the ordered word to the Fock vacuum $1$; it equals \lean{vacuumToWak} of the ordered
+creation state (\lean{wakimotoOrderedCreationState_}\allowbreak\lean{eq}). Linear independence of images implies linear
+independence of the vectors themselves, since a linear dependence would be mapped to one.
+\end{dictionary}
+
+\begin{physics}
+Counting states: PBW says that the vacuum sector has exactly one state per ordered monomial of
+creation modes, so its character is $\prod_{n\ge1}(1-q^n)^{-3}$ (generic level). Physically, the
+current algebra imposes no relations on the vacuum module beyond reordering.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Spanning: every word in the creation modes can be reordered using the affine bracket; each exchange
+produces a shorter word, so induction on length shows that ordered words span; combined with the
+spanning of all words (Chapter~\ref{ch:L02}, Theorem~\ref{l02:thm:span}). The equivalence then is the
+definition of a basis. The reduction to Wakimoto images is the remark in the dictionary.
+\end{proof}
+
+\begin{status}
+All three theorems: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (run for this chapter).
+\end{status}
+
+\subsection{Leading terms of Wakimoto words}
+
+The images $\mathrm{val}_W(v_\mu)$ are complicated polynomials (every product of currents produces
+contractions). The library proves their independence by a leading-term (triangularity) argument.
+
+\begin{definition}[Free Li weight, classical symbols, pivots]\label{l08:def:classical}
+Give $b_i$ and $A_i$ the weight $i-1$ and $c_j$ the weight $j$ (the \emph{free Li weight}); a monomial
+has the sum of the weights of its variables. For the creation current $J^a_{-n-1}$ define its
+\emph{classical symbol} $\sigma(J^a_{-n-1})\in\leightFock$ as the part of $J^a_{-n-1}\cdot1$ of free
+Li weight $n$:
+\begin{equation*}
+  \sigma(e_{-n-1}) = b_{n+1},\quad \sigma(h_{-n-1}) = (-2{:}\beta\gamma{:}+a)_{-n-1}1,\quad
+  \sigma(f_{-n-1}) = (-{:}\beta\gamma\gamma{:}+{:}a\gamma{:})_{-n-1}1
+\end{equation*}
+(the derivative term $k(n+1)c_{n+1}$ of $f$ has weight $n+1$ and is dropped). The \emph{pivot}
+monomials are $b_{n+1}$, $A_1c_n$, $A_{n+1}$ for $e,f,h$ respectively. The \emph{classical
+substitution} is the algebra map $\C[x^a_n]\to\leightFock$, $x^a_n\mapsto\sigma(J^a_{-n-1})$.
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2WakimotoLiLeading.lean}.
+\begin{leancode}
+def freeLiWeight : Fin 3 × ℕ → ℕ := fun v => v.2
+
+def eClassical (n : ℕ) : Wak.WakFock := MvPolynomial.X ((0 : Fin 3), n)
+
+def hClassical (k : ℂ) (n : ℕ) : Wak.WakFock :=
+  (-2 : ℂ) • Wak.BG (-((n : ℤ)) - 1) 1 + Wak.aV ((n : ℤ) + 1)
+
+def fClassical (k : ℂ) (n : ℕ) : Wak.WakFock :=
+  -Wak.BGG (-((n : ℤ)) - 1) 1 + Wak.AG k (-((n : ℤ)) - 1) 1
+
+def currentClassical (k : ℂ) (a : Fin 3) (n : ℕ) : Wak.WakFock :=
+  if a = 0 then eClassical n else if a = 1 then fClassical k n else hClassical k n
+
+def classicalCurrentPivot (a : Fin 3) (n : ℕ) : Wak.WakFock :=
+  if a = 0 then MvPolynomial.X ((0 : Fin 3), n)
+  else if a = 1 then
+    MvPolynomial.X ((2 : Fin 3), 0) * MvPolynomial.X ((1 : Fin 3), n)
+  else MvPolynomial.X ((2 : Fin 3), n)
+
+def classicalSubstitution (k : ℂ) :
+    MvPolynomial (Fin 3 ×ₗ ℕ) ℂ →ₐ[ℂ] Wak.WakFock :=
+  MvPolynomial.aeval fun q => currentClassical k (ofLex q).1 (ofLex q).2
+\end{leancode}
+
+\begin{dictionary}
+Recall \lean{X (0, i)} $=b_{i+1}$, \lean{X (1, j)} $=c_j$, \lean{X (2, i)} $=A_{i+1}$, so
+\lean{freeLiWeight} (the second coordinate) is the weight of Definition~\ref{l08:def:classical}.
+\lean{BG (-n-1) 1} etc.\ are the composites applied to the Fock vacuum. \lean{MvPolynomial.aeval}
+is the substitution homomorphism. The pivot for $f$ is \lean{X (2,0) * X (1,n)} $=A_1c_n$.
+\end{dictionary}
+
+\begin{physics}
+The free Li weight is the depth (number of derivatives) in the free-field jet scheme. The classical
+symbol is the semiclassical limit of a current: the Wakimoto formula with quantum corrections
+($k\partial\gamma$) dropped --- the Poisson-algebra version of bosonisation, i.e.\ the embedding of the
+arc space of $\leightsl^*$ in the arc space of the cotangent bundle of the big cell.
+\end{physics}
+
+\begin{status}
+Definitions; axiom-free.
+\end{status}
+
+\begin{theorem}[Leading terms and injectivity]\label{l08:thm:leading}
+(i) For every word $\ell$ of creation currents, of total depth $d(\ell)=\sum n_i$, the Wakimoto image
+$J^{a_1}_{-n_1-1}\cdots J^{a_r}_{-n_r-1}1$ has no components of free Li weight $<d(\ell)$, and its
+component of weight exactly $d(\ell)$ is the product $\prod_i\sigma(J^{a_i}_{-n_i-1})$.
+(ii) The classical substitution is injective, for every $k\in\C$.
+(iii) Consequently the Wakimoto ordered creation states are linearly independent at every $k$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2WakimotoLiLeading.lean}.
+\begin{leancode}
+theorem weightedComponent_wakimotoWordState_min (k : ℂ) (l : List (Fin 3 × ℕ)) :
+    MvPolynomial.weightedHomogeneousComponent freeLiWeight (wordFreeLiDegree l)
+        (wakimotoWordState k l) =
+      classicalWordState k l := by
+
+theorem classicalSubstitution_injective (k : ℂ) :
+    Function.Injective (classicalSubstitution k) := by
+
+theorem linearIndependent_of_lowerLeading (degree : ι → ℕ) (f lead : ι → M)
+    (component : ℕ → M →ₗ[R] M)
+    (hself : ∀ i, component (degree i) (f i) = lead i)
+    (hlower : ∀ i n, n < degree i → component n (f i) = 0)
+    (hlead : LinearIndependent R lead) : LinearIndependent R f := by
+
+theorem wakimotoOrderedCreationState_linearIndependent (k : ℂ) :
+    LinearIndependent ℂ (wakimotoOrderedCreationState k) :=
+\end{leancode}
+
+\begin{dictionary}
+\lean{weightedHomogeneousComponent w d P} is the part of $P$ whose monomials have $w$-weight exactly
+$d$; \lean{wordFreeLiDegree l} is $\sum$ depths; \lean{classicalWordState k l} is the product of the
+classical symbols of the letters. The theorem displayed is the ``component at the minimum'' half of
+(i); the ``nothing below'' half is \lean{wakimotoWordState_}\allowbreak\lean{sub_}\allowbreak\lean{classical_}\allowbreak\lean{mem_}\allowbreak\lean{freeLiAtLeast} (the
+difference lies in the span of monomials of weight $\ge d(\ell)+1$). \lean{linearIndependent_}\allowbreak\lean{of_}\allowbreak\lean{lowerLeading}
+is the abstract principle: if each $f_i$ has no components below degree $d_i$ and its degree-$d_i$
+components are independent, then the $f_i$ are independent. All statements are for every $k\in\C$;
+the restriction $k\ne-2$ enters only through the map \lean{vacuumToWak}.
+\end{dictionary}
+
+\begin{physics}
+In a free-field realisation the ``classical'' part of a state is the leading term when one counts
+derivatives; quantum contractions always add derivatives (they replace two fields by a
+higher-derivative one), so they never compete with the leading term. Independence of the classical
+products says the semiclassical bosonisation map is injective on the arc space.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+(i) Each letter applied to a polynomial produces its classical symbol times that polynomial, plus
+terms where a contraction occurs; a contraction between $\beta_p$ (or $a_p$) with $p\ge0$ and a variable
+of the polynomial removes a variable of weight $\ge p$ and replaces a factor of lower weight, raising
+the total free Li weight by at least one. Induction on the word.
+(ii) Choose the pivot monomials. The pivot of a product is the product of pivots, and the map from
+exponents $\mu$ to pivot exponents is injective: the $b$-exponents give the $e$-letters, the
+$c$-exponents give the $f$-letters at each depth, and the $A$-exponents give the $h$-letters after
+subtracting, at $A_1$, the total number of $f$-letters (known from the total $c$-degree). One checks
+that each classical product contains its own pivot with nonzero coefficient and is triangular with
+respect to a lexicographic order on (number of $c$-variables, $A$-degree, \ldots); hence the products
+are independent, so the substitution is injective on monomials and on polynomials.
+(iii) Apply the abstract principle with $d_i = d(\ell_i)$ and leading terms the classical products,
+which are independent by (ii).
+\end{proof}
+
+\begin{warning}[title={A tempting order that fails}]
+The source records a disproved approach: ordering by \emph{maximal} free Li weight first fails
+already on the $\beta\gamma$ parts of two $h$ currents, because ${:}\beta\gamma{:}_{-1}{:}\beta\gamma{:}_{-2}\cdot1$ contains the surviving terms
+$-b_3c_0 + b_1c_2$ of weight two rather than the naive depth sum one. The correct order uses the
+\emph{minimal}-weight symbol, as in Theorem~\ref{l08:thm:leading}(i).
+\end{warning}
+
+\begin{status}
+All four: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (run for this chapter).
+\end{status}
+
+\begin{theorem}[PBW for $V^k(\leightsl)$, by Wakimoto triangularity]\label{l08:thm:pbw}
+For every $k\ne-2$ the ordered creation monomials form a basis of $V^k(\leightsl)$. Consequently the
+universal $C_2$-symbol map $\C[e,f,h]\to R_{V^k(\leightsl)} = V^k/C_2(V^k)$ is injective.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2WakimotoLiLeading.lean}.
+\begin{leancode}
+theorem affineSl2PBWBasis (k : ℂ) (hk : k + 2 ≠ 0) :
+    PBWBasis AffineVOA.kappaForm AffineVOA.kappaForm_isInvariant
+      (Pi.basisFun ℂ (Fin 3)) k :=
+  pbwBasis_of_wakimotoOrderedCreationState_linearIndependent k hk
+    (wakimotoOrderedCreationState_linearIndependent k)
+
+theorem universalSymbolAlg_injective (k : ℂ) (hk : k + 2 ≠ 0) :
+    Function.Injective (Sl2Pres.symbolAlg k hk) :=
+  AffineSl2UniversalC2PBW.symbolAlg_injective_of_PBWBasis k hk
+    (affineSl2PBWBasis k hk)
+\end{leancode}
+
+\begin{dictionary}
+\lean{PBWBasis} is Definition~\ref{l02:def:pbwbasis} of Chapter~\ref{ch:L02}, instantiated at
+$\mathfrak g=\leightsl$, $\kappa$ the normalised form, basis $(e,f,h)$. \lean{Sl2Pres.symbolAlg k hk} is the
+algebra map $\C[e,h,f]\to A_2(V^k)$ sending the variables to the classes $[e_{-1}\leightvac]$ etc.\ in the
+Zhu $C_2$-algebra (defined in Chapter~\ref{ch:L16}'s file \leanpath{AffineSl2Presentation.lean}). Both
+theorems are unconditional for $k\ne-2$; the hypothesis $k\ne-2$ is an artefact of the Wakimoto route
+(PBW is true at $k=-2$, Chapter~\ref{ch:L02}). The docstring of \leanpath{AffineSl2PBWWakimotoReduction.lean}
+still calls the independence ``OPEN''; that is stale (Section~\ref{l08:sec:docs}).
+\end{dictionary}
+
+\begin{physics}
+The vacuum character of $V^k(\leightsl)$ is $\prod_n(1-q^n)^{-3}$, and the associated graded of the
+chiral algebra (its classical limit) is the coordinate ring of the arc space of $\leightsl^*$: the
+universal current algebra is ``freely generated'' by the currents.
+\end{physics}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{AffineSl2WakimotoLiLeading.}\allowbreak\lean{affineSl2PBWBasis},
+\lean{VOA.}\allowbreak\lean{AffineSl2WakimotoLiLeading.}\allowbreak\lean{universalSymbolAlg_}\allowbreak\lean{injective}: \lean{[propext, Classical.}\allowbreak\lean{choice,
+Quot.}\allowbreak\lean{sound]} (run for this chapter). \textbf{This discharges the named hypothesis \lean{PBWBasis}
+for $\leightsl$ at every non-critical level without \lean{VOA.pbw}.} (Since \lean{VOA.pbw} became a theorem,
+\lean{pbwBasis_holds} discharges it for every $\mathfrak g$ and every level, including $k=-2$; Chapter~\ref{ch:L02},
+Section~\ref{l02:sec:pbwbasisholds}.) Consumers include
+\leanpath{AffineSl2JointPBW.lean} (bases of the simultaneous $(L_0,h_0)$-eigenspaces, used by the
+Gram-matrix arguments of Section~\ref{l08:sec:kac}) and the \lean{pbw}-free nonvanishing
+\lean{affineSl2_}\allowbreak\lean{vacuum_}\allowbreak\lean{ne_}\allowbreak\lean{zero} of Chapter~\ref{ch:L09}.
+\end{status}
+%======================================================================
+\section{Singular vectors in the vacuum module}\label{l08:sec:singular}
+%======================================================================
+
+A \emph{singular vector} of $V^k(\leightsl)$ is a nonzero vector $s$ of positive weight annihilated by
+the affine raising operators. The positive part $\widehat{\mathfrak n}_+ = \C e_0\oplus\bigoplus_{m\ge1}
+\leightsl\otimes t^m$ is generated as a Lie algebra by the two Chevalley generators $e_0$ and $f_1$, so it
+suffices to impose $e_0s = 0$ and $f_1s=0$. Such an $s$ need not be $\leightsl$-invariant: the vectors
+below are highest-weight vectors of $\leightsl$-triplets ($h_0s = 2s$, $f_0s\ne0$).
+
+Where they occur is governed by the Kac--Kazhdan condition (Section~\ref{l08:sec:kac}): with $t = k+2$,
+the vacuum module has a singular vector of weight $\lambda - n\beta$ for a positive real root
+$\beta = m\delta\pm\alpha$ when $(\lambda+\rho,\beta) = n$. For the vacuum ($\lambda = k\Lambda_0$) and
+$\beta = m\delta-\alpha$ this reads $mt - 1 = n$. Three cases are in the library:
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+level $k$ & $t=k+2$ & singular vector & source\\
+\midrule
+$N\in\Z_{\ge0}$ & $N+2$ & $e_{-1}^{N+1}\leightvac$, weight $N+1$, charge $2(N+1)$ & checked outside the library (this chapter)\\
+$-4/3$ & $2/3$ & weight $3$, $h_0$-charge $2$, five monomials & \leanpath{AffineSl2Singular.lean}\\
+$-8/5$ & $2/5$ & weight $5$, $h_0$-charge $2$, 21 monomials & \leanpath{AffineSl2SingularLY.lean}\\
+\bottomrule
+\end{tabular}
+\end{center}
+For $k+2 = p/q$ with $p\ge2$ the first vacuum singular vector has weight $(p-1)q$ and $h_0$-charge
+$2(p-1)$; $(p,q) = (2,3)$ and $(2,5)$ give the last two rows.
+
+\subsection{Integrable levels: \texorpdfstring{$e_{-1}^{N+1}|0\rangle$}{e(-1)\^{}(N+1)|0>}}\label{l08:sec:integrable}
+
+\begin{warning}[title={Not a library theorem: checked in Lean for this chapter}]
+The library has no named theorem about the integrable-level vector $e_{-1}^{N+1}\leightvac$; it appears
+only in a docstring table of \leanpath{AffineSl2Singular.lean} (\S F, labelled a CAS computation). Because
+this vector is the defining relation of the unitary $SU(2)_N$ WZW chiral algebra, the author of this
+chapter checked the statements below in Lean against the library, using only library lemmas. The check
+is not part of this release: it is \emph{not} part of \lean{VOA/}, not built by \texttt{lake build}, and
+not covered by the repository audits.
+\end{warning}
+
+\begin{theorem}[The integrable vacuum singular vector; not in the library]\label{l08:thm:integrable}
+Let $E_n = e_{-1}^n\leightvac\in V^k(\leightsl)$. For every $k\in\C$ and $n\in\N$:
+\begin{enumerate}
+\item $e_m E_n = 0$ for $m\ge0$; $h_mE_n=0$ for $m\ge1$; $f_mE_n = 0$ for $m\ge2$; $h_0E_n = 2nE_n$;
+\item $f_1E_{n+1} = (n+1)(k-n)\,E_n$;
+\item if $k\ne-2$ then $E_n\ne0$, and $f_1E_{n+1} = 0\iff k = n$.
+\end{enumerate}
+Consequently, at $k = N\in\N$ the vector $E_{N+1}$ is a strongly singular vector of weight $N+1$ in
+$V^N(\leightsl)$, and $V^N(\leightsl)$ is not simple.
+\end{theorem}
+
+\begin{dictionary}
+In Lean, $E_n$ is built from the library's current modes \lean{J k colE (-1)} applied to
+\lean{vacuumA k}, and $f_1$ is \lean{J k colF 1}. The non-simplicity statement involves only library definitions:
+\lean{affineSl2VOA_closed} (Definition~\ref{l08:def:Vk}) and \lean{IsSimple} (Chapter~\ref{ch:L04}). The
+nonvanishing uses the Wakimoto map: \lean{vacuumToWak} sends $E_n$ to $b_1^n\ne0$ (because
+$e_{-1} = \beta_{-1}$ is multiplication by $b_1$). Non-simplicity is then the library route of
+Section~\ref{l08:sec:notsimple}: \lean{Strong.}\allowbreak\lean{isStronglySingular_}\allowbreak\lean{of_}\allowbreak\lean{SingP} and
+\lean{SingVec.}\allowbreak\lean{not_}\allowbreak\lean{isSimple_}\allowbreak\lean{of_}\allowbreak\lean{stronglySingular_}\allowbreak\lean{FHL}, with the \lean{pbw}-free \lean{Wak.}\allowbreak\lean{vacuumA_}\allowbreak\lean{ne_}\allowbreak\lean{zero_}\allowbreak\lean{free}.
+\end{dictionary}
+
+\begin{physics}
+At level $N$ the state $(J^+_{-1})^{N+1}\leightvac$ is null, and setting it to zero gives the
+integrable WZW chiral algebra $L_N(\leightsl)$. Through the OPE with primary fields it imposes the
+\emph{fusion rules} of $SU(2)_N$: only spins $j\le N/2$ appear, and $j_1\otimes j_2$ is truncated to
+$j\le\min(j_1+j_2,N-j_1-j_2)$ (Gepner--Witten). At $N=1$ the null state $e_{-1}^2\leightvac$ says that
+the OPE $J^+(z)J^+(w)$ has no $(z-w)^0$ term; in the free-boson realisation $J^+ = e^{i\sqrt2\phi}$ one has
+$J^+(z)J^+(w) = (z-w)^2{:}e^{i\sqrt2\phi(z)}e^{i\sqrt2\phi(w)}{:}$, which vanishes to second order.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+(1) $e_m$ commutes with $e_{-1}$ and kills $\leightvac$. $[h_m,e_{-1}] = 2e_{m-1}$, which for $m\ge1$ is an
+$e$-mode of index $\ge0$, so (1) for $e$ gives $h_mE_n=0$; similarly $[f_m,e_{-1}] = -h_{m-1}$ for
+$m\ge2$. $h_0$ counts $e$-letters twice.
+(2) $[f_1,e_{-1}] = -h_0 + k$, so $f_1E_{n+1} = e_{-1}f_1E_n + (k - h_0)E_n$; induction gives
+$(n+1)(k-n)$ since $n(k-n+1) - 2n + k = (n+1)(k-n)$.
+(3) Nonvanishing via the Wakimoto map; the equivalence from (2) and $E_n\ne0$.
+At $k=N$, (1)--(2) say every positive current mode kills $E_{N+1}$, which is the library's
+\lean{SingP}; the strong-singularity upgrade and Theorem~\ref{l08:thm:bridge} finish.
+\end{proof}
+
+\begin{status}
+Checked in Lean against the library for this chapter (with \texttt{lake env lean -DmaxSynthPendingDepth=3}); the
+check is not part of this release. Its five declarations reported only \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}.
+\textbf{Not library}; unconditional, \lean{pbw}-free.
+\end{status}
+
+\subsection{The level \texorpdfstring{$k=-4/3$}{k=-4/3}: weight 3}
+
+\begin{definition}[The weight-3 ansatz]\label{l08:def:ansatz3}
+In weight $3$ and $h_0$-charge $2$ the PBW monomials are
+$M_1 = e_{-3}\leightvac$, $M_2 = e_{-2}h_{-1}\leightvac$, $M_3 = h_{-2}e_{-1}\leightvac$,
+$M_4 = e_{-1}e_{-1}f_{-1}\leightvac$, $M_5 = e_{-1}h_{-1}h_{-1}\leightvac$, and the ansatz is
+$s(a,b,c,d,g) = aM_1+bM_2+cM_3+dM_4+gM_5$. The \emph{singularity system} is the linear system
+\begin{equation*}
+  b+c+2g = 0,\quad d-4g=0,\quad -a+(k-2)c = 0,\quad c+(k+1)d+2g = 0,\quad kg-b = 0 .
+\end{equation*}
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2Singular.lean}.
+\begin{leancode}
+noncomputable def M1 (k : ℂ) : WakModule k := J k colE (-3) (vacuumA k)
+noncomputable def M2 (k : ℂ) : WakModule k := J k colE (-2) (J k colH (-1) (vacuumA k))
+noncomputable def M3 (k : ℂ) : WakModule k := J k colH (-2) (J k colE (-1) (vacuumA k))
+noncomputable def M4 (k : ℂ) : WakModule k :=
+  J k colE (-1) (J k colE (-1) (J k colF (-1) (vacuumA k)))
+noncomputable def M5 (k : ℂ) : WakModule k :=
+  J k colE (-1) (J k colH (-1) (J k colH (-1) (vacuumA k)))
+
+noncomputable def ansatz (k a b c d g : ℂ) : WakModule k :=
+  a • M1 k + b • M2 k + c • M3 k + d • M4 k + g • M5 k
+
+def SingSys (k a b c d g : ℂ) : Prop :=
+  b + c + 2 * g = 0 ∧ d - 4 * g = 0 ∧ -a + (k - 2) * c = 0
+    ∧ c + (k + 1) * d + 2 * g = 0 ∧ k * g - b = 0
+
+theorem E0_ansatz (k a b c d g : ℂ) :
+    J k colE 0 (ansatz k a b c d g)
+      = (-2 * (b + c + 2 * g)) • P1 k + (d - 4 * g) • P2 k := by
+
+theorem F1_ansatz (k a b c d g : ℂ) :
+    J k colF 1 (ansatz k a b c d g)
+      = (-a + (k - 2) * c) • Q1 k + (2 * (c + (k + 1) * d + 2 * g)) • Q2 k
+        + (k * g - b) • Q3 k := by
+\end{leancode}
+
+\begin{dictionary}
+The monomials are written operator-first (outermost operator leftmost). \lean{P1, P2} are
+$e_{-2}e_{-1}\leightvac$, $e_{-1}e_{-1}h_{-1}\leightvac$ (weight 3, charge 4) and \lean{Q1, Q2, Q3} are
+$h_{-2}\leightvac$, $e_{-1}f_{-1}\leightvac$, $h_{-1}h_{-1}\leightvac$ (weight 2, charge 0), defined in the same
+file. \lean{E0_ansatz} and \lean{F1_ansatz} are the explicit images under $e_0$ and $f_1$, computed from
+the affine bracket; the five coefficients are the five equations of \lean{SingSys} (up to the
+factors $-2$ and $2$). So ``$e_0s=f_1s=0$'' is \emph{implied} by \lean{SingSys}, and conversely
+\lean{SingSys} follows from $e_0s=f_1s=0$ \emph{given} linear independence of $\{P_1,P_2\}$ and
+$\{Q_1,Q_2,Q_3\}$ (\lean{SingSys_of_annihilated}, which carries those as explicit hypotheses).
+\end{dictionary}
+
+\begin{physics}
+The five monomials are all the states at energy $3$ with $J^3 = +1$ in the vacuum module. The
+singular vector is a null descendant of the vacuum: a spin-one multiplet of null states at energy $3$.
+\end{physics}
+
+\begin{status}
+Definitions and two computational lemmas; axiom-clean.
+\end{status}
+
+\begin{theorem}[The level is forced; the singular vector]\label{l08:thm:sing43}
+(i) Every solution of the singularity system has $b=kg$, $c=-(k+2)g$, $d=4g$, $a=-(k-2)(k+2)g$ and
+$(3k+4)g=0$; a nonzero solution exists iff $3k+4 = 0$. (ii) At $k=-4/3$ the vector
+\begin{equation*}
+s = 20\,e_{-3}\leightvac - 12\,e_{-2}h_{-1}\leightvac - 6\,h_{-2}e_{-1}\leightvac + 36\,e_{-1}e_{-1}f_{-1}\leightvac
++ 9\,e_{-1}h_{-1}h_{-1}\leightvac
+\end{equation*}
+has weight $3$, satisfies $h_0s=2s$, and is killed by every current mode $J^a_m$, $m\ge1$, and by $e_0$.
+(iii) $s\ne0$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2Singular.lean}.
+\begin{leancode}
+theorem SingSys_param {k a b c d g : ℂ} (h : SingSys k a b c d g) :
+    b = k * g ∧ c = -(k + 2) * g ∧ d = 4 * g ∧ a = -((k - 2) * (k + 2)) * g
+      ∧ (3 * k + 4) * g = 0 := by
+
+theorem exists_nonzero_solution_iff (k : ℂ) :
+    (∃ a b c d g : ℂ, ¬(a = 0 ∧ b = 0 ∧ c = 0 ∧ d = 0 ∧ g = 0) ∧ SingSys k a b c d g)
+      ↔ 3 * k + 4 = 0 := by
+
+noncomputable def sl2Singular : WakModule (-4 / 3 : ℂ) := ansatz (-4 / 3) 20 (-12) (-6) 36 9
+
+theorem sl2Singular_E0 : J (-4 / 3 : ℂ) colE 0 sl2Singular = 0 :=
+
+theorem sl2Singular_H0 : J (-4 / 3 : ℂ) colH 0 sl2Singular = (2 : ℂ) • sl2Singular :=
+
+theorem sl2Singular_mem : sl2Singular ∈ gradingZA (-4 / 3 : ℂ) 3 := ansatz_mem _ _ _ _ _ _
+
+theorem sl2Singular_pos (a : Fin 3) {m : ℤ} (hm : 1 ≤ m) :
+    J (-4 / 3 : ℂ) a m sl2Singular = 0 :=
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/WakimotoFree.lean}.
+\begin{leancode}
+theorem Gam3_valW_wSing (k : ℂ) (hk : k + 2 ≠ 0) :
+    Gam 3 (valW k hk wSing) = (-8 : ℂ) • (1 : WakFock) := by
+
+theorem sl2Singular_ne_zero : Sl2Sing.sl2Singular ≠ 0 := by
+\end{leancode}
+
+\begin{dictionary}
+(i) is a statement about the \emph{coefficient system}, not about vectors: \lean{exists_}\allowbreak\lean{nonzero_}\allowbreak\lean{solution_}\allowbreak\lean{iff}
+says the linear system has a nontrivial solution iff $k=-4/3$. Turning it into ``no singular vector of
+this shape at other levels'' needs the target-independence hypotheses (\lean{ansatz_}\allowbreak\lean{eq_}\allowbreak\lean{zero_}\allowbreak\lean{of_}\allowbreak\lean{level_}\allowbreak\lean{ne},
+same file), which \leanpath{AffineSl2Indep.lean} discharges away from $k\in\{0,1,2,-2\}$ --- using
+\lean{VOA.pbw} (see the status box). \lean{wSing} is a lift of $s$ to $U(\leighthat)$ (\lean{sl2Singular_mk}),
+and \lean{Gam 3} $=\gamma_3 = -\partial/\partial b_3$. The value $-8$ is independent of $k$; it is the
+singularity, not the nonvanishing, that needs $k=-4/3$.
+\end{dictionary}
+
+\begin{physics}
+$k=-4/3$ is the first fractional admissible level ($k+2 = 2/3$); $c=-6$. $L_{-4/3}(\leightsl)$ is the
+chiral algebra of the 4d $\mathcal N=2$ Argyres--Douglas theory of type $(A_1,D_3)$ and the
+Drinfeld--Sokolov reduction maps it to the trivial Virasoro minimal model $c=0$. The null vector is
+the null descendant predicted by Kac--Kazhdan with $(m,n)=(3,1)$: $3t-1 = 1$.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+(i) Linear elimination; the last equation reduces to $(3k+4)g=0$. (ii) $e_0s=f_1s=0$ by the explicit
+images; $e_1,h_1$ annihilation by direct computation; then all modes of level $\ge1$ by the recursion
+$e_{m+1} = \frac12[h_1,e_m]$, $f_{m+1}=-\frac12[h_1,f_m]$, $h_{m+1}=[e_1,f_m]$ (no central terms) up to
+level $3$, and by the grading beyond (\lean{pos_ann}). (iii) Map to the Wakimoto module and apply
+$\gamma_3$: only $M_1$ and $M_3$ contain $b_3$, with $\gamma_3\mathrm{val}_W(M_1) = -1$,
+$\gamma_3\mathrm{val}_W(M_3) = -2$, and $\gamma_3$ kills the images of $M_2,M_4,M_5$; so
+$\gamma_3\mathrm{val}_W(s) = 20\cdot(-1) + (-6)\cdot(-2) = -8\ne0$. Since $\gamma_3\mathrm{val}_W(s)$ is a constant (weight and charge
+force it), no truncation issue arises.
+\end{proof}
+
+\begin{warning}[title={Corrected false alarm: agreement with Linshaw--Qi}]
+An earlier version of the source claimed a discrepancy between this vector and the one in
+Linshaw--Qi (arXiv:2601.12017, \S5, from Adamovi\'c 2005), comparing the $e_{-2}h_{-1}$ coefficients
+$-12$ and $-48$. The comparison forgot that $9\,h_{-1}^2e_{-1}\leightvac$ contributes $+36$ to the same
+monomial after reordering; $-48+36=-12$. The two vectors agree exactly; this is machine-checked as
+\lean{lqVector_eq_ansatz} in \leanpath{AffineSl2Rigidity43.lean} (Chapter~\ref{ch:L09}).
+\end{warning}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{Sl2Sing.}\allowbreak\lean{SingSys_}\allowbreak\lean{param}, \lean{VOA.}\allowbreak\lean{Sl2Sing.}\allowbreak\lean{exists_}\allowbreak\lean{nonzero_}\allowbreak\lean{solution_}\allowbreak\lean{iff}, \lean{VOA.}\allowbreak\lean{Sl2Sing.}\allowbreak\lean{sl2Singular_}\allowbreak\lean{pos},
+\lean{VOA.}\allowbreak\lean{Wak.}\allowbreak\lean{Gam3_}\allowbreak\lean{valW_}\allowbreak\lean{wSing}, \lean{VOA.}\allowbreak\lean{Wak.}\allowbreak\lean{sl2Singular_}\allowbreak\lean{ne_}\allowbreak\lean{zero}: \lean{[propext, Classical.}\allowbreak\lean{choice,
+Quot.}\allowbreak\lean{sound]} (run for this chapter). \lean{VOA.Sl2Indep.Q_indep}, \lean{VOA.}\allowbreak\lean{Sl2Indep.}\allowbreak\lean{indep_}\allowbreak\lean{iff_}\allowbreak\lean{sl2Singular_}\allowbreak\lean{ne_}\allowbreak\lean{zero}
+and \lean{VOA.Wak.M_indep_sing} (independence of $M_1,\ldots,M_5$ at $k=-4/3$): \lean{[propext,
+Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound, VOA.}\allowbreak\lean{pbw]} at the snapshot, when \lean{VOA.pbw} was an axiom; re-probed at a later commit, after \lean{VOA.pbw} became a theorem (not re-run for this edition):
+\lean{[propext, Classical.choice, Quot.sound]}. They use the theorem \lean{VOA.pbw}, through \lean{vacuumA_ne_zero}
+in the lemmas \lean{deg1E_ne_zero} etc.\ of \leanpath{AffineSl2Indep.lean}.
+\end{status}
+
+\begin{warning}[title={Stale ``honest gap'' notes}]
+\leanpath{AffineSl2Singular.lean} \S E and \leanpath{AffineSl2Indep.lean} still state that
+$s\ne0$ ``is not proved'' and ``needs a new PBW input''. Both are superseded:
+\lean{Wak.}\allowbreak\lean{sl2Singular_}\allowbreak\lean{ne_}\allowbreak\lean{zero} proves it without \lean{VOA.pbw}, and the full PBW basis is
+Theorem~\ref{l08:thm:pbw}. The ``weight-3 spanning'' gap of \S E is also closed in principle by the
+PBW basis, though no theorem in these files restates it.
+\end{warning}
+
+\subsection{The level \texorpdfstring{$k=-8/5$}{k=-8/5}: weight 5 (the Lee--Yang level)}
+
+\begin{theorem}[The weight-5 singular vector at $k=-8/5$]\label{l08:thm:sing85}
+In weight $5$, $h_0$-charge $2$ there are $21$ PBW monomials $N_1,\ldots,N_{21}$. (i) The $25$ linear
+equations expressing $e_0s=f_1s=0$ for $s=\sum c_iN_i$ (12 from $e_0$, 13 from $f_1$) force
+$(5k+8)c_1 = 0$, and have a nonzero solution iff $5k+8=0$. (ii) At $k=-8/5$ the explicit vector
+\begin{multline*}
+s = 625\,e_{-1}h_{-1}^4\leightvac + 5000\,e_{-1}^2f_{-1}h_{-1}^2\leightvac + 10000\,e_{-1}^3f_{-1}^2\leightvac
+-1500\,h_{-2}e_{-1}h_{-1}^2\leightvac -16000\,h_{-2}e_{-1}^2f_{-1}\leightvac\\
++300\,h_{-2}^2e_{-1}\leightvac -10000\,f_{-2}e_{-1}^2h_{-1}\leightvac -1000\,e_{-2}h_{-1}^3\leightvac
++6000\,e_{-2}e_{-1}f_{-1}h_{-1}\leightvac + 1200\,e_{-2}h_{-2}h_{-1}\leightvac\\
+-14400\,e_{-2}f_{-2}e_{-1}\leightvac -9600\,e_{-2}^2f_{-1}\leightvac -19200\,h_{-3}e_{-1}h_{-1}\leightvac
+-14720\,h_{-3}e_{-2}\leightvac +1600\,f_{-3}e_{-1}^2\leightvac\\
++4200\,e_{-3}h_{-1}^2\leightvac +78400\,e_{-3}e_{-1}f_{-1}\leightvac -1680\,e_{-3}h_{-2}\leightvac\\
++2960\,h_{-4}e_{-1}\leightvac +17440\,e_{-4}h_{-1}\leightvac +25904\,e_{-5}\leightvac
+\end{multline*}
+has weight $5$, $h_0s = 2s$, and is killed by $e_0$ and every $J^a_m$, $m\ge1$. (iii) $s\ne0$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2SingularLY.lean}.
+\begin{leancode}
+theorem exists_nonzero_solution_iff (k : ℂ) :
+    (∃ c1 c2 c3 c4 c5 c6 c7 c8 c9 c10 c11 c12 c13 c14 c15 c16 c17 c18 c19 c20 c21 : ℂ,
+        ¬(c1 = 0 ∧ c2 = 0 ∧ c3 = 0 ∧ c4 = 0 ∧ c5 = 0 ∧ c6 = 0 ∧ c7 = 0 ∧ c8 = 0 ∧ c9 = 0
+            ∧ c10 = 0 ∧ c11 = 0 ∧ c12 = 0 ∧ c13 = 0 ∧ c14 = 0 ∧ c15 = 0 ∧ c16 = 0 ∧ c17 = 0
+            ∧ c18 = 0 ∧ c19 = 0 ∧ c20 = 0 ∧ c21 = 0)
+          ∧ SingSys5 k c1 c2 c3 c4 c5 c6 c7 c8 c9 c10 c11 c12 c13 c14 c15 c16 c17 c18 c19
+              c20 c21) ↔ 5 * k + 8 = 0 := by
+
+theorem pos_ann5 {k : ℂ} {v : WakModule k} (hv : v ∈ gradingZA k 5)
+    (hE0 : J k colE 0 v = 0) (hF1 : J k colF 1 v = 0)
+    (a : Fin 3) {m : ℤ} (hm : 1 ≤ m) : J k a m v = 0 := by
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2Singular85.lean}.
+\begin{leancode}
+noncomputable def sl2Singular85 : WakModule (-8 / 5 : ℂ) :=
+  (625 : ℂ) • N01 (-8 / 5) + (5000 : ℂ) • N02 (-8 / 5) + (10000 : ℂ) • N03 (-8 / 5)
+    + (-1500 : ℂ) • N04 (-8 / 5) + (-16000 : ℂ) • N05 (-8 / 5) + (300 : ℂ) • N06 (-8 / 5)
+    + (-10000 : ℂ) • N07 (-8 / 5) + (-1000 : ℂ) • N08 (-8 / 5) + (6000 : ℂ) • N09 (-8 / 5)
+    + (1200 : ℂ) • N10 (-8 / 5) + (-14400 : ℂ) • N11 (-8 / 5) + (-9600 : ℂ) • N12 (-8 / 5)
+    + (-19200 : ℂ) • N13 (-8 / 5) + (-14720 : ℂ) • N14 (-8 / 5) + (1600 : ℂ) • N15 (-8 / 5)
+    + (4200 : ℂ) • N16 (-8 / 5) + (78400 : ℂ) • N17 (-8 / 5) + (-1680 : ℂ) • N18 (-8 / 5)
+    + (2960 : ℂ) • N19 (-8 / 5) + (17440 : ℂ) • N20 (-8 / 5) + (25904 : ℂ) • N21 (-8 / 5)
+
+theorem N14_eq (k : ℂ) : N14 k = J k colH (-3) (J k colE (-2) (vacuumA k)) := rfl
+
+theorem sl2Singular85_eq_LY : sl2Singular85 = Sl2SingLY.sl2SingularLY := rfl
+
+theorem sl2Singular85_isSingular :
+    sl2Singular85 ∈ gradingZA (-8 / 5 : ℂ) 5
+      ∧ J (-8 / 5 : ℂ) colE 0 sl2Singular85 = 0
+      ∧ J (-8 / 5 : ℂ) colH 0 sl2Singular85 = (2 : ℂ) • sl2Singular85
+      ∧ ∀ (a : Fin 3) (m : ℤ), 1 ≤ m → J (-8 / 5 : ℂ) a m sl2Singular85 = 0 :=
+
+theorem sl2Singular85_dsCentralCharge :
+    DSsl2.dsCentralCharge (-8 / 5 : ℂ) = -22 / 5 := by
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/WakimotoEightFifths.lean}.
+\begin{leancode}
+theorem Gam5_valW_wSingLY (k : ℂ) (hk : k + 2 ≠ 0) :
+    Gam 5 (valW k hk wSingLY) = (-384 : ℂ) • (1 : WakFock) := by
+
+theorem sl2SingularLY_ne_zero : Sl2SingLY.sl2SingularLY ≠ 0 := by
+
+theorem sl2Singular85_ne_zero : Sl2Sing85.sl2Singular85 ≠ 0 := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{SingSys5} (not displayed) is the conjunction of the 25 coefficient equations of the explicit
+images \lean{E0_ansatz5}, \lean{F1_ansatz5}; \lean{SingSys5_param} gives the elimination
+$c_2 = 8c_1$, $c_3=16c_1$, $c_4 = (9k+12)c_1$, \ldots, $(5k+8)c_1 = 0$. \lean{pos_ann5} is the general
+fact that $e_0$ and $f_1$ generate $\widehat{\mathfrak n}_+$, in the form needed at weight $5$.
+\lean{N01}, \ldots, \lean{N21} are pinned to explicit nested current applications by \lean{rfl} lemmas such
+as \lean{N14_eq} ($N_{14} = h_{-3}e_{-2}\leightvac$), and \lean{sl2Singular85_eq_LY} is a \lean{rfl}
+transcription check that the explicit integer combination is the vector produced by the elimination.
+The \lean{rfl} pinning is the right check for the one error a type checker cannot see (pairing a
+coefficient with the wrong monomial). \lean{DSsl2.}\allowbreak\lean{dsCentralCharge k} is the Drinfeld--Sokolov central
+charge $13-6(k+2)-6/(k+2)$ (equal to $1-6(k+1)^2/(k+2)$), here $-22/5$.
+\end{dictionary}
+
+\begin{physics}
+$k=-8/5$ ($k+2 = 2/5$, $c=-12$) is the admissible level whose quantum Drinfeld--Sokolov (Hamiltonian)
+reduction is the Lee--Yang minimal model $\mathcal M(2,5)$, $c=-22/5$; the null vector at weight $5$ is the
+affine counterpart of the Lee--Yang null vector at level $4$. $L_{-8/5}(\leightsl)$ is the chiral algebra of
+the $(A_1,D_5)$ Argyres--Douglas theory. The witness Fock monomial $b_5 = \beta_{-5}$ detects the unique
+component of $s$ that cannot be produced by a contraction.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+As for $k=-4/3$, with $\gamma_5$ as the separating functional: only $N_6, N_{14}, N_{15}, N_{19}, N_{21}$ have a
+$b_5$, with $\gamma_5$-values $-4,-2,2,-2,-1$, and
+$300(-4)+(-14720)(-2)+1600\cdot2+2960(-2)+25904(-1) = -384\ne0$.
+\end{proof}
+
+\begin{warning}[title={What remains conditional at $k=-8/5$}]
+The statements ``\emph{within the 21-monomial ansatz}'' are not ``all weight-5 singular vectors'':
+the converse direction (\lean{exists_}\allowbreak\lean{singular_}\allowbreak\lean{ansatz_}\allowbreak\lean{iff}) still carries the named hypotheses
+\lean{TIndep}, \lean{UIndep} (independence of the target monomials), and \lean{NIndep} (independence of
+all 21 monomials) is strictly stronger than $s\ne0$ and is \emph{not} discharged here, although it
+follows from the PBW basis of Theorem~\ref{l08:thm:pbw} (no file states this). These hypotheses are
+explicit in the signatures, so nothing is hidden; but a reader of the docstring of
+\leanpath{AffineSl2Singular85.lean} \S E (``nonvanishing \ldots\ out of reach'') should know it is stale.
+\end{warning}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{Sl2SingLY.}\allowbreak\lean{SingSys5_}\allowbreak\lean{param}, \lean{VOA.}\allowbreak\lean{Sl2SingLY.}\allowbreak\lean{exists_}\allowbreak\lean{nonzero_}\allowbreak\lean{solution_}\allowbreak\lean{iff},
+\lean{VOA.}\allowbreak\lean{Sl2SingLY.}\allowbreak\lean{sl2SingularLY_}\allowbreak\lean{pos}, \lean{VOA.}\allowbreak\lean{Sl2Sing85.}\allowbreak\lean{sl2Singular85_}\allowbreak\lean{isSingular},
+\lean{VOA.}\allowbreak\lean{Sl2Sing85.}\allowbreak\lean{sl2Singular85_}\allowbreak\lean{dsCentralCharge}, \lean{VOA.}\allowbreak\lean{WakLY.}\allowbreak\lean{Gam5_}\allowbreak\lean{valW_}\allowbreak\lean{wSingLY},
+\lean{VOA.}\allowbreak\lean{WakLY.}\allowbreak\lean{sl2SingularLY_}\allowbreak\lean{ne_}\allowbreak\lean{zero}, \lean{VOA.}\allowbreak\lean{WakLY.}\allowbreak\lean{sl2Singular85_}\allowbreak\lean{ne_}\allowbreak\lean{zero}: \lean{[propext,
+Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (run for this chapter).
+\end{status}
+
+\subsection{\texorpdfstring{$C_2$}{C2} symbols: the Casimir}
+
+\begin{theorem}[Symbols of the singular vectors]\label{l08:thm:symbol}
+In Zhu's $C_2$-algebra $A_2(V^k) = V^k/C_2(V^k)$, with $[x] := [x_{-1}\leightvac]$ and the commutative
+product $[u][v] = [u_{(-1)}v]$: every current mode $J^a_n$ with $n\le-2$ maps into $C_2(V^k)$, and
+\begin{equation*}
+[s_{-4/3}] = 9\,[e]\bigl(4[e][f]+[h]^2\bigr),\qquad [s_{-8/5}] = 625\,[e]\bigl(4[e][f]+[h]^2\bigr)^2 .
+\end{equation*}
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2Symbol.lean}.
+\begin{leancode}
+theorem J_mem_O₂ (a : Fin 3) {n : ℤ} (hn : n ≤ -2) (v : WakModule k) :
+    J k a n v ∈ O₂ (affineSl2VOA_closed k hk) := by
+
+theorem mk₂_sl2Singular_casimir :
+    mk₂ Wadm Sl2Sing.sl2Singular = (9 : ℂ) • (eA * casimirA) := by
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2Symbol85.lean}.
+\begin{leancode}
+theorem mk₂_sl2Singular85_casimir_sq :
+    mk₂ W85 sl2Singular85 = (625 : ℂ) • (e85 * casimir85 ^ 2) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{O₂ W} is $C_2(W) = \mathrm{span}\{u_{(-2)}v\}$ and \lean{mk₂ W} the projection to
+\lean{A₂ W} (Chapter~\ref{ch:L12}). \lean{Wadm}, \lean{eA}, \lean{casimirA} are the $k=-4/3$
+specialisations of the VOA, of $[e]$ and of \lean{casimirCl} $=4[e][f]+[h]^2$; similarly \lean{W85},
+\lean{e85}, \lean{casimir85}. The source is explicit about what is \emph{not} claimed: these are
+identities of classes; they do not assert $[s]\ne0$, nor that $A_2$ of the \emph{simple} quotient is
+$\C[e,f,h]/(\cdots)$. (Injectivity of $\C[e,f,h]\to A_2(V^k)$ is now Theorem~\ref{l08:thm:pbw}, so in
+fact $[s]\ne0$ follows; no file states it.)
+\end{dictionary}
+
+\begin{physics}
+$h^2+4ef$ is the Casimir of $\leightsl$, whose zero set is the nilpotent cone $\mathcal N$. The symbol of
+the null vector generates (part of) the ideal defining the associated variety of $L_k(\leightsl)$; at
+admissible level Arakawa's theorem says that variety is $\mathcal N$, so $L_k$ is quasi-lisse but not
+lisse --- consistent with its role as an Argyres--Douglas chiral algebra (Higgs branch $=\mathcal N$
+for $(A_1,D_{2n+1})$).
+\end{physics}
+
+\begin{proof}[Proof on paper]
+$J^a_n = (J^a_{-1}\leightvac)_{(n)}$ and $u_{(n)}v\in C_2$ for $n\le-2$. Of the monomials of $s$, only those
+built from $(-1)$-modes survive; they are iterated products of $[e],[f],[h]$. Collect and factor.
+\end{proof}
+
+\begin{status}
+\lean{VOA.Sl2Symbol.J_mem_O₂}, \lean{VOA.}\allowbreak\lean{Sl2Symbol.}\allowbreak\lean{mk₂_}\allowbreak\lean{sl2Singular_}\allowbreak\lean{casimir},
+\lean{VOA.}\allowbreak\lean{Sl2Symbol85.}\allowbreak\lean{mk₂_}\allowbreak\lean{sl2Singular85_}\allowbreak\lean{casimir_}\allowbreak\lean{sq}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}
+(run for this chapter).
+\end{status}
+
+%======================================================================
+\section{\texorpdfstring{$V^{-8/5}(\mathfrak{sl}_2)$}{V\^{}(-8/5)(sl2)} is not simple}\label{l08:sec:notsimple}
+%======================================================================
+
+\subsection{From positive current modes to strong singularity}
+
+\begin{theorem}[Strong singularity from the currents]\label{l08:thm:strong}
+Let $k\ne-2$. (i) $L_1v = 0$ for all $v\in V^k_1$. (ii) If every current mode $J^a_i$, $i\ge1$, kills $t$,
+then every mode $u_{(N)}$ of every homogeneous state $u\in V^k_m$ with $N\ge m$ kills $t$. In particular,
+a nonzero such $t$ of weight $w>0$ is strongly singular of weight $w$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2Strong.lean}.
+\begin{leancode}
+theorem affineSl2_qp (k : ℂ) (hk : k + 2 ≠ 0) :
+    ∀ v, v ∈ (affineSl2VOA_closed k hk).grading 1 → (affineSl2VOA_closed k hk).L 1 v = 0 := by
+
+def SingP (k : ℂ) (t : WakModule k) : Prop := ∀ (a : Fin 3) (i : ℤ), 1 ≤ i → J k a i t = 0
+
+theorem strongly_singular_of_SingP (k : ℂ) (hk : k + 2 ≠ 0) {t : WakModule k} (ht : SingP k t)
+    {m : ℤ} {u : WakModule k} (hu : u ∈ (affineSl2VOA_closed k hk).grading m) :
+    ∀ N : ℤ, m ≤ N → (affineSl2VOA_closed k hk).smul u N t = 0 := by
+
+theorem isStronglySingular_of_SingP (k : ℂ) (hk : k + 2 ≠ 0) {t : WakModule k}
+    (ht : SingP k t) (hne : t ≠ 0) {w : ℤ} (hw : 0 < w) (hmem : t ∈ gradingZA k w) :
+    SingVec.IsStronglySingularOfWeight (affineSl2VOA_closed k hk) w t where
+\end{leancode}
+
+\begin{dictionary}
+\lean{W.L 1} is $L_1 = \omega_{(2)}$. \lean{SingP k t} is exactly ``every positive current mode kills $t$'',
+the output of the explicit computations above (no weight hypothesis). The conclusion of
+\lean{isStronglySingular_}\allowbreak\lean{of_}\allowbreak\lean{SingP} is the structure \lean{IsStronglySingularOfWeight} of
+Chapter~\ref{ch:L04}, whose \lean{ne_zero}, \lean{weight_pos}, \lean{homogeneous} fields are the
+hypotheses \lean{hne}, \lean{hw}, \lean{hmem}.
+\end{dictionary}
+
+\begin{physics}
+For a current algebra, ``highest weight with respect to the currents'' implies ``highest weight with
+respect to every field'', because every field is a normal-ordered product of currents and their
+derivatives.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+(i) $V^k_1$ is spanned by $J^a_{-1}\leightvac$, which are primary (Theorem~\ref{l08:thm:vir}).
+(ii) Induction on creation words $u = J^{a_1}_{-n_1}\cdots\leightvac$ using the iterate formula. The naive
+induction with $t$ fixed fails: expanding $(J^a_{-n-1}w)_{(N)}t$ produces $w_{(\cdot)}(J^a_0t)$, and $J^a_0t\ne0$ in
+general (for the $k=-8/5$ vector, $h_0t=2t$, $f_0t\ne0$). The repair is to induct over the set of all
+$t$ satisfying \lean{SingP}, which is stable under the zero modes: for $i\ge1$,
+$J^b_iJ^a_0t = J^a_0J^b_it + \sum_cf^{ba}{}_cJ^c_it = 0$ (no central term since $i+0\ne0$).
+\end{proof}
+
+\begin{warning}[title={An overclaim corrected in the source}]
+An earlier version of \leanpath{AffineSl2Strong.lean} asserted that the general Core-level statement
+``positive modes of a generating set kill $s$ $\Rightarrow$ $s$ strongly singular'' is \emph{false} for
+generators of weight $\ge2$. What is established is only that \emph{this induction} does not close
+there; the abstract statement is neither proved nor refuted. The source now says so.
+\end{warning}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{AffineVOA.}\allowbreak\lean{Strong.}\allowbreak\lean{affineSl2_}\allowbreak\lean{qp}, \lean{VOA.}\allowbreak\lean{AffineVOA.}\allowbreak\lean{Strong.}\allowbreak\lean{isStronglySingular_}\allowbreak\lean{of_}\allowbreak\lean{SingP}:
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (run for this chapter).
+\end{status}
+
+\subsection{The theorem}
+
+\begin{theorem}[$V^{-8/5}(\leightsl)$ is not simple]\label{l08:thm:notsimple}
+The universal affine VOA $V^{-8/5}(\leightsl)$ is not simple. Equivalently, the weight-5 singular
+vector lies in its maximal ideal, maps to $0$ in $L_{-8/5}(\leightsl)$, the maximal ideal is nonzero,
+and $L_{-8/5}(\leightsl)$ is a proper quotient of $V^{-8/5}(\leightsl)$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/WakimotoEightFifths.lean}.
+\begin{leancode}
+theorem hk85 : (-8 / 5 : ℂ) + 2 ≠ 0 := by norm_num
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2NotSimple85.lean}.
+\begin{leancode}
+theorem stronglySingular85 :
+    SingVec.IsStronglySingularOfWeight (affineSl2VOA_closed (-8 / 5 : ℂ) hk85) 5 sl2Singular85 :=
+  isStronglySingular_of_SingP (-8 / 5 : ℂ) hk85 singP85 sl2Singular85_ne_zero (by norm_num)
+    sl2Singular85_mem
+
+theorem vacuum85_ne_zero : (affineSl2VOA_closed (-8 / 5 : ℂ) hk85).vacuum ≠ 0 :=
+  vacuumA85_ne_zero
+
+theorem not_isSimple_85 : ¬ (affineSl2VOA_closed (-8 / 5 : ℂ) hk85).IsSimple :=
+  SingVec.not_isSimple_of_stronglySingular_FHL vacuum85_ne_zero qp85 stronglySingular85
+
+theorem mkQ_sl2Singular85_eq_zero :
+    (QuotVOA.maxGradedIdeal (affineSl2VOA_closed (-8 / 5 : ℂ) hk85)).mkQ sl2Singular85 = 0 :=
+
+theorem maxGradedIdeal_85_ne_bot :
+    QuotVOA.maxGradedIdeal (affineSl2VOA_closed (-8 / 5 : ℂ) hk85) ≠ ⊥ :=
+
+theorem mkQ_85_not_injective :
+    ¬ Function.Injective
+      (QuotVOA.maxGradedIdeal (affineSl2VOA_closed (-8 / 5 : ℂ) hk85)).mkQ :=
+\end{leancode}
+
+\begin{dictionary}
+\lean{IsSimple} (Chapter~\ref{ch:L04}, Definition~\ref{l04:def:simple}) requires the algebra to be
+nonzero and to have no ideals other than $0$ and everything; so \lean{¬ IsSimple} is informative only
+if the algebra is nonzero, which \lean{vacuum85_ne_zero} supplies --- through the Wakimoto realisation
+(\lean{vacuumA85_ne_zero} $=$ \lean{vacuumA_ne_zero_free} at $k=-8/5$), \emph{not} through
+\lean{closed_vacuum_ne_zero}, which would have imported \lean{VOA.pbw}. \lean{qp85} is
+\lean{affineSl2_qp} at $k=-8/5$. \lean{SingVec.}\allowbreak\lean{not_}\allowbreak\lean{isSimple_}\allowbreak\lean{of_}\allowbreak\lean{stronglySingular_}\allowbreak\lean{FHL} is
+Theorem~\ref{l04:thm:notsimple} of Chapter~\ref{ch:L04}. The proved ideal is a proper nonzero ideal;
+the theorem does not identify it with the ideal generated by $s$, nor claim that $s$ generates the
+maximal ideal (that is Adamovi\'c--Milas, an external input in Chapter~\ref{ch:L09}). The analogous
+statements at $k=-4/3$ are \lean{LQ43.}\allowbreak\lean{maxGradedIdeal_}\allowbreak\lean{ne_}\allowbreak\lean{bot} in Chapter~\ref{ch:L09}, and at integrable
+levels Theorem~\ref{l08:thm:integrable} (checked outside the library).
+\end{dictionary}
+
+\begin{physics}
+At $k=-8/5$ the current algebra has a null state at energy $5$; the chiral algebra with a
+nondegenerate two-point function, $L_{-8/5}(\leightsl)$, differs from the universal one. This is the
+statement that the $(A_1,D_5)$ Argyres--Douglas chiral algebra satisfies a relation among the moment
+map operators (heuristically, a Higgs branch chiral ring relation).
+\end{physics}
+
+\begin{proof}[Proof on paper]
+$s\ne0$ (Theorem~\ref{l08:thm:sing85}) and \lean{SingP} holds, so $s$ is strongly singular of weight $5$
+(Theorem~\ref{l08:thm:strong}). With $\leightvac\ne0$ and $L_1V_1=0$, the canonical invariant form
+exists, $s$ is in its radical, and the radical is a proper nonzero ideal (Theorem~\ref{l08:thm:bridge}).
+\end{proof}
+
+\begin{warning}[title={A superseded ``not reachable'' note}]
+\leanpath{WakimotoEightFifths.lean} \S8 previously said that properness of the ideal $(s)$ ``remains out
+of reach'' because it needs the triangular decomposition $U = U(\widehat{\mathfrak n}_-)U(\mathfrak h)U(\widehat{\mathfrak n}_+)$.
+The invariant-form route needs no PBW at all; the preamble has been corrected in the source.
+\end{warning}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{Sl2NotSimple85.}\allowbreak\lean{stronglySingular85}, \lean{VOA.}\allowbreak\lean{Sl2NotSimple85.}\allowbreak\lean{not_}\allowbreak\lean{isSimple_}\allowbreak\lean{85},
+\lean{VOA.}\allowbreak\lean{Sl2NotSimple85.}\allowbreak\lean{mkQ_}\allowbreak\lean{sl2Singular85_}\allowbreak\lean{eq_}\allowbreak\lean{zero}, \lean{VOA.}\allowbreak\lean{Sl2NotSimple85.}\allowbreak\lean{maxGradedIdeal_}\allowbreak\lean{85_}\allowbreak\lean{ne_}\allowbreak\lean{bot},
+\lean{VOA.}\allowbreak\lean{Sl2NotSimple85.}\allowbreak\lean{mkQ_}\allowbreak\lean{85_}\allowbreak\lean{not_}\allowbreak\lean{injective}, \lean{VOA.}\allowbreak\lean{WakLY.}\allowbreak\lean{vacuumA85_}\allowbreak\lean{ne_}\allowbreak\lean{zero}: \lean{[propext,
+Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (run for this chapter). \textbf{Unconditional, \lean{pbw}-free.} The level is
+$k=-8/5$, i.e.\ $k+2 = 2/5$.
+\end{status}
+%======================================================================
+\section{Verma modules of \texorpdfstring{$\widehat{\mathfrak{sl}}_2$}{affine sl2}}\label{l08:sec:verma}
+%======================================================================
+
+The vacuum module is one member of a two-parameter family. For $k,\lambda\in\C$ the \emph{Verma module}
+$M(k,\lambda)$ is generated by a vector $v_\lambda$ with $e_0v_\lambda = 0$, $J^a_mv_\lambda=0$ for $m>0$,
+$h_0v_\lambda = \lambda v_\lambda$, $C=k$, $\ell_0v_\lambda = 0$, and no other relations. The vacuum module is the
+quotient of $M(k,0)$ by the extra relation $f_0v_0 = 0$. The Kac--Kazhdan determinant formula, which
+locates all singular vectors, is a statement about the contravariant forms on all $M(k,\lambda)$, so the
+library develops these modules in full. (Chapter~\ref{ch:L02}, Definition~\ref{l02:def:verma}, has a
+general-$\mathfrak g$ Verma module; the files of this section use a separate, $\leightsl$-specific
+construction.)
+
+\begin{definition}[Affine $\leightsl$ Verma module]\label{l08:def:verma}
+Call a mode $(a,n)$ \emph{lower} if $n<0$, or $n=0$ and $a=f$. $M(k,\lambda) = U(\leighthat)/I(k,\lambda)$,
+where the left ideal $I(k,\lambda)$ is generated by $x_a\otimes t^n - \delta_{n,0}\delta_{a,h}\lambda$ for all
+non-lower $(a,n)$, by $C-k$ and by $\ell_0$. The highest vector $v_\lambda$ is the class of $1$. A vector $v$ in a
+$\leighthat$-module $E$ is \emph{highest of type $(k,\lambda)$} if it satisfies the same relations.
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2HighestNormalOrdering.lean}.
+\begin{leancode}
+def IsLower (a : Fin 3) (m : ℤ) : Prop := m<0 ∨ (m=0 ∧ a=1)
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2Verma.lean}.
+\begin{leancode}
+def highestGens (k h : ℂ) : Set U := {u |
+    (∃ a n,¬IsLower a n ∧ u=ι ℂ (modeElement a n)-
+      algebraMap ℂ U (if n=0 ∧ a=2 then h else 0)) ∨
+    u=ι ℂ (AffineLie.C kappaForm kappaForm_isInvariant)-algebraMap ℂ U k ∨
+    u=ι ℂ (AffineLie.ell0 kappaForm kappaForm_isInvariant)}
+
+def highestIdeal (k h : ℂ) : Submodule U U := Submodule.span U (highestGens k h)
+
+abbrev Verma (k h : ℂ) := U ⧸ highestIdeal k h
+
+def highestVector (k h : ℂ) : Verma k h := Submodule.Quotient.mk 1
+
+def mode (k h : ℂ) (a : Fin 3) (n : ℤ) : End ℂ (Verma k h) := rho k h (modeElement a n)
+
+structure IsHighest (R : AffSl2→ₗ⁅ℂ⁆End ℂ E) (v : E) (k h : ℂ) : Prop where
+  central : R (AffineLie.C kappaForm kappaForm_isInvariant)=k • (1 : End ℂ E)
+  degree : R (AffineLie.ell0 kappaForm kappaForm_isInvariant) v=0
+  modes : ∀ a n,¬IsLower a n → R (modeElement a n) v=
+    if n=0 ∧ a=2 then h • v else 0
+\end{leancode}
+
+\begin{dictionary}
+In these files the highest weight is called \lean{h}; we write $\lambda$ to avoid a clash with the generator
+$h$. \lean{U} is $U(\leighthat)$ (including $C$ and $\ell_0$), \lean{ι ℂ} the inclusion
+$\leighthat\to U$, \lean{modeElement a n} $=x_a\otimes t^n$, \lean{algebraMap ℂ U} the scalars. So
+\lean{highestGens} is the list of generators of Definition~\ref{l08:def:verma}, \lean{Verma k h} is
+$M(k,\lambda)$, and \lean{mode k h a n} is the action of $x_a\otimes t^n$. \lean{IsHighest R v k h} is exactly
+``$v$ is highest of type $(k,\lambda)$ for the representation $R$''. The universal property
+(\lean{universalMap}, \lean{universalMap_highest}, \lean{universalMap_}\allowbreak\lean{intertwines}, same file) gives
+the unique $\leighthat$-map $M(k,\lambda)\to E$ sending $v_\lambda\mapsto v$.
+\end{dictionary}
+
+\begin{physics}
+$M(k,\lambda)$ is the module of all descendants of a WZW primary field of spin $j=\lambda/2$ (its
+ground states form the $\leightsl$-Verma module of highest weight $\lambda$), before any null vector is
+removed. For the integrable representations $\lambda\in\{0,\ldots,k\}$; at admissible level $\lambda$ takes
+fractional admissible values.
+\end{physics}
+
+\begin{status}
+Definitions; axiom-free.
+\end{status}
+
+\begin{theorem}[PBW for Verma modules, at every $(k,\lambda)$]\label{l08:thm:vermapbw}
+For every $k,\lambda\in\C$: $v_\lambda\ne0$; the \emph{occupation words} --- one fixed product of lower
+modes for each finite multiset of lower modes --- form a basis of $M(k,\lambda)$; and for every nonzero
+$v\in M(k,\lambda)$ the vectors (occupation word)$\cdot v$ are linearly independent.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2Verma.lean}.
+\begin{leancode}
+theorem highestVector_ne_zero (k h : ℂ) : highestVector k h≠0 := by
+
+theorem occupationWords_independent (k h : ℂ) :
+    LinearIndependent ℂ (fun d : Occupation => currentWord (mode k h)
+      (occupationWord d) (highestVector k h)) := by
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2VermaStraightening.lean}.
+\begin{leancode}
+def occupationBasis (k h : ℂ) : Module.Basis Occupation ℂ (Verma k h) :=
+  Module.Basis.mk (occupationWords_independent k h)
+    (by change ⊤≤occupationSpan k h; rw [occupationSpan_eq_top])
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2HighestWords.lean}.
+\begin{leancode}
+def lowerLetter (v : Fin 3×ℕ) : Fin 3×ℤ :=
+  (v.1,if v.1=1 then -(v.2 : ℤ) else -(v.2 : ℤ)-1)
+
+def occupationWord (d : Occupation) : List (Fin 3×ℤ) := d.toMultiset.toList.map lowerLetter
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2VermaDescendants.lean}.
+\begin{leancode}
+theorem descendants_independent (k h : ℂ) (v : Verma k h) (hv : v≠0) :
+    LinearIndependent ℂ (fun d : Occupation => currentWord (mode k h) (occupationWord d) v) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{Occupation} $=$ \lean{(Fin 3×ℕ)→₀ℕ} (\leanpath{WakimotoJointFockSpace.lean}) is a finite multiset of
+oscillator labels; \lean{lowerLetter} translates the label $(a,j)$ into the lower mode $e_{-j-1}$ ($a=0$),
+$f_{-j}$ ($a=1$, so $j=0$ is the horizontal $f_0$), $h_{-j-1}$ ($a=2$). These labels deliberately match the
+Wakimoto variables $b_{j+1}$, $c_j$, $A_{j+1}$. \lean{occupationWord d} lists the letters of $d$ in the
+order chosen by \lean{Multiset.toList} --- an arbitrary but fixed order; the straightening file proves
+spanning for exactly these representatives, so no ``sorted order'' assumption is hidden.
+\lean{currentWord R w v} applies the modes of the list $w$ to $v$ (head leftmost). \lean{Module.Basis.mk}
+builds a basis from independence and spanning, so \lean{occupationBasis} \emph{is} a PBW theorem.
+The independence proof needs no hypothesis on $k$: the critical level is included.
+\end{dictionary}
+
+\begin{physics}
+States in the highest-weight representation are counted by free oscillators, one for each lower mode;
+the character of $M(k,\lambda)$ is $q^{h_\lambda}\prod_{n\ge1}(1-q^n)^{-1}(1-zq^{n})^{-1}(1-z^{-1}q^{n-1})^{-1}$
+(in the variable $z$ for $h_0$).
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Independence: construct an explicit module in which the images are visibly independent. The library
+uses a triple tensor product of shifted Wakimoto vacuum modules: for $d\ge2$, $E_n\mapsto E_{dn+1}$,
+$F_n\mapsto F_{dn-1}$, $H_n\mapsto H_{dn}+(\text{old level})\delta_{n,0}$ is a Lie map from $\leighthat$ at
+level $\ell$ to $\leighthat$ at level $d\ell$ that sends \emph{every} lower mode, including $f_0$, to a strictly
+negative mode (\leanpath{WakimotoShiftedVacuum.lean}); tensoring three such pullbacks with dilations
+$2,3,4$ and a free auxiliary parameter realises any prescribed $(k,\lambda)$ (\leanpath{AffineSl2TensorHighest.lean}),
+and projecting to the first factor reduces independence to the vacuum independence of
+Theorem~\ref{l08:thm:leading} (via the injective relabelling $j\mapsto 2j$ or $2j+1$). Spanning: normal
+ordering, by induction on word length. Descendant independence for arbitrary $v\ne0$: the same model
+gives an injective intertwiner (\lean{exists_}\allowbreak\lean{injective_}\allowbreak\lean{creation_}\allowbreak\lean{model}), and in the polynomial ring the
+leading symbol of a word times the first nonzero component of the image of $v$ is nonzero, the
+polynomial ring being a domain.
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{AffineVOA.}\allowbreak\lean{HighestModule.}\allowbreak\lean{highestVector_}\allowbreak\lean{ne_}\allowbreak\lean{zero}, \lean{occupationWords_}\allowbreak\lean{independent},
+\lean{occupationBasis}, \lean{descendants_}\allowbreak\lean{independent}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}
+(run for this chapter). Unconditional at every $(k,\lambda)$, critical level included.
+\end{status}
+
+\begin{theorem}[The vacuum module is $M(k,0)/M(k,-2)$]\label{l08:thm:exact}
+For every $k\in\C$: $f_0v_0\in M(k,0)$ is a nonzero highest vector of type $(k,-2)$; the induced map
+$M(k,-2)\to M(k,0)$ is injective; the canonical map $M(k,0)\to V^k(\leightsl)$ is surjective with kernel
+exactly its image. That is, $0\to M(k,-2)\to M(k,0)\to V^k(\leightsl)\to0$ is exact.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2VacuumProjection.lean}.
+\begin{leancode}
+def horizontalVector (k : ℂ) : Verma k 0 := mode k 0 1 0 (highestVector k 0)
+
+def horizontalEmbedding (k : ℂ) : Verma k (-2)→ₗ[ℂ]Verma k 0 :=
+  universalMap (rho k 0) (horizontalVector k) (horizontalVector_isHighest k)
+
+theorem horizontalEmbedding_injective (k : ℂ) : Function.Injective (horizontalEmbedding k) := by
+
+def vacuumProjection (k : ℂ) : Verma k 0→ₗ[ℂ]WakModule k :=
+  universalMap (AffineLie.vacuumRho kappaForm kappaForm_isInvariant k)
+    (AffineLie.vacuumVector kappaForm kappaForm_isInvariant k) (vacuum_isHighest k)
+
+theorem vacuumProjection_surjective (k : ℂ) : Function.Surjective (vacuumProjection k) := by
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2VacuumExactSequence.lean}.
+\begin{leancode}
+theorem vacuumProjection_ker (k : ℂ) :
+    LinearMap.ker (vacuumProjection k)=LinearMap.range (horizontalEmbedding k) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{mode k 0 1 0} is $f_0$ on $M(k,0)$. Note that injectivity of the horizontal embedding and the
+nonvanishing of $f_0v_0$ use Theorem~\ref{l08:thm:vermapbw} (not \lean{VOA.pbw}), and the kernel computation
+is an induction in the enveloping algebra, valid at every $k$, without any character or determinant
+input.
+\end{dictionary}
+
+\begin{physics}
+The vacuum primary is an $SU(2)$ singlet: the state $J^-_0\leightvac$ of the Verma module is null at every
+level and generates a copy of the spin $-1$ Verma module; removing it gives the vacuum module.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+$e_0f_0v_0 = h_0v_0 = 0$ and $h_0f_0v_0 = -2f_0v_0$, so $f_0v_0$ is highest of weight $-2$. The vacuum
+ideal is $I(k,0) + U f_0$, so the kernel of $M(k,0)\to V^k$ is $U\cdot f_0v_0$, which is the image of the
+embedding. Injectivity: the embedding sends occupation-word basis vectors of $M(k,-2)$ to
+descendants of the nonzero vector $f_0v_0$, independent by Theorem~\ref{l08:thm:vermapbw}.
+\end{proof}
+
+\begin{status}
+\lean{horizontalEmbedding_}\allowbreak\lean{injective}, \lean{vacuumProjection_ker} (namespace
+\lean{VOA.}\allowbreak\lean{AffineVOA.}\allowbreak\lean{HighestModule}): \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (run for this
+chapter).
+\end{status}
+
+\subsection{The contravariant form}
+
+\begin{definition}[Shapovalov form]\label{l08:def:contravariant}
+The \emph{Chevalley anti-involution} sends $e_n\mapsto f_{-n}$, $f_n\mapsto e_{-n}$, $h_n\mapsto h_{-n}$.
+The contravariant form on $M(k,\lambda)$ is the unique bilinear form with $\langle v_\lambda,v_\lambda\rangle=1$ and
+$\langle x_a\otimes t^n\,u, v\rangle = \langle u, (x_a\otimes t^n)^\dagger v\rangle$.
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2VermaDual.lean}.
+\begin{leancode}
+def adjointColour (a : Fin 3) : Fin 3 := if a=0 then 1 else if a=1 then 0 else 2
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2VermaContravariant.lean}.
+\begin{leancode}
+def contravariant (k h : ℂ) : Verma k h→ₗ[ℂ]Module.Dual ℂ (Verma k h) :=
+  universalMap (dualRho k h) (highestCoordinate k h) (highestCoordinate_isHighest k h)
+
+theorem contravariant_normalized (k h : ℂ) :
+    contravariant k h (highestVector k h) (highestVector k h)=1 := by
+
+theorem contravariant_adj (k h : ℂ) (a : Fin 3) (n : ℤ) (u v : Verma k h) :
+    contravariant k h (mode k h a n u) v=
+      contravariant k h u (mode k h (adjointColour a) (-n) v) := by
+
+theorem contravariant_symm (k h : ℂ) (u v : Verma k h) :
+    contravariant k h u v=contravariant k h v u := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{Module.Dual ℂ M} is the dual space; a linear map $M\to M^*$ is a bilinear form. \lean{dualRho k h}
+is the representation on $M^*$ by transposes of the Chevalley adjoints (\leanpath{AffineSl2VermaDual.lean});
+\lean{highestCoordinate k h} is the coefficient of $v_\lambda$ in the occupation basis, proved to be a highest
+vector of type $(k,\lambda)$ in $M^*$; the form is the universal map $M\to M^*$. Normalisation, adjointness
+and symmetry are \emph{consequences} of the construction, not assumptions. No complex conjugation
+occurs: this is the bilinear (Shapovalov) form, the right object for determinants at complex
+parameters. The \emph{radical} of the form (vectors pairing to zero with everything) is a submodule
+(\lean{contravariant_}\allowbreak\lean{radical_}\allowbreak\lean{mode}).
+\end{dictionary}
+
+\begin{physics}
+At real level and weight, the Hermitian version of this form is the inner product on the Hilbert space
+of the WZW model; null states are its zero-norm states; the theory is unitary iff the form is positive
+semi-definite (integrable $k,\lambda$).
+\end{physics}
+
+\begin{status}
+\lean{contravariant_}\allowbreak\lean{normalized}, \lean{contravariant_adj}, \lean{contravariant_symm}: \lean{[propext,
+Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (run for this chapter).
+\end{status}
+
+\begin{definition}[Joint weight spaces and the Gram matrices]\label{l08:def:gram}
+An occupation $d$ has \emph{energy} $\sum_v d(v)\varepsilon(v)$ and \emph{charge} $\sum_v d(v)\chi(v)$ with
+$\varepsilon(b_{j+1}) = j+1$, $\varepsilon(c_j) = j$, $\varepsilon(A_{j+1}) = j+1$ and $\chi = +1,-1,0$ on the three
+families. The \emph{joint index} $\mathcal J(n,c)$ is the (finite) set of occupations of energy $n$ and charge
+$c$. The \emph{Gram matrix} $G_{n,c}(k,\lambda)$ is the matrix of the contravariant form on the occupation
+basis vectors indexed by $\mathcal J(n,c)$; $D_{n,c}(k,\lambda) = \det G_{n,c}(k,\lambda)$. For fixed $k$ it is a
+polynomial in $\lambda$, the \emph{weight determinant}.
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/WakimotoJointFockSpace.lean}.
+\begin{leancode}
+abbrev Occupation := (Fin 3×ℕ)→₀ℕ
+
+def oscillatorEnergy (v : Fin 3×ℕ) : ℕ := if v.1=1 then v.2 else v.2+1
+
+def oscillatorCharge (v : Fin 3×ℕ) : ℤ := if v.1=0 then 1 else if v.1=1 then -1 else 0
+
+abbrev JointIndex (n : ℕ) (c : ℤ) :=
+  {d : Occupation // occupationEnergy d=n ∧ occupationCharge d=c}
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2VermaGram.lean}.
+\begin{leancode}
+def gramMatrix (k h : ℂ) (n : ℕ) (c : ℤ) : Matrix (JointIndex n c) (JointIndex n c) ℂ :=
+  fun i j => contravariant k h (occupationBasis k h i.val) (occupationBasis k h j.val)
+
+theorem highestGramPolynomial_verma (k h : ℂ) (n : ℕ) (c : ℤ) :
+    (Wak.Charged.highestGramPolynomial n c).map (MvPolynomial.eval ![k,h])=gramMatrix k h n c := by
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2VermaRootFactors.lean}.
+\begin{leancode}
+def weightGramPolynomial (k : ℂ) (n : ℕ) (c : ℤ) :
+    Matrix (JointIndex n c) (JointIndex n c) (Polynomial ℂ) :=
+  (Wak.Charged.highestGramPolynomial n c).map
+    (MvPolynomial.eval₂Hom Polynomial.C ![Polynomial.C k,Polynomial.X])
+
+def weightDeterminant (k : ℂ) (n : ℕ) (c : ℤ) : Polynomial ℂ :=
+  (weightGramPolynomial k n c).det
+\end{leancode}
+
+\begin{dictionary}
+\lean{occupationEnergy}, \lean{occupationCharge} are the additive extensions (\lean{Finsupp.weight}) of
+\lean{oscillatorEnergy}, \lean{oscillatorCharge}. The charge counts $e$-letters minus $f$-letters, so a
+vector of charge $c$ in $M(k,\lambda)$ has $h_0$-eigenvalue $\lambda+2c$. \lean{highestGramPolynomial n c} is a
+matrix of polynomials in two variables $(k,\lambda)$ obtained by normal ordering; the theorem
+\lean{highestGramPolynomial_}\allowbreak\lean{verma} says that evaluating it at $(k,\lambda)$ gives the actual Gram matrix of
+the actual form, at \emph{all} parameters (no non-critical hypothesis). \lean{weightDeterminant k n c}
+substitutes $k$ and keeps $\lambda$ as the variable \lean{X}. So the determinant studied below is a genuine
+Gram determinant, not a formal expression.
+\end{dictionary}
+
+\begin{physics}
+$G_{n,c}$ is the matrix of two-point functions of the descendants at energy $n$ and spin projection
+$\frac12\lambda+c$. Its determinant vanishes exactly when a null state exists in that sector.
+\end{physics}
+
+\begin{status}
+Definitions; \lean{highestGramPolynomial_}\allowbreak\lean{verma}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}.
+\end{status}
+
+%======================================================================
+\section{Screening operators and singular vectors in Verma modules}\label{l08:sec:screening}
+%======================================================================
+
+\subsection{The charged Wakimoto module}
+
+\begin{definition}[Wakimoto module of highest weight $\lambda$]\label{l08:def:charged}
+On the same Fock space $\leightFock$ set $H_n = h_n + \lambda\delta_{n,0}$ and $F_n = f_n + \lambda\gamma_n$, $E_n = e_n$.
+For $k\ne-2$ this is a representation of $\leighthat$ at level $k$, and $1$ is a highest vector of type
+$(k,\lambda)$.
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/WakimotoCharged.lean}.
+\begin{leancode}
+noncomputable def H (k lam : ℂ) (n : ℤ) : Module.End ℂ WakFock :=
+  Hcur k n + if n=0 then lam • (1 : Module.End ℂ WakFock) else 0
+
+noncomputable def F (k lam : ℂ) (n : ℤ) : Module.End ℂ WakFock :=
+  Fcur k n + lam • Gam n
+
+noncomputable def J (k lam : ℂ) (a : Fin 3) (n : ℤ) : Module.End ℂ WakFock :=
+  if a=0 then Ecur n else if a=1 then F k lam n else H k lam n
+
+noncomputable def rho (k lam : ℂ) (hk : k + 2 ≠ 0) :
+    AffSl2 →ₗ⁅ℂ⁆ Module.End ℂ WakFock := (currentData k lam hk).rho
+\end{leancode}
+
+\begin{dictionary}
+This is the Wakimoto module with boson momentum $\lambda$ (namespace \lean{Wak.Charged}): shifting the boson
+zero mode by $\lambda$ adds $\lambda$ to $h_0$ and $\lambda\gamma$ to $f$. \lean{currentData} packages the proved
+commutators into the generic interface \lean{AffineCentralCurrentData} (Section~\ref{l08:sec:infrastructure}),
+which produces the Lie map.
+\end{dictionary}
+
+\begin{physics}
+The Wakimoto module $W_\lambda$ is the Fock module of $\beta\gamma$ and of the boson with momentum
+$p\propto\lambda$: the free-field representative of the WZW primary of spin $\lambda/2$. It is generally not
+isomorphic to $M(k,\lambda)$ (it is a ``twisted dual''), but it receives the highest vector.
+\end{physics}
+
+\begin{status}
+Definitions; axiom-free.
+\end{status}
+
+\subsection{Screening vectors}
+
+Physically, the screening current of the Wakimoto realisation is
+$S(z) = \beta(z)\,e^{-\frac{2}{\alpha_+}\phi(z)}$ with $\alpha_+^2 = 2(k+2)$; its contour integral commutes with
+$\leighthat$. An $r$-fold integral of products of screening currents applied to a Fock vector produces
+singular vectors. When $k+2 = 1/M$ for a positive integer $M$ the integrand is single-valued,
+$\prod_{i<j}(z_i-z_j)^{2M}\prod_i\beta(z_i)\exp(-M\sum_m\frac{p_m(z)}{m}a_{-m})$, and the integral is a
+coefficient extraction. The library implements exactly this, with all series truncated.
+
+\begin{definition}[The integer screening state]\label{l08:def:screen}
+For $r,q,M\ge1$ let $\mathrm{state}(r,q,M)\in\leightFock$ be the coefficient of
+$z_1^{(r-1)M+q-1}\cdots z_r^{(r-1)M+q-1}$ in the finite Laurent polynomial
+\begin{equation*}
+\Delta(z)^{2M}\prod_{i=1}^r\Bigl(\sum_{j=0}^{D}b_{j+1}z_i^j\Bigr)\prod_{m=1}^{D}\sum_{\ell=0}^{D}
+\frac{1}{\ell!}\Bigl(-\frac Mm\Bigr)^\ell\Bigl(A_m\sum_iz_i^m\Bigr)^\ell,\qquad D = r(q-1),
+\end{equation*}
+with $\Delta$ the Vandermonde (the Laurent Vandermonde of \leanpath{VOA/Examples/VirasoroScreeningVandermonde.lean}, Chapter~\ref{ch:L06}).
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2ScreeningPolynomial.lean}.
+\begin{leancode}
+noncomputable def betaFactor (r D : ℕ) (i : Fin r) : Auxiliary r :=
+  ∑ j ∈ Finset.range (D+1),
+    single ((j : ℤ) • unitExponent r i) (MvPolynomial.X (0,j))
+
+noncomputable def exponentialFactor (r D M m : ℕ) : Auxiliary r :=
+  ∑ ell ∈ Finset.range (D+1),
+    single 0 (MvPolynomial.C (((-(M : ℂ)/(m : ℂ))^ell)/(ell.factorial : ℂ))) *
+      bosonPower r m ^ ell
+
+noncomputable def integrand (r q M : ℕ) : Auxiliary r :=
+  delta r ^ (2*M) * (∏ i : Fin r, betaFactor r (r*(q-1)) i) *
+    ∏ m ∈ Finset.range (r*(q-1)), exponentialFactor r (r*(q-1)) M (m+1)
+
+noncomputable def state (r q M : ℕ) : WakFock :=
+  integrand r q M (fun _ => (((r-1)*M+q-1 : ℕ) : ℤ))
+\end{leancode}
+
+\begin{dictionary}
+\lean{Auxiliary r} $=$ \lean{AddMonoidAlgebra WakFock (Fin r → ℤ)} is the ring of Laurent polynomials in
+$z_1,\ldots,z_r$ with coefficients in $\leightFock$; \lean{single e P} is $Pz^e$; \lean{unitExponent r i} is the
+exponent of $z_i$; \lean{bosonPower r m} is $A_m\sum_iz_i^m$; \lean{delta r} is the Vandermonde. Applying an
+element of \lean{Auxiliary r} to an exponent extracts that coefficient. Everything is finite, so there is
+no analytic content and no convergence issue; the truncation degree $D=r(q-1)$ is exactly what the
+selected coefficient can see (\leanpath{AffineSl2ScreeningSupport.lean}).
+\end{dictionary}
+
+\begin{physics}
+$\mathrm{state}(r,q,M)$ is $\oint\cdots\oint S(z_1)\cdots S(z_r)\,dz$ applied to a Fock vacuum: $r$ screening
+charges. The Vandermonde power is the free-boson two-point function $\prod(z_i-z_j)^{2M}$, the $\beta$
+factors come from $\beta(z_i)$, and the exponential is the creation part of $e^{-2\phi/\alpha_+}$.
+\end{physics}
+
+\begin{status}
+Definitions; axiom-free.
+\end{status}
+
+\begin{theorem}[Screening singular vectors]\label{l08:thm:screen}
+Let $r,q,M\ge1$ and $k$ with $M(k+2)=1$. Put $\lambda = q(k+2)-r-1$. Then $\mathrm{state}(r,q,M)\ne0$, it has
+energy $rq$, it satisfies $H_0\,s = (q(k+2)+r-1)s$ (i.e.\ charge $+r$ relative to $\lambda$), $E_0s=0$, and every
+positive current mode of the charged representation kills it.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2ScreeningSingular.lean}.
+\begin{leancode}
+theorem exists_nonzero_screening_highest (r q M : ℕ) (hr : 0<r) (hq : 0<q)
+    (k : ℂ) (hMk : (M : ℂ)*(k+2)=1) :
+    ∃ v : WakFock, v≠0 ∧ Dwt v=(r*q : ℂ) • v ∧
+      Charged.H k ((q : ℂ)*(k+2)-(r : ℂ)-1) 0 v=
+        ((q : ℂ)*(k+2)+(r : ℂ)-1) • v ∧
+      Ecur 0 v=0 ∧
+      ∀ (a : Fin 3) (n : ℤ),0<n →
+        Charged.J k ((q : ℂ)*(k+2)-(r : ℂ)-1) a n v=0 := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{Dwt} is the energy operator. The level is restricted to $k+2 = 1/M$ (reciprocal positive
+integers); the witness is \lean{state r q M}. The statement is about the Wakimoto module, not yet about
+$M(k,\lambda)$; the next section transfers it. Note that all three conditions are \emph{proved}; the source
+stresses that no ``screening Ward identity'' is assumed --- the proof is a long sequence of finite
+integration-by-parts identities in \lean{Auxiliary r} (the 27 files \leanpath{AffineSl2Screening*.lean}).
+\end{dictionary}
+
+\begin{physics}
+This is the Feigin--Frenkel mechanism: screening operators commute with the current algebra, so they
+map highest vectors to highest vectors; acting $r$ times on the Fock vacuum of momentum $\lambda$ they produce
+the Malikov--Feigin--Fuchs singular vector of $M(k,\lambda)$ at $\lambda = q(k+2)-r-1$, the Kac--Kazhdan
+condition for the root $q\delta-\alpha$ with multiplicity $r$.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Nonvanishing: set $b_q=1$ and all other variables $0$; the value is the central coefficient of
+$\Delta^{2M}\prod z_i^{q-1}$, a nonzero constant-term identity (Dyson's constant term). Raising modes: the
+integrand contains only $b$ and $A$ variables, so $E_n = \partial/\partial c_n$ ($n\ge0$) kills it. Positive $H_n$:
+direct computation, the $\beta\gamma$ and boson contributions cancel after finite integration by parts.
+$F_1$: the hardest, a weighted Vandermonde derivative identity plus pair counting at the screening
+charge; higher $F_n$ from $[H_{n-1},F_1]$.
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{Wak.}\allowbreak\lean{Screening.}\allowbreak\lean{exists_}\allowbreak\lean{nonzero_}\allowbreak\lean{screening_}\allowbreak\lean{highest}: \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}
+(run for this chapter).
+\end{status}
+%======================================================================
+\section{The Kac--Kazhdan determinant}\label{l08:sec:kac}
+%======================================================================
+
+\subsection{The classical formula}
+
+For $\leighthat$ with $t = k+2$, the positive real roots are $\beta = m\delta-\alpha$ ($m\ge1$) and $\beta = m\delta+\alpha$
+($m\ge0$), with $(\lambda+\rho,m\delta\mp\alpha) = mt\mp(\lambda+1)$ for the highest weight $(k,\lambda)$. The
+Kac--Kazhdan formula says that, up to a nonzero constant and powers of $t$ coming from the imaginary
+roots,
+\begin{equation}\label{l08:eq:KK}
+  \det G_{\eta}(k,\lambda) \;\propto\; \prod_{\beta>0\ \mathrm{real}}\ \prod_{n\ge1}
+  \bigl((\lambda+\rho,\beta) - n\bigr)^{P(\eta-n\beta)},
+\end{equation}
+where $\eta$ is the weight of the block and $P$ the Kostant partition function (here: the number of
+occupations of the shifted energy and charge). As a polynomial in $\lambda$ at fixed $k$ the real-root
+factors are linear: $\lambda - (mt-n-1)$ for $\beta = m\delta-\alpha$ and $\lambda - (n-1-mt)$ for $\beta = m\delta+\alpha$; the
+latter with $m=0$ is the horizontal family, $f_0^nv_\lambda$ singular at $\lambda = n-1$.
+
+\subsection{The library's statement}
+
+\begin{definition}[Real-root labels, weights, multiplicities, the Kac product]\label{l08:def:kacprod}
+A \emph{label} is $i = ((a,j),r)$ with $a\in\{0,1\}$ (an oscillator of colour $\beta$ or $\gamma$ at depth $j$) and
+$r\ge0$ (the occurrence $n = r+1$). Its \emph{real-root weight} at $t$ is
+$w_t(i) = s(a,j)\,t + o(a,j,r)$ with slope $s = j+1$, offset $-r-2$ for $a=0$ (the root $(j+1)\delta-\alpha$), and slope
+$-j$, offset $r$ for $a=1$ (the root $j\delta+\alpha$). For a block $(n,c)$ the label set $\mathcal L(n,c)$ consists of
+the labels in the finite oscillator box with $(r+1)\cdot\mathrm{energy}(a,j)\le n$, and the multiplicity of $i$ is
+$|\mathcal J(n - (r+1)\varepsilon, c - (r+1)\chi)|$. The \emph{Kac product} is
+$K_{n,c}(t)(X) = \prod_{i\in\mathcal L(n,c)}(X - w_t(i))^{\mathrm{mult}(i)}$.
+\end{definition}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2KacProduct.lean}.
+\begin{leancode}
+def realRootSlope (v : Fin 3×ℕ) : ℤ := if v.1=0 then (v.2 : ℤ)+1 else -(v.2 : ℤ)
+
+def realRootOffset (v : Fin 3×ℕ) (r : ℕ) : ℤ :=
+  if v.1=0 then -(r : ℤ)-2 else (r : ℤ)
+
+def realRootWeight (t : ℂ) (i : (Fin 3×ℕ)×ℕ) : ℂ :=
+  (realRootSlope i.1 : ℂ)*t+(realRootOffset i.1 i.2 : ℂ)
+
+def affineKacLabels (n : ℕ) (c : ℤ) : Finset ((Fin 3×ℕ)×ℕ) :=
+  ((realRootModes n c).product (Finset.range (2*(n : ℤ)-c).toNat)).filter
+    (fun i => (i.2+1)*oscillatorEnergy i.1≤n)
+
+def affineKacMultiplicity (n : ℕ) (c : ℤ) (i : (Fin 3×ℕ)×ℕ) : ℕ :=
+  Fintype.card (JointIndex (n-(i.2+1)*oscillatorEnergy i.1)
+    (c-((i.2+1 : ℕ) : ℤ)*oscillatorCharge i.1))
+
+def affineKacProduct (t : ℂ) (n : ℕ) (c : ℤ) : Polynomial ℂ :=
+  ∏ i∈affineKacLabels n c,(X-Polynomial.C (realRootWeight t i))^affineKacMultiplicity n c i
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2OscillatorWordPairing.lean}.
+\begin{leancode}
+def derivativeMultiplier (k : ℂ) : List (Fin 3×ℕ)→Occupation→ℂ
+  | [],_ => 1
+  | v::w,e => annihilationWeight k v*((e v+1 : ℕ) : ℂ)*
+      derivativeMultiplier k w (e+Finsupp.single v 1)
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2AnnihilationWeightLeading.lean}.
+\begin{leancode}
+def annihilationWeight (k : ℂ) (v : Fin 3×ℕ) : ℂ :=
+  if v.1=0 then -1 else if v.1=1 then 1 else 2*(k+2)*(v.2+1)
+\end{leancode}
+
+\begin{dictionary}
+\lean{realRootModes n c} is the set of $\beta$- and $\gamma$-oscillators (colours $0,1$; bosons excluded) of depth
+at most $2n-c$; the factor \lean{Finset.range (2*n-c)} bounds $r$ by the principal weight. Neither bound
+excludes a genuine factor: a label outside them has multiplicity zero. The integer casts and natural
+subtraction in \lean{affineKacMultiplicity} are harmless because the filter guarantees
+$(r+1)\varepsilon\le n$. The constant: \lean{derivativeMultiplier k w e} is a product of
+\lean{annihilationWeight}s, which are $\mp1$ for the ghosts and $2(k+2)(j+1)$ for the boson at depth $j$ ---
+the imaginary-root factors of the Kac--Kazhdan formula, powers of $t=k+2$.
+\end{dictionary}
+
+\begin{physics}
+Each label is a null vector: the $r+1$-st power of a lowering operator associated with the real root
+becomes null when the momentum of the Wakimoto boson sits at the corresponding position of the Kac
+table; its multiplicity is the number of descendants of that null vector in the block.
+\end{physics}
+
+\begin{status}
+Definitions; axiom-free.
+\end{status}
+
+\begin{theorem}[Kac--Kazhdan determinant formula for $\leighthat$, every level]\label{l08:thm:kac}
+For every $t\in\C$, every energy $n$ and charge $c$, as polynomials in $\lambda$,
+\begin{equation*}
+  \det G_{n,c}(t-2,\lambda) = C_{n,c}(t)\cdot K_{n,c}(t)(\lambda),\qquad
+  C_{n,c}(t) = \prod_{i\in\mathcal J(n,c)}\mathrm{derivativeMultiplier}(t-2,\ldots).
+\end{equation*}
+$K_{n,c}(t)$ is monic of degree $\mathrm{rowDegree}+\mathrm{creationDegree}$, and $C_{n,c}(t)\ne0$ for $t\ne0$; so at
+non-critical level the roots of the Gram determinant in $\lambda$ are exactly the real-root weights, with the
+stated multiplicities.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2KacProduct.lean}.
+\begin{leancode}
+theorem affineKacProduct_monic (t : ℂ) (n : ℕ) (c : ℤ) : (affineKacProduct t n c).Monic := by
+
+theorem affineKac_factor (t : ℂ) (n : ℕ) (c : ℤ) (i : (Fin 3×ℕ)×ℕ)
+    (hi : i∈affineKacLabels n c) :
+    (X-Polynomial.C (realRootWeight t i))^affineKacMultiplicity n c i ∣ weightDeterminant (t-2) n c := by
+
+theorem weightDeterminant_eq_affineKacProduct (t : ℂ) (ht : t.im≠0) (n : ℕ) (c : ℤ) :
+    weightDeterminant (t-2) n c=
+      Polynomial.C (∏ i : JointIndex n c,derivativeMultiplier (t-2) i.val.toMultiset.toList.reverse 0)*
+        affineKacProduct t n c := by
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2KacSpecialization.lean}.
+\begin{leancode}
+theorem weightDeterminant_eq_affineKacProduct_all (t : ℂ) (n : ℕ) (c : ℤ) :
+    weightDeterminant (t-2) n c=
+      Polynomial.C (∏ i : JointIndex n c,derivativeMultiplier (t-2) i.val.toMultiset.toList.reverse 0)*
+        affineKacProduct t n c := by
+\end{leancode}
+\noindent File \leanpath{VOA/Examples/AffineSl2HighestWeightLeading.lean}.
+\begin{leancode}
+theorem weightDeterminant_natDegree (k : ℂ) (hk : k+2≠0) (n : ℕ) (c : ℤ) :
+    (weightDeterminant k n c).natDegree=rowDegree n c+creationDegree n c := by
+
+theorem weightDeterminant_leadingCoeff (k : ℂ) (hk : k+2≠0) (n : ℕ) (c : ℤ) :
+    (weightDeterminant k n c).leadingCoeff=
+      ∏ i : JointIndex n c,derivativeMultiplier k i.val.toMultiset.toList.reverse 0 := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{t.im≠0} restricts the first version to non-real $t$; \lean{_all} removes the restriction. The
+argument \lean{i.}\allowbreak\lean{val.}\allowbreak\lean{toMultiset.}\allowbreak\lean{toList.}\allowbreak\lean{reverse} is the reversed occupation word of the basis index $i$
+(the adjoint row), and $0$ the empty starting occupation. \lean{rowDegree}, \lean{creationDegree} count
+lowering letters in the adjoint and creation words. So \lean{weightDeterminant_}\allowbreak\lean{eq_}\allowbreak\lean{affineKacProduct_}\allowbreak\lean{all}
+is exactly the displayed formula, as an identity in $\C[\lambda]$ for every complex $t$ --- including $t=0$,
+where $C$ may vanish and the identity is the true but uninformative $0=0$ (the source says so explicitly:
+``no noncritical nondegeneracy is asserted there''). \lean{affineKac_factor} is the individual divisibility
+for every $t$. Compared with the textbook \eqref{l08:eq:KK}: same factors, same multiplicities
+(Kostant partition function $=$ occupation count), constant identified explicitly.
+
+\textbf{How could it have been vacuous?} If \lean{weightDeterminant} were not the determinant of the actual
+form, the identity would be about a formal object; Definition~\ref{l08:def:gram} and
+\lean{highestGramPolynomial_}\allowbreak\lean{verma} close that gap. If the occupation words were not a basis, the Gram
+matrix would not represent the form; Theorem~\ref{l08:thm:vermapbw} closes that gap.
+\end{dictionary}
+
+\begin{physics}
+The Kac determinant tells, for each level and spin, exactly where null states appear in the WZW
+representation theory: at $\lambda = mt-n-1$ (descendants of $(J^+_{-m})^n$-type null vectors) and
+$\lambda = n-1-mt$. Integrable representations ($t=N+2$, $\lambda\in\{0,\ldots,N\}$) sit on the intersection of the
+lines $m=0$ (horizontal, $n=\lambda+1$) and $m=1$, $n = N+1-\lambda$: the two null vectors $f_0^{\lambda+1}v$ and
+$e_{-1}^{N+1-\lambda}v$ whose removal gives the unitary modules and the fusion rules. Admissible levels are
+where two families of lines meet rationally.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+Three ingredients. (a) \emph{Degree and leading coefficient}: the Gram matrix factors through the
+charged Wakimoto Fock space as (adjoint-row matrix)$\times$(creation matrix); both factors are polynomial
+in $\lambda$ and triangular in boson count with explicit diagonals; this gives
+$\deg_\lambda\det = \mathrm{rowDegree}+\mathrm{creationDegree}$ and the leading coefficient $C_{n,c}$.
+(b) \emph{Roots with multiplicity}: for $t = 1/M$ the screening vectors of Theorem~\ref{l08:thm:screen}
+give kernel vectors of the Fock row matrix, hence Gram-determinant roots at $\lambda = qt-r-1$
+(\lean{highestDeterminant_}\allowbreak\lean{screening_}\allowbreak\lean{root}); since the determinant is polynomial in $(t,\lambda)$ and vanishes on
+the line $\lambda = qt-r-1$ for infinitely many $t$, it vanishes on the whole line
+(\lean{highestDeterminant_}\allowbreak\lean{kac_}\allowbreak\lean{root}). The opposite family comes from the diagram automorphism of
+$\leighthat$ ($E_n\mapsto F_{n+1}$, $F_n\mapsto E_{n-1}$, $\lambda\mapsto k-\lambda$), realised on the Wakimoto module
+(\leanpath{WakimotoDiagramAction.lean}, \lean{highestDeterminant_}\allowbreak\lean{opposite_}\allowbreak\lean{kac_}\allowbreak\lean{root}). A radical vector in
+block $(n,c)$ has an independent family of descendants (Theorem~\ref{l08:thm:vermapbw}) lying in the
+radical, giving the factor with multiplicity $|\mathcal J(m,d)|$ (\lean{weightDeterminant_}\allowbreak\lean{factor_}\allowbreak\lean{of_}\allowbreak\lean{radical},
+\lean{weightDeterminant_}\allowbreak\lean{positive_}\allowbreak\lean{factor}, \lean{weightDeterminant_}\allowbreak\lean{negative_}\allowbreak\lean{factor}). (c) \emph{Counting}: at
+non-real $t$ the real-root weights of distinct labels are distinct (integer linear functions of a non-real
+number agree only if their coefficients agree), so the product divides; its degree equals the
+determinant's (exact occupation count), and both are compared via leading coefficients. Finally both
+sides are continuous in $t$ and agree on the dense set of non-real $t$, so they agree everywhere ---
+this preserves multiplicities of colliding factors without counting null spaces.
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{Wak.}\allowbreak\lean{Charged.}\allowbreak\lean{weightDeterminant_}\allowbreak\lean{eq_}\allowbreak\lean{affineKacProduct},
+\lean{VOA.}\allowbreak\lean{Wak.}\allowbreak\lean{Charged.}\allowbreak\lean{weightDeterminant_}\allowbreak\lean{eq_}\allowbreak\lean{affineKacProduct_}\allowbreak\lean{all},
+\lean{VOA.}\allowbreak\lean{Wak.}\allowbreak\lean{Charged.}\allowbreak\lean{highestDeterminant_}\allowbreak\lean{screening_}\allowbreak\lean{root}, \lean{highestDeterminant_}\allowbreak\lean{kac_}\allowbreak\lean{root},
+\lean{highestDeterminant_}\allowbreak\lean{opposite_}\allowbreak\lean{kac_}\allowbreak\lean{root}, and \lean{VOA.}\allowbreak\lean{AffineVOA.}\allowbreak\lean{HighestModule.}\allowbreak\lean{weightDeterminant_}\allowbreak\lean{natDegree},
+\lean{weightDeterminant_}\allowbreak\lean{leadingCoeff}, \lean{weightDeterminant_}\allowbreak\lean{factor_}\allowbreak\lean{of_}\allowbreak\lean{radical},
+\lean{weightDeterminant_}\allowbreak\lean{positive_}\allowbreak\lean{factor}, \lean{weightDeterminant_}\allowbreak\lean{negative_}\allowbreak\lean{factor}: all \lean{[propext,
+Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (run for this chapter). \textbf{Unconditional, every complex level.}
+\end{status}
+
+\subsection{The vacuum specialisation}
+
+At $\lambda=0$ the horizontal factor $X$ of $K_{n,c}$ vanishes identically in $t$, reflecting the null vector
+$f_0v_0$. The vacuum module's own Gram determinant is obtained by removing it.
+
+\begin{theorem}[Vacuum coefficient identity]\label{l08:thm:vaccoef}
+For $2n-c>0$, as polynomials in $k$,
+\begin{equation*}
+  \det V_{n,c}(k)\cdot\det G_{n,c+1}(k,-2) = \sigma_{n,c}\,\Lambda_{n,c}(k)\,\prod_{i\in\mathcal L(n,c)\setminus\{\text{horizontal}\}}
+  \bigl(-w_{k+2}(i)\bigr)^{\mathrm{mult}(i)},
+\end{equation*}
+where $V_{n,c}(k)$ is the Gram matrix of the vacuum module (VOA convention, charge $2c$) in an adapted
+basis, $\sigma_{n,c}\ne0$ a constant, and $\Lambda_{n,c}(k)\ne0$ for $k\ne-2$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/Examples/AffineSl2KacVacuumCoefficient.lean}.
+\begin{leancode}
+def affineVacuumProduct (n : ℕ) (c : ℤ) : ℂ[X] :=
+  ∏ i∈(affineKacLabels n c).erase ((1,0),0),
+    (-(Polynomial.C (realRootSlope i.1 : ℂ)*(X+Polynomial.C 2)+
+      Polynomial.C (realRootOffset i.1 i.2 : ℂ)))^affineKacMultiplicity n c i
+
+def affineMinusTwoPolynomial (n : ℕ) (c : ℤ) : ℂ[X] :=
+  MvPolynomial.eval₂Hom Polynomial.C ![X,Polynomial.C (-2)] (highestDeterminant n c)
+
+theorem affineLeadingPolynomial_eval_ne_zero (k : ℂ) (hk : k+2≠0) (n : ℕ) (c : ℤ) :
+    (affineLeadingPolynomial n c).eval k≠0 := by
+
+theorem affine_vacuum_polynomial_identity (n : ℕ) (c : ℤ)
+    (hc : 0<2*(n : ℤ)-c) :
+    (vacuumChevalleyPolynomial n c).det*affineMinusTwoPolynomial n (c+1)=
+      Polynomial.C (vacuumDeterminantScale n c)*affineLeadingPolynomial n c*affineVacuumProduct n c := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{((1,0),0)} is the horizontal label ($\gamma$ at depth $0$, first occurrence: $f_0v$). The variable \lean{X}
+is now the level $k$ (so $t = X+2$). \lean{vacuumChevalleyPolynomial n c} (\leanpath{AffineSl2VacuumFirstBlock.lean})
+is the Gram matrix of the universal vacuum module on adapted PBW words, written in the VOA bilinear
+convention via the Chevalley involution (\leanpath{AffineSl2VacuumChevalley*.lean}); \lean{vacuumDeterminantScale}
+is the square of a constant change-of-basis determinant, nonzero (\lean{vacuumDeterminantScale_}\allowbreak\lean{ne_}\allowbreak\lean{zero}).
+This identity is the input that Chapter~\ref{ch:L09} uses to locate a \emph{simple} root of the vacuum
+determinant at every negative admissible level.
+\end{dictionary}
+
+\begin{physics}
+The vacuum Kac determinant: null states of the WZW vacuum module occur exactly at the levels where a
+non-horizontal real-root factor vanishes at $\lambda=0$, i.e.\ $m(k+2) - n - 1 = 0$ --- the integrable
+($m=1$, $k = n-1$) and admissible ($k+2 = (n+1)/m$) levels.
+\end{physics}
+
+\begin{proof}[Proof on paper]
+By the exact sequence (Theorem~\ref{l08:thm:exact}) the weight-0 Verma block splits, in an adapted basis,
+into a vacuum part and the horizontal radical $M(k,-2)$. Expanding $\det G_{n,c}(k,\lambda)$ at $\lambda=0$, the
+first nonvanishing coefficient (of order $\lambda^{|\mathcal J(n,c+1)|}$) is $\det V\cdot\det G(k,-2)$ (the
+first-order form on the horizontal radical is the actual form on $M(k,-2)$,
+\leanpath{AffineSl2HorizontalFirstForm.lean}). On the other side it is the corresponding coefficient of
+$C\cdot K$, i.e.\ $C$ times the product of the remaining factors at $\lambda=0$.
+\end{proof}
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{Wak.}\allowbreak\lean{Charged.}\allowbreak\lean{affine_}\allowbreak\lean{vacuum_}\allowbreak\lean{polynomial_}\allowbreak\lean{identity}, \lean{affineLeadingPolynomial_}\allowbreak\lean{eval_}\allowbreak\lean{ne_}\allowbreak\lean{zero}:
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]} (run for this chapter).
+\end{status}
+
+%======================================================================
+\section{Supporting infrastructure}\label{l08:sec:infrastructure}
+%======================================================================
+
+The remaining files serve the headlines above or Chapter~\ref{ch:L09}. They are summarised here by
+group; none contains an axiom, and none introduces a hypothesis that a headline depends on.
+
+\paragraph{Assembling representations from current data.}
+\leanpath{AffineSl2CentralCurrentRealization.lean} (\lean{AffineCentralCurrentData}: loop modes, a degree
+operator and a \emph{possibly non-scalar} central operator satisfying the affine relations assemble to a
+Lie map $\leighthat\to\End E$; used for first-order deformations where the centre is $k+\delta N$, $N^2=0$),
+\leanpath{AffineSl2CurrentRealization.lean} (\lean{AffineCurrentData}, scalar level),
+\leanpath{AffineSl2CurrentOPEBridge.lean} (\lean{AffineCurrentFieldData}: from current OPEs to such data),
+\leanpath{AffineSl2VacuumEvaluation.lean} (\lean{VacuumCurrentRealization}: a representation with a vector
+satisfying the vacuum conditions receives a map from $V^k(\leightsl)$, \lean{VacuumCurrentRealization.}\allowbreak\lean{eval}).
+These generalise the Wakimoto evaluation of Theorem~\ref{l08:thm:vacfree} and are consumed by the
+inverse Drinfeld--Sokolov programme (Chapter~\ref{ch:L19}).
+
+\paragraph{Normal ordering and pairings.}
+\leanpath{AffineSl2NormalOrdering.lean} (normal forms with an operator-valued level),
+\leanpath{AffineSl2HighestNormalOrdering.lean} (the same retaining $f_0$ and powers of $\lambda$),
+\leanpath{AffineSl2UniversalPairing.lean}, \leanpath{AffineSl2UniversalGram.lean} (vacuum-pairing polynomials
+are the actual universal Gram entries, \lean{wordGramPolynomial_}\allowbreak\lean{universal}),
+\leanpath{AffineSl2HighestPairingPolynomial.lean}, \leanpath{AffineSl2SingularNorm.lean},
+\leanpath{AffineSl2SingularLift.lean} (deformation-side pairings; Chapter~\ref{ch:L09}).
+
+\paragraph{Joint eigenspaces and Gram blocks of the vacuum module.}
+\leanpath{AffineSl2JointPBW.lean} (bases of simultaneous $(L_0,h_0)$-eigenspaces from Theorem~\ref{l08:thm:pbw}),
+\leanpath{AffineSl2JointGram.lean} (the canonical form pairs energy $n$, charge $h$ with energy $n$, charge
+$-h$; a row relation of a Gram block lies in the maximal ideal, \lean{jointGram_row_relation}),
+\leanpath{AffineSl2JointChargeFlip.lean}, \leanpath{AffineSl2JointContractionDiagonal.lean},
+\leanpath{AffineSl2JointGramDegree.lean}, \leanpath{AffineSl2JointGramLeading.lean},
+\leanpath{AffineSl2GramDegree.lean}, \leanpath{AffineSl2CentralContractions.lean},
+\leanpath{AffineSl2ContractionMultiset.lean} (leading terms in $k$: exact degree and nonzero leading
+coefficient of the joint determinants), and the two rigidity criteria
+\lean{graded_}\allowbreak\lean{rigidity_}\allowbreak\lean{of_}\allowbreak\lean{joint_}\allowbreak\lean{simple_}\allowbreak\lean{root} (\leanpath{AffineSl2JointSimpleRoot.lean}) and
+\lean{graded_}\allowbreak\lean{rigidity_}\allowbreak\lean{of_}\allowbreak\lean{vacuum_}\allowbreak\lean{simple_}\allowbreak\lean{root} (\leanpath{AffineSl2VacuumSimpleRoot.lean}), which Chapter~\ref{ch:L09}
+presents.
+
+\paragraph{The Verma/Kac machinery.}
+\leanpath{AffineSl2Verma*.lean}, \leanpath{AffineSl2Highest*.lean}, \leanpath{AffineSl2Horizontal*.lean},
+\leanpath{AffineSl2Vacuum*.lean}, \leanpath{AffineSl2Kac*.lean}, \leanpath{AffineSl2Fock*.lean},
+\leanpath{AffineSl2ChargedPolynomial*.lean}, \leanpath{AffineSl2CreationWeightLeading.lean},
+\leanpath{AffineSl2AnnihilationWeightLeading.lean}, \leanpath{AffineSl2Occupation*.lean},
+\leanpath{AffineSl2OscillatorWordPairing.lean}, \leanpath{AffineSl2BosonFiltration.lean},
+\leanpath{AffineSl2DiagramGramRoots.lean}, \leanpath{AffineSl2TensorHighest.lean},
+\leanpath{AffineSl2WakimotoDescendants.lean}, \leanpath{Wakimoto*.lean} other than \leanpath{WakimotoFree} and
+\leanpath{WakimotoEightFifths}: the steps of the proofs of Theorems~\ref{l08:thm:vermapbw},
+\ref{l08:thm:exact}, \ref{l08:thm:screen}, \ref{l08:thm:kac}, \ref{l08:thm:vaccoef}.
+
+\paragraph{Sugawara internals.}
+\leanpath{AffineSl2CurrentCov.lean}, \leanpath{AffineSl2CurrentCovStruct.lean}, \leanpath{AffineSl2L0Cov.lean},
+\leanpath{AffineSl2Assembly.lean}, \leanpath{AffineSl2Virasoro.lean} (Section~\ref{l08:sec:sugawara}--\ref{l08:sec:voa}).
+
+\paragraph{Filtrations and norms.}
+\leanpath{AffineSl2GoodFiltration.lean} constructs the ``corrected $R$-filtration'' on $V^k(\leightsl)$ in which
+both the currents and the Sugawara vector have degree one (\lean{correctedAffineGoodFiltration}, a
+\lean{GoodFiltration} in the sense of Chapter~\ref{ch:L11}); it descends to every graded quotient. The
+source says explicitly what it does not claim (no identification with an intrinsic filtration on a
+quotient, no inverse-DS strictness). \leanpath{AffineSl2HarmonicNorm.lean} computes a multiplicity-free family of
+norms (\lean{canonical_}\allowbreak\lean{compactHarmonicDiagonal_}\allowbreak\lean{eq}) and their signs at negative real level, for the graded
+unitarity programme of Chapter~\ref{ch:L19}. \leanpath{AffineSl2Indep.lean} (the \lean{pbw}-dependent independence
+lemmas of Section~\ref{l08:sec:singular}) and \leanpath{AffineSl2UniversalC2PBW.lean} (the $C_2$-symbol
+reduction) complete the list.
+
+\begin{status}
+\lean{VOA.}\allowbreak\lean{AffineVOA.}\allowbreak\lean{CorrectedR.}\allowbreak\lean{correctedAffineGoodFiltration}: \lean{[propext, Classical.}\allowbreak\lean{choice,
+Quot.}\allowbreak\lean{sound]} (run for this chapter). The other declarations of this section were not individually
+audited for this chapter; the library's own audit (\texttt{scripts/audit/run\_axiom\_audits.py}) is
+the record for them.
+\end{status}
+
+%======================================================================
+\section{Documentation defects found while writing this chapter}\label{l08:sec:docs}
+%======================================================================
+
+\begin{warning}[title={Stale or incorrect docstrings (severity: documentation)}]
+\begin{enumerate}
+\item \leanpath{VOA/Examples/Affine.lean}, module docstring: describes the affine VOA as ``assembled down
+  to a single reconstruction input'' with status ``Phase 3, needs the module-polymorphic reconstruction
+  theorem'' and vacuum ``nonzero via \lean{pbw}''. All superseded: \lean{affineSl2VOA_closed} exists and is
+  \lean{pbw}-free (Definition~\ref{l08:def:Vk}).
+\item \leanpath{VOA/Examples/AffineSl2VOA.lean}, section ``Axioms'': says the current-algebra inputs
+  \lean{current_comm}, \lean{Jfield_local} ``carry the sanctioned \lean{VOA.pbw}''. False: both are axiom-clean
+  (Section~\ref{l08:sec:verification}). Only \lean{vacuumA_ne_zero} in that file uses \lean{VOA.pbw} (now a theorem).
+\item \leanpath{VOA/Examples/AffineSimpleQuotient.lean} \S4: a documentation-only ``definition'' of
+  \lean{AffineSimple.}\allowbreak\lean{affineSl2Simple} that is not compiled and would depend on \lean{pbw}
+  (Section~\ref{l08:sec:simple}).
+\item \leanpath{VOA/Examples/AffineSl2PBWWakimotoReduction.lean}, ``Status'': calls the Wakimoto independence
+  ``OPEN''; it is proved (\lean{wakimotoOrderedCreationState_}\allowbreak\lean{linearIndependent}).
+\item \leanpath{VOA/Examples/AffineSl2Singular.lean} \S E, \leanpath{AffineSl2Singular85.lean} \S E,
+  \leanpath{AffineSl2SingularLY.lean} \S E, \leanpath{AffineSl2Indep.lean}, \leanpath{AffineSl2Symbol.lean},
+  \leanpath{AffineSl2VOAInstance.lean}: ``$s\ne0$ needs PBW independence / is out of reach'', ``no
+  \lean{pbw}-free theorem can assert that this VOA is nonzero'', ``the repository does not yet have'' a PBW
+  coordinate functional. All superseded by \lean{Wak.}\allowbreak\lean{sl2Singular_}\allowbreak\lean{ne_}\allowbreak\lean{zero}, \lean{WakLY.}\allowbreak\lean{sl2SingularLY_}\allowbreak\lean{ne_}\allowbreak\lean{zero},
+  \lean{Wak.}\allowbreak\lean{vacuumA_}\allowbreak\lean{ne_}\allowbreak\lean{zero_}\allowbreak\lean{free} and \lean{affineSl2PBWBasis}.
+\item \leanpath{AffineSl2VOA.lean}, \leanpath{AffineSl2VOAInstance.lean}, \leanpath{Affine.lean}: docstrings still describe
+  \lean{pbw} as the sanctioned axiom; superseded by a later revision of the library, which made \lean{VOA.pbw} a theorem.
+\item \leanpath{VOA/Examples/AffineSl2VOAInstance.lean}: says $L_ns=0$ for $n=1,2,3$ is missing because the
+  general Sugawara commutator $[L_n,J^c_\mu]$ is proved only for $n=-1,0$. Superseded: \lean{Vir.Lcomm_J}
+  (\leanpath{AffineSl2Virasoro.lean}) proves it for all $n$.
+\end{enumerate}
+None of these affects a Lean statement; they affect a reader who trusts the comments.
+\end{warning}
+
+%======================================================================
+\section{Verification record}\label{l08:sec:verification}
+%======================================================================
+
+All axiom checks were run for this chapter on a scratch file importing the relevant modules of the
+already-built tree (no full \texttt{lake build} was run):
+\begin{plaincode}
+export PATH="$HOME/.elan/bin:$PATH"
+lake env lean -DmaxSynthPendingDepth=3 <scratchpad>/L08/Ax.lean
+\end{plaincode}
+The file contains 96 \texttt{\#print axioms} commands; all elaborated without error. Output, joined
+per line and grouped:
+\begin{plaincode}
+-- [propext, Classical.choice, Quot.sound] for each of:
+VOA.AffineVOA.{kappaForm_isInvariant, current_comm, Jfield_local, gradingZA_isInternal,
+  gradingZA_positivity, centralChargeA_eq, affineYA_of_currentCov, YA, affineSl2VOA_closed,
+  affineSl2VOA_closed_central_charge}
+VOA.AffineVOA.SugawaraCov.{Lcomm_current, Jfield_DCovariant, Lsug0_eq_negEll0OpA, hYA_L0}
+VOA.AffineVOA.Vir.{current_primary, hYA_virasoro}
+VOA.AffineVOA.Inst.{YA_injective, Y_currentState_eq_Jfield, smul_currentState_comm,
+  voaSl2Adm_centralCharge}
+VOA.SimpleQuot.{mkQ_eq_zero_of_stronglySingular, maxQuotientVOA_vacuum_ne_zero}
+VOA.Wak.{Bet_Gam_lie, Aos_Aos_lie, rel_ef, rel_hh, rel_ff, Jw_comm, wakRho, valW_vacuumIdeal,
+  vacuumA_ne_zero_free, Gam3_valW_wSing, sl2Singular_ne_zero}
+VOA.AffineSl2PBWWakimotoReduction.{vacuumToWak_J,
+  pbwBasis_of_wakimotoOrderedCreationState_linearIndependent}
+VOA.AffineSl2UniversalC2PBW.{orderedCreationState_span_eq_top,
+  pbwBasis_iff_orderedCreationState_linearIndependent}
+VOA.AffineSl2WakimotoLiLeading.{linearIndependent_of_lowerLeading, classicalSubstitution_injective,
+  wakimotoOrderedCreationState_linearIndependent, affineSl2PBWBasis, universalSymbolAlg_injective}
+VOA.Sl2Sing.{SingSys_param, exists_nonzero_solution_iff, sl2Singular_pos,
+  sl2Singular_ne_zero_of_indep}
+VOA.Sl2SingLY.{SingSys5_param, exists_nonzero_solution_iff, sl2SingularLY_pos}
+VOA.Sl2Sing85.{sl2Singular85_isSingular, sl2Singular85_dsCentralCharge}
+VOA.WakLY.{Gam5_valW_wSingLY, sl2SingularLY_ne_zero, sl2Singular85_ne_zero, vacuumA85_ne_zero}
+VOA.AffineVOA.Strong.{affineSl2_qp, isStronglySingular_of_SingP}
+VOA.Sl2NotSimple85.{stronglySingular85, not_isSimple_85, mkQ_sl2Singular85_eq_zero,
+  maxGradedIdeal_85_ne_bot, mkQ_85_not_injective}
+VOA.Sl2Symbol.{J_mem_O₂, mk₂_sl2Singular_casimir}, VOA.Sl2Symbol85.mk₂_sl2Singular85_casimir_sq
+VOA.AffineVOA.HighestModule.{highestVector_ne_zero, occupationWords_independent, occupationBasis,
+  contravariant_normalized, contravariant_adj, contravariant_symm, highestGramPolynomial_verma,
+  weightGramPolynomial_eval, descendants_independent, weightDeterminant_factor_of_radical,
+  weightDeterminant_positive_factor, weightDeterminant_negative_factor, weightDeterminant_natDegree,
+  weightDeterminant_leadingCoeff, horizontalEmbedding_injective, vacuumProjection_ker}
+VOA.Wak.Screening.exists_nonzero_screening_highest
+VOA.Wak.Charged.{highestDeterminant_screening_root, highestDeterminant_kac_root,
+  highestDeterminant_opposite_kac_root, weightDeterminant_eq_affineKacProduct,
+  weightDeterminant_eq_affineKacProduct_all, affine_vacuum_polynomial_identity,
+  affineLeadingPolynomial_eval_ne_zero}
+VOA.AffineVOA.CorrectedR.correctedAffineGoodFiltration, VOA.affineSl2VOA_centralCharge
+
+-- at the snapshot, [propext, Classical.choice, Quot.sound, VOA.pbw]:
+'VOA.AffineVOA.vacuumA_ne_zero'
+'VOA.AffineVOA.Inst.closed_vacuum_ne_zero'
+'VOA.Sl2Indep.Q_indep'
+'VOA.Sl2Indep.indep_iff_sl2Singular_ne_zero'
+'VOA.Wak.M_indep_sing'
+\end{plaincode}
+In a later run, after \lean{VOA.pbw} became a theorem (not re-run for this edition), all five report
+\lean{[propext, Classical.choice, Quot.sound]} (re-probed).
+The Lean check of Theorem~\ref{l08:thm:integrable} (not part of this release) was compiled with the same
+command; its five \texttt{\#print axioms} lines all report \lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}.
+
+\paragraph{Where \lean{VOA.pbw} enters.} A text search of the code (comments stripped) of the 133 files of
+this chapter for uses of \lean{vacuumA_ne_zero}, \lean{vacuumVector_ne_zero}, \lean{closed_vacuum_ne_zero},
+\lean{voaSl2Adm_}\allowbreak\lean{vacuum_}\allowbreak\lean{ne_}\allowbreak\lean{zero} and the \lean{Sl2Indep} lemmas finds direct uses only in
+\leanpath{AffineSl2VOA.lean} (\lean{vacuumA_ne_zero} itself), \leanpath{AffineSl2VOAInstance.lean}
+(\lean{closed_vacuum_ne_zero}, \lean{voaSl2Adm_}\allowbreak\lean{vacuum_}\allowbreak\lean{ne_}\allowbreak\lean{zero}), \leanpath{AffineSl2Indep.lean} (the lemmas
+\lean{deg1E_ne_zero}, \lean{deg1F_ne_zero}, \lean{deg1H_ne_zero} and everything built on them) and
+\leanpath{WakimotoFree.lean} (\lean{M_indep_sing}). Every route ends at
+\lean{AffineLie.}\allowbreak\lean{vacuumVector_}\allowbreak\lean{ne_}\allowbreak\lean{zero}, i.e.\ the field \lean{affineVacuum} of the theorem \lean{VOA.pbw}. This confirms the claim of
+Chapter~\ref{ch:L02}.
+
+The library's own record at the snapshot: the commit message of that snapshot reports an aggregate build of 10{,}343 jobs
+with \texttt{check\_repository.py} and \texttt{run\_axiom\_audits.py} passing. That is the source's claim; the
+axiom lists above are what this chapter's author re-confirmed.
+%======================================================================
+\section{Referee's checklist}\label{l08:sec:checklist}
+%======================================================================
+
+``Uncond.''\ means the listed hypotheses are ordinary mathematical hypotheses with no unestablished
+datum; $\ast$ marks a \texttt{\#print axioms} run for this chapter with result
+\lean{[propext, Classical.}\allowbreak\lean{choice, Quot.}\allowbreak\lean{sound]}; $\dagger$ marks a result whose proof goes through \lean{VOA.pbw} (an axiom at the snapshot, a theorem
+now; all such results now report the three standard axioms).
+Namespaces: \lean{AV} $=$ \lean{VOA.AffineVOA}, \lean{HM} $=$ \lean{VOA.}\allowbreak\lean{AffineVOA.}\allowbreak\lean{HighestModule},
+\lean{WC} $=$ \lean{VOA.Wak.Charged}.
+
+{\footnotesize
+\begin{longtable}{>{\raggedright\arraybackslash}p{4.6cm}>{\raggedright\arraybackslash}p{5.0cm}>{\raggedright\arraybackslash}p{2.4cm}>{\raggedright\arraybackslash}p{2.4cm}}
+\toprule
+Lean declaration & intended meaning & hypotheses & status / check\\
+\midrule
+\endhead
+\lean{AV.Sl2}, \lean{fabc}, \lean{kappa}, \lean{kappaForm}, \lean{WakModule}, \lean{J} & $\leightsl$, $\kappa$, $V^k(\leightsl)$ (universal vacuum module), $J^a_m$ & -- & defs.; Def.~\ref{l08:def:sl2}\\
+\lean{AV.current_comm}$^\ast$ & affine bracket with level $k$ & none & uncond.; Thm.~\ref{l08:thm:currentcomm}\\
+\lean{AV.Jfield_local}$^\ast$ & currents mutually local, order 2 & none & uncond.; Thm.~\ref{l08:thm:Jlocal}\\
+\lean{AV.}\allowbreak\lean{gradingZA_}\allowbreak\lean{isInternal}$^\ast$ etc. & energy grading, CFT type & none & uncond.; Def.~\ref{l08:def:grading}\\
+\lean{AV.vacuumA_ne_zero}$^\dagger$ & $\leightvac\ne0$, all $k$ & none & via theorem \lean{VOA.pbw} (formerly an axiom); Thm.~\ref{l08:thm:vacpbw}\\
+\lean{AV.sugawaraField}, \lean{Lsug}, \lean{omegaA}, \lean{centralChargeA} & Sugawara $T$, $L_n$, $\omega$, $c=3k/(k+2)$ & -- & defs.; Def.~\ref{l08:def:sugawara}\\
+\lean{SugawaraCov.}\allowbreak\lean{Lcomm_}\allowbreak\lean{current}$^\ast$, \lean{Jfield_DCovariant}$^\ast$ & $[L_{-1},J^c_\mu]=-\mu J^c_{\mu-1}$ & $k\ne-2$ (necessary) & uncond.; Thm.~\ref{l08:thm:Lcomm}\\
+\lean{SugawaraCov.hYA_L0}$^\ast$ & $L_0$ = energy & $k\ne-2$ & uncond.; Thm.~\ref{l08:thm:L0}\\
+\lean{AV.}\allowbreak\lean{affineYA_}\allowbreak\lean{of_}\allowbreak\lean{currentCov}$^\ast$, \lean{AV.YA}$^\ast$ & reconstructed vertex map & covariance (proved) & uncond.; Thm.~\ref{l08:thm:YA}\\
+\lean{Vir.hYA_virasoro}$^\ast$ & Virasoro, $c=3k/(k+2)$ & $k\ne-2$ & uncond.; Thm.~\ref{l08:thm:vir}\\
+\lean{AV.affineSl2VOA_closed}$^\ast$ & \textbf{the VOA $V^k(\leightsl)$} & $k\ne-2$ & \textbf{uncond., pbw-free}; Def.~\ref{l08:def:Vk}\\
+\lean{Inst.YA_injective}$^\ast$, \lean{Y_}\allowbreak\lean{currentState_}\allowbreak\lean{eq_}\allowbreak\lean{Jfield}$^\ast$, \lean{smul_currentState_comm}$^\ast$ & non-degeneracy & $k\ne-2$ & uncond.; Thm.~\ref{l08:thm:nondeg}\\
+\lean{Inst.}\allowbreak\lean{closed_}\allowbreak\lean{vacuum_}\allowbreak\lean{ne_}\allowbreak\lean{zero}$^\dagger$ & $\leightvac\ne0$ in the VOA & $k\ne-2$ & via theorem \lean{VOA.pbw} (formerly an axiom); Thm.~\ref{l08:thm:nondeg}\\
+\lean{SimpleQuot.}\allowbreak\lean{mkQ_}\allowbreak\lean{eq_}\allowbreak\lean{zero_}\allowbreak\lean{of_}\allowbreak\lean{stronglySingular}$^\ast$ etc. & strongly singular $\Rightarrow$ in max.\ ideal & $\leightvac\ne0$, $L_1V_1=0$ & uncond.\ criterion; Thm.~\ref{l08:thm:bridge}\\
+\lean{Wak.Jw_comm}$^\ast$, \lean{Wak.wakRho}$^\ast$ & Wakimoto realisation & $k\ne-2$ & uncond.; Thm.~\ref{l08:thm:Jwcomm}\\
+\lean{Wak.}\allowbreak\lean{vacuumA_}\allowbreak\lean{ne_}\allowbreak\lean{zero_}\allowbreak\lean{free}$^\ast$ & $\leightvac\ne0$, \lean{pbw}-free & $k\ne-2$ & uncond.; Thm.~\ref{l08:thm:vacfree}\\
+\lean{AffineSl2WakimotoLiLeading.}\allowbreak\lean{affineSl2PBWBasis}$^\ast$ & \textbf{PBW basis of $V^k$} & $k\ne-2$ & \textbf{uncond., pbw-free}; Thm.~\ref{l08:thm:pbw}\\
+\lean{.}\allowbreak\lean{.}\allowbreak\lean{.}\allowbreak\lean{universalSymbolAlg_}\allowbreak\lean{injective}$^\ast$ & $\C[e,f,h]\hookrightarrow A_2(V^k)$ & $k\ne-2$ & uncond.; Thm.~\ref{l08:thm:pbw}\\
+(checked outside the library) & $V^N$ not simple, $e_{-1}^{N+1}\leightvac$ singular & $N\in\N$ & \textbf{not library}; Thm.~\ref{l08:thm:integrable}\\
+\lean{Sl2Sing.}\allowbreak\lean{exists_}\allowbreak\lean{nonzero_}\allowbreak\lean{solution_}\allowbreak\lean{iff}$^\ast$ & weight-3 system solvable iff $k=-4/3$ & none & uncond.\ (ansatz); Thm.~\ref{l08:thm:sing43}\\
+\lean{Sl2Sing.}\allowbreak\lean{sl2Singular_}\allowbreak\lean{pos}$^\ast$, \lean{Wak.}\allowbreak\lean{sl2Singular_}\allowbreak\lean{ne_}\allowbreak\lean{zero}$^\ast$ & singular vector at $k=-4/3$, nonzero & none & uncond.; Thm.~\ref{l08:thm:sing43}\\
+\lean{Sl2Indep.}\allowbreak\lean{indep_}\allowbreak\lean{iff_}\allowbreak\lean{sl2Singular_}\allowbreak\lean{ne_}\allowbreak\lean{zero}$^\dagger$, \lean{Wak.M_indep_sing}$^\dagger$ & $M_1..M_5$ independent at $-4/3$ & none & via theorem \lean{VOA.pbw} (formerly an axiom); Thm.~\ref{l08:thm:sing43}\\
+\lean{Sl2SingLY.}\allowbreak\lean{exists_}\allowbreak\lean{nonzero_}\allowbreak\lean{solution_}\allowbreak\lean{iff}$^\ast$ & weight-5 system solvable iff $k=-8/5$ & none & uncond.\ (ansatz); Thm.~\ref{l08:thm:sing85}\\
+\lean{Sl2Sing85.}\allowbreak\lean{sl2Singular85_}\allowbreak\lean{isSingular}$^\ast$, \lean{WakLY.}\allowbreak\lean{sl2Singular85_}\allowbreak\lean{ne_}\allowbreak\lean{zero}$^\ast$ & singular vector at $k=-8/5$, nonzero & none & uncond.; Thm.~\ref{l08:thm:sing85}\\
+\lean{Sl2Symbol.}\allowbreak\lean{mk₂_}\allowbreak\lean{sl2Singular_}\allowbreak\lean{casimir}$^\ast$, \lean{Sl2Symbol85.}\allowbreak\lean{mk₂_}\allowbreak\lean{sl2Singular85_}\allowbreak\lean{casimir_}\allowbreak\lean{sq}$^\ast$ & $C_2$ symbols $9e\Omega$, $625e\Omega^2$ & none & uncond.; Thm.~\ref{l08:thm:symbol}\\
+\lean{Strong.}\allowbreak\lean{isStronglySingular_}\allowbreak\lean{of_}\allowbreak\lean{SingP}$^\ast$, \lean{Strong.affineSl2_qp}$^\ast$ & positive current modes $\Rightarrow$ strongly singular; $L_1V_1=0$ & $k\ne-2$ & uncond.; Thm.~\ref{l08:thm:strong}\\
+\lean{Sl2NotSimple85.}\allowbreak\lean{not_}\allowbreak\lean{isSimple_}\allowbreak\lean{85}$^\ast$ & \textbf{$V^{-8/5}(\leightsl)$ not simple} & none & \textbf{uncond., pbw-free}; Thm.~\ref{l08:thm:notsimple}\\
+\lean{Sl2NotSimple85.}\allowbreak\lean{mkQ_}\allowbreak\lean{85_}\allowbreak\lean{not_}\allowbreak\lean{injective}$^\ast$ & $L_{-8/5}$ proper quotient & none & uncond.; Thm.~\ref{l08:thm:notsimple}\\
+\lean{HM.Verma}, \lean{IsHighest}, \lean{contravariant} & $M(k,\lambda)$, highest vectors, Shapovalov form & -- & defs.; Defs.~\ref{l08:def:verma}, \ref{l08:def:contravariant}\\
+\lean{HM.}\allowbreak\lean{occupationWords_}\allowbreak\lean{independent}$^\ast$, \lean{occupationBasis}$^\ast$ & PBW for $M(k,\lambda)$ & none & uncond., all $(k,\lambda)$; Thm.~\ref{l08:thm:vermapbw}\\
+\lean{HM.}\allowbreak\lean{vacuumProjection_}\allowbreak\lean{ker}$^\ast$ & $V^k = M(k,0)/M(k,-2)$ & none & uncond.; Thm.~\ref{l08:thm:exact}\\
+\lean{HM.contravariant_adj}$^\ast$, \lean{contravariant_symm}$^\ast$ & form contravariant, symmetric & none & uncond.; Def.~\ref{l08:def:contravariant}\\
+\lean{Wak.}\allowbreak\lean{Screening.}\allowbreak\lean{exists_}\allowbreak\lean{nonzero_}\allowbreak\lean{screening_}\allowbreak\lean{highest}$^\ast$ & screening singular vectors & $k+2=1/M$ & uncond.; Thm.~\ref{l08:thm:screen}\\
+\lean{WC.}\allowbreak\lean{weightDeterminant_}\allowbreak\lean{eq_}\allowbreak\lean{affineKacProduct_}\allowbreak\lean{all}$^\ast$ & \textbf{Kac--Kazhdan formula} & none (all $t$) & \textbf{uncond.}; Thm.~\ref{l08:thm:kac}\\
+\lean{WC.}\allowbreak\lean{affine_}\allowbreak\lean{vacuum_}\allowbreak\lean{polynomial_}\allowbreak\lean{identity}$^\ast$ & vacuum Kac coefficient & $2n>c$ & uncond.; Thm.~\ref{l08:thm:vaccoef}\\
+\bottomrule
+\end{longtable}}
+
+\paragraph{Points a referee should weigh.}
+(1) The VOA structure has no nonvanishing field; check which nonvanishing proof each result uses
+(Section~\ref{l08:sec:grading}). Every headline uses a \lean{pbw}-free one. (2) The ``level is a theorem'' results
+are about coefficient systems within a fixed ansatz; the converse statements about all vectors carry explicit
+independence hypotheses. (3) \lean{AffineSimple.}\allowbreak\lean{affineSl2Simple} is documentation, not code
+(Section~\ref{l08:sec:simple}). (4) The integrable-level singular vector is not in the library; the chapter
+supplies a Lean check that is not part of this release. (5) The Kac formula is stated as a polynomial identity in $\lambda$ at every complex $t$; at the
+critical level it degenerates honestly. (6) \lean{WakModule} is the universal vacuum module, not a Wakimoto
+module.
+
+%======================================================================
+\section{Notes and references}\label{l08:sec:notes}
+%======================================================================
+
+\begin{sloppypar}
+\begin{itemize}[leftmargin=1.5em]
+\item V.~G.~Kac, \emph{Infinite Dimensional Lie Algebras}, 3rd ed., Cambridge University Press (1990) ---
+  affine algebras, normalised form, dual Coxeter number (Ch.~6--7), Shapovalov form and determinant (\S9.10,
+  \S11.4), Sugawara operators (\S12.8).
+\item V.~G.~Kac and D.~A.~Kazhdan, \emph{Structure of representations with highest weight of
+  infinite-dimensional Lie algebras}, Adv.\ Math.\ \textbf{34} (1979) 97--108 --- the determinant formula
+  \eqref{l08:eq:KK}.
+\item V.~G.~Kac and M.~Wakimoto, \emph{Modular invariant representations of infinite-dimensional Lie
+  algebras and superalgebras}, Proc.\ Natl.\ Acad.\ Sci.\ USA \textbf{85} (1988) 4956--4960 --- admissible levels.
+\item I.~B.~Frenkel and Y.~Zhu, \emph{Vertex operator algebras associated to representations of affine
+  and Virasoro algebras}, Duke Math.\ J.\ \textbf{66} (1992) 123--168 --- $V^k(\mathfrak g)$, $L_k(\mathfrak g)$ as VOAs.
+\item M.~Wakimoto, \emph{Fock representations of the affine Lie algebra $A_1^{(1)}$}, Comm.\ Math.\ Phys.\
+  \textbf{104} (1986) 605--609 --- the free-field realisation \eqref{l08:eq:wakimoto}.
+\item B.~L.~Feigin and E.~V.~Frenkel, \emph{A family of representations of affine Lie algebras}, Russian
+  Math.\ Surveys \textbf{43}:5 (1988) 221--222; \emph{Affine Kac--Moody algebras and semi-infinite flag
+  manifolds}, Comm.\ Math.\ Phys.\ \textbf{128} (1990) 161--189 --- Wakimoto modules, screening operators.
+  E.~Frenkel and D.~Ben-Zvi, \emph{Vertex Algebras and Algebraic Curves}, 2nd ed., AMS (2004), Ch.~11--12.
+\item F.~G.~Malikov, B.~L.~Feigin and D.~B.~Fuchs, \emph{Singular vectors in Verma modules over Kac--Moody
+  algebras}, Funct.\ Anal.\ Appl.\ \textbf{20} (1986) 103--113.
+\item D.~Bernard and G.~Felder, \emph{Fock representations and BRST cohomology in $SL(2)$ current
+  algebra}, Comm.\ Math.\ Phys.\ \textbf{127} (1990) 145--168 --- screening currents for $\leighthat$.
+\item P.~Di Francesco, P.~Mathieu and D.~S\'en\'echal, \emph{Conformal Field Theory}, Springer (1997),
+  Ch.~15--16 (WZW models, Sugawara construction, integrable representations, fusion rules) and \S15.7
+  (free-field representations).
+\item D.~Gepner and E.~Witten, \emph{String theory on group manifolds}, Nucl.\ Phys.\ B \textbf{278} (1986)
+  493--549 --- the null vector $(J^+_{-1})^{k+1}$ and the $SU(2)_k$ fusion rules.
+\item D.~Adamovi\'c and A.~Milas, \emph{Vertex operator algebras associated to modular invariant
+  representations for $A_1^{(1)}$}, Math.\ Res.\ Lett.\ \textbf{2} (1995) 563--575; D.~Adamovi\'c, J.\ Pure Appl.\
+  Algebra \textbf{196} (2005) 119--134 --- the admissible-level singular vectors.
+\item A.~R.~Linshaw and F.~Qi, arXiv:2601.12017 --- the weight-3 vector at $k=-4/3$ (agreement recorded
+  in Section~\ref{l08:sec:singular}).
+\item T.~Creutzig and D.~Ridout, arXiv:1306.4388 --- weight $(u-1)v$ and charge $2(u-1)$ of the first singular
+  vector at $k+2=u/v$.
+\item H.~Li, \emph{Symmetric invariant bilinear forms on vertex operator algebras}, J.\ Pure Appl.\ Algebra
+  \textbf{96} (1994) 279--297 --- radical $=$ maximal ideal; T.~Arakawa, ``Associated varieties of modules over Kac--Moody algebras and
+  $C_2$-cofiniteness of $W$-algebras'', Int.\ Math.\ Res.\ Not.\ IMRN \textbf{2015}, no.~22, 11605--11666 ---
+  associated varieties of admissible affine VOAs; T.~Arakawa, ``Rationality of admissible affine vertex algebras in
+  the category $\mathcal O$'', Duke Math.\ J.\ \textbf{165} (2016) 67--93.
+\item C.~Beem, M.~Lemos, P.~Liendo, W.~Peelaers, L.~Rastelli and B.~C.~van Rees, arXiv:1312.5344 ---
+  chiral algebras of 4d $\mathcal N=2$ theories; T.~Creutzig, arXiv:1701.05926 --- $L_k(\leightsl)$ at boundary
+  admissible levels and Argyres--Douglas theories.
+\item Library sources: \leanpath{VOA/Examples/AffineSl2.lean}, \leanpath{AffineSl2VOA.lean},
+  \leanpath{AffineSl2Virasoro.lean} (construction); \leanpath{WakimotoFree.lean},
+  \leanpath{AffineSl2WakimotoLiLeading.lean} (free fields, PBW); \leanpath{AffineSl2Singular*.lean},
+  \leanpath{WakimotoEightFifths.lean}, \leanpath{AffineSl2NotSimple85.lean} (singular vectors, non-simplicity);
+  \leanpath{AffineSl2Verma*.lean}, \leanpath{AffineSl2Screening*.lean}, \leanpath{AffineSl2Kac*.lean} (Verma, screening,
+  Kac determinant).
+\end{itemize}
+\end{sloppypar}
+
+\endgroup

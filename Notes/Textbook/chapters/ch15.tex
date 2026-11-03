@@ -1,0 +1,2247 @@
+\chapter{Verification, dead ends, numerics and open problems}\label{ch:15}
+
+\providecommand{\chXVsq}{\mathbin{\ltimes}}
+
+This chapter documents the release of the library named in the front matter; every Lean quotation is checked by \texttt{scripts/textbook/sync.py} to occur verbatim (up to whitespace and
+comments) in the source files of that release. Its body was first written against the commit ``Construct the
+Moonshine module $V^\natural$ (FLM) unconditionally'' (7 October 2026, then the head of the main branch; ``the Moonshine
+commit'' below); records tied to that snapshot, and other checks not re-run for this edition, are marked as such, and the
+update of October 2026 is described below. The
+preceding fourteen chapters presented the mathematics of the LeanVOA library and, as their
+culmination, the construction of the Moonshine module $\Vnat$. Each of them followed the same
+discipline: a mathematical statement, the Lean declaration copied verbatim from the repository, a
+fidelity check explaining why the one is the other, an argument on paper, and an honest status
+report. This last chapter turns the discipline on the library as a whole. It asks four questions
+that a referee-editor must be able to answer before signing off on the book.
+
+\begin{enumerate}[label=(\arabic*)]
+\item \emph{What exactly has been checked, by what, and how would we know if it had not?} The
+  answer is a verification protocol made of a compiler run, two scripts and a manual audit, each
+  of which certifies something specific and nothing more (Section~\ref{ch15:sec:protocol}).
+\item \emph{Which statements were wrong, vacuous or circular at some point, and how was that
+  discovered?} The project kept a register of dead ends, traps and corrected mistakes, library-wide
+  and for the Moonshine construction in particular. Section~\ref{ch15:sec:deadends} consolidates
+  it, each entry with its precise statement, the certificate of failure and the lesson.
+\item \emph{What was computed numerically, and what is the status of those computations?}
+  Section~\ref{ch15:sec:numerics} describes every numerical experiment of the Moonshine
+  construction, with its method, tolerance and controls, and says plainly that none of it is part
+  of any proof.
+\item \emph{Why was the construction done this way, can it be reproduced, and what is still
+  open?} Sections~\ref{ch15:sec:design}, \ref{ch15:sec:repro} and~\ref{ch15:sec:open}.
+\end{enumerate}
+
+Throughout, four registers of claims are kept strictly apart, as the project's working agreements
+demand:
+\begin{itemize}
+\item \textbf{proved unconditionally} in Lean: the declaration has no hypothesis that is not
+  itself established, and \texttt{\#print axioms} lists only Lean's three standard axioms;
+\item \textbf{proved conditionally} in Lean: the declaration is accepted by the kernel, but its
+  statement carries a hypothesis (a \lean{Prop}-valued premise, or a structure that has to be
+  supplied) which is not proved anywhere; the hypothesis is then named;
+\item \textbf{checked numerically}: a computer calculation outside Lean, in floating point or in
+  exact arithmetic, agrees with the claim on a finite sample; this is evidence, never proof;
+\item \textbf{argued on paper only}, or \textbf{open}.
+\end{itemize}
+Earlier editions had a fifth register, \textbf{proved using the project axiom}
+\lean{VOA.pbw}; since 19 October 2026 that axiom is a theorem, and the register is empty
+(Section~\ref{ch15:sec:trust}; Chapter~\ref{ch:L02}, Section~\ref{l02:sec:history}).
+The Moonshine construction never used it.
+
+\paragraph{The update of October 2026.} The body of this chapter was written against the Moonshine commit. In October 2026
+the book was brought up to date with the library on the branch \lean{deligne-lean}: five chapters were added
+(Chapters~\ref{ch:L23}--\ref{ch:L27}: affine vertex algebras for every simple Lie algebra and the four chapters on the
+Deligne series; the chapter on affine $\mathfrak{sl}_3$ is in preparation; the two chapters on graded unitarity through the
+BRST coset, Chapters~\ref{ch:L28} and~\ref{ch:L29}, were added for the v1.0 release), Chapters~\ref{ch:L11}, \ref{ch:L19}
+and~\ref{ch:L20} were extended, and every chapter that described \lean{VOA.pbw} as an axiom was corrected. The present
+chapter was extended, not rewritten, to cover that work. The additions are: the book's own verification record and the
+trust base at the manifest commit (Section~\ref{ch15:sec:bookrecord}); the independent release audits of
+27--28~October~2026 (Section~\ref{ch15:sec:releaseaudits}); the dead ends recorded in the new and extended chapters
+(Section~\ref{ch15:sec:deadends-oct}); and the open problems that those chapters name
+(Section~\ref{ch15:sec:open-later}). Following the book's scope decision, work in progress in the library is not
+described; where a route is under development, we say so and nothing more.
+
+\begin{remark}[A note on the physics]\label{ch15:rem:physics}
+A physicist reading this chapter may wonder why so much effort goes into checking that a
+statement means what it says. In a conformal field theory one rarely writes down the axioms of
+the operator algebra completely; one computes correlation functions and trusts that locality,
+associativity and modular invariance hold because the theory ``exists''. A formalization cannot
+work that way. Every axiom is a line of code, and a mistyped quantifier produces a theory that
+either does not exist (no nonzero object satisfies the axioms) or exists for trivial reasons (the
+zero theory, or a degenerate extension). Both happened in this project. The checks of this chapter
+are the mathematical counterpart of a physicist's sanity checks: is the partition function right,
+is the vacuum unique, does the operator product expansion close, and is the theory non-trivial.
+\end{remark}
+
+% ---------------------------------------------------------------------------------------------
+\section{The verification protocol}\label{ch15:sec:protocol}
+
+\subsection{What a Lean proof certifies, and what it does not}\label{ch15:sec:kernel}
+
+A Lean file is a sequence of declarations: definitions (\lean{def}, \lean{structure},
+\lean{abbrev}) and theorems (\lean{theorem}). A theorem declaration has the shape
+\begin{plaincode}
+theorem name (hypotheses) : statement := proof
+\end{plaincode}
+When the file is compiled, Lean's \emph{kernel}, a small and carefully audited type checker,
+verifies that \lean{proof} is a term of type \lean{statement} in the context of the hypotheses.
+This is the only thing a successful compilation certifies, and it is a great deal: every step of
+every argument has been checked down to the rules of dependent type theory. It is not everything a
+reader wants, for three reasons.
+
+\begin{enumerate}[label=(\alph*)]
+\item \emph{Definitions are trusted, not verified.} If \lean{statement} mentions a notion such as
+  \lean{VertexOperatorAlgebra}, \lean{IsSimple} or \lean{TwistedModule}, the kernel checks the
+  proof against the definition as written. It cannot know whether the definition captures the
+  intended mathematical notion. A definition with a mistyped quantifier is a perfectly good
+  definition of something else. This is why the book prints every definition verbatim and checks
+  its fidelity; it is also the most common source of the dead ends of
+  Section~\ref{ch15:sec:deadends}.
+\item \emph{Hypotheses are assumed, not proved.} A theorem with a hypothesis
+  \lean{(h : P)} proves ``$P$ implies the statement''. If $P$ is false, or unsatisfiable, the
+  theorem is true and worthless.
+\item \emph{Axioms are assumed.} A declaration introduced with \lean{axiom} is accepted without
+  proof, and every theorem whose proof term mentions it, directly or through a chain of lemmas,
+  depends on it.
+\end{enumerate}
+
+The verification protocol of the project addresses each of these. Point~(c) is handled
+mechanically, by \texttt{\#print axioms} and the axiom audit; point~(b) by a rule of language
+(``unconditional'' versus ``conditional'') and a manual trace of hypotheses; point~(a) only by human
+reading, which is what the fidelity checks of this book are for.
+
+\subsection{The trust base: three standard axioms (and the former project axiom)}\label{ch15:sec:trust}
+
+Lean's logic has three axioms that essentially all of Mathlib uses:
+\begin{itemize}
+\item \lean{propext} (\emph{propositional extensionality}): two propositions that imply each other
+  are equal;
+\item \lean{Quot.sound}: the quotient of a type by a relation identifies related elements; this
+  is what makes quotient constructions (such as quotient modules, or the Zhu algebra
+  $A(V)=V/O(V)$) behave as in ordinary mathematics; it also implies function extensionality;
+\item \lean{Classical.choice}: from a proof that a type is nonempty one may extract an element;
+  this gives the law of excluded middle and all of classical reasoning, including the choice of
+  bases of vector spaces.
+\end{itemize}
+These three are the background logic of ordinary mathematics (Zermelo--Fraenkel set theory with
+choice proves corresponding statements), and a theorem whose axiom list is a subset of
+$\{\lean{propext},\lean{Classical.choice},\lean{Quot.sound}\}$ is called
+\emph{\texttt{\#print axioms}-clean}.
+
+The library adds no axiom of its own. Until 19 October 2026 it added exactly one, in
+\leanpath{VOA/Foundations/AffineLie.lean}; the same declaration is now a theorem:
+\begin{leancode}
+structure PBWPrinciple : Prop where
+  /-- PBW nonvanishing for every affine vacuum module. -/
+  affineVacuum : ∀ {𝔤 : Type u} [LieRing 𝔤] [LieAlgebra ℂ 𝔤]
+      (κ : LinearMap.BilinForm ℂ 𝔤) (hκ : κ.IsInvariant) (k : ℂ),
+    PBW κ hκ k
+  /-- The canonical bottom embeds in every module induced from a Lie subalgebra. -/
+  inducedBottom : ∀ {g U : Type u} [LieRing g] [LieAlgebra ℂ g]
+      [AddCommGroup U] [Module ℂ U] (p : LieSubalgebra ℂ g)
+      (rho : p →ₗ⁅ℂ⁆ Module.End ℂ U),
+    Function.Injective (PBWInduction.bottom p rho)
+
+theorem pbw : PBWPrinciple :=
+  ⟨fun κ hκ k => AffineLie.vacuumVector_ne_zero_of_induction κ hκ k,
+    fun p rho => PBWTheorem.bottom_injective p rho⟩
+\end{leancode}
+where \lean{PBW κ hκ k} is defined, in the same file, as
+\lean{AffineLie.vacuumVector κ hκ k ≠ 0}.
+
+\begin{dictionary}
+\textbf{What the principle says.} The Poincar\'e--Birkhoff--Witt theorem says that the universal
+enveloping algebra $U(\mathfrak g)$ of a Lie algebra has a basis of ordered monomials in a basis of
+$\mathfrak g$; consequently $U(\mathfrak g)$ is free as a right module over $U(\mathfrak p)$ for any
+subalgebra $\mathfrak p$. The principle bundles two consequences of PBW:
+\begin{itemize}
+\item \lean{affineVacuum}: for every Lie algebra $\mathfrak g$ over $\C$ with an invariant
+  bilinear form $\kappa$ and every level $k\in\C$, the vacuum vector of the affine vacuum module
+  $V^k(\mathfrak g)=U(\hat{\mathfrak g})\otimes_{U(\mathfrak g[t]\oplus\C K)}\C_k$ is nonzero.
+  (Without PBW one cannot exclude that the induced module collapses to $0$.)
+\item \lean{inducedBottom}: for a Lie subalgebra $\mathfrak p\subseteq\mathfrak g$ and a
+  representation $\rho$ of $\mathfrak p$ on $U$, the canonical map
+  $U\to U(\mathfrak g)\otimes_{U(\mathfrak p)}U$, $u\mapsto 1\otimes u$, is injective.
+\end{itemize}
+Both are classical theorems; Mathlib (v4.30.0) does not provide PBW, and the library now proves
+the needed relative form itself (Chapter~\ref{ch:L02}, Section~\ref{l02:sec:pbwproof}). The
+quantification over all universes \lean{Type u} is the
+reason the statement is a \lean{structure} of two fields rather than two separate declarations.
+\textbf{Could it be mis-stated?} Since it is proved, it cannot be inconsistent; the remaining
+risk is a mis-encoding of \lean{PBWInduction.bottom} or \lean{vacuumVector} that would make it
+weaker than intended, which is why
+those definitions are printed and checked in Section~\ref{l02:sec:axiom}.
+\end{dictionary}
+
+\begin{physics}
+PBW is the algebraic statement that a Verma-type module built by acting with creation operators on
+a highest-weight state is ``as large as it looks'': the states
+$J^{a_1}_{-n_1}\cdots J^{a_r}_{-n_r}|0\rangle$ with ordered modes are linearly independent before any
+null vectors are quotiented out. Every physicist uses this silently when counting the states of a
+current algebra (the Wess--Zumino--Witten vacuum module at level $k$) or when writing the character
+$\prod_n(1-q^n)^{-\dim\mathfrak g}$ of the universal affine algebra. \lean{VOA.pbw} (with \lean{pbwBasis_holds}) proves exactly
+that counting, nothing more.
+\end{physics}
+
+\paragraph{Where \texorpdfstring{\texttt{VOA.pbw}}{VOA.pbw} is used, and the twin pattern (history).}
+While \lean{VOA.pbw} was an axiom, the library followed a strict pattern (Chapter~\ref{ch:L02},
+Section~\ref{l02:sec:history}): wherever a result needed PBW, it was proved twice. One version carries the needed consequence as an explicit hypothesis (a
+datum such as \lean{Pr : BottomProjection ...}) and is \texttt{\#print axioms}-clean; a companion
+wrapper, whose name ends in \lean{_voaPBW} or \lean{_of_voaPBW}, supplies that datum from
+\lean{VOA.pbw}. Since \lean{VOA.pbw} became a theorem the datum is supplied by a theorem, so each
+\lean{_voaPBW} wrapper is the form of its twin with the PBW datum discharged. The two most
+important instances are Zhu's bijection and Zhu's modularity theorem. From \leanpath{VOA/Modules/ZhuVermaAnArchLUBijection.lean} and
+\leanpath{VOA/Modules/ZhuVermaAnArchLUBijectionPBW.lean}:
+\begin{leancode}
+theorem zhuBijective (Pr : BottomProjection (parabolicRepOfAMod W (regularAMod W))) :
+    Function.Bijective (forwardMapIrr W) :=
+
+theorem zhuBijective_of_voaPBW (W : VertexOperatorAlgebra 𝒱) :
+    Function.Bijective (forwardMapIrr W) :=
+  zhuBijective
+    (voaPBWBottomProjection (parabolicRepOfAMod W (regularAMod W)))
+\end{leancode}
+and from \leanpath{VOA/Modularity/GNProp8Closure.lean} and \leanpath{VOA/Modularity/GNProp8PBW.lean}:
+\begin{leancode}
+theorem zhuModularity_pinned_of_C2Cofinite [Finite (Φ W)]
+    (Mfam : ι → IrrModule W) (h : ι → ℂ)
+    (hC2 : C2Cofinite W)
+    (hss : letI := instRingA W; IsSemisimpleRing (A W))
+    (Pr : BottomProjection (parabolicRepOfAMod W (regularAMod W)))
+    (hcard : Fintype.card ι = Nat.card (Φ W))
+    (hcw : ∀ i, HasConformalWeight (Mfam i).isMod (h i))
+    (hsep : ∀ j k : ι, j ≠ k → h j = h k →
+      IsEmpty (AModEquiv W (lowestAMod (hcw j).2) (lowestAMod (hcw k).2))) :
+    ∃ D : ModularData W ι, D.Mfam = Mfam ∧ D.h = h ∧ ZhuModularityAnalytic D :=
+
+theorem zhuModularity_pinned_of_C2Cofinite_voaPBW [Finite (Φ W)]
+    (Mfam : ι → IrrModule W) (h : ι → ℂ)
+    (hC2 : C2Cofinite W)
+    (hss : letI := instRingA W; IsSemisimpleRing (A W))
+    (hcard : Fintype.card ι = Nat.card (Φ W))
+    (hcw : ∀ i, HasConformalWeight (Mfam i).isMod (h i))
+    (hsep : ∀ j k : ι, j ≠ k → h j = h k →
+      IsEmpty (AModEquiv W (lowestAMod (hcw j).2) (lowestAMod (hcw k).2))) :
+    ∃ D : ModularData W ι, D.Mfam = Mfam ∧ D.h = h ∧ ZhuModularityAnalytic D :=
+\end{leancode}
+
+\begin{dictionary}
+\textbf{The pattern, decoded.} The two modularity statements are identical except that the first
+has the extra binder \lean{(Pr : BottomProjection ...)}. A \lean{BottomProjection} for the
+parabolic representation attached to the regular $A(W)$-module is a linear projection from the
+induced module onto its bottom piece, compatible with the structure; it exists if and only if the
+bottom embeds (the \lean{inducedBottom} consequence of PBW). So the first theorem says ``if such a
+projection exists, Zhu's modularity holds'', the second says ``Zhu's modularity holds'', and the
+second is the first applied to the projection \lean{voaPBWBottomProjection}, which is derived
+from \lean{VOA.pbw}. For the referee this means: the content of Zhu's theorem is entirely in the
+\texttt{\#print axioms}-clean version, and \lean{VOA.pbw} enters only at one clearly marked seam. The
+remaining hypotheses (\lean{hC2}: $C_2$-cofiniteness; \lean{hss}:
+semisimplicity of $A(W)$, which follows from (admissible) rationality by
+\lean{VOA.Huang.ZhuSemisimple.isSemisimpleRing_A_of_admissiblyRational}, \leanpath{VOA/Huang/ZhuSemisimple.lean}; \lean{hcard}, \lean{hcw},
+\lean{hsep}: the family \lean{Mfam} is a complete irredundant list of irreducible modules with
+conformal weights \lean{h}) are the hypotheses of Zhu's theorem itself; Chapter~\ref{ch:L15}
+explains each. (Earlier versions also carried \lean{hzero} and \lean{hsimp}; both were redundant and have been removed.)
+\end{dictionary}
+
+\begin{status}
+Re-run for this chapter (\lean{lake env lean -DmaxSynthPendingDepth=3} on a scratch file
+importing \lean{VOA}, at the Moonshine commit; not re-run for this edition):
+\lean{zhuModularity_pinned_of_C2Cofinite} and \lean{zhuBijective}: \lean{[propext,
+Classical.choice, Quot.sound]}. \lean{zhuModularity_pinned_of_C2Cofinite_voaPBW},
+\lean{zhuBijective_of_voaPBW}, \lean{AffineLie.vacuumVector_ne_zero} and
+\lean{VHat.DLM3.voaPBWBottomInjective}: \lean{[propext, Classical.choice, Quot.sound, VOA.pbw]} (at
+that commit, when \lean{VOA.pbw} was an axiom). Re-probed at a later commit, after \lean{VOA.pbw} became a theorem, all four
+reported \lean{[propext, Classical.choice, Quot.sound]} (not re-run for this edition).
+The same probe reports \lean{[propext, Classical.choice, Quot.sound]} for
+\lean{heisenbergVOA}, \lean{VirModule.virasoroVOA}, \lean{AffineVOA.affineSl2VOA_closed},
+\lean{LatGen.latticeVOAGen}, \lean{levelOne_coe_mem_E46}, \lean{LQ43.L43_graded_rigidity},
+\lean{finiteDimensional_A_of_C2Cofinite}, \lean{onePointSubexp_of_c2},
+\lean{strictSpanning_of_C2Cofinite}, \lean{simpleAModsRealized_of_C2Cofinite},
+\lean{VertexOperatorAlgebra.borcherds}, \lean{Moonshine.LatticeTwisted.leechTwistedModule},
+\lean{Moonshine.sectorSeries_eq_JShift} and \lean{Moonshine.moonshine}.
+In particular, the affine $\mathfrak{sl}_2$ vertex operator algebra and the whole Moonshine chain
+do not depend on \lean{VOA.pbw}.
+\end{status}
+
+Many files mention the string \lean{pbw} (a word search finds it in several hundred files, mostly
+in documentation and in names such as \lean{PBWFreeness}); this says nothing about dependence.
+Dependence is a property of proof terms and is decided only by \texttt{\#print axioms}.
+
+\subsection{What \texorpdfstring{\lean{lake build}}{lake build} certifies: aggregate versus isolated}\label{ch15:sec:build}
+
+\lean{lake} is Lean's build tool. The library is one Lean package, \lean{VOA}, whose root module
+\leanpath{VOA.lean} (the \emph{umbrella}) imports the category umbrellas
+\leanpath{VOA/Foundations.lean}, \leanpath{VOA/Core.lean}, \ldots, \leanpath{VOA/Moonshine.lean},
+which in turn import every production file. Running \lean{lake build} with no argument builds the
+default target \lean{VOA}, i.e.\ compiles the umbrella and, transitively, everything it imports,
+together with the needed part of Mathlib. The output ends with a line such as
+\begin{plaincode}
+Build completed successfully (10343 jobs).
+\end{plaincode}
+where a \emph{job} is one unit of work (compiling one module, or one of its artefacts). The job
+count is a useful fingerprint: if two runs on what should be the same tree give different counts,
+the trees differ.
+
+Two kinds of build must be distinguished.
+\begin{itemize}
+\item An \textbf{isolated build}, \lean{lake build VOA.Moonshine.TTBlock}, compiles one module and
+  its imports. It certifies that this file, in the presence of exactly the files it imports, is
+  correct.
+\item The \textbf{aggregate build}, \lean{lake build} (equivalently \lean{lake build VOA}),
+  compiles the umbrella. It certifies that \emph{all} production files compile \emph{together}.
+\end{itemize}
+The difference matters. A file can compile in isolation and still break the aggregate: two files
+may declare the same name in the same namespace (the second import then fails), a file may add an
+instance or a \lean{simp} lemma that changes the behaviour of proofs in another file that imports
+both, or a file may simply not be imported by the umbrella at all, in which case its theorems are
+not part of the library that the umbrella describes. During the Moonshine work many files were first
+built in isolation by background agents (for example the route notes record
+``\lean{lake build VOA.Moonshine.TTBlock} is green (4243 jobs)'' and ``Build completed successfully
+(9039 jobs)'' for three \lean{SigmaExist} files) and only later wired into
+\leanpath{VOA/Moonshine.lean}. The project rule is therefore:
+
+\begin{quote}
+\emph{A result counts only when the aggregate \lean{lake build} is green.}
+\end{quote}
+
+A second, subtler point was learned the hard way earlier in the library's history: a green build is a property of a \emph{tree at an instant}, not of a session.
+Twice, a recorded ``green at $N$ jobs'' failed to reproduce because a later, unrelated file had been
+added to the working copy, and once because a second session was editing files while the build ran.
+Hence the operational rules: re-run the aggregate build immediately before recording a result,
+record the job count actually seen, never run two builds concurrently in one working tree, and
+prefer separate \lean{git worktree}s for concurrent work.
+
+\subsection{\texorpdfstring{\texttt{scripts/check\_repository.py}}{The repository check}}\label{ch15:sec:checkrepo}
+
+The aggregate build cannot see files that nobody imports, and it cannot forbid tokens that Lean
+accepts. Both gaps are closed by a Python script, \lean{scripts/check_repository.py}, which is also
+run in continuous integration before the Lean build. It does three things.
+
+\begin{enumerate}
+\item \textbf{Lexing.} It tokenizes every production file \lean{VOA/**/*.lean} and the umbrella,
+  correctly skipping line comments \lean{--}, nested block comments \lean{/- ... -/} and string
+  literals, so that the word ``sorry'' in a docstring is not a false positive.
+\item \textbf{Forbidden tokens and the sanctioned axiom.} Its policy is the constant
+\begin{plaincode}
+ALLOWED_AXIOM_FILE = SOURCE_ROOT / "Foundations" / "AffineLie.lean"
+FORBIDDEN_TOKENS = frozenset(
+    {"sorry", "admit", "native_decide", "stop", "implemented_by"}
+)
+\end{plaincode}
+  Any code occurrence of these five tokens is an error. They are, respectively: the placeholder
+  for a missing proof; its tactic synonym; a tactic that evaluates a decidable proposition by
+  compiling it to machine code (thereby trusting the compiler, not only the kernel); the tactic
+  that abandons the rest of a proof; and an attribute that replaces a definition's executable code
+  by other code. Since \lean{VOA.pbw} became a theorem every occurrence of the keyword \lean{axiom} is
+  an error (the constant \lean{ALLOWED_AXIOM_FILE} survives in the script but no axiom is
+  accepted); the script still prints a count of ``sanctioned axiom declarations'', now 0. (At
+  the Moonshine commit the one exception was \lean{axiom pbw} in \leanpath{VOA/Foundations/AffineLie.lean}.)
+\item \textbf{Reachability.} Starting from \leanpath{VOA.lean} it follows every local import
+  (\lean{import VOA....}) and reports (i) imports naming a non-existent file and (ii) production
+  files not reachable from the umbrella.
+\end{enumerate}
+Its success line, as run for the first edition of this chapter on the tree of the Moonshine commit, was
+\begin{plaincode}
+Repository check passed: 1867 library files scanned; 1867 reachable through 4676 local import edges; 1 sanctioned axiom declaration(s).
+\end{plaincode}
+So, at that commit, every one of the 1867 files then in the library was part of the aggregate build, none contained a
+forbidden token, and there was exactly one axiom. At a later commit, after \lean{VOA.pbw} became a theorem, the script reported ``7107
+library files scanned; 7105 reachable through 17543 local import edges; 0 sanctioned axiom
+declaration(s)'', with verdict ``failed'' only because two draft files in \leanpath{VOA/Huang/} are
+unreachable. The reachability check was the one that fired most often during the
+Moonshine work. Agents wrote new files that compiled in isolation; until a maintainer added the
+import line, the check listed them as unreachable, and on one occasion it caught an in-flight,
+unwired draft (\leanpath{VOA/Moonshine/HeisenbergTwistedModuleFieldComm.lean}) that still contained
+\lean{sorry}. That file was not committed in that state; it was later completed and wired.
+
+\subsection{\texorpdfstring{\texttt{scripts/audit/run\_axiom\_audits.py}}{The axiom audit} and its blind spot}\label{ch15:sec:audit}
+
+The third mechanical check, \lean{scripts/audit/run_axiom_audits.py}, enforces \emph{exact} axiom
+sets for a maintained list of declarations. It runs 20 Lean ``probe'' files under
+\leanpath{scripts/audit/} (for example \lean{RigidityProgressAxiomAudit.lean},
+\lean{Phase5AxiomAudit.lean}, \lean{SuperAxiomAudit.lean}), each of which consists of
+\texttt{\#print axioms} commands; it parses Lean's answers and compares each with the expected set:
+by default $\{\lean{propext},\lean{Classical.choice},\lean{Quot.sound}\}$; for the single
+declaration \lean{VOA.zhuModularity_pinned_of_C2Cofinite_voaPBW} the default plus \lean{pbw} (while
+\lean{VOA.pbw} was an axiom; since it became a theorem the expected set \lean{PBW_AXIOMS} equals the default,
+so any reappearance of \lean{pbw} is a failure); and for
+a short explicit list of elementary lemmas a \emph{smaller} set (some use only \lean{propext}, or
+no axiom at all). It fails if a declaration is missing, reported twice, or has a different set,
+larger \emph{or smaller}. Insisting on exactness in both directions is deliberate: a set that
+shrinks unexpectedly usually means that a declaration was replaced by a different one with the same
+name. The success line of the final run was
+\begin{plaincode}
+Axiom audit enforcement passed: 4876 reports across 20 probes.
+\end{plaincode}
+
+\begin{warning}
+\textbf{The blind spot.} The 20 probes were written before the Moonshine construction began, and
+none of them mentions a declaration under \lean{VOA.Moonshine} or \lean{VOA.LatticesAndCodes}. The
+report count 4876 is \emph{identical} before and after the construction (it is the count recorded
+in the project's build records at each of the last four checkpoints of the Moonshine work). A green audit therefore says nothing
+whatsoever about $\Vnat$. The headline Moonshine theorems were audited individually instead: at each
+checkpoint a scratch file importing \lean{VOA} and containing \texttt{\#print axioms} for the
+milestone declarations was compiled with \lean{-DmaxSynthPendingDepth=3}
+(Section~\ref{ch15:sec:trap}), and the result was recorded in the project's internal records and in the route
+notes. Adding a Moonshine probe to the maintained list is an open housekeeping task
+(Section~\ref{ch15:sec:open}).
+\end{warning}
+
+\subsection{\texorpdfstring{\texttt{\#print axioms}}{print axioms} and the audit trap}\label{ch15:sec:trap}
+
+\texttt{\#print axioms foo} makes Lean walk the proof term of \lean{foo}, and of every declaration
+that term mentions, and list the axioms reached. It is the only reliable way to know whether a
+theorem depends on \lean{sorryAx}, the axiom that a \lean{sorry} silently
+introduces (or, while it was an axiom, on \lean{VOA.pbw}).
+
+There is a trap, recorded in the project's working rules and in \leanpath{README.md}. The
+package's \leanpath{lakefile.toml} sets an elaboration option,
+\begin{plaincode}
+[leanOptions]
+pp.unicode.fun = true # pretty-prints `fun a ↦ b`
+relaxedAutoImplicit = false
+weak.linter.mathlibStandardSet = true
+maxSynthPendingDepth = 3
+\end{plaincode}
+which raises the depth to which type-class synthesis may postpone sub-problems. \lean{lake build}
+passes this option to every file it compiles. A bare \lean{lake env lean file.lean} does
+\emph{not}: it runs Lean in the package's environment but with Lean's default options. With the
+default depth, some instance problems in the library fail; Lean then reports an elaboration error
+and, to continue, replaces the failed term by \lean{sorryAx}. A \texttt{\#print axioms} run in that
+mode can therefore report \lean{sorryAx} for a theorem that is in fact complete, or, worse, a file
+of probes can appear to succeed while auditing something other than what the build produced. The
+rule is: audit only through \lean{lake build}, or through
+\begin{plaincode}
+lake env lean -DmaxSynthPendingDepth=3 probe.lean
+\end{plaincode}
+which supplies the option explicitly. The maintained audit script does the latter for its newer
+probes.
+
+\subsection{Unconditional versus conditional}\label{ch15:sec:uncond}
+
+\texttt{\#print axioms} does not list hypotheses. The theorem
+\begin{leancode}
+theorem moonshine_of_frameLocality :
+    ∃ x : ZMod 2 → TP, (∀ s, x s ∈ TPframe s) ∧
+      ((∀ i j, TPBlockLocal leechWbar (x i) (x j)) →
+        ∃ V : VertexOperatorAlgebra Vnat,
+          V.Y = Ynat wbarL ∧ V.vacuum = vacNat ∧ V.conformalVector = omegaNat ∧
+          V.centralCharge = 24 ∧
+          V.grading 1 = ⊥ ∧
+          finrank ℂ (V.grading 2) = 196884 ∧
+          (∀ n : ℕ, (finrank ℂ (V.grading (n : ℤ)) : ℂ) = PowerSeries.coeff n JShift) ∧
+          V.IsSimple) := by
+\end{leancode}
+(\leanpath{VOA/Moonshine/Main.lean}) has no binders at all, and its axiom list is clean; yet it is
+\emph{conditional}: inside the statement, after the existential, sits an implication whose premise
+\lean{∀ i j, TPBlockLocal leechWbar (x i) (x j)} (four instances of the twisted-sector locality
+relation (4.23) of Dolan--Goddard--Montague, Chapter~\ref{ch:12}) was, at the time, not proved.
+The project's rule of language, stated in \leanpath{README.md} and in the project's working rules, is:
+
+\begin{quote}
+Say ``\texttt{\#print axioms}-clean, conditional on \ldots'' for a declaration whose proof term uses
+only the standard axioms but whose statement carries a hypothesis. Reserve \emph{unconditional} for a
+theorem whose full hypothesis closure contains no unestablished datum.
+\end{quote}
+
+The \emph{hypothesis closure} is found by tracing every hypothesis, including those hidden in a
+statement as premises of implications and those carried as fields of structures, down to its
+leaves. The \leanpath{README.md} adds two further audit items for every headline result:
+\emph{conclusion strength} (is the conclusion the intended one, or a weaker variant such as
+``there exists some datum with property $P$'' where a pinned datum was intended?) and
+\emph{satisfiability of carried data} (can the hypotheses be met at all?). The Moonshine
+construction illustrates all three. Its final theorem is unconditional in the strict sense: no
+binder, no premise inside the statement. Its conclusion had to be strengthened once (simplicity was
+added to exclude the square-zero extension, Section~\ref{ch15:sec:trap-sqzero}). And several
+intermediate reductions had to be guarded against vacuous satisfaction by trivial data (the
+\lean{hits_cyclic} clause, Section~\ref{ch15:sec:phi0}).
+
+\subsection{Independent re-verification of agent-produced work}\label{ch15:sec:agents}
+
+Most of the roughly 155 files of \leanpath{VOA/Moonshine/} were written by background agents (Lean
+sessions running in parallel, each assigned one milestone and allowed to write only new files),
+coordinated by a supervising session that followed the operating rules recorded in
+\leanpath{Notes/MonsterRoadmap.md}. Those rules make agent output count only after an independent
+re-check by the supervisor:
+\begin{enumerate}
+\item read the roadmap and the working agreements at every iteration;
+\item for every finished agent, build its \emph{new} files in isolation
+  (\lean{lake build VOA.Moonshine.<File>}); grep them for \lean{sorry}, \lean{admit},
+  \lean{native_decide} and \lean{axiom}; run \texttt{\#print axioms} on the headline declarations
+  via \lean{lake env lean -DmaxSynthPendingDepth=3};
+\item only then wire the files into \leanpath{VOA/Moonshine.lean};
+\item update the status table with exact declaration names, and flip a status marker only after a
+  green aggregate build;
+\item never weaken a statement, never introduce \lean{sorry} or an axiom, never commit or push (the
+  maintainers' decision), never run two builds concurrently in one tree, never touch unrelated work
+  (the parallel $\mathfrak{sl}_3$ thread);
+\item periodically run \lean{scripts/check_repository.py} and an aggregate build, and at
+  checkpoints write a dated hand-off record (commit, build state, open residuals, dead ends) for the next session.
+\end{enumerate}
+The agents' own reports were treated as claims, not facts. Concretely, this caught: unwired drafts
+(listed by the reachability check); a draft with \lean{sorry} (Section~\ref{ch15:sec:checkrepo});
+agent notes that described their files as ``not wired'' long after wiring, or a residual as open
+after it had been closed (the route notes carry ``Update'' sections and the gluing plan carries
+dated ``Status and corrections'' sections for exactly this reason); and, most importantly, several
+mathematical errors in the plan itself, recorded as numbered ``Corrections'' in
+\leanpath{Notes/M8GluingPlan.md} and catalogued below. A general lesson of the library's history,
+learned twice, applies with full force: \emph{prose drifts behind theorems}. A
+docstring saying ``open'' or ``not possible'' was false when read at least seven times in earlier
+sessions; the remedy is to search for the declaration the prose claims is missing before believing
+it.
+
+\subsection{The final verification record}\label{ch15:sec:record}
+
+\textbf{The release commit.} This edition documents the release of the library named in the front matter, at commit
+\texttt{\bookcommit}. The protocol of this section --- the aggregate \lean{lake build}, \lean{scripts/check_repository.py},
+\lean{scripts/audit/run_axiom_audits.py}, and \lean{sync.py check} for the book's quotations --- is run at that commit by the
+release procedure. The records below were made at earlier states of the library, are dated, and say what was run.
+
+\begin{status}[title={The release build (3 November 2026)}]
+Run on the development tree at the feature freeze, the source of this release (the released tree omits the held
+material listed in Chapter~\ref{ch:01}):
+\begin{itemize}
+\item aggregate \lean{lake build} of \lean{VOA}: \lean{Build completed successfully (20331 jobs)}, exit code 0;
+\item \lean{scripts/check_repository.py}: 11{,}859 library files, 0 axiom declarations, no \lean{sorry}, \lean{admit},
+  \lean{native_decide}, \lean{stop} or \lean{implemented_by}; all files reachable from the umbrella except four held
+  files that the release does not contain;
+\item \lean{scripts/audit/run_axiom_audits.py}: passed, 5{,}958 reports across 24 probes;
+\item \texttt{\#print axioms} on the 28 headline declarations of the release (including
+  \lean{VOA.Moonshine.moonshine}, \lean{A2_classicallyFree_final}, \lean{D4_classicallyFree_of_inputT} and
+  \lean{twoSeries_gradedUnitary_of_affine_final}): every one reports exactly
+  \lean{[propext, Classical.choice, Quot.sound]}.
+\end{itemize}
+\end{status}
+
+
+\begin{status}
+Recorded at the end of the Moonshine construction (the project's checkpoint record of 7 October 2026),
+on the tree that became the Moonshine commit (``Construct the Moonshine module $V^\natural$ (FLM)
+unconditionally''), then the head of the main branch:
+\begin{itemize}
+\item aggregate \lean{lake build}: \lean{Build completed successfully (10343 jobs)}, exit code 0;
+\item \lean{scripts/check_repository.py}: passed, 1867 library files, all reachable, one sanctioned
+  axiom declaration (\lean{VOA.pbw}, then an axiom; 0 since it became a theorem);
+\item \lean{scripts/audit/run_axiom_audits.py}: passed, 4876 reports across 20 probes (which do not
+  cover \lean{VOA.Moonshine});
+\item \texttt{\#print axioms VOA.Moonshine.moonshine}, via \lean{import VOA} with
+  \lean{-DmaxSynthPendingDepth=3}: \lean{[propext, Classical.choice, Quot.sound]}; no \lean{VOA.pbw};
+\item the core definitions (\leanpath{VOA/Core}, \leanpath{VOA/Foundations},
+  \leanpath{VOA/Modularity/JFunction.lean}, \leanpath{VOA/Modules/Fusion.lean}) are unchanged since
+  the parent of the Moonshine commit; the only change to a pre-existing definition is the
+  nine-line repair of \lean{TwistedModule.jacobi} in \leanpath{VOA/Modularity/Twisted.lean}
+  (Section~\ref{ch15:sec:twisted}).
+\end{itemize}
+Re-run for this chapter on the same tree: \lean{scripts/check_repository.py} passed with
+``1867 library files scanned; 1867 reachable through 4676 local import edges; 1 sanctioned axiom
+declaration(s)''; \texttt{\#print axioms} gave \lean{[propext, Classical.choice, Quot.sound]} for
+\lean{VOA.Moonshine.moonshine}, \lean{VOA.Moonshine.topPairs_one}, \lean{VOA.jacobiAllIndices_eq_zero}
+and \lean{VOA.Moonshine.TrialityTw.golayE_not_determined}, plus the library-wide list of
+Section~\ref{ch15:sec:trust}. \lean{scripts/audit/run_axiom_audits.py} was re-run and printed twenty
+\lean{PASS} lines (from ``\lean{PASS RigidityProgress: 3932 declarations match the trust boundary}''
+to ``\lean{PASS PairClosure: 54 declarations match the trust boundary}'') and
+``Axiom audit enforcement passed: 4876 reports across 20 probes.'' (1 minute 34 seconds). The
+aggregate \lean{lake build} was \emph{not} re-run for this chapter; its figure of 10343 jobs is the
+one recorded at the time.
+\end{status}
+
+For the reader's convenience we reprint the headline statement once more
+(\leanpath{VOA/Moonshine/TopPairs.lean}):
+\begin{leancode}
+theorem moonshine :
+    ∃ V : VertexOperatorAlgebra Vnat,
+      V.Y = Ynat VnatAxioms.wbarL ∧ V.vacuum = vacNat ∧ V.conformalVector = omegaNat ∧
+      V.centralCharge = 24 ∧
+      V.grading 1 = ⊥ ∧
+      Module.finrank ℂ (V.grading 2) = 196884 ∧
+      (∀ n : ℕ, (Module.finrank ℂ (V.grading (n : ℤ)) : ℂ) = PowerSeries.coeff n JShift) ∧
+      V.IsSimple :=
+  moonshine_of_topPairs (by norm_num) topPairs_one
+\end{leancode}
+
+\begin{dictionary}
+\textbf{Fidelity check of the headline, from the verification point of view.} The full fidelity
+check, with every term traced to its definition, is in Chapter~\ref{ch:14}; here we record only the
+points that the protocol of this section is designed to protect.
+\begin{itemize}
+\item \emph{No hypotheses.} The statement has no binders and no premise. Its proof is the
+  composition of the conditional theorem \lean{moonshine_of_topPairs} (whose premises are
+  $\varepsilon^2=1$, discharged by \lean{norm_num} at $\varepsilon=1$, and the finite identity
+  \lean{TopPairs}) with \lean{topPairs_one}, which proves that identity. So the hypothesis closure is
+  empty.
+\item \emph{The existential is pinned.} ``$\exists V$'' alone would be weak: some VOA structure on
+  the vector space \lean{Vnat}. The four equations \lean{V.Y = Ynat VnatAxioms.wbarL},
+  \lean{V.vacuum = vacNat}, \lean{V.conformalVector = omegaNat} pin the vertex operator map to the
+  explicit block map of Frenkel--Lepowsky--Meurman, built from the untwisted fields, the skew
+  intertwiner $W$ and its adjoint $\overline W$ (Chapters~\ref{ch:09}--\ref{ch:10}); the vacuum and
+  conformal vector are pinned likewise.
+\item \emph{The non-triviality clause.} \lean{V.IsSimple} excludes the square-zero extension, which
+  satisfies every other clause (Section~\ref{ch15:sec:trap-sqzero}). In addition \lean{wbarL} is the
+  genuine adjoint, proved nonzero by \lean{leechWbar_ne_zero}.
+\item \emph{Graded dimension.} \lean{JShift} is the pre-existing series $E_4^3/(\Delta/q)-744q=qJ(q)$
+  of \leanpath{VOA/Modularity/JFunction.lean}, untouched by the construction, so the identity
+  $\dim V_n=[q^n]\,qJ(q)$ is tested against an independent definition of $J$.
+\item \emph{Axioms.} Standard only; no \lean{VOA.pbw}.
+\end{itemize}
+What the statement does \emph{not} say: nothing about $\Aut(V)$, the Monster, or uniqueness;
+see Section~\ref{ch15:sec:open}.
+\end{dictionary}
+
+\begin{physics}
+The verified statement underwrites the physicist's description of the Moonshine conformal field
+theory: a chiral $c=24$ CFT (holomorphy, i.e.\ a single sector, is the physical expectation and is
+not proved in Lean) obtained by orbifolding 24 chiral bosons
+compactified on the Leech torus by the reflection $X\mapsto -X$, keeping the invariant untwisted
+states and the invariant twisted states (twist fields of weight $3/2$ dressed by oscillators). The
+clause $V_1=0$ says the theory has no conserved spin-one currents, hence no continuous symmetry;
+$\dim V_2=196884$ counts the stress tensor plus the $196883$ primaries of the Griess algebra; the
+graded dimension is the torus partition function $Z(\tau)=J(\tau)$ up to the factor $q$; uniqueness of
+the vacuum (the only state of weight $0$ up to scale) is CFT type, built into the library's definition
+of a vertex operator algebra; simplicity says that no consistent subsector decouples, i.e.\ the operator product expansion genuinely couples the twisted states
+back into the untwisted ones ($\overline W\neq 0$).
+\end{physics}
+
+\subsection{The book's own verification record (October 2026)}\label{ch15:sec:bookrecord}
+
+The protocol above certifies the \emph{library}. The book needs a second, separate record: that what it prints is what
+the library says. By the book's rules (its constitution, Article~9), the book documents the library as of the commit
+stored in \leanpath{Notes/Textbook/manifest.json}, which records, for every \lean{.lean} file, the chapter that
+documents it and the hash of its contents at that commit. The script \leanpath{scripts/textbook/sync.py} then checks the
+chapters against the sources. Its \lean{check} command reports, among other things, four kinds of failure that are
+treated as blocking:
+\begin{itemize}
+\item \textbf{STALE QUOTE}: a \lean{leancode} block that no longer occurs verbatim in the source. This breaks the book's
+  central promise, that the Lean text the referee reads is the Lean text the kernel checked.
+\item \textbf{MISSING PATH}: a quoted declaration with no nearby \texttt{\textbackslash leanpath} citation of the file that defines it, so
+  the reader cannot find the source.
+\item \textbf{NO PHYSICS}: a definition or theorem not followed by a physical-meaning box, which the constitution requires
+  for every statement.
+\item \textbf{UNASSIGNED} files (reported by \lean{sync.py coverage}): a library file that no chapter is responsible for.
+\end{itemize}
+These checks are textual. They confirm that the quotations are verbatim and attributed, not that the quoted files
+compile together; that is the job of the aggregate build of Section~\ref{ch15:sec:build}, and the two must not be
+confused.
+
+\begin{status}
+The book's record at the end of the October 2026 update, as recorded in
+\leanpath{Notes/Textbook/BOOK\_CAMPAIGN.md} (``Status'') and in the commit messages of the book:
+\begin{itemize}
+\item \textbf{Manifest snapshot} at a pre-release commit, with \lean{sync.py coverage} reporting $0$ unassigned
+  files. Every \lean{.lean} file of the library is therefore assigned to exactly one chapter.
+\item \textbf{\lean{sync.py check}} at that snapshot: $0$ STALE QUOTE, $0$ MISSING PATH, $0$ NO PHYSICS.
+\item \textbf{Full book} at that snapshot: \lean{book.pdf}, $2118$ pages, $0$ undefined references. (The release
+  edition, \lean{main_release.pdf}, then had $2201$ pages.)
+\item \textbf{Brief}: \lean{brief.pdf}, $199$ pages; all $1199$ of its $1199$ Lean chunks verbatim against the sources at
+  that snapshot.
+\item \textbf{Chapters in preparation.} The chapter on affine $\mathfrak{sl}_3$ is not part of this edition. The two
+  chapters on graded unitarity through the BRST coset, then held, are part of the v1.0 release edition
+  (Chapters~\ref{ch:L28} and~\ref{ch:L29}); their verification records are in those chapters. Chapter~\ref{ch:L27},
+  held at this snapshot, was rewritten around the $A_2$ theorem without hypotheses and is included.
+\end{itemize}
+\textbf{Not done at that snapshot.} The book was \emph{not} checked against an aggregate \lean{lake build} at that snapshot. The
+last aggregate build recorded green is that of 26~October~2026, at the $A_2$ milestone of the Deligne campaign:
+$13868$ jobs, with the axiom audit passing (the project's build record; not re-run for the book). By the project's policy the aggregate build is run
+only before a merge to the main branch, and it is memory-heavy, so it was not re-run for the book. Since then, the aggregate build \texttt{bash scripts/campaign\_build.sh VOA} (the full \texttt{lake build VOA} under the project's memory-capped wrapper) was green in two pre-release builds on 2026-10-28 (18{,}901 jobs, and 18{,}907 jobs after merging the then-current \texttt{origin/main}); \texttt{scripts/check\_repository.py} passed (10{,}431 library files, all reachable, 0 project axioms) and \texttt{scripts/audit/run\_axiom\_audits.py} passed (5{,}958 reports across 24 probes). For the release commit see Section~\ref{ch15:sec:record}. The quotations are
+verbatim against the sources at the manifest commit; their compilation at that commit is inferred from the build of
+26~October and from the targeted builds recorded in the project's internal build records, not re-confirmed.
+\end{status}
+
+\paragraph{The trust base at the manifest commit.} The library has \emph{no} project axiom. \lean{VOA.pbw}, which until
+19 October 2026 was the single sanctioned axiom (Section~\ref{ch15:sec:trust}), is now the theorem
+\lean{theorem pbw : PBWPrinciple} in \leanpath{VOA/Foundations/AffineLie.lean}, proved through the files
+\leanpath{VOA/Foundations/PBWTheorem/} (Chapter~\ref{ch:L02}). \texttt{\#print axioms VOA.pbw} lists only Lean's three
+standard axioms; this was re-run for Chapter~\ref{ch:L02} and again, independently, by the release audit of
+Chapter~\ref{ch:L22} (Section~\ref{ch15:sec:releaseaudits}). Two of the release audits also searched \leanpath{VOA/} for
+top-level \lean{axiom} declarations and found none: every occurrence of the word is in a comment. Consequently the
+register ``proved using the project axiom'' of the introduction is empty, and ``\texttt{\#print axioms}-clean'' now means,
+without exception, that the axiom list is a subset of \lean{[propext, Classical.choice, Quot.sound]}. What it still does
+\emph{not} mean is ``unconditional'' (Section~\ref{ch15:sec:uncond}): the new chapters contain many
+\texttt{\#print axioms}-clean theorems that carry open named hypotheses, and they are listed in
+Section~\ref{ch15:sec:open-later}.
+
+\paragraph{Two further facts of the record.}
+\begin{itemize}
+\item \textbf{The repository check passes.} \lean{scripts/check_repository.py} (Section~\ref{ch15:sec:checkrepo})
+  failed for a time on 27~October~2026 because of unwired files; after they were wired in or moved, the Foundations
+  release audit recorded it passing ($7{,}839$ files, all reachable). Re-run on the working tree of the branch
+  \lean{deligne-lean} on 28~October~2026, it reported: ``Repository check passed: 10353 library files scanned; 10353
+  reachable through 24571 local import edges; 0 sanctioned axiom declaration(s)''. That working tree had uncommitted
+  changes; for the release commit see Section~\ref{ch15:sec:record}.
+\item \textbf{Docstrings were edited after the last aggregate build.} A first batch of stale docstrings (45 files,
+  comments only) was corrected on 27~October; a targeted build of those 45 modules was green ($13{,}276$ jobs). The
+  release audits below found further edits of the same kind in the import closures they examined and inspected them as
+  comment-only. A comment cannot change a theorem, but an edited file must still be rebuilt, which is one more reason
+  why every audit asks for an aggregate build at the release commit.
+\end{itemize}
+
+\begin{physics}
+The physicist's analogue is the difference between a calculation and its write-up. The library is the calculation; the
+book is the paper that reports it. A paper can misquote its own calculation (a sign dropped in transcription, a
+hypothesis forgotten in the abstract), and the sync check is the systematic comparison of the two. It does not re-run the
+calculation; the aggregate build does that.
+\end{physics}
+
+\subsection{The independent release audits of 27--28 October 2026}\label{ch15:sec:releaseaudits}
+
+Before a public release the project decided (\leanpath{Notes/RELEASE\_PLAN.md}, ``Release tiers'') that every headline
+theorem to be named in an announcement must pass one independent \emph{release audit}: a fresh referee, who had not
+written the chapter, compares the statement with the source paper, traces every definition it depends on down to its
+leaves, lists every explicit hypothesis, and re-runs \texttt{\#print axioms}. The chapter is used only as a map; every
+conclusion is checked against Lean. The project's record of over-claims caught late (three in the week before the
+audits alone) is the reason this step exists. Twelve such audits were run on 27 and 28~October~2026; their verdicts
+are recorded in \leanpath{Notes/RELEASE\_PLAN.md} (``Release
+audit results''). One line each:
+\begin{itemize}
+\item \lean{RELEASE_AUDIT_L16.md} (Chapter~\ref{ch:L16}, Arakawa--Kawasetsu), 27~October: the proposed announcement is not
+  announceable as worded; 1~BLOCKING (the wording), 4~MAJOR, 6~MINOR. Discussed below.
+\item \lean{RELEASE_AUDIT_L20.md} (Chapter~\ref{ch:L20}, Arakawa--Dai), 27~October: no blocker; 0~BLOCKING, 1~MAJOR (the
+  release build), 7~MINOR. Discussed below.
+\item \lean{RELEASE_AUDIT_L21.md} (Chapter~\ref{ch:L21}, Huang and related), 27~October: no blocker; 0~BLOCKING, 3~MAJOR,
+  8~MINOR. Discussed below.
+\item \lean{RELEASE_AUDIT_L22.md} (Chapter~\ref{ch:L22}, Gannon--Rayhaun), 27~October: announceable with caveats;
+  0~BLOCKING, 2~MAJOR, 5~MINOR. Discussed below.
+\item \lean{RELEASE_AUDIT_MOONSHINE.md} (Chapters~\ref{ch:02}--\ref{ch:14}, $\Vnat$), 27~October: announceable with caveats,
+  wording only; 0~BLOCKING, 0~MAJOR, 6~MINOR. \lean{moonshine} takes no hypotheses, has standard axioms and a unique
+  witness; $J$ is a formal $q$-series; the isomorphism with FLM's explicit $\Vnat$ is on paper only; no Monster,
+  holomorphy or uniqueness claim.
+\item \lean{RELEASE_AUDIT_RIGIDITY.md} (Chapters~\ref{ch:L07} and~\ref{ch:L09}), 27~October: announceable with caveats;
+  0~BLOCKING, 0~MAJOR, 3~MINOR (say ``graded first-order''; non-vacuity argued on paper only).
+\item \lean{RELEASE_AUDIT_ZHU.md} (Chapters~\ref{ch:L12}--\ref{ch:L15}), 27~October: no headline blocked, but ``Zhu's
+  modularity theorem is formalized'' is misleading without qualification; 3~HIGH, 4~MEDIUM, 6~lower. Its finding that
+  ``rational $\Rightarrow$ $A(V)$ semisimple'' is unproved was superseded the next day (see the new-declarations audit).
+\item \lean{RELEASE_AUDIT_FOUNDATIONS.md} (core definitions and constructions), 27~October: faithful with caveats;
+  0~BLOCKING, 2~MAJOR, 7~MINOR (every headline must say ``of CFT type''; the structure now called \lean{PreVertexAlgebra} lacks translation
+  covariance, Section~\ref{ch15:sec:debt}).
+\item \lean{RELEASE_AUDIT_L17_L18_L23.md} (Chapters~\ref{ch:L17}, \ref{ch:L18}, \ref{ch:L23}), 27~October: 0~BLOCKING,
+  7~MAJOR, 14~MINOR; includes the \lean{SuperTwistedModule} defect of Section~\ref{ch15:sec:super}.
+\item \lean{RELEASE_AUDIT_L24_L25_A2.md} (Chapters~\ref{ch:L24}, \ref{ch:L25} and the $A_2$ final theorem), 28~October:
+  1~HIGH, 5~MEDIUM, 8~LOW; the $A_2$ statement is faithful, its announcement blocked until green umbrella and aggregate
+  builds exist at the release commit (condition met on 28~October: Chapter~\ref{ch:L27}, Section~\ref{l27:sec:verification}).
+\item \lean{RELEASE_AUDIT_NEW_DECLS.md} (the declarations added on 28~October), 28~October: all announceable with
+  caveats; 0~BLOCKING, 4~MEDIUM, 7~LOW.
+\item \lean{RELEASE_AUDIT_FOLLOWUPS.md} (the other account's follow-ups), 28~October: none wrong, none blocked; 2
+  announceable as stated, 4 with caveats.
+\end{itemize}
+A separate precision audit of the Deligne literature inputs (\lean{DELIGNE_INPUTS_PRECISION.md}, 28~October) found the
+total-dimension bound and the Demazure realizations published for all six types and the star bound unpublished for
+$G_2$, $F_4$ and the $E$-types. The paragraphs below record the first four audits in detail, as reported on 27~October;
+where Lean results of 28~October have since removed a caveat, this is said in the paragraph. The corrections the
+audits asked of their chapters have been applied.
+
+\paragraph{What the auditors of 27~October ran, and what they did not.} No auditor ran \lean{lake build}. Each wrote scratch files
+importing the headline modules and ran them with \lean{lake env lean -DmaxSynthPendingDepth=3} (the safe form of
+Section~\ref{ch15:sec:trap}) against the compiled \lean{.olean} files already present, dated 25--26~October; the cost was
+2.6--9.5 seconds and 3.4--8.1\,GB per file. Each audit was made at a different pre-release commit of a working tree with uncommitted
+changes. Each
+auditor checked that the uncommitted changes in the relevant import closure were comment-only, or that the closure was
+unchanged. \emph{Every one of the four reports therefore carries the same process caveat}: the aggregate build, the
+repository check and the axiom audit must be re-run, green, on the committed release commit before anything is
+announced. All three were green on 28~October~2026 (paragraph \emph{Not done at that snapshot} above); for the release
+commit see Section~\ref{ch15:sec:record}.
+
+\paragraph{Chapter~\ref{ch:L16} (Arakawa--Kawasetsu): the proposed announcement is not announceable as worded.} Counts:
+1~BLOCKING, 4~MAJOR, 6~MINOR. The BLOCKING finding concerns the wording of the proposed announcement, not the Lean code.
+That wording (``the Arakawa--Kawasetsu theorem, characters of quasi-lisse VOAs satisfy an MLDE, and an explicit
+non-lisse quasi-lisse example are formalized'') is false on three counts. (1)~\emph{No Lean theorem proves the analytic Arakawa--Kawasetsu
+MLDE for any vertex algebra.} (The audit's wording, ``no MLDE for any VOA'', was slightly too broad: Chapter~\ref{ch:L25}
+proves formal, coefficientwise second-order MLDEs for the vacuum characters of the seven Deligne-series VOAs.) Within
+Chapter~\ref{ch:L16}, the only theorem with a genuine MLDE conclusion,
+\lean{VOA.IsSqPrimary.exists_monicMLDEOn_all_analyticBlocks_of_etingofFinite}, is \texttt{\#print axioms}-clean but
+conditional on two hypotheses that were inhabited nowhere in the library, \lean{AKWeightGrading W} and
+\lean{E46SerreClosed} (Section~\ref{ch15:sec:open-later}). Since 28~October the second is a theorem,
+\lean{VOA.e46SerreClosed} (\leanpath{VOA/Modularity/EisensteinSerreClosure.lean}), and since 29~October the first is a theorem for every
+VOA of the library (CFT type), \lean{VOA.akWeightGrading} (\leanpath{VOA/Modularity/AKGradingTotal.lean}). The MLDE is
+therefore conditional only on Etingof-finiteness:
+\lean{VOA.IsSqPrimary.exists_monicMLDEOn_all_analyticBlocks_of_etingofFinite_uncond} (despite the suffix, it keeps
+\lean{EtingofFinite W}) gives one monic MLDE of some unbounded order $s\ge1$, coefficients in $\C[E_4,E_6]$ of weight
+$2(s-i)$, satisfied by $F(a)$ for every abstract analytic genus-one block $F$; and
+\lean{VOA.exists_monicMLDEOn_all_analyticBlocks_simpleSl2QL} is its unconditional instance at the vacuum of
+$L_{-4/3}(\mathfrak{sl}_2)$, of unspecified order (Arakawa--Kawasetsu's order~2 is not proved; that the vacuum character
+is such a block follows from library lemmas but is not packaged as one theorem). Both are \texttt{\#print axioms}-clean
+(recorded in \texttt{Notes/release/WS-RELEASE2.md}); the aggregate build at the release commit is pending. (2)~\emph{Quasi-lisseness is not formalized}: there is no
+associated variety and no symplectic leaf; the theorems assume \lean{EtingofFinite}, finite-dimensionality of the zeroth
+Poisson homology $R_V/\{R_V,R_V\}$, which is the \emph{conclusion} of the Etingof--Schedler theorem (logically more
+general, but not ``quasi-lisse''). (3)~\emph{The unconditional ``character ODE'' theorems} at $L_{-4/3}(\mathfrak{sl}_2)$
+(\lean{character_formalODE_simpleSl2QL_uncond} and siblings) have arbitrary subexponential power series as
+coefficients, chosen after the module; they are near-vacuous growth statements, not MLDEs, although a docstring still
+calls one of them ``the Arakawa--Kawasetsu character equation'' (Chapter~\ref{ch:L16}, Section~\ref{l16:sec:weak}).
+A further MAJOR: the Zhu-modularity chain under Etingof-finiteness has its rank hypothesis discharged only for the trivial
+VOA, and it is expected to be false at $L_{-4/3}(\mathfrak{sl}_2)$ (a paper argument). \emph{What is announceable}, with
+standard axioms only: $L_{-4/3}(\mathfrak{sl}_2)$ is not $C_2$-cofinite yet has finite-dimensional zeroth Poisson
+homology (\lean{not_C2Cofinite_simpleSl2QL}, \lean{etingofFinite_simpleSl2QL'},
+\lean{strictEtingofFinite_simpleSl2QL}); for such VOAs characters of ordinary modules converge on the upper half-plane
+and the genus-one conformal blocks form a finite-dimensional space; and $C_2$-cofinite implies Etingof-finite. The
+MLDE may be mentioned only as formalized conditionally on \lean{EtingofFinite} (the stand-in for quasi-lisseness), with an
+unspecified order, and unconditionally at $L_{-4/3}(\mathfrak{sl}_2)$ in that form. Consequence recorded in the release
+plan: Chapter~\ref{ch:L16} is released, but it leaves the announcement's list of headlines.
+
+\paragraph{Chapter~\ref{ch:L20} (Arakawa--Dai): no blocker.} Counts: 0~BLOCKING, 1~MAJOR, 7~MINOR. All ten headline
+declarations of \leanpath{VOA/Examples/AffineSl2BoundaryMainTheorems.lean} are \texttt{\#print axioms}-clean, with the single
+hypothesis $1\le m$; the definitions trace to the genuine objects (the actual simple quotient, the real Li filtration, a
+genuine Poisson vertex algebra, the character computed from actual dimensions). The four character theorems
+(\lean{coeff_product_le_character}, \lean{character_eq_product}, \lean{character_eq_chain},
+\lean{character_eq_fermionic_chain}, the last being the paper's Theorem~1.2 display) and
+\lean{arcPoissonEquiv_conformal_iff} are announceable as stated. The caveats: \lean{canonicalMap_bijective},
+\lean{boundary_classically_free} and \lean{arcPoissonEquiv} are stated on the arc algebra of the \emph{presented} algebra
+$\C[e,h,f]/(eQ^m,hQ^m,fQ^m)$, and no single Lean theorem has the paper's shape ``the canonical map
+$J_\infty R_V\to\operatorname{gr}^FV$ is bijective''; the paper's Theorem~1.1 follows from two Lean theorems together
+(the presented isomorphism and \lean{baseC2AlgEquiv}) and should be announced in that two-part form (audit verdict of
+27~October; superseded on 28~October, see below and Chapter~\ref{ch:L20}, Theorem~\ref{l20:thm:ad11}; naturality proved).
+\lean{actualC2ArcEquiv} is a bare bijection of hom-sets for each coefficient algebra, with no naturality stated, so it
+must not be announced as a representability statement; and \lean{baseC2AlgEquiv} is canonical by its definition, not by
+its type. The single MAJOR is the release build (above). Chapter~\ref{ch:L20}, Section~\ref{l20:sec:defects}, records the
+same points. \emph{Since 28~October} two of these caveats are removed in Lean, in the namespace
+\lean{VOA.AffineSl2BoundaryClassicalFreeness}: \lean{arakawaDai_theorem_1_1}
+(\leanpath{VOA/Examples/AffineSl2BoundaryTheorem11.lean}) states the paper's Theorem~1.1 as one theorem, and
+\lean{actualC2ArcEquiv_natural} (\leanpath{VOA/Examples/AffineSl2BoundaryMainTheorems.lean}) states the naturality, so
+representability holds; the follow-ups audit rated both ``as stated''. What remains is that $J_\infty R_V$ is realized
+as \lean{PresentedJet} with a universal arc, since the library has no $J_\infty$ functor on abstract algebras.
+
+\paragraph{Chapter~\ref{ch:L21} (Huang and related): no blocker.} Counts: 0~BLOCKING, 3~MAJOR, 8~MINOR. Every headline is
+\texttt{\#print axioms}-clean and instantiated at the lattice VOA $V_2$, so none is vacuous. Verdicts:
+\begin{itemize}
+\item the braided monoidal category of ordinary modules of a strongly rational VOA (a genuine Mathlib
+  \lean{BraidedCategory}, on the Huang--Lepowsky tensor product, with pentagon and hexagons proved), and the logarithmic
+  braided tensor category of a $C_2$-cofinite VOA: \emph{announceable as stated};
+\item rigidity, Verlinde and the modular category: \emph{with caveats}. (F1, MAJOR) They are proved for \lean{Nice} VOAs,
+  i.e.\ strongly rational \emph{and pseudo-unitary}, although Huang's theorems do not need pseudo-unitarity; the
+  hypothesis is genuinely used in the proofs. (Since 29~October its use for $V'\cong V$ is removed:
+  \lean{VOA.contra_vacuum_equiv_of_stronglyRational} and the \lean{_of_stronglyRational} copies in
+  \leanpath{VOA/Huang/VerlindeVacuumFusionSR.lean} give the vacuum-fusion chain for strongly rational VOAs; the
+  Cardy-positivity step \lean{vacColumn_mem_K} keeps it, essentially, and the headline theorems still take \lean{Nice}.) Rigidity was right rigidity only (\lean{rightRigid_ordinary}); since
+  28~October the two-sided \lean{RigidCategory} is a theorem, \lean{VOA.Huang.HuangRigid.rigid_ordinary}
+  (\leanpath{VOA/Huang/RigidOrdinary.lean}), on the same monoidal instance as the braiding (checked by the
+  new-declarations audit), still for \lean{Nice} VOAs. Verlinde is proved in the form
+  $S_{ax}S_{bx}=S_{0x}\sum_cN_{ab}^cS_{cx}$ with $S_{0x}\neq0$;
+\item the congruence property: \emph{not announceable until it has a named theorem} (F2, MAJOR). It is true in the
+  library (it is discharged inside the proof of the Gannon--Rayhaun theorem, and the auditor's scratch declarations
+  \lean{audit_dln_congruence} and \lean{audit_zhuCongruence} compile with standard axioms), but every library declaration
+  that concluded it carried hypotheses. Since 28~October the named theorems exist, for \lean{Nice} VOAs:
+  \lean{dlnCongruenceInput_holds}, \lean{zhuCongruenceInput_holds} and \lean{zhu_kernelContainsGamma_at_level}, in
+  the namespace \lean{VOA.Huang.CongruenceNamed} (\leanpath{VOA/Huang/CongruenceNamed.lean}). (F3, MAJOR, wording) Only the kernel half of Ng--Schauenburg's Theorem~6.8 is
+  proved (\lean{nsProjectiveKernelAll_holds}); the half saying that the level equals the Frobenius--Schur exponent is
+  not. (The new-declarations audit adds a precision: at the minimal level the kernel statement is the full kernel
+  claim of Dong--Lin--Ng; ``kernel half'' refers only to the Ng--Schauenburg input.)
+\item Deligne's theorem (\lean{deligneTannakian_holds}): \emph{with caveats}; it is the positive-dimension (Tannakian,
+  bosonic) case for symmetric fusion categories, not the super version.
+\end{itemize}
+
+\paragraph{Chapter~\ref{ch:L22} (Gannon--Rayhaun): announceable with caveats.} Counts: 0~BLOCKING, 2~MAJOR, 5~MINOR. The
+three headlines (\lean{gannonRayhaun_forward}, \lean{gannonRayhaunConverse_holds}, \lean{gannonRayhaun_classification})
+have no hypotheses, their axioms are standard, and the statement matches Gannon--Rayhaun's Theorem~3.1 and
+Proposition~3.2 (the same list, both directions, pairwise non-isomorphism). Non-vacuity is proved (\lean{V2m_nice},
+\lean{exceptionalV2Group_exists}). The caveats: (M1, MAJOR, wording) ``rational'' is formalized as
+\lean{AdmissiblyRational}: every weak (mode-stable, not necessarily graded) submodule of an admissible module has a
+weak complement. The library's own note (\leanpath{VOA/Modules/AdmissibleRationality.lean}) says that its relation to
+Dong--Li--Mason rationality is not settled and that neither implication is proved in Lean; the chapter overstated the
+match and has been corrected (Chapter~\ref{ch:L22}, Remark~\ref{l22:rem:rational}). Since 29~October one direction is a
+theorem: for $C_2$-cofinite $V$, Dong--Li--Mason rationality (formalized faithfully as \lean{DLMRational}) implies
+\lean{AdmissiblyRational} (\lean{VOA.Classification.COne.DLMRat.admissiblyRational_of_dlmRational}); the converse is
+open. (M2, MAJOR) the release build. The
+minor points: the combined statement and the converse are stated for carriers in \lean{Type 0} only (disclosed in
+Remark~\ref{l22:rem:universe}); rationality and pseudo-unitarity quantify over modules in the VOA's own universe; and
+stale docstrings.
+
+\begin{physics}
+In physical language the audits separate three things that a CFT paper often runs together. ``The theory is
+consistent'' (the braided tensor category exists) was confirmed as stated. ``The theory is unitary in the weak sense
+needed for positivity arguments'' (pseudo-unitarity, quantum dimensions equal to the ratios of $S$-matrix entries) turns
+out to be an extra input in the Lean proofs of rigidity and the Verlinde formula (now essentially only in the
+Cardy-positivity step), while Huang's proofs do without it.
+And ``the characters obey a modular differential equation'', the physicist's working definition of a theory with
+finitely many characters, is proved with a specified order for no theory analytically: formal coefficientwise
+second-order MLDEs are proved for the seven Deligne vacuum characters (Chapter~\ref{ch:L25}); the analytic
+Arakawa--Kawasetsu MLDE, of unspecified order and for abstract genus-one blocks, is proved conditionally only on
+Etingof-finiteness, and unconditionally at the vacuum of $L_{-4/3}(\mathfrak{sl}_2)$. The audits'
+contribution is to say which of these sentences may be printed.
+\end{physics}
+
+% ---------------------------------------------------------------------------------------------
+\section{A catalogue of dead ends, traps and corrected mistakes}\label{ch15:sec:deadends}
+
+The working agreements of the project single out the record of dead ends as \emph{the
+highest-value section} of every hand-off record between sessions: ``the project's worst time sinks have all been
+re-attempts of routes already known to fail''. This section consolidates that record. Each entry
+states (i) the claim, definition or route; (ii) why it fails, with the counterexample or
+certificate; (iii) the lesson. Entries backed by a Lean theorem are presented with the full
+fidelity protocol; entries backed by a numerical certificate or by a paper argument say so.
+
+The entries fall into six kinds, and it helps to name them, because each kind is caught by a
+different check:
+\begin{enumerate}[label=(\Alph*)]
+\item \emph{unsatisfiable definitions}: an axiom system no nonzero object satisfies (caught only by
+  constructing an example, or by proving a certificate of emptiness);
+\item \emph{conclusions satisfied by trivial objects}: the target theorem holds for a degenerate
+  object as well as for the intended one (caught by asking ``what else satisfies this?'');
+\item \emph{wrong formulas and conventions}: a sign, a normalisation or a modification that a
+  source states differently or not at all (caught by numerical controls);
+\item \emph{ambiguities}: a definition that does not determine what it was meant to determine
+  (caught when a proof needs the missing information);
+\item \emph{circular or insufficient reductions}: a reduction step that silently assumes its
+  conclusion, or reduces to something no easier (caught by tracing what each step uses);
+\item \emph{tooling and process traps}.
+\end{enumerate}
+
+\subsection{Unsatisfiable definitions}
+
+\subsubsection{The twisted Jacobi identity over all indices}\label{ch15:sec:twisted}
+
+Recall from Chapter~\ref{ch:06} that a $g$-twisted module, for an automorphism $g$ of order $N$,
+has vertex operators $Y_M(u,z)=\sum_{r\in\frac1N\Z}u_{(r)}z^{-r-1}$, and that for $u$ in the
+eigenspace $V^j=\{v: gv=e^{-2\pi i j/N}v\}$ only the modes $r\in -\frac jN+\Z$ occur. The library
+encodes the mode $u_{(k/N)}$ as \lean{YM u k} with $k\in\Z$, so the support condition says
+\lean{YM u k = 0} unless $k\equiv -j\pmod N$. The twisted Jacobi identity of Dong--Li--Mason is a
+family of identities indexed by $\ell\in\Z$ and by the fractional indices $k,m$; in the source it is
+asserted only for $k$ in the support coset of $u$. Before 6 October 2026 the field
+\lean{TwistedModule.jacobi} asserted it for \emph{every} $k$. That predicate is preserved, under its
+own name, as the subject of a certificate. File \leanpath{VOA/Moonshine/HeisenbergTwistedModuleDefect.lean}:
+\begin{leancode}
+def JacobiAllIndices (g : Aut W) (N : ℕ) {M : Type*} [AddCommGroup M] [Module ℂ M]
+    (YM : 𝒱 →ₗ[ℂ] (ℤ → End ℂ M)) : Prop :=
+  ∀ (j : ℕ) (u : 𝒱), u ∈ g.twistedEigenspace N j → ∀ (v : 𝒱) (x : M) (ℓ k m : ℤ),
+    (∑ᶠ i : ℤ, (negOnePow i * cbz ℓ i) •
+        (YM u (ℓ * N + k - i * N) (YM v (m + i * N) x)
+          - negOnePow ℓ • YM v (ℓ * N + m - i * N) (YM u (k + i * N) x)))
+      = ∑ᶠ i : ℕ, cbinom ((k : ℂ) / N) i • YM (W.smul u (ℓ + i) v) (k + m - i * N) x
+\end{leancode}
+
+\begin{theorem}[The all-indices twisted Jacobi identity forces $M=0$]\label{ch15:thm:jacobiAll}
+Let $V$ be a vertex operator algebra, $g\in\Aut V$, $N\ge 2$, and let $Y_M$ be a linear map from $V$
+to fractional-mode families of endomorphisms of a vector space $M$ such that $Y_M(\mathbf 1,z)=\mathrm{id}$
+(only the mode $\mathbf 1_{(-1)}$, label $k=-N$, is nonzero, and it is the identity). If $Y_M$
+satisfies the twisted Jacobi identity for all $j,u\in V^j,v,x,\ell,k,m$ without restriction on $k$,
+then $M=0$.
+\end{theorem}
+
+File \leanpath{VOA/Moonshine/HeisenbergTwistedModuleDefect.lean}:
+\begin{leancode}
+theorem jacobiAllIndices_eq_zero {g : Aut W} {N : ℕ} (hN : 2 ≤ N) {M : Type*}
+    [AddCommGroup M] [Module ℂ M] (YM : 𝒱 →ₗ[ℂ] (ℤ → End ℂ M))
+    (hvac : ∀ k : ℤ, YM W.vacuum k = if k = -(N : ℤ) then 1 else 0)
+    (hJ : JacobiAllIndices g N YM) (x : M) : x = 0 := by
+\end{leancode}
+
+\begin{dictionary}
+\begin{itemize}
+\item \lean{YM : 𝒱 →ₗ[ℂ] (ℤ → End ℂ M)}: a $\C$-linear map assigning to each state $u$ the family
+  of its fractional modes, \lean{YM u k}$\,=u_{(k/N)}$. \lean{End ℂ M} is the algebra of linear
+  endomorphisms of $M$.
+\item \lean{hvac}: the vacuum acts by $\mathbf 1_{(-1)}=\mathrm{id}$, which in the label convention
+  $k/N=-1$ is $k=-N$; all other modes vanish. This is the twisted-module vacuum axiom
+  \lean{vacuum_YM}.
+\item \lean{cbz ℓ i} is the integer binomial $\binom{\ell}{i}$ extended to $i\in\Z$ (zero for
+  $i<0$), \lean{negOnePow i} is $(-1)^i$, and \lean{cbinom x i} is the generalised binomial
+  $x(x-1)\cdots(x-i+1)/i!$ with complex upper index; \lean{W.smul u n v} is the $n$-th product
+  $u_{(n)}v$ in the VOA; \lean{∑ᶠ} is a sum of finitely many nonzero terms.
+\item The conclusion \lean{x = 0} for an arbitrary \lean{x : M} is $M=0$.
+\end{itemize}
+The theorem is \emph{stronger} than needed to condemn the old definition: it uses only the vacuum
+axiom, not the other fields of a twisted module.
+\end{dictionary}
+
+\paragraph{Proof on paper.} Take $u=v=\mathbf 1$ (so $j=0$), $\ell=-1$, $k=1$, $m=-N-1$. On the left
+every term contains a vacuum mode with label $-N+1-iN$ or $1+iN$; neither equals $-N$ for any
+integer $i$ when $N\ge 2$ (the first would need $iN=1$, the second $(i+1)N=-1$). So the left side is
+$0$. On the right the term $i$ involves $\mathbf 1_{(-1+i)}\mathbf 1$, which is $\mathbf 1$ for $i=0$
+and $0$ otherwise; the $i=0$ term is $\binom{1/N}{0}\,Y_M(\mathbf 1)_{(-N)}x=x$. Hence $0=x$.
+The point is that $k=1$ lies outside the support coset of $u=\mathbf 1$ (which is $k\equiv 0$), so
+the identity is being asserted for modes that do not exist. The repair adds exactly the hypothesis
+\texttt{(k + j) \% (N : ℤ) = 0} to the field; Chapter~\ref{ch:06} prints the repaired field and
+checks that it is the Dong--Li--Mason identity.
+
+\begin{physics}
+In an orbifold CFT the twist field creates a branch cut: a field $u$ of $g$-charge $j$ picks up
+the phase $e^{2\pi i j/N}$ when carried around the twisted state, so its mode expansion only
+contains powers $z^{-r-1}$ with $r\in-\frac jN+\Z$. The Jacobi identity is the statement that the
+operator product expansion is associative and local \emph{for the modes that exist}. Demanding it
+for non-existent modes is like demanding that a fermion in the Ramond sector also have
+Neveu--Schwarz modes: the only Hilbert space compatible with both is empty.
+\end{physics}
+
+\begin{status}
+\lean{VOA.jacobiAllIndices_eq_zero}: unconditional (its hypotheses are exactly the data being
+refuted); \texttt{\#print axioms} re-run for this chapter: \lean{[propext, Classical.choice,
+Quot.sound]}. The repair is the only change to a pre-existing definition made by the Moonshine
+work (diff of \leanpath{VOA/Modularity/Twisted.lean} across the Moonshine commit:
+one hypothesis line, the docstring, and one binder in \lean{OrdVModule.toTwisted}, which is the
+case $N=1$ and is unaffected). Before the repair, every theorem with a hypothesis
+``\lean{T : TwistedModule g N M}'' with $N\ge2$ and $M\neq0$ was vacuous.
+\end{status}
+
+\begin{warning}
+\textbf{Lesson.} A structure with no nontrivial instance can hide a modelling bug indefinitely
+(\leanpath{README.md} calls the first instance of a definition its ``correctness oracle''). The
+defect surfaced only when the first nonzero twisted module (the twisted Heisenberg module of
+Chapter~\ref{ch:07}) was attempted. Every new structure should be instantiated nontrivially as
+early as possible.
+\end{warning}
+
+\subsubsection{SuperTwistedModule: the same defect, not repaired}\label{ch15:sec:super}
+
+The library's super analogue, in \leanpath{VOA/Modules/SuperTwistedModule.lean}, has the same shape.
+File \leanpath{VOA/Modules/SuperTwistedModule.lean}:
+\begin{leancode}
+  support : ∀ (j : ℕ) (u : 𝒱), u ∈ g.twistedEigenspace N j →
+    ∀ k : ℤ, (k - j) % (N : ℤ) ≠ 0 → YM u k = 0
+  /-- The full Koszul twisted Jacobi identity in fractional-mode form. -/
+  jacobi : ∀ {p q : ZMod 2} (j : ℕ) (u : 𝒱),
+    u ∈ g.twistedEigenspace N j → u ∈ W.parity p →
+    ∀ (w : 𝒱), w ∈ W.parity q → ∀ (x : M) (ℓ k m : ℤ),
+    (∑ᶠ i : ℤ, (negOnePow i * cbz ℓ i) •
+        (YM u (ℓ * N + k - i * N) (YM w (m + i * N) x)
+          - (koszul p q * negOnePow ℓ) •
+            YM w (ℓ * N + m - i * N) (YM u (k + i * N) x))) =
+      ∑ᶠ i : ℕ, fractionalBinom ((k : ℂ) / N) i •
+        YM (W.smul u (ℓ + i) w) (k + m - i * N) x
+\end{leancode}
+
+\begin{warning}
+\textbf{Open defect.} The field \lean{jacobi} carries no restriction of $k$ to the support coset
+(here written $k\equiv j\pmod N$, a different sign convention from \lean{TwistedModule}). The vacuum
+is even, so the certificate of Theorem~\ref{ch15:thm:jacobiAll} applies verbatim with $p=q=0$,
+\lean{koszul 0 0 = 1}: for $N\ge 2$ every \lean{SuperTwistedModule} is zero. The source file
+\leanpath{VOA/Moonshine/HeisenbergTwistedModuleDefect.lean} records this in its docstring; the
+super certificate itself has \emph{not} been formalised (argued on paper here). The structure is
+mentioned in twelve files (\leanpath{VOA/Modules/SuperTwistedModule.lean},
+\leanpath{VOA/Modules/SuperTwistedZhu.lean}, \leanpath{VOA/Modules/SuperRelativeEtingofFinite.lean},
+seven files \leanpath{VOA/Modularity/Super*.lean}, \leanpath{VOA/Modularity/Twisted.lean}, and the certificate file). Any theorem among them
+whose hypotheses include a \lean{SuperTwistedModule} with $N\ge2$ is vacuous until the field is
+repaired. Repairing it is a decision left to the maintainers (Section~\ref{ch15:sec:open}). The
+Moonshine construction does not use \lean{SuperTwistedModule}.
+\end{warning}
+
+\subsubsection{Bilinear positivity on a complex subspace}
+
+\begin{theorem}[A $\C$-bilinear form is never positive on a nonzero $\C$-subspace]\label{ch15:thm:bilpos}
+Let $\beta$ be a $\C$-bilinear form on a complex vector space $E$ and $S\le E$ a subspace. If
+$\beta(x,x)$ is a positive real number for every nonzero $x\in S$, then $S=0$.
+\end{theorem}
+
+File \leanpath{VOA/Core/GradedUnitarity.lean}:
+\begin{leancode}
+theorem eq_bot_of_bilinear_pos (β : BilinForm ℂ E) (S : Submodule ℂ E)
+    (hpos : ∀ x ∈ S, x ≠ 0 → ∃ r : ℝ, 0 < r ∧ β x x = (r : ℂ)) : S = ⊥ := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{BilinForm ℂ E} is a $\C$-bilinear form, \lean{Submodule ℂ E} a complex subspace,
+\lean{(r : ℂ)} the real number $r$ viewed as a complex number, and \lean{S = ⊥} says $S$ is the
+zero subspace. The statement is exactly Theorem~\ref{ch15:thm:bilpos}.
+\end{dictionary}
+
+\paragraph{Proof on paper.} If $x\neq0$ in $S$ has $\beta(x,x)=r>0$, then $ix\in S$ and
+$\beta(ix,ix)=i^2r=-r<0$, a contradiction.
+
+\begin{physics}
+Unitarity of a CFT is positivity of a \emph{Hermitian} inner product $\langle\cdot|\cdot\rangle$
+(antilinear in one slot); the Zamolodchikov metric, the BPZ form with an antilinear involution,
+reflection positivity are all Hermitian. A bilinear form can only be ``positive'' on a real form of
+the space. An earlier encoding of clause (vi) of the graded-unitarity conjecture of
+Arabi Ardehali--Beem--Lemos--Rastelli (a positivity condition) used a bilinear form and was therefore false for every
+VOA with a nonzero weight space, while its documentation called the conjecture open. Fixed by
+stating clause (vi) for a sesquilinear form (\lean{SesqForm}).
+\end{physics}
+
+\begin{status}
+Unconditional; standard axioms (it is part of the maintained audit). Recorded among the
+library's dead ends (\leanpath{README.md}, ``Known dead ends'').
+\end{status}
+
+\subsubsection{Other unsatisfiable or refutable predicates in the library}
+
+The library-wide register (\leanpath{README.md} ``Known dead ends'', and the project's internal session records) contains several more
+entries of kind (A). We list them with their certificates; the full fidelity treatment of each is
+in the chapter covering the relevant area.
+
+\begin{itemize}
+\item \textbf{\lean{GenFields} over the left ideal \lean{MRbot} is empty} (generators-and-OPE
+  presentation of the Virasoro VOA). File \leanpath{VOA/Core/NonlinearVirasoro.lean}:
+\begin{leancode}
+theorem not_nonempty_genFields_MRbot_virasoro (c : ℂ) :
+    ¬ Nonempty (GenFields (MRbot (virasoroOPE c))) := by
+\end{leancode}
+  The structure \lean{GenFields} asks for local fields generating a quotient of the tensor
+  algebra by an ideal of relations; with the \emph{left} ideal \lean{MRbot} the creation part of
+  the generating field is forced to be left multiplication, and then the mode commutator modulo a
+  left ideal cannot be a sum of delta functions. The certificate is an explicit linear functional
+  on words of length three that kills \lean{MRbot} but must equal $(-1)^N$ by locality of order $N$.
+  A step documented as ``precisely the open step'' was thus false; the correct ideal is the
+  two-sided \lean{MRtwo}.
+\item \textbf{The formal $\C[[q]]$ route says nothing about the upper half-plane.} File
+  \leanpath{VOA/Modularity/FormalSpecialization.lean}:
+\begin{leancode}
+theorem no_algHom_powerSeries_X_ne_zero (φ : PowerSeries ℂ →ₐ[ℂ] ℂ) {q₀ : ℂ} (hq : q₀ ≠ 0) :
+    φ PowerSeries.X ≠ q₀ := by
+\end{leancode}
+  A $\C$-algebra homomorphism $\C[[q]]\to\C$ must send $q$ to $0$ (if $q\mapsto q_0\ne0$, then
+  $1-q/q_0$, a unit of $\C[[q]]$, would map to $0$). So ``evaluation at $q_0=e^{2\pi i\tau}$''
+  does not exist on formal power series and no Nakayama argument over $\C[[q]]$ reaches a point of
+  the upper half-plane.
+\item \textbf{\lean{BlockFiniteDim.zhu_modularity_of_analytic_finrank_le} is vacuous}: its
+  hypothesis \lean{hle} is refuted by \lean{not_finrank_analyticSlashAmbient_le} in
+  \leanpath{VOA/Modularity/SlashAmbientObstruction.lean}. (The underlying cause was a helper
+  definition returning a junk value on inhomogeneous vectors.)
+\item \textbf{\lean{qInjOnBottomResidual} is false} for $\dim A(V)>1$ (free-boson
+  counterexample, certificate \lean{qInjOnBottom_false_of_balancing_ne_bot} in
+  \leanpath{VOA/Modules/ZhuVermaAnArchSdBalancedBottom.lean}).
+\item \textbf{\lean{SimpleAModsRealized} as first typed was false}: it forced every simple
+  $A(V)$-module to be finite-dimensional, false for $A(V^k(\mathfrak{sl}_2))\cong U(\mathfrak{sl}_2)$;
+  now scoped under finite-dimensionality of $A(V)$.
+\item \textbf{\lean{FZModeDescent} is false} (free-boson counterexample: only the zero mode
+  descends to the Frenkel--Zhu quotient).
+\item \textbf{Zhu's Lemma 4.4.4 in ``unitriangular'' form is false} (it would force
+  $Z(L[-n]x)=0$ for $n\ge3$); Zhu carries a Virasoro-primary hypothesis for this reason.
+\item \textbf{General \lean{DiagonalFHL} is not a theorem}: full invariance for an arbitrary
+  bilinear form forces symmetry conditions on $V_1$; the canonical invariant form is obtained by a
+  different route.
+\end{itemize}
+
+\begin{warning}
+\textbf{A mirror-image mistake.} The register also contains a \emph{retracted} dead end: an earlier
+note declared the structure \lean{Sl2Presentation} unsatisfiable, judging from the \emph{name} of
+an ideal (\lean{casIdeal}) without reading its one-line definition; it was satisfiable, and the
+note retired live work. Lesson: before declaring a predicate
+unsatisfiable, read the definition, not the name; a false ``do not attempt'' is as harmful as a
+false ``done''.
+\end{warning}
+
+\subsection{Conclusions satisfied by trivial objects}
+
+\subsubsection{The square-zero TRAP}\label{ch15:sec:trap-sqzero}
+
+The first ``definition of done'' for $\Vnat$ in \leanpath{Notes/MonsterRoadmap.md} listed five
+targets: a VOA structure on $\Vnat=V_\Lambda^+\oplus(V_\Lambda^T)^+$, central charge 24,
+$V_1=0$, $\dim V_2=196884$, and graded dimension $J$. While building the reconstruction interface
+(\lean{reconstruct_nat}, Chapter~\ref{ch:10}), an agent noticed that all its hypotheses hold when the
+twisted$\times$twisted$\to$untwisted operator $\overline W$ is set to $0$.
+
+\begin{proposition}[The square-zero extension]\label{ch15:prop:sqzero}
+Let $U$ be a vertex operator algebra and $M$ an ordinary $U$-module with integral weights. On
+$U\oplus M$ define $Y(u,z)=\mathrm{diag}(Y_U(u,z),Y_M(u,z))$ for $u\in U$ and, for $t\in M$,
+$Y(t,z)(u',t')=(0,\;e^{zL_{-1}}Y_M(u',-z)t)$. Then $U\chXVsq M$ is a vertex operator algebra with
+the same vacuum, conformal vector and central charge as $U$, and graded dimension
+$\dim U_n+\dim M_n$. It is not simple when $M\ne0$: $0\oplus M$ is a proper ideal.
+\end{proposition}
+
+\paragraph{Proof on paper.} The products are $u\cdot u'\in U$, $u\cdot t\in M$, $t\cdot u\in M$ (by
+skew-symmetry) and $t\cdot t'=0$. Locality of $Y(t)$ with $Y(t')$ holds because both map $U\oplus M$
+into $0\oplus M$ and kill $0\oplus M$, so their products vanish; the remaining locality relations
+are module locality and the intertwining property of the skew map $W$. The other axioms reduce to
+those of $U$ and $M$. The subspace $0\oplus M$ is stable under all modes and does not contain the
+vacuum.
+
+For $U=V_\Lambda^+$ and $M=(V_\Lambda^T)^+$ this object satisfies all five original targets,
+because the graded dimension depends only on the underlying graded vector space. It is not $\Vnat$.
+In Lean the statement is not formalised as a separate theorem; it is recorded in
+\leanpath{Notes/MonsterRoadmap.md} and in \leanpath{Notes/M8GluingPlan.md} (``Status, after M8d
+part 1''), and the defence against it is built into the final theorem in two ways: the vertex map
+is pinned to \lean{Ynat VnatAxioms.wbarL} with the genuine adjoint $\overline W$, proved nonzero, and
+the conclusion contains \lean{V.IsSimple}. File \leanpath{VOA/Moonshine/VnatGenuine.lean}:
+\begin{leancode}
+theorem leechWbar_ne_zero : leechWbar ≠ 0 := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{leechWbar} is the family $t\mapsto\overline W(t,z)$ of operators $(V_\Lambda^T)^+\to V_\Lambda^+$
+defined as the adjoint of the skew intertwiner $W$ with respect to the invariant forms
+(Chapter~\ref{ch:09}). The proof exhibits a nonzero coefficient: for weight-2 twisted states,
+$\overline W(t)_{(3)}t'=\mathrm{TPForm}(t',t)\,\mathbf 1$, and the form \lean{TPForm} is
+nondegenerate. Nonvanishing of $\overline W$ alone would not exclude every degenerate structure; it is
+\lean{IsSimple} that does, via nondegeneracy of the invariant form $B^\natural=B_V\oplus\mathrm{TPForm}$
+(\lean{SimpleNat.vnatVOA_isSimple}, Chapter~\ref{ch:10}), which fails for the square-zero extension
+because the $\overline W$-block of invariance is exactly the adjunction $\overline W=W^\dagger$.
+\end{dictionary}
+
+\begin{physics}
+The square-zero extension is a chiral algebra in which the twisted-sector states never fuse
+back into the untwisted sector: $\mathrm{tw}\times\mathrm{tw}\to 0$. It has the right partition
+function $J(\tau)$ but it is not a unitary CFT: its two-point functions of twisted states vanish
+($\langle t|t'\rangle$ would be computed by $t\cdot t'$ landing on the vacuum), so the twisted states
+are null. A physicist's check that the theory is non-degenerate is exactly the nondegeneracy of the
+Zamolodchikov two-point function, which is what simplicity encodes here. The lesson is a classic
+one: the partition function does not determine the operator algebra.
+\end{physics}
+
+\begin{status}
+\lean{leechWbar_ne_zero} and \lean{SimpleNat.vnatVOA_isSimple} are proved; the latter was first
+conditional on \lean{htt} (twisted$\times$twisted locality), which is discharged in the final
+theorem: for the final structure, \lean{V.IsSimple} is the last clause of \lean{VOA.Moonshine.moonshine}
+itself (\leanpath{VOA/Moonshine/TopPairs.lean}), which has no hypotheses. The square-zero proposition itself is argued on paper only.
+\end{status}
+
+\begin{warning}
+\textbf{Lesson.} For every target ask what else satisfies it. Numerical invariants (dimensions,
+characters) do not determine algebraic structure. ``Done'' for $\Vnat$ requires simplicity, or
+equivalently a nondegenerate invariant form.
+\end{warning}
+
+\subsubsection{The $\varphi=0$ trap and the hits\_cyclic clause}\label{ch15:sec:phi0}
+
+The triality $\sigma$ on the twisted sectors was reduced (Chapter~\ref{ch:12}) to top-level data:
+a linear map $\varphi$ from the weight-2 space of $V_3^+$ to $T_s^+$ intertwining zero modes. File
+\leanpath{VOA/Moonshine/SigmaExistLeech.lean}:
+\begin{leancode}
+structure TopSigmaV3 (s : ZMod 2) (φ : VPlus →ₗ[ℂ] TP) : Prop where
+  /-- `φ` maps the top level of `V₃⁺` into `T_s⁺`. -/
+  maps_frame : ∀ x ∈ OmegaV3, φ x ∈ TPframe s
+  /-- `φ` maps the top level into weight 2. -/
+  maps_weight : ∀ x ∈ OmegaV3, φ x ∈ plusModule.weight (2 : ℂ)
+  /-- Zero-mode intertwining: `φ (o(a) x) = o(σ a) φ x` for every homogeneous `a ∈ V₀⁺`. -/
+  zero_mode : ∀ (k : ℤ) (a : V0Sub.carrier), (a : VPlus) ∈ leechVOAPlus.grading k →
+    ∀ x ∈ OmegaV3, φ (actV a (k - 1) x) = actT (sig a) (k - 1) (φ x)
+  /-- `φ` hits a cyclic vector `h₀(−½)𝟙 ⊗ t₀` of `T_s⁺`. -/
+  hits_cyclic : ∃ t₀ : TLeechT, t₀ ∈ leechFrameT s ∧ t₀ ≠ 0 ∧ ∃ x ∈ OmegaV3, φ x = x0T t₀
+\end{leancode}
+\begin{warning}
+Without the last clause, $\varphi=0$ satisfies the first three, and the existence theorem
+\lean{sigmaV3T_exists_of_top} would produce the zero intertwiner, from which nothing about $\sigma$
+follows. \lean{hits_cyclic} (its image contains a nonzero cyclic vector $h_0(-\frac12)\mathbf
+1\otimes t_0$) excludes this. Lesson: every existence-by-reduction statement needs a
+non-degeneracy clause, and the referee should look for it.
+\end{warning}
+
+\subsubsection{A sign that is a condition, not a normalisation}
+
+The data of $\sigma$ (\lean{SigmaData}) leave free $\Phi\mapsto c\Phi$, $\Psi\mapsto c^{-1}\Psi$ and
+$\Theta\mapsto-\Theta$. One might think every scalar condition can be met by normalising. The
+condition \lean{ThetaTop} says $\mathrm{TPForm}(\Theta\cdot,\Theta\cdot)=\mu\,\mathrm{TPForm}$ with
+$\mu=+1$; since $\Theta^2=1$ and the form is unique up to scalar, $\mu=\pm1$, and $\mu$ is
+\emph{invariant} under $\Theta\mapsto-\Theta$. If $\mu$ were $-1$, both eigenspaces of $\Theta$
+would be isotropic, the trace of $\Theta$ on the top would be $0$, and the key identity would be
+unsatisfiable. Numerically $\mu=1$ to $4\times10^{-12}$ and $\tr\Theta_J=-112\ne0$
+(Section~\ref{ch15:sec:num-sigmakey}); in Lean $\mu=+1$ is proved (\lean{thetaTop_mkData}).
+Similarly the final identity holds for $\varepsilon=+1$ (\lean{topPairs_one}); that it fails for
+$\varepsilon=-1$ is argued on paper only (it would force $\Theta_0(o(x_n)\Phi_0x_n)=0$).
+
+\subsection{Wrong formulas and conventions}
+
+\subsubsection{The unmodified triality of Dolan--Goddard--Montague: 6372 versus 2324}\label{ch15:sec:6372}
+
+The triality $\sigma$ on the Niemeier lattice VOA $V_N$, $N=N(A_1^{24})$, is built from the 24
+copies of $\widehat{\mathfrak{sl}}_2$ at level one. Dolan, Goddard and Montague give it as
+$\sigma=\prod_j\exp\bigl(\tfrac{i\pi}{\sqrt2}(J_0^{j1}+J_0^{j2})\bigr)$ (their (7.5)) and, for
+$d/8$ odd, a modification inserting a sign $z_l=(-1)^{x_l}$ in one coordinate (their (7.8)). The
+docstring of \leanpath{VOA/Moonshine/TrialityGolay.lean} records a trace computation that decides
+between them.
+
+\begin{proposition}[Trace certificate]\label{ch15:prop:trace}
+On $(V_0^+)_2$, $\dim=49428$,
+$\tr(\sigma|(V_0^+)_2)=300+8\sum_{c\ \text{octad}}(-1)^{c\cdot u}$, where $u=0$ for (7.5) and
+$u=e_l$ for (7.8). Hence $\tr=6372$ for (7.5) and $\tr=2324$ for (7.8).
+\end{proposition}
+
+\paragraph{Proof on paper.} $(V_N)_2$ decomposes under $\mathfrak{sl}_2^{24}$ into Fock and root
+states and the $759\cdot2^8$ octad states $e^{n}$, $n=\pm1$ on an octad. Projecting to the fixed
+points of $\langle\chi,\Theta\rangle$ with $\tfrac14\sum_{k}$ (legitimate because $\sigma$ normalises
+this group) and using the $SU(2)$ characters of $\sigma_j$ on spin $\frac12$ and spin $1$, the
+non-octad contribution is $300$ and each octad contributes $8(-1)^{c\cdot u}$. There are 759 octads,
+so $u=0$ gives $300+8\cdot759=6372$. Each point lies in 253 octads, so for $u=e_l$ the sum is
+$(759-253)-253=253$, giving $300+8\cdot253=2324$.
+
+Now suppose $\sigma$ were the restriction of an automorphism $\tilde\sigma$ of $\Vnat$, i.e.\ (by
+FLM) of an element of the Monster $\mathbb M$, with $V_0^+=(\Vnat)^E$, $E\cong2^2$. Then
+$\tr(\sigma|V_0^+{}_2)=\frac14(\tr\tilde\sigma+\tr\tilde\sigma k_0+2\tr\tilde\sigma k_1)$ on
+$\Vnat_2=1+196883$, with $\tilde\sigma,\tilde\sigma k_0$ involutions and $\tilde\sigma k_1$ of order
+4. The largest values of the Monster characters on $196883$ for such elements are $4371$ (class 2A)
+and $275$ (class 4A), so the trace is at most $\frac14(4372+4372+2\cdot276)=2324$. Thus 6372 is
+impossible and 2324 saturates the bound.
+
+\begin{physics}
+The trace of a symmetry on a weight space is a twined partition-function coefficient: it is what
+a physicist would compute to identify which symmetry of the Moonshine CFT an operator is. Here a
+character-table bound from the Monster acts as a consistency check on a formula copied from a
+paper: the unmodified rotation of the 24 $SU(2)$ currents is a symmetry of the Niemeier theory but
+not one that extends to the Moonshine theory.
+\end{physics}
+
+\begin{status}
+Argued on paper (in the file docstring) and checked numerically: with the real Golay code the
+weight-2 model (\leanpath{scripts/moonshine/numerics/triality/}) reproduces $\dim(V_0^+)_2=49428$ and
+the traces 6372 and 2324, and at module level the unmodified $\sigma$ maps $V_3^+$ to the wrong
+twisted summand (Section~\ref{ch15:sec:num-triality}). The Monster bound uses the Monster character
+table, which is cited, not formalised. In Lean the library's \lean{golaySigma} is defined in the
+(7.8) form; nothing in Lean depends on the bound.
+\end{status}
+
+\subsubsection{Sign conventions that each turned out to be necessary}
+
+The numerical model of Section~\ref{ch15:sec:num-e8} tested the twisted$\times$twisted locality
+relation (4.23) in the library's conventions and then broke one convention at a time. Each of the
+following ``simplifications'' makes (4.23) fail with relative residual $1.7$--$2.0$, and each is
+therefore recorded as a dead end.
+\begin{enumerate}
+\item \textbf{The $\varepsilon(\alpha,\alpha)$ sign on $T$.} The invariant form on the 4096-dimensional
+  module $T$ must satisfy $B(e_\alpha t,t')=(-1)^{\langle\alpha,\alpha\rangle/2}B(t,e_\alpha t')$
+  (File \leanpath{VOA/Moonshine/TForm.lean}, \lean{TForm_eT}), the factor $(-1)^{L_0}$ of the
+  contragredient. The ``group'' sign $\varepsilon(\alpha,\alpha)$ (transpose $=$ inverse) differs from
+  it by a basis-dependent character, and the corresponding form is symmetric or \emph{alternating}
+  according to an Arf invariant that depends on the chosen basis: for random bases of $E_8$ the
+  count $\#\{x:x\cdot Mx=0\}$ is $136$ or $120$
+  (\leanpath{VOA/Moonshine/TFormLattice.lean}).
+\item \textbf{The positive Fock form.} The invariant form on $S[\theta]$ must satisfy
+  $h(m)^{t}=-h(-m)$ (\lean{fockForm}, File \leanpath{VOA/Moonshine/InvFormFock.lean}); the positive,
+  Hermitian-looking form $h(m)^t=+h(-m)$ transposes the dressing $E^-E^+(v)$ to $E^-E^+(-v)$ and
+  breaks invariance (sympy check recorded in the file).
+\item \textbf{A constant charge sign.} On $V_L$ the form is
+  $B(p\otimes e^\alpha,q\otimes e^\beta)=\delta_{\alpha+\beta,0}\,c(\alpha)F(p,q)$ with
+  $c(\alpha)=(-1)^{\langle\alpha,\alpha\rangle/2}\varepsilon(\alpha,\alpha)$, which is \emph{not} constant
+  because the library's cocycle does not satisfy $\varepsilon(\gamma,\gamma)=(-1)^{\langle\gamma,\gamma\rangle/2}$.
+  File \leanpath{VOA/Moonshine/NondegLattice.lean}:
+\begin{leancode}
+noncomputable def chSign (α : L.carrier) : ℂ :=
+  (-1 : ℂ) ^ (LatGen.halfNorm L α) * latticeCocycle L α α
+\end{leancode}
+  Setting $c\equiv1$ breaks (4.23).
+\item \textbf{Dropping $(-1)^w$ in $\overline W$.} The adjoint formula carries a weight sign; dropping it
+  breaks (4.23).
+\item \textbf{The super sign.} The anticommutator version of the twisted$\times$twisted relation
+  fails (residual $\approx2$): with the library's signs the extension is a VOA, not a vertex
+  superalgebra.
+\end{enumerate}
+
+\begin{physics}
+These are the familiar sign headaches of lattice CFT: the cocycle $\varepsilon$ that makes vertex
+operators $e^{i\alpha\cdot X}$ mutually local, the BPZ conjugation $(-1)^{L_0}$ and $z^{-2L_0}$ of a
+primary field, and the reality condition $a_n^\dagger=a_{-n}$ versus the bilinear transpose
+$a_n^t=-a_{-n}$ for a chiral boson $\partial X$ (the bilinear form differs from the Hermitian one by
+$X\mapsto -X$ on the antilinear side). Each sign controls whether the twisted-sector OPE is
+associative; getting one wrong gives a theory that is not local.
+\end{physics}
+
+\subsection{Ambiguities}
+
+\subsubsection{The golayE ambiguity}\label{ch15:sec:golayE}
+
+The automorphism $\sigma$ of $V_0^+$ (\lean{v0Sigma}) is transported from $V_N$ through an
+isomorphism that involves a character \lean{golayE} chosen by \lean{Classical.choose} from an
+existence statement. The specification determines only twice the character.
+
+\begin{theorem}[golayE is not determined]\label{ch15:thm:golayE}
+There are two characters $e_1,e_2$ of $\Lambda_0$ with values in $\C^\times$, both satisfying the
+specification $\psi=g_e\,\theta\,g_e^{-1}$, whose values at the preimage $w_0$ of $8e_0$ differ by a
+sign.
+\end{theorem}
+File \leanpath{VOA/Moonshine/TrialityTwSigma.lean}:
+\begin{leancode}
+theorem golayE_not_determined :
+    ∃ e₁ e₂ : lam0.carrier →+ Additive ℂˣ,
+      (∀ x, lam0Psi x = charLat lam0 e₁ (thetaLat lam0 (charLat lam0 (-e₁) x))) ∧
+      (∀ x, lam0Psi x = charLat lam0 e₂ (thetaLat lam0 (charLat lam0 (-e₂) x))) ∧
+      ∃ w₀ : lam0.carrier, inclΛ w₀ = frameW ∧ charVal lam0 e₂ w₀ = -charVal lam0 e₁ w₀ := by
+\end{leancode}
+\begin{dictionary}
+\lean{lam0.carrier →+ Additive ℂˣ} is a group homomorphism from $\Lambda_0$ to the multiplicative
+group $\C^\times$ (written additively); \lean{charLat lam0 e} is the induced automorphism $g_e$ of
+$V_{\Lambda_0}$ ($e^\alpha\mapsto e(\alpha)e^\alpha$); \lean{thetaLat} is $\theta$; \lean{lam0Psi} is
+the target involution $\psi$; \lean{inclΛ w₀ = frameW} says $w_0$ maps to $8e_0$ in the Leech
+lattice; \lean{charVal} evaluates. The proof takes $e_2=e_1+e_\beta$ with $e_\beta=(-1)^{\langle\beta,\cdot\rangle}$,
+$\beta=(5,1^{23})$, which has $2e_\beta=0$ and $\langle\beta,8e_0\rangle$ odd.
+\end{dictionary}
+\begin{physics}
+Changing the choice conjugates $\sigma$ by the symmetry $g_\beta\oplus(1\otimes e_\beta)$ of the
+Moonshine CFT, which exchanges the two twisted subsectors $T_0^+$ and $T_1^+$. Physically the
+question ``which twisted sector does triality map the untwisted sector $V_3^+$ to'' has no
+convention-independent answer until a choice is made; both answers describe isomorphic theories.
+\end{physics}
+\begin{status}
+Unconditional; \texttt{\#print axioms} re-run: standard axioms. Consequence: downstream statements
+are phrased with ``$\exists s$'' (e.g.\ \lean{topSigma_both}); one must not try to prove that
+$\sigma(V_3^+)$ is \lean{TPframe 0} (or \lean{1}) from the definitions.
+\end{status}
+
+\subsubsection{The non-computable cocycle, and why it did not matter}
+
+The Leech cocycle is \lean{latticeCocycle} over a basis obtained from \lean{Module.Free.chooseBasis},
+a choice; and the oscillator frame is the $\sqrt G$ frame, not the Golay frame. So no explicit sign
+$\varepsilon(\alpha,\beta)$ is computable, and every identity must be proved symbolically. During the
+top-level work this was flagged as a design issue: an explicit Golay-frame model transported via
+functoriality might simplify the remaining proofs. The agent who completed the triality reported,
+and the supervisor confirmed by inspection of the finished proofs, that no concrete cocycle value
+was ever needed: everything reduced to bimultiplicativity, the commutator
+$\varepsilon(\alpha,\beta)\varepsilon(\beta,\alpha)=(-1)^{\langle\alpha,\beta\rangle}$, and Golay-code facts.
+The refactor was not done. Related design point: comparing cocycles of a sublattice and of the
+ambient lattice needs a $\Z/4$-valued coboundary; a $\pm1$-valued one would commute with $\theta$
+only up to a character.
+
+\subsubsection{Two lattice types}
+There are two structures called \lean{IntegralLattice}: the vendored \lean{_root_.IntegralLattice} and
+\lean{VOA.IntegralLattice}; inside \lean{namespace VOA} the bare name means the latter. The bridge
+\lean{IntegralLattice.ofEbeling} transports between them. A wrong resolution of a shadowed name
+typechecks and yields an unprovable goal; the same trap is recorded library-wide for
+\lean{mode_iterate} and \lean{mode_commutator}.
+
+\subsection{Circular and insufficient reductions}\label{ch15:sec:circ}
+
+\begin{enumerate}
+\item \textbf{The vacuum trick for $(V_\Lambda^T)^+$ is circular.} The untwisted sectors are cyclic
+  by the ``vacuum trick'' (a Borcherds identity applied to $u_{(n)}\mathbf 1$). The analogous route
+  for the twisted sector needs the $\Vnat$ Borcherds identity for three twisted vectors, which is
+  (4.23), the very relation being proved. Commutator formulas with one untwisted argument do not
+  imply it. Twisted cyclicity (\lean{cyclic_TPframe}) was proved by an explicit route inside the
+  twisted module.
+\item \textbf{\lean{YnatT_eq_of_creates} is circular for the key identity.} File
+  \leanpath{VOA/Moonshine/M8h0Gap.lean}:
+\begin{leancode}
+theorem YnatT_eq_of_creates (hspan : ModeSpan g) (x : TP) (Ψ : FormalDist (End ℂ Vnat))
+    (hcov : DCovariant Tnat Ψ) (h0 : Ψ 0 vacNat = ((0 : SkewVP), x))
+    (hneg : ∀ q : ℤ, q < 0 → Ψ q vacNat = 0) (hU : ∀ v : SkewVP, Local Ψ (YnatU v))
+    (hT : ∀ j, Local Ψ (YnatT leechWbar (g j))) : YnatT leechWbar x = Ψ := by
+\end{leancode}
+  It identifies a field with $Y^\natural(0,x)$ if the field is local with \emph{all} $Y^\natural(g_j)$,
+  twisted generators included (\lean{hT}). Applied to $\Psi=\sigma Y^\natural(v)\sigma^{-1}$, the
+  hypothesis \lean{hT} is twisted$\times$twisted locality, i.e.\ the goal. The replacement uses
+  locality with $V_0^+$ only. File \leanpath{VOA/Moonshine/M8hKeySigma.lean}:
+\begin{leancode}
+theorem eq_zero_of_V0local (F : FormalDist (End ℂ Vnat))
+    (hloc : ∀ u : V0Sub.carrier, Local F (YnatU (u : VPlus)))
+    {β : leech.carrier} (hβ : β ∉ lambda0) (t : ZMod 2 → TLeechT)
+    (ht : ∀ s, t s ∈ leechFrameT s) (ht0 : ∀ s, t s ≠ 0)
+    (hvac : ∀ p, F p vacNat = 0) (h3 : ∀ p, F p (frameX0P β, 0) = 0)
+    (hT : ∀ s p, F p (0, x0T (t s)) = 0) : F = 0 := by
+\end{leancode}
+  Similarly, using $V_3^+$-locality of $L_v=\sigma Y^\natural(v)\sigma$ is circular: it is equivalent to
+  the identity for $b\in V_3^+$.
+\item \textbf{``Irreducible tops $\Rightarrow$ Zhu generation'' is circular.} The numerics showed that
+  the weight-2 zero modes generate $\End(\mathrm{top})$ on every top (Section~\ref{ch15:sec:num-zhu}).
+  This does not prove \lean{ZhuGenerated}: the set $S=\{a:\varphi o(a)=o(\sigma a)\varphi\}$ being
+  everything is exactly the conclusion; irreducibility gives only a dichotomy (the graph of
+  $\varphi$, or everything), and excluding the second case needs information about $A(V_0^+)$ beyond
+  its image. What irreducibility does give is uniqueness of $\varphi$ up to scalar.
+\item \textbf{$V_0^+$ is not strongly generated by its weight-2 space.} $\dim$ of the weight-3 Fock
+  part is $576$, while $L_{-1}$ of weight 2 gives only $300$. So the classical lemma ``strong
+  generators are Zhu generators'' does not apply; the 0-mode products $a_{(0)}b$ are essential
+  (filtered commutator $a*b-b*a\equiv a_{(0)}b$).
+\item \textbf{Weak generation does not reduce the top clause.} $V_\Lambda^+$ is generated under
+  $n$-th products by the $e^\beta+e^{-\beta}$ (\lean{leechPlus_generated}), but $o(a_{(n)}b)$ on the
+  top is not determined by $o(a)$, $o(b)$ on the top. Only Zhu generation (closure under $*$ modulo
+  $O(V)$) reduces the zero-mode clause to generators.
+\item \textbf{(4.23) is not decided by finitely many low-weight coefficients}: the top four-point
+  function is $z_2^af(z_2/z_1)$ with $f$ an infinite series whose rationality is the content; no
+  finite set of coefficients certifies it without a closed form or an ODE.
+\item \textbf{Top-level vanishing does not imply that an intertwiner vanishes} without the
+  Frenkel--Zhu bimodule $A(M)$: the top-level part of the key identity is necessary, not
+  sufficient. Machine-checked replacement: top-level \emph{output} vanishing for \emph{all} states
+  $v$ suffices (\lean{keySkew_of_keyTopV}); finiteness then comes from bimodule generation.
+\item \textbf{Induction on $\wt v+\wt b$} via the defect commutator and skew-symmetry does not
+  close (zero-mode reductions raise the state weight); skew-symmetry alone does not decide
+  \lean{KeySkew} (it says $J$ is a fixed point of an involution, which allows components in both
+  eigenspaces); the relation (4.22) gives no new information about the key block.
+\item \textbf{Weight-2 quadratic left factors alone fail in charged degree 1}: the exact
+  charged-vacuum formula \lean{quadF_lead_one} was needed (Fock spanning).
+\item \textbf{Ground states cannot be reached from Fock-dressed sources} (weight count), so the
+  lattice statement \lean{GroundLattice} is necessary for the filtered criterion, not merely
+  convenient.
+\item \textbf{\lean{Modules.Fusion.Intertwiner} is commutator-only.} File
+  \leanpath{VOA/Modules/Fusion.lean}:
+\begin{leancode}
+structure Intertwiner (A : OrdVModule W M) (B : OrdVModule W N) (C : OrdVModule W P) where
+  /-- The mode data `𝒴_s(u)x`. -/
+  modes : IntertwinerModes M N P
+  /-- Lower truncation: `𝒴_s(u)x = 0` for `Re s ≫ 0`. -/
+  truncation : ∀ (u : M) (x : N), ∃ s₀ : ℝ, ∀ s : ℂ, s₀ ≤ s.re → modes s u x = 0
+  /-- The defining intertwining commutator (membership in `IntertwinerSpace`). -/
+  isIntertwiner : modes ∈ IntertwinerSpace A B C
+\end{leancode}
+  It has truncation and the commutator formula but no $L_{-1}$-derivative property and no
+  associativity, so it is weaker than an intertwining operator of Frenkel--Huang--Lepowsky. Do not
+  route uniqueness arguments through it; the Moonshine proof avoids it entirely. Its fusion
+  coefficient is discussed in Section~\ref{ch15:sec:debt}.
+\end{enumerate}
+
+\begin{warning}
+\textbf{Lesson for (E).} For each reduction write down what each step \emph{uses}, not only what it
+proves. Circularity in this project always entered through a hypothesis that looked general
+(``local with all generators'', ``a uniqueness lemma'') but specialised to the goal.
+\end{warning}
+
+\subsection{Combinatorial and numerical pitfalls}
+\begin{itemize}
+\item \textbf{Random sign sampling misses lattice exceptions.} In the ground-state step of Zhu
+  generation the exceptional families $E_2=\{(\pm1)^{24}:\text{negative set}\in\mathcal G\}$ and
+  $E_3=\{s+2s_ie_i:N(s)\Delta\{i\}\in\mathcal G\}$ are single sign classes indexed by Golay
+  codewords; random sampling of signs found only $E_1=\{\pm4e_i\}$. $E_2,E_3$ were found by hand
+  and confirmed by exhaustive enumeration. Use orbit structure or exhaustive enumeration.
+\item \textbf{Do not exclude $\alpha=\beta$} in the ground product with $\langle\alpha,\beta\rangle\ge1$:
+  $\gamma=2\alpha$ has $\gamma/2$ as its only partner, and an earlier \lean{GroundRel} with
+  $\alpha\ne\beta$ was too weak.
+\item \textbf{Low-order traces do not distinguish modules}: $\tr o(u)$ and $\tr o(u)o(v)$ agree on
+  all six weight-2 $V_0^+$-modules; the $V_3^+/V_3^-$ distinction lives in long loops $n\to-n$.
+\item \textbf{Ground-state rationality is not a unimodularity test}: $D_8$ also gives a rational
+  four-point function.
+\item \textbf{Left action alone} (no 0-modes) gives rank $0/24$ at weight 3 in the bimodule test.
+\end{itemize}
+
+\subsection{Tooling and process traps}
+\begin{itemize}
+\item \textbf{\lean{abbrev ExtraT} times out.} File \leanpath{VOA/Moonshine/ExtraspecialModule.lean}:
+\begin{leancode}
+noncomputable abbrev ExtraT : Type := Rep (cocMat L) (isUnit_det_cocMat L hEven hU)
+\end{leancode}
+  Instance search for the scalar action through the \lean{abbrev} times out; downstream code uses
+  \lean{Rep (cocMat L) _} directly.
+\item \textbf{The audit trap} \lean{-DmaxSynthPendingDepth=3} (Section~\ref{ch15:sec:trap}).
+\item \textbf{\lean{ring} inside \lean{first}} silently ``succeeds'' (falls back to \lean{ring_nf});
+  use \lean{ring1}. \textbf{\lean{ext} on a \lean{FormalDist₂}} descends too far; use
+  \lean{FormalDist₂.ext}.
+\item \textbf{Disk and pickles in numerics.} The first triality pipeline wrote multi-GB pickled
+  intermediates (one stage alone about 1\,GB, about 2\,GB in total); they were deleted, and the
+  KeySkew numerics were rebuilt to compute $\sigma$ block by block with a cache of about 68\,MB. Scripts
+  first lived in a temporary session scratchpad and had to be copied to
+  \leanpath{scripts/moonshine/numerics/} to survive; paths inside them may need adjusting.
+\item \textbf{A naive rename.} When the library was renamed from \lean{MoonshineVOA} to \lean{VOA}, a case-insensitive substitution would have destroyed the genuine
+  monstrous-moonshine module names (\lean{MoonshineHauptmodul}, \lean{MoonshineModule}, \ldots);
+  only the exact token was substituted.
+\item \textbf{Concurrent sessions in one tree} invalidated recorded builds
+  (Section~\ref{ch15:sec:build}).
+\item \textbf{Stale prose} (Section~\ref{ch15:sec:agents}, and Section~\ref{ch15:sec:debt}).
+\end{itemize}
+
+\subsection{Documentation debt and open library issues found while writing the book}\label{ch15:sec:debt}
+
+The authors of the other chapters, reading every quoted declaration against its source, recorded
+discrepancies. Each item below was re-checked against the source for this chapter.
+\begin{enumerate}
+\item \textbf{The structure called ``vertex algebra'' was not one} (\emph{resolved by renaming, 28 October 2026}). The
+  library's transcription of Gannon's Definition 5.1.3(a), then named \lean{VertexAlgebra} (and its ungraded companion
+  \lean{BareVA}), has no translation-covariance axiom, and VA1--VA5 imply neither covariance nor the Borcherds identity:
+  a three-dimensional counterexample was machine-checked for Chapter~\ref{ch:L03} (Theorem~\ref{l03:thm:counter}) and is
+  now in the library as \lean{TranslationCovariantCounterexample}. No theorem was wrong --- every Borcherds-type result
+  is stated for \lean{VertexOperatorAlgebra}, whose axiom (VOA3) supplies covariance --- but the name and an old
+  docstring were. The structures are now \lean{PreVertexAlgebra} and \lean{BarePreVA}; \lean{VertexAlgebra} is the
+  genuine notion (a \lean{PreVertexAlgebra} with the field \lean{translation_covariant}), and
+  \lean{VertexOperatorAlgebra.toVertexAlgebra} makes every VOA one. At the same time the VOA structure was layered:
+  \lean{GradedVertexOperatorAlgebra} (the FLM/Lepowsky--Li notion) and \lean{VertexOperatorAlgebra} (that, of CFT type).
+  Similarly the universal affine VOA $V^k(\mathfrak g)$, formerly \lean{simpleAffineVOA}, is now \lean{universalAffineVOA}
+  (Chapter~\ref{ch:L23}). The super analogue \lean{SuperVertexAlgebra} has the same omission and keeps its name
+  (Chapter~\ref{ch:L17}).
+\item \textbf{\lean{VOA.fusionCoeff} is identically $0$} (argued on paper, not formalised). File
+  \leanpath{VOA/Modules/Fusion.lean}:
+\begin{leancode}
+noncomputable def fusionCoeff (A : OrdVModule W M) (B : OrdVModule W N) (C : OrdVModule W P) : ℕ :=
+  Module.finrank ℂ (IntertwinerSpace A B C)
+\end{leancode}
+  Here \lean{IntertwinerModes M N P} is the space of all families $\C\to\mathrm{Hom}(M\otimes N,P)$
+  and \lean{IntertwinerSpace} the kernel of the commutator defect
+  $a^P_{(p)}\mathcal Y_s(u)x-\mathcal Y_s(u)a^N_{(p)}x-\sum_j\binom pj\mathcal Y_{s+p-j}(a_{(j)}u)x$, with no
+  truncation or grading condition. The defect relates $\mathcal Y_s$ only to $\mathcal Y_{s+\Z}$ and is
+  invariant under the shift $s\mapsto s+c$. Hence the kernel is the product, over the classes
+  $\rho\in\C/\Z$, of the spaces $K_\rho$ of solutions supported on $\rho$, and the shift by $c$ maps
+  $K_\rho$ isomorphically onto $K_{\rho+c}$. Either every $K_\rho$ is $0$ (and the space is $0$) or
+  all of the uncountably many $K_\rho$ are nonzero (and the space is infinite-dimensional). Mathlib's
+  \lean{Module.finrank} is $0$ for infinite-dimensional spaces, so in both cases
+  \lean{fusionCoeff} is $0$. So \lean{fusionCoeff} is not the fusion rule
+  $N^P_{MN}$.
+\item \textbf{\lean{SuperTwistedModule.jacobi}} is unrepaired (Section~\ref{ch15:sec:super}).
+\item \textbf{\lean{IsLowestWeight} does not require $M_h\ne0$.} File
+  \leanpath{VOA/Modules/ZeroModeMult.lean}:
+\begin{leancode}
+def IsLowestWeight (N : OrdVModule W M) (h : ℂ) : Prop :=
+  ∀ α : ℂ, N.weight α ≠ ⊥ → ∃ n : ℕ, α = h + n
+\end{leancode}
+  It says every occurring weight is in $h+\N$; it does not say that $h$ occurs. Any $h$ below the
+  true lowest weight by a natural number also qualifies. Statements using it as ``the lowest weight
+  is $h$'' should add $M_h\ne\bot$ where the intended meaning needs it.
+\item \textbf{\lean{SelfDual} is never linked to \lean{IsUnimodular}.} File
+  \leanpath{VOA/Foundations/Lattices.lean}:
+\begin{leancode}
+def SelfDual : Prop := ∀ x : ℝ ⊗[ℤ] L.carrier, x ∈ L.dual ↔ ∃ v : L.carrier, L.toReal v = x
+\end{leancode}
+  and in the vendored library, File \leanpath{VOA/LatticesAndCodes/Lattice/Defs.lean}:
+\begin{leancode}
+def IsUnimodular : Prop := IsUnit Γ.det
+\end{leancode}
+  (\lean{VOA.Modules.StronglyRational} has an unrelated \lean{SelfDual} for VOAs.) No theorem in the
+  library proves that the two lattice notions agree; results stated with one cannot be fed the other
+  without a bridge.
+\item \textbf{\lean{latMorph_injective} assumes equal rank.} The section variables of
+  \leanpath{VOA/Moonshine/LatticeMorph.lean} include \lean{(hr : rank K = rank L)}; the
+  functoriality $V_K\to V_L$ is therefore proved only for isometric embeddings between lattices of the
+  same rank (sublattices of finite index), which is all the Moonshine construction needs
+  ($\Lambda_0\subset\Lambda$, $\Lambda_0\subset N$), but not general functoriality.
+\item \textbf{Stale docstrings} (\emph{resolved, October 2026}). Several Moonshine file headers said ``Not imported by the
+  umbrella'' or ``not wired into the umbrella'' (for example \leanpath{VOA/Moonshine/TFormLattice.lean} and the
+  header of \leanpath{VOA/Moonshine/TopPairs.lean}); a search of both files on 28~October~2026 finds no such header. Route notes contain superseded estimates and ``open'' claims, corrected in later
+  ``Update''/``Status'' sections.
+\item \textbf{\leanpath{README.md} was behind the library} (\emph{resolved, October 2026}: the current README no longer
+  contains these sentences). It said ``It is not a formalization of the
+  Moonshine module $V^\natural$ itself'' and, under Scope, ``$V^\natural$ is not formalized''; and it said
+  ``The unrestricted minimal-model theorem remains open''. Both were false at the Moonshine commit:
+  \lean{VOA.Moonshine.moonshine} constructs $\Vnat$, and File
+  \leanpath{VOA/Examples/VirasoroMinimalRigidityComplete.lean} proves
+\begin{leancode}
+theorem minimal_graded_rigidity (p q : ℕ) (hp : 2 ≤ p) (hq : 2 ≤ q)
+    (hcop : p.Coprime q) :
+    IsRigidGraded (virasoroSimple (minimalCentralCharge p q)) := by
+\end{leancode}
+  with \texttt{\#print axioms} \lean{[propext, Classical.choice, Quot.sound]} (re-run for this
+  chapter).
+\item \textbf{\leanpath{Notes/MonsterRoadmap.md}, row of the twisted-module milestone,} called twisted associativity
+  \lean{star_iterate_range} ``unused but proved'' (\emph{resolved, October 2026}: the row now says it is used); it is used in
+  \leanpath{VOA/Moonshine/LatticeTwistedProduct.lean} and \leanpath{VOA/Moonshine/LatticeTwistedBase.lean}.
+\end{enumerate}
+
+\begin{physics}
+The fusion coefficient $N^P_{MN}$ counts the independent ways two primaries $M,N$ can fuse into $P$
+in the OPE; it is a small integer in a rational CFT. A ``count'' that is always zero is a warning
+sign that the space being counted is not the space of chiral vertex operators (it lacks the
+$L_{-1}$-covariance $\partial_z\mathcal Y=\mathcal Y(L_{-1}\cdot)$ and the conformal-weight constraint on
+the exponents $s$). Similarly, a lowest-weight condition that does not demand a lowest-weight
+\emph{state} would accept the empty spectrum.
+\end{physics}
+
+\subsection{Dead ends recorded in the later chapters (October 2026)}\label{ch15:sec:deadends-oct}
+
+The chapters added or extended in October 2026 each record their own dead ends in \lean{warning} boxes, with the
+counterexample or certificate. This subsection is an index to them, sorted by the six kinds (A)--(F) introduced at the
+start of this section, with one or two sentences per entry. The certificates and the full discussion are in the cited
+sections; where a finding is numerical or a paper argument only, the cited chapter says so, and so do we. The dead
+ends of Chapters~\ref{ch:L28} and~\ref{ch:L29} are recorded in their own sections
+(Sections~\ref{l28:sec:defects} and~\ref{l29:sec:deadends}); those of the chapter in preparation will be indexed with it.
+
+\paragraph{(B) Hypotheses that no intended object satisfies.}
+\begin{enumerate}
+\item \textbf{The \lean{hdec} criterion forces $C_2$-cofiniteness} (Chapter~\ref{ch:L11},
+  Section~\ref{l11:sec:genwords}, warning on page~\pageref{l11:warn:hdec}). The older surjectivity criteria for the jet
+  presentation of Li's associated graded algebra assume
+  $V=\operatorname{span}(\mathrm{gen}\cup\{\mathbf 1\})+C_2(V)$ for a finite family $\mathrm{gen}$. The theorems are
+  correct, but the hypothesis forces $R_V=V/C_2(V)$ to be finite-dimensional, i.e.\ $V$ to be lisse. A certificate
+  compiled for Chapter~\ref{ch:L11} (in a scratch file, standard axioms; not library code) proves
+  \lean{hdec} $\Rightarrow$ \lean{C2Cofinite W}. Combined with the unconditional non-lisseness of
+  $L_{-4/3}(\mathfrak{sl}_2)$ (Chapter~\ref{ch:L16}, Theorem~\ref{l16:thm:nonlisse}) this gives a machine-checked
+  counterexample: no finite family satisfies \lean{hdec} there. On paper the same holds for every quasi-lisse VOA that is not
+  lisse, including all the Deligne-series VOAs; with the currents as generators it already fails in weight two, where
+  $(R_V)_2\supseteq V(2\theta)\oplus\C Q\neq0$ (Chapter~\ref{ch:L24}, Section~\ref{l24:sec:presentation}). It also fails for
+  the lisse minimal models $M(2,2m+3)$, $m\ge2$, with the single generator $\omega$, because $[\omega]^2\neq0$ in
+  $R_V\cong\C[T]/(T^{m+1})$ (Chapter~\ref{ch:L20}, Section~\ref{l20:sec:vir}). The replacement, used throughout, is
+  spanning of Li's filtration by ordered generator words.
+\item \textbf{Graded unitarity ``for some flag'' is nearly empty} (Chapter~\ref{ch:L19}, Warning~\ref{l19:warn:freeflag};
+  paper argument). Because the predicate \lean{GradedUnitary B R F} quantifies over an arbitrary flag \lean{F}, any VOA with
+  a nondegenerate Hermitian form on each weight space satisfies it for a suitable flag, Lee--Yang included. The Virasoro
+  statement \lean{VirGradedUnitary} pins the flag and is unaffected. This complements the older defect, now repaired, in
+  which clause (vi) was false for every VOA (Theorem~\ref{ch15:thm:bilpos}; Chapter~\ref{ch:L19},
+  Warning~\ref{l19:warn:olddefect}).
+\end{enumerate}
+
+\paragraph{(C) Wrong formulas, and the limits of a single identity.}
+\begin{enumerate}
+\item \textbf{Feigin's homogeneity is false: $55$ versus $63$} (Chapter~\ref{ch:L26}, Section~\ref{l26:sec:open};
+  Chapter~\ref{ch:L27}, Section~\ref{l27:sec:feigin}). The natural mechanism behind Feigin's Corollary~2 (\emph{SIGMA} 4 (2008) 070; Corollary~2.2 in arXiv v1) for the $A_2$
+  total bound, that the fusion filtration is homogeneous for the grading by trivial factors, fails: at $N=2$ the degree-one
+  filtration piece has dimension $55$, while the sum of the dimensions of its projections is $63$ (exact computation).
+  The published repair (Kus--Littelmann) and an alternative route (Setia--Rani--Khandai) are recorded in those chapters.
+\item \textbf{The heat equation alone does not give $E_4^2=E_8$} (Chapter~\ref{ch:L25}, Section~\ref{l25:sec:qseries}):
+  at weight $8$ the relation contains $\sigma_7$ and no combination eliminates it; Mathlib's dimension formula is used
+  instead.
+\item \textbf{Star bounds by termwise domination or positive expansions} (Chapter~\ref{ch:L25},
+  Section~\ref{l25:sec:rigidity}; Chapter~\ref{ch:L27}, Section~\ref{l27:sec:deadends}). Domination proofs of $\le$ are
+  forced to be exact (proved on paper), the plethystic exponents of the MLDE solutions alternate in sign (observed), and
+  the $G_2$ step R3 of the Macdonald pilot admits no small rational certificate; the pilot was stopped and the $G_2$ input
+  stays named.
+\end{enumerate}
+
+\paragraph{(E) Circular or insufficient reductions.}
+\begin{enumerate}
+\item \textbf{The presentation route to the $A_2$ total bound is circular} (Chapter~\ref{ch:L26},
+  Section~\ref{l26:sec:open}): the surjection from the associated graded of the fusion model is free, and its
+  injectivity is the statement. In the same list: the naive truncated box overcounts ($72$ against $64$ at $m=2$); plain
+  tensor induction fails by fusion associativity, so the mixed models are needed; separating functionals by charge,
+  weight or $\theta$-degree fail from $N=3$; leading-term independence of Chari--Loktev words fails; ungraded counting in
+  the evaluation model carries no information. Chapter~\ref{ch:L27}, Section~\ref{l27:sec:deadends}, adds two traps of
+  the same kind: a toroidal mode splitting treated as an algebra map before passing to the associated graded, and a
+  shift image treated as an ideal although it contains the constant $1$.
+\item \textbf{The generator-symbol step of the Kus--Littelmann repair is insufficient for $D_4$} (Chapter~\ref{ch:L27},
+  Section~\ref{l27:sec:feigin}). The p.~437 step infers that the symbols of the whole annihilator kill the fusion vector from the
+  symbols of the defining relations. For $D_4$ at $m=2$ those symbols generate an ideal of codimension $29^2+1$, one too many,
+  and an explicit element $\tilde a$ of the annihilator has a symbol outside it (computation, not Lean). The statement the step is
+  meant to prove holds at $m=2$ (exactly) and $m=3$ (modulo two primes); the theorem is not known to fail.
+\end{enumerate}
+
+\paragraph{(D) and (A) Missing structure that a route needs.}
+\begin{enumerate}
+\item \textbf{Mathlib's Serre construction of $\mathfrak e_8$} (Chapter~\ref{ch:L23}, Warning~\ref{l23:warn:serre}): Mathlib
+  does not prove the presented algebra finite-dimensional or simple, so the exceptional Lie algebras were built as lattice
+  weight-one spaces and from checked structure constants.
+\item \textbf{Zhu's change of coordinates as a VOA isomorphism} (Chapter~\ref{ch:L25}, Section~\ref{l25:sec:zhu}): the
+  library's \lean{changeCoord} has no transformation law; a symbol calculus on the $C_2$ algebra avoids it.
+\item \textbf{Heisenberg chains along short roots} for the nilpotency needed in Ravinder's kernel lemma
+  (Chapter~\ref{ch:L26}, Section~\ref{l26:sec:kernelG}): replaced by general nilpotency lemmas.
+\end{enumerate}
+
+\paragraph{(F) Tooling: the cost of kernel-checked certificates.} The Deligne chapters rest on large integer certificates
+checked by the Lean kernel (\lean{decide}), and their architecture is shaped by recorded failures (Chapter~\ref{ch:L23},
+Warning~\ref{l23:warn:kernel}; Chapter~\ref{ch:L24}, Section~\ref{l24:sec:trust}; Chapter~\ref{ch:L25},
+Section~\ref{l25:sec:files}; Chapter~\ref{ch:L27}, Section~\ref{l27:sec:deadends}). Single declarations over whole tables
+reached 18--41\,GB or did not finish (a $133\times133$ sector comparison: 41\,GB and a time-out after 445\,s; one
+\lean{decide} over the whole $D_4$ identity: 650\,s and 41\,GB); \lean{![…]} vector tables are slow at high index
+(literal lists read with \lean{getD} are used); importing the VOA stack into check files costs about 6\,GB before any work
+(light-import copies bridged by \lean{rfl} are used); a plain box enumeration of the $E_7$ roots did not finish in ten
+minutes. The working pattern is many small declarations of a few thousand entries each, under a per-file memory budget.
+
+\begin{physics}
+Several of these dead ends have a direct physical reading. The failure of \lean{hdec} is the statement that a
+non-rational chiral algebra such as $L_{-4/3}(\mathfrak{sl}_2)$, whose Higgs-branch-like associated variety has positive
+dimension, cannot have its $C_2$ algebra spanned by finitely many states. And Feigin's $55\neq63$ is
+a reminder that a filtration on a fusion product, the mathematical form of an operator product with prescribed orders
+of vanishing at the insertion points, need not respect an auxiliary grading that is natural on the factors.
+\end{physics}
+
+% ---------------------------------------------------------------------------------------------
+\section{The numerical evidence}\label{ch15:sec:numerics}
+
+\subsection{Epistemic status}
+
+The directory \leanpath{scripts/moonshine/numerics/} preserves the Python scripts and logs written
+while choosing conventions and routes for the Moonshine construction. Its \lean{README.md} states
+the principle: ``They are evidence, not proof; every claim used in Lean is proved in Lean.'' No
+Lean declaration imports, cites or depends on any of these computations; the compiler never sees
+them. Their role was strategic: to choose signs and normalisations before investing thousands of
+lines in a proof, to detect wrong formulas from the literature, and to decide whether a reduction
+was worth formalising. Two kinds of computation occur.
+\begin{itemize}
+\item \emph{Exact} computations, in integers, rationals (\lean{fractions.Fraction}) or modulo the
+  prime $p=2^{31}-1$. A rank computed modulo $p$ is at most the rank over $\Q$ of an integer matrix,
+  so \emph{full} rank mod $p$ certifies full rank over $\Q$; a deficit mod $p$ would not have been
+  conclusive.
+\item \emph{Floating-point} computations (NumPy/SciPy, double precision), reported as the maximal
+  \emph{relative residual} $\|\mathrm{lhs}-\mathrm{rhs}\|/\|\mathrm{lhs}\|$ over the tested identities.
+  Values near $10^{-15}$--$10^{-11}$ are rounding error; values of order $1$ (typically $2.0$, the
+  residual of $\mathrm{lhs}=-\mathrm{rhs}$) mean the identity fails.
+\end{itemize}
+A test without a \emph{control} proves little: an identity that holds with every sign convention
+tests nothing about conventions. Every floating-point experiment below therefore also reports
+deliberately wrong variants that must fail.
+
+\subsection{The \texorpdfstring{$E_8$}{E8} model of the twisted-by-twisted relation (4.23)}\label{ch15:sec:num-e8}
+
+\emph{Files:} \lean{orb.py} (419 lines), \lean{sanity.py}, \lean{sanity2.py}, \lean{tt.py},
+log \lean{tt_K3.log}. \emph{Question:} with the library's exact conventions, does the gluing of
+$V_L^+$ and $(V_L^T)^+$ satisfy the last locality relation (4.23) of Dolan--Goddard--Montague?
+\emph{Why $E_8$:} rank 8 makes $d/8$ odd as for Leech, so $\theta$ acts by $-1$ on $T$ exactly as in
+the library, while $\dim T=16$, $\dim\mathrm{TP}_1=128$, $\dim\mathrm{TP}_2=2048$ are small, and the
+orbifold is known to be $V_{E_8}$ again. \emph{Method:} the script reimplements
+$Y^T(e^\alpha,z)=2^{-\langle\alpha,\alpha\rangle}z^{-\langle\alpha,\alpha\rangle/2}E^-E^+\otimes e_\alpha$, composite
+states via $e^{\Delta_z}$, the basis cocycle, the forms with the signs of
+Section~\ref{ch15:sec:deadends}, $W$ and $\overline W$ (the latter by summing over a dual basis), and
+tests the twisted block of the commutator formula
+\begin{plaincode}
+W(t1)_m Wbar(t2)_n x - W(t2)_n Wbar(t1)_m x = sum_{j < wt t1 + wt t2} C(m,j) Y^T(Wbar(t1)_j t2)_(m+n-j) x
+\end{plaincode}
+for random $t_1,t_2,x\in\mathrm{TP}_1\oplus\mathrm{TP}_2$ and all $(m,n)$ with intermediate weight $\le3$
+(34752 states of $V_L$). \emph{Sanity checks:} $Y^T(\omega)$ gives $L_0+d/16$, $L_{\pm1}$; Heisenberg
+commutators (residual $\le10^{-16}$); lattice commutators for $\langle\alpha,\beta\rangle\in\{-1,0,1\}$
+($\le3\times10^{-15}$). \emph{Result:} 64 identities, maximal relative residual $3.7\times10^{-14}$
+(final log line ``max rel residual 3.734689360353892e-14 over 64 identities''). \emph{Controls}
+(18 identities each), all failing with residual $1.7$--$2.0$: group sign $\varepsilon(\alpha,\alpha)$ on
+$T$; $c(\alpha)=1$; dropping $(-1)^w$ in $\overline W$; the super (anticommutator) sign.
+
+\begin{status}
+Numerical evidence for a model lattice, in floating point; not about Leech, not part of any
+proof. The Leech relation (4.23) is proved in Lean by a different route (triality).
+\end{status}
+
+\subsection{The theta check}
+
+\emph{File:} \lean{theta_check.py}, log \lean{theta_check.log}. \emph{Question:} what lattice
+input makes the ground-state four-point function rational? \emph{Method:} exact rational $q$-series
+to $O(q^{80})$; $x=\theta_2^4/\theta_3^4$ computed by series division, without assuming Jacobi's
+identities. \emph{Results} (verbatim from the log): the Leech counts
+$1,0,0,0,196560,0,16773120,0,398034000$; ``Jacobi check $1-x=\theta_4^4/\theta_3^4$: True'';
+$\Theta_{E_8}=\theta_3^8(1-x+x^2)$; and
+\begin{equation*}
+  \Theta_\Lambda=\theta_3^{24}\Bigl[(1-x+x^2)^3-\tfrac{45}{16}x^2(1-x)^2\Bigr],\qquad
+  G_\Lambda(x)=\frac{(1-x+x^2)^3}{(x(1-x))^3}-\frac{45/16}{x(1-x)},
+\end{equation*}
+rational and crossing-symmetric; $D_8$ (determinant 4) also gives a rational $G$, so this does not
+single out unimodular lattices.
+
+\begin{physics}
+$G_L(x)$ is the four-point function of the $\Z_2$ twist fields $\sigma(z)$ of $d$ chiral bosons
+on $\mathbb{R}^d/L$, in the untwisted channel, as a function of the cross-ratio; $q(x)$ is the nome of the
+double cover torus. Locality of the twisted OPE is rationality of $G$ in $x$: the four-point
+function must be single-valued on the sphere.
+\end{physics}
+
+\subsection{Golay code and triality}\label{ch15:sec:num-triality}
+
+\emph{Files:} \lean{golay.py}, \lean{golay2.py} (Golay code from quadratic residues mod 23;
+4096 codewords, weights $\{0,8,12,16,24\}$), \lean{tri.py}, \lean{g.py}, \lean{adj.py},
+\lean{cert.py}, and the pipeline \lean{triality/} (\lean{vn.py}, \lean{stage1}--\lean{stage3},
+\lean{model.py}, \lean{tmod.py}, \lean{run4.py}, \lean{bfs2.py}, \lean{block.py}, \lean{bfsT.py},
+\lean{trace.py}). \emph{Model:} the weight-2 space of $V_N$, all 196884 states, with the library's
+basis cocycle; $\sigma=G(\chi z_0)G^{-1}$ (the library's \lean{golaySigma}) computed on the 1083
+invariant blocks; $\Theta=\sigma\chi\sigma$; $(V_0^+)_2=(V_N)_2^{\langle\chi,\Theta\rangle}$. \emph{Results:}
+$\dim(V_0^+)_2=49428$; $\tr\sigma=2324$ (and $6372$ for the unmodified $G\chi G^{-1}$),
+reproducing Proposition~\ref{ch15:prop:trace}; $\Theta e^\gamma=c_\gamma e^{-\gamma}$ with $c_\gamma=1$ for
+all 98256 norm-4 $\gamma\in\Lambda_0$. An explicit $\sigma$-twisted intertwiner $(V_3^+)_2\to(T_0^+)_2$
+was built by breadth-first propagation from a joint eigenvector and checked on 15000 identities,
+residual $4.2\times10^{-15}$; wrong target sectors give $2.0$; with the unmodified $\sigma$ the
+consistent target is the other summand (the $N$-only $X_1$), a module-level confirmation of the
+trace certificate; $T(1,+)\to T(1,+)$ residual $4.8\times10^{-12}$. Caveats recorded with the data:
+only zero modes of weight-2 states on weight-2 spaces; $N$'s cocycle; the identification of the model
+sectors with $T_0^+,T_3^+$ uses an unchecked normalisation step.
+
+\subsection{The Zhu-generator test}\label{ch15:sec:num-zhu}
+
+\emph{File:} \lean{zhu/zhu.py}, log \lean{zhu_0.log}. \emph{Question:} do the zero modes of
+$(V_0^+)_2$ generate the zero-mode algebra on the weight-2 tops, or is a weight-4 element (as in
+rank one, the ``$J$'' of $A(M(1)^+)$) needed? \emph{Method, exact:} on the $V_3^+$ top the zero
+modes of $h_ah_b$ have joint eigenvalue $nn^{\mathsf T}$, giving projectors onto pairs
+$\{e^n,e^{-n}\}$, and $o(e^\gamma+\theta e^\gamma)$ links pairs with $\langle n,n'\rangle=\pm2$; the graph on the
+98304 vectors with these $226\,099\,200$ directed edges is connected, so the algebra $B$ contains
+all matrix units. On the twisted top $B=M_{24}\otimes C$, and 400 random norm-4 vectors generate
+$\Lambda_0$ (Hermite normal form covolume $8192=2^{13}$), so $C=\End(X)$. \emph{Result:} $B=\End(\mathrm{top})$
+on both 49152-dimensional tops; $B$ acts irreducibly on, and separates, all 16 irreducible tops, total
+dimension $1+3\cdot24^2+6\cdot2048^2+6\cdot49152^2=14\,520\,682\,177$. No weight-4 generator is
+needed. (Status: exact computation plus standard Heisenberg-group representation theory; the
+implication to Zhu generation needs the cited classification of $A(V_{\Lambda_0}^+)$ and was
+\emph{not} used; Lean proves Zhu generation directly, \lean{zhuGenerated_weightTwo}.)
+
+\subsection{Filtered-criterion ranks (zhugen)}
+
+\emph{Files:} \lean{zhugen/fock_lowerprod.py}, \lean{charged_lowerprod.py}, \lean{ground_states.py},
+\lean{e3_relations.py}, \lean{e4_check.py}, \lean{ll_special.py}, log \lean{zhugen.log}. Exact ranks
+mod $2^{31}-1$ of the spans of lower products. Fock sector: rank 1 deficient by one exactly at
+weight 4 (the rank-one $J$; a positive control showing sensitivity), full at weights 3 and 5--9;
+ranks 2, 3, 4 full through weights 11, 9, 8. Charged sector: full rank for charges
+$(2),(2,0),(2,0,0),(1,1,2),(2,2,2,0)$ up to Fock weight 7. Ground states: random placements of every
+magnitude pattern up to norm 28 found only $E_1$; $E_2,E_3$ were found by hand and checked
+exhaustively (Section~\ref{ch15:sec:circ}). All superseded by Lean proofs (\lean{groundLattice},
+\lean{FockSpan.fockSpanned}, \lean{FockSpan.excitedSpanned}).
+
+\subsection{SigmaKey normalisation}\label{ch15:sec:num-sigmakey}
+
+\emph{Files:} \lean{sigmakey/} (\lean{pipeline.sh}, \lean{sk.py}, \lean{sk2.py}, logs). In the
+$N(A_1^{24})$ weight-2 model: N1, $\Theta_J^2\propto I$ (residual $1.7\times10^{-11}$), invariant form
+on the 2048-dimensional block built by eigenline propagation, $\Theta^{\mathsf T}B\Theta=\mu B$ with
+$|\mu-1|<4\times10^{-12}$, and $\tr\Theta_J=-112$ (eigenvalue multiplicities $968$ and $1080$), which
+independently excludes $\mu=-1$; N2, $\Phi$ is a similitude ($\kappa_0$ constant to
+$6.7\times10^{-12}$); N3, the top-level key identity $\Theta o(v)\Phi(b)=\varepsilon o(b)\Phi(v)$ on 170
+pairs with one global sign. \emph{Control caveat:} with $\Theta$ replaced by the identity, the N3
+identity also holds up to a sign that varies from pair to pair ($\approx50/50$); $\Theta$ is what makes
+the sign global, but the test does not discriminate strongly at weight 2.
+
+\subsection{KeySkew at weights 3 and 4}
+
+\emph{Files:} \lean{keyskew/} (\lean{lsig.py}, \lean{eng.py}, \lean{ops.py}, \lean{test_eng.py},
+\lean{phi.py}, \lean{theta.py}, \lean{keyskew.py}). The model was rebuilt without multi-GB
+intermediates. \emph{Model consistency} (\lean{test_eng.log}): zero modes agree with the old model to
+$4.6\times10^{-16}$; $L_0$, $[L_{-1},u_{(m)}]$ to $<10^{-15}$; the commutator formula between $V_0^+$ and
+$V_3$ on twisted states, 120 identities, $1.1\times10^{-15}$. \emph{Test} of
+$\Theta Y^T(v,z)\Phi b=e^{zL_{-1}}Y^T(b,-z)\Phi v$, with $\Theta$ known only at weight 2, through
+lowering letters:
+
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+weight & identities & residual & controls \\
+\midrule
+2 & 12 pairs & $9.0\times10^{-12}$ & $\Theta\to$ scalar: does not fail (caveat) \\
+3 & $\approx5300$ & $1.1\times10^{-11}$ & $-\Theta$: $2.0$; $\Theta\to\mathrm{Id}$: $\ge0.32$; drop $L_{-1}$: $\ge0.75$\\
+4 & $\approx2000$ & $1.1\times10^{-11}$ & $-\Theta$: $2.0$; $\Theta\to\mathrm{Id}$: $\ge0.57$; drop $L_{-1}$: $\ge0.84$\\
+4 (two-step) & $\approx1300$ & $1.1\times10^{-11}$ & $-\Theta$: $2.0$\\
+\bottomrule
+\end{tabular}
+\end{center}
+On one $T$-fibre of the weight-3 level (dimension 2624) the stacked test map has rank 323: a strong
+necessary condition, not a proof of the vector identity.
+
+\subsection{Bimodule generation}
+
+\emph{Files:} \lean{bimodule/mod_excited.py}, \lean{mod_ground.py}, \lean{pair_lemma.py}. The
+module analogue of the filtered criterion for $M=V_3^+$ over $V_0^+$ holds at weights 3, 4, 5 with
+no deficit in any sector (exact mod $2^{31}-1$); ground sector exhaustive over the 4096 residues,
+every sampled coset vector (301) has an $f=-1$ partner; pair lemma checked on 3937 odd magnitude
+multisets up to norm 60. \emph{Control:} left action only gives rank 0 of 24 at weight 3 and 300 of
+324 at weight 4. Superseded by \lean{FZGen.bimodGen_V3}.
+
+\subsection{TopPairs pre-check}
+
+Before the final identity was proved, the library's own symbolic formulas for both sides of
+$\Theta(o(v)\Phi b)=o(b)\Phi v$ were evaluated on all 98304 odd norm-4 Leech vectors (built from
+\lean{golayB}, as in \lean{leech.py}): 200{,}000 random pairs and 64 full rows, 0 failures (recorded
+in \leanpath{Notes/M8GluingPlan.md}). The script for this run is not among
+the preserved files; only its result is recorded.
+
+\begin{physics}
+These computations are what a physicist would do first: build a finite truncation of the
+orbifold CFT (all states up to weight 2, 3 or 4), compute OPE coefficients numerically, and check
+locality and associativity. Their limitation is the usual one of truncated numerics: they test
+finitely many coefficients of identities between infinite series.
+\end{physics}
+
+\subsection{Summary}
+\begin{center}
+\begin{tabular}{p{3.0cm}p{3.6cm}p{2.6cm}p{4.2cm}}
+\toprule
+experiment & checks & precision & role / status \\
+\midrule
+$E_8$ (4.23) & convention consistency & $3.7\times10^{-14}$ & fixed three signs; evidence\\
+theta check & lattice input of (4.23) & exact, $O(q^{80})$ & route analysis; evidence\\
+Golay traces & which $\sigma$ & exact & rejected DGM (7.5); evidence\\
+triality model & $\sigma$ on twisted tops & $4\times10^{-15}$ & existence plausible; superseded\\
+Zhu test & generators of tops & exact & chose $G=(V_0^+)_2$; superseded\\
+zhugen & filtered criterion & exact mod $p$ & found $E_1$--$E_3$; superseded\\
+SigmaKey & normalisation & $4\times10^{-12}$ & $\mu=1$; superseded\\
+KeySkew & weights 3, 4 & $1.1\times10^{-11}$ & de-risked; superseded\\
+bimodule & module criterion & exact mod $p$ & de-risked FZ step 2; superseded\\
+TopPairs & final identity & exact symbolic & 0 failures; superseded\\
+\bottomrule
+\end{tabular}
+\end{center}
+``Superseded'' means a Lean theorem now proves the corresponding statement.
+
+% ---------------------------------------------------------------------------------------------
+\section{Design decisions}\label{ch15:sec:design}
+
+\subsection{Why the FLM route}
+
+Five routes to the vertex algebra structure on $\Vnat$ were compared before the gluing began
+(\leanpath{Notes/M8GluingPlan.md} \S1, with the sources actually read marked as such):
+\begin{center}
+\begin{tabular}{p{3.6cm}p{6.0cm}p{3.6cm}}
+\toprule
+route & new theory needed & estimate, verdict\\
+\midrule
+(A) FLM triality & Golay frame, $\sigma$, cyclicity, a Goddard-type uniqueness lemma, one key identity & 20--35k lines, medium risk; \textbf{chosen}\\
+(B) direct (4.23) & closed form of $\overline W$ on ground states, theta transformation of $2^{24}$ coset thetas, half-integral locality & 20--35k, high risk; cross-check only\\
+(C) framed VOA (Miyamoto; Dong--Griess--H\"ohn) & Ising modules and fusion rules, code VOAs, quantum Galois theory & 50k+, high risk; rejected\\
+(D) simple-current extensions (Carnahan; Huang) & braided tensor categories, rationality and fusion of $V_\Lambda^+$ & 100k+; rejected\\
+(E) 2020--2026 literature & none found that bypasses triality or tensor categories & --\\
+\bottomrule
+\end{tabular}
+\end{center}
+The decisive argument for (A) was reuse: every ingredient is an explicit operator on an explicit Fock
+space, which is how the library had already built general lattice VOAs. The plan packaged FLM's
+argument through the reconstruction theorem: generators $V_\Lambda^+\cup T_0^+$, pairs involving an
+untwisted field from general theory, twisted pairs by $\sigma$-conjugation; this removes FLM's use
+of the group $2^{1+24}.\mathrm{Co}_1$. In execution the key identity was reduced further: $\sigma$ on
+the twisted sectors by a top-level argument plus Zhu generation (no Verma modules), the three-point
+identities to one self-coupling identity, that identity by a Frenkel--Zhu bimodule argument to a
+finite weight-2 identity, and that identity to explicit Golay arithmetic.
+
+\subsection{Other decisions}
+\begin{itemize}
+\item \textbf{Vendoring \lean{LatticesAndCodes}} (decision of 6 October 2026): the 25-file import
+  closure of \lean{Leech.Defs}, \lean{Leech.RepCount}, \lean{Leech.RepCountHigher} copied
+  byte-for-byte from \lean{Fedor-Popov/LatticeAndCodes} at commit
+  \lean{da62b9e2f44a04888abf6f797a429aa8ecc1d6dd}, the only edit the import prefix (verified by
+  \lean{cmp}); the package depends on Mathlib alone and \leanpath{lakefile.toml} is unchanged. Leech
+  uniqueness is not vendored (not in the closure).
+\item \textbf{$T$ abstractly}: the 4096-dimensional module by Wedderburn--Artin from the central
+  simplicity of $\C^\varepsilon[\Lambda/2\Lambda]$, not by an explicit Golay model; the splitting
+  $T=T_+\oplus T_-$ and the invariant form were obtained without the model.
+\item \textbf{Keeping the cocycle symbolic} (previous section).
+\item \textbf{Avoiding \lean{VOA.pbw}}: the Dong--Jiang generalised Verma module carries a
+  \lean{BottomProjection} supplied by the then-axiom (while \lean{VOA.pbw} was an axiom); the top-level graph argument
+  (\lean{annCompat_of_top}) and Zhu's easy direction (\lean{ZhuModule} is \lean{pbw}-free) replaced it.
+\item \textbf{Frenkel--Zhu instead of fusion rules}: Abe--Dong--Li fusion rules for $V_L^+$ would
+  have needed the classification and tensor-product theory; the bimodule argument needed only the
+  commutator formula and weight-2 data, avoiding the missing intertwining Jacobi identity for $W$.
+\item \textbf{The minimal definitional repair} of \lean{TwistedModule}, and ``$\exists s$'' statements
+  instead of fixing \lean{golayE}.
+\end{itemize}
+
+\subsection{The literature and online search}
+\begin{itemize}
+\item \textbf{H\"ohn's Lean ATLAS} (repository \lean{Moonshine-in-Kansas/atlas}) formalises
+  $\mathrm{Co}_0$, $\mathrm{Co}_1$ and $M_{24}$; its licence forbids copying
+  into this Apache-2.0 repository, so nothing was taken from it. It is the natural partner for the
+  Monster problem below.
+\item \textbf{Carnahan's vertex operators in Mathlib}: Mathlib 4.30.0 contains
+  \leanpath{Mathlib/Algebra/Vertex/VertexOperator.lean} and \lean{HVertexOperator.lean} (vertex
+  operators as maps to Laurent series; its TODO lists locality and residue products). The library
+  predates and does not use them; it has its own formal distributions.
+\item \textbf{H\"ohn--Seysen}, arXiv:2508.01037, uses $\Vnat$ and the structure of $V_\Lambda^{++}$
+  (16 irreducibles, the triality as an $S_3$) but does not construct $\Vnat$.
+\item Huang, arXiv:1902.09734, gives twisted$\times$untwisted operators in general, not
+  twisted$\times$twisted. The FLM book was not accessible online; DGM (hep-th/9410029) \S\S3--7 was
+  read in full; DGM's own \S7 derives $\sigma$ from analytic input and is circular for this purpose.
+\end{itemize}
+
+% ---------------------------------------------------------------------------------------------
+\section{Reproducibility}\label{ch15:sec:repro}
+
+\begin{itemize}
+\item \textbf{Commit:} this edition documents the release commit \texttt{\bookcommit} (front matter;
+  Appendix~\ref{ch:provenance}). The original verification run of the Moonshine construction was made at the Moonshine
+  commit (``Construct the Moonshine module $V^\natural$ (FLM) unconditionally'', 7 October 2026, 268 files changed, 70349
+  insertions, 8 deletions relative to its parent); the records below (job count, probe output) are those of that run.
+\item \textbf{Toolchain:} \lean{leanprover/lean4:v4.30.0} (file \leanpath{lean-toolchain}), Mathlib
+  \lean{v4.30.0} (\leanpath{lakefile.toml}); \lean{elan} at \texttt{\textasciitilde/.elan/bin}.
+\item \textbf{Commands}, from the repository root:
+\begin{plaincode}
+export PATH="$HOME/.elan/bin:$PATH"
+lake exe cache get     # Mathlib build cache, several GB
+lake build             # aggregate build; recorded: 10343 jobs
+python3 scripts/check_repository.py
+python3 scripts/audit/run_axiom_audits.py
+\end{plaincode}
+\item \textbf{Moonshine axiom probe}: a file containing
+\begin{plaincode}
+import VOA
+#print axioms VOA.Moonshine.moonshine
+\end{plaincode}
+  compiled with \lean{lake env lean -DmaxSynthPendingDepth=3}; expected output
+  \lean{'VOA.Moonshine.moonshine' depends on axioms: [propext, Classical.choice, Quot.sound]}
+  (reproduced for this chapter; about 7 seconds once the library is built).
+\item \textbf{Numerics}: Python 3 with NumPy, SciPy, SymPy; each subdirectory's \lean{README.md}
+  gives the run order; paths may need adjusting; the KeySkew cache is about 68\,MB and is recomputable
+  in about 30 minutes; the original triality pipeline writes about 2\,GB.
+\item \textbf{Never commit} \leanpath{.lake/}.
+\end{itemize}
+
+% ---------------------------------------------------------------------------------------------
+\section{Open problems}\label{ch15:sec:open}
+
+\subsection{Moonshine}
+\begin{enumerate}
+\item \textbf{$\Aut(\Vnat)\cong\mathbb M$.} There is no Monster in Lean. A realistic first form
+  defines $\mathbb M:=\Aut(\Vnat)$ and proves facts about it: its order (H\"ohn--Seysen give a
+  VOA-based computation of $|\mathbb M|$), the Griess algebra on $\Vnat_2$, the subgroup
+  $2^{1+24}.\mathrm{Co}_1$. The library has the ingredients for the extraspecial group acting on $T$,
+  and H\"ohn's ATLAS has $\mathrm{Co}_1$, but its licence forbids copying.
+\item \textbf{McKay--Thompson series and Borcherds' theorem.} For $g\in\mathbb M$,
+  $T_g(\tau)=\sum\tr(g|\Vnat_n)q^{n-1}$ is a Hauptmodul (Borcherds 1992). Needed: the Monster action,
+  twined characters, the monster Lie algebra and the no-ghost theorem. The library's
+  \leanpath{VOA/Modularity/Moonshine*} files contain abstract $c=24$ statements conditional on
+  hypotheses never instantiated.
+\item \textbf{Uniqueness of $\Vnat$.} FLM conjectured that $\Vnat$ is the unique holomorphic VOA of
+  central charge 24 with $V_1=0$. Dong--Griess--Lam proved uniqueness under an additional frame
+  hypothesis (cited, not checked); the general conjecture is open.
+\item \textbf{A Moonshine audit probe} in \leanpath{scripts/audit/}, so that the maintained audit
+  covers \lean{VOA.Moonshine}.
+\item \textbf{Simplifications}: formalise the failure for $\varepsilon=-1$; make \lean{golayE} explicit;
+  prove irreducibility of the four $V_0^+$-sectors; the full intertwining Jacobi identity for $W$;
+  route (B) as an independent check.
+\end{enumerate}
+
+\subsection{Library-wide}
+\begin{enumerate}
+\item \textbf{Repair \lean{SuperTwistedModule.jacobi}} (Section~\ref{ch15:sec:super}); until then
+  theorems with such hypotheses for $N\ge2$ are vacuous.
+\item \textbf{Uniform negative-admissible $\mathfrak{sl}_3$ graded rigidity is open} (an open residual of the project's
+  $\mathfrak{sl}_3$ work). Recorded remaining boundary: the finite count/product
+  exhaustion and normalisation between total PBW root counts and real-root/descendant factors, the
+  higher-rank horizontal quotient or parabolic vacuum determinant transfer, and simple vacuum
+  multiplicity/nonzero tangent. A removal-bijection draft is outside the build.
+\item \textbf{Graded unitarity} (Arabi Ardehali--Beem--Lemos--Rastelli): the Lean layer formalises the definition and
+  reductions; the full conjecture is open (beyond the cases proved in Chapter~\ref{ch:L19}). Chapters~\ref{ch:L28}
+  and~\ref{ch:L29} reduce it for the minimal models $M(2,2n+1)$ to the hypothesis \lean{hA}, graded unitarity of the
+  boundary admissible $L_k(\mathfrak{sl}_2)$, which is open for every $n$.
+\item \textbf{PBW in Mathlib}, which would replace the library's own proof of \lean{VOA.pbw} (formerly a project axiom, now a theorem; Section~\ref{ch15:sec:trust}).
+\item \textbf{Fusion rules}: a genuine intertwining-operator space with $L_{-1}$-property and weight
+  constraints, so that the fusion coefficient means $N^P_{MN}$ (Section~\ref{ch15:sec:debt}).
+\item \textbf{Documentation debt} (Section~\ref{ch15:sec:debt}): \lean{IsLowestWeight}, \lean{SelfDual} versus
+  \lean{IsUnimodular}. (The README, the stale Moonshine headers and the roadmap row were corrected in October 2026.)
+\item \textbf{Upstreaming to Mathlib}: the level-one structure theorem $M(\mathrm{SL}_2(\Z))=\C[E_4,E_6]$
+  (\lean{levelOne_coe_mem_E46}), the majorant estimate, the vendored lattice and code theory,
+  the Wedderburn--Artin dimension count for extraspecial groups, and formal calculus aligned with
+  Carnahan's \lean{VertexOperator}.
+\end{enumerate}
+
+\subsection{Open problems named in the later chapters}\label{ch15:sec:open-later}
+
+Each item below is a precise statement that the library either takes as an explicit hypothesis or does not state. All
+the theorems mentioned are \texttt{\#print axioms}-clean; none of those with an open hypothesis is unconditional
+(Section~\ref{ch15:sec:uncond}), and a citation of the literature in a docstring does not change that.
+
+\begin{enumerate}
+\item \textbf{The named inputs of the Deligne final theorems} (Chapter~\ref{ch:L27}, Sections~\ref{l27:sec:finals},
+  \ref{l27:sec:ledger} and~\ref{l27:sec:cores}). For each type $X\in\{A_2,G_2,D_4,F_4,E_6,E_7,E_8\}$ of the Deligne series,
+  the final theorem \lean{X_classicallyFree_final} says that the simple affine VOA $L_k(\mathfrak g)$ at
+  $k=-1-h^\vee/6$ is classically free for the explicit presentation of Chapter~\ref{ch:L24}; for every type but $A_2$ it is
+  conditional on named inputs. As recorded in Chapter~\ref{ch:L27}:
+  \begin{itemize}
+  \item $A_2$: none. The total-dimension bound (\lean{CVUniv.fusionTotalDim}), the Demazure realizations and the star
+    identity are proved, and \lean{A2_classicallyFree_final} has no hypothesis; it is machine-confirmed: the aggregate build was
+    green on 2026-10-28 and \texttt{\#print axioms} reports \lean{[propext, Classical.choice, Quot.sound]} (Chapter~\ref{ch:L27}, Theorem~\ref{l27:thm:A2});
+  \item $D_4$: \lean{FusionTotalDimG D4sector} ($\le28^m$) only (\lean{D4_classicallyFree_of_inputT}). The Demazure
+    realizations for all $n$ are proved in Lean (\lean{D4Char.d4_demazureRealization}; aggregate build green on
+    3~November~2026, \texttt{\#print axioms} standard), and the star identity is proved (\lean{D4Wp.d4SchurEqE4} with the unclamped
+    Demazure $=$ Schur identity, \lean{d4DemazureEqSchur_of_positivity}, positivity from U5 on the unclamped route).
+    The total-dimension bound is Kus--Littelmann's Theorem~4.2; one step of its published proof (p.~437) is insufficient as
+    written for $D_4$ at $m=2$, by computation with an explicit witness, while the theorem is not known to fail. Progress on
+    the bound, not part of the claim (Chapter~\ref{ch:L27}, Section~\ref{l27:sec:feigin}): it is reduced in Lean to $\mathfrak{sl}_4$ core bounds with at
+    least two adjoint sites (\lean{d4_classicallyFree_of_twoAdjointCoreBounds}), and on paper the levels with two adjoint sites
+    are reduced further to two one-node bounds, open in general; an earlier route through a rank bound on a presented module
+    (\lean{D4_classicallyFree_of_presentedRankBoundE}) is proved for $m\le2$;
+  \item $G_2$, $F_4$, $E_6$, $E_7$, $E_8$: \lean{FusionTotalDimG Xsector} ($\le(\dim\mathfrak g)^m$), the Demazure
+    realizations, and the star bound (\lean{G2StarBound}, \lean{F4StarBound}, \lean{E6StarBound}, \lean{E7StarBound},
+    \lean{E8StarBound}), checked numerically to orders $q^{60}$, $q^{25}$, $q^{20}$, $q^{16}$, $q^{14}$ respectively (scoping pass of
+    28~October~2026, Chapter~\ref{ch:L27}, Section~\ref{l27:sec:starinput}).
+  \end{itemize}
+  The inputs that remain open in Lean (Chapter~\ref{ch:L27}, Section~\ref{l27:sec:cores}) are the total-dimension bound and
+  the graded Demazure realizations beyond $A_2$ and $D_4$, both published theorems not yet formalized (the former with a proof step
+  flagged by the project), and the star identities for $G_2$, $F_4$ and the $E$-types, which are conjectures with numerical
+  evidence. For $G_2$ the library splits the identity into \lean{G2DemazureFermionic}, which follows from published results
+  (Fourier--Littelmann, Chari--Moura, Ardonne--Kedem, Di Francesco--Kedem; Chapter~\ref{ch:L27},
+  Section~\ref{l27:sec:starinput}), and \lean{G2FermionicKW}, a $q$-series identity that is open (checked through $q^{60}$).
+\item \textbf{The Arakawa--Kawasetsu MLDE} (Chapter~\ref{ch:L16}, Section~\ref{l16:sec:mlde}). The theorem
+  \lean{VOA.IsSqPrimary.exists_monicMLDEOn_all_analyticBlocks_of_etingofFinite} gives a genuine monic MLDE, with
+  coefficients in $\C[E_4,E_6]$ of the forced weights and one equation for all analytic blocks, under Etingof-finiteness.
+  Its two other hypotheses were open; \emph{both are now theorems}:
+  \begin{itemize}
+  \item \lean{AKWeightGrading W}: weight decompositions of $\C[E_4,E_6]$ and of $\C[E_4,E_6]\otimes V$, together with
+    homogeneity of Zhu's relation module for the total weight. \emph{Now proved for every VOA of the library} (CFT type):
+    \lean{VOA.akWeightGrading} in \leanpath{VOA/Modularity/AKGradingTotal.lean} (faithful, by the queue-2 release audit,
+    \texttt{Notes/Textbook/referee/RELEASE\_AUDIT\_QUEUE2.md});
+  \item \lean{E46SerreClosed}: the Serre derivative maps weight-$k$ elements of $\C[E_4,E_6]$ to weight $k+2$.
+    \emph{Now proved}: \lean{VOA.e46SerreClosed} in \leanpath{VOA/Modularity/EisensteinSerreClosure.lean} (rated ``as
+    stated'' by the follow-ups audit). It is no longer an open hypothesis.
+  \end{itemize}
+  The combined statement is \lean{VOA.IsSqPrimary.exists_monicMLDEOn_all_analyticBlocks_of_etingofFinite_uncond},
+  conditional on \lean{EtingofFinite} only (despite its suffix); its instance
+  \lean{VOA.exists_monicMLDEOn_all_analyticBlocks_simpleSl2QL} is unconditional. Both are \texttt{\#print axioms}-clean
+  (recorded in \texttt{Notes/release/WS-RELEASE2.md}); the aggregate build at the release commit is pending. What
+  remains open here: the order is existential and unbounded (Arakawa--Kawasetsu's order~2 at $L_{-4/3}(\mathfrak{sl}_2)$
+  is not proved); the blocks are Zhu's abstract one-point blocks, and ``the vacuum character satisfies a monic MLDE'' is
+  a short composition of library lemmas (\lean{torusOnePoint_isAnalyticBlock},
+  \lean{onePointSubexp_adjoint_of_etingofFinite}) not packaged as one theorem. Also open: quasi-lisseness itself (associated varieties, symplectic leaves, the Etingof--Schedler theorem) is not
+  formalized; and the Zhu-modularity chain under Etingof-finiteness (Section~\ref{l16:sec:zhu}) has its rank hypothesis
+  discharged only for the trivial VOA.
+\item \textbf{\lean{AdmissiblyRational} versus Dong--Li--Mason rationality} (Chapter~\ref{ch:L22},
+  Remark~\ref{l22:rem:rational}). The library's rationality asks that every weak submodule of an admissible module have
+  a weak complement; Dong--Li--Mason ask for complete reducibility of admissible modules into simple admissible modules.
+  \emph{One direction is now proved}, for $C_2$-cofinite $V$:
+  \lean{VOA.Classification.COne.DLMRat.admissiblyRational_of_dlmRational} (\lean{hC2 : C2Cofinite W}) derives
+  \lean{AdmissiblyRational W} from \lean{DLMRational W}, a faithful statement of Dong--Li--Mason rationality (every
+  admissible module is an internal direct sum of graded-minimal submodules); \texttt{\#print axioms}-clean, recorded in
+  \texttt{Notes/release/WS-RELEASE2.md}; aggregate build at the release commit pending. Since $C_2$-cofiniteness is part
+  of ``nice'', a VOA that is nice with DLM rationality in place of \lean{AdmissiblyRational} satisfies the Lean hypotheses
+  of the Gannon--Rayhaun classification. \emph{The converse} (\lean{AdmissiblyRational} $\Rightarrow$ DLM-rational) is
+  open; the release auditor sketched, without checking it, a graded-projection argument (take the degree-zero component
+  of the projection onto a graded submodule along a weak complement; it commutes with every mode). (The library does have
+  \lean{AdmissiblyRational.exists_iSupIndep_irreducible_ordinary}, in
+  \leanpath{VOA/Classification/COne/RationalAdmissibleDecomposition.lean}: a $C_2$-cofinite analogue of Dong--Li--Mason's
+  Theorem~8.1(c), decomposing ordinary modules into irreducibles. It is not either implication of the comparison.)
+\item \textbf{The congruence property: the Frobenius--Schur half} (Chapter~\ref{ch:L21},
+  Section~\ref{l21:sec:congruence}). The Dong--Lin--Ng congruence property of a nice VOA now has named theorems with no
+  hypotheses: \lean{dlnCongruenceInput_holds}, \lean{zhuCongruenceInput_holds} and
+  \lean{zhu_kernelContainsGamma_at_level} (namespace \lean{VOA.Huang.CongruenceNamed},
+  \leanpath{VOA/Huang/CongruenceNamed.lean}), each quantifying over \lean{Nice} VOAs. At the minimal level the kernel statement is the full
+  kernel claim of Dong--Lin--Ng; ``kernel half'' below refers only to the Ng--Schauenburg input. Of Ng--Schauenburg's
+  Theorem~6.8 only the kernel half is proved (\lean{nsProjectiveKernelAll_holds}, Theorem~\ref{l21:thm:ns}); the statement
+  that the level is exactly the Frobenius--Schur exponent, \lean{ProjectiveCongruenceTheorem} and its universal form
+  \lean{NSProjectiveCongruenceAll}, occurs only as a hypothesis.
+\item \textbf{Pseudo-unitarity in Huang's rigidity and the Verlinde formula} (Chapter~\ref{ch:L21},
+  Theorem~\ref{l21:thm:rigid} and Section~\ref{l21:sec:moddata}). Two-sided rigidity
+  (\lean{VOA.Huang.HuangRigid.rigid_ordinary}, built from \lean{rightRigid_ordinary} and the braiding), the Verlinde
+  formula, the modular data and the congruence inputs are proved for \lean{Nice} VOAs, which are pseudo-unitary. Huang's
+  theorems assume only simple, CFT type, self-dual, $C_2$-cofinite and rational. Pseudo-unitarity is used in two places in
+  the proofs: to obtain $V'\cong V$, and in a positivity step of the Cardy argument. \emph{The first use is now removed}:
+  \lean{VOA.contra_vacuum_equiv_of_stronglyRational} gives $V'\cong V$ from self-duality, and the \lean{_of_stronglyRational}
+  copies in \leanpath{VOA/Huang/VerlindeVacuumFusionSR.lean} give the vacuum-fusion chain ($N_{ab}^0=\delta_{b,a'}$ and its
+  bounds) for every strongly rational VOA (Chapter~\ref{ch:L21}, Theorem~\ref{l21:thm:vacSR}; \texttt{\#print axioms}-clean,
+  recorded in \texttt{Notes/release/WS-RELEASE2.md}; aggregate build pending). The second,
+  \lean{CardyPositivity.vacColumn_mem_K}, keeps \lean{Nice}, and pseudo-unitarity is essential there (Lee--Yang $M(2,5)$).
+  Removing pseudo-unitarity from the headline theorems therefore needs a different route through the Cardy step, and
+  remains open. Related missing statement: a
+  single packaged theorem that the category of ordinary modules is a modular tensor category.
+\item \textbf{Smaller items from the audits.} For the Arakawa--Dai VOAs the paper's Theorem~1.1 is now one Lean theorem,
+  \lean{arakawaDai_theorem_1_1}, and the naturality of \lean{actualC2ArcEquiv} is \lean{actualC2ArcEquiv_natural}; what
+  remains is that $J_\infty R_V$ is realized as \lean{PresentedJet} with a universal arc, since the library has no
+  $J_\infty$ functor on abstract algebras (Chapter~\ref{ch:L20}); Deligne's theorem is formalized only in
+  its positive-dimension (bosonic) form (Chapter~\ref{ch:L21}).
+\end{enumerate}
+
+\begin{physics}
+The open problems above are, in physical terms: whether the Deligne-series vertex algebras (several of which, for
+instance the $D_4$ and $E$-type members, are the chiral algebras of four-dimensional $\mathcal N=2$ superconformal
+theories; for $G_2$ no such theory is known) are classically free, i.e.\ whether the arc space of
+$R_V=\operatorname{Sym}\mathfrak g/(\text{explicit quadrics})$ maps isomorphically onto $\operatorname{gr}V$ (proved for
+$A_2$; conditional on named inputs for the other types). $R_V$ is not the coordinate ring of the minimal nilpotent orbit
+closure: it is non-reduced, and only its reduced variety is expected to be that closure; and whether the physicist's statements ``the
+characters satisfy a modular differential equation'' and ``a rational CFT has a congruence modular representation'' can be
+stated and proved without the extra positivity (pseudo-unitarity) that the present proofs use. The first is a
+prediction from four-dimensional physics; the library states what remains open of each as named, checkable hypotheses.
+\end{physics}
+
+% ---------------------------------------------------------------------------------------------
+\section{Referee's checklist}\label{ch15:sec:checklist}
+
+\begin{longtable}{p{4.2cm}p{4.6cm}p{2.6cm}p{2.0cm}}
+\toprule
+declaration & meaning & status & fidelity\\
+\midrule
+\lean{VOA.Moonshine.moonshine} & simple VOA on $\Vnat$, FLM block map, $c=24$, $V_1=0$, $\dim V_2=196884$, graded dim $qJ$ & unconditional, standard axioms & \S\ref{ch15:sec:record}, Ch.~\ref{ch:14}\\
+\lean{VOA.pbw} & PBW: affine vacuum $\ne0$; induced bottom injective & theorem, unconditional (formerly a project axiom) & \S\ref{ch15:sec:trust}\\
+\lean{zhuModularity_pinned_of_C2Cofinite} & Zhu modularity given a bottom projection & conditional on \lean{Pr} & \S\ref{ch15:sec:trust}\\
+\lean{zhuModularity_pinned_of_C2Cofinite_voaPBW} & Zhu modularity & conditional on $C_2$, semisimplicity, family data; via theorem \lean{VOA.pbw} & \S\ref{ch15:sec:trust}\\
+\lean{zhuBijective} / \lean{_of_voaPBW} & Zhu's map, injective (the codomain is image-defined, so only injectivity has content) & conditional on \lean{Pr} / unconditional & \S\ref{ch15:sec:trust}\\
+\lean{zhuCorrespondence_of_C2Cofinite} & Zhu's bijection $\Phi W\simeq$ simple $A(W)$-modules & $C_2$-cofinite & \S\ref{ch15:sec:releaseaudits}\\
+\lean{zhuModularity_canonical_of_C2Cofinite_admissiblyRational} / \lean{_of_stronglyRational} & Zhu modularity, general form & $C_2$-cofinite and admissibly rational / strongly rational; nontrivial instance \lean{zhuModularity_V2m} & \S\ref{ch15:sec:releaseaudits}\\
+\lean{isSemisimpleRing_A_of_admissiblyRational} & admissibly rational $\Rightarrow$ $A(W)$ semisimple & hypothesis \lean{AdmissiblyRational} only & \S\ref{ch15:sec:trust}\\
+\lean{moonshine_of_frameLocality} & $\Vnat$ given (4.23) on four pairs & conditional (historic) & \S\ref{ch15:sec:uncond}\\
+\lean{jacobiAllIndices_eq_zero} & old twisted Jacobi forces $M=0$ & unconditional & Thm~\ref{ch15:thm:jacobiAll}\\
+\lean{SuperTwistedModule.jacobi} & super twisted Jacobi & defective, open & \S\ref{ch15:sec:super}\\
+\lean{eq_bot_of_bilinear_pos} & bilinear positivity forces $S=0$ & unconditional & Thm~\ref{ch15:thm:bilpos}\\
+\lean{not_nonempty_genFields_MRbot_virasoro} & no fields over \lean{MRbot} & unconditional & \S\ref{ch15:sec:deadends}\\
+\lean{no_algHom_powerSeries_X_ne_zero} & no evaluation at $q_0\ne0$ & unconditional & \S\ref{ch15:sec:deadends}\\
+\lean{leechWbar_ne_zero} & $\overline W\neq0$ (anti-TRAP) & unconditional & \S\ref{ch15:sec:trap-sqzero}\\
+\lean{TopSigmaV3} & top-level $\sigma$ data with non-degeneracy & definition & \S\ref{ch15:sec:phi0}\\
+\lean{golayE_not_determined} & character ambiguity & unconditional & Thm~\ref{ch15:thm:golayE}\\
+\lean{YnatT_eq_of_creates} & Goddard identification (circular for key identity) & unconditional & \S\ref{ch15:sec:circ}\\
+\lean{eq_zero_of_V0local} & uniqueness from $V_0^+$-locality & unconditional & \S\ref{ch15:sec:circ}\\
+\lean{fusionCoeff} & ``fusion coefficient'' & always $0$ (paper) & \S\ref{ch15:sec:debt}\\
+\lean{IsLowestWeight} & weights in $h+\N$ ($M_h$ may be $0$) & definition & \S\ref{ch15:sec:debt}\\
+\lean{VirModule.minimal_graded_rigidity} & every minimal model is graded rigid & unconditional & \S\ref{ch15:sec:debt}\\
+\lean{strictEtingofFinite_simpleSl2QL} & $L_{-4/3}(\mathfrak{sl}_2)$ not $C_2$-cofinite, finite $HP_0$ & unconditional, standard axioms & \S\ref{ch15:sec:releaseaudits}\\
+\lean{IsSqPrimary.exists_monicMLDEOn_all_analyticBlocks_of_etingofFinite_uncond} & AK MLDE for Etingof-finite VOAs & conditional on \lean{EtingofFinite} only (\lean{akWeightGrading}, \lean{e46SerreClosed} proved); order unbounded & \S\ref{ch15:sec:open-later}\\
+\lean{admissiblyRational_of_dlmRational} & DLM-rational $\Rightarrow$ \lean{AdmissiblyRational} & \lean{C2Cofinite}; converse open & \S\ref{ch15:sec:open-later}\\
+\lean{boundary_classically_free} & Arakawa--Dai Thm 1.1 on the presented arc algebra & hypothesis $1\le m$ only & \S\ref{ch15:sec:releaseaudits}\\
+\lean{rightRigid_ordinary} / \lean{rigid_ordinary} & Huang rigidity, right duals / two-sided \lean{RigidCategory} & for \lean{Nice} (pseudo-unitary) VOAs & \S\ref{ch15:sec:open-later}\\
+\lean{contra_vacuum_equiv_of_stronglyRational} and \lean{_of_stronglyRational} copies & $V'\cong V$; vacuum-fusion chain & \lean{StronglyRational}; no pseudo-unitarity & \S\ref{ch15:sec:open-later}\\
+\lean{dlnCongruenceInput_holds} & Dong--Lin--Ng congruence & for \lean{Nice} VOAs; FS half open & \S\ref{ch15:sec:open-later}\\
+\lean{nsProjectiveKernelAll_holds} & kernel half of Ng--Schauenburg 6.8 & unconditional; FS half open & \S\ref{ch15:sec:open-later}\\
+\lean{gannonRayhaun_classification} & nice $c=1$ VOAs, both directions & no hypotheses; rational $=$ \lean{AdmissiblyRational}; \lean{Type 0} & \S\ref{ch15:sec:releaseaudits}\\
+\lean{X_classicallyFree_final} & Deligne series: classical freeness & $A_2$: no hypothesis (aggregate build green 2026-10-28; standard axioms); other types conditional on named inputs (Ch.~\ref{ch:L27}) & \S\ref{ch15:sec:open-later}\\
+\bottomrule
+\end{longtable}
+
+% ---------------------------------------------------------------------------------------------
+\section{Notes and references}\label{ch15:sec:notes}
+
+The verification protocol is the project's own (its working rules, \leanpath{README.md}
+``Axioms and trust base'' and ``Auditing a headline result'', \leanpath{Notes/MonsterRoadmap.md}
+``Operating rules''). The dead ends are collected from \leanpath{README.md} ``Known dead ends'',
+the project's internal session records, \leanpath{Notes/M8GluingPlan.md} (all ``Status'' sections) and the route notes
+\leanpath{Notes/M8hRoute.md}, \leanpath{Notes/TrialityTwisted.md}, \leanpath{Notes/SigmaExistence.md},
+\leanpath{Notes/ZhuGeneratorTest.md}, \leanpath{Notes/ZhuGeneration.md}, \leanpath{Notes/SigmaKey.md},
+\leanpath{Notes/KeySkew.md}, \leanpath{Notes/BimoduleGenTest.md}.
+
+\begin{itemize}
+\item I.~Frenkel, J.~Lepowsky, A.~Meurman, \emph{Vertex Operator Algebras and the Monster}, Pure and
+  Applied Mathematics 134, Academic Press, 1988 (chapters 3--4, 9--13). The book was not accessible to the project:
+  the chapter, section and equation pointers to it throughout Chapters~\ref{ch:02}--\ref{ch:14} were not checked against
+  the book itself and should be read as pointers taken from secondary sources (Dolan--Goddard--Montague, Gannon,
+  Lepowsky--Li).
+\item L.~Dolan, P.~Goddard, P.~Montague, \emph{Conformal field theories, representations and lattice
+  constructions}, Comm.\ Math.\ Phys.\ 179 (1996) 61--120, arXiv:hep-th/9410029; and \emph{Conformal
+  field theory of twisted vertex operators}, Nucl.\ Phys.\ B 338 (1990) 529--601.
+\item C.~Dong, H.~Li, G.~Mason, \emph{Modular-invariance of trace functions in orbifold theory and
+  generalized moonshine}, Comm.\ Math.\ Phys.\ 214 (2000) 1--56; \emph{Simple currents and extensions
+  of vertex operator algebras}, Comm.\ Math.\ Phys.\ 180 (1996) 671--707, arXiv:q-alg/9504008.
+\item I.~Frenkel, Y.~Zhu, \emph{Vertex operator algebras associated to representations of affine and
+  Virasoro algebras}, Duke Math.\ J.\ 66 (1992) 123--168.
+\item Y.~Zhu, \emph{Modular invariance of characters of vertex operator algebras}, J.\ Amer.\ Math.\
+  Soc.\ 9 (1996) 237--302.
+\item T.~Abe, C.~Dong, H.~Li, \emph{Fusion rules for the vertex operator algebras $M(1)^+$ and
+  $V_L^+$}, Comm.\ Math.\ Phys.\ 253 (2005) 171--219, arXiv:math/0310425.
+\item M.~Miyamoto, \emph{A new construction of the moonshine vertex operator algebra over the real
+  number field}, Ann.\ of Math.\ 159 (2004) 535--596, arXiv:q-alg/9701012.
+\item C.~Dong, R.~Griess, G.~H\"ohn, \emph{Framed vertex operator algebras, codes and the moonshine
+  module}, Comm.\ Math.\ Phys.\ 193 (1998) 407--448, arXiv:q-alg/9707008.
+\item C.~Dong, R.~Griess, C.~H.~Lam, \emph{Uniqueness results for the moonshine vertex operator
+  algebra}, Amer.\ J.\ Math.\ 129 (2007) 583--609.
+\item S.~Carnahan, \emph{Building vertex algebras from parts}, Comm.\ Math.\ Phys.\ 373 (2020) 1--43,
+  arXiv:1408.5215.
+\item Y.-Z.~Huang, \emph{A nonmeromorphic extension of the moonshine module vertex operator algebra},
+  Contemp.\ Math.\ 193 (1996), arXiv:hep-th/9406190; \emph{Twist vertex operators for twisted
+  modules}, arXiv:1902.09734.
+\item G.~H\"ohn, M.~Seysen, \emph{The order of the Monster finite simple group}, arXiv:2508.01037 (title checked on
+  arxiv.org, 28~October~2026; $V_\Lambda^{++}$ and its modules are in its \S2.2).
+\item R.~Borcherds, \emph{Monstrous moonshine and monstrous Lie superalgebras}, Invent.\ Math.\ 109
+  (1992) 405--444.
+\item J.~van Ekeren, S.~M\"oller, N.~Scheithauer, \emph{Construction and classification of
+  holomorphic vertex operator algebras}, J.\ Reine Angew.\ Math.\ 759 (2020) 61--99, arXiv:1507.08142.
+\item T.~Gannon, \emph{Moonshine beyond the Monster}, Cambridge University Press, 2006.
+\end{itemize}

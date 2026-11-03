@@ -1,0 +1,411 @@
+% Announcement note for the LeanVOA library and the book "Vertex Operator Algebras in Lean".
+\documentclass[10pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=0.9in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{array,booktabs,longtable}
+\usepackage{xcolor}
+\usepackage{url}
+\usepackage[colorlinks=true,linkcolor=blue!50!black,citecolor=blue!50!black,urlcolor=blue!50!black]{hyperref}
+
+% Lean declaration names: typewriter, breakable at dots and underscores.
+\DeclareUrlCommand\lean{\urlstyle{tt}}
+\makeatletter
+\g@addto@macro{\UrlBreaks}{\do\.\do\_}
+\makeatother
+
+\setlength{\emergencystretch}{2em}
+\newcommand{\todo}[1]{\textcolor{red}{\textbf{[#1]}}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\sltwo}{\mathfrak{sl}_2}
+\newcommand{\slthree}{\mathfrak{sl}_3}
+\newcommand{\g}{\mathfrak{g}}
+
+\title{Vertex Operator Algebras in Lean:\\ a formal library and its companion book}
+\author{Fedor K.\ Popov\textsuperscript{a} \quad Leonardo Rastelli\textsuperscript{a,b}\\[0.8em]
+  \small\textsuperscript{a}Simons Center for Geometry and Physics, Stony Brook University, Stony Brook, NY 11794-3840, USA\\
+  \small\textsuperscript{b}C.\,N.\ Yang Institute for Theoretical Physics, Stony Brook University, Stony Brook, NY
+  11794-3840, USA\\[0.5em]
+  \small\texttt{fpopov@scgp.stonybrook.edu}, \texttt{leonardo.rastelli@stonybrook.edu}}
+\date{November 3, 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+  We present \texttt{LeanVOA}, a Lean~4 library for the theory of vertex operator algebras (VOAs), together with a
+  companion book that sets each formalized result next to its textbook statement. The library constructs the
+  Moonshine module $V^\natural$ and formalizes Zhu's modular invariance, Huang's tensor categories with the Verlinde
+  formula, the Gannon--Rayhaun classification of $c=1$ VOAs, and classical freeness of the boundary admissible
+  $L_k(\sltwo)$ (Arakawa--Dai) and of the minimal models $M(2,2m+3)$ (van Ekeren--Heluani). It also contains new
+  results: graded first-order rigidity of all Virasoro minimal models and of $L_k(\sltwo)$ at every admissible level; classical freeness of $L_{-3/2}(\slthree)$, and of the other members of the Deligne series under stated
+  assumptions; and a proof that graded
+  unitarity of the boundary admissible $L_k(\sltwo)$ implies that of the minimal models $M(2,2n+1)$. The library
+  declares no axiom of its own.
+\end{abstract}
+
+% =====================================================================
+\section{Introduction}
+% =====================================================================
+
+The library \texttt{LeanVOA} formalizes, in Lean~4 \cite{lean4} on top of Mathlib \cite{mathlib}, the algebraic
+theory of vertex operator algebras: formal calculus and locality from first principles, the VOA axioms
+and the Borcherds identity, the standard constructions (Heisenberg, Virasoro, affine, lattice), the module theory,
+Zhu's algebra and modular invariance, Huang's tensor categories, and several recent theorems from the literature
+(listed in Section~\ref{sec:scope}). The companion book, \emph{Vertex Operator Algebras in Lean}, is the
+reviewed account of the library: for each definition and theorem it gives the mathematical statement, the Lean
+declaration copied verbatim from the source, and a ``dictionary'' that decodes every convention and hypothesis
+and says whether the Lean statement is the same as, stronger than, or weaker than the textbook one.
+
+\begin{itemize}
+  \item Repository: \url{https://github.com/Fedor-Popov/Lean_VOA}
+  \item Release: v1.0 (tag \texttt{v1.0})
+  \item Book (PDF): \texttt{Notes/book.pdf} in the repository (2{,}337 pages); its \LaTeX{} sources are in
+    \texttt{Notes/Textbook/}
+  \item Short version of the book (PDF): \texttt{Notes/brief.pdf} (219 pages): the main statements of each chapter,
+    each with its verbatim Lean declaration and its status, without proofs or discussion, numbered as in the book
+  \item License: Apache-2.0.
+\end{itemize}
+
+The library defines VOAs in the general sense of Frenkel--Lepowsky--Meurman and Lepowsky--Li \cite{FLM,LepowskyLi}
+(\lean{GradedVertexOperatorAlgebra}), but develops the theory for VOAs of CFT type ($V_0=\C\mathbf 1$, $V_n=0$ for
+$n<0$; \lean{VertexOperatorAlgebra}). Every theorem below about VOAs is about VOAs of CFT type; extending the theory
+to the general notion is future work.
+
+% =====================================================================
+\section{Scope}\label{sec:scope}
+% =====================================================================
+
+Table~\ref{tab:scope} lists the headline results: classical theorems, recent theorems from the literature, and
+new results. Each entry says what is proved and what, if anything, it assumes; the book gives the precise statements,
+conventions and caveats. Every listed declaration depends only on Lean's three standard axioms (\lean{propext},
+\lean{Classical.choice}, \lean{Quot.sound}).
+
+{\footnotesize
+  \setlength{\tabcolsep}{4pt}
+  \renewcommand{\arraystretch}{1.15}
+  \begin{longtable}{>{\raggedright\arraybackslash}p{0.625\textwidth}>{\raggedright\arraybackslash}p{0.33\textwidth}}
+    \caption{Headline results}\label{tab:scope}\\
+    \toprule
+    Statement and source & Lean name(s)\\
+    \midrule
+    \endfirsthead
+    \toprule
+    Statement and source & Lean name(s)\\
+    \midrule
+    \endhead
+    \bottomrule
+    \endfoot
+    \multicolumn{2}{l}{\textbf{Tier 1: foundations and classical theorems}}\\
+    \midrule
+    \textbf{Foundations.} VOAs of CFT type, with the Borcherds identity derived from locality rather than assumed.
+    Constructed examples: the Heisenberg VOA, the universal Virasoro VOA at every central charge, the universal affine
+    VOA $V^k(\sltwo)$, and the lattice VOA of every positive-definite even lattice. Source: \cite{FLM,LepowskyLi}.
+    & \lean{VOA.VertexOperatorAlgebra.borcherds}, \lean{VOA.heisenbergVOA}, \lean{VOA.VirModule.virasoroVOA},
+    \lean{VOA.AffineVOA.affineSl2VOA_closed}, \lean{VOA.LatGen.latticeVOAGen}\\
+    \addlinespace
+    \textbf{Moonshine module.} The Frenkel--Lepowsky--Meurman module $V^\natural$, with no hypotheses: a simple VOA
+    with $c=24$, $V^\natural_1=0$ and $\dim V^\natural_2=196884$, whose graded dimensions are the coefficients of
+    $j(\tau)-744$. No Monster action is claimed. Source: \cite{FLM,DGM}.
+    & \lean{VOA.Moonshine.moonshine}, \lean{VOA.Moonshine.hasSum_JShift}\\
+    \addlinespace
+    \textbf{Zhu's modular invariance.} For a $C_2$-cofinite rational VOA, the torus one-point functions of the
+    irreducible modules transform according to a representation of $SL_2(\Z)$. Instances with every hypothesis checked: all
+    rank-one lattice VOAs and their $\Z_2$-orbifolds. Source: \cite{Zhu,DLMtwisted,DLMalg}.
+    & \lean{VOA.zhuModularity_canonical_of_C2Cofinite_admissiblyRational},
+    \lean{VOA.Classification.COne.DLMRat.admissiblyRational_of_dlmRational},
+    \lean{VOA.Classification.COne.zhuModularity_V2m}\\
+    \addlinespace
+    \textbf{Affine VOAs for every simple Lie algebra.} The universal affine VOA $V^k(\g)$ and its simple quotient
+    $L_k(\g)$ at every non-critical level, with concrete models of $\mathfrak{sl}_n$ and of the exceptional Lie
+    algebras. Source: \cite{Kac}.
+    & \lean{VOA.AffineGeneral.universalAffineVOA}, \lean{VOA.AffineGeneral.simpleAffineQuotientVOA_isSimple}\\
+    \midrule
+    \multicolumn{2}{l}{\textbf{Tier 2: recent theorems}}\\
+    \midrule
+    \textbf{Classical freeness of $L_k(\sltwo)$ (Arakawa--Dai).} At the boundary admissible levels $k=-2+2/(2m+1)$, $m\ge1$,
+    $L_k(\sltwo)$ is classically free, with $C_2$ algebra $\C[e,h,f]/(eQ^m,hQ^m,fQ^m)$, $Q$ the Casimir; also its vacuum
+    character, in product and fermionic form. Source: \cite{ArakawaDai}.
+    & \lean{VOA.AffineSl2BoundaryClassicalFreeness.arakawaDai_theorem_1_1},
+    \lean{VOA.AffineSl2BoundaryCharacter.character_eq_fermionic_chain}\\
+    \addlinespace
+    \textbf{Classical freeness of the minimal models $M(2,2m+3)$.} For every $m\ge0$, with $C_2$ algebra
+    $\C[T]/(T^{m+1})$. Source: \cite{vanEkerenHeluani}.
+    & \lean{VOA.VirasoroClassicalFreeness.classicallyFree}\\
+    \addlinespace
+    \textbf{Huang's tensor categories.} For strongly rational VOAs, the braided tensor category of modules; for
+    $C_2$-cofinite VOAs, that of logarithmic modules. If the VOA is moreover pseudo-unitary: rigidity, the Verlinde
+    formula and the congruence property of its modular representation.
+    Source: \cite{HuangRigidity,HuangVerlinde,HuangLog,DongLinNg}.
+    & \lean{VOA.Huang.TensorCat.HexagonClose.braidedCategory_stronglyRational_pbw},
+    \lean{VOA.Huang.HuangRigid.rigid_ordinary},
+    \lean{VOA.Classification.COne.huangVerlindeFusionInput_holds},
+    \lean{VOA.Huang.CongruenceNamed.dlnCongruenceInput_holds}\\
+    \addlinespace
+    \textbf{Classification at $c=1$ (Gannon--Rayhaun).} The strongly rational, pseudo-unitary VOAs of central charge one
+    are exactly the lattice VOAs
+    $V_{2m}$, their orbifolds $V_{2m}^+$, and the three exceptional orbifolds $V_2^{A_4}$, $V_2^{S_4}$, $V_2^{A_5}$, each
+    occurring once. Source: \cite{GannonRayhaun}.
+    & \lean{VOA.Classification.COne.gannonRayhaun_classification}\\
+    \addlinespace
+    \textbf{Modular differential equations beyond $C_2$-cofiniteness.} $L_{-4/3}(\sltwo)$ is not $C_2$-cofinite, yet its
+    characters converge, its torus conformal blocks form a finite-dimensional space, and its vacuum one-point functions
+    satisfy a modular linear differential equation. The Arakawa--Kawasetsu theorem is proved for every VOA with
+    finite-dimensional zeroth Poisson homology, the property of quasi-lisse VOAs that it uses. Source:
+    \cite{ArakawaKawasetsu}.
+    & \lean{VOA.Sl2NonLisse.not_C2Cofinite_simpleSl2QL},
+    \lean{VOA.IsSqPrimary.exists_monicMLDEOn_all_analyticBlocks_of_etingofFinite_uncond}\\
+    \midrule
+    \multicolumn{2}{l}{\textbf{New results: rigidity}}\\
+    \midrule
+    \textbf{Virasoro minimal models.} Every graded first-order deformation of every minimal model $L(c_{p,q},0)$,
+    $p,q\ge2$ coprime, is trivial. For the series $M(2,2n+1)$, rigidity was also proved by Butson and Nair by other
+    methods \cite{ButsonNair}. The universal Virasoro VOA is proved not rigid, so the notion has content.
+    & \lean{VOA.VirModule.minimal_graded_rigidity}, \lean{VOA.VirPoly.not_isRigidGraded_virasoroVOA}\\
+    \addlinespace
+    \textbf{Affine $\sltwo$ at admissible levels.} Every graded first-order deformation of $L_k(\sltwo)$ is trivial, at
+    every admissible level. This contains Linshaw and Qi's results for $\sltwo$, at the positive integral levels and at
+    $k=-4/3$ \cite{LinshawQi}.
+    & \lean{VOA.AffineSl2GeneralRigidity.admissible_graded_rigidity}\\
+    \midrule
+    \multicolumn{2}{l}{\textbf{New results: classical freeness for the Deligne series}}\\
+    \midrule
+    \textbf{$A_2$, unconditional.} $L_{-3/2}(\slthree)$ is classically free: its $C_2$ algebra is the quotient by eight
+    explicit quadrics, and the arc algebra of that quotient is isomorphic to the associated graded of the VOA.
+    & \lean{VOA.DeligneAudit.DeligneSeries.A2_classicallyFree_final}\\
+    \addlinespace
+    \textbf{$D_4$, conditional on one published result.} The same for $L_{-2}(\mathfrak{so}_8)$, with $105$ quadrics,
+    assuming a published dimension bound for certain fusion products of current-algebra modules \cite{KusLittelmann}.
+    One step of its published proof needs repair; nothing suggests the bound is false.
+    & \lean{VOA.DeligneAudit.DeligneSeries.D4_classicallyFree_of_inputT}\\
+    \addlinespace
+    \textbf{$G_2$, $F_4$, $E_6$, $E_7$, $E_8$, conditional on a conjecture.} The same at the other levels of the series,
+    assuming the same published bound, a published result on Demazure modules \cite{Ravinder,ChariVenkatesh,KumarDCF,MathieuDCF}
+    (proved in Lean for $D_4$, not yet for these types), and a character identity that we checked numerically to high
+    order but that has no published proof.
+    & \lean{VOA.DeligneAudit.DeligneSeries.G2_classicallyFree_final} and its $F_4$, $E_6$, $E_7$, $E_8$ analogues\\
+    \midrule
+    \multicolumn{2}{l}{\textbf{New results: graded unitarity}}\\
+    \midrule
+    \textbf{Universal affine $\sltwo$, unconditional.} For every real $k<-2$, $V^k(\sltwo)$ is graded unitary in the
+    sense of \cite{ABLR}.
+    & \lean{VOA.AffineSl2BelowCritical.universal_gradedUnitary_belowCritical_unconditional}\\
+    \addlinespace
+    \textbf{Transfer through the BRST coset.} If $L_k(\sltwo)$ at the boundary admissible level is graded unitary,
+    then so is the minimal model $M(2,2n+1)$, for every $n\ge2$. This is a proved implication; its hypothesis is open.
+    The proof formalizes the argument of Beem and Garner \cite{BG} on the actual BRST complex.
+    & \lean{VOA.TwoSeries.JetPoincareTwo.twoSeries_gradedUnitary_of_affine_final}\\
+  \end{longtable}
+}
+
+\paragraph{Also in the library.} Vertex operator superalgebras, with symplectic fermions and the $\beta\gamma$
+system as examples, and the triplet algebra $W(2)$, proved simple, $C_2$-cofinite and not rational.
+
+% =====================================================================
+\section{Trust model}\label{sec:trust}
+% =====================================================================
+
+\paragraph{Base.} The library is built with Lean~4.30.0 and Mathlib v4.30.0. It declares no axiom of its own.
+Production code contains no \lean{sorry}, \lean{admit}, \lean{native_decide}, \lean{stop} or
+\lean{implemented_by}. We wrote an independent repository checker that rejects any of these, as well as any
+\lean{axiom} declaration, and requires every library file to be reachable from the umbrella module. Large finite
+verifications are done by kernel reduction (\lean{decide}, \texttt{decide +kernel}), never by the compiler. In addition,
+we run \texttt{\#print axioms} on every headline declaration.
+
+\paragraph{Definitions and theorems.} The real risk in a formalization of this kind is not an unsound proof but a true
+theorem about the wrong object: a definition that is weaker than the textbook one, a structure that can only be
+trivial, a conclusion satisfied by a degenerate witness.
+The book is our main defense: it shows how each declaration is connected to the corresponding statement in the
+literature.
+For every theorem it prints the Lean declaration verbatim (a script checks that each
+quoted block still occurs in the source at the recorded commit), decodes every convention and hypothesis in a
+dictionary box, and states how the statement could have been wrong or vacuous and why it is not. Each chapter has
+two referees: one for clarity, one for fidelity (statement against Lean, verbatim quotes). Before release, each
+headline area received an independent \emph{release audit}: a fresh AI reviewer and human readers
+compared the Lean statement with the source paper, traced every definition it depends on,
+listed every explicit hypothesis, and re-printed the axioms. A final read of the book's release edition then brought every chapter into line with the audited wording.
+
+% =====================================================================
+\section{Size and structure}
+% =====================================================================
+
+The released library has 11{,}660 Lean files and 3{,}752{,}244 lines under \texttt{VOA/}.
+
+\begin{center}\small
+  \begin{tabular}{lrrl}
+    \toprule
+    Directory & Files & Lines & Content\\
+    \midrule
+    \texttt{Foundations} & 29 & 9{,}642 & formal calculus, PBW, Lie-theoretic input\\
+    \texttt{Core} & 128 & 46{,}320 & VOA axioms, Borcherds identity, quotients\\
+    \texttt{Modules} & 466 & 132{,}816 & weak/admissible/ordinary modules, Zhu algebra\\
+    \texttt{Modularity} & 234 & 66{,}958 & modular forms, Zhu's theorem, $q$-traces\\
+    \texttt{Examples} & 1{,}181 & 307{,}367 & constructions; rigidity; Arakawa--Dai; graded unitarity\\
+    \texttt{AffineGeneral} & 354 & 21{,}641 & affine VOAs for every simple $\g$\\
+    \texttt{LatticesAndCodes} & 25 & 8{,}472 & lattices, Golay code, Leech lattice\\
+    \texttt{Moonshine} & 170 & 55{,}246 & $V^\natural$\\
+    \texttt{Huang} & 931 & 183{,}719 & tensor categories, rigidity, Verlinde, congruence\\
+    \texttt{Classification} & 1{,}756 & 1{,}627{,}513 & Gannon--Rayhaun $c=1$ classification\\
+    \texttt{DeligneAudit} & 6{,}173 & 1{,}241{,}760 & Deligne series\\
+    \texttt{Commutative}, \texttt{Filtered}, \texttt{Geometric} & 201 & 45{,}436 & commutative algebra, Li filtration\\
+    umbrella files & 12 & 5{,}354 & \\
+    \bottomrule
+  \end{tabular}
+\end{center}
+
+A large part of the line count is certificate data. The 167 files larger than 200\,KB contain 1{,}518{,}787 lines
+(about 40\% of the total), mostly exact rational data for the $c=1$ orbifold computations; they are checked by kernel
+reduction (about 39{,}600 \texttt{decide +kernel} calls), and the book describes them collectively --- what is checked,
+how, and at what size --- while presenting the theorems that consume them individually.
+
+The release edition of the book has 2{,}337 pages, and its brief edition 219 pages; every Lean block quoted in the brief
+(1{,}315) is checked verbatim against the source.
+
+% =====================================================================
+\section{Method}
+% =====================================================================
+
+The formalization was human-directed and carried out with the assistance of AI coding agents (Anthropic's
+Claude Opus and Claude Fable, and OpenAI's Codex), while Python scripts generated the certificate data that the Lean
+kernel re-checks and Python and Mathematica supplied independent numerical cross-checks. The authors chose the
+targets, the definitions and conventions, and the release scope; agents wrote all of the Lean code and the first
+drafts of the book chapters. Three practices shaped the result. First, referee loops: every chapter and every
+headline went through independent review by several open-weight and proprietary AI models, and statements were
+corrected or narrowed when a review found an over-claim. Second, a strict reporting rule: a result counts only when the aggregate build is green, and
+``unconditional'' is reserved for statements whose hypothesis closure is fully discharged. Third, agents were required to record every dead
+end, which let later agents narrow their search for proofs:
+routes proved false, vacuous or circular are kept, with their counterexamples, in a project log, and some are shown as
+examples in the book's verification chapter.
+
+% =====================================================================
+\section{In preparation}\label{sec:prep}
+% =====================================================================
+
+\begin{itemize}
+  \item \textbf{Deligne series beyond $A_2$.} Removing the assumptions of the conditional theorems; for $D_4$ the
+    book (Chapter~L27) describes the current state.
+  \item \textbf{Graded unitarity in the other direction}, from the minimal models to the affine algebra, through
+    Adamovi\'c's free-field realization (inverse Drinfeld--Sokolov reduction).
+  \item \textbf{Affine $\slthree$}, towards its rigidity.
+  \item \textbf{Removing pseudo-unitarity.} Proving rigidity, the Verlinde formula and the congruence property for
+    every strongly rational VOA, as in \cite{HuangRigidity,HuangVerlinde,DongLinNg}, without assuming
+    pseudo-unitarity.
+\end{itemize}
+
+% =====================================================================
+\section*{Acknowledgements}
+% =====================================================================
+We thank Brandon Rayhaun, Avia Raviv-Moshe and Chris Beem for useful discussions. We also thank the Lean and
+Mathlib communities. The work of LR is supported in part by NSF grant PHY-2513893 and by the Simons Foundation
+grant 681267 (Simons Investigator Award).
+
+% =====================================================================
+\begin{thebibliography}{99}\footnotesize
+  % =====================================================================
+
+  \bibitem{ABLR}
+  A.~Arabi Ardehali, C.~Beem, M.~Lemos and L.~Rastelli, Graded unitarity in the SCFT/VOA correspondence,
+  arXiv:2507.23781.
+  \bibitem{BG}
+  C.~Beem and A.~Garner, Graded unitarity and relative semi-infinite cohomology, arXiv:2509.10364.
+  \bibitem{FLM}
+  I.~Frenkel, J.~Lepowsky and A.~Meurman, \emph{Vertex Operator Algebras and the Monster}, Pure and Applied
+  Mathematics~134, Academic Press, 1988.
+
+  \bibitem{LepowskyLi}
+  J.~Lepowsky and H.~Li, \emph{Introduction to Vertex Operator Algebras and Their Representations}, Progress in
+  Mathematics~227, Birkh\"auser, 2004.
+
+  \bibitem{Kac}
+  V.~G.~Kac, \emph{Infinite-Dimensional Lie Algebras}, 3rd ed., Cambridge University Press, 1990.
+
+  \bibitem{Zhu}
+  Y.~Zhu, Modular invariance of characters of vertex operator algebras, \emph{J.\ Amer.\ Math.\ Soc.}\ \textbf{9}
+  (1996), 237--302.
+
+  \bibitem{DLMtwisted}
+  C.~Dong, H.~Li and G.~Mason, Twisted representations of vertex operator algebras, \emph{Math.\ Ann.}\ \textbf{310}
+  (1998), 571--600, arXiv:q-alg/9509005 (Theorem~8.1).
+
+  \bibitem{DLMalg}
+  C.~Dong, H.~Li and G.~Mason, Vertex operator algebras and associative algebras, \emph{J.\ Algebra} \textbf{206}
+  (1998), 67--96 (Theorem~4.10).
+
+  \bibitem{DGM}
+  L.~Dolan, P.~Goddard and P.~Montague, Conformal field theories, representations and lattice constructions,
+  \emph{Comm.\ Math.\ Phys.}\ \textbf{179} (1996), 61--120, arXiv:hep-th/9410029.
+
+  \bibitem{HuangRigidity}
+  Y.-Z.~Huang, Rigidity and modularity of vertex tensor categories, \emph{Commun.\ Contemp.\ Math.}\ \textbf{10}
+  (2008), suppl.~1, 871--911, arXiv:math/0502533.
+
+  \bibitem{HuangVerlinde}
+  Y.-Z.~Huang, Vertex operator algebras and the Verlinde conjecture, \emph{Commun.\ Contemp.\ Math.}\ \textbf{10}
+  (2008), no.~1, 103--154, arXiv:math/0406291.
+
+  \bibitem{HuangLog}
+  Y.-Z.~Huang, Cofiniteness conditions, projective covers and the logarithmic tensor product theory, \emph{J.\ Pure
+  Appl.\ Algebra} \textbf{213} (2009), 458--475, arXiv:0712.4109; and Y.-Z.~Huang, J.~Lepowsky and L.~Zhang,
+  Logarithmic tensor category theory for generalized modules for a conformal vertex algebra, I: Introduction and
+  strongly graded algebras and their generalized modules, in \emph{Conformal Field Theories and Tensor Categories},
+  Math.\ Lect.\ Peking Univ., Springer, 2014, 169--248, arXiv:1012.4193 (Part~I of a series of eight).
+
+  \bibitem{DongLinNg}
+  C.~Dong, X.~Lin and S.-H.~Ng, Congruence property in conformal field theory, \emph{Algebra Number Theory}
+  \textbf{9} (2015), no.~9, 2121--2166.
+
+  \bibitem{GannonRayhaun}
+  T.~Gannon and B.~C.~Rayhaun, Classification of rational $c=1$ vertex operator algebras and vertex operator
+  superalgebras, arXiv:2609.00122 (2026).
+
+  \bibitem{ArakawaDai}
+  T.~Arakawa and X.~Dai, Classical freeness of affine vertex algebras of $\sltwo$ at boundary admissible levels,
+  arXiv:2609.33348 (2026).
+
+  \bibitem{ArakawaKawasetsu}
+  T.~Arakawa and K.~Kawasetsu, Quasi-lisse vertex algebras and modular linear differential equations, in \emph{Lie
+  Groups, Geometry, and Representation Theory}, Progr.\ Math.~326, Birkh\"auser, 2018, 41--57, arXiv:1610.05865.
+
+  \bibitem{LinshawQi}
+  A.~R.~Linshaw and F.~Qi, Deformation rigidity of some simple affine VOAs, arXiv:2601.12017 (2026).
+
+  \bibitem{ButsonNair}
+  D.~Butson and S.~Nair, On the deformation theory of chiral quantizations, arXiv:2606.27341.
+  \bibitem{vanEkerenHeluani}
+  J.~van~Ekeren and R.~Heluani, Chiral homology of elliptic curves and the Zhu algebra, \emph{Comm.\ Math.\ Phys.}\
+  \textbf{386} (2021), 495--550, arXiv:1804.00017.
+
+  \bibitem{Ravinder}
+  B.~Ravinder, Demazure modules, Chari--Venkatesh modules and fusion products, \emph{SIGMA} \textbf{10} (2014), 110,
+  arXiv:1409.0274.
+
+  \bibitem{KusLittelmann}
+  D.~Kus and P.~Littelmann, Fusion products and toroidal algebras, \emph{Pacific J.\ Math.}\ \textbf{278} (2015),
+  427--445, arXiv:1411.5272.
+
+  \bibitem{ChariVenkatesh}
+  V.~Chari and R.~Venkatesh, Demazure modules, fusion products and $Q$-systems, \emph{Comm.\ Math.\ Phys.}\ \textbf{333}
+  (2015), 799--830, arXiv:1305.2523.
+
+  \bibitem{KumarDCF}
+  S.~Kumar, Demazure character formula in arbitrary Kac--Moody setting, \emph{Invent.\ Math.}\ \textbf{89} (1987),
+  395--423.
+
+  \bibitem{MathieuDCF}
+  O.~Mathieu, Formules de caract\`eres pour les alg\`ebres de Kac--Moody g\'en\'erales, \emph{Ast\'erisque}
+  \textbf{159--160} (1988).
+
+  \bibitem{lean4}
+  L.~de~Moura and S.~Ullrich, The Lean~4 theorem prover and programming language, in \emph{Automated Deduction ---
+  CADE~28}, Lecture Notes in Comput.\ Sci.~12699, Springer, 2021, 625--635.
+
+  \bibitem{mathlib}
+  The mathlib Community, The Lean mathematical library, in \emph{Proceedings of the 9th ACM SIGPLAN International
+  Conference on Certified Programs and Proofs (CPP 2020)}, ACM, 2020, 367--381.
+
+\end{thebibliography}
+
+\end{document}

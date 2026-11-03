@@ -1,0 +1,2202 @@
+\chapter{The twisted Leech lattice module and \texorpdfstring{$(V_\Lambda^T)^+$}{the twisted plus part}}\label{ch:08}
+
+\providecommand{\cheightS}{S[\theta]}
+\providecommand{\cheightT}{\mathcal{T}}
+\providecommand{\cheightE}[1]{E^{#1}}
+\providecommand{\cheightpair}[2]{\langle #1,#2\rangle}
+
+This chapter documents the release of the LeanVOA library named in the front matter. Every Lean quotation below is checked by \texttt{scripts/textbook/sync.py} to occur verbatim (up to whitespace and comments) in the source files of that release. Checks that were run at an earlier state of the library and not re-run for this edition are marked as such.
+It constructs the second half of the Moonshine module.  In Chapter~\ref{ch:03} we built
+the lattice vertex operator algebra $V_L$ of an even lattice $L$, in Chapter~\ref{ch:04} the lift
+$\theta$ of the lattice involution $-1$ to $V_L$ and its fixed points $V_L^+$, in
+Chapter~\ref{ch:06} the twisted Fock space $\cheightS$, the finite-dimensional module $\cheightT$ of
+the extraspecial group and the (repaired) notion of a twisted module, and in Chapter~\ref{ch:07}
+the twisted Heisenberg module, i.e.\ the $\theta$-twisted module structure on $\cheightS$ for the
+Heisenberg sub-VOA.  Here we put the lattice into it.
+
+The two headline results are:
+\begin{enumerate}[label=(\Alph*)]
+\item \textbf{The twisted module.}  For every even, positive-definite, unimodular lattice $L$ the
+  space $V_L^T=\cheightS\otimes\cheightT_L$ carries the structure of a $\theta$-twisted
+  $V_L$-module of order $2$, with the twisted vertex operators of Frenkel, Lepowsky and Meurman
+  (FLM).  For $L=\Lambda$ the Leech lattice this is the declaration
+  \lean{VOA.Moonshine.LatticeTwisted.leechTwistedModule}.
+\item \textbf{The plus part.}  The involution $\theta$ lifts to $V_\Lambda^T$ (acting by $-1$ on
+  $\cheightT$), and its fixed space $(V_\Lambda^T)^+$ is an ordinary module for the fixed-point
+  VOA $V_\Lambda^+$, whose weight spaces are integral, start at weight $2$ with dimension $98304$,
+  and whose graded dimension added to that of $V_\Lambda^+$ is $q\,J(q)$.  This is
+  \lean{VOA.Moonshine.plusModule} together with
+  \lean{VOA.Moonshine.finrank_plusModule_eq_coeff_JShift}.
+\end{enumerate}
+Both are proved \emph{unconditionally}: the only hypotheses of the general construction are that
+$L$ is even, positive definite, and has unimodular Gram matrix, and these are proved for the Leech
+lattice in Chapter~\ref{ch:02}.
+
+\paragraph{How to read this chapter.}  Following the book's constitution, each definition and
+theorem is presented as: mathematical statement; the Lean declaration copied verbatim; a
+\emph{fidelity check} (the box ``From the mathematics to the Lean statement'') which decodes the
+Lean statement, lists every hypothesis, and says whether the Lean statement is the same as,
+stronger, or weaker than the mathematics and why it is not vacuous; a proof on paper; and the
+machine status.  Proofs are explained mathematically; we do not tour the Lean proof scripts.
+
+\section{The physical picture and the plan}\label{ch08:sec:physics}
+
+\subsection{Chiral bosons on a double cover}
+Physically, $V_\Lambda$ is the chiral algebra of $24$ free chiral bosons $X^i(z)$ compactified on
+the torus $\mathbb{R}^{24}/\Lambda$; the states $e^\alpha$ are the vertex operators
+$:\!e^{i\alpha\cdot X(z)}\!:$, and the Heisenberg fields $h_i(z)=i\partial X^i(z)$ are the
+currents.  The involution $\theta$ is the reflection $X\mapsto -X$.  The \emph{$\theta$-twisted
+sector} is the space of states of the bosons on which $X$ is antiperiodic around the origin:
+$X(e^{2\pi i}z)=-X(z)$.  The currents then have half-integral modes,
+\begin{equation*}
+  h_i(z)=\sum_{n\in\frac12+\Z} h_i(n)\,z^{-n-1},\qquad [h_i(m),h_j(n)]=m\,\delta_{ij}\,\delta_{m+n,0},
+\end{equation*}
+and the Fock space they generate from a ground state is $\cheightS=\C[h_i(-\tfrac12),
+h_i(-\tfrac32),\dots]$ (Chapter~\ref{ch:06}).  The ground state of $24$ antiperiodic bosons has
+conformal weight $24/16=3/2$.  Antiperiodic bosons have no zero modes, hence no momentum: the
+lattice cannot appear as a momentum label.  Instead, the zero-mode part of the operator
+$:\!e^{i\alpha\cdot X}\!:$ survives only as a finite-dimensional ``cocycle'' operator $e_\alpha$
+acting on a degenerate ground-state space $\cheightT$ of dimension $2^{12}$ (for $\Lambda$): the
+$e_\alpha$ satisfy $e_\alpha e_\beta=(-1)^{\cheightpair\alpha\beta}e_\beta e_\alpha$, which is a
+representation of an extraspecial $2$-group (Chapter~\ref{ch:06}).  So
+\begin{equation*}
+  V_\Lambda^T=\cheightS\otimes\cheightT ,\qquad \dim\cheightT=2^{12}=4096 .
+\end{equation*}
+
+\subsection{The twisted vertex operator}
+On $V_\Lambda^T$ the vertex operator of $e^\alpha$ is (FLM, Chapter~9)
+\begin{equation}\label{ch08:eq:YT}
+  Y^T(e^\alpha,z)=2^{-\cheightpair\alpha\alpha}\,z^{-\cheightpair\alpha\alpha/2}\,
+  \cheightE{-}(-\alpha,z)\,\cheightE{+}(-\alpha,z)\otimes e_\alpha,
+\end{equation}
+\begin{equation}\label{ch08:eq:Epm}
+  \cheightE{\mp}(-\alpha,z)=\exp\Bigl(\pm\sum_{n\in\frac12+\N}\frac{\alpha(\mp n)}{n}z^{\pm n}\Bigr),
+\end{equation}
+where $\alpha(n)=\sum_i\alpha_i h_i(n)$ in orthonormal coordinates.  The creation part
+$\cheightE{-}$ contains only $h(-n)$ with $n>0$ and the annihilation part $\cheightE{+}$ only
+$h(n)$, $n>0$; both are well defined on $\cheightS$ because on any given vector only finitely
+many terms of $\cheightE{+}$ survive.  The powers $z^{n}$ with $n\in\frac12+\Z$ are the reason
+everything is written in the doubled variable $w=z^{1/2}$.
+
+The heart of the theory of these operators is a single reordering identity (proved below as
+\lean{EpC_sMz_mul}):
+\begin{equation}\label{ch08:eq:reorder}
+  \cheightE{+}(-\alpha,z_1)\cheightE{-}(-\beta,z_2)
+  =\cheightE{-}(-\beta,z_2)\cheightE{+}(-\alpha,z_1)
+   \Bigl(\frac{1-z_2^{1/2}/z_1^{1/2}}{1+z_2^{1/2}/z_1^{1/2}}\Bigr)^{\cheightpair\alpha\beta}.
+\end{equation}
+In the untwisted theory the corresponding factor is $(1-z_2/z_1)^{\cheightpair\alpha\beta}$; here
+it is a ratio.  Near the diagonal, $w_1\approx w_2$, we have $1-w_2/w_1\approx(z_1-z_2)/(2z_1)$
+and $1+w_2/w_1\approx 2$, so the factor behaves like
+$\bigl((z_1-z_2)/(4z_1)\bigr)^{\cheightpair\alpha\beta}$.  The stray $4^{-\cheightpair\alpha\beta}$ is
+exactly what the normalisation $2^{-\cheightpair\alpha\alpha}$ in \eqref{ch08:eq:YT} is designed to
+cancel, since
+\begin{equation}\label{ch08:eq:norm}
+  2^{-\cheightpair\alpha\alpha}\,2^{-\cheightpair\beta\beta}\,4^{-\cheightpair\alpha\beta}
+  =2^{-\cheightpair{\alpha+\beta}{\alpha+\beta}} .
+\end{equation}
+This one line is the reason the product formula $e^\alpha_{(-\cheightpair\alpha\beta-1)}e^\beta
+=\varepsilon(\alpha,\beta)e^{\alpha+\beta}$ of $V_L$ is reproduced on the twisted side
+(\S\ref{ch08:sec:normalisation}).
+
+\subsection{Plan of the construction}
+The construction follows the route ``locality plus product formula implies the Jacobi identity''
+prepared in Chapter~\ref{ch:07}:
+\begin{enumerate}
+\item \S\ref{ch08:sec:newton}--\S\ref{ch08:sec:twopoint}: the algebra of $\cheightE{\pm}$ on
+  $\cheightS$: Newton exponentials, the contraction factor
+  $((1-x)/(1+x))^n$, the reordering \eqref{ch08:eq:reorder}, the two-point identity and the
+  locality of the operators \eqref{ch08:eq:YT}.
+\item \S\ref{ch08:sec:vertex}: the twisted vertex operators $Y^T(e^\alpha,z)$ and the locality
+  of the whole generated system of fields.
+\item \S\ref{ch08:sec:allstates}: the extension of $Y^T$ to every state of $V_L$, forced by the
+  twisted iterate formula for the Heisenberg generators.
+\item \S\ref{ch08:sec:PF}--\S\ref{ch08:sec:normalisation}: the \emph{twisted product formula} for
+  all pairs of states, reduced to the pair $(e^\alpha,e^\beta)$, which is proved by a
+  descent in the mode index together with a uniqueness lemma and an explicit vacuum computation;
+  here the normalisation $2^{-\cheightpair\alpha\alpha}$ enters.
+\item \S\ref{ch08:sec:module}: the twisted Jacobi identity, the grading, and the instance
+  \lean{latticeTwistedModule} / \lean{leechTwistedModule}.
+\item \S\ref{ch08:sec:thetatw}--\S\ref{ch08:sec:leechplus}: $\theta$ on the twisted sector, the
+  general ``plus part of an order-two twisted module'' construction, and
+  $(V_\Lambda^T)^+$ as a $V_\Lambda^+$-module, with its dimensions.
+\end{enumerate}
+All declarations live in the namespace \lean{VOA.Moonshine.LatticeTwisted} (files
+\leanpath{VOA/Moonshine/LatticeTwisted*.lean}), except the plus-part construction
+(\lean{VOA.TwistedPlus}, \leanpath{VOA/Moonshine/TwistedPlusModule.lean}) and the Leech plus
+module (\lean{VOA.Moonshine}, \leanpath{VOA/Moonshine/TwistedPlus.lean}).
+
+\section{Notation and the objects we build on}\label{ch08:sec:recall}
+
+This section recalls, with their Lean sources, the definitions from earlier chapters that occur
+in the statements of this chapter.  The reader who has Chapters~\ref{ch:06} and~\ref{ch:07} fresh
+may skim it, but every later fidelity check refers back here.
+
+\subsection{The twisted Fock space and its modes}
+\begin{definition}[Twisted Fock space]\label{ch08:def:FockT}
+For $r\in\N$, $\cheightS=\cheightS_r$ is the polynomial algebra over $\C$ in variables
+$X_{(n,i)}$, $n\in\N$, $i\in\{0,\dots,r-1\}$, where $X_{(n,i)}$ stands for the creation operator
+$h_i(-n-\tfrac12)$ applied to the vacuum $1$.  The mode $h_i(k/2)$ for odd $k$ acts as
+multiplication by $X_{((-k-1)/2,i)}$ if $k<0$ and as $\tfrac k2\,\partial/\partial X_{((k-1)/2,i)}$
+if $k>0$.
+\end{definition}
+\noindent File \leanpath{VOA/Moonshine/TwistedHeisenberg.lean}.
+\begin{leancode}
+abbrev FockT (r : ℕ) : Type := MvPolynomial (ℕ × Fin r) ℂ
+
+noncomputable def modeT (r : ℕ) (i : Fin r) (k : ℤ) : Module.End ℂ (FockT r) :=
+  if k % 2 = 0 then 0
+  else if k < 0 then mulXT (varT i k)
+  else ((k : ℂ) / 2) • pderivT (varT i k)
+\end{leancode}
+\begin{dictionary}
+\textbf{Half-integer modes.} Lean has no type of half-integers; the mode $h_i(k/2)$ is indexed by
+the \emph{integer} $k$, and only odd $k$ are meaningful.  For even $k$ the definition returns the
+junk value $0$, which is mathematically correct (a $\theta$-twisted current has no integral
+modes).  This ``index $k$ stands for $k/2$'' convention is used throughout the chapter: every
+twisted vertex operator is a function $\Z\to\End$, whose value at $k$ is the coefficient
+$u_{(k/2)}$.  With this normalisation $[h_i(k/2),h_j(l/2)]=\tfrac k2\delta_{ij}\delta_{k+l,0}$
+(Chapter~\ref{ch:06}, \lean{modeT_comm}).  \lean{L0T r} is the Virasoro zero mode
+$L_0=\frac12\cdot(\text{doubled weight})+\frac r{16}$ of Chapter~\ref{ch:07}, and
+\lean{gradingT r d} the span of monomials of doubled weight $d$ (a variable $X_{(n,i)}$ has doubled
+weight $2n+1$).  \lean{thetaT r} is the algebra automorphism $X_{(n,i)}\mapsto -X_{(n,i)}$.
+\end{dictionary}
+
+\begin{physics}
+In the Leech lattice CFT the $\theta$-twisted sector is built on 24 free bosons whose oscillators carry half-integer moding, $\alpha^a_{-n-1/2}$, because the fields $\partial X^a$ pick up a sign $-1$ on going around the twist field inserted at the origin. The polynomial ring $\cheightS_r$ is the Fock space of these twisted oscillators; the ground state $1$ is the twist field with no oscillator excited. Its weight is $r/16$, which is $3/2$ for $r=24$: each of the 24 bosons contributes the standard $1/16$ twisted vacuum energy. This is the oscillator half of the twisted sector $V_\Lambda^T=\cheightS[\theta]\otimes T$; the other half is the space of ground states.
+\end{physics}
+
+\subsection{Fields, products, locality}
+The library's calculus of fields (Chapters~\ref{ch:L01}, \ref{ch:L03} and~\ref{ch:07}) uses the
+following objects.  A \emph{formal distribution} is a function $f:\Z\to\End(M)$, read as
+$f(z)=\sum_n f(n)z^n$; its mode is \lean{mode f m = f (-m - 1)}, the coefficient of $z^{-m-1}$
+(Definition~\ref{l01:def:mode}, \leanpath{VOA/Foundations/FormalCalculus.lean}).  A \emph{field}
+(\lean{Fld M}, the subtype of formal distributions satisfying \lean{IsField}) is a formal
+distribution which is lower truncated on every vector (Definition~\ref{l03:def:fld},
+\leanpath{VOA/Core/LocalSystem.lean}).  Two distributions are \emph{local}, \lean{Local a b}, if
+\lean{∃ N : ℕ, mulBySubPow N (bracketDist a b) = 0}: some power of $(z_1-z_2)$ kills their
+commutator (Definition~\ref{l01:def:bracket}, \leanpath{VOA/Foundations/Locality.lean}); here
+\lean{bracketDist a b} is $[a(z_1),b(z_2)]$ as a two-variable distribution and
+\lean{mulBySubPow N} multiplies by $(z_1-z_2)^N$.  For local fields $a,b$ and $n\in\Z$ the
+$n$-th product $a_{(n)}b$ (\lean{Fld.prod n a b}) is the usual one,
+$a_{(n)}b(z_2)=\Res_{z_1}\bigl((z_1-z_2)^na(z_1)b(z_2)-(-z_2+z_1)^nb(z_2)a(z_1)\bigr)$.
+\lean{fzmul k a} is $z^k a(z)$.
+
+\begin{definition}[Rescaled field]\label{ch08:def:resc}
+For a family $A:\Z\to\End M$ of fractional modes, $A(k)=u_{(k/N)}$, and a residue $e\in\Z$, the
+rescaled field on the class $e+N\Z$ is the integrally moded distribution whose $p$-th mode is
+$A(Np+e)$: mathematically $z^{e/N}\sum_{k\equiv e}u_{(k/N)}z^{-k/N-1}$.
+\end{definition}
+\noindent File \leanpath{VOA/Moonshine/HeisenbergTwistedModuleReduction.lean}.
+\begin{leancode}
+def resc (A : ℤ → End ℂ M) (N : ℕ) (e : ℤ) : FormalDist (End ℂ M) :=
+  fun n => A (N * (-n - 1) + e)
+\end{leancode}
+\begin{dictionary}
+\lean{mode_resc} says \lean{mode (resc A N e) p = A (N * p + e)}.  For $N=2$:
+$\mathrm{resc}\,A\,2\,e$ is $z^{e/2}Y(u,z)$ restricted to the half-integral (if $e$ odd) or
+integral (if $e$ even) modes.  Locality of two twisted fields $Y(u,z_1),Y(v,z_2)$, which are
+series in $z_1^{1/2},z_2^{1/2}$, is equivalent to locality of every pair of rescaled class
+components, because multiplication by $z_1^{e/2}z_2^{e'/2}$ commutes with $(z_1-z_2)^N$.  This is
+why every locality statement below is stated for \lean{resc} fields on all classes $e,e'$.
+\lean{rescFld} packages \lean{resc} as an element of \lean{Fld} given a truncation proof.
+\end{dictionary}
+
+\begin{physics}
+Going around the twist field the vertex operator $Y(u,z)$ of a $\theta$-odd or generic state is multivalued, with expansion in powers of $z^{1/2}$. Splitting off the factor $z^{e/2}$ and keeping one residue class of exponents produces ordinary single-valued formal distributions, to which the usual calculus of local fields applies. Heuristically this is passing to the double cover $w=z^{1/2}$ of the plane branched at the twist field.
+\end{physics}
+
+\begin{definition}[Twisted product]\label{ch08:def:star}
+For a twist $\alpha\in\C$, fields $A,X$ and $p\in\Z$,
+\begin{equation*}
+  \mathrm{star}_\alpha(A)_pX=\sum_{i\ge0}\binom{-\alpha}{i}z^{-i}\,A_{(p+i)}X .
+\end{equation*}
+\end{definition}
+\noindent File \leanpath{VOA/Moonshine/HeisenbergTwistedModuleTwistedComm.lean}.
+\begin{leancode}
+noncomputable def star (α : ℂ) (A : Fld M) (p : ℤ) (X : Fld M) : Fld M :=
+  ∑ᶠ i : ℕ, cbinom (-α) i • fzmul (-(i : ℤ)) (Fld.prod (p + i) A X)
+\end{leancode}
+\begin{dictionary}
+\lean{cbinom x i} is $x(x-1)\cdots(x-i+1)/i!$ for complex $x$; the \lean{∑ᶠ} is a finite sum
+because $A_{(p+i)}X=0$ for large $i$ when $A,X$ are local.  \textbf{Meaning.}  Write
+$A(z)=z^{\alpha}Y(u,z)$, $X(z)=z^{\alpha'}Y(v,z)$.  Since
+$\sum_i\binom{-\alpha}{i}(z_1-z_2)^iz_2^{-i}=(z_1/z_2)^{-\alpha}$, one has formally
+$\mathrm{star}_\alpha(A)_pX(z_2)=z_2^{\alpha+\alpha'}\Res_{z_1}(z_1-z_2)^p[Y(u,z_1)Y(v,z_2)-Y(v,z_2)Y(u,z_1)]$,
+where the binomial expansion gives the precise meaning to the residue of the half-integral
+powers.  So $\mathrm{star}$ is the rescaled version of the twisted iterate (associativity)
+formula $Y(u_{(p)}v,z)=\Res_{z_1}(\cdots)$, and the twisted product formula below says exactly
+that the twisted vertex operator satisfies it.
+\end{dictionary}
+
+\begin{physics}
+This is the binomial rule for moving a twisted field past a field which carries branch-cut phase $z^{\alpha}$: expanding $(z_1/z_2)^{-\alpha}$ in powers of $(z_1-z_2)/z_2$ gives the coefficients $\binom{-\alpha}{i}$. In CFT terms it is the operator product of a field with the twisted sector, written so that the monodromy around the twist field is built in. Heuristic gloss only; the formal identity is proved in Lean.
+\end{physics}
+
+\begin{definition}[Generated twisted system]\label{ch08:def:TGen}
+For a set $S$ of fields, \lean{TGenerated S} is the smallest set containing $S$, the identity
+field and $0$, and closed under all products $a_{(n)}b$ ($n\in\Z$), multiplication by $z^k$,
+sums and scalar multiples.
+\end{definition}
+\noindent File \leanpath{VOA/Moonshine/HeisenbergTwistedModuleLocality.lean}.
+\begin{leancode}
+inductive TGen (S : Set (Fld M)) : ℕ → Fld M → Prop
+  | base {a : Fld M} : a ∈ S → TGen S 0 a
+  | one : TGen S 0 Fld.one
+  | zero : TGen S 0 0
+  | prod {i j : ℕ} {a b : Fld M} (n : ℤ) : TGen S i a → TGen S j b →
+      TGen S (i + j + 1) (Fld.prod n a b)
+  | zmul {i : ℕ} {a : Fld M} (k : ℤ) : TGen S i a → TGen S (i + 1) (fzmul k a)
+  | add {i j : ℕ} {a b : Fld M} : TGen S i a → TGen S j b → TGen S (i + j + 1) (a + b)
+  | smul {i : ℕ} {a : Fld M} (c : ℂ) : TGen S i a → TGen S (i + 1) (c • a)
+
+def TGenerated (S : Set (Fld M)) : Set (Fld M) := {a | ∃ i, TGen S i a}
+\end{leancode}
+
+\begin{physics}
+This is the set of all fields obtainable by operator products (and the rescalings by $z^{1/2}$) from a chosen list of generating fields, in other words the fields of the chiral algebra generated by the twisted currents and the twisted lattice exponentials. Dong's lemma then says that locality of the generators propagates to every composite, the algebraic version of the statement that a Wick-type product of mutually local operators remains local.
+\end{physics}
+By Dong's lemma (proved in Chapter~\ref{ch:07} as \lean{tgenerated_local}), if $S$ is pairwise
+local then so is \lean{TGenerated S}.  Note that $z^k$-multiplication is allowed: this is what
+makes the system ``twisted'' (the rescalings $z^{e/2}$ move fields between classes).
+
+\subsection{Twisted modules}
+The target structure is the (repaired) twisted module of Chapter~\ref{ch:06}.  We reproduce it
+in full because it is the conclusion of the main theorem.
+\noindent File \leanpath{VOA/Modularity/Twisted.lean}.
+\begin{leancode}
+structure TwistedModule (g : Aut W) (N : ℕ) (M : Type u) [AddCommGroup M] [Module ℂ M] where
+  /-- The fractional modes: `YM u k = u₍k/N₎`. -/
+  YM : 𝒱 →ₗ[ℂ] (ℤ → Module.End ℂ M)
+  /-- `Y_M(𝟙,z) = id`: only the mode `r = −1`, i.e. `k = −N`, survives. -/
+  vacuum_YM : ∀ k : ℤ, YM W.vacuum k = if k = -(N : ℤ) then 1 else 0
+  /-- Lower truncation. -/
+  truncation : ∀ (u : 𝒱) (x : M), ∃ K : ℤ, ∀ k : ℤ, K ≤ k → YM u k x = 0
+  /-- **5.3.22a**: for `u ∈ 𝒱ʲ` the modes are supported on `k ≡ −j (mod N)`. -/
+  support : ∀ (j : ℕ) (u : 𝒱), u ∈ g.twistedEigenspace N j →
+    ∀ k : ℤ, (k + j) % (N : ℤ) ≠ 0 → YM u k = 0
+  jacobi : ∀ (j : ℕ) (u : 𝒱), u ∈ g.twistedEigenspace N j → ∀ (v : 𝒱) (x : M) (ℓ k m : ℤ),
+    (k + j) % (N : ℤ) = 0 →
+    (∑ᶠ i : ℤ, (negOnePow i * cbz ℓ i) •
+        (YM u (ℓ * N + k - i * N) (YM v (m + i * N) x)
+          - negOnePow ℓ • YM v (ℓ * N + m - i * N) (YM u (k + i * N) x)))
+      = ∑ᶠ i : ℕ, cbinom ((k : ℂ) / N) i • YM (W.smul u (ℓ + i) v) (k + m - i * N) x
+  /-- The `ℂ`-grading. -/
+  weight : ℂ → Submodule ℂ M
+  isInternal : DirectSum.IsInternal weight
+  /-- `L₀ = ω₍₁₎` (mode `k = N`) acts on `M_α` by `α`. -/
+  L0_weight : ∀ (α : ℂ) (x : M), x ∈ weight α → YM W.conformalVector N x = α • x
+  finrank : ∀ α, FiniteDimensional ℂ (weight α)
+  boundedBelow : ∃ B : ℝ, ∀ α : ℂ, weight α ≠ ⊥ → B ≤ α.re
+\end{leancode}
+\begin{dictionary}
+\textbf{Decoding.}  \lean{YM u k} is $u_{(k/N)}$, the coefficient of $z^{-k/N-1}$ in $Y_M(u,z)$.
+\lean{g.twistedEigenspace N j} is the eigenspace of $g$ for the eigenvalue $e^{-2\pi ij/N}$; for
+$N=2$ it is $\{u:\ gu=(-1)^ju\}$.  The support axiom says that for such $u$ only the modes with
+$k\equiv -j\pmod N$ occur, i.e. $Y_M(u,z)\in z^{j/N}\End(M)[[z^{\pm1}]]$.  In \lean{jacobi},
+$\lean{YM u (ℓ * N + k - i * N)}=u_{(\ell+k/N-i)}$, \lean{cbz ℓ i} is $\binom{\ell}{i}$ (zero
+for $i<0$) and \lean{negOnePow} is $(-1)^{\cdot}$; so the identity reads, for $u\in V^j$,
+$k\equiv -j$,
+\begin{multline*}
+\sum_i(-1)^i\binom{\ell}{i}\Bigl(u_{(\ell+\frac kN-i)}v_{(\frac mN+i)}x-(-1)^\ell
+v_{(\ell+\frac mN-i)}u_{(\frac kN+i)}x\Bigr)\\=\sum_{i\ge0}\binom{k/N}{i}(u_{(\ell+i)}v)_{(\frac{k+m}N-i)}x,
+\end{multline*}
+which is the mode form of the twisted Jacobi identity of Dong--Li--Mason.  \lean{W.smul u n v}
+is the product $u_{(n)}v$ in the VOA.  The grading axioms are as for ordinary modules
+(Definition~\ref{l12:def:ordmodule}): \lean{DirectSum.IsInternal weight} says $M=\bigoplus_\alpha M_\alpha$ as an
+internal direct sum, and $L_0=\omega_{(1)}$, which is \lean{YM ω N}, acts on $M_\alpha$ by $\alpha$.
+\end{dictionary}
+\begin{warning}
+The hypothesis \texttt{(k + j) \% (N : ℤ) = 0} in \lean{jacobi} is the 2026-10-06 repair.  Before
+it, the identity was required for all $k$, including $k$ off the support of $u$; the certificate
+$u=v=\mathbf 1$, $\ell=-1$, $k=1$, $m=-N-1$ then gives $0=x$, so for $N\ge2$ no nonzero twisted
+module existed (\lean{VOA.jacobiAllIndices_eq_zero}).  Every result of this chapter is about the
+repaired structure.  The analogous field of \lean{SuperTwistedModule} has \emph{not} been
+repaired; it is not used here (see \S\ref{ch08:sec:deadends}).
+\end{warning}
+
+The definition \lean{TwistedJacobi g N YM} (file
+\leanpath{VOA/Moonshine/HeisenbergTwistedModuleDefect.lean}) is literally the proposition in the
+\lean{jacobi} field, as a predicate on a candidate \lean{YM}.
+
+\subsection{The lattice side}
+From Chapters~\ref{ch:02}--\ref{ch:04} and~\ref{ch:06} we use:
+\begin{itemize}
+\item \lean{L : IntegralLattice}, with \lean{L.form} the integral bilinear form,
+  \lean{L.Even}, \lean{L.PosDef}, and \lean{hU : IsUnit (gramMat L).det} (unimodularity).
+  \lean{chargeCoord L α : Fin (rank L) → ℂ} are the coordinates of $\alpha$ in an orthonormal basis
+  of $L\otimes\mathbb{R}$; \lean{sum_chargeCoord} states
+  \lean{∑ b, chargeCoord L α b * chargeCoord L β b = ((L.form α β : ℤ) : ℂ)} under \lean{hPos}.
+\item \lean{LatModuleGen L} $=V_L=\mathrm{FockN}(\mathrm{rank}\,L)\otimes\C[L]$, with the VOA
+  structure \lean{latticeVOAGen L hEven hPos}; \lean{eGen L α} is $e^\alpha\in\C[L]$,
+  \lean{echg L α} $=1\otimes e^\alpha$ and \lean{hgen L b} $=h_b(-1)\mathbf 1$.
+  \lean{latticeCocycle L α β} $=\varepsilon(\alpha,\beta)\in\{\pm1\}$ is the bimultiplicative
+  cocycle with $\varepsilon(\alpha,\beta)\varepsilon(\beta,\alpha)^{-1}=(-1)^{\cheightpair\alpha\beta}$.
+\item \lean{thetaLat L}: $p\otimes e^\alpha\mapsto\sigma(p)\otimes e^{-\alpha}$, $\sigma$ the sign
+  change of all oscillators, and \lean{thetaAut L hEven hPos} the same map as a VOA automorphism.
+  (No cocycle correction is needed because the library's cocycle satisfies
+  $\varepsilon(-\alpha,\beta)=\varepsilon(\alpha,\beta)$.)
+  \lean{leechTheta} is \lean{thetaAut} for $L=\Lambda$ and \lean{leechVOAPlus} is the
+  fixed-point VOA \lean{orbifoldVOA (Subgroup.zpowers leechTheta)} (Chapter~\ref{ch:04}).
+\item \lean{Rep (cocMat L) (isUnit_det_cocMat L hEven hU)} is the space $\cheightT_L$ and
+  \lean{eT L hEven hU α} the operator $e_\alpha$ on it, with
+  \lean{eT_mul}: $e_\alpha e_\beta=\varepsilon(\alpha,\beta)e_{\alpha+\beta}$, \lean{eT_neg}:
+  $e_{-\alpha}=e_\alpha$, and \lean{eT_add_two_nsmul}: $e_{\alpha+2\gamma}=e_\alpha$
+  (Chapter~\ref{ch:06}).  For $\Lambda$ this space is \lean{leechT}, of dimension $4096$.
+\end{itemize}
+
+\section{Newton exponentials and the contraction factor}\label{ch08:sec:newton}
+
+The operators $\cheightE{\pm}$ are exponentials of infinite sums of commuting operators.  Rather
+than manipulate $\exp$ of operator-valued series, the library works with the
+\emph{coefficients} of such exponentials, characterised by a first-order recursion.  This section
+is pure algebra over an arbitrary commutative $\C$-algebra $R$
+(\leanpath{VOA/Moonshine/LatticeTwistedExp.lean}).
+
+\begin{definition}[Newton exponential]\label{ch08:def:nexp}
+For a sequence $d=(d_k)_{k\ge1}$ in $R$, let $E_p=\mathrm{nexp}(d)_p$ be the coefficient of $w^p$
+in $\exp\bigl(\sum_{k\ge1}\frac{d_k}{k}w^k\bigr)$.  Equivalently $E_0=1$ and
+\begin{equation*}
+  (p+1)E_{p+1}=\sum_{k=0}^{p}d_{k+1}E_{p-k}\qquad(p\ge0).
+\end{equation*}
+\end{definition}
+\begin{leancode}
+noncomputable def nexp (d : ℕ → R) : ℕ → R
+  | 0 => 1
+  | (p + 1) => ((p + 1 : ℂ))⁻¹ • ∑ k ∈ Finset.range (p + 1), d (k + 1) * nexp d (p - k)
+\end{leancode}
+\begin{dictionary}
+The recursion is the coefficient form of $\theta F=D\cdot F$, where $\theta=w\,d/dw$ is the Euler
+operator and $D=\sum_{k\ge1}d_kw^k=\theta\bigl(\sum d_kw^k/k\bigr)$; indeed if
+$F=\exp(\sum d_kw^k/k)$ then $\theta F=DF$.  The value \lean{d 0} is ignored.  The definition is
+\emph{by} the recursion, so it makes sense in any $\C$-algebra (division by $p+1$ uses the
+$\C$-algebra structure) without any analytic notion of $\exp$; there is nothing to be vacuous
+about.  It is the same as the textbook object: the power series $\sum_pE_pw^p$ is shown to be the
+unique solution of $\theta F=DF$, $F(0)=1$ (next lemma), which characterises
+$\exp(\sum d_kw^k/k)$.
+\end{dictionary}
+
+\begin{physics}
+This is bookkeeping for the exponentials of oscillators that appear in the twisted vertex operators: $\exp(\sum_k \frac{d_k}{k}w^k)$ is a generating function of the Schur-type polynomials built from the creation operators. It has no independent physical content beyond being the coefficient extraction of $E^-(w)=\exp(\sum \frac{2}{k} \alpha_{-k/2}w^k)$, the vertex-operator exponential acting on the twisted Fock space.
+\end{physics}
+
+\begin{lemma}[Characterisation and the exponential law]\label{ch08:lem:nexp}
+Let $\theta$ be the Euler operator on $R[[X]]$ and $D(d)=\sum_{k\ge1}d_kX^k$.
+\begin{enumerate}
+\item If $F\in R[[X]]$ satisfies $\theta F=D(d)F$ and $F_0=1$, then $F=\sum_p\mathrm{nexp}(d)_pX^p$.
+\item $\mathrm{nexp}(d+e)=\mathrm{nexp}(d)\cdot\mathrm{nexp}(e)$ as power series.
+\item If $\varphi:R\to S$ is a $\C$-algebra map, $\varphi(\mathrm{nexp}(d)_p)=\mathrm{nexp}(\varphi\circ d)_p$.
+\item $\mathrm{nexp}(k\mapsto t^kd_k)_p=t^p\,\mathrm{nexp}(d)_p$.
+\item If $\delta$ is a $\C$-derivation of $R$ with $\delta(d_k)=\delta_{k,K}\,K\,c$ for some
+  $K\ge1$, then $\delta(E_p)=c\,E_{p-K}$ for $p\ge K$ and $\delta(E_p)=0$ for $p<K$.
+\end{enumerate}
+\end{lemma}
+\begin{leancode}
+theorem eq_nexpPS (d : ℕ → R) (F : R⟦X⟧) (h : theta F = Dser d * F) (h0 : coeff 0 F = 1) :
+    F = nexpPS d
+theorem nexpPS_add (d e : ℕ → R) : nexpPS (d + e) = nexpPS d * nexpPS e
+theorem nexp_map {S : Type*} [CommRing S] [Algebra ℂ S] (φ : R →ₐ[ℂ] S) (d : ℕ → R) (p : ℕ) :
+    φ (nexp d p) = nexp (fun k => φ (d k)) p
+theorem nexp_scale (t : R) (d : ℕ → R) (p : ℕ) :
+    nexp (fun k => t ^ k * d k) p = t ^ p * nexp d p
+theorem nexp_derivation (δ : Derivation ℂ R R) (d : ℕ → R) (K : ℕ) (hK : 0 < K) (c : R)
+    (hd : ∀ k, δ (d k) = if k = K then (K : ℂ) • c else 0) (p : ℕ) :
+    δ (nexp d p) = if K ≤ p then c * nexp d (p - K) else 0
+\end{leancode}
+\begin{dictionary}
+\lean{nexpPS d} is the power series with coefficients \lean{nexp d}, \lean{theta} is
+$F\mapsto\sum_pp\,F_pX^p$, \lean{Dser d} is $D(d)$.  Item (5) is the statement that a derivation
+hitting exactly one logarithmic coefficient $d_K$ with value $Kc$ acts on $\exp(\sum d_kw^k/k)$
+as multiplication by $c\,w^K$: since $\delta$ of the exponent is $c\,w^K$.  The hypotheses
+\lean{hK : 0 < K} and \lean{hd} are exactly these conditions.  All five statements are the
+textbook statements with no extra hypotheses.
+\end{dictionary}
+
+\begin{physics}
+Technical lemma about the exponential of a series: it says that the coefficients behave like the expansion of $\exp(\int D)$, multiplicatively in $d$ (so exponentials of sums of oscillators factorise) and with the expected response to a shift of one oscillator. This is the combinatorial form of the identity $e^{A+B}=e^Ae^B$ for commuting creation operators.
+\end{physics}
+\begin{proof}[Proof on paper]
+(1) If $\theta Z=DZ$ and $Z_0=0$, comparing coefficients of $X^{p+1}$ gives
+$(p+1)Z_{p+1}=\sum_{k\le p}d_{k+1}Z_{p-k}$, so by strong induction $Z=0$; apply this to
+$Z=F-\mathrm{nexp}(d)$, which solves the linear equation because $\mathrm{nexp}(d)$ does (the
+recursion is that equation).  (2) $\theta$ is a derivation, so $\theta(FG)=(D(d)+D(e))FG$ and
+(1) applies.  (3) and (4) are (1) applied to $\varphi(F)$ and to $F(tX)$.  (5) Apply $\delta$
+coefficientwise to $\theta F=DF$: $\delta F$ satisfies $\theta(\delta F)=D\,\delta F+(\theta
+(cX^K))F$, and $cX^KF$ satisfies the same equation; their difference has constant term $0$, so
+by (1) it vanishes.
+\end{proof}
+\begin{status}
+\leanpath{VOA/Moonshine/LatticeTwistedExp.lean}.  Unconditional.  The file header records
+\texttt{\#print axioms} $=$ [\lean{propext}, \lean{Classical.choice}, \lean{Quot.sound}].
+\end{status}
+
+\begin{definition}[Contraction factor]\label{ch08:def:fco}
+For $n\in\C$ let $f^{(n)}_p=\mathrm{fco}(n)_p$ be the coefficient of $x^p$ in
+\begin{equation*}
+  \Bigl(\frac{1-x}{1+x}\Bigr)^n=\exp\Bigl(-2n\sum_{k\text{ odd}}\frac{x^k}{k}\Bigr),
+\end{equation*}
+and $f^{(n)}_t=0$ for $t<0$ (\lean{fz}).
+\end{definition}
+\begin{leancode}
+def oddc : ℕ → ℂ := fun k => if k % 2 = 1 then 1 else 0
+
+noncomputable def fco (n : ℂ) : ℕ → ℂ := nexp ((-2 * n) • oddc)
+
+noncomputable def fz (n : ℂ) (t : ℤ) : ℂ := if 0 ≤ t then fco n t.toNat else 0
+\end{leancode}
+\begin{dictionary}
+$\log(1-x)-\log(1+x)=-2\sum_{k\text{ odd}}x^k/k$, so the logarithmic coefficients ($d_k$ with
+$\exp(\sum d_kx^k/k)$) of $((1-x)/(1+x))^n$ are $d_k=-2n$ for odd $k$ and $0$ for even $k$: that is
+\lean{(-2 * n) • oddc}.  For complex $n$ the left side is defined by this exponential; for
+integer $n$ it agrees with the rational function (next theorem).
+\end{dictionary}
+
+\begin{physics}
+The factor $\bigl(\frac{1-x}{1+x}\bigr)^n$ with $x=w_2/w_1$ is the twisted two-point function of two exponential fields with momentum pairing $n=\langle\alpha,\beta\rangle$ on the double cover. For untwisted lattice vertex operators the analogous factor is $(z_1-z_2)^{n}$; in the $\theta$-twisted sector, where the propagator of the twisted boson is $\log\frac{w_1-w_2}{w_1+w_2}$ (the image charge at $-w$), one gets exactly this expression. Its expansion coefficients are the contraction factors.
+\end{physics}
+
+\begin{theorem}[The contraction factor times $(1-x^2)^N$]\label{ch08:thm:fco}
+For $N\in\N$ and $n\in\Z$ with $|n|\le N$,
+\begin{equation*}
+  \Bigl(\frac{1-x}{1+x}\Bigr)^n(1-x^2)^N=(1-x)^{N+n}(1+x)^{N-n}=:G(x),
+\end{equation*}
+a polynomial of degree $2N$ with $x^{2N}G(1/x)=(-1)^{N+n}G(x)$.  Consequently, writing
+$c_r=(-1)^{N-r}\binom Nr$, for every $t\in\Z$
+\begin{equation}\label{ch08:eq:palin}
+  \sum_{r=0}^Nc_r\,f^{(n)}_{t-2(N-r)}=(-1)^{|n|}\sum_{r=0}^Nc_r\,f^{(n)}_{2(N-r)-t}.
+\end{equation}
+\end{theorem}
+\begin{leancode}
+theorem fco_mul_one_sub_sq_pow (N : ℕ) (n : ℤ) (h1 : -(N : ℤ) ≤ n) (h2 : n ≤ N) :
+    nexpPS ((-2 * (n : ℂ)) • oddc) * (1 - X ^ 2) ^ N
+      = ((gpoly (N + n).toNat (N - n).toNat : Polynomial ℂ) : ℂ⟦X⟧)
+
+theorem reflect_gpoly (a b : ℕ) :
+    Polynomial.reflect (a + b) (gpoly a b) = (-1 : ℂ) ^ a • gpoly a b
+
+theorem sum_binom_fz_symm (N : ℕ) (n : ℤ) (h1 : -(N : ℤ) ≤ n) (h2 : n ≤ N) (t : ℤ) :
+    ∑ r ∈ Finset.range (N + 1), ((-1 : ℂ) ^ (N - r) * (N.choose r : ℂ)) * fz n (t - 2 * (N - r : ℕ))
+      = (-1 : ℂ) ^ n.natAbs *
+        ∑ r ∈ Finset.range (N + 1), ((-1 : ℂ) ^ (N - r) * (N.choose r : ℂ)) *
+          fz n (2 * (N - r : ℕ) - t)
+\end{leancode}
+\begin{dictionary}
+\lean{gpoly a b} $=(1-X)^a(1+X)^b$; \lean{(N + n).toNat} is $N+n$ as a natural number, legitimate
+because $N+n\ge0$ by \lean{h1}, and similarly $N-n\ge0$ by \lean{h2}.  \lean{Polynomial.reflect m p}
+is $X^mp(1/X)$.  The sign in \lean{reflect_gpoly} is $(-1)^a$ with $a=N+n$, the same as
+$(-1)^{N+n}$ in the text.  In \lean{sum_binom_fz_symm} the sign is $(-1)^{|n|}$
+(\lean{n.natAbs}), which equals $(-1)^n$.  The hypotheses $|n|\le N$ are necessary: for $|n|>N$
+the product is not a polynomial.
+\end{dictionary}
+
+\begin{physics}
+Physically this is the statement that after multiplying the twisted two-point function by the cut-off $(w_1^2-w_2^2)^N=(z_1-z_2)^N$ the singularities at $w_1=\pm w_2$ cancel: the exponential fields have a pole of order at most $|n|$ at coincident points, and the result is a polynomial with a reflection symmetry $w\mapsto 1/w$ up to sign $(-1)^{n}$. That symmetry is the source of the sign $(-1)^{\langle\alpha,\beta\rangle}$ in the exchange of two twisted vertex operators, i.e. of locality.
+\end{physics}
+\begin{proof}[Proof on paper]
+$(1-x^2)^N=(1-x)^N(1+x)^N$, and both sides are exponentials whose logarithmic coefficients add
+up (Lemma~\ref{ch08:lem:nexp}(2)).  The reflection of $(1-x)^a(1+x)^b$ is $(x-1)^a(x+1)^b
+=(-1)^a(1-x)^a(1+x)^b$.  For \eqref{ch08:eq:palin}: the left side is the coefficient $g_t$ of $x^t$
+in $f^{(n)}(x)(1-x^2)^N=G(x)$ (expand $(1-x^2)^N=\sum_m(-1)^m\binom Nmx^{2m}$ and put $m=N-r$).  The
+right sum, reindexed by $r\mapsto N-r$, is $(-1)^Ng_{2N-t}$, and palindromy gives
+$g_{2N-t}=(-1)^{N+n}g_t$.  Hence the right side is $(-1)^{|n|}(-1)^N(-1)^{N+n}g_t=g_t$.
+\end{proof}
+\begin{status}
+Unconditional (same file); axioms as above.
+\end{status}
+\begin{example}[Small cases]\label{ch08:ex:fco}
+Expanding $\exp(-2n(x+x^3/3+\cdots))$ gives
+$f^{(n)}_0=1$, $f^{(n)}_1=-2n$, $f^{(n)}_2=2n^2$, $f^{(n)}_3=-\frac{4n^3+2n}{3}$.  For $n=1$ these are
+$1,-2,2,-2,\dots$, the coefficients of $(1-x)/(1+x)=1-2x+2x^2-2x^3+\cdots$, as they must be.  Take
+$N=1$, $n=1$: $\frac{1-x}{1+x}(1-x^2)=(1-x)^2=1-2x+x^2=G(x)$, and $x^2G(1/x)=G(x)$, matching the sign
+$(-1)^{N+n}=+1$.  For $n=-1$, $N=1$: $G=(1+x)^2$, again palindromic with sign $+1$; for $n=0$,
+$N=1$: $G=1-x^2$, with $x^2G(1/x)=-G(x)$, sign $(-1)^{1}$.  In \eqref{ch08:eq:palin} with $N=1$,
+$n=1$, $t=1$: the left side is $c_0f_{-1}+c_1f_1=0+(-2)=-2$ (here $c_0=-1$, $c_1=1$), and the right side
+is $(-1)\bigl(c_0f_{1}+c_1f_{-1}\bigr)=(-1)(-1)(-2)=-2$.
+\end{example}
+
+Identity \eqref{ch08:eq:palin} is the whole combinatorial content of the locality of twisted
+lattice vertex operators: it says that the two expansions of $(w_1^2-w_2^2)^N f(w_2/w_1)$ (in
+$|w_2|<|w_1|$) and of $(w_1^2-w_2^2)^Nf(w_1/w_2)$ (in $|w_1|<|w_2|$) are the same polynomial up to
+the sign $(-1)^n$.
+
+\section{The operators \texorpdfstring{$E^\pm$}{E plus-minus} on the twisted Fock space}\label{ch08:sec:Epm}
+
+File \leanpath{VOA/Moonshine/LatticeTwistedEOps.lean}.  Throughout, a \emph{charge vector} is
+$v\in\C^r$; for a lattice vector $\alpha$ it will be \lean{chargeCoord L α}.  The pairing is
+$\cheightpair vu=\sum_iv_iu_i$ (\lean{pair}).
+
+\begin{definition}[Twisted oscillator]\label{ch08:def:oscT}
+$v(k/2)=\sum_iv_i\,h_i(k/2)$ for odd $k$.
+\end{definition}
+\begin{leancode}
+noncomputable def oscT (v : Fin r → ℂ) (k : ℤ) : End ℂ (FockT r) := ∑ i, v i • modeT r i k
+
+theorem oscT_comm (v u : Fin r → ℂ) {k l : ℤ} (hk : Odd k) (hl : Odd l) :
+    oscT v k * oscT u l - oscT u l * oscT v k
+      = (if k + l = 0 then (k : ℂ) / 2 * pair v u else 0) • LinearMap.id
+\end{leancode}
+\begin{dictionary}
+This is $[v(k/2),u(l/2)]=\frac k2\cheightpair vu\delta_{k+l,0}$, the twisted oscillator algebra,
+for odd $k,l$ (the hypotheses \lean{hk}, \lean{hl}); \lean{*} is composition.  Same as the textbook
+statement.
+\end{dictionary}
+
+\begin{physics}
+This is the twisted free-boson current $i\,v\!\cdot\!\partial X$ in the direction $v\in\mathbb R^{24}$, expanded in half-integer modes; $v(k/2)$ is its $k/2$-th Laurent mode on the twisted Fock space.
+\end{physics}
+
+\begin{definition}[The creation exponential $E^-$]\label{ch08:def:sM}
+Let $d_k=2\,v(-k/2)\mathbf 1=2\sum_iv_iX_{((k-1)/2,i)}$ for odd $k$ and $d_k=0$ for even $k$.  Then
+$\cheightE{-}(-v,w)=\exp\bigl(\sum_{k\text{ odd}}\frac2kv(-k/2)w^k\bigr)$ is multiplication by
+$\sum_p s_p(v)w^p$ with $s_p(v)=\mathrm{nexp}(d)_p\in\cheightS$.
+\end{definition}
+\begin{leancode}
+noncomputable def vVarT (v : Fin r → ℂ) (n : ℕ) : FockT r := ∑ i, v i • X (n, i)
+
+noncomputable def dM (v : Fin r → ℂ) : ℕ → FockT r :=
+  fun k => if k % 2 = 1 then (2 : ℂ) • vVarT v (k / 2) else 0
+
+noncomputable def sM (v : Fin r → ℂ) (p : ℕ) : FockT r := nexp (dM v) p
+
+noncomputable def sMz (v : Fin r → ℂ) (p : ℤ) : FockT r := if 0 ≤ p then sM v p.toNat else 0
+\end{leancode}
+\begin{dictionary}
+Compare with \eqref{ch08:eq:Epm}: $\sum_{n\in\frac12+\N}\alpha(-n)z^n/n$ with $z=w^2$, $n=k/2$, is
+$\sum_{k\text{ odd}}\frac2k\alpha(-k/2)w^k$, whose logarithmic coefficients ($d_k$ with
+$\exp\sum d_kw^k/k$) are $2\alpha(-k/2)$.  Since the creation operators are multiplications by
+the commuting variables, $\cheightE{-}$ is multiplication by an element of the polynomial ring,
+and \lean{sM v p} is its $w^p$ coefficient; \lean{k / 2} is integer division, so for odd $k$ it is
+$(k-1)/2$.  \lean{sMz} extends by $0$ to negative $p$.
+\end{dictionary}
+
+\begin{physics}
+This is the creation part of the lattice vertex operator in the twisted sector: the normal-ordered exponential $\exp\bigl(\sum_{k\ \mathrm{odd}}\frac{2}{k}\alpha_{-k/2}w^k\bigr)$ of the creation oscillators, which dresses the ground state with a coherent cloud of twisted bosons of momentum $v$. Only odd (half-integer) modes occur, since the twisted bosons have no integer modes.
+\end{physics}
+
+\begin{definition}[The annihilation exponential $E^+$ as a translation]\label{ch08:def:Ep}
+The operator $\cheightE{+}(-v,w)=\exp\bigl(-\sum_{k\text{ odd}>0}\frac2kv(k/2)w^{-k}\bigr)$ equals the
+substitution $X_{(n,i)}\mapsto X_{(n,i)}-v_iw^{-(2n+1)}$.  Writing $u=w^{-1}$, it is the
+$\C$-algebra map $\cheightS\to\cheightS[u]$, $X_{(n,i)}\mapsto X_{(n,i)}-v_iu^{2n+1}$;
+$E^+_q(-v)$ denotes the coefficient of $u^q=w^{-q}$.
+\end{definition}
+\begin{leancode}
+noncomputable def Ep (v : Fin r → ℂ) : FockT r →ₐ[ℂ] Polynomial (FockT r) :=
+  aeval fun x => Polynomial.C (X x) - v x.2 • Polynomial.X ^ (2 * x.1 + 1)
+
+noncomputable def EpC (v : Fin r → ℂ) (q : ℕ) : End ℂ (FockT r) where
+  toFun y := (Ep v y).coeff q
+  map_add' a b := by rw [map_add, Polynomial.coeff_add]
+  map_smul' c a := by rw [map_smul, Polynomial.coeff_smul]; rfl
+\end{leancode}
+\begin{dictionary}
+\textbf{Why this is the same operator.}  On $\cheightS$, $v(k/2)=\frac k2\sum_iv_i\partial_{((k-1)/2,i)}$
+for odd $k>0$, so the exponent is $-\sum_{n,i}v_iw^{-(2n+1)}\partial_{(n,i)}$, a first-order
+operator with constant coefficients in the commuting derivations $\partial_{(n,i)}$.  Taylor's
+formula says $\exp(-\sum c_x\partial_x)f(X)=f(X-c)$ for polynomials $f$; hence $\cheightE{+}$ is
+the translation.  The Lean definition takes the translation as the \emph{definition}; this is
+deliberate (it avoids infinite sums of operators) and harmless (it is an exact identity of
+operators on polynomials).  The output lies in the polynomial ring $\cheightS[u]$, which encodes
+the lower truncation: on a fixed vector only finitely many $E^+_q$ are nonzero
+(\lean{EpC_eventually_zero}).
+\end{dictionary}
+
+\begin{physics}
+This is the annihilation part of the vertex operator exponential. Since $\alpha_{k/2}$ is a derivative with respect to the creation variable, the exponential of annihilation operators acts as a translation of the oscillator variables: a coherent-state shift by the classical field produced by the charge $v$. This is the usual statement that $e^{a\partial}$ is a translation.
+\end{physics}
+
+\begin{theorem}[The $E^+E^-$ reordering]\label{ch08:thm:reorder}
+For charge vectors $v,u$, $q\in\N$, $p\in\Z$ and $y\in\cheightS$,
+\begin{equation*}
+  E^+_q(-v)\bigl(s_p(u)\,y\bigr)=\sum_{j=0}^{q}f^{(\cheightpair vu)}_j\;s_{p-j}(u)\,E^+_{q-j}(-v)y .
+\end{equation*}
+Equivalently, as generating series, \eqref{ch08:eq:reorder} holds with $w_i=z_i^{1/2}$:
+$\cheightE{+}(-v,w_1)\cheightE{-}(-u,w_2)=\cheightE{-}(-u,w_2)\cheightE{+}(-v,w_1)
+\bigl(\frac{1-w_2/w_1}{1+w_2/w_1}\bigr)^{\cheightpair vu}$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/LatticeTwistedEOps.lean}.
+\begin{leancode}
+theorem EpC_sMz_mul (v u : Fin r → ℂ) (q : ℕ) (p : ℤ) (y : FockT r) :
+    EpC v q (sMz u p * y) = ∑ j ∈ Finset.range (q + 1),
+      fco (pair v u) j • (sMz u (p - j) * EpC v (q - j) y)
+\end{leancode}
+\begin{dictionary}
+\lean{sMz u p * y} is $E^-_p(-u)$ applied to $y$ (multiplication); \lean{EpC v q} is $E^+_q(-v)$.
+Multiplying by $w_2^pw_1^{-q}$ and summing, the right side becomes
+$\sum f_j(w_2/w_1)^j\cdot E^-_{p-j}w_2^{p-j}\cdot E^+_{q-j}w_1^{-(q-j)}$, which is the generating
+series statement.  No hypothesis on $v,u$: $\cheightpair vu$ may be any complex number, and
+\lean{fco} is defined for complex exponents.  Same as the textbook statement.
+\end{dictionary}
+
+\begin{physics}
+This is the ordering rule for annihilation and creation exponentials, $e^{A}e^{B}=e^Be^Ae^{[A,B]}$, with the commutator the twisted two-point function $\bigl(\frac{1-w_2/w_1}{1+w_2/w_1}\bigr)^{\langle v,u\rangle}$. It is the Wick contraction between the vertex operators of two momentum states in the twisted sector, the step needed to evaluate any product of twisted fields.
+\end{physics}
+\begin{proof}[Proof on paper]
+$\cheightE{+}(-v,w_1)$ is the algebra map $X_{(n,i)}\mapsto X_{(n,i)}-v_iw_1^{-(2n+1)}$, so it is
+multiplicative: applied to $\cheightE{-}(-u,w_2)y$ it gives
+$\cheightE{+}(\cheightE{-}(-u,w_2))\cdot\cheightE{+}(y)$.  Translating the exponent
+$\sum_{n}\frac{2}{2n+1}\sum_iu_iX_{(n,i)}w_2^{2n+1}$ produces the extra term
+$-\sum_n\frac2{2n+1}\cheightpair vu(w_2/w_1)^{2n+1}=\cheightpair vu\log\frac{1-w_2/w_1}{1+w_2/w_1}$.
+Exponentiating (Lemma~\ref{ch08:lem:nexp}(2),(3),(4)) gives the factor.  Comparing coefficients of
+$w_2^pw_1^{-q}$ yields the stated finite sum.
+\end{proof}
+\begin{status}
+Unconditional; \leanpath{VOA/Moonshine/LatticeTwistedEOps.lean}, axioms standard.
+\end{status}
+
+\begin{definition}[Dressing]\label{ch08:def:DD}
+$\mathrm{DD}_v(a)$, for $a\in\Z$, is the coefficient of $w^a$ in
+$\cheightE{-}(-v,w)\cheightE{+}(-v,w)$, i.e. $\mathrm{DD}_v(a)=\sum_{p-q=a}E^-_p(-v)E^+_q(-v)$.
+\end{definition}
+\begin{leancode}
+noncomputable def DD (v : Fin r → ℂ) (a : ℤ) : End ℂ (FockT r) :=
+  Polynomial.lsum (fun q => LinearMap.mulLeft ℂ (sMz v (a + q))) ∘ₗ (Ep v).toLinearMap
+\end{leancode}
+\begin{dictionary}
+On $y$, $\mathrm{Ep}\,v\,y=\sum_qE^+_q(y)u^q$ is a polynomial in $u$, and \lean{Polynomial.lsum}
+replaces $u^q$ by multiplication with $s_{a+q}(v)$; so the result is
+$\sum_qs_{a+q}(v)E^+_q(-v)y$, the claimed finite sum (\lean{DD_apply_range}).
+\end{dictionary}
+
+\begin{physics}
+The dressing $\mathrm{DD}_v$ is the full normal-ordered exponential $:\!e^{v\cdot X^{T}(w)}\!:$ without its momentum label: the oscillator part of the twisted vertex operator of the lattice state $e^v$, whose coefficients in powers of $w$ are the modes $\mathrm{DD}_v(a)$.
+\end{physics}
+
+\begin{proposition}[Properties of the dressing]\label{ch08:prop:DD}
+\begin{enumerate}
+\item For odd $K$: $[h_i(K/2),\mathrm{DD}_v(a)]=v_i\,\mathrm{DD}_v(a-K)$, i.e.
+  $[h_i(m),\cheightE{-}\cheightE{+}(-v,w)]=v_iw^{2m}\,\cheightE{-}\cheightE{+}(-v,w)$.
+\item $\mathrm{DD}_{-v}(a)=(-1)^a\mathrm{DD}_v(a)$ (i.e. $E^\pm(v,w)=E^\pm(-v,-w)$).
+\item $\mathrm{DD}_0(a)=\delta_{a,0}$.
+\end{enumerate}
+\end{proposition}
+\begin{leancode}
+theorem modeT_comm_DD (v : Fin r → ℂ) (i : Fin r) {K : ℤ} (hK : Odd K) (a : ℤ) :
+    modeT r i K * DD v a - DD v a * modeT r i K = v i • DD v (a - K)
+theorem DD_neg (v : Fin r → ℂ) (a : ℤ) : DD (-v) a = (-1 : ℂ) ^ a • DD v a
+theorem DD_zero_charge (a : ℤ) : DD (0 : Fin r → ℂ) a = if a = 0 then 1 else 0
+\end{leancode}
+\begin{dictionary}
+In (1), $w^{2m}$ with $m=K/2$ is $w^K$, and the coefficient of $w^a$ in
+$v_iw^K\sum_b\mathrm{DD}_v(b)w^b$ is $v_i\mathrm{DD}_v(a-K)$.  This is the twisted analogue of
+$[\alpha(m),Y(e^\beta,z)]=\cheightpair\alpha\beta z^mY(e^\beta,z)$, the defining property of a
+``charge-$v$'' vertex operator.  Same as the textbook statements.
+\end{dictionary}
+
+\begin{physics}
+Part (1) says that the twisted bosonic currents measure the charge $v$ of the dressing: the field carries momentum $v$ in the sense of the Heisenberg algebra, as every vertex operator of a lattice exponential should. Part (2) is the invariance of the exponential under the orbifold reflection together with $w\mapsto -w$, and (3) says that the zero-charge field is the identity operator.
+\end{physics}
+\begin{proof}[Proof on paper]
+(1) For $K<0$, $h_i(K/2)$ is multiplication by $X$, which commutes with $E^-$ and is translated by
+$E^+$: $E^+(X_{(n,i)}y)=(X_{(n,i)}-v_iw^{-(2n+1)})E^+(y)$; the extra term gives
+$v_iw^{K}$ with $K=-(2n+1)$.  For $K>0$, $h_i(K/2)$ is $\frac K2\partial$, which commutes with the
+translation $E^+$ and differentiates $E^-$: by Lemma~\ref{ch08:lem:nexp}(5),
+$\partial_{(n,i)}s_p=\frac{2v_i}{2n+1}s_{p-(2n+1)}$, giving $v_iw^K$.  (2) Scaling (Lemma
+\ref{ch08:lem:nexp}(4)) with $t=-1$ for $E^-$; induction on monomials for $E^+$.  (3) Both
+exponents vanish.
+\end{proof}
+\begin{status}
+Unconditional; axioms standard.
+\end{status}
+
+\section{The two-point identity and locality}\label{ch08:sec:twopoint}
+
+File \leanpath{VOA/Moonshine/LatticeTwistedTwoPoint.lean}.
+
+\begin{theorem}[Two-point identity]\label{ch08:thm:twopoint}
+For charge vectors $v,u$ with $n=\cheightpair vu$,
+\begin{equation*}
+  \mathrm{DD}_v(A)\,\mathrm{DD}_u(B)=\sum_{j\ge0}f^{(n)}_j\;\mathrm{NN}(A+j,B-j),
+\end{equation*}
+where $\mathrm{NN}(A,B)$ is the coefficient of $w_1^Aw_2^B$ in the normal-ordered product
+$\cheightE{-}(-v,w_1)\cheightE{-}(-u,w_2)\cheightE{+}(-v,w_1)\cheightE{+}(-u,w_2)$; and
+$\mathrm{NN}$ is symmetric under $(v,A)\leftrightarrow(u,B)$.  As generating series:
+\begin{equation*}
+  \cheightE{-}\cheightE{+}(-v,w_1)\;\cheightE{-}\cheightE{+}(-u,w_2)
+  =\;:\!\cdots\!:\;\Bigl(\frac{1-w_2/w_1}{1+w_2/w_1}\Bigr)^{n}.
+\end{equation*}
+\end{theorem}
+\begin{leancode}
+def GoodB (v u : Fin r → ℂ) (x : FockT r) (Q : ℕ) : Prop :=
+  (∀ q, Q ≤ q → EpC v q x = 0) ∧ (∀ q, Q ≤ q → EpC u q x = 0) ∧
+    (∀ q q', Q ≤ q → EpC v q (EpC u q' x) = 0) ∧ (∀ q q', Q ≤ q' → EpC v q (EpC u q' x) = 0)
+
+noncomputable def NN (v u : Fin r → ℂ) (Q : ℕ) (A B : ℤ) (x : FockT r) : FockT r :=
+  ∑ q ∈ Finset.range Q, ∑ q' ∈ Finset.range Q,
+    sMz v (A + q) * sMz u (B + q') * EpC v q (EpC u q' x)
+
+theorem DD_DD_eq (v u : Fin r → ℂ) {x : FockT r} {Q : ℕ} (hQ : GoodB v u x Q) (A B : ℤ) (J : ℕ)
+    (hJ : B + Q ≤ J) :
+    DD v A (DD u B x) = ∑ j ∈ Finset.range J, fco (pair v u) j • NN v u Q (A + j) (B - j) x
+\end{leancode}
+\begin{dictionary}
+Infinite sums are replaced by finite ones with explicit bounds.  \lean{GoodB v u x Q} says that
+$Q$ bounds every $E^+$ coefficient that can be nonzero on $x$; it is not a restriction, since such
+a $Q$ always exists (\lean{exists_goodB}).  With it, \lean{NN v u Q A B x} is the full
+normal-ordered coefficient applied to $x$.  The bound $J\ge B+Q$ makes the $j$-sum exhaustive
+($s_{B-j+q'}=0$ once $B-j+q'<0$).  Hence the Lean statement is the textbook identity applied to an
+arbitrary vector $x$.
+\end{dictionary}
+
+\begin{physics}
+This is the twisted Wick theorem for two vertex operators: the product of two normal-ordered exponentials equals the normal-ordered product times the twisted contraction $\bigl(\frac{1-w_2/w_1}{1+w_2/w_1}\bigr)^{\langle v,u\rangle}$. It is the twisted analogue of the free-field OPE $e^{v\phi}(z)e^{u\phi}(w)=(z-w)^{\langle v,u\rangle}:\!\cdots\!:$. Heuristic; the identity is a formal-series statement proved in Lean.
+\end{physics}
+\begin{proof}[Proof on paper]
+Push $\cheightE{+}(-v,w_1)$ to the right through $\cheightE{-}(-u,w_2)$ using
+Theorem~\ref{ch08:thm:reorder}; the $E^-$'s commute among themselves (they are multiplications) and
+the $E^+$'s commute among themselves (translations commute).  The symmetry of $\mathrm{NN}$ is the
+same commutativity.
+\end{proof}
+
+\begin{theorem}[Locality of the dressings]\label{ch08:thm:DDlocal}
+If $\cheightpair vu=n\in\Z$ and $N\ge|n|$, then for all $A,B\in\Z$ and $x\in\cheightS$
+\begin{equation*}
+  \sum_{r=0}^{N}(-1)^{N-r}\binom Nr\Bigl(\mathrm{DD}_v(A-2r)\mathrm{DD}_u(B-2(N-r))
+  -(-1)^{|n|}\mathrm{DD}_u(B-2(N-r))\mathrm{DD}_v(A-2r)\Bigr)x=0,
+\end{equation*}
+that is, $(w_1^2-w_2^2)^N\bigl(Y_v(w_1)Y_u(w_2)-(-1)^nY_u(w_2)Y_v(w_1)\bigr)=0$ with
+$Y_v(w)=\cheightE{-}\cheightE{+}(-v,w)$.
+\end{theorem}
+\begin{leancode}
+theorem DD_bracket_local (v u : Fin r → ℂ) (n : ℤ) (hn : pair v u = n) (N : ℕ)
+    (h1 : -(N : ℤ) ≤ n) (h2 : n ≤ N) (A B : ℤ) (x : FockT r) :
+    ∑ r ∈ Finset.range (N + 1), ((-1 : ℂ) ^ (N - r) * (N.choose r : ℂ)) •
+      (DD v (A - 2 * r) (DD u (B - 2 * (N - r : ℕ)) x)
+        - (-1 : ℂ) ^ n.natAbs • DD u (B - 2 * (N - r : ℕ)) (DD v (A - 2 * r) x)) = 0
+\end{leancode}
+\begin{dictionary}
+\textbf{Decoding.}  $(w_1^2-w_2^2)^N=\sum_r\binom Nr(-1)^{N-r}w_1^{2r}w_2^{2(N-r)}$, and the
+coefficient of $w_1^Aw_2^B$ of $w_1^{2r}w_2^{2(N-r)}F(w_1,w_2)$ is $F_{A-2r,B-2(N-r)}$: so the Lean sum
+is exactly the $w_1^Aw_2^B$ coefficient of the stated product identity.  Since $w^2=z$, this is
+$(z_1-z_2)^N$-locality, up to the sign $(-1)^n$.  \textbf{Hypotheses.} \lean{hn} requires the
+pairing to be an \emph{integer}; this is where the lattice enters, and it is necessary (for
+non-integral $n$ the factor is not palindromic).  \lean{h1}, \lean{h2} say $|n|\le N$.  The
+sign $(-1)^{|n|}$ is not a defect of the statement: it is the genuine graded commutativity of the
+$\cheightS$-parts, cancelled by the $\cheightT$-parts in the next section.
+\end{dictionary}
+
+\begin{physics}
+This is locality of the twisted exponential fields up to the sign $(-1)^{\langle v,u\rangle}$: the two operators commute or anticommute (the cocycle sign) for non-coincident points, with singularities only at $z_1=z_2$ of bounded order. In the CFT it is the requirement that correlation functions of twist-sector fields be single-valued away from collisions, the first axiom of a vertex algebra module.
+\end{physics}
+\begin{proof}[Proof on paper]
+By Theorem~\ref{ch08:thm:twopoint}, $Y_v(w_1)Y_u(w_2)=\Phi\cdot f(w_2/w_1)$ and
+$Y_u(w_2)Y_v(w_1)=\Phi\cdot f(w_1/w_2)$, the same normal-ordered product $\Phi$ (by the symmetry of
+$\mathrm{NN}$) times the contraction factor $f(x)=((1-x)/(1+x))^n$ expanded in the respective
+regions.  Multiply by $(w_1^2-w_2^2)^N$: the first becomes $w_1^{2N}(1-x^2)^Nf(x)=w_1^{2N}G(x)$
+with $x=w_2/w_1$, a polynomial; the second becomes $(-1)^Nw_2^{2N}G(w_1/w_2)$, and palindromy
+(Theorem~\ref{ch08:thm:fco}) turns it into $(-1)^N(-1)^{N+n}w_1^{2N}G(w_2/w_1)$.  So the two
+products agree after multiplication, up to $(-1)^n$.  In coefficients this is exactly
+\eqref{ch08:eq:palin}, applied to the coefficient sequence of $\Phi$ along each anti-diagonal.
+\end{proof}
+\begin{status}
+Unconditional; axioms standard (file header).
+\end{status}
+
+\section{The twisted vertex operators of the exponentials}\label{ch08:sec:vertex}
+
+File \leanpath{VOA/Moonshine/LatticeTwistedVertex.lean}.  We now tensor with a space $\cheightT$
+(an arbitrary $\C$-vector space \lean{Tm} at first, the extraspecial module later) and attach a
+$\cheightT$-operator $g$.
+
+\begin{definition}[Generic twisted exponential field]\label{ch08:def:YTg}
+For a charge vector $v$, a shift $c_0\in\Z$, a scalar $\kappa\in\C$ and $g\in\End(\cheightT)$, the
+family $k\mapsto Y_k$ of operators on $\cheightS\otimes\cheightT$ is the mode family of
+$\kappa\,w^{-c_0}\cheightE{-}(-v,w)\cheightE{+}(-v,w)\otimes g$ in the convention $Y_k=u_{(k/2)}$:
+\begin{equation*}
+  Y_k=\kappa\;\mathrm{DD}_v(-k-2+c_0)\otimes g .
+\end{equation*}
+\end{definition}
+\begin{leancode}
+noncomputable def YTg (v : Fin r → ℂ) (c0 : ℤ) (κ : ℂ) (g : End ℂ Tm) (k : ℤ) :
+    End ℂ (FockT r ⊗[ℂ] Tm) :=
+  κ • TensorProduct.map (DD v (-k - 2 + c0)) g
+\end{leancode}
+\begin{dictionary}
+\textbf{Index check.}  $u_{(k/2)}$ is the coefficient of $z^{-k/2-1}=w^{-k-2}$.  In
+$w^{-c_0}\sum_a\mathrm{DD}_v(a)w^a$ the coefficient of $w^{-k-2}$ has $a-c_0=-k-2$, i.e.
+$a=-k-2+c_0$.  \lean{TensorProduct.map f g} is $f\otimes g$.  For the lattice field we will take
+$c_0=\cheightpair\alpha\alpha$, because $z^{-\cheightpair\alpha\alpha/2}=w^{-\cheightpair\alpha\alpha}$.
+\end{dictionary}
+
+\begin{physics}
+A twisted vertex operator for a momentum state is a product of a bosonic factor, the dressing, and a finite-dimensional operator $g$ on the $2^{12}$-dimensional space of ground states (the twist-field multiplicity). The factor $g$ plays the role of the lattice cocycle: it must supply the sign when two fields are exchanged, as the cocycle $\varepsilon(\alpha,\beta)$ does for the untwisted lattice VOA.
+\end{physics}
+
+\begin{theorem}[Charge and locality of the generic field]\label{ch08:thm:YTg}
+\begin{enumerate}
+\item (Truncation.) For every vector $x$, $Y_k x=0$ for all large $k$.
+\item (Charge.) For odd $K$: $[h_i(K/2)\otimes1,\;Y_k]=v_i\,Y_{k+K}$.
+\item (Locality.) Let $v,u$ be charge vectors with $\cheightpair vu=n\in\Z$, and let $g,g'$ satisfy
+  $g'g=(-1)^{n}gg'$.  Then for all $c_0,c_0',\kappa,\kappa'$ and all residues $e,e'$, the rescaled
+  fields $\mathrm{resc}(Y^{(v)},2,e)$ and $\mathrm{resc}(Y^{(u)},2,e')$ are mutually local.
+\end{enumerate}
+\end{theorem}
+\begin{leancode}
+theorem YTg_truncation (v : Fin r → ℂ) (c0 : ℤ) (κ : ℂ) (g : End ℂ Tm)
+    (x : FockT r ⊗[ℂ] Tm) : ∃ K : ℤ, ∀ k : ℤ, K ≤ k → YTg v c0 κ g k x = 0
+
+theorem rTensor_modeT_comm_YTg (v : Fin r → ℂ) (c0 : ℤ) (κ : ℂ) (g : End ℂ Tm) (i : Fin r)
+    {K : ℤ} (hK : Odd K) (k : ℤ) :
+    (modeT r i K).rTensor Tm * YTg v c0 κ g k - YTg v c0 κ g k * (modeT r i K).rTensor Tm
+      = v i • YTg v c0 κ g (k + K)
+
+theorem YTg_local (v u : Fin r → ℂ) (n : ℤ) (hn : pair v u = n) (c0 c0' : ℤ) (κ κ' : ℂ)
+    (g g' : End ℂ Tm) (hg : g' * g = (-1 : ℂ) ^ n.natAbs • (g * g')) (e e' : ℤ) :
+    Local (resc (YTg v c0 κ g) 2 e) (resc (YTg u c0' κ' g') 2 e')
+\end{leancode}
+\begin{dictionary}
+\lean{f.rTensor Tm} is $f\otimes\mathrm{id}_{\cheightT}$.  In (2), $Y_{k+K}$ with $k\leftrightarrow
+k/2$ means $[h_i(m),Y(z)]=v_iz^mY(z)$ with $m=K/2$, the twisted version of
+$[\alpha(m),Y(e^\beta,z)]=\cheightpair\alpha\beta z^mY(e^\beta,z)$.  In (3) the hypothesis
+\lean{hg} is the graded commutativity on $\cheightT$ that compensates the sign $(-1)^n$ of
+Theorem~\ref{ch08:thm:DDlocal}; \lean{hn} demands an integral pairing.  The conclusion is ordinary
+\lean{Local} (Section~\ref{ch08:sec:recall}) of the integrally moded rescaled fields, of order
+$|n|$.  Statement (3) is what the textbook means by ``$Y^T(e^\alpha,z_1)$ and $Y^T(e^\beta,z_2)$ are
+local'', see the dictionary after Definition~\ref{ch08:def:resc}.
+\end{dictionary}
+
+\begin{physics}
+The theorem says that the generic twisted exponential field has the expected properties of a vertex operator of charge $v$: it is a field (truncation), it carries charge $v$ under the twisted currents, and two such fields are local provided the operators $g,g'$ on the ground states have the correct commutation sign $(-1)^{\langle v,u\rangle}$. This is the twisted analogue of locality of lattice exponentials.
+\end{physics}
+\begin{proof}[Proof on paper]
+(1): $\mathrm{DD}_v(a)y=0$ once $a+Q\le0$, $Q$ a bound for $E^+$ on $y$.  (2):
+Proposition~\ref{ch08:prop:DD}(1) tensored with $g$.  (3): on $y\otimes t$,
+$Y^{(v)}Y^{(u)}-Y^{(u)}Y^{(v)}$ equals
+$\kappa\kappa'\bigl(\mathrm{DD}_v\mathrm{DD}_u-(-1)^n\mathrm{DD}_u\mathrm{DD}_v\bigr)y\otimes gg't$,
+using $g'g=(-1)^ngg'$.  After multiplying by $(z_1-z_2)^{|n|}$ the $\cheightS$-part vanishes by
+Theorem~\ref{ch08:thm:DDlocal} with $N=|n|$; the class rescalings only shift the indices $A,B$.
+\end{proof}
+\begin{status}
+Unconditional; \texttt{\#print axioms} standard (file header).
+\end{status}
+
+\begin{definition}[The twisted vertex operator of $e^\alpha$]\label{ch08:def:YTL}
+For an even lattice $L$ with unimodular Gram matrix and $\alpha\in L$,
+\begin{equation*}
+  Y^T(e^\alpha)_{(k/2)}=2^{-\cheightpair\alpha\alpha}\;\mathrm{DD}_{\alpha}(-k-2+\cheightpair\alpha\alpha)\otimes e_\alpha ,
+\end{equation*}
+the mode family of \eqref{ch08:eq:YT}.
+\end{definition}
+\noindent File \leanpath{VOA/Moonshine/LatticeTwistedVertex.lean}.
+\begin{leancode}
+noncomputable def YTL (α : L.carrier) (k : ℤ) :
+    End ℂ (FockT (rank L) ⊗[ℂ] Rep (cocMat L) (isUnit_det_cocMat L hEven hU)) :=
+  YTg (chargeCoord L α) (L.form α α) ((2 : ℂ) ^ (-(L.form α α))) (eT L hEven hU α) k
+\end{leancode}
+\begin{dictionary}
+The charge vector is the orthonormal-coordinate vector of $\alpha$, the shift is
+$c_0=\cheightpair\alpha\alpha$ (giving $z^{-\cheightpair\alpha\alpha/2}$), the scalar is
+$\kappa=2^{-\cheightpair\alpha\alpha}$ (an integer power, \lean{zpow}), and the $\cheightT$-operator
+is $e_\alpha$.  This is FLM's operator with their normalisation constant specialised to the
+involution $-1$; the reader comparing with FLM, Chapter~9, should note that any
+normalisation $\kappa(\alpha)$ with $\kappa(\alpha)\kappa(\beta)4^{-\cheightpair\alpha\beta}=\kappa(\alpha+\beta)$
+would do, and that this condition is forced by the product formula
+(Remark~\ref{ch08:rem:normunique}).  \lean{hEven} and \lean{hU} are needed only to build
+$\cheightT_L$.  Not vacuous: \lean{YTL L hEven hU 0 k} is the identity at $k=-2$ and $0$ otherwise
+(\lean{YTL_zero}), and $Y^T(e^\alpha)$ is genuinely nonzero (its vacuum coefficient is computed in
+\S\ref{ch08:sec:normalisation}).
+\end{dictionary}
+
+\begin{physics}
+For a lattice vector $\alpha$ this is the twisted vertex operator of the momentum state $e^\alpha$ acting on the twisted sector: the twisted exponential $:\!e^{\alpha\cdot X}\!:$ times the operator $e_\alpha$ on the ground-state space $T$ (a Clifford-type operator, since $e_\beta e_\alpha=(-1)^{\langle\alpha,\beta\rangle}e_\alpha e_\beta$). The normalisation $2^{-\langle\alpha,\alpha\rangle}$ comes from the regularised twisted two-point function and is the one that makes the vacuum, product and Jacobi identities consistent; it is what produces the factor $4^{\mp n}$ in the leading-term identities below.
+\end{physics}
+
+\begin{theorem}[Properties of $Y^T(e^\alpha)$]\label{ch08:thm:YTL}
+Let $L$ be even, positive definite, unimodular.
+\begin{enumerate}
+\item $e_\beta e_\alpha=(-1)^{\cheightpair\alpha\beta}e_\alpha e_\beta$ on $\cheightT_L$.
+\item For all $\alpha,\beta\in L$ and residues $e,e'$, the rescaled fields of $Y^T(e^\alpha)$ and
+  $Y^T(e^\beta)$ are mutually local.
+\item $Y^T(e^{-\alpha})_{(k/2)}=(-1)^kY^T(e^\alpha)_{(k/2)}$.  Consequently
+  $e^\alpha+e^{-\alpha}$ has no odd modes and $e^\alpha-e^{-\alpha}$ no even modes.
+\item $Y^T(e^0)_{(k/2)}=\delta_{k,-2}$.
+\end{enumerate}
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/LatticeTwistedVertex.lean}.
+\begin{leancode}
+theorem eT_swap (α β : L.carrier) :
+    eT L hEven hU β * eT L hEven hU α
+      = (-1 : ℂ) ^ (L.form α β).natAbs • (eT L hEven hU α * eT L hEven hU β)
+
+theorem YTL_local (hPos : L.PosDef) (α β : L.carrier) (e e' : ℤ) :
+    Local (resc (YTL L hEven hU α) 2 e) (resc (YTL L hEven hU β) 2 e') :=
+  YTg_local (chargeCoord L α) (chargeCoord L β) (L.form α β) (sum_chargeCoord L hPos α β) _ _ _ _
+    _ _ (eT_swap L hEven hU α β) e e'
+
+theorem YTL_neg (α : L.carrier) (k : ℤ) :
+    YTL L hEven hU (-α) k = (-1 : ℂ) ^ k • YTL L hEven hU α k
+
+theorem YTL_zero (k : ℤ) : YTL L hEven hU 0 k = if k = -2 then 1 else 0
+\end{leancode}
+\begin{dictionary}
+The one-line proof of \lean{YTL_local} is shown because it \emph{is} the argument: the generic
+locality with $n=\cheightpair\alpha\beta$, the integrality of the pairing in orthonormal coordinates
+(\lean{sum_chargeCoord}, which uses \lean{hPos}), and the $\cheightT$ commutation \lean{eT_swap}.
+In (3), $(-1)^k$ for the fractional mode $k/2$ is the substitution $z^{1/2}\mapsto -z^{1/2}$; since
+$\theta e^\alpha=e^{-\alpha}$, this says $Y^T(\theta u,z)$ is $Y^T(u,z)$ continued once around the
+origin, which is precisely the meaning of ``$\theta$-twisted''.  (4) is the vacuum axiom at the
+level of exponentials.
+\end{dictionary}
+
+\begin{physics}
+These are the basic axioms for the twisted vertex operators of lattice exponentials: the exponential fields of different momenta are local, with the exchange sign $(-1)^{\langle\alpha,\beta\rangle}$ being carried by the ground-state operators $e_\alpha$; the operator for $-\alpha$ is related to that for $\alpha$ by the sign $(-1)^k$ (so $e^\alpha\pm e^{-\alpha}$ have only integral/half-integral modes, the $\theta$-eigenvalue structure); and the zero momentum state is the identity.
+\end{physics}
+\begin{proof}[Proof on paper]
+(1) From $e_\alpha e_\beta=\varepsilon(\alpha,\beta)e_{\alpha+\beta}$ and
+$\varepsilon(\alpha,\beta)/\varepsilon(\beta,\alpha)=(-1)^{\cheightpair\alpha\beta}$.  (2) Theorem
+\ref{ch08:thm:YTg}(3).  (3) $\mathrm{DD}_{-v}(a)=(-1)^a\mathrm{DD}_v(a)$, $e_{-\alpha}=e_\alpha$,
+and $(-1)^{-k-2+\cheightpair\alpha\alpha}=(-1)^k$ because $\cheightpair\alpha\alpha$ is even.
+(4) $\mathrm{DD}_0(a)=\delta_{a,0}$, $e_0=1$, $2^0=1$.
+\end{proof}
+\begin{status}
+Unconditional; axioms standard.
+\end{status}
+
+\begin{definition}[The generating set]\label{ch08:def:latGenSet}
+Let $F_a=z^{1/2}h_a(z)\otimes1$ (the rescaled twisted Heisenberg generator, \lean{FgenTFld}, from
+Chapter~\ref{ch:07}) and $\widetilde Y_{\alpha,e}=\mathrm{resc}(Y^T(e^\alpha),2,e)$
+(\lean{YTLFld}).  The generating set is $\{F_a\}_a\cup\{\widetilde Y_{\alpha,e}\}_{\alpha\in L,e\in\Z}$.
+\end{definition}
+\noindent File \leanpath{VOA/Moonshine/LatticeTwistedVertex.lean}.
+\begin{leancode}
+def latGenSet : Set (Fld (FockT (rank L) ⊗[ℂ] Rep (cocMat L) (isUnit_det_cocMat L hEven hU))) :=
+  Set.range (FgenTFld L hEven hU) ∪ Set.range (fun p : L.carrier × ℤ => YTLFld L hEven hU p.1 p.2)
+\end{leancode}
+
+\begin{physics}
+The twisted sector is generated, as a module over the chiral algebra, by the twisted bosonic currents and the twisted exponentials, so these are the fields whose mutual locality must be established. In the CFT language they are the generators $\partial X^a$ and $e^{\alpha\cdot X}$ of the lattice theory.
+\end{physics}
+
+\begin{theorem}[Locality of the twisted lattice system]\label{ch08:thm:system}
+For $L$ even, positive definite, unimodular, any two fields in the generated twisted system
+$\mathrm{TGenerated}(\text{latGenSet})$ are mutually local.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/LatticeTwistedVertex.lean}.
+\begin{leancode}
+theorem latticeTwistedSystem_local (hPos : L.PosDef)
+    {a b : Fld (FockT (rank L) ⊗[ℂ] Rep (cocMat L) (isUnit_det_cocMat L hEven hU))}
+    (ha : a ∈ TGenerated (latGenSet L hEven hU)) (hb : b ∈ TGenerated (latGenSet L hEven hU)) :
+    Local a.1 b.1 :=
+  tgenerated_local (latGenSet_local L hEven hU hPos) ha hb
+\end{leancode}
+\begin{dictionary}
+\lean{a.1} is the underlying distribution of the field \lean{a}.  The theorem is Dong's lemma
+(\lean{tgenerated_local}, Chapter~\ref{ch:07}) applied to the pairwise locality of the generators:
+$F_a$ with $F_b$ (order $2$, Chapter~\ref{ch:07}), $F_a$ with $\widetilde Y$ (order $1$, from the
+charge relation: $[F_a(z_1),\widetilde Y_{\beta,e}(z_2)]=\beta_a\,\delta(z_1/z_2)\widetilde
+Y_{\beta,e+1}(z_2)$, \lean{bracketDist_FgenT_YTg}), and $\widetilde Y$ with $\widetilde Y$
+(Theorem~\ref{ch08:thm:YTL}(2)).  The Leech specialisation is \lean{leechTwistedSystem_local}.
+\end{dictionary}
+
+\begin{physics}
+Mutual locality of all fields generated from the twisted currents and exponentials is the 2d statement that the twisted-sector correlation functions are meromorphic after passage to the double cover, and that all operator products close on this set. Together with truncation it gives the field-theoretic input for defining $Y^T$ on all of $V_L$.
+\end{physics}
+\begin{status}
+Unconditional.  \texttt{\#print axioms} \lean{latticeTwistedSystem_local} was re-run for this chapter
+(output in \S\ref{ch08:sec:deadends}): standard axioms only.
+\end{status}
+
+\section{The twisted vertex operator on all states}\label{ch08:sec:allstates}
+
+File \leanpath{VOA/Moonshine/LatticeTwistedFields.lean}.  So far only $e^\alpha$ has a twisted
+vertex operator.  A general state of $V_L$ is a combination of $h_{b_1}(-n_1-1)\cdots
+h_{b_k}(-n_k-1)e^\alpha$.  If $Y^T$ is to satisfy the twisted iterate formula, then for the
+Heisenberg generator $h_b=h_b(-1)\mathbf 1$ (which is $\theta$-odd, so lives on the half-integral
+class with twist $1/2$) we must have
+\begin{equation}\label{ch08:eq:creation}
+  F_e\bigl(h_b(-n-1)w\bigr)=\mathrm{star}_{1/2}(F_b)_{-n-1}\,F_{e-1}(w),
+\end{equation}
+where $F_e(u)=\mathrm{resc}(Y^T(u),2,e)=z^{e/2}Y^T(u,z)$.  This \emph{defines} $F_e$ on all states.
+
+\begin{definition}[Word fields and the extension]\label{ch08:def:FL}
+For a list $l=[(n_1,b_1),\dots,(n_k,b_k)]$ and $\alpha\in L$ define
+$\mathrm{Fw}(\alpha,[\,],e)=\widetilde Y_{\alpha,e}$ and
+$\mathrm{Fw}(\alpha,(n,b)::l,e)=\mathrm{star}_{1/2}(F_b)_{-n-1}\mathrm{Fw}(\alpha,l,e-1)$.
+$F_e:V_L\to\mathrm{Fld}(\cheightS\otimes\cheightT)$ is the linear map sending the monomial basis
+vector $h_{b_1}(-n_1-1)\cdots e^\alpha$ to the word field, and
+\begin{equation*}
+  Y^T(u)_{(k/2)}=\text{the $0$-th mode of }F_k(u).
+\end{equation*}
+\end{definition}
+\begin{leancode}
+noncomputable def Fw (α : L.carrier) : List (ℕ × Fin (rank L)) → ℤ → Fld (MT L hEven hU)
+  | [], e => YTLFld L hEven hU α e
+  | (c :: l), e => star (1 / 2) (FgT c.2) (-(c.1 : ℤ) - 1) (Fw α l (e - 1))
+
+noncomputable def FL (e : ℤ) : LatModuleGen L →ₗ[ℂ] Fld (MT L hEven hU) :=
+  TensorProduct.lift (FLB L hEven hU e)
+
+noncomputable def YML : LatModuleGen L →ₗ[ℂ] (ℤ → End ℂ (MT L hEven hU)) :=
+  LinearMap.pi (fun k => (modeL 0).comp (FL L hEven hU k))
+\end{leancode}
+\begin{dictionary}
+\lean{MT L hEven hU} abbreviates $\cheightS\otimes\cheightT_L$.  \lean{FgT b} is $F_b$, the field
+$z^{1/2}h_b(z)\otimes1$.  \lean{FLB} is the bilinear map on $\mathrm{FockN}\times\C[L]$ which sends
+a monomial $m$ and $e^\alpha$ to \lean{Fw α (monoWordN m) e} (\lean{monoWordN m} lists the letters
+of $m$ in some order); \lean{TensorProduct.lift} makes it linear on the tensor product.
+\lean{modeL 0} takes the $0$-th mode.  Since $\mathrm{mode}_0(z^{k/2}Y)=u_{(k/2)}$ (\lean{resc}
+with $p=0$), \lean{YML u k} $=u_{(k/2)}$, the convention of \lean{TwistedModule.YM}.
+\textbf{Well-definedness} is a real issue: the definition depends on the order of letters.  It is
+resolved by proving that twisted creation operators commute (\lean{Fw_perm}: the word field depends
+only on the multiset of letters), so $F_e$ on the polynomial basis is independent of the chosen
+listing.  The theorems below show the definition does what it should.
+\end{dictionary}
+
+\begin{physics}
+This defines the twisted vertex operator of a general state of the lattice theory by successive oscillator products: a state $h_{b_1}(-n_1-1)\cdots e^\alpha$ is mapped to a normal-ordered product of the twisted currents with the exponential field, where the factor $z^{1/2}$ and the twisted binomial expansion implement the monodromy $-1$ of $\partial X$ around the twist field. It is the CFT reconstruction of $Y^T(u)$ from the free-field generators.
+\end{physics}
+
+\begin{theorem}[Basic properties of $Y^T$ on $V_L$]\label{ch08:thm:YML}
+For $L$ even, positive definite, unimodular, all $u,v\in V_L$ and $e,e',k\in\Z$:
+\begin{enumerate}
+\item (Creation.) $F_{e+1}(h_b(-n-1)p\otimes g)=\mathrm{star}_{1/2}(F_b)_{-n-1}F_e(p\otimes g)$.
+\item (Rescaling.) $\mathrm{resc}(Y^T(u),2,e)=F_e(u)$.
+\item (Truncation.) For each $x$, $Y^T(u)_{(k/2)}x=0$ for large $k$.
+\item (Vacuum.) $Y^T(\mathbf 1)_{(k/2)}=\delta_{k,-2}$.
+\item ($\theta$-compatibility.) $F_e(\theta u)=(-1)^eF_e(u)$; hence (support) if $\theta u=(-1)^ju$
+  then $Y^T(u)_{(k/2)}=0$ unless $k\equiv j\pmod 2$.
+\item (Locality.) All rescaled fields $\mathrm{resc}(Y^T(u),2,e)$, $\mathrm{resc}(Y^T(v),2,e')$ are
+  mutually local.
+\end{enumerate}
+\end{theorem}
+\begin{leancode}
+theorem FL_mul_X (e : ℤ) (c : ℕ × Fin (rank L)) (p : FockN (rank L)) (g : L.carrier →₀ ℂ) :
+    FL L hEven hU (e + 1) ((X c * p) ⊗ₜ[ℂ] g)
+      = star (1 / 2) (FgT c.2) (-(c.1 : ℤ) - 1) (FL L hEven hU e (p ⊗ₜ[ℂ] g))
+
+theorem resc_YML (u : LatModuleGen L) (e : ℤ) : resc (YML L hEven hU u) 2 e = (FL L hEven hU e u).1
+
+theorem YML_truncation (u : LatModuleGen L) (x : MT L hEven hU) :
+    ∃ K : ℤ, ∀ k : ℤ, K ≤ k → YML L hEven hU u k x = 0
+
+theorem YML_vacuum (k : ℤ) :
+    YML L hEven hU (latVacuumGen L) k = if k = -2 then 1 else 0
+
+theorem FL_theta (e : ℤ) (u : LatModuleGen L) :
+    FL L hEven hU e (thetaLat L u) = ((-1 : ℂ) ^ e) • FL L hEven hU e u
+
+theorem YML_support (j : ℕ) (u : LatModuleGen L)
+    (hu : u ∈ (thetaAut L hEven hPos).twistedEigenspace 2 j) (k : ℤ)
+    (hk : (k + j) % ((2 : ℕ) : ℤ) ≠ 0) : YML L hEven hU u k = 0
+
+theorem YML_local (u v : LatModuleGen L) (e e' : ℤ) :
+    Local (resc (YML L hEven hU u) 2 e) (resc (YML L hEven hU v) 2 e')
+\end{leancode}
+\begin{dictionary}
+In (1), \lean{X c * p} with $c=(n,b)$ is $h_b(-n-1)p$ in the untwisted Fock space
+($\mathrm{FockN}$ has variables $X_{(n,b)}=h_b(-n-1)$), and \lean{g : L.carrier →₀ ℂ} an
+element of $\C[L]$.  Statement (2) says that the definition through $0$-th modes of the class-$k$
+field is consistent with the rescaling: the class-$e$ field $F_e(u)$ is \emph{exactly}
+$z^{e/2}Y^T(u,z)$ on the class $e$; this needs $F_{e+2}(u)=zF_e(u)$ (\lean{FL_shift}).  In (5),
+\lean{twistedEigenspace 2 j} for \lean{thetaAut} is $\{u:\theta u=(-1)^ju\}$ and \lean{hk} is
+$k\not\equiv -j\equiv j\pmod2$; this is precisely the \lean{support} axiom of
+\lean{TwistedModule}.  Some theorems carry the section variable \lean{hPos} although it does not
+appear in the printed line (Lean's \lean{include hPos}); the reader should regard (1), (5), (6) as
+having the hypothesis $L$ positive definite.
+\end{dictionary}
+
+\begin{physics}
+These are the basic properties of the twisted vertex operators of arbitrary states: truncation (finite energy), the vacuum maps to the identity, and locality. The $\theta$-compatibility property is the physical statement that $\theta$-even states have only integral modes and $\theta$-odd states only half-integral modes on the twisted sector, which is what it means for the fields to see the twist.
+\end{physics}
+\begin{proof}[Proof on paper]
+(1) is the definition plus commutation of creation operators.  (2)--(4) are bookkeeping of the
+rescaling; $Y^T(\mathbf 1)$ is $Y^T(e^0)$ (Theorem~\ref{ch08:thm:YTL}(4)).  (5): conjugating by
+$\theta$ negates every Heisenberg generator, which in the twisted product contributes $(-1)$ per
+letter, and replaces $e^\alpha$ by $e^{-\alpha}$, which contributes $(-1)^{e}$ times $(-1)$ per
+letter (each letter shifts the class by one); the letter signs cancel.  If $\theta u=(-1)^ju$ and
+$e\not\equiv j$, then $F_e(u)=(-1)^{e+j}F_e(u)=-F_e(u)$, so it vanishes.  (6): every $F_e(u)$ is
+in the generated system (twisted products of local fields are generated), and
+Theorem~\ref{ch08:thm:system} applies.
+\end{proof}
+\begin{status}
+Unconditional (hypotheses $L$ even, positive definite, unimodular); axioms standard.
+\end{status}
+
+\section{The twisted product formula}\label{ch08:sec:PF}
+
+Locality alone does not give a twisted module; one also needs that $Y^T$ is compatible with the
+products of $V_L$.  Chapter~\ref{ch:07} proved the \emph{reduction}: if every pair of rescaled
+fields is local and satisfies the \emph{product formula}
+\begin{equation*}
+  \bigl(F_e(u)_{(\ell)}F_{e'}(v)\bigr)_s=\sum_{t\ge0}\binom{e/2}{t}Y^T(u_{(\ell+t)}v)_{((2(s-t)+e+e')/2)}
+\end{equation*}
+for $u\in V^j$ on its class $e\equiv j$, then the twisted Jacobi identity holds
+(\lean{twistedJacobi_of_local_pf}).  Inverting the binomial, the product formula is equivalent to
+the following statement in terms of twisted products.
+
+\begin{definition}[Projection to a class and the formula $\mathrm{PF}$]\label{ch08:def:PF}
+For $e\in\Z$ let $\pi_e(u)=\frac12(u+(-1)^e\theta u)$, the component of $u$ in the $\theta$-eigenspace
+$(-1)^e$.  For $u,v\in V_L$, $\mathrm{PF}(u,v)$ is the statement
+\begin{equation*}
+  \forall e,e',\ell\in\Z:\qquad \mathrm{star}_{e/2}\bigl(F_e(u)\bigr)_{\ell}\,F_{e'}(v)
+  =F_{e+e'}\bigl(\pi_e(u)_{(\ell)}v\bigr).
+\end{equation*}
+\end{definition}
+\noindent Files \leanpath{VOA/Moonshine/LatticeTwistedUntwisted.lean}, \leanpath{VOA/Moonshine/LatticeTwistedProduct.lean}.
+\begin{leancode}
+noncomputable def piE (e : ℤ) (u : LatModuleGen L) : LatModuleGen L :=
+  (1 / 2 : ℂ) • (u + ((-1 : ℂ) ^ e) • thetaLat L u)
+
+def PF (u v : LatModuleGen L) : Prop :=
+  ∀ e e' ℓ : ℤ, star ((e : ℂ) / 2) (FL L hEven hU e u) ℓ (FL L hEven hU e' v)
+    = FL L hEven hU (e + e') ((latticeVOAGen L hEven hPos).smul (piE L e u) ℓ v)
+\end{leancode}
+\begin{dictionary}
+\textbf{Why $\pi_e$.}  $F_e(u)$ only sees the modes of $u$ on the class $e$, and by the support
+property these come from $\pi_e(u)$ alone: $F_e(u)=F_e(\pi_e u)$.  Hence on the right one must use
+$\pi_e(u)$, not $u$.  \textbf{Why twist $e/2$.}  $F_e(u)=z^{e/2}Y^T(u,z)$ carries the power
+$z^{e/2}$, and $\mathrm{star}_{e/2}$ is precisely the operation which turns the $z_1^{e/2}$ into the
+binomial expansion of $(z_2+(z_1-z_2))^{e/2}$ (Definition~\ref{ch08:def:star}).  Thus
+$\mathrm{PF}(u,v)$ is ``$Y^T(\pi_eu_{(\ell)}v,z)=$ the twisted iterate of $Y^T(u)$ and $Y^T(v)$'',
+the twisted associativity in rescaled language.  \lean{(latticeVOAGen L hEven hPos).smul a ℓ v} is
+$a_{(\ell)}v$ in $V_L$.  It is a \lean{Prop}; it is proved below for all $u,v$.
+\end{dictionary}
+
+\begin{physics}
+The projection $\pi_e$ onto the $(-1)^e$ eigenspace of $\theta$ reflects that on the twisted sector a state's field is defined only for the correct parity of the exponent of $z$; the half-integer powers $z^{e/2}$ attach to the $\theta$-odd part. The formula $\mathrm{PF}$ is then the twisted associativity or OPE: the twisted product of two twisted fields equals the field of the product state. This is the statement that the twisted fields represent the vertex algebra $V_L$ on the twisted sector.
+\end{physics}
+
+\begin{theorem}[Generators and the reduction to exponentials]\label{ch08:thm:PFred}
+Let $L$ be even, positive definite, unimodular.
+\begin{enumerate}
+\item For every Heisenberg generator, every state $w$ and every $\ell$:
+  $\mathrm{star}_{1/2}(F_b)_\ell F_e(w)=F_{e+1}(h_{b\,(\ell)}w)$.
+\item If $\mathrm{PF}(e^\alpha,e^\beta)$ holds for all $\alpha,\beta\in L$, then $\mathrm{PF}(u,v)$
+  holds for all $u,v\in V_L$.
+\end{enumerate}
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/LatticeTwistedProduct.lean}.
+\begin{leancode}
+theorem genPF (b : Fin (rank L)) (e' ℓ : ℤ) (w : LatModuleGen L) :
+    star (1 / 2) (FgT b) ℓ (FL L hEven hU e' w)
+      = FL L hEven hU (e' + 1) ((latticeVOAGen L hEven hPos).smul (hgen L b) ℓ w)
+
+theorem PF_of_base (hbase : ∀ α β : L.carrier, PF L hEven hU hPos (echg L α) (echg L β))
+    (u v : LatModuleGen L) : PF L hEven hU hPos u v :=
+\end{leancode}
+\begin{dictionary}
+(1) is $\mathrm{PF}(h_b,w)$ (note $\pi_e(h_b)=h_b$ for $e$ odd and $0$ for $e$ even; the
+statement is the odd class, twist $1/2$).  (2) has the explicit hypothesis \lean{hbase}, which is
+discharged in the next section; the theorem as stated is a conditional reduction, and its
+conclusion is exactly ``$\mathrm{PF}$ for all pairs''.
+\end{dictionary}
+
+\begin{physics}
+This reduces the product formula for all states to the momentum states $e^\alpha,e^\beta$: since every state is built from the free currents and exponentials, and the currents obey the formula (the twisted boson Ward identity), one only needs to check the OPE of two lattice exponentials. This is the standard reduction in CFT of an OPE involving descendants to that of the primaries.
+\end{physics}
+\begin{proof}[Proof on paper]
+(1) For $\ell<0$ it is the definition \eqref{ch08:eq:creation}.  For $\ell\ge0$ induct on the
+word: on $e^\beta$, $h_{b(0)}e^\beta=\beta_be^\beta$ and $h_{b(\ell)}e^\beta=0$ for $\ell>0$, which
+matches the generator--exponential OPE (Theorem~\ref{ch08:thm:system}); for $w=h_c(-n-1)w'$ move
+$h_{b(\ell)}$ past $h_c(-n-1)$ by the commutator formula, on the field side by the twisted
+commutator formula (Chapter~\ref{ch:07}), using $[h_{b(\ell)},h_{c(m)}]=\ell\delta_{bc}\delta_{\ell+m,0}$
+on both sides.
+
+(2) First fix $v=e^\beta$ and induct on $u$.  If $u=h_b(-n-1)w$ then the left side is
+$\mathrm{star}_{e/2}(\mathrm{star}_{1/2}(F_b)_{-n-1}F_{e-1}(w))_\ell F_{e'}(e^\beta)$, which the
+\emph{twisted iterate formula} (associativity of twisted products, Theorem~\ref{ch08:thm:assoc}
+below) expands as a finite combination of iterated products $\mathrm{star}(F_b)\mathrm{star}(F(w))$
+and $\mathrm{star}(F(w))\mathrm{star}(F_b)$; each is evaluated by (1) and the induction hypothesis,
+and the result is $F$ of the corresponding expansion of $(h_b(-n-1)w)_{(\ell)}e^\beta$ by the
+iterate formula of $V_L$.  Then induct on $v$: for $v=h_b(-n-1)v'$, use the twisted commutator
+formula on the field side and the commutator formula of $V_L$ on the state side, together with
+(1) and the case already proved.
+\end{proof}
+\begin{status}
+Unconditional as a reduction (it has the explicit hypothesis \lean{hbase}); file
+\leanpath{VOA/Moonshine/LatticeTwistedProduct.lean}; axioms standard.
+\end{status}
+
+\begin{theorem}[Twisted associativity: the iterate formula]\label{ch08:thm:assoc}
+Let $S$ be a pairwise local set of fields and $A,B,C\in\mathrm{TGenerated}(S)$.  For all twists
+$\alpha,\beta\in\C$ and $p,q\in\Z$,
+\begin{multline*}
+  \mathrm{star}_{\alpha+\beta}\bigl(\mathrm{star}_\alpha(A)_pB\bigr)_qC
+  =\sum_{i\ge0}(-1)^i\binom pi\Bigl(\mathrm{star}_\alpha(A)_{p-i}\,\mathrm{star}_\beta(B)_{q+i}C\\
+  -(-1)^p\,\mathrm{star}_\beta(B)_{p+q-i}\,\mathrm{star}_\alpha(A)_iC\Bigr).
+\end{multline*}
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/LatticeTwistedAssoc.lean}.
+\begin{leancode}
+theorem star_iterate {A B C : Fld M} (hA : A ∈ TGenerated S) (hB : B ∈ TGenerated S)
+    (hC : C ∈ TGenerated S) (α β : ℂ) (p q : ℤ) :
+    star (α + β) (star α A p B) q C
+      = ∑ᶠ i : ℕ, ((-1 : ℂ) ^ i * gBinom p i) •
+          (star α A (p - i) (star β B (q + i) C)
+            - ((-1 : ℂ) ^ p) • star β B (p + q - i) (star α A i C))
+
+theorem star_iterate_range {A B C : Fld M} (hA : A ∈ TGenerated S) (hB : B ∈ TGenerated S)
+    (hC : C ∈ TGenerated S) (α β : ℂ) (p q : ℤ) (K : ℕ)
+    (hK : ∀ i : ℕ, K ≤ i → star β B (q + i) C = 0 ∧ star α A i C = 0) :
+    star (α + β) (star α A p B) q C
+      = ∑ i ∈ Finset.range K, ((-1 : ℂ) ^ i * gBinom p i) •
+          (star α A (p - i) (star β B (q + i) C)
+            - ((-1 : ℂ) ^ p) • star β B (p + q - i) (star α A i C))
+\end{leancode}
+\begin{dictionary}
+Both theorems live in \lean{VOA.TwistedReduction} and carry the section hypothesis
+\lean{hS : ∀ a ∈ S, ∀ b ∈ S, Local a.1 b.1} (pairwise locality of the generators), which is
+not printed in the statement lines but is an argument of the theorem.  \lean{gBinom p i} is
+$\binom pi$ for integer $p$.  The range version only replaces the finite \lean{∑ᶠ} by a sum
+over $i<K$, with \lean{hK} guaranteeing the omitted terms vanish.  This is the exact analogue of
+the iterate formula $(a_{(p)}b)_{(q)}=\sum_i(-1)^i\binom pi(a_{(p-i)}b_{(q+i)}-(-1)^pb_{(p+q-i)}a_{(i)})$
+of a vertex algebra.
+\end{dictionary}
+
+\begin{physics}
+This is the associativity (Borcherds identity, or crossing symmetry) of twisted fields: the field of the product $u_{(p)}v$ acting on the twisted module is expressed as the commutator-type combination of $Y(u)Y(v)$ and $Y(v)Y(u)$. In CFT this is the equivalence of the OPE of two operators with the two orderings of operator products in the twisted sector, with the twist phases $\alpha,\beta$ keeping track of the monodromy.
+\end{physics}
+\begin{proof}[Proof on paper]
+This is the associativity half of Li's theorem that a local system of twisted vertex operators
+carries a vertex algebra structure.  Make the system into a state space graded by the twist,
+$\mathcal S=\bigoplus_\alpha\mathrm{TGenerated}(S)$, with state fields $Y_\star(a,z)$ acting by twisted
+products.  The twisted commutator formula makes these state fields mutually local, the identity
+field is a vacuum with the creation property, and the twisted translation
+$D_\alpha=\partial-\alpha z^{-1}$ is a derivation of twisted products.  Goddard's uniqueness
+theorem (a field local with all state fields which creates the right state from the vacuum is the
+state field) then identifies the state field of $\mathrm{star}_\alpha(A)_pB$ with the product of
+state fields, and the iterate formula for products of local fields gives the claim.
+\end{proof}
+\begin{status}
+Unconditional (given its explicit hypotheses); \leanpath{VOA/Moonshine/LatticeTwistedAssoc.lean};
+\texttt{\#print axioms} \lean{star_iterate_range} re-run: standard axioms.
+\end{status}
+\begin{warning}
+\textbf{A record correction.}  The project roadmap (\leanpath{Notes/MonsterRoadmap.md}, row of the twisted-module milestone)
+describes \lean{star_iterate_range} as ``unused but proved''.  This was not accurate when this chapter
+was first written, and is not accurate at a pre-release build commit either: \lean{star_iterate_range} is used in the $u$-induction of
+Theorem~\ref{ch08:thm:PFred}(2) (\leanpath{LatticeTwistedProduct.lean}) and in the defect
+calculus of \S\ref{ch08:sec:base} (\leanpath{LatticeTwistedBase.lean}); a \texttt{grep} of the
+repository confirms both uses.  So twisted associativity is a genuine input of the twisted product
+formula, as the mathematics suggests.
+\end{warning}
+
+\section{The base case: two exponentials}\label{ch08:sec:base}
+
+Files \leanpath{VOA/Moonshine/LatticeTwisted\{Translation,Unique,Base,Scalar,Leading,BaseCase\}.lean}.
+It remains to prove $\mathrm{PF}(e^\alpha,e^\beta)$.  The strategy is a descent in the mode index
+$\ell$, controlled by one differential equation and one uniqueness lemma.
+
+\begin{definition}[Defect]\label{ch08:def:Def}
+For $\beta\in L$, $u\in V_L$ and $e,e',\ell\in\Z$,
+\begin{equation*}
+  D_\beta(u;e,e',\ell)=\mathrm{star}_{e/2}(F_e(u))_\ell F_{e'}(e^\beta)-F_{e+e'}\bigl(\pi_e(u)_{(\ell)}e^\beta\bigr).
+\end{equation*}
+So $\mathrm{PF}(e^\alpha,e^\beta)$ is $D_\beta(e^\alpha;\cdot)=0$.
+\end{definition}
+\begin{leancode}
+noncomputable def Def (β : L.carrier) (u : LatModuleGen L) (e e' ℓ : ℤ) : Fld (MT L hEven hU) :=
+  star ((e : ℂ) / 2) (FL L hEven hU e u) ℓ (FL L hEven hU e' (echg L β))
+    - FL L hEven hU (e + e') ((latticeVOAGen L hEven hPos).smul (piE L e u) ℓ (echg L β))
+\end{leancode}
+
+\begin{physics}
+The defect is the failure of the twisted product formula on a pair of exponentials: the difference between the actual product of two twisted fields and the field of the product state. It measures exactly the defect of the twisted OPE; showing it vanishes is the goal of the following results. It has no independent physical meaning, since in a consistent theory the defect is zero.
+\end{physics}
+
+\begin{proposition}[Structure of the defect]\label{ch08:prop:Def}
+Let $n=\cheightpair\alpha\beta$ and $D(e,e',\ell)=D_\beta(e^\alpha;e,e',\ell)$.
+\begin{enumerate}
+\item (Translation covariance.) $D_\alpha(e/2)F_e(e^\alpha)=F_e(Te^\alpha)$ where
+  $D_c X=\partial X-cz^{-1}X$; consequently $D_\beta(Te^\alpha;e,e',\ell)=-\ell D(e,e',\ell-1)$.
+\item (Recursion.) If $D(e-1,e',m)=0$ for all $m\ge\ell$, then
+  $-\ell\,D(e,e',\ell-1)=n\,D(e-1,e'+1,\ell-1)$.
+\item (Charge.) If $D(\cdot,\cdot,m')=0$ for all $m'>m$, then for all $b$ and $s\in\N$,
+  $\mathrm{star}_{1/2}(F_b)_s\,D(e,e',m)=\delta_{s,0}\bigl(\beta_bD(e,e'+1,m)+\alpha_bD(e+1,e',m)\bigr)$.
+\item $D$ vanishes for $\ell$ large (uniformly in $e,e'$), $D(e+2,e',\ell)=zD(e,e',\ell)$,
+  $D(e,e'+2,\ell)=zD(e,e',\ell)$.
+\end{enumerate}
+\end{proposition}
+\noindent File \leanpath{VOA/Moonshine/LatticeTwistedTranslation.lean}.
+\begin{leancode}
+theorem FL_T_echg (e : ℤ) (α : L.carrier) :
+    FL L hEven hU e ((latticeVOAGen L hEven hPos).toPreVertexAlgebra.T (echg L α))
+      = Dα ((e : ℂ) / 2) (FL L hEven hU e (echg L α))
+
+theorem Def_T (α β : L.carrier) (e e' ℓ : ℤ) :
+    Def L hEven hU hPos β ((latticeVOAGen L hEven hPos).toPreVertexAlgebra.T (echg L α)) e e' ℓ
+      = (-(ℓ : ℂ)) • Def L hEven hU hPos β (echg L α) e e' (ℓ - 1)
+
+theorem Def_ode (α β : L.carrier) (e e' ℓ : ℤ)
+    (h : ∀ m : ℤ, ℓ ≤ m → Def L hEven hU hPos β (echg L α) (e - 1) e' m = 0) :
+    (-(ℓ : ℂ)) • Def L hEven hU hPos β (echg L α) e e' (ℓ - 1)
+      = ((L.form α β : ℤ) : ℂ) • Def L hEven hU hPos β (echg L α) (e - 1) (e' + 1) (ℓ - 1)
+
+theorem Def_charge (α β : L.carrier) (m : ℤ)
+    (h : ∀ e e' m' : ℤ, m < m' → Def L hEven hU hPos β (echg L α) e e' m' = 0)
+    (b : Fin (rank L)) (e e' : ℤ) (s : ℕ) :
+    star (1 / 2) (FgT b) s (Def L hEven hU hPos β (echg L α) e e' m)
+      = if s = 0 then chargeCoord L β b • Def L hEven hU hPos β (echg L α) e (e' + 1) m
+          + chargeCoord L α b • Def L hEven hU hPos β (echg L α) (e + 1) e' m else 0
+
+theorem Def_eventually_zero (β : L.carrier) (u : LatModuleGen L) :
+    ∃ L0 : ℤ, ∀ e e' ℓ : ℤ, L0 ≤ ℓ → Def L hEven hU hPos β u e e' ℓ = 0
+\end{leancode}
+\begin{dictionary}
+\lean{(latticeVOAGen L hEven hPos).toPreVertexAlgebra.T} is the translation operator $T=L_{-1}$ of
+$V_L$, and \lean{Dα c X} is $\partial X-c\,z^{-1}X$ (\lean{Dα c X = Fld.deriv X - c • fzmul (-1) X}),
+the derivative of a field which carries a factor $z^c$: indeed
+$\partial(z^cY)=z^c(\partial Y)+cz^{-1}z^cY$.  So \lean{FL_T_echg} is the translation axiom
+$Y^T(Tu,z)=\partial_zY^T(u,z)$ for $u=e^\alpha$, rescaled.  The hypotheses \lean{h} of
+\lean{Def_ode} and \lean{Def_charge} are the inductive hypotheses of the descent: they are not
+extra assumptions of the final theorem.
+\end{dictionary}
+
+\begin{physics}
+These are the properties of the failure of the OPE: it is translation covariant (the derivative of the OPE is the OPE of the derivative), it obeys a recursion with coefficient $n=\langle\alpha,\beta\rangle$ coming from the pole structure of the contraction, and it is charged, i.e. it carries momentum $\alpha+\beta$ under the twisted currents. These are the Ward identities used to show that a defect with the right charge and no vacuum component must vanish.
+\end{physics}
+\begin{proof}[Proof on paper]
+(1) Differentiating \eqref{ch08:eq:YT}: $\partial_z$ of $z^{-\cheightpair\alpha\alpha/2}\cheightE{-}\cheightE{+}$
+gives $:\!\alpha(z)Y^T(e^\alpha,z)\!:-\frac{\cheightpair\alpha\alpha}{2}z^{-1}Y^T$, which is the
+Euler identity $a\,\mathrm{DD}_\alpha(a)=2\sum_{k\text{ odd}>0}(\alpha(-k/2)\mathrm{DD}(a-k)+\mathrm{DD}(a+k)\alpha(k/2))$
+of the dressing (coefficient form of $w\partial_w(E^-E^+)$, assembled from the Newton recursion of
+$E^-$ and the Euler identity of the translation $E^+$).  On the state side
+$Te^\alpha=\sum_b\alpha_bh_b(-1)e^\alpha$, and $\sum_b\alpha_b\,\mathrm{star}_{1/2}(F_b)_{-1}F_{e-1}(e^\alpha)$
+is exactly $F_e(\sum_b\alpha_bh_b(-1)e^\alpha)$ by the creation rule; comparing yields
+$F_e(Te^\alpha)=D_{e/2}F_e(e^\alpha)$.  Then $(Tu)_{(\ell)}=-\ell u_{(\ell-1)}$ in $V_L$ and the
+twisted analogue $\mathrm{star}_c(D_cA)_\ell X=-\ell\,\mathrm{star}_c(A)_{\ell-1}X$ give the
+relation for the defect.
+
+(2) Write $Te^\alpha=\sum_b\alpha_bh_b(-1)e^\alpha$ and compute the defect of $h_b(-1)w$: by the
+twisted iterate formula and Theorem~\ref{ch08:thm:PFred}(1), assuming the defect of $w$ vanishes at
+the levels $\ge\ell$, only one term survives, $\beta_bD_\beta(w;e-1,e'+1,\ell-1)$ (it comes from
+$h_{b(0)}e^\beta=\beta_be^\beta$).  Summing, $D_\beta(Te^\alpha;e,e',\ell)=\sum_b\alpha_b\beta_b
+D(e-1,e'+1,\ell-1)=nD(e-1,e'+1,\ell-1)$; combine with (1).
+
+(3) The twisted commutator formula for $F_b$ against the two arguments of the twisted product
+gives two terms, $\beta_b$ from $F_b$ hitting $F_{e'}(e^\beta)$ and $\alpha_b$ from $F_b$ hitting
+$F_e(e^\alpha)$, plus terms of the defect at higher levels, which vanish by hypothesis.
+
+(4) Twisted products of local fields vanish for large index, and $F_{e+2}=zF_e$.
+\end{proof}
+\begin{status}
+Unconditional; files \leanpath{LatticeTwistedTranslation.lean}, \leanpath{LatticeTwistedBase.lean};
+axioms standard.
+\end{status}
+
+\subsection{The uniqueness lemma}
+Physically: a field of definite charge $\gamma$ (it commutes with the oscillators like
+$e^{\gamma}$ does) is a vertex operator $\cheightE{-}\cheightE{+}$ times a $\cheightT$-valued
+function of $z$; it is zero if its vacuum-to-vacuum matrix elements vanish.
+
+\begin{definition}[Vacuum coefficient]
+$\mathrm{cf}_m:\cheightS\otimes\cheightT\to\cheightT$ is the coefficient of the monomial $m$ in the
+first factor; $\mathrm{cf}_0$ is the projection onto $\mathbf 1\otimes\cheightT$.
+\end{definition}
+\noindent File \leanpath{VOA/Moonshine/LatticeTwistedUnique.lean}.
+\begin{leancode}
+noncomputable def cfT (m : (ℕ × Fin r) →₀ ℕ) : FockT r ⊗[ℂ] Tm →ₗ[ℂ] Tm :=
+  (TensorProduct.lid ℂ Tm).toLinearMap ∘ₗ (MvPolynomial.lcoeff ℂ m).rTensor Tm
+\end{leancode}
+
+\begin{physics}
+This extracts the component of a state along the Fock vacuum, i.e. the zero-oscillator part, keeping the ground-state label in $T$: it is the vacuum expectation value in the oscillator Fock space, with values in the twist-field multiplicity space.
+\end{physics}
+
+\begin{theorem}[A charge-$\gamma$ family with zero vacuum expectations vanishes]\label{ch08:thm:unique}
+\begin{enumerate}
+\item Let $\Psi:\Z\to\End(\cheightS\otimes\cheightT)$ satisfy $[h_b(K/2)\otimes1,\Psi_k]=\gamma_b\Psi_{k+K}$
+  for all $b$, all odd $K$, all $k$, and $\mathrm{cf}_0(\Psi_k(\mathbf 1\otimes t))=0$ for all $k,t$.
+  Then $\Psi=0$.
+\item (Field form.) Let $\Phi:\Z\to\mathrm{Fld}(\cheightS\otimes\cheightT)$ satisfy
+  $\Phi(c+2)=z\Phi(c)$, be local with every $F_b$, satisfy
+  $\mathrm{star}_{1/2}(F_b)_s\Phi(c)=\delta_{s0}\gamma_b\Phi(c+1)$ for $s\in\N$, and have
+  $\mathrm{cf}_0(\mathrm{mode}_0\Phi(c)(\mathbf 1\otimes t))=0$.  Then $\Phi=0$.
+\end{enumerate}
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/LatticeTwistedUnique.lean}.
+\begin{leancode}
+theorem eq_zero_of_charge (γ : Fin r → ℂ) (Ψ : ℤ → End ℂ (FockT r ⊗[ℂ] Tm))
+    (hcomm : ∀ (b : Fin r) (K : ℤ), Odd K → ∀ k : ℤ,
+      (modeT r b K).rTensor Tm * Ψ k - Ψ k * (modeT r b K).rTensor Tm = γ b • Ψ (k + K))
+    (hvac : ∀ (k : ℤ) (t : Tm), cfT 0 (Ψ k (1 ⊗ₜ[ℂ] t)) = 0) : ∀ k, Ψ k = 0
+
+theorem fld_eq_zero_of_charge (γ : Fin r → ℂ) (Φ : ℤ → Fld (FockT r ⊗[ℂ] Tm))
+    (hshift : ∀ c, Φ (c + 2) = fzmul 1 (Φ c))
+    (hloc : ∀ b c, Local (FgT (Tm := Tm) b).1 (Φ c).1)
+    (hcharge : ∀ (b : Fin r) (c : ℤ) (s : ℕ),
+      star (1 / 2) (FgT b) s (Φ c) = if s = 0 then γ b • Φ (c + 1) else 0)
+    (hvac : ∀ (c : ℤ) (t : Tm), cfT 0 (mode (Φ c).1 0 (1 ⊗ₜ[ℂ] t)) = 0) : ∀ c, Φ c = 0
+\end{leancode}
+\begin{dictionary}
+All hypotheses are as in the text; \lean{(1 ⊗ₜ[ℂ] t)} is $\mathbf 1\otimes t$; \lean{Φ c = 0} is
+the zero field.  \textbf{Not vacuous}: the hypotheses are satisfied by
+$\Phi(c)=\widetilde Y_{\gamma,c}$ except \lean{hvac}, whose failure is measured by the vacuum
+coefficient computed below; the lemma is used only on defects.  \textbf{Could it be too strong?}
+No: the hypothesis \lean{hcomm} is required for \emph{all} odd $K$, both signs, which is what
+pins down $\Psi$ from its vacuum block.
+\end{dictionary}
+
+\begin{physics}
+This is a uniqueness statement of Ward-identity type: an operator of definite charge under all twisted currents is fully determined by its vacuum matrix elements, because the oscillator Fock space is generated from the vacuum by the creation currents. It is the free-field version of the principle that a correlator is fixed by its charge and its vacuum expectation value.
+\end{physics}
+\begin{proof}[Proof on paper]
+(1) Show $\mathrm{cf}_m(\Psi_k(\mathbf 1\otimes t))=0$ by induction on the degree of the monomial
+$m$: the annihilator $h_b(K/2)$, $K>0$, is $\frac K2\partial_{(n,b)}$, and since it kills
+$\mathbf 1$, $h_b(K/2)\Psi_k(\mathbf 1\otimes t)=\gamma_b\Psi_{k+K}(\mathbf 1\otimes t)$; the coefficient
+of $m$ in the left side is a nonzero multiple of the coefficient of $m+e_{(n,b)}$ in
+$\Psi_k(\mathbf 1\otimes t)$, so higher coefficients are determined by lower ones.  Hence
+$\Psi_k(\mathbf 1\otimes t)=0$.  For a general vector $p\otimes t$, move the creation operators
+(the variables of $p$) through $\Psi_k$ using the relation with $K<0$.  (2) The generator products
+$F_{b\,(s)}\Phi(c)$, $s\ge0$, are recovered from the twisted ones by downward induction in $s$,
+then the commutator formula gives the hypothesis of (1) for $\Psi_k=\mathrm{mode}_0\Phi(k)$, which
+by $\Phi(c+2)=z\Phi(c)$ determines all modes.
+\end{proof}
+\begin{status}
+Unconditional; \leanpath{VOA/Moonshine/LatticeTwistedUnique.lean}; axioms standard.
+\end{status}
+
+\subsection{The descent}
+File \leanpath{VOA/Moonshine/LatticeTwistedBaseCase.lean} (\lean{Def_echg_eq_zero}, \lean{PF_echg}, \lean{PF_all}).
+\begin{theorem}[The defect vanishes]\label{ch08:thm:descent}
+For $L$ even, positive definite, unimodular and all $\alpha,\beta\in L$, $e,e',\ell\in\Z$:
+$D_\beta(e^\alpha;e,e',\ell)=0$.  Hence $\mathrm{PF}(e^\alpha,e^\beta)$, and (Theorem
+\ref{ch08:thm:PFred}) the twisted product formula $\mathrm{PF}(u,v)$ holds for all $u,v\in V_L$.
+\end{theorem}
+\begin{leancode}
+theorem Def_echg_eq_zero (α β : L.carrier) (e e' ℓ : ℤ) :
+    Def L hEven hU hPos β (echg L α) e e' ℓ = 0
+
+theorem PF_echg (α β : L.carrier) : PF L hEven hU hPos (echg L α) (echg L β) :=
+  PF_echg_of_Def L hEven hU hPos α β (Def_echg_eq_zero L hEven hU hPos α β)
+
+theorem PF_all (u v : LatModuleGen L) : PF L hEven hU hPos u v :=
+  PF_of_base L hEven hU hPos (PF_echg L hEven hU hPos) u v
+\end{leancode}
+\begin{dictionary}
+The section variables are \lean{(L : IntegralLattice.{0}) (hEven : L.Even) (hU : IsUnit (gramMat L).det) (hPos : L.PosDef)};
+these are the only hypotheses.  \lean{PF_all} is the universally quantified twisted product formula
+of Definition~\ref{ch08:def:PF}, with no further assumption.  (\lean{IntegralLattice.{0}} only
+fixes the universe level; the Leech lattice lives there.)
+\end{dictionary}
+
+\begin{physics}
+The twisted OPE of two lattice exponentials holds exactly: the product of the twisted vertex operators of $e^\alpha$ and $e^\beta$ is the twisted vertex operator of the product state, the associativity of twist fields. The proof uses only the Heisenberg Ward identities and a vacuum computation, i.e.\ the argument by charge conservation that, in the CFT, reduces an OPE to a two-point (vacuum) coefficient. This is a heuristic gloss; the Lean proof is the actual argument.
+\end{physics}
+\begin{proof}[Proof on paper]
+By Proposition~\ref{ch08:prop:Def}(4) there is $L_0$ with $D=0$ for $\ell\ge L_0$.  Suppose $D$
+vanishes at all levels $>m$; we show it vanishes at level $m$.  By $D(e+2,e'-2)=D(e,e')$ (from the
+shifts) everything is determined by the two class pairs $x_c=D(0,c,m)$ and $y_c=D(1,c-1,m)$.  The
+recursion (2) at $\ell=m+1$ gives
+\begin{equation*}
+  -(m+1)\,x_c=n\,y_c,\qquad -(m+1)\,y_c=n\,x_c ,
+\end{equation*}
+hence $(m+1+n)(x_c+y_c)=0$ and $(m+1-n)(x_c-y_c)=0$.  Away from the two exceptional levels
+$m=-n-1$ and $m=n-1$ both combinations vanish, so $x=y=0$.  At $m=-n-1$, the family
+$\Phi(c)=x_c+y_c$ satisfies, by Proposition~\ref{ch08:prop:Def}(3), the charge relation with charge
+$\gamma=\alpha+\beta$ (the two contributions $\beta_bD(0,c+1)+\alpha_bD(1,c)$ and
+$\beta_bD(1,c)+\alpha_bD(2,c-1)=\beta_bD(1,c)+\alpha_bD(0,c+1)$ add up to
+$(\alpha_b+\beta_b)\Phi(c+1)$), so Theorem~\ref{ch08:thm:unique}(2) reduces $\Phi=0$ to the
+vanishing of its vacuum expectations, proved in Theorem~\ref{ch08:thm:vac} below.  At $m=n-1$
+the same works for $x_c-y_c$ with charge $\beta-\alpha$.  (If $n=0$ both exceptional levels
+coincide at $m=-1$ and both arguments are run.)  Induction downward from $L_0$ finishes.
+\end{proof}
+\begin{status}
+Unconditional.  \texttt{\#print axioms} \lean{PF_all} re-run for this chapter: standard axioms only.
+\end{status}
+
+\section{Why the normalisation is \texorpdfstring{$2^{-\langle\alpha,\alpha\rangle}$}{2 to the minus alpha squared}}\label{ch08:sec:normalisation}
+
+We now compute the vacuum expectations at the exceptional levels.  On the state side, at
+$m=-n-1$, $(\pi_0+\pi_1)e^\alpha=e^\alpha$ and
+$e^\alpha_{(-n-1)}e^\beta=\varepsilon(\alpha,\beta)e^{\alpha+\beta}$ (the leading term of the lattice
+product), whose twisted vertex operator has vacuum coefficient
+$2^{-\cheightpair{\alpha+\beta}{\alpha+\beta}}\varepsilon(\alpha,\beta)e_{\alpha+\beta}$.  On the field side
+we need the vacuum coefficient of the twisted product of two exponential fields.
+
+\begin{theorem}[Vacuum expectation of the twisted product]\label{ch08:thm:cfstar}
+For $\alpha,\beta\in L$, $e,e',q\in\Z$, $I\ge|\cheightpair\alpha\beta|-q$ and $t\in\cheightT$,
+\begin{multline*}
+  \mathrm{cf}_0\Bigl(\mathrm{mode}_0\bigl(\mathrm{star}_{e/2}(\widetilde Y_{\alpha,e})_q\widetilde
+  Y_{\beta,e'}\bigr)(\mathbf 1\otimes t)\Bigr)
+  =2^{-\cheightpair\alpha\alpha}2^{-\cheightpair\beta\beta}\,
+  \bigl[2q+e+e'+4=\cheightpair\alpha\alpha+\cheightpair\beta\beta\bigr]\\
+  \cdot\sum_{i<I}\binom{-e/2}{i}V\bigl(\cheightpair\alpha\beta,\ \cheightpair\alpha\alpha-2-e,\ q+i\bigr)
+  \;e_\alpha e_\beta t,
+\end{multline*}
+where $[\cdot]$ is $1$ or $0$ and
+$V(n,r',Q)=\sum_j(-1)^j\binom Qj\bigl(f^{(n)}_{2Q-2j-r'}-(-1)^{Q+n}f^{(n)}_{r'-2j}\bigr)$.
+\end{theorem}
+\noindent Files \leanpath{VOA/Moonshine/LatticeTwistedScalar.lean}, \leanpath{VOA/Moonshine/LatticeTwistedLeading.lean}.
+\begin{leancode}
+noncomputable def Vf (n r' Q : ℤ) : ℂ :=
+  ∑ᶠ j : ℕ, ((-1 : ℂ) ^ j * gBinom Q j)
+    * (fz n (2 * Q - 2 * j - r') - (-1 : ℂ) ^ (Q + n) * fz n (r' - 2 * j))
+
+theorem cfT_star_YTL (α β : L.carrier) (e e' q : ℤ) (I : ℕ)
+    (hI : ((L.form α β).natAbs : ℤ) - q ≤ I)
+    (t : Rep (cocMat L) (isUnit_det_cocMat L hEven hU)) :
+    cfT 0 (mode (star ((e : ℂ) / 2) (YTLFld L hEven hU α e) q (YTLFld L hEven hU β e')).1 0
+        (1 ⊗ₜ[ℂ] t))
+      = ((2 : ℂ) ^ (-(L.form α α)) * (2 : ℂ) ^ (-(L.form β β))
+          * (if 2 * q + e + e' + 4 = L.form α α + L.form β β then
+              ∑ i ∈ Finset.range I, cbinom (-((e : ℂ) / 2)) i
+                * Vf (L.form α β) (L.form α α - 2 - e) (q + i) else 0))
+        • eT L hEven hU α (eT L hEven hU β t)
+\end{leancode}
+\begin{dictionary}
+$V(n,r',Q)$ is the vacuum coefficient of the $Q$-th untwisted product of the two dressings on the
+class $r'$; it is a finite sum ($\binom Qj=0$ for $Q\ge0$, $j>Q$, and $f$ vanishes at negative
+indices).  The Kronecker condition is conformal-weight conservation.  The bound \lean{hI} makes
+the twisted-product sum exhaustive.  The two-point function behind it is
+$\langle\mathbf 1|\mathrm{DD}_v(A)\mathrm{DD}_u(B)|\mathbf 1\rangle=\delta_{A+B,0}f^{(\cheightpair vu)}_{-A}$
+(\lean{constantCoeff_DD_DD}).
+\end{dictionary}
+
+\begin{physics}
+This computes the vacuum expectation value (the oscillator vacuum component) of the twisted product of two exponential fields: it is nonzero only when the weights match (the delta condition on $2q+e+e'+4$, conservation of conformal weight), and it is given by the contraction function $V$ with the ground-state operator $e_\alpha e_\beta$ and the normalisations $2^{-\langle\alpha,\alpha\rangle}2^{-\langle\beta,\beta\rangle}$. In CFT it is the two-point function of two twisted vertex operators with the twist-field multiplicity operators multiplying.
+\end{physics}
+
+\begin{theorem}[The two leading sums]\label{ch08:thm:leading}
+For $n,\rho\in\Z$ and $I$ large ($I\ge|n|+n+1$, resp. $I\ge|n|-n+1$):
+\begin{align*}
+  \sum_{i<I}\binom{0}{i}V(n,\rho,-n-1+i)+\sum_{i<I}\binom{-1/2}{i}V(n,\rho-1,-n-1+i)&=4^{-n},\\
+  \sum_{i<I}\binom{0}{i}V(n,\rho,n-1+i)-\sum_{i<I}\binom{-1/2}{i}V(n,\rho-1,n-1+i)&=4^{n}\quad(\rho\text{ even}).
+\end{align*}
+\end{theorem}
+\begin{leancode}
+theorem leading_plus (n ρ : ℤ) (I : ℕ) (hI : n.natAbs + n + 1 ≤ I) :
+    ∑ i ∈ Finset.range I, cbinom (-(((0 : ℤ) : ℂ) / 2)) i * Vf n ρ (-n - 1 + i)
+      + ∑ i ∈ Finset.range I, cbinom (-(((1 : ℤ) : ℂ) / 2)) i * Vf n (ρ - 1) (-n - 1 + i)
+      = (1 / 2 : ℂ) ^ (n.natAbs + n).toNat * 2 ^ (n.natAbs - n).toNat
+
+theorem leading_minus (n ρ : ℤ) (hρ : ρ % 2 = 0) (I : ℕ) (hI : n.natAbs - n + 1 ≤ I) :
+    ∑ i ∈ Finset.range I, cbinom (-(((0 : ℤ) : ℂ) / 2)) i * Vf n ρ (n - 1 + i)
+      - ∑ i ∈ Finset.range I, cbinom (-(((1 : ℤ) : ℂ) / 2)) i * Vf n (ρ - 1) (n - 1 + i)
+      = (1 / 2 : ℂ) ^ (n.natAbs - n).toNat * 2 ^ (n.natAbs + n).toNat
+\end{leancode}
+\begin{dictionary}
+The right sides: $(1/2)^{|n|+n}2^{|n|-n}=2^{-2n}=4^{-n}$, and
+$(1/2)^{|n|-n}2^{|n|+n}=4^{n}$; Lean writes them with natural exponents to avoid negative powers.
+The two summands are the classes $e=0$ (twist $0$, $\binom{0}{i}=\delta_{i0}$) and $e=1$ (twist
+$1/2$).  \textbf{Sum over both classes}: the vacuum relation is needed for $x_c+y_c$, which
+combines $e=0$ and $e=1$; the individual class contributions are not powers of $2$.
+\end{dictionary}
+
+\begin{physics}
+Technical lemma: the two combinatorial sums that arise as leading terms in the twisted two-point function evaluate to $4^{\mp n}$. These powers of 4 are exactly what compensates the $2^{-\langle\alpha,\alpha\rangle}$ normalisations of the twisted vertex operators and make the vacuum coefficients of the product and of the defect agree.
+\end{physics}
+\begin{proof}[Proof on paper]
+Put $K=|n|$ and $G(y)=(1-y)^{K+n}(1+y)^{K-n}=\sum g_uy^u$.  A Taylor-type formula
+(\lean{taylor}) expresses $V(n,r',Q)=\sum_{u\equiv r'}g_u\binom{(2K-2-r'-u)/2}{K-Q-1}$, using
+$(1-y^2)^Qf=(1-y^2)^{Q-K}G$, the palindromy of $G$ and Vandermonde.  The twisted-product sum is a
+Vandermonde convolution in the binomial $\binom{-e/2}{i}$, and the two classes recombine the two
+parities of $u$ into $\sum_ug_u\binom{(M-u)/2}{a}$.  Finally, with $B(c)=\sum_j\binom cjt^j=(1+t)^c$,
+this sum is the coefficient of $t^a$ in $B(M/2)\,G(B(-1/2))$; since $1-B(-1/2)=tW(t)$ with
+$W(0)=\frac12$ and $1+B(-1/2)=2+O(t)$, the factor $(1-B)^{a}$ contributes $t^a2^{-a}$ and the
+coefficient is $2^{b-a}$ with $a=K+n$, $b=K-n$.
+\end{proof}
+\begin{status}
+Unconditional; \leanpath{LatticeTwistedScalar.lean}, \leanpath{LatticeTwistedLeading.lean};
+axioms standard.
+\end{status}
+
+\begin{theorem}[The vacuum identities]\label{ch08:thm:vac}
+At $m=-\cheightpair\alpha\beta-1$, $\mathrm{vac}_t(D(0,c,m)+D(1,c-1,m))=0$; at $m=\cheightpair\alpha\beta-1$,
+$\mathrm{vac}_t(D(0,c,m)-D(1,c-1,m))=0$, where $\mathrm{vac}_t(X)=\mathrm{cf}_0(\mathrm{mode}_0X(\mathbf 1\otimes t))$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/LatticeTwistedBaseCase.lean}.
+\begin{leancode}
+theorem vac_plus (α β : L.carrier) (m c : ℤ) (hm : m = -L.form α β - 1)
+    (t : Rep (cocMat L) (isUnit_det_cocMat L hEven hU)) :
+    vacL L hEven hU t (Def L hEven hU hPos β (echg L α) 0 c m
+      + Def L hEven hU hPos β (echg L α) 1 (c - 1) m) = 0
+
+theorem vac_minus (α β : L.carrier) (m c : ℤ) (hm : m = L.form α β - 1)
+    (t : Rep (cocMat L) (isUnit_det_cocMat L hEven hU)) :
+    vacL L hEven hU t (Def L hEven hU hPos β (echg L α) 0 c m
+      + (-1 : ℂ) • Def L hEven hU hPos β (echg L α) 1 (c - 1) m) = 0
+\end{leancode}
+
+\begin{physics}
+These are the matching conditions at the vacuum: the vacuum component of the defect at the two critical weights vanishes, because the explicit twisted two-point function agrees with the product-state vertex operator. This is the check, in the language of correlation functions, that the two sides of the OPE have the same leading singularity.
+\end{physics}
+\begin{proof}[Proof on paper]
+Plus case, $n=\cheightpair\alpha\beta$: the field side gives, by Theorems \ref{ch08:thm:cfstar} and
+\ref{ch08:thm:leading}, $2^{-\cheightpair\alpha\alpha-\cheightpair\beta\beta}4^{-n}e_\alpha e_\beta t$
+(when weights match; otherwise both sides are $0$).  The state side is
+$F_c(e^\alpha_{(-n-1)}e^\beta)=\varepsilon(\alpha,\beta)F_c(e^{\alpha+\beta})$ with vacuum coefficient
+$2^{-\cheightpair{\alpha+\beta}{\alpha+\beta}}\varepsilon(\alpha,\beta)e_{\alpha+\beta}t$, and
+$e_\alpha e_\beta=\varepsilon(\alpha,\beta)e_{\alpha+\beta}$.  They agree by \eqref{ch08:eq:norm}.
+Minus case: $\pi_0-\pi_1=\theta$, $\theta e^\alpha=e^{-\alpha}$,
+$e^{-\alpha}_{(n-1)}e^\beta=\varepsilon(-\alpha,\beta)e^{\beta-\alpha}$, $e_{\alpha+\beta}=e_{\beta-\alpha}$ on
+$\cheightT$ (they differ by $2\alpha$), and $2^{-\cheightpair\alpha\alpha-\cheightpair\beta\beta}4^{n}=
+2^{-\cheightpair{\beta-\alpha}{\beta-\alpha}}$.
+\end{proof}
+
+\begin{remark}[The normalisation is forced]\label{ch08:rem:normunique}
+(Argued on paper; not a Lean statement.)  Suppose $Y^T(e^\alpha)$ were normalised by an arbitrary
+$\kappa(\alpha)\ne0$ instead of $2^{-\cheightpair\alpha\alpha}$.  Every step above is linear in
+$\kappa$ except the vacuum identity, which becomes $\kappa(\alpha)\kappa(\beta)4^{-\cheightpair\alpha\beta}
+=\kappa(\alpha+\beta)$.  Writing $\kappa(\alpha)=2^{-\cheightpair\alpha\alpha}\chi(\alpha)$, this says
+exactly that $\chi:L\to\C^\times$ is a homomorphism.  So $2^{-\cheightpair\alpha\alpha}$ is the
+normalisation up to a character of $L$, and a character only rescales $e^\alpha\mapsto\chi(\alpha)e^\alpha$
+(an automorphism of $V_L$ if one also requires $\theta$-compatibility $\chi(-\alpha)=\chi(\alpha)$, i.e.
+$\chi^2=1$).  Without the factor (say $\kappa=1$) the product formula fails already at the leading
+term by $4^{-\cheightpair\alpha\beta}$.
+\end{remark}
+
+\section{The twisted module \texorpdfstring{$V_L^T$}{VLT}}\label{ch08:sec:module}
+
+\begin{theorem}[Twisted Jacobi identity]\label{ch08:thm:jacobi}
+For $L$ even, positive definite, unimodular, \lean{YML} satisfies the (repaired) twisted Jacobi
+identity of order $2$ with respect to $\theta$, for all pairs of states.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/LatticeTwistedJacobi.lean}.
+\begin{leancode}
+theorem twistedJacobi_YML : TwistedJacobi (thetaAut L hEven hPos) 2 (YML L hEven hU) :=
+  twistedJacobi_of_local_pf (thetaAut L hEven hPos) (YML L hEven hU) (by norm_num)
+    (YML_truncation L hEven hU) (fun j => (j : ℤ)) (fun j => by push_cast; omega)
+    (fun j u _ v e' _ _ => YML_local L hEven hU hPos u v j e')
+    (fun j u hu v e' _ _ ℓ s x => productFormula_YML L hEven hU hPos j u hu v e' ℓ s x)
+\end{leancode}
+\begin{dictionary}
+\lean{TwistedJacobi g N YM} is the proposition of the \lean{jacobi} field of \lean{TwistedModule}
+(\S\ref{ch08:sec:recall}), for every $j$, every $u\in V^j$, every $v,x,\ell,k,m$ with
+$k\equiv -j$.  The proof term shows the inputs: the reduction of Chapter~\ref{ch:07} with the
+class offsets $\mathrm{off}(j)=j$, the truncation, the locality \lean{YML_local}, and the product
+formula in the reduction's form, \lean{productFormula_YML}, which is \lean{PF_all} for
+$u\in V^j$ (where $\pi_ju=u$) after binomial inversion.
+\end{dictionary}
+
+\begin{physics}
+The twisted Jacobi identity is the complete set of OPE and locality axioms of a twisted module, combined in one identity: it says that the twisted vertex operators $Y^T$ define a consistent action of the chiral algebra on the twisted sector, for all states. In CFT this is the statement that the correlation functions of the twisted sector are well defined (single-valued up to the twist) and associative.
+\end{physics}
+\begin{status}
+Unconditional; \texttt{\#print axioms} \lean{twistedJacobi_YML}: standard axioms (re-run).
+\end{status}
+
+\subsection{The grading}
+\begin{definition}[Weight spaces of $V_L^T$]\label{ch08:def:weightLT}
+$G_d=\cheightS_d\otimes\cheightT$ (doubled weight $d$), and for $\alpha\in\C$,
+$(V_L^T)_\alpha=\sum_{d:\,d/2+r/16=\alpha}G_d$.
+\end{definition}
+\noindent File \leanpath{VOA/Moonshine/LatticeTwistedGrading.lean}.
+\begin{leancode}
+noncomputable def GT (d : ℕ) : Submodule ℂ (FockT r ⊗[ℂ] Tm) :=
+  LinearMap.range ((gradingT r d).subtype.rTensor Tm)
+
+noncomputable def weightLT (α : ℂ) : Submodule ℂ (FockT r ⊗[ℂ] Tm) :=
+  ⨆ (d : ℕ) (_ : ((levelT r d : ℚ) : ℂ) = α), GT r Tm d
+\end{leancode}
+\begin{dictionary}
+\lean{levelT r d} $=d/2+r/16$.  The supremum is over at most one $d$, so
+$(V_L^T)_\alpha$ is $G_d$ if $\alpha=d/2+r/16$ and $0$ otherwise (\lean{weightLT_level},
+\lean{weightLT_eq_bot}).  The image of $\cheightS_d\otimes\cheightT\to\cheightS\otimes\cheightT$ is
+the subspace $\cheightS_d\otimes\cheightT$ (tensor products over a field are exact).
+\end{dictionary}
+
+\begin{physics}
+The conformal weight in the twisted sector of a state with $d/2$ units of oscillator excitation, i.e.\ $d$ twisted half-integer oscillator quanta, is $d/2+r/16$: the oscillators contribute their mode numbers, and the ground state sits at the twist-field weight $r/16$. For the Leech lattice, $r=24$, the ground states have weight $3/2$, and the excited states at weights $3/2+d/2$.
+\end{physics}
+
+\begin{theorem}[$L_0$ of the lattice twisted module]\label{ch08:thm:L0}
+$Y^T(\omega)_{(1)}=L_0^T\otimes1$, where $\omega$ is the conformal vector of $V_L$ and
+$L_0^T=\frac12(\text{doubled weight})+\frac r{16}$.  More generally, on charge-zero states,
+$F_e(p\otimes e^0)=F^{\mathrm{Heis}}_e(p)\otimes1$.
+\end{theorem}
+\begin{leancode}
+theorem YML_omega_two :
+    YML L hEven hU (omegaLatGen L) 2
+      = (L0T (rank L)).rTensor (Rep (cocMat L) (isUnit_det_cocMat L hEven hU))
+
+theorem FL_charge_zero (p : FockN (rank L)) (e : ℤ) :
+    FL L hEven hU e (p ⊗ₜ[ℂ] eGen L 0)
+      = rTFld (Tm := Rep (cocMat L) (isUnit_det_cocMat L hEven hU)) (FT (rank L) e p)
+\end{leancode}
+\begin{dictionary}
+\lean{YML u 2} is $u_{(2/2)}=u_{(1)}$, so the first statement is $L_0=\omega_{(1)}$.  \lean{FT} is
+the rescaled twisted Heisenberg vertex operator of Chapter~\ref{ch:07}, and \lean{rTFld} tensors a
+field with $\mathrm{id}_{\cheightT}$.  The vacuum energy $r/16$ (for $r=24$: $3/2$) is inherited from
+Chapter~\ref{ch:07}.
+\end{dictionary}
+
+\begin{physics}
+The Virasoro zero mode of the lattice VOA acts on the twisted sector as the twisted-boson Hamiltonian $L_0=\frac12(\text{doubled weight})+\frac{r}{16}$: the usual twisted-sector energy, with the Casimir shift $r/16=3/2$ for 24 bosons. Thus the twisted ground states have weight $3/2$, and the module structure is compatible with the stress tensor.
+\end{physics}
+\begin{proof}[Proof on paper]
+$\omega$ lies in the charge-zero part $\mathrm{FockN}\otimes e^0$, the Heisenberg VOA.  On it the
+generators of the construction are the same as in Chapter~\ref{ch:07}, and $Y^T(e^0)=\mathrm{id}$, so
+induction on monomials identifies $F_e$ with the Heisenberg twisted operator tensored with $1$.
+\end{proof}
+\begin{status}
+Unconditional; \leanpath{LatticeTwistedGrading.lean}; \texttt{\#print axioms} \lean{YML_omega_two} standard.
+\end{status}
+
+\begin{theorem}[The $\theta$-twisted module of a lattice VOA]\label{ch08:thm:latticeTwistedModule}
+For every even, positive-definite lattice $L$ with unimodular Gram matrix, $V_L^T=\cheightS\otimes\cheightT_L$
+with $Y^T$ and the weight spaces $(V_L^T)_\alpha$ is a $\theta$-twisted $V_L$-module of order $2$.
+For $L=\Lambda$: $V_\Lambda^T=\cheightS_{24}\otimes\cheightT_\Lambda$ is a $\theta$-twisted
+$V_\Lambda$-module.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/LatticeTwistedModule.lean}.
+\begin{leancode}
+noncomputable def latticeTwistedModule :
+    TwistedModule (thetaAut L hEven hPos) 2
+      (FockT (rank L) ⊗[ℂ] Rep (cocMat L) (isUnit_det_cocMat L hEven hU)) where
+  YM := YML L hEven hU
+  vacuum_YM k := by
+    change YML L hEven hU (latVacuumGen L) k = _
+    rw [YML_vacuum]
+    push_cast
+    rfl
+  truncation := YML_truncation L hEven hU
+  support := fun j u hu k hk => YML_support L hEven hU hPos j u hu k hk
+  jacobi := twistedJacobi_YML L hEven hU hPos
+  weight := weightLT (rank L) (Rep (cocMat L) (isUnit_det_cocMat L hEven hU))
+  isInternal := weightLT_isInternal _ _
+  L0_weight := fun α x hx => by
+    change YML L hEven hU (omegaLatGen L) ((2 : ℕ) : ℤ) x = α • x
+    rw [show ((2 : ℕ) : ℤ) = 2 by norm_num, YML_omega_two L hEven hU hPos]
+    exact L0T_rTensor_weightLT _ _ hx
+  finrank := weightLT_finiteDimensional _ _
+  boundedBelow := weightLT_boundedBelow _ _
+
+noncomputable def leechTwistedModule :
+    TwistedModule leechTheta 2
+      (FockT 24 ⊗[ℂ] Rep (cocMat leech) (isUnit_det_cocMat leech leech_even
+        leech_isUnit_det_gramMat)) :=
+  leech_rank ▸ latticeTwistedModule leech leech_even leech_isUnit_det_gramMat leech_posDef
+\end{leancode}
+\begin{dictionary}
+The full definition is printed because it is the fidelity check: each axiom of
+\lean{TwistedModule} (\S\ref{ch08:sec:recall}) is filled by a theorem of this chapter.
+\begin{itemize}
+\item \lean{YM}: $Y^T$ (Definition~\ref{ch08:def:FL}); \lean{vacuum_YM}: $Y^T(\mathbf 1)_{(k/2)}=
+  \delta_{k,-2}$ with $-N=-2$; \lean{truncation}, \lean{support}: Theorem~\ref{ch08:thm:YML};
+  \lean{jacobi}: Theorem~\ref{ch08:thm:jacobi} --- for \emph{all} pairs of states, not only
+  generators.
+\item \lean{weight} $=$ Definition~\ref{ch08:def:weightLT}; \lean{isInternal}: the $G_d$ are the
+  $L_0$-eigenspaces and span; \lean{L0_weight}: \lean{YM ω 2} $=L_0^T\otimes1$ acts by $\alpha$ on
+  $(V_L^T)_\alpha$ (Theorem~\ref{ch08:thm:L0}); \lean{finrank}: $\cheightS_d$ and $\cheightT$ are
+  finite-dimensional; \lean{boundedBelow} with $B=r/16$.
+\item \lean{leechTwistedModule} is the Leech case, transported along \lean{leech_rank : rank leech = 24}
+  (the symbol \lean{▸} rewrites the type).  Its hypotheses \lean{leech_even},
+  \lean{leech_isUnit_det_gramMat}, \lean{leech_posDef} are theorems (Chapter~\ref{ch:02}).
+\end{itemize}
+\textbf{How could this have been vacuous?}  (i) The unrepaired \lean{jacobi} had no models for
+$N=2$ (warning in \S\ref{ch08:sec:recall}); the repaired one is satisfied by this nonzero module.
+(ii) A zero \lean{YM} is excluded by \lean{vacuum_YM} ($Y(\mathbf 1)=\mathrm{id}$) and by
+\lean{L0_weight} on nonzero weight spaces.  (iii) The space is not zero: its weight-$3/2$ space is
+$\mathbf 1\otimes\cheightT$, of dimension $4096$.  (iv) A fake grading is excluded by
+\lean{L0_weight}, which ties the grading to $\omega_{(1)}$.  The structure does not assert
+irreducibility; that is not needed downstream.
+\end{dictionary}
+
+\begin{physics}
+This is the construction of the twisted sector of the $\mathbb Z_2$ orbifold of the lattice CFT: the space $V_\Lambda^T=\cheightS_{24}\otimes T$ of 24 twisted bosons times the $2^{12}$-dimensional space of twist-field ground states, with the twisted vertex operators of all states acting on it. The theorem says that the vertex operators satisfy locality and associativity, so $V_\Lambda^T$ is the Hilbert space of the Leech lattice CFT in the presence of the twist field, on which the chiral algebra acts with monodromy $-1$ for $\theta$-odd fields. It is the key input for the Moonshine module $V^\natural=V_\Lambda^+\oplus(V_\Lambda^T)^+$.
+\end{physics}
+\begin{status}
+Unconditional.  Re-run for this chapter (\S\ref{ch08:sec:deadends}): \texttt{\#print axioms} of
+\lean{latticeTwistedModule} and \lean{leechTwistedModule} is [\lean{propext},
+\lean{Classical.choice}, \lean{Quot.sound}]; \lean{VOA.pbw} is not used.
+\end{status}
+
+\section{The involution \texorpdfstring{$\theta$}{theta} on the twisted sector}\label{ch08:sec:thetatw}
+
+Files \leanpath{VOA/Moonshine/TwistedSectorDim.lean} (where the general involution
+\lean{twTheta} on $\mathrm{FockT}\,r\otimes T$ is defined) and
+\leanpath{VOA/Moonshine/TwistedPlusConj.lean} (which specialises it to the lattice module as
+\lean{thetaTw} and proves the conjugation property).  To take $\theta$-invariants of the twisted
+sector we need an involution $\theta_{\mathrm{tw}}$ of $V_\Lambda^T$ with
+$Y^T(\theta u)=\theta_{\mathrm{tw}}Y^T(u)\theta_{\mathrm{tw}}$.  FLM's choice is
+$\theta_{\mathrm{tw}}=\theta_{\cheightS}\otimes(-1)$, where $\theta_{\cheightS}$ negates every twisted
+oscillator.
+
+\begin{definition}\label{ch08:def:twTheta}
+$\theta_{\mathrm{tw}}(p\otimes t)=\theta_{\cheightS}(p)\otimes(-t)$.
+\end{definition}
+\begin{leancode}
+noncomputable def twTheta : Module.End ℂ (FockT r ⊗[ℂ] T) :=
+  TensorProduct.map (thetaT r).toLinearMap (-LinearMap.id)
+
+noncomputable abbrev thetaTw : End ℂ (MT L hEven hU) :=
+  twTheta (rank L) (Rep (cocMat L) (isUnit_det_cocMat L hEven hU))
+\end{leancode}
+
+\begin{physics}
+This is the action of the orbifold group element on the twisted sector: it flips the sign of the twisted bosonic oscillators (the Fock part, by $\theta_{\cheightS}$) and acts as $-1$ on the ground states. The orbifold group $\mathbb Z_2$ acts on the twisted Hilbert space only projectively in general; the sign $-1$ on $T$ is the choice of lift that makes the $\theta$-fixed part have the right weights.
+\end{physics}
+
+\begin{theorem}[$\theta$-stability]\label{ch08:thm:thetastable}
+For $L$ even, positive definite, unimodular, all $u\in V_L$ and $k$:
+\begin{enumerate}
+\item $(\theta_{\cheightS}\otimes1)\,Y^T(u)_{(k/2)}\,(\theta_{\cheightS}\otimes1)=(-1)^kY^T(u)_{(k/2)}$;
+\item $Y^T(\theta u)_{(k/2)}=\theta_{\mathrm{tw}}\circ Y^T(u)_{(k/2)}\circ\theta_{\mathrm{tw}}$.
+\end{enumerate}
+In particular for the Leech twisted module.
+\end{theorem}
+\begin{leancode}
+theorem conj_YML (u : LatModuleGen L) (k : ℤ) :
+    PT ∘ₗ YML L hEven hU u k ∘ₗ PT = ((-1 : ℂ) ^ k) • YML L hEven hU u k
+
+theorem YML_thetaTw (u : LatModuleGen L) (k : ℤ) :
+    YML L hEven hU (thetaLat L u) k
+      = thetaTw L hEven hU ∘ₗ YML L hEven hU u k ∘ₗ thetaTw L hEven hU
+
+theorem leechTwistedModule_YM_theta (u : LatModuleGen leech) (k : ℤ) :
+    leechTwistedModule.YM (leechTheta u) k
+      = twTheta 24 leechT ∘ₗ leechTwistedModule.YM u k ∘ₗ twTheta 24 leechT :=
+\end{leancode}
+\begin{dictionary}
+\lean{PT} $=\theta_{\cheightS}\otimes1$; \lean{∘ₗ} is composition of linear maps.  (2) is the
+compatibility condition $\theta_{\mathrm{tw}}Y^T(u,z)\theta_{\mathrm{tw}}^{-1}=Y^T(\theta u,z)$
+($\theta_{\mathrm{tw}}$ is an involution, \lean{twTheta_twTheta}).  Same as the textbook.
+\end{dictionary}
+
+\begin{physics}
+The involution on the twisted sector intertwines the twisted vertex operators with those of the $\theta$-transformed states: it acts on the vertex operator of $u$ by sign $(-1)^k$ on the $k/2$-th mode and sends $Y^T(u)$ to $Y^T(\theta u)$. This is the statement that the orbifold group acts on the twisted sector compatibly with the action of the chiral algebra, so that one can project to invariants.
+\end{physics}
+\begin{proof}[Proof on paper]
+Conjugation by the involution $\theta_{\cheightS}\otimes1$ is an automorphism of the whole field
+calculus (products, twisted products).  It negates $F_b$ and sends $Y^T(e^\alpha)$ to $Y^T(e^{-\alpha})$
+(charge conjugation $\theta E^\pm(\alpha)\theta=E^\pm(-\alpha)$, together with $e_{-\alpha}=e_\alpha$).
+Through the recursive definition of the word fields this gives
+$(\theta\otimes1)F_e(u)(\theta\otimes1)=(-1)^eF_e(u)$, which is (1).  Combining with
+$F_e(\theta u)=(-1)^eF_e(u)$ (Theorem~\ref{ch08:thm:YML}(5)) gives (2) for $\theta_{\cheightS}\otimes1$;
+and the extra $-1$ on $\cheightT$ appears twice and cancels.
+\end{proof}
+\begin{status}
+Unconditional; \texttt{\#print axioms} \lean{leechTwistedModule_YM_theta}: standard (re-run).
+\end{status}
+\begin{warning}
+\textbf{The sign on $\cheightT$ is not determined by compatibility.}  Because $-1$ on $\cheightT$ is
+central, \emph{both} $\theta_{\cheightS}\otimes(+1)$ and $\theta_{\cheightS}\otimes(-1)$ satisfy
+Theorem~\ref{ch08:thm:thetastable}(2).  The choice $-1$ (FLM; Dolan--Goddard--Montague's
+$(-1)^{d/8}$ with $d=24$) is selected only by integrality: $\theta_{\mathrm{tw}}=(-1)^{d+1}$ on
+doubled oscillator weight $d$ (\lean{twTheta_of_mem_twGrading}), so its fixed space consists of odd
+$d$, i.e. $L_0=(d+3)/2\in\Z$, starting at weight $2$.  With $+1$ the fixed space would be the even
+$d$, weights $\frac32+\Z$, including the $4096$ ground states, and could not be glued to the
+integrally graded $V_\Lambda^+$.  (Recorded as correction 9 in \leanpath{Notes/M8GluingPlan.md}.)
+\end{warning}
+\noindent File \leanpath{VOA/Moonshine/TwistedSectorDim.lean}.
+\begin{leancode}
+theorem twTheta_of_mem_twGrading {d : ℕ} {x : FockT r ⊗[ℂ] T} (hx : x ∈ twGrading r T d) :
+    twTheta r T x = (-1 : ℂ) ^ (d + 1) • x
+\end{leancode}
+
+\section{The plus part of an order-two twisted module}\label{ch08:sec:plus}
+
+File \leanpath{VOA/Moonshine/TwistedPlusModule.lean}, namespace \lean{VOA.TwistedPlus}.  This
+construction is general: any VOA $V$, any automorphism $g$, any $g$-twisted module of order $2$
+with a lift of $g$.
+
+\begin{definition}[Lift of $g$]\label{ch08:def:ThetaLift}
+A lift of $g$ to an order-two twisted module $M$ is an involution $\theta_M$ of $M$ with
+$Y_M(gu)_{(k/2)}=\theta_MY_M(u)_{(k/2)}\theta_M$ for all $u,k$, preserving every weight space.
+The plus part is $M^+=\ker(\theta_M-1)$.
+\end{definition}
+\begin{leancode}
+structure ThetaLift (T : TwistedModule g 2 M) where
+  /-- The involution `θ_M`. -/
+  op : End ℂ M
+  op_op : ∀ x, op (op x) = x
+  conj : ∀ (u : 𝒱) (k : ℤ), T.YM (g u) k = op ∘ₗ T.YM u k ∘ₗ op
+  map_weight : ∀ (α : ℂ) (x : M), x ∈ T.weight α → op x ∈ T.weight α
+
+def plusSub : Submodule ℂ M := LinearMap.ker (θ.op - LinearMap.id)
+\end{leancode}
+
+To state the conclusion we need the library's ordinary modules, \lean{WeakModule} and
+\lean{OrdVModule} (\leanpath{VOA/Modules/WeakModule.lean}), quoted verbatim and decoded in
+Definitions~\ref{l12:def:weakmodule} and~\ref{l12:def:ordmodule}.  We recall: a
+\lean{WeakModule W M} has a field map \lean{YM : 𝒱 →ₗ[ℂ] (End ℂ M)⟦z^±⟧} with the fields
+\lean{vacuum_YM} ($Y_M(\mathbf 1,z)=\mathrm{id}_M$), \lean{truncation} (lower truncation) and
+\lean{jacobi} (the untwisted mode Jacobi identity, integer modes $u_{(n)}=$
+\lean{mode (YM u) n}); an \lean{OrdVModule} extends it by a $\C$-grading \lean{weight} with
+\lean{isInternal} ($M=\bigoplus_\alpha M_\alpha$), \lean{L0_weight} ($L_0=\alpha$ on $M_\alpha$),
+\lean{finrank} (finite-dimensional pieces) and \lean{boundedBelow} ($\operatorname{Re}\alpha$
+bounded below on nonzero pieces), i.e.\ a module in the sense of FHL.
+
+\begin{physics}
+A lift of the automorphism $g$ is the representation on the twisted Hilbert space of the orbifold group element $g$ (here of order two), compatible with the vertex operators. The plus part is the $\mathbb Z_2$-invariant subspace, the states that survive the orbifold projection in the twisted sector.
+\end{physics}
+
+\begin{theorem}[The plus part is an ordinary module]\label{ch08:thm:plusModule}
+Let $T$ be a $g$-twisted $V$-module of order $2$ and $\theta_M$ a lift of $g$.  Then $M^+$, with
+\begin{equation*}
+  Y_{M^+}(u)_{(n)}=Y_M(u)_{(2n/2)}=Y_M(u)_{(n)}\big|_{M^+}\qquad(u\in V^{\langle g\rangle})
+\end{equation*}
+and weight spaces $M^+_\alpha=M^+\cap M_\alpha$, is an ordinary module for the fixed-point VOA
+$V^{\langle g\rangle}$.
+\end{theorem}
+\begin{leancode}
+noncomputable def plusModule : OrdVModule (fixedVOA g) (plusSub θ) where
+  toWeakModule := plusWeakModule θ
+  weight := plusWeight θ
+  isInternal := plusWeight_isInternal θ
+
+theorem mode_plusModule (u : (orbifold (Subgroup.zpowers g)).carrier) (n : ℤ) (x : plusSub θ) :
+    ((mode ((plusModule θ).YM u) n x : plusSub θ) : M) = T.YM u.1 (2 * n) x
+
+def plusWeight (α : ℂ) : Submodule ℂ (plusSub θ) := (T.weight α).comap (plusSub θ).subtype
+\end{leancode}
+\begin{dictionary}
+\lean{fixedVOA g} $=$ \lean{orbifoldVOA (Subgroup.zpowers g)}, the sub-VOA of vectors fixed by
+the group generated by $g$, i.e. by $g$ itself.  \lean{T.YM u.1 (2 * n)} is $u_{(2n/2)}=u_{(n)}$:
+for $g$-fixed $u$ only even fractional indices occur (support with $j=0$), so nothing is lost.
+\lean{(T.weight α).comap (plusSub θ).subtype} is $M^+\cap M_\alpha$ viewed inside $M^+$.  The
+remaining fields of \lean{plusModule} (\lean{L0_weight}, \lean{finrank}, \lean{boundedBelow}) are
+filled by the corresponding fields of $T$.  The hypotheses are exactly the data $T$ and $\theta$;
+there is no hidden assumption.  \textbf{Not vacuous}: if $M^+=0$ the structure exists trivially;
+for the Leech case the dimension count of \S\ref{ch08:sec:leechplus} shows $M^+\ne0$.
+\end{dictionary}
+
+\begin{physics}
+The $\mathbb Z_2$-invariant part of the twisted sector is a module for the invariant chiral algebra $V^{\langle g\rangle}$: for invariant fields only integral modes act on the invariant states, because the half-integral modes vanish. This is how the twisted sector enters the orbifold: after the projection, the surviving states have integer conformal weight (level matching), and the fields of the orbifold theory act on them without branch cuts.
+\end{physics}
+\begin{proof}[Proof on paper]
+For $u$ fixed by $g$, $\theta_M$ commutes with all modes of $u$ (by \lean{conj}), so they preserve
+$M^+$.  The twisted Jacobi identity at $N=2$, $j=0$, indices $k=2m$, $m'=2n$, reads exactly as the
+untwisted Jacobi identity because $\binom{2m/2}{i}=\binom mi$.  The grading: any $x\in M^+$
+decomposes as $x=\sum x_\alpha$ in $M$; since $\theta_M$ preserves $M_\alpha$, the components
+$\frac12(x_\alpha+\theta_Mx_\alpha)$ lie in $M^+\cap M_\alpha$ and still sum to $x$; independence is
+inherited.
+\end{proof}
+\begin{status}
+Unconditional (given its explicit data); axioms standard (file header; \lean{Moonshine.plusModule}
+re-checked).
+\end{status}
+
+\section{\texorpdfstring{$(V_\Lambda^T)^+$}{The twisted plus part} as a \texorpdfstring{$V_\Lambda^+$}{V Lambda plus}-module}\label{ch08:sec:leechplus}
+
+File \leanpath{VOA/Moonshine/TwistedPlus.lean}, namespace \lean{VOA.Moonshine}.
+
+\begin{definition}
+$\mathrm{Tw}=\cheightS_{24}\otimes\cheightT_\Lambda$; $\theta_{\mathrm{tw}}$ as above, bundled as a lift
+of \lean{leechTheta}; $\mathrm{TP}=(V_\Lambda^T)^+=\ker(\theta_{\mathrm{tw}}-1)$.
+\end{definition}
+\begin{leancode}
+abbrev Tw : Type := FockT 24 ⊗[ℂ] leechT
+
+noncomputable def leechThetaLift : ThetaLift leechTwistedModule where
+  op := thetaTwLeech
+  op_op := twTheta_twTheta 24 leechT
+  conj := leechTwistedModule_YM_theta
+
+noncomputable abbrev TP : Submodule ℂ Tw := plusSub leechThetaLift
+
+theorem TP_eq_twFixed : TP = twFixed 24 leechT := rfl
+\end{leancode}
+\begin{dictionary}
+\lean{thetaTwLeech} $=$ \lean{twTheta 24 leechT}.  \lean{twFixed 24 leechT} is
+\lean{LinearMap.ker (twTheta r T - LinearMap.id)}, the $\theta$-fixed twisted sector defined
+independently in the graded-dimension chapter (Chapter~\ref{ch:05}); \lean{TP_eq_twFixed} holds by
+\lean{rfl}, i.e. the two definitions are literally the same, so the dimension counts of
+Chapter~\ref{ch:05} apply to the module built here.  The omitted field \lean{map_weight} is
+\lean{twTheta_mem_weightLT} (the grading is preserved because $\theta_{\mathrm{tw}}$ is a scalar on
+each $G_d$).
+\end{dictionary}
+
+\begin{physics}
+Concretely: the twisted sector of the Leech lattice CFT, the lift $\theta_{\mathrm{tw}}$ of $\theta$, and the plus part $(V_\Lambda^T)^+$, the states with $\theta_{\mathrm{tw}}=+1$. The twisted ground states ($2^{12}$ of them at weight $3/2$) are odd under $\theta_{\mathrm{tw}}$ and are projected out, so the surviving states start at weight 2.
+\end{physics}
+
+\begin{theorem}[$(V_\Lambda^T)^+$ is a $V_\Lambda^+$-module]\label{ch08:thm:leechplus}
+$\mathrm{TP}$ is an ordinary $V_\Lambda^+$-module, with $u_{(n)}x=Y^T(u)_{(2n/2)}x$, and the odd
+fractional modes of every $u\in V_\Lambda^+$ vanish on all of $V_\Lambda^T$.
+\end{theorem}
+\begin{leancode}
+noncomputable def plusModule : OrdVModule leechVOAPlus TP :=
+  TwistedPlus.plusModule leechThetaLift
+
+theorem mode_plusModule (u : (orbifold (Subgroup.zpowers leechTheta)).carrier) (n : ℤ) (x : TP) :
+    ((mode (plusModule.YM u) n x : TP) : Tw) = leechTwistedModule.YM u.1 (2 * n) x :=
+  TwistedPlus.mode_plusModule leechThetaLift u n x
+
+theorem YM_odd_eq_zero_of_plus (u : (orbifold (Subgroup.zpowers leechTheta)).carrier) (n : ℤ) :
+    leechTwistedModule.YM u.1 (2 * n + 1) = 0 :=
+\end{leancode}
+\begin{dictionary}
+\lean{leechVOAPlus} is \lean{orbifoldVOA (Subgroup.zpowers leechTheta)} (Chapter~\ref{ch:04}), so
+\lean{TwistedPlus.plusModule leechThetaLift} has exactly the type
+\lean{OrdVModule leechVOAPlus TP}.  The coercions \lean{(· : TP)}, \lean{(· : Tw)} view an element
+of the submodule as a vector of $\mathrm{Tw}$.
+\end{dictionary}
+
+\begin{physics}
+The plus part of the twisted sector is a module for the orbifold algebra $V_\Lambda^+$: the projected twisted sector of the $\mathbb Z_2$ orbifold, on which the fields of the orbifold theory act with integral modes. The odd fractional modes vanish identically on the whole twisted sector for the invariant fields, as required by the vanishing of the monodromy for invariant fields.
+\end{physics}
+\begin{status}
+Unconditional.  \texttt{\#print axioms} \lean{VOA.Moonshine.plusModule} $=$ [\lean{propext},
+\lean{Classical.choice}, \lean{Quot.sound}] (re-run).
+\end{status}
+
+\begin{theorem}[Weights and dimensions]\label{ch08:thm:dims}
+\begin{enumerate}
+\item For $q\in\Q$: $\mathrm{TP}_q=\mathrm{twFixed}\cap\mathrm{twWeight}_q$, the graded piece used in
+  Chapter~\ref{ch:05}.
+\item If $\mathrm{TP}_\alpha\ne0$ then $\alpha=n\in\Z$ with $n\ge2$.
+\item $\dim\mathrm{TP}_2=98304=24\cdot4096$.
+\item For every $n\in\N$: $\dim(V_\Lambda^+)_n+\dim\mathrm{TP}_n=[q^n]\bigl(q\,J(q)\bigr)$, $J=j-744$.
+\end{enumerate}
+\end{theorem}
+\begin{leancode}
+theorem map_plusModule_weight (q : ℚ) :
+    (plusModule.weight (q : ℂ)).map TP.subtype = twFixed 24 leechT ⊓ twWeight 24 leechT q
+
+theorem plusModule_weight_ne_bot {α : ℂ} (h : plusModule.weight α ≠ ⊥) :
+    ∃ n : ℤ, α = n ∧ 2 ≤ n
+
+theorem finrank_plusModule_weight_two : finrank ℂ (plusModule.weight 2) = 98304
+
+theorem finrank_plusModule_eq_coeff_JShift (n : ℕ) :
+    ((finrank ℂ (leechVOAPlus.grading (n : ℤ))
+      + finrank ℂ (plusModule.weight ((n : ℤ) : ℂ)) : ℕ) : ℂ)
+      = PowerSeries.coeff n JShift
+\end{leancode}
+\begin{dictionary}
+\lean{.map TP.subtype} pushes a submodule of $\mathrm{TP}$ forward to $\mathrm{Tw}$; \lean{⊓} is
+intersection.  \lean{twWeight 24 leechT q} is the $L_0=q$ subspace (defined like
+\lean{weightLT}, with rational index).  In (2) the weight index is complex, as in
+\lean{OrdVModule}; integrality is a theorem, not built into the type (correction 11 of the plan).
+\lean{finrank ℂ} is the dimension over $\C$.  \lean{leechVOAPlus.grading n} is $(V_\Lambda^+)_n$.
+\lean{JShift} $=$ \lean{jShift - (744 : ℂ) • PowerSeries.X}, the power series $qJ(q)=q\,j(q)-744q
+=1+0\cdot q+196884q^2+\cdots$ (Chapter~\ref{ch:05}); so (4) at $n=2$ is $98580+98304=196884$.
+The cast to $\C$ is because \lean{JShift} has complex coefficients.  Same as the textbook
+statements.  \textbf{A caution on meaning}: (4) concerns graded dimensions only; it does not say
+that $V_\Lambda^+\oplus\mathrm{TP}$ is a VOA (that is Chapters~\ref{ch:09}--\ref{ch:14}), and the
+square-zero extension has the same dimensions (the TRAP recorded in the roadmap).
+\end{dictionary}
+
+\begin{physics}
+The weights of the projected twisted sector are integral and at least 2 (level matching): the twisted ground states at weight $3/2$ are projected out, and the first surviving states, at weight 2, are the states with one twisted oscillator $\alpha_{-1/2}^a$ ($a=1,\dots,24$) acting on the $2^{12}$ ground states, giving $24\cdot4096=98304$ states. Together with $\dim(V_\Lambda^+)_2=196884-98304=98580$ one recovers the 196884 of the Moonshine module. The statement (4) is that the combined graded dimension of $V_\Lambda^+\oplus(V_\Lambda^T)^+$ is $J(q)$ up to the shift by $q$, consistent with the Moonshine module character. Heuristic reading; the dimensions are proved in Lean.
+\end{physics}
+\begin{proof}[Proof on paper]
+(1) The module's weight spaces are $M^+\cap M_\alpha$ with $M_\alpha=(V_\Lambda^T)_\alpha$, which for
+rational $\alpha$ is \lean{twWeight}.  (2) $(V_\Lambda^T)_\alpha=G_d$ with $\alpha=d/2+3/2$; on $G_d$,
+$\theta_{\mathrm{tw}}=(-1)^{d+1}$, so the fixed part is nonzero only for $d=2k+1$ odd, where
+$\alpha=k+2$.  (3) $d=1$: $\cheightS_1$ is spanned by $h_i(-\frac12)\mathbf 1$, $i<24$, so
+$\dim G_1=24\cdot4096$.  (4) Combine (1) with the graded-dimension theorem of Chapter~\ref{ch:05}.
+\end{proof}
+\begin{status}
+Unconditional; all four re-run with \texttt{\#print axioms}: standard axioms only.
+\end{status}
+
+\begin{example}[The lowest states of $(V_\Lambda^T)^+$]\label{ch08:ex:lowest}
+The ground states $\mathbf 1\otimes t$ ($d=0$, weight $3/2$) satisfy
+$\theta_{\mathrm{tw}}(\mathbf 1\otimes t)=-\mathbf 1\otimes t$, so they are \emph{not} in
+$(V_\Lambda^T)^+$.  The states $h_i(-\frac12)\mathbf 1\otimes t$ ($d=1$, weight $2$) have
+$\theta_{\mathrm{tw}}=(-1)(-1)=+1$: these are the $24\cdot4096=98304$ states of
+Theorem~\ref{ch08:thm:dims}(3).  At $d=2$ (weight $5/2$), $h_i(-\frac12)h_j(-\frac12)\mathbf 1\otimes t$
+is odd again; at $d=3$ (weight $3$) the fixed states are spanned by $h_i(-\frac32)$ and
+$h_i(-\frac12)h_j(-\frac12)h_k(-\frac12)$ applied to $\mathbf 1\otimes t$, of dimension
+$(24+\binom{26}{3})\cdot4096=2624\cdot4096$ (\lean{twCount_24_three}).  Together with
+$\dim(V_\Lambda^+)_3$ from Chapter~\ref{ch:04} this reproduces the coefficient $21493760$ of $q^3$ in
+$qJ(q)$, the content of Theorem~\ref{ch08:thm:dims}(4) at $n=3$.
+\end{example}
+
+\section{Dead ends, traps, and the verification record}\label{ch08:sec:deadends}
+
+\begin{warning}
+\textbf{(1) The over-quantified twisted Jacobi identity.}  See \S\ref{ch08:sec:recall}: before the
+repair, \lean{TwistedModule} had no nonzero models for $N\ge2$.  Any construction of
+\lean{leechTwistedModule} against the unrepaired structure would have been impossible, and any
+theorem \emph{assuming} such a module would have been vacuous.  \lean{SuperTwistedModule.jacobi}
+still has the defect; nothing in this chapter uses it.
+
+\textbf{(2) The sign of $\theta$ on $\cheightT$} (\S\ref{ch08:sec:thetatw}): compatibility does not
+fix it; integrality does.
+
+\textbf{(3) The roadmap's ``unused'' remark} on \lean{star_iterate_range} is inaccurate
+(\S\ref{ch08:sec:PF}).
+
+\textbf{(4) Normalisation} (Remark~\ref{ch08:rem:normunique}): with any normalisation other than
+$2^{-\cheightpair\alpha\alpha}$ times a character, the base case of the product formula fails at the
+leading level; the locality statements alone would not detect this, since they are insensitive to
+$\kappa$.
+\end{warning}
+
+The following command was run for this chapter at an earlier commit (not re-run for this edition), using
+\texttt{lake env lean -DmaxSynthPendingDepth=3} on a scratch file importing
+\lean{VOA.Moonshine.TwistedPlus} (the flag avoids the audit trap recorded in the project
+instructions):
+\begin{plaincode}
+'VOA.Moonshine.LatticeTwisted.leechTwistedModule' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.LatticeTwisted.latticeTwistedModule' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.LatticeTwisted.PF_all' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.LatticeTwisted.twistedJacobi_YML' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.LatticeTwisted.YML_omega_two' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.LatticeTwisted.leechTwistedModule_YM_theta' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.plusModule' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.finrank_plusModule_weight_two' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.finrank_plusModule_eq_coeff_JShift' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.plusModule_weight_ne_bot' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.LatticeTwisted.latticeTwistedSystem_local' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.TwistedReduction.star_iterate_range' depends on axioms: [propext, Classical.choice, Quot.sound]
+\end{plaincode}
+For the remaining declarations the status boxes report the file headers' claims, which were not
+individually re-run.  The project's build record for that earlier commit reports the aggregate \texttt{lake build}
+green (10343 jobs); it was not re-run for this chapter.
+
+\section{Referee's checklist}\label{ch08:sec:checklist}
+
+``uncond.'' $=$ no hypothesis that is an unproved datum; $\ast$ $=$ \texttt{\#print axioms} re-run
+above.  ``lattice hyp.'' $=$ $L$ even, positive definite, unimodular Gram matrix.
+
+{\footnotesize
+\begin{longtable}{>{\raggedright\arraybackslash}p{4.6cm}>{\raggedright\arraybackslash}p{5.0cm}>{\raggedright\arraybackslash}p{2.2cm}>{\raggedright\arraybackslash}p{2.2cm}}
+\toprule
+Lean declaration & intended meaning & hypotheses & status / check\\
+\midrule
+\endhead
+\lean{nexp}, \lean{eq_nexpPS} & coefficients of $\exp(\sum d_kw^k/k)$ & none & def./uncond.; Lem.~\ref{ch08:lem:nexp}\\
+\lean{fco}, \lean{sum_binom_fz_symm} & $((1-x)/(1+x))^n$; palindromic cancellation & $|n|\le N$ & uncond.; Thm.~\ref{ch08:thm:fco}\\
+\lean{sM}, \lean{Ep}, \lean{EpC} & $E^-$ (multiplication), $E^+$ (translation) & none & def.; Defs.~\ref{ch08:def:sM}, \ref{ch08:def:Ep}\\
+\lean{EpC_sMz_mul} & $E^+E^-=E^-E^+((1-x)/(1+x))^{\langle v,u\rangle}$ & none & uncond.; Thm.~\ref{ch08:thm:reorder}\\
+\lean{DD}, \lean{modeT_comm_DD} & $E^-E^+$, charge relation & $K$ odd & uncond.; Prop.~\ref{ch08:prop:DD}\\
+\lean{DD_DD_eq} & two-point identity & bound $Q$ (exists) & uncond.; Thm.~\ref{ch08:thm:twopoint}\\
+\lean{DD_bracket_local} & $(w_1^2-w_2^2)^N$-locality up to $(-1)^n$ & $\langle v,u\rangle\in\Z$, $|n|\le N$ & uncond.; Thm.~\ref{ch08:thm:DDlocal}\\
+\lean{YTg_local} & locality of exponential fields & $n\in\Z$, $g'g=(-1)^ngg'$ & uncond.; Thm.~\ref{ch08:thm:YTg}\\
+\lean{YTL}, \lean{YTL_local}, \lean{YTL_neg} & $Y^T(e^\alpha)$ of FLM; locality; $\theta$-twist & lattice hyp. & uncond.; Def.~\ref{ch08:def:YTL}, Thm.~\ref{ch08:thm:YTL}\\
+\lean{latticeTwistedSystem_local}$^\ast$ & generated system is local & lattice hyp. & uncond.; Thm.~\ref{ch08:thm:system}\\
+\lean{FL}, \lean{YML}, \lean{YML_support}, \lean{YML_local} & $Y^T$ on all of $V_L$ & lattice hyp. & uncond.; Thm.~\ref{ch08:thm:YML}\\
+\lean{PF}, \lean{genPF}, \lean{PF_of_base} & twisted product formula; reduction & lattice hyp. (+ \lean{hbase}) & uncond. reduction; Thm.~\ref{ch08:thm:PFred}\\
+\lean{star_iterate_range}$^\ast$ & twisted associativity & pairwise local generators & uncond.; Thm.~\ref{ch08:thm:assoc}\\
+\lean{Def_ode}, \lean{Def_charge} & recursion and charge of the defect & inductive hyp. & uncond.; Prop.~\ref{ch08:prop:Def}\\
+\lean{fld_eq_zero_of_charge} & charge-$\gamma$ field with zero vacuum part is $0$ & as stated & uncond.; Thm.~\ref{ch08:thm:unique}\\
+\lean{cfT_star_YTL}, \lean{leading_plus}, \lean{leading_minus} & vacuum expectations $=2^{-|\alpha|^2-|\beta|^2}4^{\mp n}$ & lattice hyp. & uncond.; Thms.~\ref{ch08:thm:cfstar}, \ref{ch08:thm:leading}\\
+\lean{PF_all}$^\ast$ & twisted product formula for all $u,v$ & lattice hyp. & uncond.; Thm.~\ref{ch08:thm:descent}\\
+\lean{twistedJacobi_YML}$^\ast$ & twisted Jacobi identity for all states & lattice hyp. & uncond.; Thm.~\ref{ch08:thm:jacobi}\\
+\lean{YML_omega_two}$^\ast$ & $\omega_{(1)}=L_0^T\otimes1$ & lattice hyp. & uncond.; Thm.~\ref{ch08:thm:L0}\\
+\lean{latticeTwistedModule}$^\ast$ & $V_L^T$ is a $\theta$-twisted $V_L$-module & lattice hyp. & uncond.; Thm.~\ref{ch08:thm:latticeTwistedModule}\\
+\lean{leechTwistedModule}$^\ast$ & $V_\Lambda^T$ is a $\theta$-twisted $V_\Lambda$-module & none & uncond.; Thm.~\ref{ch08:thm:latticeTwistedModule}\\
+\lean{YML_thetaTw}, \lean{leechTwistedModule_YM_theta}$^\ast$ & $Y^T(\theta u)=\theta_{\mathrm{tw}}Y^T(u)\theta_{\mathrm{tw}}$ & lattice hyp. / none & uncond.; Thm.~\ref{ch08:thm:thetastable}\\
+\lean{TwistedPlus.plusModule} & $M^+$ is an ordinary $V^{\langle g\rangle}$-module & data $T$, $\theta$ & uncond.; Thm.~\ref{ch08:thm:plusModule}\\
+\lean{Moonshine.plusModule}$^\ast$ & $(V_\Lambda^T)^+$ is a $V_\Lambda^+$-module & none & uncond.; Thm.~\ref{ch08:thm:leechplus}\\
+\lean{TP_eq_twFixed} & same subspace as Chapter~\ref{ch:05} & none & \lean{rfl}; \S\ref{ch08:sec:leechplus}\\
+\lean{plusModule_weight_ne_bot}$^\ast$ & weights in $\Z_{\ge2}$ & none & uncond.; Thm.~\ref{ch08:thm:dims}\\
+\lean{finrank_plusModule_weight_two}$^\ast$ & $\dim\mathrm{TP}_2=98304$ & none & uncond.; Thm.~\ref{ch08:thm:dims}\\
+\lean{finrank_plusModule_eq_coeff_JShift}$^\ast$ & $\dim(V_\Lambda^+)_n+\dim\mathrm{TP}_n=[q^n]qJ$ & none & uncond.; Thm.~\ref{ch08:thm:dims}\\
+\bottomrule
+\end{longtable}}
+
+\section{Notes and references}\label{ch08:sec:notes}
+
+The twisted vertex operators \eqref{ch08:eq:YT} and the twisted module $V_L^T$ are due to
+I.~Frenkel, J.~Lepowsky and A.~Meurman, \emph{Vertex Operator Algebras and the Monster}, Pure and
+Applied Mathematics 134, Academic Press, Boston, 1988; Chapters~7--9 contain the operators
+$E^\pm$, the twisted vertex operators and their commutator and associativity properties, the
+module $\cheightT$ of the extraspecial group, and the $\theta$-action on the twisted sector; the
+announcement is I.~Frenkel, J.~Lepowsky, A.~Meurman, ``A natural representation of the
+Fischer--Griess Monster with the modular function $J$ as character'', Proc.\ Natl.\ Acad.\ Sci.\ USA
+81 (1984) 3256--3260.  The calculus of twisted vertex operators goes back to J.~Lepowsky,
+``Calculus of twisted vertex operators'', Proc.\ Natl.\ Acad.\ Sci.\ USA 82 (1985) 8295--8299.  The
+general construction of twisted modules for lattice VOAs and lifts of lattice isometries is
+C.~Dong, ``Twisted modules for vertex algebras associated with even lattices'', J.\ Algebra 165
+(1994) 91--112, and C.~Dong and J.~Lepowsky, ``The algebraic structure of relative twisted vertex
+operators'', J.\ Pure Appl.\ Algebra 110 (1996) 259--295.  The mode form of the twisted Jacobi
+identity used by the library is that of C.~Dong, H.~Li and G.~Mason, ``Modular-invariance of trace
+functions in orbifold theory and generalized moonshine'', Comm.\ Math.\ Phys.\ 214 (2000) 1--56
+(arXiv:q-alg/9703016).  The ``local system'' approach (twisted products, associativity from
+locality) is H.~Li, ``Local systems of twisted vertex operators, vertex operator superalgebras and
+twisted modules'', in: Moonshine, the Monster, and related topics, Contemp.\ Math.\ 193 (1996)
+203--236 (arXiv:q-alg/9504022).  The conformal-field-theory treatment, including the sign
+$(-1)^{d/8}$ of $\theta$ on the ground states and the twisted-sector intertwiners used in the next
+chapter, is L.~Dolan, P.~Goddard and P.~Montague, ``Conformal field theory of twisted vertex
+operators'', Nucl.\ Phys.\ B 338 (1990) 529--601, and ``Conformal field theories, representations
+and lattice constructions'', Comm.\ Math.\ Phys.\ 179 (1996) 61--120 (arXiv:hep-th/9410029).  A
+modern treatment of twisted modules over lattice vertex algebras is B.~Bakalov and V.~Kac,
+``Twisted modules over lattice vertex algebras'', in: Lie Theory and its Applications in Physics V,
+World Scientific, 2004 (arXiv:math/0402315).  The descent argument of \S\ref{ch08:sec:base} (defect,
+recursion, uniqueness from vacuum expectations) and the plus-part construction of
+\S\ref{ch08:sec:plus} are the library's own route; they do not follow a single published proof.

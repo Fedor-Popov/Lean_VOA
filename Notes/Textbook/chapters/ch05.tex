@@ -1,0 +1,2006 @@
+\chapter{Graded dimensions and the modular function \texorpdfstring{$J$}{J}}\label{ch:05}
+
+\providecommand{\chfiveH}{\mathfrak{H}}
+\providecommand{\chfiveSL}{\mathrm{SL}_2(\Z)}
+
+This chapter documents the release of the library named in the front matter; all Lean source quoted below is quoted from the files of that release. 
+Checks that were run at an earlier state of the library and not re-run for this edition are marked as such. Quotations from the
+repository are printed in \texttt{leancode} boxes, which are machine-checked to occur verbatim in
+the source; quotations from Mathlib (a dependency, not part of the repository) and tool output are
+printed in plain boxes.
+
+The single most famous number in this book is $196884$. In 1978 John McKay noticed that the
+coefficient of $q$ in the expansion of Klein's modular invariant,
+\begin{equation*}
+  j(\tau) = q^{-1} + 744 + 196884\,q + 21493760\,q^2 + 864299970\,q^3 + \cdots,
+  \qquad q = e^{2\pi i \tau},
+\end{equation*}
+is one more than $196883$, the dimension of the smallest nontrivial irreducible representation
+of the Monster group. Thompson pushed the observation further ($21493760 = 1 + 196883 +
+21296876$), Conway and Norton turned it into the ``Monstrous Moonshine'' conjectures, and
+Frenkel, Lepowsky and Meurman (FLM) constructed a graded vector space
+\begin{equation*}
+  \Vnat = \bigoplus_{n\ge 0} \Vnat_n,\qquad \sum_{n\ge 0}\dim \Vnat_n \, q^{n-1} = J(q) := j(q) - 744,
+\end{equation*}
+carrying a vertex operator algebra structure whose automorphism group is the Monster. (The
+library constructs this vertex operator algebra, Chapter~\ref{ch:14}; the Monster action is
+\emph{not} formalized, and in the Lean statements $J$ is the formal $q$-series of
+Section~\ref{ch05:sec:formal}, not the analytic function of $\tau$; that this series is the $q$-expansion of the
+analytic $j-744$ is a separate Lean theorem, \lean{Moonshine.qExpansion_qJ}, Section~\ref{ch05:sec:formal}.) The
+equality of the graded dimension with $J$ is the statement this chapter is about.
+
+The chapter has two halves. The first half (Sections~\ref{ch05:sec:modular}
+and~\ref{ch05:sec:formal}) develops, from first principles, the modular-forms background: the
+modular group, modular forms, Eisenstein series, the discriminant $\Delta$, the functions $j$ and
+$J$, Dedekind's $\eta$, theta series, the group $\Gamma_0(2)$ and its Hauptmodul. It then presents
+the library's own \emph{formal} $q$-series $E_4$, $E_6$, $\Delta$, $qj$ and $qJ$, which are the
+objects appearing in the final theorem. The second half
+(Sections~\ref{ch05:sec:twisted}--\ref{ch05:sec:carrier}) counts the dimensions of the two summands
+of $\Vnat = V_\Leech^+ \oplus (V_\Leech^T)^+$ and proves, for \emph{every} weight $n\ge0$, that
+\begin{equation}\label{ch05:eq:headline}
+  \dim (V_\Leech^+)_n + \dim (V_\Leech^T)^+_n = [q^{n}]\bigl(q\,J(q)\bigr).
+\end{equation}
+
+\begin{status}
+The headline identity \eqref{ch05:eq:headline} is the Lean theorem
+\lean{VOA.Moonshine.sectorSeries_eq_JShift} (file \leanpath{VOA/Moonshine/Character.lean}) and
+its coefficientwise form \lean{VOA.Moonshine.finrank_sectors_eq_coeff_JShift}. Both are
+\emph{unconditional}: they have no hypotheses at all. While writing this chapter the command
+\texttt{\#print axioms} was re-run (with \texttt{lake env lean -DmaxSynthPendingDepth=3}, against the
+built library) on both, and on every other headline declaration of the chapter; the answer was in
+every case \texttt{[propext, Classical.choice, Quot.sound]}, i.e.\ Lean's three standard axioms and
+nothing else. The PBW theorem \lean{VOA.pbw} (Chapter~\ref{ch:L02}; formerly a project axiom, now a theorem) is \emph{not} used. The full record is in
+Section~\ref{ch05:sec:verification}.
+\end{status}
+
+\paragraph{How to read this chapter.}
+Following the book's Fidelity Protocol, every definition and theorem appears as a mathematical
+statement, then its Lean declaration copied verbatim from the repository, then a fidelity-check
+box (titled \emph{From the mathematics to the Lean statement}) in which we decode the Lean
+notation, list every hypothesis, trace every defined term, and say how the statement could have
+been wrong or vacuous and why it is not. Proofs are explained on paper. At the end,
+Section~\ref{ch05:sec:checklist} collects a referee's checklist.
+
+\paragraph{A physicist's preview.}
+In two-dimensional conformal field theory the \emph{partition function} of a chiral theory on a
+torus of modular parameter $\tau$ is $Z(\tau) = \tr_V q^{L_0 - c/24}$, a generating function of
+the dimensions of the energy eigenspaces. For a holomorphic theory the torus has no preferred
+``time'' direction, so $Z$ should be invariant under the modular group $\chfiveSL$ that reshuffles
+the cycles of the torus; with $c = 24$ the factor $q^{-c/24} = q^{-1}$ gives a simple pole at
+$q = 0$. The only such functions are $J + \text{const}$, and if the theory has no weight-one states
+(no currents) the constant is zero. So, physically, $\chi_{\Vnat} = J$ is \emph{forced}.
+Mathematically the library does not argue this way (that would need a modularity theorem for
+$\Vnat$, which is not what is formalised); instead it computes both sides. The orbifold picture
+nevertheless organises the computation: $\Vnat$ is the $\Z/2$-orbifold of the Leech lattice theory
+$V_\Leech$, and its partition function is the average over the four ``twisted boundary
+conditions'' on the two cycles of the torus,
+\begin{equation*}
+  Z_{\Vnat} = \tfrac12\bigl(Z_{++} + Z_{+-} + Z_{-+} + Z_{--}\bigr).
+\end{equation*}
+$Z_{++}$ is the character of $V_\Leech$, $Z_{+-}$ the trace of $\theta$ on it, and $Z_{-+}$,
+$Z_{--}$ the character of the twisted sector and the trace of $\theta$ there. This will appear
+below, quite literally, as $\tfrac12\bigl(\Theta_\Leech P + B\bigr) + 2^{12}q^2T_{\mathrm{odd}}$.
+The three ``twisted'' terms are the images of a single function under the three cosets of
+$\Gamma_0(2)$ in $\chfiveSL$; this is the level-two identity of Section~\ref{ch05:sec:leveltwo}.
+
+\section{Modular forms from first principles}\label{ch05:sec:modular}
+
+This section is standard mathematics; its aim is to make the chapter self-contained for a reader
+who has met holomorphic functions but not modular forms. Each fact later used is labelled with the
+Mathlib (or library) declaration that supplies it.
+
+\subsection{The upper half-plane and the modular group}
+
+Let $\chfiveH = \{\tau\in\C : \operatorname{Im}\tau > 0\}$ be the upper half-plane. The group
+\begin{equation*}
+  \chfiveSL = \Bigl\{\begin{pmatrix} a & b\\ c & d\end{pmatrix} : a,b,c,d\in\Z,\ ad - bc = 1\Bigr\}
+\end{equation*}
+acts on $\chfiveH$ by M\"obius transformations, $\gamma\cdot\tau = (a\tau+b)/(c\tau+d)$. That the
+image lies in $\chfiveH$ follows from
+\begin{equation}\label{ch05:eq:imag}
+  \operatorname{Im}(\gamma\cdot\tau) = \frac{\operatorname{Im}\tau}{|c\tau+d|^2}.
+\end{equation}
+The matrix $-1$ acts trivially. Two elements generate the whole group:
+\begin{equation*}
+  T = \begin{pmatrix}1&1\\0&1\end{pmatrix}:\ \tau\mapsto \tau+1, \qquad
+  S = \begin{pmatrix}0&-1\\1&0\end{pmatrix}:\ \tau\mapsto -1/\tau .
+\end{equation*}
+The proof is a Euclidean algorithm: given $\gamma$ with $c\ne 0$, multiply on the left by a power
+of $T$ to achieve $|a|<|c|$ (this changes $a$ by multiples of $c$), then by $S$, which swaps the
+rows up to sign; $|c|$ strictly decreases, until $c = 0$, at which point $\gamma = \pm T^b$. In Mathlib
+this is \lean{SpecialLinearGroup.SL2Z_generators}; a consequence used repeatedly below is
+\lean{SlashInvariantForm.slash_action_generators_SL2Z}: a function that transforms correctly
+under $S$ and under $T$ transforms correctly under all of $\chfiveSL$.
+
+The \emph{standard fundamental domain} $\mathcal F = \{|\tau|\ge 1, |\operatorname{Re}\tau|\le
+\tfrac12\}$ meets every orbit, and the quotient $\chfiveSL\backslash\chfiveH$ becomes a compact
+Riemann surface (a sphere) after adding one point at infinity, the \emph{cusp} $i\infty$.
+Geometrically, $\chfiveSL\backslash\chfiveH$ is the moduli space of complex tori
+$\C/(\Z+\Z\tau)$: two parameters give isomorphic tori exactly when they are in the same orbit. This
+is the reason modular objects appear as torus partition functions in physics.
+
+\subsection{Modular forms and the slash operator}
+
+Fix an integer $k$. For $f:\chfiveH\to\C$ and $\gamma\in\chfiveSL$ put
+$(f|_k\gamma)(\tau) = (c\tau+d)^{-k} f(\gamma\cdot\tau)$. This is a right action
+($f|_k(\gamma\delta) = (f|_k\gamma)|_k\delta$), because the \emph{automorphy factor} $c\tau+d$ satisfies
+a cocycle relation.
+
+\begin{definition}[Modular form of level one]\label{ch05:def:modform}
+A \emph{modular form of weight $k$ for $\chfiveSL$} is a function $f:\chfiveH\to\C$ such that
+\begin{enumerate}[label=(\roman*)]
+  \item $f|_k\gamma = f$ for all $\gamma\in\chfiveSL$, i.e.\ $f(\gamma\tau) = (c\tau+d)^k f(\tau)$;
+  \item $f$ is holomorphic on $\chfiveH$;
+  \item $f$ is bounded as $\operatorname{Im}\tau\to\infty$ (``holomorphic at the cusp'').
+\end{enumerate}
+It is a \emph{cusp form} if moreover $f(\tau)\to 0$ as $\operatorname{Im}\tau\to\infty$. The spaces are
+written $M_k$ and $S_k$.
+\end{definition}
+
+\begin{physics}
+A modular form is the mathematical shadow of a torus partition function. Condition (i) for $\gamma=T$ says $Z(\tau+1)=Z(\tau)$, i.e.\ the spectrum of $L_0-c/24$ is integral (no spin ambiguity); for $\gamma=S$ it says that exchanging the space and time cycles of the torus changes the answer only by the factor $\tau^k$ (a weight, absent for a genuine partition function, $k=0$). Holomorphy is the statement that the chiral partition function depends holomorphically on the shape $\tau$ of the torus, and boundedness at the cusp says the energy is bounded below, with only finitely many negative-energy terms. This is a heuristic dictionary; the definition above is purely analytic.
+\end{physics}
+
+In Mathlib, a modular form is a structure \lean{ModularForm Γ k} whose three fields
+\lean{slash_action_eq'}, \lean{holo'}, \lean{bdd_at_cusps'} are (i)--(iii); the level-one group is
+written \lean{𝒮ℒ} (the image of $\chfiveSL$ in $\mathrm{GL}_2(\mathbb R)$), and \lean{ℍ} is the upper
+half-plane. Condition (iii) is phrased for every cusp of $\Gamma$; for $\chfiveSL$ Mathlib's
+\lean{OnePoint.isBoundedAt_iff_forall_SL2Z} reduces it to boundedness of all translates
+$f|_k\gamma$ at $i\infty$, which for an invariant $f$ is boundedness of $f$ itself. Holomorphy is
+expressed as complex-manifold differentiability (\lean{MDiff}), which on the open set
+$\chfiveH\subset\C$ is ordinary holomorphy. A cusp form is a \lean{CuspForm Γ k}.
+
+\paragraph{$q$-expansions.}
+Taking $\gamma = T$ in (i) gives $f(\tau+1) = f(\tau)$. A holomorphic $1$-periodic function on
+$\chfiveH$ is a holomorphic function of $q = e^{2\pi i\tau}$ on the punctured disc $0<|q|<1$:
+$f(\tau) = F(q)$. Condition (iii) says $F$ is bounded near $q = 0$, so by Riemann's removable
+singularity theorem $F$ extends holomorphically to the disc and has a Taylor expansion
+\begin{equation}\label{ch05:eq:qexp}
+  f(\tau) = \sum_{n\ge 0} a_n q^n, \qquad |q|<1 .
+\end{equation}
+This is the \emph{$q$-expansion}; $f$ is a cusp form iff $a_0 = 0$. In Mathlib, the extended
+function $F$ is \lean{cuspFunction 1 f}, the parameter $q$ is \lean{Function.Periodic.qParam 1 τ}
+(written \lean{𝕢 1 τ}) $= e^{2\pi i\tau}$, and the formal power series $\sum a_nX^n$ is
+\lean{qExpansion 1 f}. Two facts about it are used constantly.
+
+\begin{proposition}[Uniqueness of $q$-expansions]\label{ch05:prop:qunique}
+Let $f$ be a level-one modular form and $(c_m)_{m\ge0}$ complex numbers such that for every
+$\tau\in\chfiveH$ the series $\sum_m c_m q^m$, $q = e^{2\pi i\tau}$, converges to $f(\tau)$. Then $c_m$
+is the $m$-th coefficient of the $q$-expansion of $f$, for every $m$.
+\end{proposition}
+\begin{plaincode}
+-- Mathlib, Mathlib/NumberTheory/ModularForms/QExpansion.lean
+protected lemma ModularFormClass.qExpansion_coeff_unique {c : ℕ → ℂ} (hh : 0 < h)
+    (hΓ : h ∈ Γ.strictPeriods) {f : F} [ModularFormClass F Γ k]
+    (hf : ∀ τ : ℍ, HasSum (fun m ↦ c m • 𝕢 h τ ^ m) (f τ)) (m : ℕ) :
+    c m = (qExpansion h f).coeff m
+\end{plaincode}
+
+\begin{physics}
+Physically this is the statement that a partition function is determined by its spectrum: $Z(\tau)=\sum_n d_n q^{n}$ records the number $d_n$ of states at each energy level, and two series that agree as functions of $\tau$ count the same states. This is what lets the chapter compare an honest count of states (a formal series) with an analytic function of the torus modulus. It is a mathematical fact; the physical reading is only a mnemonic.
+\end{physics}
+The proof is uniqueness of Taylor coefficients. In applications $h = 1$, $\Gamma = $ \lean{𝒮ℒ}, and
+the side condition ``$1$ is a period'' is Mathlib's \lean{one_mem_strictPeriods_SL}. The second
+fact is that $q$-expansion is a ring homomorphism on modular forms: the $q$-expansion of $f+g$,
+$cf$, $fg$, $f^n$ is the sum, scalar multiple, product, power of the $q$-expansions
+(\lean{ModularForm.qExpansion_add}, \dots, \lean{ModularForm.qExpansion_pow}). Both facts are
+proved in Mathlib.
+
+\subsection{Eisenstein series}
+
+For even $k\ge 4$ the series $G_k(\tau) = \sum_{(m,n)\ne(0,0)} (m\tau+n)^{-k}$ converges absolutely
+and locally uniformly (because $k>2$). It is visibly invariant under $\tau\mapsto\tau+1$ and, after
+the substitution $(m,n)\mapsto(n,-m)$, picks up the factor $\tau^k$ under $\tau\mapsto -1/\tau$, so it
+is a modular form of weight $k$. Its $q$-expansion follows from the Lipschitz formula
+$\sum_{n\in\Z}(\tau+n)^{-k} = \frac{(-2\pi i)^k}{(k-1)!}\sum_{r\ge1} r^{k-1}q^r$:
+\begin{equation*}
+  G_k = 2\zeta(k)\Bigl(1 - \frac{2k}{B_k}\sum_{n\ge1}\sigma_{k-1}(n)\,q^n\Bigr),
+  \qquad \sigma_s(n) = \sum_{d\mid n} d^s,
+\end{equation*}
+with $B_k$ the Bernoulli numbers ($B_4 = -\tfrac1{30}$, $B_6 = \tfrac1{42}$). The normalised series
+$E_k = G_k/2\zeta(k)$ have constant term $1$:
+\begin{align*}
+  E_4 &= 1 + 240\sum_{n\ge1}\sigma_3(n)q^n = 1 + 240q + 2160q^2 + 6720q^3 + 17520 q^4+\cdots,\\
+  E_6 &= 1 - 504\sum_{n\ge1}\sigma_5(n)q^n = 1 - 504q - 16632q^2 - 122976q^3 - 532728q^4 - \cdots,
+\end{align*}
+because $-2\cdot4/B_4 = 240$ and $-2\cdot 6/B_6 = -504$. In Mathlib, \lean{ModularForm.E₄} and
+\lean{ModularForm.E₆} are these as bundled modular forms, and
+\lean{EisensteinSeries.E_qExpansion_coeff} states: coefficient $m$ of the $q$-expansion of $E_k$
+is $1$ if $m = 0$ and $-(2k/B_k)\,\sigma_{k-1}(m)$ otherwise.
+
+\subsection{The ring of level-one forms; \texorpdfstring{$\dim M_{12} = 2$}{dim M12 = 2}}
+
+Products of modular forms are modular forms (weights add), so $M_* = \bigoplus_k M_k$ is a graded
+ring.
+
+\begin{theorem}[Structure of $M_*$]\label{ch05:thm:graded}
+For every $k\ge0$ the monomials $E_4^aE_6^b$ with $4a+6b = k$ form a basis of $M_k$; equivalently
+$M_* = \C[E_4,E_6]$. Moreover $S_k = 0$ for $k<12$.
+\end{theorem}
+
+\begin{physics}
+In the language of 2d CFT, $M_*=\C[E_4,E_6]$ says that holomorphic, modular-covariant partition functions have very little freedom: once the weight and the first few energy levels are fixed, the whole spectrum is forced. The weight-$12$ case ($\dim M_{12}=2$) is the one that matters for $c=24$: the leading coefficients (the vacuum and the number of currents) pin down the entire character. This is a heuristic gloss; the theorem is proved by the valence formula, not by physics.
+\end{physics}
+
+The classical proof (Serre, \emph{A Course in Arithmetic}, Ch.~VII) uses the \emph{valence
+formula}: for a nonzero $f\in M_k$,
+\begin{equation*}
+  v_\infty(f) + \tfrac12 v_i(f) + \tfrac13 v_\rho(f) + \sum_{p\neq i,\rho} v_p(f) = \frac{k}{12},
+\end{equation*}
+the sum over the other points of $\chfiveSL\backslash\chfiveH$, obtained by integrating $f'/f$ around
+the boundary of $\mathcal F$ ($\rho = e^{2\pi i/3}$; the fractions come from the angles of $\mathcal F$
+at the elliptic points $i$, $\rho$). A nonzero cusp form has $v_\infty\ge1$, hence $k\ge 12$; for
+$k = 12$ the cusp form has a simple zero at $\infty$ and no other zeros. Dividing by such a cusp
+form lowers the weight by $12$, and induction gives the theorem.
+
+We need only weight $12$: \emph{$M_{12}$ is two-dimensional, spanned by $E_4^3$ and $E_6^2$}, so a
+weight-$12$ form is determined by its first two $q$-coefficients $a_0,a_1$. Since $E_4^3 = 1 +
+720q+\cdots$ and $E_6^2 = 1 - 1008q+\cdots$, solving $f = xE_4^3 + yE_6^2$ for $a_0 = x+y$,
+$a_1 = 720x - 1008y$ gives
+\begin{equation}\label{ch05:eq:wt12}
+  f = a_0 E_4^3 + \frac{a_1 - 720a_0}{1728}\,\bigl(E_4^3 - E_6^2\bigr).
+\end{equation}
+This formula is the engine of two of the three identities of this chapter. The library's
+spanning statement is \lean{span_eisBasisFun} (vendored file
+\leanpath{VOA/LatticesAndCodes/ModularForms/LevelOne.lean}, built on Mathlib's dimension formula),
+and \eqref{ch05:eq:wt12} is the library theorem \lean{qExpansion_weight_twelve}
+(Theorem~\ref{ch05:thm:wt12}).
+
+\subsection{The discriminant \texorpdfstring{$\Delta$}{Delta}: three descriptions}
+
+The form $E_4^3 - E_6^2$ has $q$-expansion $1728q + \cdots$, so it is a nonzero cusp form of weight
+$12$. The \emph{discriminant} is its normalisation:
+\begin{equation}\label{ch05:eq:delta}
+  \Delta = \frac{E_4^3 - E_6^2}{1728} = q - 24q^2 + 252q^3 - 1472q^4 + 4830 q^5 - \cdots
+  = \sum_{n\ge1}\tau(n)q^n,
+\end{equation}
+the coefficients $\tau(n)$ being Ramanujan's tau function. (For the elliptic curve $y^2 = 4x^3 -
+g_2x - g_3$ with $g_2 = 60G_4$, $g_3 = 140G_6$, the discriminant $g_2^3 - 27g_3^2$ is $(2\pi)^{12}\Delta$,
+whence the name.) By the valence formula, $\Delta$ has a simple zero at $i\infty$ and \emph{no zeros on
+$\chfiveH$} (Mathlib: \lean{ModularForm.discriminant_ne_zero}).
+
+The second and third descriptions are Jacobi's product formula,
+\begin{equation}\label{ch05:eq:jacobi}
+  \Delta(\tau) = q\prod_{n\ge1}(1-q^n)^{24} = \eta(\tau)^{24}, \qquad
+  \eta(\tau) = q^{1/24}\prod_{n\ge1}(1-q^n),
+\end{equation}
+with Dedekind's eta function $\eta$ ($q^{1/24} := e^{2\pi i\tau/24}$). One proves
+\eqref{ch05:eq:jacobi} by showing that $\eta^{24}$ is a cusp form of weight $12$ (the hard part is
+$\eta(-1/\tau) = \sqrt{\tau/i}\,\eta(\tau)$, derived from the logarithmic derivative of $\eta$, an
+Eisenstein series of weight $2$) and comparing first coefficients, using $\dim S_{12} = 1$.
+
+\begin{remark}[Which description is the definition?]\label{ch05:rem:deltadef}
+Mathlib \emph{defines} the discriminant as $\eta^{24}$, by
+\lean{ModularForm.discriminant z := (eta z) ^ 24}, bundled as \lean{CuspForm.discriminant : CuspForm 𝒮ℒ 12}) and proves both other descriptions:
+\begin{plaincode}
+-- Mathlib, Mathlib/NumberTheory/ModularForms/Discriminant.lean and LevelOne/GradedRing.lean
+lemma discriminant_eq_q_prod (z : ℍ) : Δ z = 𝕢 1 z * ∏' n, (1 - eta_q n z) ^ 24
+theorem discriminant_eq_E₄_cube_sub_E₆_sq (z : ℍ) :
+    discriminant z = (E₄ z ^ 3 - E₆ z ^ 2) / 1728
+\end{plaincode}
+where \lean{eta_q n z} $= q^{n+1}$ and \lean{∏'} is an infinite product of complex numbers. The
+library's \emph{formal} discriminant (Definition~\ref{ch05:def:delta}) is defined by the Eisenstein
+expression \eqref{ch05:eq:delta}. That the formal series obeys Jacobi's product
+\eqref{ch05:eq:jacobi} \emph{as a formal power series} is therefore a genuine theorem
+(Theorem~\ref{ch05:thm:deltaprod}), one of the three inputs of the main identity.
+\end{remark}
+
+\subsection{The functions \texorpdfstring{$j$}{j} and \texorpdfstring{$J$}{J}}
+
+Since $\Delta$ has no zeros on $\chfiveH$, the quotient
+\begin{equation}\label{ch05:eq:j}
+  j(\tau) = \frac{E_4(\tau)^3}{\Delta(\tau)}
+\end{equation}
+is holomorphic on $\chfiveH$; numerator and denominator have weight $12$, so $j$ is
+$\chfiveSL$-invariant. At the cusp $\Delta = q(1 - 24q + \cdots)$ has a simple zero, so $j$ has a simple
+pole:
+\begin{equation*}
+  j = \frac{1 + 720q + 179280q^2 + \cdots}{q\,(1 - 24q + 252q^2 - \cdots)}
+    = q^{-1} + 744 + 196884\,q + 21493760\,q^2 + \cdots .
+\end{equation*}
+$J = j - 744$ has no constant term.
+
+\begin{theorem}[$j$ is a Hauptmodul; argued on paper only]\label{ch05:thm:haupt}
+Every $\chfiveSL$-invariant holomorphic function on $\chfiveH$ with at most a pole of order $m$ at the
+cusp is a polynomial of degree $\le m$ in $j$. In particular $J$ is the unique invariant function
+of the form $q^{-1} + O(q)$.
+\end{theorem}
+
+\begin{physics}
+This is the classical form of the physical statement that a holomorphic $c=24$ theory has a partition function fixed up to an additive constant. A chiral partition function $Z(\tau)=q^{-1}+\text{const}+O(q)$ must be modular invariant; the leading $q^{-1}$ is the vacuum with Casimir energy $-c/24=-1$, and the only remaining freedom is the constant, i.e.\ the number of weight-one states (currents). Setting that number to zero ($V^\natural_1=0$) selects $J=j-744$, the partition function of the Monster CFT. As the warning below stresses, the library does not use this argument.
+\end{physics}
+\begin{proof}[Sketch]
+If $f = c\,q^{-m} + \cdots$, then $f - c\,j^m$ is invariant with a pole of order $<m$; by induction
+it suffices to treat $f$ bounded at the cusp. Pick $\tau_0\in\chfiveH$. Then $g = (f -
+f(\tau_0))\Delta$ is a cusp form of weight $12$, so $g = c'\Delta$; but $g(\tau_0) = 0\ne\Delta(\tau_0)$,
+so $c' = 0$ and $f$ is constant.
+\end{proof}
+
+\begin{warning}
+\textbf{No modular-invariance argument is behind the main theorem.}
+Theorem~\ref{ch05:thm:haupt} is \emph{not} used by the library's proof of $\chi = J$, and is not
+formalised in the form stated. The docstring of \leanpath{VOA/Modularity/JFunction.lean} still lists
+``uniqueness of the Hauptmodul'' as a residual, and early plans expected to derive $\chi = J$ from
+a modularity theorem for $\Vnat$. The route actually taken avoids this: both sides are computed,
+and the only uniqueness used is $\dim M_{12} = 2$, formula \eqref{ch05:eq:wt12}. A referee should not
+look for a ``modular invariance of the character of $\Vnat$'' theorem behind the main result ---
+there is none; the identity is a computation.
+\end{warning}
+
+The library also has an analytic $j$, \lean{VOA.jInvariant} $(z) = E_4(z)^3/\Delta(z)$, with
+$\chfiveSL$-invariance \lean{VOA.jInvariant_smul} (file
+\leanpath{VOA/Modularity/JInvariantAnalytic.lean}). The statements of this chapter do not involve it, but the library
+identifies the formal $J$ with it: \lean{VOA.Moonshine.qExpansion_qJ} and \lean{VOA.Moonshine.hasSum_JShift} in
+\leanpath{VOA/Moonshine/JAnalyticQExpansion.lean} (see the dictionary after the definition of \lean{JShift}).
+
+\subsection{Theta series of even unimodular lattices}\label{ch05:sec:thetabg}
+
+Let $L\subset\mathbb R^r$ be an even unimodular lattice (Chapter~\ref{ch:02}). Its theta series is
+\begin{equation*}
+  \Theta_L(\tau) = \sum_{\alpha\in L} q^{\langle\alpha,\alpha\rangle/2}
+  = \sum_{n\ge0} r_L(2n)\,q^n, \qquad r_L(m) = \#\{\alpha\in L : \langle\alpha,\alpha\rangle = m\}.
+\end{equation*}
+Evenness makes the exponents integral, so $\Theta_L(\tau+1) = \Theta_L(\tau)$; Poisson summation with
+self-duality $L^* = L$ gives $\Theta_L(-1/\tau) = (\tau/i)^{r/2}\Theta_L(\tau)$; one deduces $8\mid r$
+and that $\Theta_L$ is a modular form of weight $r/2$.
+\begin{sloppypar}\noindent In the library this is
+\lean{IntegralLattice.thetaModularForm} (vendored file
+\leanpath{VOA/LatticesAndCodes/Theta/ModularForm.lean}), with $q$-coefficients identified by
+\lean{IntegralLattice.coeff_qExpansion_thetaModularForm}: coefficient $m$ is $r_L(2m)$. Both are
+presented in Chapter~\ref{ch:02}.\end{sloppypar}
+
+For the Leech lattice $\Leech$ ($r = 24$, weight $12$) there are no vectors of norm $2$:
+$r_\Leech(0) = 1$, $r_\Leech(2) = 0$ (\lean{Leech.lattice_repCount_two}). Formula \eqref{ch05:eq:wt12}
+with $a_0 = 1$, $a_1 = 0$ gives at once
+\begin{equation}\label{ch05:eq:leechtheta}
+  \Theta_\Leech = E_4^3 - \frac{720}{1728}\bigl(E_4^3-E_6^2\bigr) = E_4^3 - 720\Delta
+  = 1 + 196560q^2 + 16773120q^3 + 398034000q^4+\cdots.
+\end{equation}
+The number $196560$ is the kissing number of the Leech lattice.
+
+\subsection{The group \texorpdfstring{$\Gamma_0(2)$}{Gamma0(2)} and its Hauptmodul}\label{ch05:sec:gamma02}
+
+The congruence subgroup
+$\Gamma_0(2) = \{\gamma\in\chfiveSL : c\equiv 0 \bmod 2\}$ has index $3$: reduction mod $2$ maps
+$\chfiveSL$ onto $\mathrm{SL}_2(\mathbb F_2)\cong S_3$, which permutes the three points of
+$\mathbb P^1(\mathbb F_2)$, and $\Gamma_0(2)$ is the stabiliser of $\infty$. Coset representatives are
+$1$, $S$, $ST$, i.e.\ the maps $\tau\mapsto\tau$, $\tau\mapsto -1/\tau$, $\tau\mapsto -1/(\tau+1)$. The function
+\begin{equation}\label{ch05:eq:t}
+  t(\tau) = \frac{\Delta(\tau)}{\Delta(2\tau)} = \frac{\eta(\tau)^{24}}{\eta(2\tau)^{24}}
+  = q^{-1}\prod_{n\ge1}\frac{(1-q^n)^{24}}{(1-q^{2n})^{24}} = q^{-1}\prod_{n\ge1}(1+q^n)^{-24}
+\end{equation}
+(using $1-q^{2n} = (1-q^n)(1+q^n)$) is invariant under $\Gamma_0(2)$ and is its Hauptmodul, with
+expansion $t = q^{-1} - 24 + 276q - 2048q^2 + \cdots$. In the language of moonshine, $t + 24$ is the
+McKay--Thompson series of the Monster class $2B$.
+
+\paragraph{The trace to level one.}
+Summing a $\Gamma_0(2)$-invariant function over the three cosets gives a $\chfiveSL$-invariant one.
+Using $\Delta(-1/\tau) = \tau^{12}\Delta(\tau)$ and $\Delta(\tau+1) = \Delta(\tau)$:
+\begin{equation*}
+  t(-1/\tau) = \frac{\tau^{12}\Delta(\tau)}{(\tau/2)^{12}\Delta(\tau/2)} = 2^{12}\frac{\Delta(\tau)}{\Delta(\tau/2)},\qquad
+  t\bigl(-1/(\tau+1)\bigr) = 2^{12}\frac{\Delta(\tau)}{\Delta((\tau+1)/2)}.
+\end{equation*}
+Hence
+\begin{equation}\label{ch05:eq:phi}
+  t(\tau) + t(-1/\tau) + t\bigl(-1/(\tau+1)\bigr) = \frac{\Phi(\tau)}{\Delta(\tau)},\qquad
+  \Phi(\tau) := \Delta(\tau)^2\Bigl(\frac{1}{\Delta(2\tau)} + \frac{2^{12}}{\Delta(\tau/2)} +
+  \frac{2^{12}}{\Delta((\tau+1)/2)}\Bigr).
+\end{equation}
+$\Phi$ is a level-one modular form of weight $12$ (Section~\ref{ch05:sec:leveltwo}) with
+$q$-expansion $1 - 48q + \cdots$; formula \eqref{ch05:eq:wt12} then gives $\Phi = E_4^3 - 768\Delta$,
+that is,
+\begin{equation}\label{ch05:eq:trace}
+  t(\tau) + t(-1/\tau) + t\bigl(-1/(\tau+1)\bigr) = j(\tau) - 768 .
+\end{equation}
+The numbers $720$ in \eqref{ch05:eq:leechtheta} and $768$ in \eqref{ch05:eq:trace} average to $744$:
+this is, in one line, why the orbifold produces $J = j - 744$.
+
+\section{The library's formal \texorpdfstring{$q$}{q}-series}\label{ch05:sec:formal}
+
+\subsection{Why formal power series}
+
+A graded dimension is a sequence of natural numbers, and its natural home is the ring $\C[[q]]$ of
+formal power series: no convergence is involved, and an identity of series is the same thing as an
+identity of all coefficients. This is why the headline theorem \eqref{ch05:eq:headline} is stated
+in $\C[[q]]$, and why the library builds $E_4$, $E_6$, $\Delta$ and $j$ \emph{formally} in
+\leanpath{VOA/Modularity/JFunction.lean} instead of using Mathlib's analytic functions. The
+analytic theory enters only in proofs, through uniqueness of $q$-expansions
+(Proposition~\ref{ch05:prop:qunique}).
+
+\paragraph{Mathlib's power series, in plain words.}
+\lean{PowerSeries ℂ} (also written \lean{ℂ⟦X⟧}) is the ring of formal power series $\sum_{n\ge0}a_nX^n$
+with complex coefficients. In this chapter the variable $X$ plays the role of $q$ (except in
+Theorem~\ref{ch05:thm:twgen}, where it is $q^{1/2}$). Notation:
+\begin{itemize}
+  \item \lean{PowerSeries.mk a} is the series with coefficient sequence $a:\N\to\C$;
+  \item \lean{PowerSeries.coeff n f}, also written \lean{coeff n f} or
+    \lean{PowerSeries.coeff (R := ℂ) n f} (the coefficient ring made explicit), is $[X^n]f$;
+  \item \lean{PowerSeries.constantCoeff f} is $[X^0]f$;
+  \item \lean{X} (or \lean{PowerSeries.X}) is the variable, and \lean{c • f} is scalar
+    multiplication by $c\in\C$;
+  \item a series is a \emph{unit} (\lean{IsUnit f}) iff its constant term is nonzero;
+    \lean{(PowerSeries ℂ)ˣ} is the group of units, \lean{u⁻¹} the inverse of a unit $u$, and
+    \lean{((u⁻¹ : (PowerSeries ℂ)ˣ) : PowerSeries ℂ)} the underlying series of that inverse;
+  \item for an arbitrary series, \lean{f⁻¹} is Mathlib's ``inverse if the constant term is nonzero,
+    and an irrelevant value otherwise''; below it is applied only to series with constant term $1$.
+\end{itemize}
+Infinite products of formal series are expressed by \lean{HasProd u F}: the finite partial
+products $\prod_{i<N}u_i$ converge to $F$ in the \emph{coefficientwise} topology (activated by
+\lean{open scoped PowerSeries.WithPiTopology}). Concretely: for every $n$, the coefficient
+$[X^n]\prod_{i<N}u_i$ is eventually (in $N$) equal to $[X^n]F$. For example, in
+$\prod_{n\ge1}(1-X^n)^{-24}$ the factor $(1-X^n)^{-1} = 1 + X^n + X^{2n}+\cdots$ does not affect
+coefficients below $X^n$, so every coefficient stabilises.
+
+\subsection{Divisor sums as Lambert coefficients}
+
+\begin{definition}[Lambert coefficient]\label{ch05:def:lambert}
+For $s,n\in\N$ let $\lambda_s(n) = \sum_{(a,b)\in\N^2,\ ab = n} a^s$, the coefficient of $q^n$ in the
+Lambert series $\sum_{m\ge1} m^s q^m/(1-q^m)$.
+\end{definition}
+\begin{leancode}
+noncomputable def lambertCoeff (s n : ℕ) : ℂ :=
+  ∑ p ∈ n.divisorsAntidiagonal, ((p.1 : ℂ)) ^ s
+\end{leancode}
+(\leanpath{VOA/Modularity/LambertSeries.lean}; all declarations of this section are in namespace
+\lean{VOA}.)
+
+\begin{physics}
+Lambert series $\sum_m m^sq^m/(1-q^m)$ arise in physics as sums over winding or momentum modes: the coefficient $\sigma_s(n)$ adds up $d^s$ over the ways of splitting energy level $n$ as $d\cdot(n/d)$. This is the structure behind the Eisenstein series, which in turn are the building blocks of every torus partition function in this chapter. The definition itself is just a divisor sum.
+\end{physics}
+
+\begin{theorem}\label{ch05:thm:lambert}
+$\lambda_s(n) = \sigma_s(n)$ for all $s,n\in\N$.
+\end{theorem}
+\begin{leancode}
+theorem lambertCoeff_eq_sigma (s n : ℕ) :
+    lambertCoeff s n = ((ArithmeticFunction.sigma s n : ℕ) : ℂ)
+\end{leancode}
+\begin{dictionary}
+\lean{n.divisorsAntidiagonal} is the finite set of pairs $(a,b)$ of natural numbers with $ab = n$; for
+$n = 0$ it is empty (Mathlib's convention), so $\lambda_s(0) = 0$. \lean{p.1} is the first component
+$a$, and \lean{((p.1 : ℂ)) ^ s} is $a^s$ computed in $\C$. \lean{ArithmeticFunction.sigma s n} is
+Mathlib's $\sigma_s(n) = \sum_{d\mid n}d^s$ (a natural number, with $\sigma_s(0) = 0$), cast to $\C$.
+No hypotheses. Same as the textbook statement for $n\ge1$; at $n = 0$ both sides are $0$ by
+convention, and this value is never used ($E_4$, $E_6$ treat $n = 0$ separately).
+\end{dictionary}
+
+\begin{physics}
+The identity $\lambda_s(n)=\sigma_s(n)$ is the arithmetic form of the heuristic that the Eisenstein series is a sum over lattice momenta $(m,n)$ of a two-dimensional torus, collected by their greatest common divisor. It is a pure number-theory fact, with no further physical content.
+\end{physics}
+\noindent\emph{Proof.} Pairs $(a,b)$ with $ab = n\ge1$ correspond bijectively to divisors $a$ of $n$.
+\begin{status}
+Proved, no hypotheses. Used through the values $\sigma_3(2) = 9$, $\sigma_3(3) = 28$, $\sigma_5(2) = 33$,
+$\sigma_5(3) = 244$ (\lean{lambertCoeff_three_two}, \dots, in \leanpath{JFunction.lean}), each checked by
+Lean's kernel evaluation.
+\end{status}
+
+\subsection{The formal Eisenstein series}
+
+\begin{definition}[Formal $E_4$, $E_6$]\label{ch05:def:E46}
+In $\C[[q]]$ put $E_4 = 1 + 240\sum_{n\ge1}\sigma_3(n)q^n$ and $E_6 = 1 - 504\sum_{n\ge1}\sigma_5(n)q^n$.
+\end{definition}
+\begin{leancode}
+noncomputable def E4Series : PowerSeries ℂ :=
+  PowerSeries.mk fun n => if n = 0 then 1 else 240 * lambertCoeff 3 n
+
+noncomputable def E6Series : PowerSeries ℂ :=
+  PowerSeries.mk fun n => if n = 0 then 1 else -504 * lambertCoeff 5 n
+\end{leancode}
+(\leanpath{VOA/Modularity/JFunction.lean}.)
+\begin{dictionary}
+The coefficient sequence is defined by cases: $1$ at $n = 0$, and $240\lambda_3(n) = 240\sigma_3(n)$
+(Theorem~\ref{ch05:thm:lambert}) for $n\ge1$; similarly for $E_6$. This is literally
+Definition~\ref{ch05:def:E46}. \emph{Could the name be unjustified?} A formal series carries no
+modularity by itself; that \lean{E4Series} is the $q$-expansion of Mathlib's analytic $E_4$ is the
+theorem \lean{qExpansion_E₄} (Proposition~\ref{ch05:prop:qexpE}), proved by comparing with Mathlib's
+coefficient formula via $-2\cdot4/B_4 = 240$. The first coefficients are theorems:
+\lean{coeff_one_E4Series} ($240$), \lean{coeff_two_E4Series} ($2160$), \lean{coeff_three_E4Series}
+($6720$), and for $E_6$: $-504$, $-16632$, $-122976$.
+\end{dictionary}
+
+\begin{physics}
+$E_4$ and $E_6$ are the simplest holomorphic torus ``partition functions'' with modular weight: $E_4$ is the weight-$4$ object whose $q^0$ term is the vacuum and whose coefficients $240\sigma_3(n)$ count (up to normalisation) the roots and higher shells of the $E_8$ lattice theory. They are not themselves physical partition functions (they have positive weight and no integrality of degeneracies built in), but every $c=24$ character is a rational function of them, e.g.\ $j=E_4^3/\Delta$.
+\end{physics}
+
+\subsection{The formal discriminant and \texorpdfstring{$\Delta/q$}{Delta/q}}
+
+\begin{definition}[Formal $\Delta$]\label{ch05:def:delta}
+$\Delta = (E_4^3 - E_6^2)/1728\in\C[[q]]$.
+\end{definition}
+\begin{leancode}
+noncomputable def deltaSeries : PowerSeries ℂ :=
+  (1728 : ℂ)⁻¹ • (E4Series ^ 3 - E6Series ^ 2)
+\end{leancode}
+
+\begin{physics}
+The discriminant $\Delta=\eta^{24}$ is, physically, the partition function of $24$ free chiral bosons up to the Casimir factor: $\Delta=q\prod(1-q^n)^{24}$ is the inverse of the oscillator trace $q^{-1}\prod(1-q^n)^{-24}$. Its defining Eisenstein form $(E_4^3-E_6^2)/1728$ is the modular side of that same object; their equality (Jacobi's product, Theorem~\ref{ch05:thm:deltaprod}) is a nontrivial theorem, not a convention.
+\end{physics}
+
+\begin{proposition}\label{ch05:prop:deltaorder}
+$[q^0]\Delta = 0$ and $[q^1]\Delta = 1$.
+\end{proposition}
+\begin{leancode}
+@[simp] theorem constantCoeff_deltaSeries : PowerSeries.constantCoeff deltaSeries = 0
+@[simp] theorem coeff_one_deltaSeries : PowerSeries.coeff (R := ℂ) 1 deltaSeries = 1
+\end{leancode}
+
+\begin{physics}
+$[q^0]\Delta=0$ says $\Delta$ vanishes at the cusp; in the CFT picture $1/\Delta$ has a simple pole $q^{-1}$, the vacuum with energy $-c/24=-1$ for $c=24$ bosons. $[q^1]\Delta=1$ is the normalisation of that pole to residue one, i.e.\ a unique vacuum state.
+\end{physics}
+\noindent\emph{Proof.} Constant terms: $1 - 1 = 0$. Degree one: $[q^1](fg) = f_0g_1 + f_1g_0$, so
+$[q^1]E_4^3 = 3\cdot240 = 720$ and $[q^1]E_6^2 = 2\cdot(-504) = -1008$, and $720 + 1008 = 1728$.
+
+Because $\Delta$ has no constant term it is divisible by $q$; the cofactor has constant term $1$, so it
+is invertible in $\C[[q]]$.
+
+\begin{definition}[$\Delta/q$]\label{ch05:def:deltaoverq}
+$\Delta/q$ is the unique series $D_1$ with $\Delta = q\,D_1$; it has constant term $1$ and is therefore a
+unit of $\C[[q]]$.
+\end{definition}
+\begin{leancode}
+noncomputable def deltaOverQ : PowerSeries ℂ :=
+  Classical.choose (PowerSeries.X_dvd_iff.mpr constantCoeff_deltaSeries)
+
+theorem deltaSeries_eq : deltaSeries = PowerSeries.X * deltaOverQ
+
+@[simp] theorem constantCoeff_deltaOverQ : PowerSeries.constantCoeff deltaOverQ = 1
+
+theorem deltaOverQ_isUnit : IsUnit deltaOverQ
+
+noncomputable def deltaOverQUnit : (PowerSeries ℂ)ˣ := deltaOverQ_isUnit.unit
+\end{leancode}
+\begin{dictionary}
+\lean{PowerSeries.X_dvd_iff} is Mathlib's ``$X\mid f\iff$ the constant term of $f$ is $0$''. Applied to
+\lean{constantCoeff_deltaSeries} it yields $\exists D,\ \Delta = X\cdot D$, and \lean{Classical.choose}
+picks a witness. This looks arbitrary but is not: $\C[[q]]$ is an integral domain, so the cofactor
+is \emph{unique}, and \lean{deltaSeries_eq} records the defining property. Hence \lean{deltaOverQ} is
+exactly $\Delta/q$. Because \lean{Classical.choose} is non-constructive, its coefficients cannot be
+``evaluated''; all of them are derived by theorems from \lean{deltaSeries_eq}. \lean{deltaOverQUnit}
+is the same series regarded as an element of the group of units, so that $(\Delta/q)^{-1}$ is a
+genuine inverse.
+\end{dictionary}
+
+\begin{physics}
+$\Delta/q=\prod(1-q^n)^{24}$ is the inverse of the oscillator generating function of $24$ free bosons; stripping the factor $q$ removes the Casimir energy $-24/24=-1$ and leaves the state count, whose inverse $1,24,324,3200,\dots$ is the number of oscillator states at each level. The unit property (constant term $1$) is the uniqueness of the vacuum.
+\end{physics}
+
+\subsection{\texorpdfstring{$qj$}{q j} and \texorpdfstring{$qJ$}{q J}}
+
+The function $j$ has a pole at $q = 0$ and is not a power series. Rather than introducing Laurent
+series, the library multiplies by $q$.
+
+\begin{definition}[$qj$ and $qJ$]\label{ch05:def:jshift}
+$\mathtt{jShift} = E_4^3\cdot(\Delta/q)^{-1}$ and $\mathtt{JShift} = \mathtt{jShift} - 744q$. If $j =
+\sum_{n\ge-1}c(n)q^n$, then $[q^n]\mathtt{jShift} = c(n-1)$: $\mathtt{jShift}$ is $q\cdot j$ and
+$\mathtt{JShift}$ is $q\cdot J$.
+\end{definition}
+\noindent File \leanpath{VOA/Modularity/JFunction.lean}.
+\begin{leancode}
+noncomputable def jShift : PowerSeries ℂ :=
+  E4Series ^ 3 * ((deltaOverQUnit⁻¹ : (PowerSeries ℂ)ˣ) : PowerSeries ℂ)
+
+noncomputable def JShift : PowerSeries ℂ := jShift - (744 : ℂ) • PowerSeries.X
+\end{leancode}
+\begin{dictionary}
+\textbf{The index shift is the one convention to remember in this chapter.} $[q^n]\mathtt{JShift}$ is
+the coefficient of $q^{n-1}$ in $J$:
+\begin{center}
+\begin{tabular}{lcccccc}
+\toprule
+$n$ & $0$ & $1$ & $2$ & $3$ & $4$ & $5$\\
+\midrule
+$[q^n]\mathtt{JShift}$ & $1$ & $0$ & $196884$ & $21493760$ & $864299970$ & $20245856256$\\
+coefficient of $J$ at & $q^{-1}$ & $q^0$ & $q^1$ & $q^2$ & $q^3$ & $q^4$\\
+\bottomrule
+\end{tabular}
+\end{center}
+(the first three entries are Lean theorems; all six were recomputed independently in exact integer
+arithmetic for this chapter). So ``$\dim\Vnat_n = [q^n]\mathtt{JShift}$ for all $n$'' is the textbook
+``$\sum_n\dim\Vnat_n\,q^{n-1} = J$'', i.e.\ $\tr_{\Vnat}q^{L_0 - 1} = J(q)$, the shift $-c/24 = -1$
+being absorbed. \emph{Is it the right $j$?} The definition is the formal transcription of $j =
+E_4^3/\Delta = q^{-1}E_4^3(\Delta/q)^{-1}$. That it is the $q$-expansion of Klein's analytic $j$ follows
+on paper from \lean{qExpansion_E₄} and \lean{qExpansion_discriminant} (Section~\ref{ch05:sec:delta}), and
+the identification is a Lean theorem: in \leanpath{VOA/Moonshine/JAnalyticQExpansion.lean},
+\lean{qExpansion_qJ} states \lean{qExpansion 1 qJ = JShift}, where \lean{qJ} is $q\,(j(z)-744)$ built from
+\lean{VOA.jInvariant}, and \lean{hasSum_JShift} states that for every $z\in\chfiveH$ the series \lean{JShift}
+converges to $q\,(j(z)-744)$, $q=e^{2\pi iz}$ (\lean{hasSum_JShift_laurent} gives the Laurent form). The statements of
+this chapter, and the final theorem of Chapter~\ref{ch:14}, use only the formal series, so this is a companion
+result, not a dependency: ``graded dimension $=J$'' means
+equality of formal $q$-expansions.
+\emph{Could \lean{JShift} be degenerate?} No: it is a concrete series with proved coefficients, so a
+theorem equating a dimension generating function with it has content at every coefficient.
+\end{dictionary}
+
+\begin{physics}
+$qj$ and $qJ$ are the partition functions with the Casimir shift $q^{-c/24}=q^{-1}$ absorbed: $\sum_n\dim V_n\,q^{n}=q\,Z(\tau)$ when $Z=\tr q^{L_0-1}$. Subtracting $744q$ removes the constant term of $j$, i.e.\ the number of weight-one states; $J=j-744$ is therefore the partition function of a $c=24$ theory with no currents, the Monster CFT. The coefficients $1,0,196884,21493760$ are the dimensions of the weight $0,1,2,3$ spaces of $V^\natural$; $196884=1+196883$ under the Monster (a known fact, not proved here).
+\end{physics}
+
+\begin{proposition}[First coefficients]\label{ch05:prop:jcoeffs}
+$[q^0]\,qj = [q^0]\,qJ = 1$; $qJ + 744q = qj$; and $[q^2]\,qj = [q^2]\,qJ = 196884$.
+\end{proposition}
+\noindent File \leanpath{VOA/Modularity/JFunction.lean}.
+\begin{leancode}
+@[simp] theorem constantCoeff_jShift : PowerSeries.constantCoeff jShift = 1
+@[simp] theorem constantCoeff_JShift : PowerSeries.constantCoeff JShift = 1
+theorem JShift_add : JShift + (744 : ℂ) • PowerSeries.X = jShift
+theorem coeff_two_jShift : PowerSeries.coeff (R := ℂ) 2 jShift = 196884
+theorem coeff_two_JShift : PowerSeries.coeff (R := ℂ) 2 JShift = 196884
+\end{leancode}
+
+\begin{physics}
+The first coefficients read: one vacuum, no weight-one states ($V^\natural_1=0$, no currents, so no continuous symmetry), and $196884$ states at weight $2$, which decompose as $1+196883$ under the Monster (the trivial representation plus the smallest nontrivial one; quoted as a fact, not proved here). The weight-two space is the Griess algebra, containing the stress tensor $L_{-2}\mathbf 1$ as the singlet.
+\end{physics}
+
+\begin{example}[The Moonshine coefficient by hand]\label{ch05:ex:196884}
+From the coefficients of $E_4$ and $[q^2](fg) = f_0g_2 + f_1g_1 + f_2g_0$:
+\begin{align*}
+  E_4^2 &= 1 + 480q + (2\cdot2160 + 240^2)q^2 + \cdots = 1 + 480q + 61920q^2+\cdots,\\
+  E_4^3 &= 1 + 720q + (61920 + 480\cdot240 + 2160)q^2+\cdots = 1 + 720q + 179280q^2 + \cdots.
+\end{align*}
+Similarly $E_6^2 = 1 - 1008q + (2\cdot(-16632) + 504^2)q^2+\cdots = 1 - 1008q + 220752q^2+\cdots$, so
+$[q^2](E_4^3 - E_6^2) = 179280 - 220752 = -41472 = -24\cdot1728$. With the $q^3$ coefficients
+$16954560 - 16519104 = 435456 = 252\cdot1728$ this gives $\Delta = q - 24q^2 + 252q^3+\cdots$ and $\Delta/q
+= 1 - 24q + 252q^2+\cdots$. Inverting $u = \Delta/q$ term by term from $u\cdot u^{-1} = 1$:
+\begin{equation*}
+  (\Delta/q)^{-1} = 1 + 24q + (24^2 - 252)q^2 + \cdots = 1 + 24q + 324q^2 + \cdots .
+\end{equation*}
+Finally $[q^2]\bigl(E_4^3(\Delta/q)^{-1}\bigr) = 324 + 720\cdot24 + 179280 = 324 + 17280 + 179280 =
+196884$, and $[q^1] = 24 + 720 = 744$ is the constant term of $j$. The numbers $1, 24, 324$ are the
+dimensions of the weight $0,1,2$ parts of the Fock space of $24$ free bosons --- not a coincidence,
+since $(\Delta/q)^{-1} = \prod(1-q^n)^{-24}$ (Theorem~\ref{ch05:thm:deltaprod}).
+\end{example}
+
+\begin{status}
+Section~\ref{ch05:sec:formal} is proved without hypotheses (\texttt{\#print axioms} of
+\lean{coeff_two_JShift}: the standard three). The coefficient $[q^3]\mathtt{JShift} = 21493760$ is
+\emph{not} computed in \leanpath{JFunction.lean}; it is obtained in the opposite direction, from the
+dimension of the weight-$3$ space and the main theorem (\lean{coeff_three_JShift},
+Section~\ref{ch05:sec:main}).
+\end{status}
+
+\section{The graded dimensions of the two sectors}\label{ch05:sec:twisted}
+
+FLM's moonshine module is, as a graded vector space, $\Vnat = V_\Leech^+ \oplus (V_\Leech^T)^+$: the
+$\theta$-fixed part of the Leech lattice VOA plus the $\theta$-fixed part of the $\theta$-twisted sector
+$V_\Leech^T = S[\theta]\otimes T$. This section counts both.
+
+\subsection{The untwisted sector, recalled}\label{ch05:sec:untwisted}
+
+The untwisted sector was treated in Chapters~\ref{ch:03} and~\ref{ch:04}; we recall exactly what is
+used here. For an even positive-definite lattice $L$ of rank $r$, the lattice VOA $V_L$ is spanned by
+states $h_{a_1}(-n_1)\cdots h_{a_k}(-n_k)\otimes e^\alpha$ ($n_i\ge1$, $\alpha\in L$) of weight $\sum n_i +
+\tfrac12\langle\alpha,\alpha\rangle$. The weight-$w$ part of the Fock factor has dimension $P(r,w)$,
+the number of $r$-coloured partitions of $w$, with generating function
+\begin{equation}\label{ch05:eq:P}
+  P := \sum_{w\ge0}P(r,w)q^w = \prod_{n\ge1}(1-q^n)^{-r}.
+\end{equation}
+In the library $P(r,w)$ is \lean{LatGen.fockCount r w} (Chapter~\ref{ch:04}, section on the graded dimension of $V_L$), and
+\begin{leancode}
+noncomputable def fockGenFun (r : ℕ) : PowerSeries ℂ := PowerSeries.mk fun w => (fockCount r w : ℂ)
+
+theorem hasProd_fockGenFun (r : ℕ) :
+    HasProd (fun i : ℕ => ((1 - (PowerSeries.X : ℂ⟦X⟧) ^ (i + 1))⁻¹) ^ r) (fockGenFun r)
+\end{leancode}
+(\leanpath{VOA/Moonshine/LatticeGradedDim.lean}, namespace \lean{VOA.LatGen}): this is
+\eqref{ch05:eq:P}, the product running over $n = i+1\ge1$. The involution $\theta$ acts on the Fock
+factor of the $\alpha = 0$ sector as $(-1)^{\#\text{oscillators}}$; the corresponding signed count
+$P^+(r,w) - P^-(r,w)$ (even minus odd number of oscillators) is \lean{LatGen.fockSigned r w}, with
+generating function
+\begin{equation}\label{ch05:eq:B}
+  B := \sum_w\bigl(P^+ - P^-\bigr)(r,w)\,q^w = \prod_{n\ge1}(1+q^n)^{-r}
+\end{equation}
+(\lean{LatGen.fockSignedGenFun r}, \lean{LatGen.hasProd_fockSignedGenFun}): giving each oscillator the
+sign $-1$ replaces $(1-q^n)^{-1} = \sum_k q^{nk}$ by $\sum_k(-1)^kq^{nk} = (1+q^n)^{-1}$. The two theorems
+of Chapter~\ref{ch:04} that turn dimensions into these series are
+\begin{align}
+  \dim(V_L)_k &= \sum_{n=0}^k r_L(2n)\,P(r,k-n) = [q^k]\bigl(\Theta_L\cdot P\bigr),
+    \label{ch05:eq:VL}\\
+  2\dim(V_L^+)_k &= \dim(V_L)_k + \bigl(P^+-P^-\bigr)(r,k) = [q^k]\bigl(\Theta_L P + B\bigr),
+    \label{ch05:eq:VLplus}
+\end{align}
+(\lean{LatGen.finrank_gradingLatGen_eq_sum_theta}, \lean{LatGen.two_mul_finrank_plusK_eq_signed};
+both proved in Chapter~\ref{ch:04}). The first holds because $(V_L)_k =
+\bigoplus_\alpha F_{k-\langle\alpha,\alpha\rangle/2}\otimes e^\alpha$ with $F_w$ the weight-$w$ part of the Fock
+factor; the second because $\theta$ swaps $e^{\alpha}$ and $e^{-\alpha}$ for $\alpha\ne0$ (trace $0$) and
+acts on the $\alpha = 0$ sector by $(-1)^{\#\text{oscillators}}$, together with $\dim V^+ = \tfrac12(\dim V +
+\tr\theta)$ for an involution. For $L = \Leech$, $V_\Leech^+$ is \lean{VOA.Moonshine.leechVOAPlus}, the
+fixed-point subVOA of $\theta$, and \lean{leechVOAPlus.grading n} is its weight-$n$ subspace (a
+\lean{Submodule ℂ} of its carrier); both are defined in Chapter~\ref{ch:04} (section on the fixed-point algebra). That chapter also proves $(V_\Leech^+)_1 = 0$
+(\lean{leechVOAPlus_grading_one}), $\dim(V_\Leech^+)_2 = 98580$, $\dim(V_\Leech^+)_3 = 10745856$.
+
+\begin{example}[$\dim(V_\Leech^+)_2$ and $\dim(V_\Leech^+)_3$]\label{ch05:ex:vplus}
+With $\Theta_\Leech = 1 + 196560q^2+16773120q^3+\cdots$, $P = 1 + 24q + 324q^2 + 3200q^3+\cdots$ and $B =
+1 - 24q + 276q^2 - 2048q^3+\cdots$:
+\begin{align*}
+  \dim(V_\Leech)_2 &= 324 + 196560 = 196884, &
+  \dim(V_\Leech^+)_2 &= \tfrac12(196884 + 276) = 98580,\\
+  \dim(V_\Leech)_3 &= 3200 + 196560\cdot24 + 16773120 = 21493760,\\
+  \dim(V_\Leech^+)_3 &= \tfrac12(21493760 - 2048) = 10745856.
+\end{align*}
+Observe $\dim(V_\Leech)_n = [q^n](qj) - 720\,[q^n]q$ in these cases; we shall prove $\Theta_\Leech P =
+q(j-720)$, i.e.\ the character of $V_\Leech$ is $j - 720 = J + 24$, the $24$ counting the currents
+$h_a(-1)\mathbf 1$.
+\end{example}
+
+\subsection{The twisted Fock space \texorpdfstring{$S[\theta]$}{S[theta]}}
+
+The $\theta$-twisted Heisenberg algebra has modes $h_a(m)$ with $m\in\tfrac12+\Z$; its Fock space is the
+polynomial algebra on the creation modes $h_a(-n-\tfrac12)$, $n\ge0$. The operators (built in
+Chapters~\ref{ch:06}--\ref{ch:07}) play no role in this chapter; only the \emph{space}, its grading
+and its involution matter.
+
+\begin{definition}[Twisted Fock space, doubled weight, $\theta_S$]\label{ch05:def:fockT}
+Let $S[\theta]_r = \C[x_{n,a} : n\in\N,\ a\in\{0,\dots,r-1\}]$, the variable $x_{n,a}$ standing for
+$h_a(-n-\tfrac12)$. Give $x_{n,a}$ the \emph{doubled weight} $2n+1$, and let $S[\theta]_{r,(d)}$ be the
+span of the monomials of total doubled weight $d$. The $L_0$-eigenvalue on $S[\theta]_{r,(d)}$ is
+$\operatorname{level}_r(d) = d/2 + r/16$, the $r/16$ being the vacuum energy of $r$ twisted bosons.
+Let $\theta_S$ be the algebra automorphism $x_{n,a}\mapsto -x_{n,a}$.
+\end{definition}
+\begin{leancode}
+abbrev FockT (r : ℕ) : Type := MvPolynomial (ℕ × Fin r) ℂ
+
+def wT {r : ℕ} : ℕ × Fin r → ℕ := fun v => 2 * v.1 + 1
+
+def gradingT (r d : ℕ) : Submodule ℂ (FockT r) := weightedHomogeneousSubmodule ℂ wT d
+
+def levelT (r d : ℕ) : ℚ := (d : ℚ) / 2 + (r : ℚ) / 16
+
+noncomputable def thetaHom (r : ℕ) : FockT r →ₐ[ℂ] FockT r := aeval fun v => -X v
+
+noncomputable def thetaT (r : ℕ) : FockT r ≃ₐ[ℂ] FockT r :=
+  AlgEquiv.ofAlgHom (thetaHom r) (thetaHom r) (thetaHom_comp_self r) (thetaHom_comp_self r)
+\end{leancode}
+(\leanpath{VOA/Moonshine/TwistedHeisenberg.lean}, namespace \lean{VOA.TwistedHeisenberg}.)
+\begin{dictionary}
+\lean{MvPolynomial (ℕ × Fin r) ℂ} is the polynomial ring over $\C$ in variables indexed by pairs $(n,a)$,
+$n\in\N$, $a\in$ \lean{Fin r} $=\{0,\dots,r-1\}$. \lean{weightedHomogeneousSubmodule ℂ wT d} is the span
+of monomials whose weight, computed with \lean{wT}$(n,a) = 2n+1$, is $d$: this is $S[\theta]_{r,(d)}$.
+Doubling the weight keeps it in $\N$; the true $L_0$ is recovered by \lean{levelT}, a rational number.
+\lean{aeval fun v => -X v} is the algebra map sending each variable \lean{X v} to $-$\lean{X v};
+\lean{thetaT} packages it as an algebra automorphism ($\theta_S^2 = 1$ is \lean{thetaHom_comp_self}).
+Every definition is the textbook one; the only modelling choice is to take the polynomial ring as
+the Fock space, which for counting dimensions is harmless (the monomials are the standard basis).
+\end{dictionary}
+
+\begin{physics}
+$S[\theta]$ is the Fock space of $24$ bosons with half-integral modes: the twisted boundary condition $X(e^{2\pi i}z)=-X(z)$ replaces the integer oscillators $\alpha_{-n}$ by $\alpha_{-n-1/2}$. The shift of the vacuum energy to $r/16$ (here $24/16=3/2$) is the Casimir energy of $r$ antiperiodic bosons, a $+1/16$ per boson relative to the periodic ones. $\theta_S$, the sign flip $x\mapsto-x$, is the $\Z/2$ symmetry $X\mapsto-X$ being orbifolded.
+\end{physics}
+
+\begin{definition}[Twisted count]\label{ch05:def:twcount}
+$P_T(r,d)$ is the number of monomials of doubled weight $d$, equivalently the number of $r$-coloured
+partitions of $d$ into odd parts.
+\end{definition}
+\begin{leancode}
+def degSetT (r d : ℕ) : Set ((ℕ × Fin r) →₀ ℕ) := {m | Finsupp.weight wT m = d}
+
+noncomputable def twCount (r d : ℕ) : ℕ := (degSetT r d).ncard
+
+theorem finrank_gradingT_eq_twCount (r d : ℕ) : finrank ℂ (gradingT r d) = twCount r d
+\end{leancode}
+(\lean{degSetT} in \leanpath{TwistedHeisenberg.lean}; the rest in
+\leanpath{VOA/Moonshine/TwistedSectorDim.lean}, namespace \lean{VOA.TwistedSector}.)
+\begin{dictionary}
+A monomial is an exponent vector \lean{m : (ℕ × Fin r) →₀ ℕ} (finitely supported, giving the power of
+each variable), and \lean{Finsupp.weight wT m} $= \sum_{(n,a)}(2n+1)\,m(n,a)$. \lean{Set.ncard} is the
+cardinality of a set ($0$ for infinite sets; this set is finite, so it is the honest size).
+\lean{finrank ℂ} is the dimension of a finite-dimensional complex vector space, here of the subspace
+\lean{gradingT r d} regarded as a vector space. The theorem says $\dim S[\theta]_{r,(d)} = P_T(r,d)$,
+because monomials form a basis.
+\end{dictionary}
+
+\begin{physics}
+$P_T(r,d)$ is the degeneracy of the twisted oscillator spectrum: states built by acting with the half-integral creation operators of $r$ antiperiodic bosons, with $d$ twice the energy above the twisted ground state. Equivalently it counts coloured partitions into odd parts, the combinatorial signature of antiperiodic boundary conditions.
+\end{physics}
+
+The library also proves $P_T(r,0) = 1$, $P_T(r,1) = r$, $P_T(r,2) = \binom{r+1}2$, $P_T(r,3) = r +
+\binom{r+2}3$ (\lean{twCount_zero}, \lean{twCount_one}, \lean{twCount_two}, \lean{twCount_three}),
+and that one colour gives the partitions into odd parts (\lean{twCount_one_colour}). For $r = 24$:
+$P_T(24,1) = 24$ (states $h_a(-\tfrac12)$) and $P_T(24,3) = 24 + \binom{26}{3} = 2624$ (states
+$h_a(-\tfrac32)$ and $h_a(-\tfrac12)h_b(-\tfrac12) h_c(-\tfrac12)$, $a\le b\le c$), the latter as
+\lean{VOA.Moonshine.twCount_24_three}.
+
+\begin{theorem}[Generating function of the twisted Fock space]\label{ch05:thm:twgen}
+With $x = q^{1/2}$, in $\C[[x]]$,
+\begin{equation*}
+  \sum_{d\ge0}P_T(r,d)\,x^d = \prod_{i\ge0}\bigl(1 - x^{2i+1}\bigr)^{-r}
+  \quad\Bigl(= \prod_{n\ge1}\bigl(1-q^{n-\frac12}\bigr)^{-r}\Bigr).
+\end{equation*}
+\end{theorem}
+\begin{leancode}
+noncomputable def twGenFun (r : ℕ) : PowerSeries ℂ := PowerSeries.mk fun d => (twCount r d : ℂ)
+
+theorem hasProd_twGenFun (r : ℕ) :
+    HasProd (fun i : ℕ => ((1 - (PowerSeries.X : ℂ⟦X⟧) ^ (2 * i + 1))⁻¹) ^ r) (twGenFun r)
+\end{leancode}
+\begin{dictionary}
+Here \lean{X} is $x = q^{1/2}$, not $q$: the doubled weight is the exponent. \lean{HasProd} is the
+coefficientwise infinite product (Section~\ref{ch05:sec:formal}); \lean{(1 - X^(2i+1))⁻¹} is the
+geometric series $\sum_kx^{(2i+1)k}$ (constant term $1$, so a genuine inverse). No hypotheses; the
+statement is the textbook one for every rank $r$.
+\end{dictionary}
+
+\begin{physics}
+This is the partition function of $r$ free bosons with antiperiodic boundary conditions: $\prod_{n\ge1}(1-q^{n-1/2})^{-r}$, one factor per half-integral mode. Compare $\prod(1-q^n)^{-r}$ for periodic bosons; this is the oscillator part of the twisted-sector character. The overall energy shift ($q^{r/16}$) is supplied separately by the definition of $\operatorname{level}_r$.
+\end{physics}
+\noindent\emph{Proof.} For one colour, expanding $\prod_i\sum_k x^{(2i+1)k}$ and collecting $x^d$ counts
+the ways of writing $d$ as a sum of odd parts with multiplicities. For $r$ colours, a monomial is an
+$r$-tuple of one-colour monomials and doubled weights add, so the generating function is the $r$-th
+power.
+
+\subsection{The twisted sector \texorpdfstring{$S[\theta]\otimes T$}{S[theta] (x) T} and its fixed part}
+
+The twisted sector of the lattice theory is $V_L^T = S[\theta]\otimes T$, where $T$ is the irreducible
+module of an extraspecial $2$-group of order $2^{1+r}$; for $\Leech$, $\dim T = 2^{12}$. The
+construction of $T$ is the subject of Chapter~\ref{ch:06}. In the general statements below $T$ is an
+\emph{arbitrary} complex vector space; for $\Leech$ only its dimension is used:
+\begin{leancode}
+noncomputable abbrev leechT : Type := ExtraT leech leech_even leech_isUnit_det_gramMat
+
+theorem finrank_leechT : Module.finrank ℂ leechT = 4096
+\end{leancode}
+(\leanpath{VOA/Moonshine/ExtraspecialModule.lean}, namespace \lean{VOA.Moonshine}; \lean{ExtraT L …}
+is the simple module of the twisted group algebra $\C^\varepsilon[L/2L]$, Chapter~\ref{ch:06}.)
+FLM let $\theta$ act on the twisted sector as $\theta_S\otimes(-1)$. Since $L_0$ acts on the first
+factor only, the grading is $S[\theta]_{(d)}\otimes T$.
+
+\begin{definition}[Grading, weight spaces, involution and fixed part]\label{ch05:def:tw}
+For a complex vector space $T$, $r,d\in\N$ and $w\in\Q$:
+\begin{align*}
+  (S[\theta]\otimes T)_{(d)} &= S[\theta]_{r,(d)}\otimes T \ \subseteq S[\theta]_r\otimes T,\qquad
+  (S[\theta]\otimes T)_{w} = \textstyle\sum_{d\,:\,\operatorname{level}_r(d) = w}(S[\theta]\otimes T)_{(d)},\\
+  \theta_{\mathrm{tw}} &= \theta_S\otimes(-\mathrm{id}_T),\qquad
+  (S[\theta]\otimes T)^+ = \ker(\theta_{\mathrm{tw}} - 1).
+\end{align*}
+\end{definition}
+\begin{leancode}
+noncomputable def twGrading (d : ℕ) : Submodule ℂ (FockT r ⊗[ℂ] T) :=
+  LinearMap.range ((gradingT r d).subtype.rTensor T)
+
+noncomputable def twWeight (q : ℚ) : Submodule ℂ (FockT r ⊗[ℂ] T) :=
+  ⨆ (d : ℕ) (_ : levelT r d = q), twGrading r T d
+
+noncomputable def twTheta : Module.End ℂ (FockT r ⊗[ℂ] T) :=
+  TensorProduct.map (thetaT r).toLinearMap (-LinearMap.id)
+
+noncomputable def twFixed : Submodule ℂ (FockT r ⊗[ℂ] T) :=
+  LinearMap.ker (twTheta r T - LinearMap.id)
+\end{leancode}
+(\leanpath{TwistedSectorDim.lean}, in a section with \lean{variable (r : ℕ) (T : Type*)
+[AddCommGroup T] [Module ℂ T]}, i.e.\ ``$T$ is a complex vector space''.)
+\begin{dictionary}
+\textbf{The letter $q$.} In \lean{twWeight r T q} the argument \lean{q : ℚ} is an $L_0$-\emph{eigenvalue}
+(written $w$ above), not the nome. \lean{⊗[ℂ]} is the tensor product over $\C$.
+\lean{(gradingT r d).subtype} is the inclusion $S_{(d)}\hookrightarrow S$; \lean{.rTensor T} tensors it
+with $\mathrm{id}_T$; its \lean{range} is the image $S_{(d)}\otimes T$. \lean{⨆ (d : ℕ) (_ : levelT r d
+= q)} is the sum of subspaces over those $d$ with $\operatorname{level}_r(d) = w$ --- a single $d$ or
+none (then the sum is \lean{⊥}, the zero subspace), since $\operatorname{level}_r$ is injective.
+\lean{TensorProduct.map f g} is $f\otimes g$, \lean{Module.End ℂ V} the linear endomorphisms of $V$,
+\lean{LinearMap.ker} the kernel. No finite-dimensionality of $T$ is assumed.
+
+\emph{Is \lean{twWeight} the true $L_0$-grading?} Here it is \emph{defined} as oscillator weight plus
+$r/16$. That it coincides with the $L_0$-eigenspaces of the twisted module constructed later (hence is
+the grading of $\Vnat$) is proved in Chapter~\ref{ch:08}; see Section~\ref{ch05:sec:carrier}.
+\emph{Is the sign on $T$ right?} Yes, and it matters: see the warning below.
+\end{dictionary}
+
+\begin{physics}
+The twisted sector of the orbifold is $S[\theta]\otimes T$: the oscillators come from the antiperiodic bosons, while $T$ is the space of twisted ground states (the zero-mode representation of the extraspecial $2$-group), of dimension $2^{12}$ for the Leech lattice. The orbifold projection keeps the $\theta$-invariant states, with $\theta=\theta_S\otimes(-1)$; the sign on $T$ is chosen so that the surviving states have integral energy. Taking the fixed part is the standard orbifold step of the construction.
+\end{physics}
+
+\begin{proposition}[$\theta_{\mathrm{tw}}$ on a graded piece]\label{ch05:prop:twtheta}
+On $(S[\theta]\otimes T)_{(d)}$, $\theta_{\mathrm{tw}} = (-1)^{d+1}$. Consequently
+$(S[\theta]\otimes T)^+ = \sum_{d\text{ odd}}(S[\theta]\otimes T)_{(d)}$, and the fixed part of
+$(S[\theta]\otimes T)_{(d)}$ has dimension $P_T(r,d)\dim T$ for $d$ odd and $0$ for $d$ even.
+\end{proposition}
+\begin{leancode}
+theorem twTheta_of_mem_twGrading {d : ℕ} {x : FockT r ⊗[ℂ] T} (hx : x ∈ twGrading r T d) :
+    twTheta r T x = (-1 : ℂ) ^ (d + 1) • x
+
+theorem twFixed_eq_iSup_odd : twFixed r T = ⨆ (d : ℕ) (_ : Odd d), twGrading r T d
+
+theorem finrank_twFixed_inf_twGrading (d : ℕ) :
+    finrank ℂ (twFixed r T ⊓ twGrading r T d : Submodule ℂ (FockT r ⊗[ℂ] T))
+      = if Odd d then twCount r d * finrank ℂ T else 0
+\end{leancode}
+\begin{dictionary}
+The only hypothesis is \lean{hx}, membership in the $d$-th piece. \lean{⊓} is intersection of subspaces,
+and \lean{if … then … else} is the case split of the textbook statement. \lean{finrank ℂ T} is $\dim T$;
+Mathlib assigns \lean{finrank} $=0$ to infinite-dimensional spaces, and if $T$ were
+infinite-dimensional both sides would be $0$ for odd $d$ by that convention, so the statement hides no
+hypothesis and is meaningful for $T = $ \lean{leechT}.
+\end{dictionary}
+
+\begin{physics}
+The projection keeps only states with an odd number of half-integral oscillator quanta (odd doubled weight), because the twisted ground states are $\theta$-odd; physically, the orbifold projection is a $\Z/2$ gauging and the sign on the twisted ground state is a choice of discrete torsion, fixed by requiring integral energy. The count $P_T(r,d)\dim T$ is then the multiplicity of each surviving energy level.
+\end{physics}
+\noindent\emph{Proof.} A monomial of doubled weight $d = \sum(2n_i+1)$ has $d\equiv(\text{number of
+variables})\pmod 2$, so $\theta_S = (-1)^d$ on $S_{(d)}$, and the extra $-1$ on $T$ gives $(-1)^{d+1}$.
+Odd $d$ is fixed and even $d$ anti-fixed; since $1\ne-1$ in $\C$, the fixed space meets even pieces only
+in $0$, and a fixed vector, decomposed into its graded pieces, has only odd components. Finally
+$\dim(S_{(d)}\otimes T) = P_T(r,d)\dim T$.
+
+\begin{theorem}[Rank $24$: fixed $=$ integral weight, nothing below $2$]\label{ch05:thm:twfixedint}
+For $r = 24$ and any $T$: the fixed part is exactly the sum of the integer-weight eigenspaces; there
+are no fixed vectors of weight $<2$; and $\dim(S[\theta]\otimes T)^+_{n+2} = P_T(24,2n+1)\dim T$ for all
+$n\ge0$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/TwistedSectorDim.lean}.
+\begin{leancode}
+theorem twFixed_eq_iSup_int : twFixed 24 T = ⨆ n : ℤ, twWeight 24 T n
+
+theorem twFixed_inf_twWeight_of_lt_two {q : ℚ} (hq : q < 2) :
+    twFixed 24 T ⊓ twWeight 24 T q = ⊥
+
+theorem finrank_twFixed_inf_twWeight_24 (n : ℕ) :
+    finrank ℂ (twFixed 24 T ⊓ twWeight 24 T (((n : ℤ) + 2 : ℤ) : ℚ) :
+        Submodule ℂ (FockT 24 ⊗[ℂ] T))
+      = twCount 24 (2 * n + 1) * finrank ℂ T
+\end{leancode}
+\begin{dictionary}
+In \lean{⨆ n : ℤ, twWeight 24 T n} the integer $n$ is coerced to $\Q$. The only hypothesis,
+\lean{hq : q < 2}, is the intended one. \lean{(((n : ℤ) + 2 : ℤ) : ℚ)} is the rational number $n+2$
+written through $\Z$. All three statements are literal transcriptions, neither weaker nor stronger.
+\end{dictionary}
+
+\begin{physics}
+For $24$ twisted bosons the twisted ground state has energy $24/16=3/2$, and each half-integral oscillator adds a half-odd energy, so integral energies occur exactly at odd $d$. The orbifold projection therefore keeps the integral-spin states and removes the $3/2$ vacuum: the twisted sector contributes no state below weight $2$, the lowest being the $24\cdot2^{12}$ states $h_a(-\tfrac12)\otimes t$. This is the mechanism that makes $V^\natural$ integrally graded.
+\end{physics}
+\noindent\emph{Proof.} For $r = 24$, $\operatorname{level}(d) = (d+3)/2$, an integer iff $d$ is odd; combine
+with Proposition~\ref{ch05:prop:twtheta}. The smallest odd $d$ is $1$, of weight $2$; weights below $2$
+occur only for $d = 0$ (weight $3/2$), which is not fixed. With $d = 2n+1$ the weight is $n+2$.
+
+\begin{warning}
+\textbf{The sign of $\theta$ on $T$.}
+Both $\theta_S\otimes(+1)$ and $\theta_S\otimes(-1)$ are compatible with the twisted vertex operators
+(conjugation by $\pm1$ on $T$ is trivial). With the \emph{wrong} sign $+1$ the fixed part would be the
+even-$d$ part, of weights $\tfrac32+\Z$: the twisted vacua $1\otimes t$ of weight $3/2$ would survive and
+$\Vnat$ would not even be $\Z$-graded. FLM's $-1$ is singled out by integrality, and
+Theorem~\ref{ch05:thm:twfixedint} certifies that the library made that choice (the bookkeeping is also
+recorded in the docstring of \leanpath{VOA/Moonshine/TwistedPlus.lean}). Physically: the twisted ground
+state of $24$ twisted bosons has energy $24/16 = 3/2$, and the orbifold projection must keep only
+states of integral spin.
+\end{warning}
+
+\subsection{The Leech case: \texorpdfstring{$98304$}{98304} and \texorpdfstring{$10747904$}{10747904}}
+
+\begin{definition}
+$V_\Leech^T := S[\theta]_{24}\otimes T_\Leech$ as a vector space.
+\end{definition}
+\begin{leancode}
+abbrev leechTwistedSpace : Type := FockT 24 ⊗[ℂ] leechT
+\end{leancode}
+(namespace \lean{VOA.Moonshine}, file \leanpath{TwistedSectorDim.lean}.)
+
+\begin{physics}
+$V_\Leech^T$ is the $\theta$-twisted sector of the Leech lattice theory: the Hilbert space on a circle with the antiperiodic boundary condition $X\mapsto-X$, with a $2^{12}$-fold degenerate ground state. Together with $V_\Leech^+$ it supplies, by the orbifold construction, the full Hilbert space of the Monster CFT.
+\end{physics}
+
+\begin{theorem}[Twisted dimensions in weights $\le3$]\label{ch05:thm:tw23}
+$(V_\Leech^T)^+_0 = (V_\Leech^T)^+_1 = 0$, $\dim(V_\Leech^T)^+_2 = 24\cdot4096 = 98304$,
+$\dim(V_\Leech^T)^+_3 = 2624\cdot4096 = 10747904$. Consequently
+\begin{gather*}
+  \dim(V_\Leech^+)_2 + \dim(V_\Leech^T)^+_2 = 98580 + 98304 = 196884,\\
+  \dim(V_\Leech^+)_3 + \dim(V_\Leech^T)^+_3 = 10745856 + 10747904 = 21493760 .
+\end{gather*}
+\end{theorem}
+\begin{leancode}
+theorem leechTwisted_finrank_fixed_two :
+    finrank ℂ (twFixed 24 leechT ⊓ twWeight 24 leechT 2 : Submodule ℂ leechTwistedSpace)
+      = 98304
+
+theorem leechTwisted_finrank_fixed_three :
+    finrank ℂ (twFixed 24 leechT ⊓ twWeight 24 leechT 3 : Submodule ℂ leechTwistedSpace)
+      = 10747904
+
+theorem leechTwisted_fixed_weight_zero_one :
+    twFixed 24 leechT ⊓ twWeight 24 leechT 0 = ⊥ ∧ twFixed 24 leechT ⊓ twWeight 24 leechT 1 = ⊥
+
+theorem finrank_sectors_two :
+    finrank ℂ (leechVOAPlus.grading 2)
+      + finrank ℂ (twFixed 24 leechT ⊓ twWeight 24 leechT 2 : Submodule ℂ leechTwistedSpace)
+      = 196884
+
+theorem finrank_sectors_three :
+    finrank ℂ (leechVOAPlus.grading 3)
+      + finrank ℂ (twFixed 24 leechT ⊓ twWeight 24 leechT 3 : Submodule ℂ leechTwistedSpace)
+      = 21493760
+\end{leancode}
+\begin{dictionary}
+\lean{leechVOAPlus.grading 2} is $(V_\Leech^+)_2$ (here \lean{2 : ℤ}); the second summand is
+$(V_\Leech^T)^+_2$ in the sense of Definition~\ref{ch05:def:tw} (here \lean{2 : ℚ}). No hypotheses.
+\emph{What these do not say:} they are sums of dimensions of two separately defined spaces, not
+dimensions of a constructed $\Vnat$; that reinterpretation is Section~\ref{ch05:sec:carrier}.
+\emph{How could they be vacuous?} Only by a mis-definition of a summand (e.g.\ the wrong sign above,
+which gives $0$ in weight $2$); the correct, nonzero values are themselves the check.
+\end{dictionary}
+
+\begin{physics}
+At weight $2$ the untwisted $\theta$-even states ($98580$) and the twisted states ($24\cdot2^{12}=98304$, coming from the $2^{12}$ twisted ground states times $24$ half-integral oscillators) add up to $196884$, which equals $1+196883$ under the Monster; this is a fact quoted from the literature, not proved here. The weight-$3$ count $21493760=1+196883+21296876$ similarly matches the Thompson observation. Both are consistency checks that the orbifold sectors together reproduce the Monster CFT spectrum; the identification of the Monster action is outside this chapter.
+\end{physics}
+\noindent\emph{Proof.} Theorem~\ref{ch05:thm:twfixedint} with $n = 0,1$, $P_T(24,1) = 24$, $P_T(24,3) =
+2624$, $\dim T = 4096$, plus Example~\ref{ch05:ex:vplus}.
+
+\begin{remark}[The Griess algebra, counted]
+The $196884$ weight-$2$ states are: in $V_\Leech^+$, the $300 = \binom{25}{2}$ symmetric products
+$h_a(-1)h_b(-1)\mathbf 1$ (the $24$ states $h_a(-2)\mathbf1$ are $\theta$-odd and discarded) and the
+$98280 = \tfrac12\cdot196560$ combinations $e^\alpha + e^{-\alpha}$, $\langle\alpha,\alpha\rangle = 4$, for
+$300 + 98280 = 98580$; in the twisted sector, the $24\cdot4096 = 98304$ states $h_a(-\tfrac12)\otimes t$.
+The decomposition $196884 = 1 + 196883$ under the Monster is invisible here.
+\end{remark}
+
+\begin{status}
+All theorems of Section~\ref{ch05:sec:twisted} are unconditional; \texttt{\#print axioms} of
+\lean{hasProd_twGenFun} and \lean{finrank_sectors_three} (re-run for this chapter) is the standard
+three.
+\end{status}
+
+\section{The character as one power series, and the reduction to three identities}\label{ch05:sec:series}
+
+\subsection{The two-sector series}
+
+\begin{definition}[Sector series, Leech theta series, odd twisted series]\label{ch05:def:sector}
+In $\C[[q]]$ define
+\begin{align*}
+  \chi &= \sum_{n\ge0}\Bigl(\dim(V_\Leech^+)_n + \dim(V_\Leech^T)^+_n\Bigr)q^n,\\
+  \Theta_\Leech &= \sum_{n\ge0} r_\Leech(2n)\,q^n,\qquad
+  T_{\mathrm{odd}} = \sum_{n\ge0}P_T(24,2n+1)\,q^n .
+\end{align*}
+\end{definition}
+\begin{leancode}
+noncomputable def sectorSeries : PowerSeries ℂ :=
+  PowerSeries.mk fun n =>
+    ((finrank ℂ (leechVOAPlus.grading (n : ℤ))
+      + finrank ℂ (twFixed 24 leechT ⊓ twWeight 24 leechT ((n : ℤ) : ℚ) :
+          Submodule ℂ leechTwistedSpace) : ℕ) : ℂ)
+
+noncomputable def leechThetaSeries : PowerSeries ℂ :=
+  PowerSeries.mk fun n => ((normEq leech leech_posDef (2 * n)).card : ℂ)
+
+noncomputable def twOddSeries : PowerSeries ℂ :=
+  PowerSeries.mk fun n => (twCount 24 (2 * n + 1) : ℂ)
+\end{leancode}
+(\leanpath{VOA/Moonshine/CharacterSeries.lean}, namespace \lean{VOA.Moonshine}.)
+\begin{dictionary}
+In \lean{sectorSeries} the $n$-th coefficient is the natural number $\dim(V_\Leech^+)_n +
+\dim(V_\Leech^T)^+_n$ cast to $\C$; the weight $n$ enters the first summand as the integer \lean{(n :
+ℤ)} and the second as the rational \lean{((n : ℤ) : ℚ)}, because the two gradings are indexed by $\Z$
+and $\Q$ respectively. Both dimensions are finite (the first by the VOA axioms, the second by
+Theorem~\ref{ch05:thm:twfixedint}), so \lean{finrank} is the honest dimension. \lean{normEq leech
+leech_posDef (2 * n)} is the finite set of Leech vectors of norm $2n$ (Chapter~\ref{ch:04}), so its
+\lean{card} is $r_\Leech(2n)$; the argument \lean{leech_posDef} is a proof of positive-definiteness,
+needed for finiteness, not a hypothesis of anything. \lean{twCount 24 (2n+1)} is $P_T(24,2n+1)$. The
+variable $q$ in $T_{\mathrm{odd}}$ is the honest $q$: $T_{\mathrm{odd}}$ compresses the odd part of the
+twisted generating function, $x^3\cdot\sum_n P_T(24,2n+1)x^{2n+1} = q^2T_{\mathrm{odd}}(q)$.
+\end{dictionary}
+
+\begin{physics}
+$\chi=\sum_n\dim V^\natural_n\,q^n$ is $q\,Z(\tau)$ with $Z(\tau)=\tr_{V^\natural}q^{L_0-1}$, the torus partition function of the chiral CFT with $c=24$. The two summands are the untwisted-sector contribution (projected onto $\theta$-invariant states) and the twisted-sector one, i.e.\ the orbifold partition function written as a sum over sectors. $\Theta_\Leech$ is the sum over momenta $\alpha$ in the Leech lattice, $q^{\alpha^2/2}$, and $T_{\mathrm{odd}}$ is the twisted oscillator count at integral energies.
+\end{physics}
+
+Combining \eqref{ch05:eq:VLplus} with Theorem~\ref{ch05:thm:twfixedint} gives the character as a
+combination of products.
+
+\begin{theorem}[The two-sector series as products]\label{ch05:thm:sectoreq}
+$\chi = \tfrac12\bigl(\Theta_\Leech\cdot P + B\bigr) + 4096\,q^2\,T_{\mathrm{odd}}$, where $P =
+\prod(1-q^n)^{-24}$ and $B = \prod(1+q^n)^{-24}$.
+\end{theorem}
+\begin{leancode}
+theorem sectorSeries_eq :
+    sectorSeries
+      = (2 : ℂ)⁻¹ • (leechThetaSeries * fockGenFun 24 + fockSignedGenFun 24)
+        + (4096 : ℂ) • (X ^ 2 * twOddSeries)
+\end{leancode}
+\begin{dictionary}
+\lean{fockGenFun 24} and \lean{fockSignedGenFun 24} are $P$ and $B$ for $r = 24$
+(Section~\ref{ch05:sec:untwisted}); \lean{X ^ 2 * twOddSeries} is $q^2T_{\mathrm{odd}}$. No hypotheses.
+Same as the textbook statement.
+\end{dictionary}
+
+\begin{physics}
+This is the orbifold partition function in the form $\tfrac12(Z_{++}+Z_{+-}+Z_{-+}+Z_{--})$: the untwisted sector with and without the $\theta$ insertion gives $\tfrac12(\Theta_\Leech P+B)$ (momentum sum times oscillators, and the signed trace, which only sees the $\alpha=0$ momentum sector since $\theta$ swaps $\alpha$ and $-\alpha$), and the twisted sector, projected to integral spins, gives $2^{12}q^2T_{\mathrm{odd}}$, with $2^{12}$ the ground-state degeneracy. The factor $\tfrac12$ is the averaging over the $\Z/2$ orbifold group.
+\end{physics}
+\noindent\emph{Proof.} Coefficient by coefficient. For the untwisted part, \eqref{ch05:eq:VLplus} with
+$L = \Leech$, $r = 24$ gives $\dim(V_\Leech^+)_n = \tfrac12[q^n](\Theta_\Leech P + B)$. For the twisted part,
+Theorem~\ref{ch05:thm:twfixedint} gives $\dim(V_\Leech^T)^+_n = 4096\,P_T(24,2(n-2)+1) =
+[q^n](4096\,q^2T_{\mathrm{odd}})$ for $n\ge2$, and $0$ for $n<2$, which is also the coefficient of
+$q^n$ in $q^2T_{\mathrm{odd}}$.
+
+\paragraph{Physical reading.} The four terms are the four orbifold blocks of the preview:
+$\Theta_\Leech P = Z_{++}$ (character of $V_\Leech$, times $q$), $B = Z_{+-}$ (trace of $\theta$ on the
+$\alpha = 0$ sector, the only one contributing), and $2^{12}q^{3/2}\prod(1-q^{n-1/2})^{-24}$ and its
+image under $q^{1/2}\mapsto -q^{1/2}$ are $Z_{-+}$ and $Z_{--}$; their half-sum keeps the integral
+powers, $2\cdot 2^{12}q^2T_{\mathrm{odd}}$, which halved gives the last term.
+
+\subsection{The three identities}
+
+\begin{definition}[The three identities, as propositions]\label{ch05:def:three}
+\begin{enumerate}[label=(\Alph*)]
+  \item \emph{Jacobi's product for the formal $\Delta$:} $(\Delta/q)\cdot\prod(1-q^n)^{-24} = 1$;
+  \item \emph{the Leech theta identity:} $\Theta_\Leech = E_4^3 - 720\Delta$;
+  \item \emph{the level-two identity:} $B + 2^{13}q^2T_{\mathrm{odd}} = qj - 768q$.
+\end{enumerate}
+\end{definition}
+\begin{leancode}
+def DeltaProductIdentity : Prop := deltaOverQ * fockGenFun 24 = 1
+
+def LeechThetaIdentity : Prop :=
+  leechThetaSeries = E4Series ^ 3 - (720 : ℂ) • deltaSeries
+
+def LevelTwoIdentity : Prop :=
+  fockSignedGenFun 24 + (8192 : ℂ) • (X ^ 2 * twOddSeries) = jShift - (768 : ℂ) • X
+\end{leancode}
+\begin{dictionary}
+These are \emph{definitions of propositions}, not assumptions: \lean{def … : Prop} merely names a
+statement. All three are \emph{proved} later (\lean{deltaProductIdentity}, \lean{leechThetaIdentity},
+\lean{levelTwoIdentity}), so nothing claimed as a result depends on them as hypotheses. In (C),
+$8192 = 2^{13}$, and dividing by $q$ gives the trace identity \eqref{ch05:eq:trace}: $t = q^{-1}B$
+by \eqref{ch05:eq:t}, and $t(-1/\tau) + t(-1/(\tau+1)) = 2^{13}qT_{\mathrm{odd}}$ (proved in
+Section~\ref{ch05:sec:leveltwo}).
+\end{dictionary}
+
+\begin{physics}
+The three identities are the three analytic inputs needed to evaluate the orbifold partition function: (A) says that the $24$-boson oscillator trace is $q/\Delta$, (B) that the Leech theta series, the momentum sum, is a weight-$12$ modular form fixed by its first two coefficients ($1$ vacuum, no norm-$2$ vectors), and (C) that the three twisted terms are related by modular transformations (the three cosets of $\Gamma_0(2)$), which is the statement that the twisted blocks $Z_{+-},Z_{-+},Z_{--}$ are exchanged by $\mathrm{SL}_2(\Z)$. They are definitions of statements; proofs are later.
+\end{physics}
+
+\begin{theorem}[The formal reduction]\label{ch05:thm:reduction}
+(A) implies $qj = E_4^3\,P$. (A) and (B) imply $\Theta_\Leech P = qj - 720q$. (A), (B), (C) imply
+$\chi = qJ$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/CharacterSeries.lean}.
+\begin{leancode}
+theorem jShift_eq_of_deltaProduct (hD : DeltaProductIdentity) :
+    jShift = E4Series ^ 3 * fockGenFun 24
+
+theorem leechTheta_mul_fock_of (hD : DeltaProductIdentity) (hT : LeechThetaIdentity) :
+    leechThetaSeries * fockGenFun 24 = jShift - (720 : ℂ) • X
+
+theorem sectorSeries_eq_JShift_of (hD : DeltaProductIdentity) (hT : LeechThetaIdentity)
+    (hL : LevelTwoIdentity) : sectorSeries = JShift
+\end{leancode}
+\begin{dictionary}
+The hypotheses \lean{hD}, \lean{hT}, \lean{hL} are exactly (A), (B), (C). These are \emph{conditional}
+theorems, but the conditions are discharged in Sections~\ref{ch05:sec:delta}--\ref{ch05:sec:leveltwo},
+so the final theorem (Section~\ref{ch05:sec:main}) has none.
+\end{dictionary}
+
+\begin{physics}
+The algebra here is the orbifold average: $\tfrac12(\Theta_\Leech P)+\tfrac12(B+2^{13}q^2T_{\mathrm{odd}})$ with $\Theta_\Leech P=qj-720q$ and the twisted-plus-signed piece equal to $qj-768q$. The two constants $720$ and $768$ average to $744$, which is why the orbifold of the Leech theory has no weight-one states and partition function $J=j-744$.
+\end{physics}
+\noindent\emph{Proof (pure algebra in $\C[[q]]$).} (A) says $(\Delta/q)^{-1} = P$, so $qj = E_4^3(\Delta/q)^{-1}
+= E_4^3P$. With (B), $\Theta_\Leech P = E_4^3P - 720\,q(\Delta/q)P = qj - 720q$. Then, by
+Theorem~\ref{ch05:thm:sectoreq} and (C),
+\begin{equation*}
+  \chi = \tfrac12\bigl(qj - 720q\bigr) + \tfrac12\bigl(qj - 768q - 2^{13}q^2T_{\mathrm{odd}}\bigr) +
+  2^{12}q^2T_{\mathrm{odd}} = qj - 744q = qJ .
+\end{equation*}
+
+\subsection{Why the analytic route}\label{ch05:sec:why}
+
+Each of (A)--(C) is an identity between explicit $q$-series and could in principle be proved
+inside $\C[[q]]$ by combinatorics. The project decided against this before formalising, for these
+reasons.
+\begin{itemize}
+  \item (A) for the Eisenstein $\Delta$ is equivalent to the identity $E_4^3 - E_6^2 =
+    1728\,q\prod(1-q^n)^{24}$; known elementary proofs pass through Jacobi's triple product and the
+    theta-function expressions $E_4 = \tfrac12(\theta_2^8+\theta_3^8+\theta_4^8)$, $\Delta =
+    2^{-8}(\theta_2\theta_3\theta_4)^8$ (in the nome $e^{\pi i\tau}$), whose proof needs \emph{Jacobi's
+    abstruse identity} $\theta_3^4 = \theta_2^4 + \theta_4^4$. Neither the abstruse identity nor the
+    theta formula for $E_4$ is in Mathlib.
+  \item (B) is equivalent to an identity among theta functions of $\Leech$ that is again usually
+    proved by modularity.
+  \item (C) involves the substitutions $\tau\mapsto2\tau$, $\tau/2$, $(\tau+1)/2$, i.e.\ $q\mapsto q^2$, $q^{1/2}$,
+    $-q^{1/2}$, and is a level-two modular identity.
+\end{itemize}
+On the other hand Mathlib \emph{does} have: the analytic $E_4$, $E_6$, $\Delta$ with their
+$q$-expansions; Jacobi's product for the analytic $\Delta = \eta^{24}$; $\dim M_{12} = 2$ (through the
+dimension formula); and uniqueness of $q$-expansions. The analytic route uses exactly these: compute
+each side as a holomorphic function, identify it as a modular form of weight $12$, read off two
+coefficients. The only new analytic ingredient is a \emph{bridge} saying that a formal infinite
+product, evaluated at $|q|<1$, converges to the analytic infinite product
+(Section~\ref{ch05:sec:bridge}).
+
+\begin{remark}[Numerical pre-check]\label{ch05:rem:numerics}\sloppy
+Before formalisation, (A)--(C) and $\chi = qJ$ were checked numerically on the first $40$
+$q$-coefficients in exact integer arithmetic; the docstring of \leanpath{CharacterSeries.lean}
+records this check, but the script itself is not in the repository. The repository's
+\leanpath{scripts/moonshine/numerics/theta\_check.py} (with log \leanpath{theta\_check.log}) checks, in
+exact rational arithmetic to order $80$ in the nome $e^{\pi i\tau}$ (i.e.\ $40$ coefficients in $q$), that
+$E_4^3 - 720\Delta$, computed from Jacobi theta functions, has coefficients $1, 0, 0, 0, 196560, 0,
+16773120, 0, 398034000$ (the Leech theta series in the nome), together with the Jacobi relation and a
+rational expression of $\Theta_\Leech$ in $\lambda = \theta_2^4/\theta_3^4$ used elsewhere (Chapter~\ref{ch:10}).
+Its log reads, in part:
+\begin{plaincode}
+Theta_Leech, nome q (coeffs q^0..q^8): [1, 0, 0, 0, 196560, 0, 16773120, 0, 398034000]
+  expected 1, 0,0,0, 196560, 0, 16773120, 0, 398034000
+Jacobi check 1-x = theta4^4/theta3^4: True
+\end{plaincode}
+For this chapter the series were recomputed independently to order $q^{11}$; for instance
+\begin{center}
+\begin{tabular}{lrrrrrr}
+\toprule
+$n$ & $0$ & $1$ & $2$ & $3$ & $4$ & $5$\\
+\midrule
+$P$ & $1$ & $24$ & $324$ & $3200$ & $25650$ & $176256$\\
+$B$ & $1$ & $-24$ & $276$ & $-2048$ & $11202$ & $-49152$\\
+$\Theta_\Leech$ & $1$ & $0$ & $196560$ & $16773120$ & $398034000$ & $4629381120$\\
+$T_{\mathrm{odd}}$ & $24$ & $2624$ & $105504$ & $2471424$ & $40674128$ & $519045888$\\
+$\dim(V_\Leech^+)_n$ & $1$ & $0$ & $98580$ & $10745856$ & $432155586$ & $10122903552$\\
+$\dim(V_\Leech^T)^+_n$ & $0$ & $0$ & $98304$ & $10747904$ & $432144384$ & $10122952704$\\
+sum $= [q^n]qJ$ & $1$ & $0$ & $196884$ & $21493760$ & $864299970$ & $20245856256$\\
+$[q^n]\Phi$ & $1$ & $-48$ & $197712$ & $16761024$ & $398104656$ & $4629149280$\\
+\bottomrule
+\end{tabular}
+\end{center}
+These numbers are \emph{evidence}, not proof; every identity used is proved in Lean.
+\end{remark}
+
+\section{The bridge from formal to analytic infinite products}\label{ch05:sec:bridge}
+
+\subsection{The problem}
+
+Mathlib knows $\Delta(\tau) = q\prod'_{n\ge0}(1-q^{n+1})^{24}$ as an identity of complex numbers, an
+infinite product of numbers. The library's $P = \prod(1-q^n)^{-24}$ is a formal infinite product.
+To use Mathlib's identity for formal series we must know: \emph{if $F\in\C[[X]]$ is the formal product
+$\prod_iu_i$, then for $|q|<1$ the series $\sum_n([X^n]F)q^n$ converges, and its sum is
+$\lim_N\prod_{i<N}u_i(q)$.} This is not automatic: a coefficient of $F$ is a finite sum, but evaluating
+means summing infinitely many such coefficients, and the interchange of ``take the limit of the
+partial products'' and ``evaluate at $q$'' needs a domination argument --- this is Tannery's theorem
+(dominated convergence for series).
+
+\subsection{Evaluation and domination}
+
+\begin{definition}[Evaluation; domination; nonnegativity]\label{ch05:def:ev}
+For $f\in\C[[X]]$ and $q\in\C$ let $\operatorname{ev}(f,q) = \sum_n([X^n]f)q^n$ (meaningful when the series
+converges); similarly $\operatorname{ev}_{\mathbb R}(g,r)$ for $g\in\mathbb R[[X]]$, $r\in\mathbb R$. A real
+series $g$ is \emph{nonnegative} if all its coefficients are $\ge0$, and it \emph{dominates} $f$ if
+$|[X^n]f|\le[X^n]g$ for all $n$. \emph{$g$ is summable at $r$} if $\sum_n([X^n]g)r^n$ converges.
+\end{definition}
+\begin{leancode}
+noncomputable def ev (f : ℂ⟦X⟧) (q : ℂ) : ℂ := ∑' n, coeff n f * q ^ n
+noncomputable def evR (g : ℝ⟦X⟧) (r : ℝ) : ℝ := ∑' n, coeff n g * r ^ n
+def Nonneg (g : ℝ⟦X⟧) : Prop := ∀ n, 0 ≤ coeff n g
+def Dom (f : ℂ⟦X⟧) (g : ℝ⟦X⟧) : Prop := ∀ n, ‖coeff n f‖ ≤ coeff n g
+def SumAt (g : ℝ⟦X⟧) (r : ℝ) : Prop := Summable fun n => coeff n g * r ^ n
+\end{leancode}
+(\leanpath{VOA/Moonshine/CharacterBridge.lean}, namespace \lean{VOA.QBridge}.)
+\begin{dictionary}
+\lean{∑'} is Mathlib's unconditional sum (\lean{tsum}); it returns $0$ when the family is not
+summable, which is why every use of \lean{ev} below is paired with an explicit summability statement.
+\lean{‖·‖} is the absolute value on $\C$. \lean{Summable} is unconditional (here equivalently absolute)
+convergence.
+\end{dictionary}
+
+\begin{physics}
+Evaluation $\operatorname{ev}(f,q)=\sum_n f_nq^n$ turns the formal partition function (a degeneracy sequence) into an honest function of the torus modulus $\tau$ with $q=e^{2\pi i\tau}$, $|q|<1$ (convergence at positive imaginary part, i.e.\ finite inverse temperature). Domination by a nonnegative series is the statement that degeneracies are positive, so convergence is controlled by the physical, positive partition function.
+\end{physics}
+
+\begin{theorem}[The bridge]\label{ch05:thm:bridge}
+Let $u_i\in\C[[X]]$, $v_i\in\mathbb R[[X]]$ ($i\in\N$), $r\ge0$, $C\in\mathbb R$, and assume:
+(1) $v_i$ dominates $u_i$; (2) each $v_i$ is nonnegative; (3) $[X^0]v_i\ge1$; (4) $u_i\equiv1$ and
+$v_i\equiv1\bmod X^{i+1}$; (5) each $v_i$ is summable at $r$; (6) $\prod_{i<N}\operatorname{ev}_{\mathbb
+R}(v_i,r)\le C$ for all $N$. Let $F\in\C[[X]]$ satisfy $[X^n]F = [X^n]\prod_{i<n}u_i$ for all $n$
+(the stabilised coefficients of $\prod u_i$). Then for every $q\in\C$ with $|q|\le r$, the series
+$\sum_n([X^n]F)q^n$ converges absolutely, and $\prod_{i<N}\operatorname{ev}(u_i,q)\to\operatorname{ev}(F,q)$ as
+$N\to\infty$.
+\end{theorem}
+\begin{leancode}
+theorem bridge (u : ℕ → ℂ⟦X⟧) (v : ℕ → ℝ⟦X⟧) {r C : ℝ} (hr : 0 ≤ r)
+    (hdom : ∀ i, Dom (u i) (v i)) (hnn : ∀ i, Nonneg (v i)) (h1 : ∀ i, 1 ≤ coeff 0 (v i))
+    (hu : ∀ i, X ^ (i + 1) ∣ u i - 1) (hv : ∀ i, X ^ (i + 1) ∣ v i - 1)
+    (hs : ∀ i, SumAt (v i) r) (hC : ∀ N, ∏ i ∈ range N, evR (v i) r ≤ C)
+    (F : ℂ⟦X⟧) (hF : ∀ n, coeff n F = coeff n (∏ i ∈ range n, u i)) {q : ℂ} (hq : ‖q‖ ≤ r) :
+    (Summable fun n => ‖coeff n F * q ^ n‖)
+      ∧ Tendsto (fun N => ∏ i ∈ range N, ev (u i) q) atTop (𝓝 (ev F q))
+\end{leancode}
+\begin{dictionary}
+Hypotheses, in order: \lean{hr} is $r\ge0$; \lean{hdom}, \lean{hnn}, \lean{h1} are (1)--(3);
+\lean{hu}, \lean{hv} are (4), written as divisibility $X^{i+1}\mid u_i - 1$; \lean{hs} is (5); \lean{hC}
+is (6), \lean{range N} $=\{0,\dots,N-1\}$; \lean{hF} says $F$ has the stabilised coefficients (for
+$F$ a genuine \lean{HasProd} limit this holds automatically, \lean{coeff_of_hasProd}); \lean{hq} is
+$|q|\le r$. The conclusion is a conjunction: absolute summability, and \lean{Tendsto … atTop (𝓝 …)},
+i.e.\ convergence of the sequence of finite products to $\operatorname{ev}(F,q)$. This is a general analytic
+lemma with no VOA content; all hypotheses are genuine and are verified in the two applications below.
+\end{dictionary}
+
+\begin{physics}
+The bridge says that the thermal partition function of a free system (an infinite product over oscillator modes) equals the generating function of its degeneracies at every temperature $|q|<1$: the formal state-counting and the analytic torus partition function agree. This is the technical justification for treating $\prod(1-q^n)^{-24}$ both as a count of oscillator states and as $q/\Delta(\tau)$. It is a general analytic lemma without further physics.
+\end{physics}
+\noindent\emph{Proof.} By (4), multiplying by $u_i$ with $i\ge n$ does not change coefficients below
+$X^{n+1}$, so the coefficients of $G_N = \prod_{i<N}u_i$ stabilise: $[X^n]G_N = [X^n]F$ for $N\ge n$. By
+(1)--(3), $|[X^n]G_N|\le[X^n]\prod_{i<N}v_i\le[X^n]V_n$ where $V_n = \prod_{i<n}v_i$ (coefficients of
+products of nonnegative series with constant terms $\ge1$ increase with more factors, and stabilise
+by (4)). The majorant $\sum_n([X^n]V_n)r^n$ converges: its partial sum up to $M$ is at most
+$\operatorname{ev}_{\mathbb R}(V_M,r) = \prod_{i<M}\operatorname{ev}_{\mathbb R}(v_i,r)\le C$. Hence for $|q|\le r$ the
+terms $([X^n]G_N)q^n$ are dominated, uniformly in $N$, by a summable sequence, and converge
+termwise (they are eventually constant) to $([X^n]F)q^n$. Tannery's theorem gives
+$\operatorname{ev}(G_N,q)\to\operatorname{ev}(F,q)$, and $\operatorname{ev}(G_N,q) = \prod_{i<N}\operatorname{ev}(u_i,q)$ because
+evaluation of absolutely convergent series is multiplicative (Cauchy product).
+
+\begin{corollary}[The two shapes used]\label{ch05:cor:shapes}
+Let $e:\N\to\N$ with $e(i)\ge i+1$, $m\in\N$, and $|q|<1$. If $F$ has the stabilised coefficients of
+$\prod_i(1-X^{e(i)})^m$, then $\sum([X^n]F)q^n$ converges absolutely and $\prod_{i<N}(1-q^{e(i)})^m\to
+\operatorname{ev}(F,q)$. The same holds for $\prod_i(1-X^{e(i)})^{-m}$, with factors written as geometric series.
+\end{corollary}
+\noindent File \leanpath{VOA/Moonshine/CharacterBridge.lean}.
+\begin{leancode}
+theorem tendsto_ev_one_sub_pow {e : ℕ → ℕ} (he : ∀ i, i + 1 ≤ e i) (m : ℕ) {F : ℂ⟦X⟧}
+    (hF : ∀ n, coeff n F = coeff n (∏ i ∈ range n, ((1 : ℂ⟦X⟧) - X ^ e i) ^ m))
+    {q : ℂ} (hq : ‖q‖ < 1) :
+    (Summable fun n => ‖coeff n F * q ^ n‖)
+      ∧ Tendsto (fun N => ∏ i ∈ range N, (1 - q ^ e i) ^ m) atTop (𝓝 (ev F q))
+
+theorem tendsto_ev_geom_pow {e : ℕ → ℕ} (he : ∀ i, i + 1 ≤ e i) (m : ℕ) {F : ℂ⟦X⟧}
+    (hF : ∀ n, coeff n F = coeff n (∏ i ∈ range n, (geom ℂ (e i)) ^ m))
+    {q : ℂ} (hq : ‖q‖ < 1) :
+    (Summable fun n => ‖coeff n F * q ^ n‖)
+      ∧ Tendsto (fun N => ∏ i ∈ range N, ((1 - q ^ e i)⁻¹) ^ m) atTop (𝓝 (ev F q))
+\end{leancode}
+\begin{dictionary}
+\lean{geom ℂ k} is the series $\sum_jX^{kj} = (1-X^k)^{-1}$ (defined in the same file as
+\lean{PowerSeries.mk fun n => if k ∣ n then 1 else 0}). Hypotheses: \lean{he} ($e(i)\ge i+1$, so that
+(4) holds), \lean{hF}, and \lean{hq} ($|q|<1$, strict). Same as the corollary.
+\end{dictionary}
+
+\begin{physics}
+The two shapes are the Bose partition function $\prod(1-q^{e(i)})^{-m}$ of $m$ free bosons with modes $e(i)$ and the fermionic-type product $\prod(1-q^{e(i)})^{m}$, whose evaluation equals the oscillator trace (e.g.\ $q/\Delta$ and $\Delta/q$). They are the ingredients used to evaluate $P$, $B$ and the twisted product at an actual torus.
+\end{physics}
+\noindent\emph{Proof.} Apply Theorem~\ref{ch05:thm:bridge} with $r = |q|$ and majorants $v_i =
+(1+X^{e(i)})^m$, resp.\ $(\sum_jX^{e(i)j})^m$ over $\mathbb R$. The uniform bound (6) is
+$\prod_i(1+r^{e(i)})^m\le\exp(m\sum_ir^{e(i)})\le\exp(m/(1-r))$, resp.\
+$\prod_i(1-r^{e(i)})^{-m}\le\exp(m/(1-r)^2)$, using $1+x\le e^x$ and $\sum_ir^{e(i)}\le\sum_ir^i =
+1/(1-r)$.
+
+\begin{status}
+Unconditional; \texttt{\#print axioms VOA.QBridge.bridge} gives the standard three (re-run for this
+chapter).
+\end{status}
+
+\section{Jacobi's product and the Leech theta series}\label{ch05:sec:delta}
+
+\subsection{\texorpdfstring{$q$}{q}-expansions of \texorpdfstring{$E_4$}{E4}, \texorpdfstring{$E_6$}{E6}, \texorpdfstring{$\Delta$}{Delta}}
+
+\begin{proposition}\label{ch05:prop:qexpE}
+The $q$-expansions of Mathlib's analytic $E_4$, $E_6$ and $\Delta$ are the formal \lean{E4Series},
+\lean{E6Series} and \lean{deltaSeries}.
+\end{proposition}
+\begin{leancode}
+theorem qExpansion_E₄ : qExpansion 1 (E₄ : ℍ → ℂ) = E4Series
+
+theorem qExpansion_E₆ : qExpansion 1 (E₆ : ℍ → ℂ) = E6Series
+
+theorem qExpansion_discriminant :
+    qExpansion 1 (ModularForm.discriminant : ℍ → ℂ) = deltaSeries
+\end{leancode}
+(\leanpath{VOA/Moonshine/CharacterDelta.lean}, namespace \lean{VOA.Moonshine}.)
+\begin{dictionary}
+\lean{(E₄ : ℍ → ℂ)} is Mathlib's bundled modular form viewed as a function; \lean{qExpansion 1} is its
+$q$-expansion (Section~\ref{ch05:sec:modular}). \lean{ModularForm.discriminant} is Mathlib's $\Delta =
+\eta^{24}$ (Remark~\ref{ch05:rem:deltadef}). No hypotheses. These are exactly the statements ``the
+formal series of Section~\ref{ch05:sec:formal} deserve their names''.
+\end{dictionary}
+
+\begin{physics}
+Modular forms $E_4,E_6,\Delta$ are the analytic torus-level objects whose $q$-expansions are the state-counting series of the chapter; this proposition identifies the formal degeneracy generating functions with the analytic functions, so that modular transformation properties (the $S$ transformation, space-time swap) can be applied to them. It is a mathematical identification, not a physical one.
+\end{physics}
+\noindent\emph{Proof.} For $E_4$, $E_6$: Mathlib's coefficient formula with $B_4 = -1/30$, $B_6 = 1/42$
+gives $240\sigma_3(m)$, $-504\sigma_5(m)$. For $\Delta$: Mathlib's $\Delta = (E_4^3 - E_6^2)/1728$ as functions,
+and $q$-expansion is a ring homomorphism on modular forms.
+
+\subsection{Jacobi's product for the formal \texorpdfstring{$\Delta$}{Delta}}
+
+\begin{definition}
+$D = \prod_{n\ge1}(1-q^n)^{24}\in\C[[q]]$.
+\end{definition}
+\begin{leancode}
+noncomputable def deltaProd : PowerSeries ℂ := (∏' i : ℕ, ((1 : PowerSeries ℂ) - X ^ (i + 1))) ^ 24
+\end{leancode}
+\begin{dictionary}
+\lean{∏'} is the infinite product in $\C[[q]]$ with the coefficientwise topology (it exists:
+Mathlib's \lean{multipliable_one_sub_X_pow}); the factors are $1 - q^{i+1}$, $i\ge0$.
+\end{dictionary}
+
+\begin{physics}
+$D=\prod(1-q^n)^{24}$ is the inverse of the partition function of $24$ free chiral bosons with the vacuum energy stripped off, equivalently $\Delta/q=\eta^{24}/q$: the contribution of oscillator modes alone, with the factor $q^{-1}$ (Casimir energy $-24/24$) omitted.
+\end{physics}
+
+\begin{theorem}[Jacobi's product, formally]\label{ch05:thm:deltaprod}
+$\Delta = q\,D$ in $\C[[q]]$, for the formal $\Delta = (E_4^3-E_6^2)/1728$; equivalently $\Delta/q = D$, and
+(A): $(\Delta/q)\cdot\prod(1-q^n)^{-24} = 1$.
+\end{theorem}
+\begin{leancode}
+theorem deltaSeries_eq_X_mul_deltaProd : deltaSeries = X * deltaProd
+
+theorem deltaOverQ_eq_deltaProd : deltaOverQ = deltaProd
+
+theorem deltaProductIdentity : DeltaProductIdentity
+\end{leancode}
+\begin{dictionary}
+\lean{DeltaProductIdentity} is (A) of Definition~\ref{ch05:def:three}. No hypotheses: these are
+unconditional identities of formal power series.
+\end{dictionary}
+
+\begin{physics}
+This is the modular-invariance-adjacent statement that the Eisenstein expression for $\Delta$ is exactly $\eta^{24}$, i.e.\ the character of $24$ free bosons is the weight-$12$ cusp form $1/\Delta$ with a simple pole $q^{-1}$ at the cusp. Physically, the Casimir energy $-c/24=-1$ of $24$ bosons is the origin of the $q^{-1}$, and its appearance as the leading term of $J$ is the vacuum of $V^\natural$ with $c=24$.
+\end{physics}
+\noindent\emph{Proof.} Fix $\tau\in\chfiveH$, $q = e^{2\pi i\tau}$, $|q|<1$. By
+Corollary~\ref{ch05:cor:shapes}, $\sum_n([q^n]D)q^n$ converges absolutely to $\prod'(1-q^{n+1})^{24}$, so
+$\sum_n([q^n](qD))q^n = q\prod'(1-q^{n+1})^{24}$, which is Mathlib's $\Delta(\tau)$. By uniqueness of
+$q$-expansions (Proposition~\ref{ch05:prop:qunique}) the coefficients of $qD$ are those of the
+$q$-expansion of $\Delta$, which is \lean{deltaSeries} by Proposition~\ref{ch05:prop:qexpE}. Cancelling $q$
+gives $\Delta/q = D$, and $D\cdot P = \prod(1-q^n)^{24}(1-q^n)^{-24} = 1$ (product of convergent formal
+products).
+
+\subsection{Weight twelve and the Leech theta series}
+
+\begin{theorem}[Weight-$12$ forms are determined by two coefficients]\label{ch05:thm:wt12}
+For every $f\in M_{12}$ with $q$-expansion $\sum a_nq^n$:
+$\ \sum a_nq^n = a_0E_4^3 + \frac{a_1 - 720a_0}{1728}(E_4^3 - E_6^2)$ in $\C[[q]]$.
+\end{theorem}
+\begin{leancode}
+theorem qExpansion_weight_twelve (f : ModularForm 𝒮ℒ ((12 : ℕ) : ℤ)) :
+    qExpansion 1 (f : ℍ → ℂ)
+      = (qExpansion 1 (f : ℍ → ℂ)).coeff 0 • E4Series ^ 3
+        + (((qExpansion 1 (f : ℍ → ℂ)).coeff 1 - 720 * (qExpansion 1 (f : ℍ → ℂ)).coeff 0) / 1728)
+          • (E4Series ^ 3 - E6Series ^ 2)
+\end{leancode}
+\begin{dictionary}
+The weight is written \lean{((12 : ℕ) : ℤ)} (a natural number cast to an integer) because the spanning
+theorem it uses is stated for natural weights; it is the integer $12$. \lean{.coeff 0}, \lean{.coeff 1}
+are $a_0$, $a_1$. The only hypothesis is that $f$ is a level-one modular form of weight $12$. This is
+\eqref{ch05:eq:wt12}, as an identity of formal series.
+\end{dictionary}
+
+\begin{physics}
+A holomorphic weight-$12$ partition-function numerator is fixed by two numbers, the coefficient of $q^0$ (the vacuum) and of $q^1$ (the first excited level). This rigidity is what lets a CFT-type computation (counting the vacuum and the weight-one states) pin down the entire spectrum once modularity is known; in the library it is applied to the theta series of Leech and to $\Phi$.
+\end{physics}
+\noindent\emph{Proof.} $M_{12}$ is spanned by $E_4^3$ and $E_6^2$ (Theorem~\ref{ch05:thm:graded}, library
+\lean{span_eisBasisFun}); both sides are linear in $f$, so it suffices to check the two basis
+elements, which is the computation of $[q^0]$ and $[q^1]$ of $E_4^3$ and $E_6^2$.
+
+\begin{theorem}[The Leech theta identity]\label{ch05:thm:leechtheta}
+(B): $\Theta_\Leech = E_4^3 - 720\Delta$ in $\C[[q]]$.
+\end{theorem}
+\begin{leancode}
+theorem leechThetaIdentity : LeechThetaIdentity
+\end{leancode}
+\begin{dictionary}
+\lean{LeechThetaIdentity} is (B) of Definition~\ref{ch05:def:three}, with $\Theta_\Leech$ the formal series
+\lean{leechThetaSeries} of norm counts (Definition~\ref{ch05:def:sector}), $E_4$ and $\Delta$ the formal series
+of Section~\ref{ch05:sec:formal}. No hypotheses.
+\end{dictionary}
+
+\begin{physics}
+The theta series is the sum over lattice momenta $\sum_{\alpha\in\Leech}q^{\alpha^2/2}$ of the chiral boson on the Leech torus. The fact that it is the weight-$12$ form $E_4^3-720\Delta$ encodes the absence of norm-$2$ vectors in $\Leech$: no roots, so no extra currents beyond the $24$ Cartan ones. The number $196560$ is the number of minimal vectors (the weight-$2$ states of momentum $\alpha^2=4$).
+\end{physics}
+\noindent\emph{Proof.} $\Theta_\Leech$ is the $q$-expansion of the weight-$12$ modular form
+\lean{thetaModularForm} of $\Leech$ (Section~\ref{ch05:sec:thetabg}). Apply Theorem~\ref{ch05:thm:wt12}
+with $a_0 = r_\Leech(0) = 1$, $a_1 = r_\Leech(2) = 0$: the result is $E_4^3 - \frac{720}{1728}(E_4^3-E_6^2) = E_4^3
+- 720\Delta$.
+
+\begin{corollary}[The characters of $\Delta^{-1}$ and of $V_\Leech$]\label{ch05:cor:jVL}
+$qj = E_4^3\,P$ and $\Theta_\Leech P = qj - 720q$; that is, $\sum_n\dim(V_\Leech)_nq^{n-1} = j - 720$.
+\end{corollary}
+\noindent File \leanpath{VOA/Moonshine/CharacterDelta.lean}.
+\begin{leancode}
+theorem jShift_eq : jShift = E4Series ^ 3 * LatGen.fockGenFun 24
+
+theorem leechTheta_mul_fock :
+    leechThetaSeries * LatGen.fockGenFun 24 = jShift - (720 : ℂ) • X
+
+theorem sectorSeries_eq_JShift_of_levelTwo (hL : LevelTwoIdentity) : sectorSeries = JShift
+\end{leancode}
+\begin{dictionary}
+The first two are unconditional (Theorem~\ref{ch05:thm:reduction} with (A), (B) now proved); combined
+with \eqref{ch05:eq:VL}, the second is the character formula of $V_\Leech$. The third is conditional on
+(C) only; (C) is proved in the next section.
+\end{dictionary}
+
+\begin{physics}
+These say that the character of the Leech lattice VOA is $j-720=J+24$: the vacuum, then the $24$ currents $h_a(-1)\mathbf 1$ at weight one (the $24$ counted as $744-720$), and so on. In physical terms $V_\Leech$ is a holomorphic $c=24$ theory (the lattice CFT) with $24$ currents, and the Monster CFT is its $\Z/2$ orbifold, which removes them.
+\end{physics}
+
+\begin{status}
+\lean{deltaProductIdentity}, \lean{leechThetaIdentity}, \lean{qExpansion_discriminant}: unconditional,
+\texttt{\#print axioms} the standard three (re-run). The input
+\lean{IntegralLattice.thetaModularForm} (Chapter~\ref{ch:02}) is itself an unconditional theorem of the
+vendored lattice library.
+\end{status}
+
+\section{The level-two identity}\label{ch05:sec:leveltwo}
+
+This section proves (C), $B + 2^{13}q^2T_{\mathrm{odd}} = qj - 768q$, by realising its left side, divided
+by $q$, as the trace \eqref{ch05:eq:phi} of the $\Gamma_0(2)$-Hauptmodul $t$, i.e.\ as $\Phi/\Delta$ with
+$\Phi$ a level-one modular form of weight $12$. All declarations are in
+\leanpath{VOA/Moonshine/CharacterLevelTwo.lean}, namespace \lean{VOA.Moonshine}; in that file
+\lean{Δ} is local notation for Mathlib's \lean{ModularForm.discriminant} and \lean{P24} for
+\lean{LatGen.fockGenFun 24}.
+
+\subsection{The modular form \texorpdfstring{$\Phi$}{Phi}}
+
+\begin{definition}[Affine maps of $\chfiveH$ and $\Phi$]\label{ch05:def:phi}
+For real $a>0$ and $b$, let $\tau\mapsto a\tau+b$ act on $\chfiveH$. Put
+\begin{equation*}
+  \Phi(\tau) = \Delta(\tau)^2\Bigl(\Delta(2\tau)^{-1} + 4096\,\Delta(\tau/2)^{-1} + 4096\,\Delta\bigl(\tfrac{\tau+1}2\bigr)^{-1}\Bigr).
+\end{equation*}
+\end{definition}
+\begin{leancode}
+noncomputable def affH (a b : ℝ) (ha : 0 < a) (z : ℍ) : ℍ :=
+  ⟨(a : ℂ) * z + b, by simpa using mul_pos ha z.im_pos⟩
+
+noncomputable abbrev dblH : ℍ → ℍ := affH 2 0 two_pos
+noncomputable abbrev hlfH : ℍ → ℍ := affH (1 / 2) 0 (by norm_num)
+noncomputable abbrev hlf1H : ℍ → ℍ := affH (1 / 2) (1 / 2) (by norm_num)
+
+noncomputable def phiFun (z : ℍ) : ℂ :=
+  Δ z ^ 2 * ((Δ (dblH z))⁻¹ + 4096 * (Δ (hlfH z))⁻¹ + 4096 * (Δ (hlf1H z))⁻¹)
+
+noncomputable def phiForm : ModularForm 𝒮ℒ 12 where
+\end{leancode}
+\begin{dictionary}
+\lean{⟨w, proof⟩} builds a point of \lean{ℍ} from a complex number $w = a z + b$ and a proof that
+$\operatorname{Im} w>0$ (the proof term is shown because it is part of the definition; it carries no
+mathematical content). \lean{dblH}, \lean{hlfH}, \lean{hlf1H} are $\tau\mapsto2\tau$, $\tau/2$,
+$(\tau+1)/2$; $4096 = 2^{12}$. \lean{(Δ w)⁻¹} is the complex inverse, legitimate because $\Delta$ has no
+zeros on $\chfiveH$. \lean{phiForm} is a \emph{structure}: its first line, shown, says it is a modular
+form of weight $12$ for the full modular group; its body supplies \lean{toFun := phiFun} and the three
+proofs (i)--(iii) of Definition~\ref{ch05:def:modform}. Because it is a term of type
+\lean{ModularForm 𝒮ℒ 12}, Lean has checked those three proofs: this \emph{is} the theorem ``$\Phi\in
+M_{12}$''. A definition of this kind cannot be vacuous: the type \lean{ModularForm 𝒮ℒ 12} is inhabited
+only by genuine modular forms.
+\end{dictionary}
+
+\begin{physics}
+$\Phi$ is the sum over the three $\Gamma_0(2)$-images of a single twisted-sector term: $\Delta(2\tau)^{-1}$ is the term of the $\theta$-trace sector, while $\Delta(\tau/2)^{-1}$ and $\Delta((\tau+1)/2)^{-1}$ are the two twisted blocks obtained by $\tau\mapsto\tau/2$ and $\tau\mapsto(\tau+1)/2$. The factor $4096=2^{12}$ is the degeneracy of the twisted ground states. The sum is the orbifold sum over twisted boundary conditions around the two torus cycles, which is why it becomes modular for the full group.
+\end{physics}
+
+\begin{theorem}\label{ch05:thm:phimod}
+$\Phi$ is a level-one modular form of weight $12$.
+\end{theorem}
+
+\begin{physics}
+Modularity of $\Phi$ is the statement that the sum over the three non-trivial twisted sectors is invariant: $S$ and $T$ permute the three terms, so the total is invariant, exactly as the orbifold partition function is. Invariance of the full sum under $\mathrm{SL}_2(\Z)$ while the individual terms are only $\Gamma_0(2)$-invariant is the standard consistency requirement of an orbifold (modular invariance of the twisted sectors).
+\end{physics}
+\noindent\emph{Proof.}
+\emph{$T$-invariance.} $\Delta$ is $1$-periodic, so $\Delta(\tau+1)=\Delta(\tau)$ and $\Delta(2\tau+2) = \Delta(2\tau)$; and
+$\tfrac{(\tau+1)}2$ and $\tfrac{(\tau+1)+1}{2} = \tfrac\tau2 + 1$ show that $\tau\mapsto\tau+1$ swaps the last two
+terms. \emph{$S$-covariance.} With $\Delta(-1/w) = w^{12}\Delta(w)$:
+$\Delta(-1/\tau) = \tau^{12}\Delta(\tau)$; $\Delta(-2/\tau) = \Delta(-1/(\tau/2)) = (\tau/2)^{12}\Delta(\tau/2)$; $\Delta(-1/(2\tau)) =
+(2\tau)^{12}\Delta(2\tau)$; and for the third term $\tfrac{-1/\tau + 1}{2} = \tfrac{\tau - 1}{2\tau} = \gamma\cdot\tfrac{\tau+1}2$
+with $\gamma = \bigl(\begin{smallmatrix}1&-1\\2&-1\end{smallmatrix}\bigr)\in\chfiveSL$, whose automorphy factor at
+$\tfrac{\tau+1}2$ is $2\cdot\tfrac{\tau+1}2 - 1 = \tau$. Substituting, the three terms are permuted and an
+overall factor $\tau^{24}/\tau^{12} = \tau^{12}$ appears: $\Phi(-1/\tau) = \tau^{12}\Phi(\tau)$. By the generation
+of $\chfiveSL$ by $S,T$, $\Phi$ is invariant of weight $12$. \emph{Holomorphy}: $\Delta$ is holomorphic and
+nowhere zero. \emph{Boundedness at $i\infty$}: $|\Delta(\tau)|$ is bounded above and below by constant
+multiples of $e^{-2\pi\operatorname{Im}\tau}$ as $\operatorname{Im}\tau\to\infty$ (Mathlib:
+\lean{exp_isBigO_discriminant} and the cusp-form decay), so $|\Delta(\tau)^2/\Delta(a\tau+b)| = O(e^{-2\pi(2-a)
+\operatorname{Im}\tau})$, bounded for $a\le2$; all three terms have $a\in\{2,\tfrac12\}$.
+
+\subsection{The formal \texorpdfstring{$q$}{q}-expansion of \texorpdfstring{$\Phi$}{Phi}}
+
+Write $x = q^{1/2}$ and $D(q) = \prod(1-q^n)^{24}$, so $\Delta(\tau) = qD(q)$ and $P = D^{-1}$. Then
+$\Delta(2\tau) = q^2D(q^2)$, $\Delta(\tau/2) = xD(x)$ and, since $e^{2\pi i(\tau+1)/2} = -x$, $\Delta((\tau+1)/2) =
+-xD(-x)$. Substituting,
+\begin{equation}\label{ch05:eq:phiexp}
+  \Phi = D(q)^2P(q^2) + 2^{12}\,G(x),\qquad G(x) = x^3D(x^2)^2\bigl(P(x) - P(-x)\bigr).
+\end{equation}
+$G$ is an \emph{even} function of $x$, hence a series $H(q)$ in $q = x^2$.
+
+\begin{definition}[$G$, $H$, and the formal $\Phi$]\label{ch05:def:phiseries}
+With $\operatorname{expand}(f)(q) = f(q^2)$ and $\operatorname{rescale}_{-1}(f)(x) = f(-x)$:
+$G = X^3\operatorname{expand}(D)^2(P - \operatorname{rescale}_{-1}P)$, $[q^n]H = [x^{2n}]G$, and
+$\Phi_{\mathrm{formal}} = D^2\operatorname{expand}(P) + 4096\,H$.
+\end{definition}
+\noindent File \leanpath{VOA/Moonshine/CharacterLevelTwo.lean}.
+\begin{leancode}
+noncomputable def Gser : PowerSeries ℂ := X ^ 3 * (expandTwo deltaProd) ^ 2 * (P24 - rescaleNeg P24)
+
+noncomputable def Hser : PowerSeries ℂ := PowerSeries.mk fun n => coeff (2 * n) Gser
+
+noncomputable def phiSeries : PowerSeries ℂ := deltaProd ^ 2 * expandTwo P24 + (4096 : ℂ) • Hser
+\end{leancode}
+\begin{dictionary}
+\lean{expandTwo} is Mathlib's \lean{PowerSeries.expand 2}, $f(X)\mapsto f(X^2)$; \lean{rescaleNeg} is
+\lean{PowerSeries.rescale (-1)}, $f(X)\mapsto f(-X)$ (both abbreviations in the same file).
+\lean{deltaProd} is $D$ (Section~\ref{ch05:sec:delta}), \lean{P24} is $P$. In \lean{Gser} the variable is
+$x$; \lean{Hser} keeps its even coefficients, i.e.\ it is $G$ rewritten in $q = x^2$ (the odd
+coefficients of $G$ vanish, \lean{coeff_Gser_odd}, so nothing is lost). Literal transcription of
+\eqref{ch05:eq:phiexp}.
+\end{dictionary}
+
+\begin{physics}
+$G$ and $H$ are the odd part of the twisted-sector oscillator function in $x=q^{1/2}$: $P(x)-P(-x)$ projects onto odd powers, the $\theta_{\mathrm{tw}}$-projection onto states of integral energy, and the factor $x^3$ is the shift from $3/2$ to the integral weights. $\Phi_{\mathrm{formal}}$ is then the series expansion of the orbifold-block sum.
+\end{physics}
+
+\begin{theorem}[$\Phi$ evaluates to its formal series]\label{ch05:thm:phiev}
+For every $\tau\in\chfiveH$, $\sum_n([q^n]\Phi_{\mathrm{formal}})q^n$ converges absolutely to $\Phi(\tau)$;
+hence the $q$-expansion of $\Phi$ is $\Phi_{\mathrm{formal}}$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/CharacterLevelTwo.lean}.
+\begin{leancode}
+theorem phiFun_eq_ev (z : ℍ) : AbsSumAt phiSeries (𝕢 1 (z : ℂ)) ∧ phiFun z = ev phiSeries (𝕢 1 (z : ℂ))
+
+theorem qExpansion_phiForm : qExpansion 1 (phiForm : ℍ → ℂ) = phiSeries
+\end{leancode}
+\begin{dictionary}
+\lean{AbsSumAt f x} means $\sum_n|[X^n]f\cdot x^n|<\infty$ (defined in the same file as
+\lean{Summable fun n => ‖coeff n f * x ^ n‖}); \lean{ev} is evaluation (Definition~\ref{ch05:def:ev});
+\lean{𝕢 1 (z : ℂ)} is $q = e^{2\pi iz}$. No hypotheses beyond $z\in\chfiveH$.
+\end{dictionary}
+
+\begin{physics}
+The theorem says that the formal state-counting series of the orbifold block sum, evaluated at $q=e^{2\pi i\tau}$, is the analytic function $\Phi(\tau)$; i.e.\ the thermal torus partition function of the orbifold blocks equals its degeneracy generating function. This lets the modular properties of $\Phi$ be used on the formal series.
+\end{physics}
+\noindent\emph{Proof.} Every ingredient of $\Phi_{\mathrm{formal}}$ is a product, sum, substitution
+$q\mapsto q^2$ or $x\mapsto-x$ of $D$ and $P$, each of which evaluates, at any point of the open unit
+disc, to the corresponding analytic product (Corollary~\ref{ch05:cor:shapes}); evaluation of absolutely
+convergent series respects these operations. Evaluating at $q = e^{2\pi i\tau}$ and $x = e^{\pi i\tau}$ and using
+$\Delta(w) = q_w\,D(q_w)$ (Mathlib's product formula) and $D\cdot P = 1$ turns \eqref{ch05:eq:phiexp} into
+the definition of $\Phi(\tau)$. The second statement follows by uniqueness of $q$-expansions.
+
+\begin{proposition}[Two coefficients of $\Phi$]\label{ch05:prop:phicoeff}
+$[q^0]\Phi_{\mathrm{formal}} = 1$ and $[q^1]\Phi_{\mathrm{formal}} = -48$.
+\end{proposition}
+\noindent File \leanpath{VOA/Moonshine/CharacterLevelTwo.lean}.
+\begin{leancode}
+theorem phiSeries_coeff_zero_one : coeff 0 phiSeries = 1 ∧ coeff 1 phiSeries = -48
+\end{leancode}
+
+\begin{physics}
+The coefficient $1$ is the single vacuum; $-48=-2\cdot24$ comes from $D^2=\prod(1-q^n)^{48}$, whose linear term is the first oscillator level of the doubled set of bosons. It is the input that fixes $\Phi$ in the weight-$12$ space.
+\end{physics}
+\noindent\emph{Proof.} $D = 1 - 24q + \cdots$, so $D^2 = 1 - 48q+\cdots$; $P(q^2) = 1 + O(q^2)$; and $G =
+x^3\cdot(1+\cdots)\cdot(P(x)-P(-x)) = x^3\cdot 48x + \cdots = O(x^4)$, so $H = O(q^2)$.
+
+\begin{theorem}[$\Phi = E_4^3 - 768\Delta$]\label{ch05:thm:phieq}
+$\Phi_{\mathrm{formal}} = E_4^3 - 768\Delta$ in $\C[[q]]$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/CharacterLevelTwo.lean}.
+\begin{leancode}
+theorem phiSeries_eq : phiSeries = E4Series ^ 3 - (768 : ℂ) • deltaSeries
+\end{leancode}
+
+\begin{physics}
+$\Phi=E_4^3-768\Delta$ is the modular completion of the sum over twisted sectors: the constant $768$ together with the Leech constant $720$ averages to $744$. In CFT language, the three non-trivial blocks $Z_{+-},Z_{-+},Z_{--}$ add up (after the factor $q$) to $j-768$, the constant being fixed by the first two coefficients of $\Phi$.
+\end{physics}
+\noindent\emph{Proof.} Theorem~\ref{ch05:thm:wt12} applied to $\Phi$ (Theorem~\ref{ch05:thm:phimod}, with
+$q$-expansion $\Phi_{\mathrm{formal}}$ by Theorem~\ref{ch05:thm:phiev}) with $a_0 = 1$, $a_1 = -48$:
+$\Phi = E_4^3 + \frac{-48-720}{1728}\cdot1728\,\Delta = E_4^3 - 768\Delta$.
+
+\subsection{From \texorpdfstring{$\Phi$}{Phi} to the level-two identity}
+
+\begin{proposition}[The formal side]\label{ch05:prop:phimulP}
+$\Phi_{\mathrm{formal}}\cdot P = B + 2^{13}q^2T_{\mathrm{odd}}$.
+\end{proposition}
+\noindent File \leanpath{VOA/Moonshine/CharacterLevelTwo.lean}.
+\begin{leancode}
+theorem phiSeries_mul_fock :
+    phiSeries * P24 = LatGen.fockSignedGenFun 24 + (8192 : ℂ) • (X ^ 2 * twOddSeries)
+\end{leancode}
+
+\begin{physics}
+The identity $\Phi_{\mathrm{formal}}P=B+2^{13}q^2T_{\mathrm{odd}}$ rewrites the three-term orbifold sum in terms of the physical blocks: the untwisted $\theta$-trace $B$ and twice the (integral part of the) twisted-sector contribution with $2^{12}$ ground states, the factor $2$ coming from adding the two twisted blocks $Z_{-+}$ and $Z_{--}$. The step uses Euler's identity (odd modes times even modes gives all modes), i.e.\ that antiperiodic bosons are periodic bosons with the even modes removed.
+\end{physics}
+\noindent\emph{Proof (formal product identities).} First term: $D^2P(q^2)\cdot P = D\,P(q^2) =
+\prod(1-q^n)^{24}/(1-q^{2n})^{24} = \prod(1+q^n)^{-24} = B$, using $1-q^{2n} = (1-q^n)(1+q^n)$.
+Second term: in the variable $x$, $G(x)P(x^2) = x^3D(x^2)\bigl(P(x)-P(-x)\bigr)$, and
+\emph{Euler's odd/even splitting} $\prod_n(1-x^n)^{-1} = \prod_i(1-x^{2i+1})^{-1}\prod_n(1-x^{2n})^{-1}$
+gives $D(x^2)P(x) = \prod_i(1-x^{2i+1})^{-24}$, the twisted generating function of
+Theorem~\ref{ch05:thm:twgen}. Hence $G(x)P(x^2) = x^3\bigl(\mathrm{tw}(x) - \mathrm{tw}(-x)\bigr) =
+2x^3\sum_nP_T(24,2n+1)x^{2n+1} = 2x^4T_{\mathrm{odd}}(x^2)$, i.e.\ $HP = 2q^2T_{\mathrm{odd}}$, and
+$4096\cdot2 = 8192$.
+
+\paragraph{Physical reading.} The identity $D(x^2)P(x) = \prod(1-x^{2i+1})^{-24}$ says that the twisted
+sector's oscillator partition function is the untwisted one with the even modes removed; taking the odd part in $x$
+(the role of $P(x)-P(-x)$) is exactly the $\theta_{\mathrm{tw}}$-projection onto odd doubled weight of
+Proposition~\ref{ch05:prop:twtheta}.
+
+\begin{theorem}[The level-two identity]\label{ch05:thm:leveltwo}
+(C): $B + 2^{13}q^2T_{\mathrm{odd}} = qj - 768q$. Equivalently $t(\tau)+t(-1/\tau)+t(-1/(\tau+1)) = j(\tau) - 768$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/CharacterLevelTwo.lean}.
+\begin{leancode}
+theorem levelTwoIdentity_of_phiSeries (h : phiSeries = E4Series ^ 3 - (768 : ℂ) • deltaSeries) :
+    LevelTwoIdentity
+
+theorem levelTwoIdentity : LevelTwoIdentity
+\end{leancode}
+\begin{dictionary}
+The first is conditional on Theorem~\ref{ch05:thm:phieq}; the second discharges it
+(\lean{levelTwoIdentity_of_phiSeries phiSeries_eq}) and has no hypotheses.
+\lean{LevelTwoIdentity} is (C) of Definition~\ref{ch05:def:three}.
+\end{dictionary}
+
+\begin{physics}
+This is modular invariance of the orbifold at work: the trace of the Hauptmodul $t$ of $\Gamma_0(2)$ over the three cosets gives the $\mathrm{SL}_2(\Z)$-invariant $j-768$. Physically, the three twisted blocks $Z_{+-}$, $Z_{-+}$, $Z_{--}$ are images of one another under $S$ and $T$, and their sum is a genuine modular function with a simple pole, hence $j$ plus a constant. It is the identity that makes the twisted sector (with its $2^{12}$-fold degenerate ground state) fit into a modular-invariant partition function.
+\end{physics}
+\noindent\emph{Proof.} By Proposition~\ref{ch05:prop:phimulP} and Theorem~\ref{ch05:thm:phieq},
+$B + 2^{13}q^2T_{\mathrm{odd}} = (E_4^3 - 768\Delta)P = E_4^3P - 768\,q\,(\Delta/q)P = qj - 768q$ by
+Corollary~\ref{ch05:cor:jVL} and (A).
+
+\begin{status}
+\lean{phiForm}, \lean{phiSeries_eq}, \lean{levelTwoIdentity}: unconditional; \texttt{\#print axioms} the
+standard three (re-run for this chapter).
+\end{status}
+
+\section{The main theorem: the graded dimension is \texorpdfstring{$J$}{J}}\label{ch05:sec:main}
+
+\begin{theorem}[$\chi = qJ$]\label{ch05:thm:main}
+In $\C[[q]]$,
+\begin{equation*}
+  \sum_{n\ge0}\Bigl(\dim(V_\Leech^+)_n + \dim(V_\Leech^T)^+_n\Bigr)q^n = q\,J(q),
+\end{equation*}
+equivalently, for every $n\in\N$, $\dim(V_\Leech^+)_n + \dim(V_\Leech^T)^+_n = [q^n]\,qJ$.
+\end{theorem}
+\begin{leancode}
+theorem sectorSeries_eq_JShift : sectorSeries = JShift :=
+  sectorSeries_eq_JShift_of_levelTwo levelTwoIdentity
+
+theorem finrank_sectors_eq_coeff_JShift (n : ℕ) :
+    ((finrank ℂ (leechVOAPlus.grading (n : ℤ))
+      + finrank ℂ (twFixed 24 leechT ⊓ twWeight 24 leechT ((n : ℤ) : ℚ) :
+          Submodule ℂ leechTwistedSpace) : ℕ) : ℂ)
+      = coeff n JShift
+\end{leancode}
+(\leanpath{VOA/Moonshine/Character.lean}, namespace \lean{VOA.Moonshine}; the one-line proof term of the
+first is shown because it is informative: Corollary~\ref{ch05:cor:jVL}'s conditional form applied to
+Theorem~\ref{ch05:thm:leveltwo}.)
+
+\begin{dictionary}[title={Fidelity check for the main theorem}]
+\emph{Symbols.} \lean{sectorSeries} is $\chi$ (Definition~\ref{ch05:def:sector}); \lean{JShift} is $qJ$
+(Definition~\ref{ch05:def:jshift}); \lean{coeff n} is $[q^n]$; the outer cast \lean{(… : ℕ) : ℂ} turns
+the natural-number sum of dimensions into a complex number, which loses nothing ($\N\to\C$ is
+injective). \emph{Hypotheses.} None; $n$ ranges over all of $\N$. \emph{Defined terms, traced.}
+$(V_\Leech^+)_n$ = \lean{leechVOAPlus.grading n} (Chapter~\ref{ch:04}); $(V_\Leech^T)^+_n$ =
+\lean{twFixed 24 leechT ⊓ twWeight 24 leechT n} (Definitions~\ref{ch05:def:fockT}, \ref{ch05:def:tw}),
+with $T_\Leech$ = \lean{leechT} of dimension $4096$ (Chapter~\ref{ch:06}); \lean{JShift} built from
+\lean{E4Series}, \lean{deltaSeries}, \lean{deltaOverQUnit} (Section~\ref{ch05:sec:formal}), all bottoming
+out in divisor sums. \emph{Same, stronger or weaker?} The same as the textbook statement
+$\sum_n(\dim(V_\Leech^+)_n + \dim(V_\Leech^T)^+_n)q^{n-1} = J$ (multiply by $q$), \emph{for the two summands
+as defined here}. \emph{How could it be vacuous or mis-aimed?}
+(1) If $J$ were mis-defined: excluded, the coefficients of \lean{JShift} are proved independently
+($1, 0, 196884$ in \leanpath{JFunction.lean}). (2) If the twisted grading or $\theta_{\mathrm{tw}}$ were not
+FLM's: the grading here is \emph{defined} by oscillator weight, not derived from a twisted module, and
+$\theta_{\mathrm{tw}}$ is defined as $\theta_S\otimes(-1)$; that these are the structures of the twisted module
+actually constructed is proved later (Section~\ref{ch05:sec:carrier}). (3) Most importantly: \emph{a
+graded dimension does not determine a VOA.} See the warning below.
+\end{dictionary}
+
+\begin{physics}
+This is the central statement: $q\,Z_{V^\natural}(\tau)=q\,J(\tau)$, where $Z=\tr q^{L_0-1}$ (read
+analytically on paper; the Lean statement is an identity of formal $q$-series). The graded dimension of the Monster CFT is $J=j-744=q^{-1}+0+196884\,q+\cdots$: the $q^{-1}$ is the vacuum with Casimir energy $-c/24=-1$, the absence of a constant term is $V^\natural_1=0$ (no currents), and $196884=1+196883$ under the Monster (a fact, not proved here). Physically $J$ is forced by modular invariance of a holomorphic $c=24$ theory without currents, but the library does not use that argument: it computes both sides, as the orbifold sum of the untwisted $\theta$-projected and twisted sectors. The modular-invariance heuristic is why the answer is $j$ minus a constant; the proof is the computation.
+\end{physics}
+
+\begin{warning}
+\textbf{The square-zero TRAP.}
+The identity $\chi = J$ is a statement about dimensions only, and many objects have this graded
+dimension. The project recorded a concrete trap: the square-zero extension $V_\Leech^+\ltimes(V_\Leech^T)^+$
+(the VOA structure on $V_\Leech^+\oplus(V_\Leech^T)^+$ in which the product of two twisted states is declared to
+be $0$, i.e.\ the twisted--twisted intertwiner $\overline W$ is set to $0$) \emph{is} a vertex operator
+algebra with $c = 24$, $V_1 = 0$, $\dim V_2 = 196884$ and graded dimension $J$ --- but it is not simple,
+and it is not $\Vnat$. The final theorem \lean{VOA.Moonshine.moonshine} (Chapter~\ref{ch:14}) therefore
+asserts, in addition to the graded dimension, that the vertex operator is the explicit block map of
+Chapter~\ref{ch:10} on FLM's space, with the nonzero form-adjoint $\overline W$ (\lean{leechWbar_ne_zero}),
+and that the VOA is simple; these pin the structure down to a unique witness. Theorem~\ref{ch05:thm:main} is a necessary ingredient of
+that theorem, not a substitute for it.
+\end{warning}
+
+\noindent\emph{Proof.} Theorem~\ref{ch05:thm:reduction} with (A), (B), (C) proved in
+Theorems~\ref{ch05:thm:deltaprod}, \ref{ch05:thm:leechtheta}, \ref{ch05:thm:leveltwo}. In summary:
+\begin{equation*}
+  \chi \overset{\text{Thm }\ref{ch05:thm:sectoreq}}{=} \tfrac12\bigl(\underbrace{\Theta_\Leech P}_{qj-720q}
+  + \underbrace{B + 2^{13}q^2T_{\mathrm{odd}}}_{qj-768q}\bigr) = qj - 744q = qJ.
+\end{equation*}
+
+\begin{corollary}[Coefficient checks]\label{ch05:cor:coeffs}
+$[q^2]\chi = [q^2]qJ = 196884$ (the per-weight count and the formula for $J$ agree);
+$[q^3]qJ = 21493760$; $[q^1]qJ = 0$.
+\end{corollary}
+\noindent File \leanpath{VOA/Moonshine/Character.lean}.
+\begin{leancode}
+theorem coeff_two_consistency : coeff 2 sectorSeries = coeff 2 JShift
+
+theorem coeff_three_JShift : coeff 3 JShift = 21493760
+
+theorem coeff_one_JShift : coeff 1 JShift = 0
+\end{leancode}
+\begin{dictionary}
+Mind the shift: \lean{coeff 3 JShift} is the coefficient of $q^2$ in $J$, which is $21493760$; the
+docstring in the source says ``$[q^2]J$'' and is right. These are proved \emph{from} the main theorem
+and the per-weight dimensions of Theorem~\ref{ch05:thm:tw23} (and $(V_\Leech^+)_1 = 0$): a coefficient of
+$J$ computed by counting states. \lean{coeff_two_consistency} compares two independent computations,
+the Eisenstein arithmetic of Example~\ref{ch05:ex:196884} and the state count $98580+98304$, and is a
+genuine cross-check of the definitions.
+\end{dictionary}
+
+\begin{physics}
+These check the first few Monster CFT levels: weight $0$ (the unique vacuum), weight $1$ (no states, $V^\natural_1=0$), weight $2$ ($196884=1+196883$ under the Monster, a fact quoted from the literature), and weight $3$ ($21493760=1+196883+21296876$, Thompson's observation). Weight $2$ is the Griess algebra and weight $3$ is the next Monster-module level; the counts here come from the sector decomposition, not from the Monster action.
+\end{physics}
+
+\begin{example}[Weight $4$]
+Theorem~\ref{ch05:thm:main} predicts $\dim\Vnat_4 = [q^4]qJ = 864299970$. From the table of
+Remark~\ref{ch05:rem:numerics}: $[q^4]\Theta_\Leech P = [q^4](qj - 720q) = 864299970$ (the $-720q$ only
+affects $q^1$) and $[q^4]B = 11202$, so $\dim(V_\Leech^+)_4 = \tfrac12(864299970 + 11202) = 432155586$;
+and $\dim(V_\Leech^T)^+_4 = 4096\cdot P_T(24,5) = 4096\cdot105504 = 432144384$. The sum is $864299970$,
+as predicted. Note that the two sectors are almost equal in size: $\dim(V_\Leech^+)_n = \tfrac12[q^n](qj - 720q + B)$
+and, by (C), $\dim(V_\Leech^T)^+_n = 2^{12}[q^n]q^2T_{\mathrm{odd}} = \tfrac12[q^n](qj - 768q - B)$, so for $n\ge2$ the
+difference is $[q^n]B$ --- here $11202$, tiny compared with the dimensions.
+\end{example}
+
+\begin{status}
+\lean{sectorSeries_eq_JShift}, \lean{finrank_sectors_eq_coeff_JShift}, \lean{coeff_three_JShift}:
+unconditional, no hypotheses; \texttt{\#print axioms} = \texttt{[propext, Classical.choice, Quot.sound]}
+(re-run for this chapter; Section~\ref{ch05:sec:verification}). Honest scope: a statement about the
+sum of the graded dimensions of $V_\Leech^+$ (a genuine VOA) and of $(S[\theta]\otimes T)^+$ with the grading
+and involution of Definition~\ref{ch05:def:tw}.
+\end{status}
+
+\section{The carrier-level restatement}\label{ch05:sec:carrier}
+
+Later chapters replace the bare vector space $(S[\theta]\otimes T)^+$ by the $V_\Leech^+$-module $TP$
+(\lean{Moonshine.plusModule}) obtained from the twisted module of Chapter~\ref{ch:08}, and then form
+the carrier $\Vnat = V_\Leech^+\times TP$ with grading $\Vnat_n = (V_\Leech^+)_n\times TP_n$ (Chapter~\ref{ch:10}).
+The main theorem transfers to both, because the module grading is proved to coincide with the
+grading of Definition~\ref{ch05:def:tw}:
+\begin{leancode}
+theorem finrank_plusModule_weight (q : ℚ) :
+    finrank ℂ (plusModule.weight (q : ℂ))
+      = finrank ℂ (twFixed 24 leechT ⊓ twWeight 24 leechT q : Submodule ℂ Tw)
+\end{leancode}
+(\leanpath{VOA/Moonshine/TwistedPlus.lean}; \lean{Tw} abbreviates \lean{FockT 24 ⊗[ℂ] leechT};
+\lean{plusModule.weight α} is the $L_0 = \alpha$ eigenspace of the module, $\alpha\in\C$; proved in
+Chapter~\ref{ch:08}.) Consequently:
+
+\begin{theorem}[Graded dimension of $V_\Leech^+\oplus TP$ and of the carrier $\Vnat$]\label{ch05:thm:carrier}
+For every $n\in\N$: $\dim(V_\Leech^+)_n + \dim TP_n = [q^n]qJ$, and $\dim\Vnat_n = [q^n]qJ$.
+\end{theorem}
+\begin{leancode}
+theorem finrank_plusModule_eq_coeff_JShift (n : ℕ) :
+    ((finrank ℂ (leechVOAPlus.grading (n : ℤ))
+      + finrank ℂ (plusModule.weight ((n : ℤ) : ℂ)) : ℕ) : ℂ)
+      = PowerSeries.coeff n JShift
+
+theorem finrank_gradingNat_eq_coeff_JShift (n : ℕ) :
+    (finrank ℂ (gradingNat (n : ℤ)) : ℂ) = PowerSeries.coeff n JShift
+\end{leancode}
+(\leanpath{TwistedPlus.lean} and \leanpath{VOA/Moonshine/VnatCarrier.lean}; \lean{gradingNat n} is the
+submodule $(V_\Leech^+)_n\times TP_n$ of the carrier \lean{Vnat}, both defined in Chapter~\ref{ch:10}.)
+\begin{dictionary}
+No hypotheses. The weight $n$ enters \lean{plusModule.weight} as the complex number \lean{((n : ℤ) :
+ℂ)}. These are Theorem~\ref{ch05:thm:main} transported along the dimension equalities just quoted and
+$\dim(A\times B) = \dim A + \dim B$; they are the forms consumed by the final theorem
+\lean{VOA.Moonshine.moonshine} (Chapter~\ref{ch:14}), whose clause
+\lean{(∀ n : ℕ, (Module.finrank ℂ (V.grading (n : ℤ)) : ℂ) = PowerSeries.coeff n JShift)} is exactly the
+second statement for the VOA grading of $\Vnat$.
+\end{dictionary}
+
+\begin{physics}
+The statement transfers the graded dimension from the pair of sectors to the actual carrier $V^\natural=V_\Leech^+\oplus TP$, with $TP$ the $\theta$-projected twisted module. In CFT terms, the torus partition function of the Monster CFT is the sum of the untwisted and twisted-sector characters, both read off from $L_0$-eigenspaces of the actual module rather than from the combinatorial model; the equality of gradings is the identification of the twisted sector of the orbifold with the space of twisted-module states.
+\end{physics}
+\begin{status}
+Both unconditional; \texttt{\#print axioms} the standard three (re-run).
+\end{status}
+
+\section{Verification record}\label{ch05:sec:verification}
+
+For this chapter the following file was compiled against the built library at an earlier commit
+(when the chapter was first written; not re-run for this edition) with \texttt{lake env lean -DmaxSynthPendingDepth=3} (the flag matters: a bare
+\texttt{lake env lean} can silently change elaboration, see Chapter~\ref{ch:01} and Section~\ref{ch15:sec:trap}):
+\begin{plaincode}
+import VOA.Moonshine.VnatCarrier
+#print axioms VOA.Moonshine.sectorSeries_eq_JShift
+#print axioms VOA.Moonshine.finrank_sectors_eq_coeff_JShift
+... (15 declarations, listed below)
+\end{plaincode}
+Output, verbatim:
+\begin{plaincode}
+'VOA.Moonshine.sectorSeries_eq_JShift' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.finrank_sectors_eq_coeff_JShift' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.levelTwoIdentity' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.leechThetaIdentity' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.deltaProductIdentity' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.phiSeries_eq' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.QBridge.bridge' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.coeff_three_JShift' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.coeff_two_JShift' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.TwistedSector.hasProd_twGenFun' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.finrank_sectors_three' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.finrank_gradingNat_eq_coeff_JShift' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.finrank_plusModule_eq_coeff_JShift' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.qExpansion_discriminant' depends on axioms: [propext, Classical.choice, Quot.sound]
+'VOA.Moonshine.phiForm' depends on axioms: [propext, Classical.choice, Quot.sound]
+\end{plaincode}
+This check used the existing build artefacts; the aggregate \texttt{lake build} (10343 jobs, green) was
+recorded by the project's build record for that commit and was not re-run for this chapter.
+None of these depends on \lean{VOA.pbw}. As always, a clean axiom list says nothing about explicit
+hypotheses; the point of the fidelity checks above is that the headline theorems have none.
+
+\section{Dead ends, traps and corrected statements}\label{ch05:sec:dead}
+
+\begin{itemize}
+  \item \textbf{The square-zero TRAP} (warning in Section~\ref{ch05:sec:main}): graded dimension $J$ does
+    not certify $\Vnat$.
+  \item \textbf{The sign of $\theta$ on $T$} (warning after Theorem~\ref{ch05:thm:twfixedint}): with $+1$ the
+    fixed sector would sit in weights $\tfrac32+\Z$.
+  \item \textbf{Formal-only routes} were rejected before formalisation because they need Jacobi's abstruse
+    identity or the theta formula for $E_4$, absent from Mathlib (Section~\ref{ch05:sec:why}). This is
+    a recorded decision, not a failure.
+  \item \textbf{Hauptmodul uniqueness is not used} (warning after Theorem~\ref{ch05:thm:haupt}); the residual
+    note in \leanpath{JFunction.lean} describing it as needed is superseded.
+  \item \textbf{Missing script.} The $40$-coefficient pre-check of (A)--(C) mentioned in
+    \leanpath{CharacterSeries.lean} is not in \leanpath{scripts/}; only \leanpath{theta\_check.py} is
+    (Remark~\ref{ch05:rem:numerics}). Nothing in Lean depends on either.
+\end{itemize}
+
+\section{Referee's checklist}\label{ch05:sec:checklist}
+
+All entries are unconditional (no hypothesis that is an unproved datum); $\ast$ marks a
+\texttt{\#print axioms} run for this chapter with result \texttt{[propext, Classical.choice, Quot.sound]}.
+Namespaces: \lean{VOA} (JFunction), \lean{VOA.TwistedSector}, \lean{VOA.QBridge}, else \lean{VOA.Moonshine}.
+
+{\footnotesize
+\begin{longtable}{>{\raggedright\arraybackslash}p{4.9cm}>{\raggedright\arraybackslash}p{5.2cm}>{\raggedright\arraybackslash}p{1.8cm}>{\raggedright\arraybackslash}p{2.3cm}}
+\toprule
+Lean declaration & intended meaning & hypotheses & status / check\\
+\midrule
+\endhead
+\lean{E4Series}, \lean{E6Series} & formal $E_4$, $E_6$ & -- & def.; Def.~\ref{ch05:def:E46}\\
+\lean{deltaSeries}, \lean{deltaOverQ} & $\Delta = (E_4^3-E_6^2)/1728$, $\Delta/q$ & -- & def.; Defs.~\ref{ch05:def:delta}, \ref{ch05:def:deltaoverq}\\
+\lean{jShift}, \lean{JShift} & $qj$, $qJ$ & -- & def.; Def.~\ref{ch05:def:jshift}\\
+\lean{coeff_two_JShift}$^\ast$ & $[q^1]J = 196884$ & none & uncond.; Prop.~\ref{ch05:prop:jcoeffs}\\
+\lean{twCount}, \lean{twGrading}, \lean{twWeight}, \lean{twTheta}, \lean{twFixed} & $P_T(r,d)$; grading, $L_0$-spaces, $\theta_S\otimes(-1)$, fixed part of $S[\theta]\otimes T$ & -- & def.; Defs.~\ref{ch05:def:twcount}, \ref{ch05:def:tw}\\
+\lean{hasProd_twGenFun}$^\ast$ & $\sum P_T(r,d)x^d = \prod(1-x^{2i+1})^{-r}$ & none & uncond.; Thm.~\ref{ch05:thm:twgen}\\
+\lean{twFixed_eq_iSup_int} & fixed part $=$ integer weights ($r=24$) & none & uncond.; Thm.~\ref{ch05:thm:twfixedint}\\
+\lean{twFixed_inf_twWeight_of_lt_two} & no fixed states of weight $<2$ & $w<2$ & uncond.; Thm.~\ref{ch05:thm:twfixedint}\\
+\lean{leechTwisted_finrank_fixed_two}, \lean{_three} & $98304$, $10747904$ & none & uncond.; Thm.~\ref{ch05:thm:tw23}\\
+\lean{finrank_sectors_two}, \lean{finrank_sectors_three}$^\ast$ & $196884$, $21493760$ as sums of sectors & none & uncond.; Thm.~\ref{ch05:thm:tw23}\\
+\lean{sectorSeries_eq} & $\chi = \tfrac12(\Theta_\Leech P + B) + 2^{12}q^2T_{\mathrm{odd}}$ & none & uncond.; Thm.~\ref{ch05:thm:sectoreq}\\
+\lean{sectorSeries_eq_JShift_of} & (A)$\wedge$(B)$\wedge$(C)$\Rightarrow\chi = qJ$ & (A),(B),(C) & cond., all discharged; Thm.~\ref{ch05:thm:reduction}\\
+\lean{QBridge.bridge}$^\ast$ & formal product evaluates to analytic product & (1)--(6), $|q|\le r$ & uncond.; Thm.~\ref{ch05:thm:bridge}\\
+\lean{qExpansion_discriminant}$^\ast$ & $q$-exp.\ of Mathlib $\Delta$ $=$ formal $\Delta$ & none & uncond.; Prop.~\ref{ch05:prop:qexpE}\\
+\lean{deltaProductIdentity}$^\ast$ & (A): $\Delta = q\prod(1-q^n)^{24}$ formally & none & uncond.; Thm.~\ref{ch05:thm:deltaprod}\\
+\lean{qExpansion_weight_twelve} & $f\in M_{12}$ fixed by $a_0,a_1$ & $f\in M_{12}$ & uncond.; Thm.~\ref{ch05:thm:wt12}\\
+\lean{leechThetaIdentity}$^\ast$ & (B): $\Theta_\Leech = E_4^3 - 720\Delta$ & none & uncond.; Thm.~\ref{ch05:thm:leechtheta}\\
+\lean{leechTheta_mul_fock} & $\chi_{V_\Leech} = j - 720$ & none & uncond.; Cor.~\ref{ch05:cor:jVL}\\
+\lean{phiForm}$^\ast$ & $\Phi\in M_{12}$ & -- & def.\ $=$ theorem; Thm.~\ref{ch05:thm:phimod}\\
+\lean{qExpansion_phiForm} & $q$-exp.\ of $\Phi$ $=$ formal $\Phi$ & none & uncond.; Thm.~\ref{ch05:thm:phiev}\\
+\lean{phiSeries_eq}$^\ast$ & $\Phi = E_4^3 - 768\Delta$ & none & uncond.; Thm.~\ref{ch05:thm:phieq}\\
+\lean{levelTwoIdentity}$^\ast$ & (C): $\sum$ of $t$ over cosets $= j - 768$ & none & uncond.; Thm.~\ref{ch05:thm:leveltwo}\\
+\lean{sectorSeries_eq_JShift}$^\ast$ & $\chi = qJ$ & none & uncond.; Thm.~\ref{ch05:thm:main}\\
+\lean{finrank_sectors_eq_coeff_JShift}$^\ast$ & $\dim(V^+_\Leech)_n + \dim(V^T_\Leech)^+_n = [q^n]qJ$, all $n$ & none & uncond.; Thm.~\ref{ch05:thm:main}\\
+\lean{coeff_three_JShift}$^\ast$ & $[q^2]J = 21493760$ & none & uncond.; Cor.~\ref{ch05:cor:coeffs}\\
+\lean{finrank_plusModule_eq_coeff_JShift}$^\ast$ & same with the module $TP$ & none & uncond.; Thm.~\ref{ch05:thm:carrier}\\
+\lean{finrank_gradingNat_eq_coeff_JShift}$^\ast$ & $\dim\Vnat_n = [q^n]qJ$ on the carrier & none & uncond.; Thm.~\ref{ch05:thm:carrier}\\
+\bottomrule
+\end{longtable}
+}
+
+\noindent\textbf{What a referee should still keep in mind.} (i) Graded dimension alone does not
+characterise $\Vnat$ (TRAP). (ii) The twisted grading and involution are defined here and identified
+with the module structure only in Chapter~\ref{ch:08}. (iii) The analytic inputs (Mathlib's $E_k$,
+$\eta$, $\Delta$, dimension formula, $q$-expansion uniqueness) are Mathlib theorems, trusted to the same
+standard as the rest of Mathlib.
+
+\section{Notes and references}\label{ch05:sec:notes}
+
+The modular-forms background follows J.-P.~Serre, \emph{A Course in Arithmetic}, Graduate Texts in
+Mathematics~7, Springer, 1973 (Chapter~VII: the modular group, the valence formula, $M_* =
+\C[E_4,E_6]$, $\Delta$, $j$, and the theta series of even unimodular lattices); F.~Diamond and J.~Shurman,
+\emph{A First Course in Modular Forms}, Graduate Texts in Mathematics~228, Springer, 2005 (congruence
+subgroups such as $\Gamma_0(2)$, Dedekind $\eta$, $q$-expansions); and T.~M.~Apostol, \emph{Modular
+Functions and Dirichlet Series in Number Theory}, 2nd ed., Graduate Texts in Mathematics~41, Springer,
+1990 (Chapter~1 for $j$ and its expansion; Chapter~3 for $\eta$ and the product formula for $\Delta$).
+
+The moonshine module, the twisted sector $S[\theta]\otimes T$, the sign of $\theta$ on $T$ and the character
+computation are from I.~Frenkel, J.~Lepowsky and A.~Meurman, \emph{Vertex Operator Algebras and the
+Monster}, Pure and Applied Mathematics~134, Academic Press, 1988 (Introduction; Sections~1.10, 9.1--9.3,
+10.4). The moonshine conjectures are J.~H.~Conway and S.~P.~Norton, ``Monstrous Moonshine'',
+\emph{Bull.\ London Math.\ Soc.}\ \textbf{11} (1979), 308--339, where the Hauptmodul $t$ of $\Gamma_0(2)$
+appears as the series of class $2B$; McKay's and Thompson's observations are recorded there and in
+J.~G.~Thompson, ``Some numerology between the Fischer--Griess Monster and the elliptic modular
+function'', \emph{Bull.\ London Math.\ Soc.}\ \textbf{11} (1979), 352--353. For a survey connecting
+characters of VOAs to modular functions, see T.~Gannon, \emph{Moonshine beyond the Monster},
+Cambridge University Press, 2006 (Sections~2.2 and~5.3), which the library's \leanpath{JFunction.lean}
+cites. Tannery's theorem (dominated convergence for series), used in the bridge, is in Mathlib as
+\lean{tendsto_tsum_of_dominated_convergence}. Jacobi's abstruse identity and the theta-function
+formulas mentioned in Section~\ref{ch05:sec:why} can be found in Apostol (above) and in E.~T.~Whittaker and
+G.~N.~Watson, \emph{A Course of Modern Analysis}, Chapter~21.

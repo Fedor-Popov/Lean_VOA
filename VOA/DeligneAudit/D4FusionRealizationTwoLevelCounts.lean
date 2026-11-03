@@ -1,0 +1,7 @@
+import VOA.DeligneAudit.D4FusionRealizationTwoLevelCount0
+import VOA.DeligneAudit.D4FusionRealizationTwoLevelCount1
+import VOA.DeligneAudit.D4FusionRealizationTwoLevelCount2
+import VOA.DeligneAudit.D4FusionRealizationTwoLevelCount3
+import VOA.DeligneAudit.D4FusionRealizationTwoLevelCount4
+
+#print axioms VOA.DeligneAudit.D4Two.Certificate.word_level_count_0

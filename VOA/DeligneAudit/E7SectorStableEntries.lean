@@ -1,0 +1,33 @@
+import VOA.DeligneAudit.E7SectorStableEntries000
+import VOA.DeligneAudit.E7SectorStableEntries004
+import VOA.DeligneAudit.E7SectorStableEntries015
+import VOA.DeligneAudit.E7SectorStableEntries019
+import VOA.DeligneAudit.E7SectorStableEntries023
+import VOA.DeligneAudit.E7SectorStableEntries027
+import VOA.DeligneAudit.E7SectorStableEntries031
+import VOA.DeligneAudit.E7SectorStableEntries035
+import VOA.DeligneAudit.E7SectorStableEntries039
+import VOA.DeligneAudit.E7SectorStableEntries043
+import VOA.DeligneAudit.E7SectorStableEntries047
+import VOA.DeligneAudit.E7SectorStableEntries051
+import VOA.DeligneAudit.E7SectorStableEntries055
+import VOA.DeligneAudit.E7SectorStableEntries059
+import VOA.DeligneAudit.E7SectorStableEntries063
+import VOA.DeligneAudit.E7SectorStableEntries067
+import VOA.DeligneAudit.E7SectorStableEntries078
+import VOA.DeligneAudit.E7SectorStableEntries082
+import VOA.DeligneAudit.E7SectorStableEntries086
+import VOA.DeligneAudit.E7SectorStableEntries090
+import VOA.DeligneAudit.E7SectorStableEntries094
+import VOA.DeligneAudit.E7SectorStableEntries098
+import VOA.DeligneAudit.E7SectorStableEntries102
+import VOA.DeligneAudit.E7SectorStableEntries106
+import VOA.DeligneAudit.E7SectorStableEntries110
+import VOA.DeligneAudit.E7SectorStableEntries114
+import VOA.DeligneAudit.E7SectorStableEntries118
+import VOA.DeligneAudit.E7SectorStableEntries122
+import VOA.DeligneAudit.E7SectorStableEntries126
+import VOA.DeligneAudit.E7SectorStableEntries130
+
+/-! Opaque integer bracket certificates for all 119 non-generator
+steps in the unchanged semantic E7 stability propagation. -/

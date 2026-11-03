@@ -1,0 +1,2620 @@
+\chapter{Existence of the twisted triality II: the explicit construction}\label{ch:13}
+
+\providecommand{\chthirteenT}{\mathcal{T}}
+\providecommand{\chthirteenV}{V_0^{+}}
+\providecommand{\chthirteenVt}{V_3^{+}}
+\providecommand{\chthirteenTs}[1]{T_{#1}^{+}}
+\providecommand{\chthirteeno}{\operatorname{o}}
+
+\section{Where we stand, and what this chapter does}\label{ch13:sec:intro}
+
+This chapter documents the release of the library named in the front matter. Quotations from the
+repository are printed in \texttt{leancode} boxes, which are checked by \texttt{scripts/textbook/sync.py} to occur verbatim in
+the source of that release (up to whitespace; documentation comments may be omitted); tool output is printed in plain boxes.
+Checks that were run at an earlier state of the library and not re-run for this edition are marked as such.
+
+Chapter~\ref{ch:11} built the \emph{untwisted} half of the Frenkel--Lepowsky--Meurman triality: an
+involutive automorphism $\sigma$ of the vertex operator algebra $\chthirteenV$, the fixed points of a
+group $(\Z/2)^2$ acting on the Leech lattice VOA $V_\Leech$. Chapter~\ref{ch:12} explained why one
+needs more: $\sigma$ must be \emph{extended} to the two other irreducible $\chthirteenV$-modules
+that make up $\Vnat$, namely
+\begin{equation*}
+  \sigma\colon \chthirteenVt \longrightarrow \chthirteenTs{s} \qquad\text{and}\qquad
+  \sigma\colon \chthirteenTs{s'}\longrightarrow \chthirteenTs{s},
+\end{equation*}
+as \emph{$\sigma$-twisted intertwiners}: linear maps $\Phi$ with $\Phi(u_{(n)}x)=(\sigma u)_{(n)}\Phi(x)$
+for all $u\in\chthirteenV$ and all $n$. Chapter~\ref{ch:12} then proved two reduction theorems:
+\begin{enumerate}[label=(\roman*)]
+\item such a $\Phi$ exists as soon as there is a linear map $\varphi$ on the \emph{top level} (the
+  weight-two space, of dimension $49152$) that satisfies the zero-mode identity
+  $\varphi(\chthirteeno(a)x)=\chthirteeno(\sigma a)\varphi(x)$ for \emph{every} homogeneous $a\in\chthirteenV$
+  and hits a cyclic vector (the residual structures \lean{TopSigmaV3}, \lean{TopSigmaTT});
+\item because the weight-two space $(\chthirteenV)_2$ generates the Zhu algebra of $\chthirteenV$
+  (\lean{zhuGenerated_weightTwo}), it suffices to check the zero-mode identity for $a$ of weight two.
+\end{enumerate}
+What is left is therefore a \emph{finite, explicit} problem of linear algebra: write down $\varphi$ on a
+$49152$-dimensional space, and check $\varphi\circ\chthirteeno(a)=\chthirteeno(\sigma a)\circ\varphi$ for every
+$a$ in the $49428$-dimensional space $(\chthirteenV)_2$. This chapter solves it, in Lean, with no
+hypotheses. The headline results are
+\begin{equation*}
+  \text{\lean{topSigmaV3}}:\ \exists s\,\exists\varphi,\ \text{\lean{TopSigmaV3} } s\ \varphi,
+  \qquad
+  \text{\lean{topSigmaTT}}:\ \exists s\,\exists\varphi,\ \text{\lean{TopSigmaTT} } s\ s\ \varphi,
+\end{equation*}
+their consequences \lean{sigmaV3T_exists}, \lean{sigmaTT_exists}, and the combined form
+\lean{topSigma_both}, in which both maps come from one and the same ``seed'' vector so that their
+sectors match.
+
+\subsection*{The shape of the answer}
+The physics picture is helpful. $\Vnat$ is a $\Z/2$-orbifold of the Leech lattice theory; the
+twisted sector $V_\Leech^T$ is built on the ground states $T$, a $4096$-dimensional irreducible
+representation of a finite extraspecial $2$-group (Chapter~\ref{ch:06}), and its weight-two states
+are $h(-\tfrac12)\otimes T$, one twisted oscillator on a ground state. The untwisted states of
+weight two in $\chthirteenVt$ are the lattice states $e^{n}+e^{-n}$ for the $98304$ odd Leech vectors $n$
+of norm $4$. The triality $\sigma$ exchanges these two descriptions, and we shall find that it does
+so \emph{monomially}:
+\begin{equation*}
+  \varphi\bigl(e^{n}+e^{-n}\bigr) \;=\; h_{w_{j(n)}}(-\tfrac12)\otimes \tau(n),
+  \qquad \tau(n)=i^{\,n_0}\,\operatorname{sign}(n_{j(n)})\;e_{n}\,t ,
+\end{equation*}
+where $j(n)$ is the unique coordinate in which $n$ has an entry $\pm3$, $w_j=8e_j$ is the $j$-th frame
+vector, $e_n$ is the action of $n$ on $T$, and $t\in T$ is one fixed ``seed'' vector. The work of the
+chapter is (a) to compute all zero modes on both sides, (b) to compute $\sigma$ on every weight-two
+letter, (c) to construct the seed $t$, and (d) to verify the identities, which in the end reduce to
+facts about the Golay code (minimum weight $8$, self-duality, double evenness) and a few
+$2\times2$ matrix identities over $\Q(\sqrt2, i)$.
+
+\subsection*{A remark on method: everything stays symbolic}
+The Leech lattice cocycle $\varepsilon_\Leech$ in the library is defined from an arbitrary
+$\Z$-basis chosen by \lean{Module.Free.chooseBasis}; its values are not computable. Likewise the
+character \lean{golayE} that enters the bridge between the Niemeier lattice $N(A_1^{24})$ and the
+Leech lattice is chosen by \lean{Classical.choose}. Not a single sign in this chapter is ever
+evaluated. Every identity is derived from structural properties --- bimultiplicativity,
+$\varepsilon(a,a)=\pm1$, the commutator formula $\varepsilon(a,b)\varepsilon(b,a)=(-1)^{\langle
+a,b\rangle}$, the coboundary comparison between cocycles of two lattices, and $\theta$-invariance of
+$\sigma(u)$. Section~\ref{ch13:sec:design} discusses why this was not an obstacle, and why a
+refactoring to an explicit basis would not have helped.
+
+\subsection*{Plan}
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\S & content & file(s) \\
+\midrule
+\ref{ch13:sec:recap} & the objects and the residual statements & (Chapters~\ref{ch:11}, \ref{ch:12}) \\
+\ref{ch13:sec:source} & zero modes on $\chthirteenVt$; spanning sets & \leanpath{SigmaTopSource} \\
+\ref{ch13:sec:target} & zero modes on the twisted top level & \leanpath{SigmaTopTarget} \\
+\ref{ch13:sec:frame} & Golay frame, blocks, frame letters & \leanpath{SigmaTopFrame}, \leanpath{SigmaTopSigma} \\
+\ref{ch13:sec:block} & the block maps $\varphi_\tau,\varphi_\psi$; partial results & \leanpath{SigmaTop}, \leanpath{SigmaTopTT} \\
+\ref{ch13:sec:offdiag} & off-diagonal letters, eigen-conditions & \leanpath{SigmaTopOffdiag} \\
+\ref{ch13:sec:design} & the cocycle design question & --- \\
+\ref{ch13:sec:kappa} & the constants $\kappa_\pm$; seeds & \leanpath{SigmaTop2Bridge}, \leanpath{SigmaTop2Eigen} \\
+\ref{ch13:sec:xi} & the quadratic refinement $\xi$; the spinor cube & \leanpath{SigmaTop2Xi}, \leanpath{SigmaTop2Cube} \\
+\ref{ch13:sec:seed} & the seed exists & \leanpath{SigmaTop2Seed} \\
+\ref{ch13:sec:root} & root letters $(\pm4,\pm4,0^{22})$ & \leanpath{SigmaTop2Root} \\
+\ref{ch13:sec:star} & the explicit $\tau_\star$ & \leanpath{SigmaTop2Main} \\
+\ref{ch13:sec:octad} & octad letters on $\chthirteenVt$; classification; $\sigma$ on $\chthirteenVt$ & \leanpath{SigmaTop2Octad}, \leanpath{SigmaTop2Class} \\
+\ref{ch13:sec:tt} & the twisted source $\chthirteenTs{s}$ & \leanpath{SigmaTop2TT}, \leanpath{SigmaTop2TTOct} \\
+\ref{ch13:sec:numerics} & numerical evidence that preceded the proof & --- \\
+\ref{ch13:sec:dead} & dead ends and traps & --- \\
+\ref{ch13:sec:referee} & referee's checklist & --- \\
+\bottomrule
+\end{tabular}
+\end{center}
+All files live in \leanpath{VOA/Moonshine/} and all declarations in the namespace
+\lean{VOA.Moonshine.SigmaTop} unless stated otherwise.
+
+%======================================================================
+\section{The objects, and the statements to be proved}\label{ch13:sec:recap}
+
+This section collects, with their Lean sources, the definitions that occur in the statements of
+the chapter. Most were introduced in Chapters~\ref{ch:04}, \ref{ch:06}, \ref{ch:08}, \ref{ch:11}
+and \ref{ch:12}; we repeat what is needed so that every statement below can be checked against
+definitions printed in this book.
+
+\subsection{Coordinates on the Leech lattice}\label{ch13:ssec:coords}
+
+The library's Leech lattice $\Leech$ (\lean{leech}) is realised inside $\Z^{24}$: a vector is an
+integer vector $x=(x_0,\dots,x_{23})$ and the bilinear form is
+\begin{equation}\label{ch13:eq:form}
+  \langle x,y\rangle \;=\; \tfrac18\,x\cdot y .
+\end{equation}
+(This is the usual $\tfrac1{\sqrt8}$-normalisation of the Turyn/Conway construction; see
+Chapter~\ref{ch:02}.) The lattice consists of the vectors $x\equiv 0\pmod 2$ with
+$x/2 \bmod 2$ in the Golay code $\mathcal G$ and $\sum x_i\equiv0\pmod 8$ (the \emph{even} Leech
+vectors, $x=2a$ with $a\in A$ below), together with the translates $x=2a+u$ of these by
+$u=(5,1^{23})$ (the \emph{odd} Leech vectors; \lean{Leech.uVec}). The homomorphism
+\begin{equation*}
+  \beta\colon \Leech\to\Z/2,\qquad \beta(x)=x_0 \bmod 2
+\end{equation*}
+is the library's \lean{frameChar}; its kernel is the index-two sublattice $\Leech_0$
+(\lean{lambda0}).
+
+\noindent File \leanpath{VOA/Moonshine/FrameSectors.lean}.
+\begin{leancode}
+noncomputable def frameChar : leech.carrier →+ ZMod 2 := Leech.beta.toAddMonoidHom
+
+noncomputable def lambda0 : Submodule ℤ leech.carrier := LinearMap.ker Leech.beta
+\end{leancode}
+with \lean{Leech.beta} the map \texttt{x ↦ ((x 0 : ℤ) : ZMod 2)}
+(\leanpath{VOA/LatticesAndCodes/Leech/Defs.lean}). In Lean the integer coordinates of a Leech
+vector $x$ are written \lean{lv x : Fin 24 → ℤ} (\leanpath{SigmaTopFrame.lean}), and the identity
+\eqref{ch13:eq:form} is the theorem \lean{leech_form_lv}:
+\begin{leancode}
+def lv (x : leech.carrier) : Fin 24 → ℤ := (show ↥Leech.carrier from x).1
+
+theorem leech_form_lv (x y : leech.carrier) : leech.form x y = (lv x ⬝ᵥ lv y) / 8 := rfl
+\end{leancode}
+(the integer division is exact, since $8\mid x\cdot y$ for Leech vectors, \lean{eight_dvd_lv}).
+
+\paragraph{Two other lattices.} Two further lattices enter. The set
+\begin{equation*}
+  A=\{a\in\Z^{24} : a\bmod 2\in\mathcal G,\ 4\mid \textstyle\sum a_i\}
+\end{equation*}
+(\lean{Leech.subA}) carries the form $\langle a,b\rangle_A=\tfrac12 a\cdot b$; it is the lattice
+\lean{lam0}. It maps isometrically onto $\Leech_0$ by $\iota_\Leech(a)=2a$ (\lean{inclΛ}), and it
+also sits inside the Niemeier lattice
+\begin{equation*}
+  N=N(A_1^{24})=\{x\in\Z^{24}: x\bmod2\in\mathcal G\},\qquad \langle x,y\rangle_N=\tfrac12 x\cdot y
+\end{equation*}
+(\lean{golayN}) by the identity map $\iota_N$ (\lean{inclN}). In $N$ the vectors $\alpha_j=2e_j$
+(\lean{golayRoot j}) are the $48$ roots $\pm\alpha_j$ of the root system $A_1^{24}$. So
+\begin{equation*}
+  N\ \supset\ A\ \xrightarrow{\ \ \iota_\Leech=2\cdot\ \ }\ \Leech_0\subset\Leech,
+\end{equation*}
+and $A\cong\Leech_0=\Leech\cap N$ is the common index-two sublattice through which the
+Leech theory and the Niemeier theory are compared. In Leech coordinates the frame vectors are
+$w_j=\iota_\Leech(4e_j)=8e_j$ (\lean{fw j}); they satisfy $\langle w_j,x\rangle=x_j$ and
+$\langle w_j,w_k\rangle=8\delta_{jk}$. The special frame vector $w_0=8e_0$ is \lean{frameW}.
+
+\subsection{The lattice VOAs, the cocycles, and the bridge}
+For an even lattice $L$ the lattice VOA $V_L$ (Chapter~\ref{ch:03}) has states $p\otimes e^\gamma$,
+$p$ in the Heisenberg Fock space, $\gamma\in L$. Its vertex operators involve a $\pm1$-valued
+bimultiplicative $2$-cocycle $\varepsilon_L$ with $\varepsilon_L(a,b)\varepsilon_L(b,a)=(-1)^{\langle
+a,b\rangle}$, the library's \lean{latticeCocycle L}; it is defined from the basis
+\lean{latticeBasis L}, itself an arbitrary $\Z$-basis. The charged vacuum $1\otimes e^\gamma$ is
+\lean{latChargeGen L γ}, and in this chapter we write it $e^\gamma$.
+
+Two lattice VOAs built from \emph{different} cocycles on isometric lattices are isomorphic, but the
+isomorphism rescales charged states by a function $c(\gamma)\in\{\pm1,\pm i\}$ which is a
+``coboundary'' comparing the two cocycles: $\varepsilon_L(\iota a,\iota b)\,c(a)c(b) =
+\varepsilon_K(a,b)\,c(a+b)$. This is \lean{latCob K L ι} (Chapter~\ref{ch:03},
+\lean{latticeCocycle_map_mul_latCob}).
+
+Chapter~\ref{ch:11} built the VOA isomorphism
+\begin{equation*}
+  \text{\lean{golayToV0}}\colon\ V_N^{\langle\chi,\Theta\rangle}\xrightarrow{\ \sim\ }\chthirteenV,
+\end{equation*}
+the composite of the lattice functoriality maps for $A\to N$ and $A\to\Leech$ with one twist by a
+character $g_e$ of $A$, the character \lean{golayE}, chosen (by \lean{Classical.choose}) so that a
+certain involution of $V_A$ becomes the standard $\theta$. The triality on $\chthirteenV$ is the
+transport of the $N$-side triality:
+\noindent Files \leanpath{VOA/Moonshine/TrialityGolay.lean}, \leanpath{VOA/Moonshine/FrameBridgeGolay.lean}.
+\begin{leancode}
+noncomputable def golaySigma : Aut golayVOA := golayG * golayChiMod * golayG⁻¹
+
+noncomputable def golayTheta : Aut golayVOA := golaySigma * golayChi * golaySigma
+
+noncomputable def golayToV0 : (orbifold golayK).carrier ≃ₗ[ℂ] V0Sub.carrier :=
+  lam0PlusGolayEquiv.symm.trans lam0PlusEquiv
+
+noncomputable def v0Sigma : Aut V0P :=
+  Aut.transport golayToV0 golayToV0_isVOAHom golayToV0_omega golaySigma0
+\end{leancode}
+Here $\mathtt{golayG}=\prod_j g_j$ with $g_j=\exp\bigl((1-\sqrt2)E_j\bigr)\exp\bigl(\tfrac{\sqrt2}{4}F_j\bigr)$, where
+$E_j=(e^{\alpha_j})_{(0)}$, $F_j=\varepsilon_j(e^{-\alpha_j})_{(0)}$ and
+$\varepsilon_j=\varepsilon_N(\alpha_j,-\alpha_j)$ (\lean{golayEps j}) are the $\mathfrak{sl}_2$ zero modes
+attached to the root $\alpha_j$; \lean{golayChiMod} is the momentum sign
+$e^\gamma\mapsto(-1)^{\sum\gamma_i/2+\gamma_0}e^\gamma$ (Chapter~\ref{ch:11} explains the extra
+$\gamma_0$, DGM's modification~(7.8)); \lean{golayChi} is $e^\gamma\mapsto(-1)^{\sum\gamma_i/2}e^\gamma$.
+\lean{golaySigma0} is the restriction of $\sigma$ to the orbifold $V_N^{\langle\chi,\Theta\rangle}$.
+In what follows $\sigma$ always means \lean{v0Sigma}, accessed through
+\noindent File \leanpath{VOA/Moonshine/TrialityTwSigma.lean}.
+\begin{leancode}
+noncomputable def sig (u : V0Sub.carrier) : V0Sub.carrier := v0Sigma u
+\end{leancode}
+
+\subsection{The sectors}
+$V_\Leech^+$ is \lean{VPlus}, the $\theta$-fixed subVOA (Chapter~\ref{ch:04}). The \emph{frame
+automorphism} \lean{plusFrameAut} acts on $e^\gamma$ by $(-1)^{\beta(\gamma)}$; its eigenspaces are
+\lean{frameSector 0} $=\chthirteenV$ (also \lean{V0Sub}, with VOA structure \lean{V0P}) and
+\lean{frameSector 1} $=\chthirteenVt$.
+\noindent File \leanpath{VOA/Moonshine/FrameSectors.lean}.
+\begin{leancode}
+noncomputable def frameSector (i : ZMod 2) : Submodule ℂ VPlus :=
+  Module.End.eigenspace (plusFrameAut.toLinearEquiv : Module.End ℂ VPlus)
+    (Moonshine.Extraspecial.sgn i)
+\end{leancode}
+(\lean{Extraspecial.sgn i} is $(-1)^i$.) On the twisted side, \lean{TLeechT} is the
+$4096$-dimensional module $T$ of the extraspecial group $\hat\Leech/K$ (Chapter~\ref{ch:06}), with
+operators $e_\gamma=$ \lean{eT leech … γ}, $\gamma\in\Leech$, satisfying
+\begin{equation}\label{ch13:eq:Trel}
+  e_a e_b=\varepsilon_\Leech(a,b)\,e_{a+b},\qquad e_{a+2b}=e_a,\qquad e_{-a}=e_a,
+  \qquad e_a e_b=(-1)^{\langle a,b\rangle}e_b e_a,
+\end{equation}
+(\lean{eT_mul}, \lean{eT_add_two_nsmul}, \lean{eT_neg}, \lean{eT_comm_sign'}); in particular
+$e_a^2=\varepsilon_\Leech(a,a)$. The frame involution is $J=c^{-1}e_{w_0}$ with $c^2=\varepsilon(w_0,w_0)$,
+and $T=T_0\oplus T_1$ with $T_s=\{t: Jt=(-1)^s t\}$:
+\noindent File \leanpath{VOA/Moonshine/FrameTwisted.lean}.
+\begin{leancode}
+noncomputable def frameJ (w : L.carrier) : End ℂ (TT L hEven hU) :=
+  (sqrtEps L w)⁻¹ • eT L hEven hU w
+
+noncomputable def frameT (w : L.carrier) (s : ZMod 2) : Submodule ℂ (TT L hEven hU) :=
+  Module.End.eigenspace (frameJ L hEven hU w) (Extraspecial.sgn s)
+
+noncomputable abbrev leechFrameT (s : ZMod 2) : Submodule ℂ (TT leech leech_even leech_isUnit_det_gramMat) :=
+  frameT leech leech_even leech_isUnit_det_gramMat frameW s
+\end{leancode}
+The $\theta$-fixed twisted module $(V_\Leech^T)^+$ is \lean{TP}, a submodule of
+$\mathtt{Tw}=S[\theta]\otimes T$, and \lean{TPframe s} $=\chthirteenTs{s}$ is the part with
+$J=(-1)^s$. Its cyclic vector is $x_0^T(t_0)=h_0(-\tfrac12)\otimes t_0$:
+\noindent Files \leanpath{VOA/Moonshine/CyclicTwisted.lean}, \leanpath{VOA/Moonshine/TrialityTwSigma.lean}.
+\begin{leancode}
+noncomputable def frameX0T (t₀ : TLeechT) : Tw := (X (0, 0) : FockT 24) ⊗ₜ t₀
+noncomputable def x0T (t₀ : TLeechT) : TP := ⟨frameX0T t₀, frameX0T_mem_TP t₀⟩
+\end{leancode}
+(\lean{X (0, c)} is the Fock variable for the mode $h_c(-\tfrac12)$, $c\in\{0,\dots,23\}$.)
+
+\subsection{The actions, the intertwiner predicates, the residuals}
+For $u\in\chthirteenV$ and $n\in\Z$ the operators $u_{(n)}$ on $V_\Leech^+$ and on $(V_\Leech^T)^+$ are
+\noindent File \leanpath{VOA/Moonshine/TrialityTwSigma.lean}.
+\begin{leancode}
+noncomputable def actV (u : V0Sub.carrier) (n : ℤ) : VPlus →ₗ[ℂ] VPlus :=
+  mode (leechVOAPlus.Y (u : VPlus)) n
+
+noncomputable def actT (u : V0Sub.carrier) (n : ℤ) : TP →ₗ[ℂ] TP :=
+  mode (Moonshine.plusModule.YM (u : VPlus)) n
+\end{leancode}
+Recall (Definition~\ref{l01:def:mode}) that \lean{mode f n} is the coefficient $u_{(n)}$ of $z^{-n-1}$ in
+$Y(u,z)$. For $u$ of weight $k$ the \emph{zero mode} $\chthirteeno(u)$, the operator that preserves
+weight, is $u_{(k-1)}$; for the weight-two letters of this chapter it is $u_{(1)}$, which is why the
+number \lean{1} appears everywhere below. A twisted intertwiner is
+\noindent Files \leanpath{VOA/Moonshine/TrialityTwGeneric.lean}, \leanpath{VOA/Moonshine/TrialityTwSigma.lean}.
+\begin{leancode}
+def IsTwInt (ρ : A → ℤ → M →ₗ[ℂ] M) (τ : A → ℤ → N →ₗ[ℂ] N) (g : A → A) (S : Set A)
+    (X : Submodule ℂ M) (Φ : M →ₗ[ℂ] N) : Prop :=
+  ∀ u ∈ S, ∀ (n : ℤ), ∀ x ∈ X, Φ (ρ u n x) = τ (g u) n (Φ x)
+
+def IsSigmaV3T (Φ : VPlus →ₗ[ℂ] TP) : Prop :=
+  IsTwInt actV actT sig Set.univ (frameSector 1) Φ
+
+def IsSigmaTT (s : ZMod 2) (Φ : TP →ₗ[ℂ] TP) : Prop :=
+  IsTwInt actT actT sig Set.univ (TPframe s) Φ
+\end{leancode}
+So \lean{IsSigmaV3T Φ} says exactly: for all $u\in\chthirteenV$, all $n\in\Z$ and all $x\in\chthirteenVt$,
+$\Phi(u_{(n)}x)=(\sigma u)_{(n)}\Phi(x)$. The top levels and the two residual structures of
+Chapter~\ref{ch:12} are:
+\begin{leancode}
+noncomputable def OmegaV3 : Submodule ℂ VPlus := frameSector 1 ⊓ leechVOAPlus.grading 2
+
+structure TopSigmaV3 (s : ZMod 2) (φ : VPlus →ₗ[ℂ] TP) : Prop where
+  /-- `φ` maps the top level of `V₃⁺` into `T_s⁺`. -/
+  maps_frame : ∀ x ∈ OmegaV3, φ x ∈ TPframe s
+  /-- `φ` maps the top level into weight 2. -/
+  maps_weight : ∀ x ∈ OmegaV3, φ x ∈ plusModule.weight (2 : ℂ)
+  /-- Zero-mode intertwining: `φ (o(a) x) = o(σ a) φ x` for every homogeneous `a ∈ V₀⁺`. -/
+  zero_mode : ∀ (k : ℤ) (a : V0Sub.carrier), (a : VPlus) ∈ leechVOAPlus.grading k →
+    ∀ x ∈ OmegaV3, φ (actV a (k - 1) x) = actT (sig a) (k - 1) (φ x)
+  /-- `φ` hits a cyclic vector `h₀(−½)𝟙 ⊗ t₀` of `T_s⁺`. -/
+  hits_cyclic : ∃ t₀ : TLeechT, t₀ ∈ leechFrameT s ∧ t₀ ≠ 0 ∧ ∃ x ∈ OmegaV3, φ x = x0T t₀
+
+noncomputable def OmegaT (s' : ZMod 2) : Submodule ℂ TP := TPframe s' ⊓ plusModule.weight (2 : ℂ)
+
+structure TopSigmaTT (s' s : ZMod 2) (φ : TP →ₗ[ℂ] TP) : Prop where
+  maps_frame : ∀ x ∈ OmegaT s', φ x ∈ TPframe s
+  maps_weight : ∀ x ∈ OmegaT s', φ x ∈ plusModule.weight (2 : ℂ)
+  zero_mode : ∀ (k : ℤ) (a : V0Sub.carrier), (a : VPlus) ∈ leechVOAPlus.grading k →
+    ∀ x ∈ OmegaT s', φ (actT a (k - 1) x) = actT (sig a) (k - 1) (φ x)
+  hits_cyclic : ∃ t₀ : TLeechT, t₀ ∈ leechFrameT s ∧ t₀ ≠ 0 ∧ ∃ x ∈ OmegaT s', φ x = x0T t₀
+\end{leancode}
+(\leanpath{SigmaExistLeech.lean}; the doc-strings of \lean{TopSigmaTT} are omitted, they repeat
+those of \lean{TopSigmaV3}.) The clause \lean{hits_cyclic} is what excludes the trivial solution
+$\varphi=0$, which satisfies every other clause: this was a recorded trap of Chapter~\ref{ch:12}.
+
+Finally Zhu generation (Chapter~\ref{ch:12}): a set $G\subseteq\chthirteenV$ is
+\emph{Zhu-generating} if every subspace containing the vacuum, $O(\chthirteenV)$ and $G$ and closed
+under Zhu's product is everything.
+\noindent File \leanpath{VOA/Moonshine/SigmaExistZhu.lean}.
+\begin{leancode}
+def ZhuGenerated (G : Set V0Sub.carrier) : Prop :=
+  ∀ S : Submodule ℂ V0Sub.carrier, V0P.vacuum ∈ S → O V0P ≤ S →
+    (∀ a ∈ S, ∀ b ∈ S, zhuMul V0P a b ∈ S) → G ⊆ S → S = ⊤
+\end{leancode}
+The two reductions of Chapter~\ref{ch:12} that this chapter feeds are
+\lean{topSigmaV3_of_zhuGenerated} (``\lean{TopSigmaV3 s φ} follows from \lean{maps_frame},
+\lean{maps_weight}, \lean{hits_cyclic}, a Zhu-generating set $G$, and the zero-mode identity for
+$g\in G$'') and \lean{sigmaV3T_exists_of_top} (``\lean{TopSigmaV3 s φ} implies a genuine
+$\Phi$ with \lean{IsSigmaV3T Φ} extending $\varphi$''), and their \lean{TT} analogues.
+
+\begin{remark}[Why ``$\exists s$'']\label{ch13:rem:exists-s}
+Every final statement of this chapter has the form ``there is a sector $s\in\Z/2$ such that\dots''.
+This is forced. Chapter~\ref{ch:12} proved \lean{golayE_not_determined}: the specification of the
+chosen character \lean{golayE} pins it only up to a character $e_\beta$ with $\beta$ odd, and the two
+admissible choices give versions of $\sigma$ conjugate by an automorphism of $\Vnat$ that swaps
+$T_0^+$ and $T_1^+$. Which of the two $T_s^+$ is the image of $\chthirteenVt$ is therefore not a
+property of the definitions; it depends on a bit hidden inside \lean{Classical.choose}. The
+construction below produces the seed in whichever sector it lands (\lean{seed_in_frame}) and reports
+that sector existentially.
+\end{remark}
+
+%======================================================================
+\section{\texorpdfstring{The source side: zero modes on $V_3^+$ and the letters of $(V_0^+)_2$}{The source side: zero modes on V3+ and the letters of (V0+)2}}\label{ch13:sec:source}
+
+\subsection{The zero mode of a normally ordered product}
+The first computation is a VOA-generic one. A weight-two state of the form $u_{(-1)}v$ (normally
+ordered product of two weight-one states) acts on a vector $x$ through its zero mode
+$(u_{(-1)}v)_{(1)}$. If $u$ and $v$ act on $x$ ``diagonally and only through their zero modes'', the
+product acts by the product of eigenvalues --- the familiar statement that $\tfrac12 h(-1)^2\mathbf 1$
+measures $\tfrac12 p^2$ on a momentum state.
+
+\begin{lemma}[\lean{smul_neg_one_one}]\label{ch13:lem:smul-neg-one}
+Let $W$ be a VOA, $u,v,x\in W$, $\mu,\nu\in\C$, and suppose $u_{(i)}x=\delta_{i0}\mu x$ and
+$v_{(i)}x=\delta_{i0}\nu x$ for all $i\ge0$. Then $(u_{(-1)}v)_{(1)}x=\mu\nu\,x$.
+\end{lemma}
+\begin{leancode}
+theorem smul_neg_one_one {𝒱 : Type*} [AddCommGroup 𝒱] [Module ℂ 𝒱] (W : VertexOperatorAlgebra 𝒱)
+    (u v x : 𝒱) (μ ν : ℂ) (hu : ∀ i : ℕ, W.smul u i x = if i = 0 then μ • x else 0)
+    (hv : ∀ i : ℕ, W.smul v i x = if i = 0 then ν • x else 0) :
+    W.smul (W.smul u (-1) v) 1 x = (μ * ν) • x
+\end{leancode}
+\begin{dictionary}
+\lean{W.smul u n x} is the library's notation for $u_{(n)}x$ (Definition~\ref{l03:def:smulT}). The hypotheses
+\lean{hu}, \lean{hv} range over natural numbers \lean{i}, i.e.\ over the non-negative modes only;
+nothing is assumed about negative modes. The conclusion is exactly $(u_{(-1)}v)_{(1)}x=\mu\nu x$.
+Same as the textbook statement. Non-vacuity: the hypotheses are met by $u=h_a(-1)\mathbf 1$ on any
+charged vacuum $e^\gamma$ of a lattice VOA (Lemma~\ref{ch13:lem:source-modes}).
+\end{dictionary}
+\begin{physics}
+A normally ordered product of two currents acts on a charged state through the product of their charges, as in the Sugawara-type statement that $\tfrac12 h(-1)^2\mathbf 1$ measures $\tfrac12p^2$ on a momentum eigenstate. Physically it is the statement that bilinears in the Cartan currents are diagonal on momentum states. This is a technical computation used to read off the eigenvalues of the weight-two zero modes on the source ground states; it is an exact lemma, not a heuristic.
+\end{physics}
+\noindent\emph{Proof.} The iterate (Borcherds) formula gives
+$(u_{(-1)}v)_{(1)}=\sum_{i\ge0}\bigl(u_{(-1-i)}v_{(1+i)}+v_{(-i)}u_{(i)}\bigr)$, with the second sum
+coming from $(-1)^{-1}$ times the reversed terms. Applied to $x$, every $v_{(1+i)}x$ vanishes
+($1+i\ge1$), and in $v_{(-i)}u_{(i)}x$ only $i=0$ survives, giving $v_{(0)}u_{(0)}x=\mu\nu x$.
+\qed
+\begin{status}
+Unconditional; \leanpath{VOA/Moonshine/SigmaTopSource.lean}. Used only as a tool.
+\end{status}
+
+\subsection{The letters}
+Fix the orthonormal coordinates $h_1,\dots,h_{24}$ of $\mathfrak h=\Leech\otimes\C$ used by the
+library's Heisenberg algebra (an orthonormal basis obtained from the Gram matrix; not the Golay frame).
+Write $\gamma_a$ for the $a$-th orthonormal coordinate of $\gamma$ (\lean{chargeCoord leech γ a}).
+The weight-two space of $\chthirteenV$ contains two kinds of states:
+\begin{itemize}
+\item the \emph{Heisenberg letters} $q_{ab}=h_a(-1)h_b(-1)\mathbf 1$ (\lean{qV a b}), $300$ linearly
+  independent ones;
+\item the \emph{lattice letters} $u_\gamma=e^\gamma+e^{-\gamma}$ (\lean{lV γ hγ}) for $\gamma\in\Leech_0$ of
+  norm $4$.
+\end{itemize}
+Both are $\theta$-invariant and frame-even, i.e.\ lie in $\chthirteenV$. For the lattice letters the
+library uses one representative of each pair $\pm\gamma$: \lean{halfFour} is the set of norm-four
+vectors $\gamma$ with $\gamma\prec-\gamma$ for a fixed well-order $\prec$, and
+\noindent File \leanpath{VOA/Moonshine/FrameWeightTwo.lean}.
+\begin{leancode}
+noncomputable def halfFourChi (i : ZMod 2) : Finset leech.carrier :=
+  (halfFour leech leech_posDef).filter fun α => frameChar α = i
+\end{leancode}
+$S_0=$\lean{halfFourChi 0} ($49128$ vectors, even) and $S_1=$\lean{halfFourChi 1} ($49152$ vectors, odd).
+The states
+\begin{equation*}
+  x_n=e^{n}+e^{-n}\in\chthirteenVt\qquad(n\in S_1)
+\end{equation*}
+(\lean{frameX0P n}, with \lean{frameX0 β = latChargeGen leech β + latChargeGen leech (-β)}) will be our
+basis of the top level of $\chthirteenVt$.
+
+\begin{proposition}[source zero modes]\label{ch13:lem:source-modes}
+Let $n\in\Leech$.
+\begin{enumerate}[label=(\alph*)]
+\item $\chthirteeno(q_{ab})\,x_n=n_an_b\,x_n$.
+\item If $\gamma\in\Leech_0$, $n\notin\Leech_0$ and both have norm $4$, then $|\langle\gamma,n\rangle|\le2$ and
+\begin{equation*}
+  \chthirteeno(u_\gamma)\,x_n=[\langle\gamma,n\rangle=-2]\,\varepsilon_\Leech(\gamma,n)\,x_{\gamma+n}
+  +[\langle\gamma,n\rangle=2]\,\varepsilon_\Leech(\gamma,-n)\,x_{\gamma-n}.
+\end{equation*}
+\end{enumerate}
+\end{proposition}
+\begin{leancode}
+theorem actV_qV (a b : Fin (rank leech)) (n : leech.carrier) :
+    actV (qV a b) 1 (frameX0P n)
+      = (chargeCoord leech n a * chargeCoord leech n b) • frameX0P n
+
+theorem form_bound {γ n : leech.carrier} (hγ : γ ∈ lambda0) (hn : n ∉ lambda0)
+    (hγ4 : leech.form γ γ = 4) (hn4 : leech.form n n = 4) :
+    -2 ≤ leech.form γ n ∧ leech.form γ n ≤ 2
+
+theorem actV_lV {γ n : leech.carrier} (hγ : γ ∈ lambda0) (hn : n ∉ lambda0)
+    (hγ4 : leech.form γ γ = 4) (hn4 : leech.form n n = 4) :
+    actV (lV γ hγ) 1 (frameX0P n)
+      = (if leech.form γ n = -2 then latticeCocycle leech γ n • frameX0P (γ + n) else 0)
+        + (if leech.form γ n = 2 then latticeCocycle leech γ (-n) • frameX0P (γ - n) else 0)
+\end{leancode}
+\begin{dictionary}
+\textbf{Symbols.} \lean{actV g 1} is $g_{(1)}$, the zero mode of the weight-two letter $g$.
+\lean{leech.form γ γ = 4} is ``norm $4$'' in the convention $\langle\gamma,\gamma\rangle=4$ (weight
+$\tfrac12\langle\gamma,\gamma\rangle=2$). Norm $4$ is the minimal norm: $\Leech$ has no vectors of norm $2$.
+\textbf{Hypotheses.} In (b), $\gamma\in\Leech_0$ makes $u_\gamma$ a letter of $\chthirteenV$, and $n\notin\Leech_0$
+makes $x_n$ a state of $\chthirteenVt$; the norms are those of weight-two states. In (a) no hypothesis
+on $n$ is needed. \textbf{Fidelity.} The Lean statements are literally the textbook formulas; the
+Iverson brackets are \lean{if … then … else 0}. \textbf{Could it be vacuous?} No: the hypotheses are
+satisfied by every pair (letter, basis vector) that occurs, e.g.\ $\gamma=4e_0+4e_1$, $n=(-3,1^{23})$
+up to the coordinate convention. The only caveat is that the cocycle signs are left
+symbolic (\lean{latticeCocycle leech γ n}), which is also how the textbook formula is written.
+\end{dictionary}
+\begin{physics}
+The states $x_n=e^n+e^{-n}$ are the lowest-weight (top-level) states of the untwisted sector, labelled by a norm-four momentum $n$ of the Leech lattice. Part (a) says the Heisenberg bilinears $h_a(-1)h_b(-1)\mathbf 1$ have zero modes that just measure the momentum components $n_an_b$, i.e.\ they are diagonal charges. Part (b) says the lattice vertex operators $e^\gamma+e^{-\gamma}$ shift momentum by $\pm\gamma$ only when the inner product is $\mp2$, the standard momentum-conservation selection rule of a vertex-operator zero mode. These are the operators that $\sigma$ must be made to intertwine, so this is the full list of what the source side does to ground states.
+\end{physics}
+\noindent\emph{Proof.} (a) On $e^{\pm n}$, $h_a(-1)\mathbf 1$ acts only through its zero mode, with
+eigenvalue $\pm n_a$; Lemma~\ref{ch13:lem:smul-neg-one} gives $(\pm n_a)(\pm n_b)=n_an_b$ on both terms.
+(b) For lattice states the vertex operator gives
+$e^\gamma_{(m)}e^n=\varepsilon(\gamma,n)\,S_{-m-1-\langle\gamma,n\rangle}(\gamma)\,e^{\gamma+n}$, where $S_k$ is the
+$k$-th elementary Schur polynomial in the modes $\gamma(-1),\gamma(-2),\dots$, and $S_k=0$ for $k<0$. For
+$m=1$ the exponent is $-2-\langle\gamma,n\rangle$: the term vanishes if $\langle\gamma,n\rangle>-2$ and equals
+$\varepsilon(\gamma,n)e^{\gamma+n}$ if $\langle\gamma,n\rangle=-2$. The bound $|\langle\gamma,n\rangle|\le2$ comes from
+$\|\gamma\pm n\|^2=8\pm2\langle\gamma,n\rangle\ge4$ ($\gamma\pm n\ne0$ because $\gamma\in\Leech_0\not\ni n$, and
+nonzero Leech vectors have norm $\ge4$). Expanding $(e^\gamma+e^{-\gamma})_{(1)}(e^{n}+e^{-n})$ into four terms
+and using $\varepsilon(-\gamma,-n)=\varepsilon(\gamma,n)$ and $\varepsilon(-\gamma,n)=\varepsilon(\gamma,-n)$ (bimultiplicativity
+and $\varepsilon=\pm1$) gives the formula. \qed
+\begin{status}
+Unconditional; \leanpath{SigmaTopSource.lean}; \lean{#print axioms} $=$
+[\lean{propext}, \lean{Classical.choice}, \lean{Quot.sound}] (stated in the file header; the
+headline results of the chapter, which depend on these, were re-checked in this writing, see
+\S\ref{ch13:sec:referee}).
+\end{status}
+
+So on $\chthirteenVt$ the Heisenberg letters are \emph{diagonal} and the lattice letters are
+\emph{monomial} in the basis $x_n$. This is what makes the problem tractable.
+
+\subsection{Spanning}
+\begin{proposition}[spanning sets]\label{ch13:prop:span}
+\begin{enumerate}[label=(\alph*)]
+\item $(\chthirteenVt)_2=\operatorname{span}\{x_n : n\in S_1\}$.
+\item $(\chthirteenV)_2=\operatorname{span}\{q_{ab}\}+\operatorname{span}\{u_\gamma:\gamma\in S_0\}$.
+\end{enumerate}
+\end{proposition}
+\begin{leancode}
+theorem OmegaV3_le_span : OmegaV3 ≤ span ℂ (frameX0P '' (halfFourChi 1 : Set leech.carrier))
+
+theorem grading_two_V0_le_span {g : VPlus} (hg : g ∈ frameSector 0) (h2 : g ∈ leechVOAPlus.grading 2) :
+    g ∈ span ℂ (Set.range (fun p : Fin (rank leech) × Fin (rank leech) => qP p.1 p.2)
+      ∪ frameX0P '' (halfFourChi 0 : Set leech.carrier))
+
+def G2 : Set V0Sub.carrier := {g | (g : VPlus) ∈ leechVOAPlus.grading 2}
+\end{leancode}
+\begin{dictionary}
+\lean{OmegaV3} is $(\chthirteenVt)_2$ (frame sector $1$ intersected with weight $2$). \lean{f '' S} is
+the image of a set; \lean{span ℂ} the linear span; ``$\le$'' between submodules is inclusion. Only the
+inclusion ``$\subseteq$'' is stated, which is the direction used; the reverse inclusion is
+\lean{frameX0P_mem_OmegaV3} (each $x_n$ lies in the top level). \lean{qP a b} is $q_{ab}$ viewed in
+$V_\Leech^+$ (\lean{qV} is the same state viewed in $\chthirteenV$). \lean{G2} is the set of all weight-two
+elements of $\chthirteenV$ --- the Zhu-generating set of Chapter~\ref{ch:12}.
+\end{dictionary}
+\begin{physics}
+The weight-two layer of the untwisted sector is the space of the lowest-energy states of the odd part, and these two spanning sets say it is generated by the momentum states $x_n$ over the odd norm-four vectors. On the other side, the weight-two fields are the quadratic currents plus the lattice vertex operators of the even norm-four vectors. This is the bookkeeping that lets us check a symmetry on a basis of states and a basis of fields; it is a purely technical completeness statement.
+\end{physics}
+\noindent\emph{Proof.} Weight two in $V_\Leech$ consists of the quadratic Fock states $p\otimes
+e^0$ ($p$ of degree two: $300$ states $h_ah_b$ and $24$ states $h_a(-2)$), the states
+$h_a(-1)\otimes e^\gamma$ with $\|\gamma\|^2=2$ (none: no roots), and the $196560$ charged vacua of norm
+$4$. On the $\theta$-fixed part the $h_a(-2)$ disappear ($\theta$ acts by $-1$) and the charged vacua
+pair up into $e^\gamma+e^{-\gamma}$. Splitting by $\beta$: frame-odd $\gamma$ give
+$(\chthirteenVt)_2$, frame-even $\gamma$ and the Fock part give $(\chthirteenV)_2$. Both statements are then
+dimension counts against the dimensions $49152$ and $300+49128=49428$ computed in
+Chapter~\ref{ch:11} (\lean{finrank_plusTwoChi}). \qed
+\begin{status}
+Unconditional; \leanpath{SigmaTopSource.lean}.
+\end{status}
+
+\subsection{Reduction of the zero-mode clause to letters and basis vectors}
+\begin{definition}[\lean{ZM}]\label{ch13:def:ZM}
+For a linear map $\varphi\colon V_\Leech^+\to(V_\Leech^T)^+$, a set $X$ and a letter $g\in\chthirteenV$,
+\lean{ZM φ X g} is the statement $\varphi(\chthirteeno(g)x)=\chthirteeno(\sigma g)\varphi(x)$ for all $x\in X$.
+\lean{ZMT} is the same with source $(V_\Leech^T)^+$.
+\end{definition}
+\noindent File \leanpath{VOA/Moonshine/SigmaTopTT.lean}.
+\begin{leancode}
+def ZM (φ : VPlus →ₗ[ℂ] TP) (X : Set VPlus) (g : V0Sub.carrier) : Prop :=
+  ∀ x ∈ X, φ (actV g 1 x) = actT (sig g) 1 (φ x)
+
+def ZMT (φ : TP →ₗ[ℂ] TP) (X : Set TP) (g : V0Sub.carrier) : Prop :=
+  ∀ x ∈ X, φ (actT g 1 x) = actT (sig g) 1 (φ x)
+\end{leancode}
+\begin{physics}
+This is the 2d CFT statement that a candidate map $\varphi$ between two sectors is an intertwiner at one field: sending a state first and then acting with the light field $g$ must agree with acting with the transformed field $\sigma g$ on the image state. In other words $\varphi$ matches charges, the zero-mode eigenvalues of the field $g$ on $x$ and of $\sigma g$ on $\varphi(x)$. Requiring it for all weight-two fields is the discrete shadow of the Ward identity relating the two sectors. This is the basic compatibility condition that every later eigen-condition is a rewriting of.
+\end{physics}
+
+\begin{theorem}[basis reduction]\label{ch13:thm:basis-red}
+Let $\varphi\colon V_\Leech^+\to(V_\Leech^T)^+$ be linear. Suppose
+$\varphi(\chthirteeno(g)x_n)=\chthirteeno(\sigma g)\varphi(x_n)$ for all $n\in S_1$ and all letters $g$ of the
+form $q_{ab}$ or $u_\gamma$ $(\gamma\in S_0)$. Then for every $g\in(\chthirteenV)_2$ there is $k$ (namely $k=2$)
+with $g$ of weight $k$ and $\varphi(g_{(k-1)}x)=(\sigma g)_{(k-1)}\varphi(x)$ for all $x\in(\chthirteenVt)_2$.
+\end{theorem}
+\begin{leancode}
+theorem hGφ_V3_of_basis (φ : VPlus →ₗ[ℂ] TP)
+    (hQ : ∀ a b : Fin (rank leech), ∀ n ∈ halfFourChi 1,
+      φ (actV (qV a b) 1 (frameX0P n)) = actT (sig (qV a b)) 1 (φ (frameX0P n)))
+    (hL : ∀ γ ∈ halfFourChi 0, ∀ n ∈ halfFourChi 1,
+      φ (actV (lV' γ) 1 (frameX0P n)) = actT (sig (lV' γ)) 1 (φ (frameX0P n))) :
+    ∀ g ∈ G2, ∃ k : ℤ, (g : VPlus) ∈ leechVOAPlus.grading k ∧
+      ∀ x ∈ OmegaV3, φ (actV g (k - 1) x) = actT (sig g) (k - 1) (φ x)
+\end{leancode}
+\begin{dictionary}
+\lean{lV' γ} is $u_\gamma$ when $\gamma\in\Leech_0$ and the junk value $0$ otherwise (a total function is
+convenient; on $S_0\subseteq\Leech_0$ it is the genuine letter, \lean{lV'_eq}). The conclusion has precisely
+the shape of the hypothesis \lean{hGφ} of \lean{topSigmaV3_of_zhuGenerated} with $G=$\lean{G2}, which
+is why the existential $\exists k$ appears although $k=2$. Same as the textbook statement.
+\end{dictionary}
+\begin{physics}
+It is enough to test the intertwining property on a basis of ground states and a basis of light fields: the zero modes are linear in both the field and the state, so matching charges on the generators propagates to everything in the weight-two layer. Physically this is the familiar reduction of a symmetry check to checking the action on the generating currents and the lowest-energy states. It replaces an infinite family of conditions by finitely many (about $10^5$) explicit ones; it is a technical reduction and carries no new physics.
+\end{physics}
+\noindent\emph{Proof.} The identity $\varphi\chthirteeno(g)=\chthirteeno(\sigma g)\varphi$ is linear in $g$ (because
+$\sigma$ and $g\mapsto g_{(1)}$ are linear) and linear in $x$. Proposition~\ref{ch13:prop:span} gives
+spanning sets for both. \qed
+\begin{status}
+Unconditional; \leanpath{SigmaTopSource.lean}. The analogous frame-form statements
+\lean{hGφ_V3_of_frame}, \lean{hGφ_TT_of_frame} (\leanpath{SigmaTopTT.lean}) replace the abstract
+$q_{ab}$ by the frame letters of \S\ref{ch13:sec:frame}.
+\end{status}
+
+%======================================================================
+\section{The target side: zero modes on the twisted top level}\label{ch13:sec:target}
+
+The top level of $(V_\Leech^T)^+$ is $h(-\tfrac12)\otimes T$, of dimension $24\cdot4096$; the weight-two
+states $h_c(-\tfrac12)\otimes t$ have conformal weight $\tfrac{24}{16}+\tfrac12=2$. On it we need the zero
+modes of $q_{ab}$ and of $e^\alpha$.
+
+\subsection{Twisted modes in Lean}
+The twisted module $V_\Leech^T$ is a $\theta$-twisted module of period $N=2$
+(\lean{TwistedModule leechTheta 2}, Chapter~\ref{ch:06}). Its vertex operator has half-integral
+modes, and the library stores the mode $u_{(k/2)}$ under the integer index $k$:
+\lean{YM u k} is $u_{(k/2)}$. So the zero mode $u_{(1)}$ of a weight-two element is \lean{YM u 2}, and
+on the $\theta$-fixed part, which is an ordinary $V_\Leech^+$-module, the ordinary mode $u_{(n)}$ is
+\lean{YM u (2 * n)}; this is the theorem
+\noindent File \leanpath{VOA/Moonshine/SigmaTopFrame.lean}.
+\begin{leancode}
+theorem actT_coe (u : V0Sub.carrier) (n : ℤ) (y : TP) :
+    ((actT u n y : TP) : Tw) = leechTwistedModule.YM ((u : VPlus) : LatModuleGen leech) (2 * n) y
+\end{leancode}
+\begin{proposition}[twisted zero modes]\label{ch13:prop:target-modes}
+On $h_c(-\tfrac12)\otimes t$, $t\in T$:
+\begin{enumerate}[label=(\alph*)]
+\item $\chthirteeno(h_a(-1)h_b(-1)\mathbf 1)\,(h_c\otimes t)=\bigl(\tfrac18\delta_{ab}h_c+\tfrac12\delta_{bc}h_a+\tfrac12\delta_{ac}h_b\bigr)\otimes t$;
+\item for $\|\alpha\|^2=4$: $\chthirteeno(e^\alpha)\,(h_c\otimes t)=2^{-4}\bigl(h_c-2\alpha_c\,\alpha(-\tfrac12)\bigr)\otimes e_\alpha t$;
+\item $\chthirteeno(e^{-\alpha})=\chthirteeno(e^{\alpha})$ on the twisted module (more generally on all even modes).
+\end{enumerate}
+\end{proposition}
+\noindent File \leanpath{VOA/Moonshine/SigmaTopTarget.lean}.
+\begin{leancode}
+theorem YML_quadSt (a b c : Fin (rank L)) (t : Rep (cocMat L) (isUnit_det_cocMat L hEven hU)) :
+    YML L hEven hU (quadSt L hEven hPos a b) 2 ((X (0, c) : FockT (rank L)) ⊗ₜ t)
+      = ((if a = b then (1 / 8 : ℂ) else 0) • (X (0, c) : FockT (rank L))
+          + (if b = c then (1 / 2 : ℂ) else 0) • X (0, a)
+          + (if a = c then (1 / 2 : ℂ) else 0) • X (0, b)) ⊗ₜ t
+
+theorem YML_echg_X (α : L.carrier) (hα : L.form α α = 4) (c : Fin (rank L))
+    (t : Rep (cocMat L) (isUnit_det_cocMat L hEven hU)) :
+    YML L hEven hU (echg L α) 2 ((X (0, c) : FockT (rank L)) ⊗ₜ t)
+      = (2 : ℂ) ^ (-(4 : ℤ)) • ((X (0, c) - (2 * chargeCoord L α c) • vVarT (chargeCoord L α) 0)
+          ⊗ₜ eT L hEven hU α t)
+
+theorem YML_echg_neg_two (α : L.carrier) :
+    YML L hEven hU (echg L (-α)) 2 = YML L hEven hU (echg L α) 2
+\end{leancode}
+\begin{dictionary}
+These are stated for a general even unimodular positive-definite lattice $L$ (\lean{hEven},
+\lean{hU} = unimodularity, \lean{hPos}); the Leech versions \lean{leechYM_quad},
+\lean{leechYM_echg_X}, \lean{leechYM_echg_neg_two} follow by transport along $\operatorname{rank}\Leech=24$
+(the casts \lean{cc}, \lean{chT} only renumber coordinates). \lean{YML … u 2} is $u_{(1)}$, the zero
+mode, by the half-integer convention. \lean{X (0, c)} is $h_c(-\tfrac12)$ and
+\lean{vVarT v 0} is $v(-\tfrac12)=\sum_a v_ah_a(-\tfrac12)$. \lean{quadSt … a b} is
+$h_a(-1)h_b(-1)\mathbf 1$ and \lean{echg L α} is $e^\alpha$. The factor $2^{-4}=2^{-\|\alpha\|^2}$ is the
+normalisation $2^{-\langle\gamma,\gamma\rangle}$ of the twisted vertex operator $Y^T(e^\gamma,z)$ (Chapter~\ref{ch:06},
+FLM's convention). The statements are exactly (a)--(c).
+\end{dictionary}
+\begin{physics}
+This computes how the same light fields act on the twisted-sector ground states, the $2^{12}$-dimensional space of twist fields $T$ tensored with the weight-one-half oscillators $h_c(-\tfrac12)$ of the $\mathbb Z/2$-twisted bosons. The Heisenberg bilinears act with the characteristic twisted-sector shifts $\tfrac18\delta_{ab}$ (the conformal weight $1/16$ per boson from the twist field) plus mixing terms, and the lattice vertex operators act on the twist space through the Clifford-like operators $e_\gamma$. These are the target charges that $\sigma$ must match against the source charges of the previous proposition.
+\end{physics}
+\noindent\emph{Proof.} (a) Use the twisted Jacobi identity for $u=h_a(-1)\mathbf 1$ (a $\theta$-eigenvector
+with eigenvalue $-1$) and $v=h_b(-1)\mathbf 1$, at the indices that isolate $(u_{(-1)}v)$'s zero mode. The
+result is a finite sum: the normally ordered product $h_a(-\tfrac12)h_b(\tfrac12)+h_b(-\tfrac12)h_a(\tfrac12)$ on
+$h_c(-\tfrac12)$ (giving the $\tfrac12\delta_{bc}h_a+\tfrac12\delta_{ac}h_b$, since $h_a(\tfrac12)h_c(-\tfrac12)=\tfrac12\delta_{ac}$),
+plus a correction coming from $u_{(1)}v=\delta_{ab}\mathbf 1$ multiplied by the binomial coefficient
+$-\binom{1/2}{2}=\tfrac18$. Physically: the twisted boson has a ground-state energy shift, and $\tfrac18$ per
+coordinate is exactly what makes $\sum_a\tfrac12 h_a h_a$ measure $L_0=\tfrac{24}{16}+\dots$ ($24\cdot\tfrac12\cdot\tfrac18=\tfrac32$).
+(b) The twisted vertex operator is $Y^T(e^\alpha,z)=2^{-\|\alpha\|^2}z^{-\|\alpha\|^2/2}E^-(-\alpha,z)E^+(-\alpha,z)\otimes
+e_\alpha$. For $\|\alpha\|^2=4$ the power of $z$ is $z^{-2}$, so the zero mode $u_{(1)}$ (coefficient of
+$z^{-2}$) is $2^{-4}$ times the degree-zero coefficient of $E^-(-\alpha,z)E^+(-\alpha,z)$. On a
+one-oscillator state only two terms of that coefficient survive: the identity, and the product of the
+first annihilation term of $E^+$ (which contracts $\alpha(\tfrac12)$ with $h_c(-\tfrac12)$, producing
+$\alpha_c$ up to the factor $2$ from $1/(k/2)$ at $k=1$) with the first creation term of $E^-$ (which
+creates $\alpha(-\tfrac12)$, with the same factor). The result is $h_c-2\alpha_c\,\alpha(-\tfrac12)$, as claimed.
+(c) $Y^T(e^{-\alpha},z)$ is obtained from $Y^T(e^\alpha,z)$
+by $z^{1/2}\mapsto-z^{1/2}$ and $e_{-\alpha}=e_\alpha$, which leaves integral (even-index) modes unchanged.
+\qed
+\begin{status}
+Unconditional; \leanpath{SigmaTopTarget.lean}.
+\end{status}
+
+\begin{remark}
+On the twisted top level every lattice letter $u_\gamma=e^\gamma+e^{-\gamma}$ thus acts by
+$h_v(-\tfrac12)\otimes t\mapsto 2^{-3}\,h_{v-2\langle v,\gamma\rangle\gamma}(-\tfrac12)\otimes e_\gamma t$ (the two terms
+are equal by (c), whence $2\cdot2^{-4}=2^{-3}$). The linear map $v\mapsto v-2\langle v,\gamma\rangle\gamma$ is
+\emph{not} a reflection: it is the identity on $\gamma^\perp$ and multiplies $\gamma$ by $1-2\cdot4=-7$. On the
+source side, by contrast, $u_\gamma$ simply moves $x_n$ to $\pm x_{n\pm\gamma}$. The two descriptions look
+very different; they become equal only after $\sigma$ has been applied to the letter, and that is
+the content of the rest of the chapter.
+\end{remark}
+
+%======================================================================
+\section{The Golay frame at weight two}\label{ch13:sec:frame}
+
+The orthonormal coordinates $h_a$ of \S\ref{ch13:sec:source} come from an arbitrary basis and have
+no relation to the Golay code. The right coordinates are those of the \emph{frame}: the $24$ mutually
+orthogonal vectors $w_j=8e_j$ of norm $8$. In this section we rewrite everything in the frame and
+discover the block structure of both top levels.
+
+\subsection{\texorpdfstring{Blocks of $(V_3^+)_2$}{Blocks of (V3+)2}}
+\begin{lemma}[one entry $\pm3$]\label{ch13:lem:blk}
+Let $n\in\Leech$ be odd ($n\notin\Leech_0$) of norm $4$. Then all coordinates of $n$ are odd, and there
+is exactly one index $j=j(n)$ with $n_j^2=9$; all other coordinates satisfy $n_i^2=1$. The index
+$j(n)$ is the \emph{block} of $n$, and $j(-n)=j(n)$.
+\end{lemma}
+\begin{leancode}
+theorem exists_unique_three (f : Fin 24 → ℤ) (hodd : ∀ i, Odd (f i)) (hs : ∑ i, f i ^ 2 = 32) :
+    ∃ j, f j ^ 2 = 9 ∧ ∀ i, i ≠ j → f i ^ 2 = 1
+
+noncomputable def blk (n : leech.carrier) : Fin 24 :=
+  if h : ∃ j, lv n j ^ 2 = 9 then h.choose else 0
+
+theorem lv_sq {n : leech.carrier} (hn : n ∉ lambda0) (h4 : leech.form n n = 4) (j : Fin 24) :
+    lv n j ^ 2 = if j = blk n then 9 else 1
+
+theorem blk_neg (n : leech.carrier) : blk (-n) = blk n
+\end{leancode}
+\begin{dictionary}
+\lean{blk} is defined by choice with a junk value $0$; \lean{lv_sq} shows that for the vectors that
+matter (odd, norm $4$) the choice is forced, so the junk value is never seen. Norm $4$ in the
+convention \eqref{ch13:eq:form} means $\sum n_i^2=32$. Same as the textbook statement.
+\end{dictionary}
+\begin{physics}
+The norm-four odd vectors of the Leech lattice have all coordinates odd, with a single coordinate of size $3$ and the rest of size $1$. This singles out one of the $24$ frame directions for each ground state; physically this is the frame block, the one boson (out of $24$) whose half-integer oscillator $h_{c_j}(-\tfrac12)$ carries the excitation in the image of $x_n$. It is a technical lemma underlying the construction of $\varphi$ on the twisted top level.
+\end{physics}
+\noindent\emph{Proof.} Odd Leech vectors are $2a+u$ with $u=(5,1^{23})$, so all entries are odd. An odd
+square is $8g+1$ with $g\ge0$ (a triangular number times $8$), and $\sum(8g_i+1)=32$ forces
+$\sum g_i=1$: exactly one $g_j=1$ ($n_j^2=9$) and the rest vanish. \qed
+\begin{status}Unconditional; \leanpath{SigmaTopFrame.lean}.\end{status}
+
+So $(\chthirteenVt)_2$ splits into $24$ blocks of $2048$ basis vectors $x_n$ (pairs $\pm n$ with a given
+block); a typical vector is $n=(\mp3,\pm1^{23})$ with the $3$ in position $j$. In the same way
+$(T^+)_2=\bigoplus_j h_{w_j}(-\tfrac12)\otimes T$ has $24$ blocks of $4096$, and $(\chthirteenTs{s})_2$ has $24$
+blocks of $2048$. The first, numerically discovered, fact (\S\ref{ch13:sec:numerics}) is that $\sigma$
+matches the blocks.
+
+\subsection{The twisted top level in frame coordinates}
+For $v\in\C^{24}$ (orthonormal coordinates) and $t\in T$ write $h_v(-\tfrac12)\otimes t$ for
+$\sum_av_a h_a(-\tfrac12)\otimes t$ (\lean{hP v t}). Let $c_j=$ \lean{cw j} be the orthonormal coordinates
+of $w_j$; so $h_{c_j}(-\tfrac12)$ is the oscillator along the $j$-th frame direction.
+
+\begin{definition}[frame letters]\label{ch13:def:dV}
+For $\alpha,\beta\in\Leech$ the \emph{frame quadratic letter} is $d(\alpha,\beta)=\alpha(-1)\beta(-1)\mathbf
+1\in\chthirteenV$ (\lean{dV α β}). The letters $d(w_j,w_k)$ are the frame versions of $q_{ab}$, and
+$q_{ab}=\tfrac1{64}\sum_{j,k}(c_j)_a(c_k)_b\,d(w_j,w_k)$ (\lean{qV_eq_sum_dV}).
+\end{definition}
+\begin{leancode}
+noncomputable def dV (α β : leech.carrier) : V0Sub.carrier :=
+  ⟨⟨quadH leech leech_even leech_posDef α β, (mem_leechVOAPlus_iff _).mpr (quadH_theta α β)⟩, by
+    rw [V0Sub_carrier, mem_frameSector, Extraspecial.sgn_zero, one_smul]
+    exact quadH_frame α β⟩
+\end{leancode}
+\begin{physics}
+The frame letters $d(\alpha,\beta)=\alpha(-1)\beta(-1)\mathbf 1$ are the Heisenberg bilinears written in the Golay frame instead of an orthonormal basis, i.e.\ the quadratic currents $J^\alpha J^\beta$ built from the frame vectors. The change of basis is a rotation of the $24$ free bosons, which is a harmless relabelling of the same fields. The frame is the natural one because the twist fields and the triality action are expressed in terms of the Golay code and its frame vectors.
+\end{physics}
+(\lean{quadH L … α β} is $\alpha(-1)\beta(-1)\mathbf 1$; the anonymous-constructor proofs record membership
+in $V_\Leech^+$ and in frame sector $0$. This one definition body is shown because it is short; it
+contains no choices.)
+
+\begin{proposition}[zero modes in the frame]\label{ch13:prop:frame-modes}
+For $v\in\C^{24}$, $t\in T$, $\alpha,\beta\in\Leech$, $\gamma\in\Leech_0$ of norm $4$:
+\begin{enumerate}[label=(\alph*)]
+\item $\chthirteeno(d(\alpha,\beta))\,x_n=\langle\alpha,n\rangle\langle\beta,n\rangle\,x_n$;
+\item $\chthirteeno(d(\alpha,\beta))\,(h_v\otimes t)=h_{\,\frac{\langle\alpha,\beta\rangle}8v+\frac12\langle v,\beta\rangle\alpha+\frac12\langle v,\alpha\rangle\beta}\otimes t$;
+\item $\chthirteeno(u_\gamma)\,(h_v\otimes t)=2^{-3}\,h_{v-2\langle v,\gamma\rangle\gamma}\otimes e_\gamma t$;
+\item (diagonal letters) $\chthirteeno(d(w_j,w_j))$ acts by $9$ on block $j$ and by $1$ on every other
+  block, on \emph{both} $(\chthirteenVt)_2$ and $(T^+)_2$:
+  $\chthirteeno(d(w_j,w_j))x_n=(9\text{ if }j=j(n)\text{ else }1)\,x_n$ and
+  $\chthirteeno(d(w_j,w_j))(h_{c_m}\otimes t)=(9\text{ if }j=m\text{ else }1)\,h_{c_m}\otimes t$.
+\end{enumerate}
+\end{proposition}
+\begin{leancode}
+theorem actV_dV (α β n : leech.carrier) :
+    actV (dV α β) 1 (frameX0P n)
+      = (((leech.form α n : ℤ) : ℂ) * ((leech.form β n : ℤ) : ℂ)) • frameX0P n
+
+theorem actT_dV_hP (α β : leech.carrier) (v : Fin (rank leech) → ℂ) (t : TLeechT) :
+    actT (dV α β) 1 (hP v t) = hP (dL α β v) t
+
+theorem actT_lV_hP {γ : leech.carrier} (hγ : γ ∈ lambda0) (hγ4 : leech.form γ γ = 4)
+    (v : Fin (rank leech) → ℂ) (t : TLeechT) :
+    actT (lV γ hγ) 1 (hP v t)
+      = ((2 : ℂ) ^ (-(3 : ℤ))) • hP (latL γ v) (eT leech leech_even leech_isUnit_det_gramMat γ t)
+
+theorem actT_dV_fw_hP (j m : Fin 24) (t : TLeechT) :
+    actT (dV (fw j) (fw j)) 1 (hP (cw m) t) = (if j = m then (9 : ℂ) else 1) • hP (cw m) t
+
+theorem actV_dV_fw {n : leech.carrier} (hn : n ∉ lambda0) (h4 : leech.form n n = 4) (j : Fin 24) :
+    actV (dV (fw j) (fw j)) 1 (frameX0P n) = (if j = blk n then (9 : ℂ) else 1) • frameX0P n
+\end{leancode}
+\begin{dictionary}
+\lean{dL α β} is the linear map $v\mapsto\frac{\langle\alpha,\beta\rangle}8v+\frac12\langle v,\beta\rangle\alpha+\frac12\langle
+v,\alpha\rangle\beta$ on $\C^{24}$ and \lean{latL γ} is $v\mapsto v-2\langle v,\gamma\rangle\gamma$, both written in
+orthonormal coordinates; \lean{quadL a b} (used in \lean{actT_qV_hP}) is the special case
+$\alpha=h_a,\beta=h_b$. Note in (b) that the coefficient $\frac{\langle\alpha,\beta\rangle}8$ is the
+$\tfrac18\delta_{ab}$ of Proposition~\ref{ch13:prop:target-modes} after bilinear expansion. In (d), on the
+source side the hypothesis ``$n$ odd of norm 4'' is needed (to know $n_j^2\in\{1,9\}$); on the target
+side no hypothesis on $t$. Same as the textbook statements.
+\end{dictionary}
+\begin{physics}
+This restates the charges of the previous two propositions in frame letters. On the source, $d(\alpha,\beta)$ measures the product of momentum projections $\langle\alpha,n\rangle\langle\beta,n\rangle$; on the twisted ground states it acts as a rank-two operator on the oscillators plus a vertex-operator part acting on the twist space. These are the zero-mode charges of the light fields that $\sigma$ must intertwine, in the basis where the Golay structure is visible.
+\end{physics}
+\noindent\emph{Proof.} (a)--(c) are bilinear expansions of
+Propositions~\ref{ch13:lem:source-modes} and~\ref{ch13:prop:target-modes}, using
+$\alpha(-1)=\sum\alpha_ah_a(-1)$ and $\langle\alpha,\beta\rangle=\sum_a\alpha_a\beta_a$. (d) Source: $\langle w_j,n\rangle=n_j$
+and $n_j^2\in\{9,1\}$ by Lemma~\ref{ch13:lem:blk}. Target: with $\alpha=\beta=w_j$, $v=c_m$,
+$\frac{\langle w_j,w_j\rangle}8=1$ and $\langle c_m,w_j\rangle=8\delta_{jm}$, so $c_m\mapsto c_m+8\delta_{jm}c_m$. \qed
+\begin{status}Unconditional; \leanpath{SigmaTopFrame.lean}.\end{status}
+
+The joint eigenspaces of the $24$ commuting operators $\chthirteeno(d(w_j,w_j))$ are exactly the blocks,
+on both sides, with the same eigenvalue pattern. If these letters are $\sigma$-fixed, any intertwiner
+must preserve blocks --- which is what we prove next.
+
+\subsection{\texorpdfstring{$\sigma$ fixes the diagonal frame letters}{sigma fixes the diagonal frame letters}}
+\begin{lemma}[\lean{root_square}]\label{ch13:lem:root-square}
+Let $L$ be an even lattice and $\alpha$ a root, $\|\alpha\|^2=2$, and $\varepsilon=\varepsilon_L(\alpha,-\alpha)$. Then
+$(e^\alpha+\varepsilon e^{-\alpha})_{(-1)}(e^\alpha+\varepsilon e^{-\alpha})=\alpha(-1)^2\mathbf 1$.
+\end{lemma}
+\noindent File \leanpath{VOA/Moonshine/SigmaTopSigma.lean}.
+\begin{leancode}
+theorem root_square (α : L.carrier) (hα : L.form α α = 2) :
+    (latticeVOAGen L hEven hPos).smul
+        (latChargeGen L α + latticeCocycle L α (-α) • latChargeGen L (-α)) (-1)
+        (latChargeGen L α + latticeCocycle L α (-α) • latChargeGen L (-α))
+      = quadH L hEven hPos α α
+\end{leancode}
+\begin{dictionary}
+\lean{latticeVOAGen L …} is $V_L$; \lean{.smul x (-1) y} is $x_{(-1)}y$. Exactly the lemma.
+\end{dictionary}
+\begin{physics}
+For a root $\alpha$, the combination $e^\alpha+\varepsilon e^{-\alpha}$ is the real vertex operator of the $su(2)$ at level one, and its normally ordered square is $\alpha(-1)^2\mathbf 1$, the Cartan bilinear. This is the free-fermion-like statement $\psi^+\psi^-\sim J$, the usual bosonisation identity relating a charged pair to the square of the current. It is a technical computation used to identify $\sigma$ on the diagonal frame letters.
+\end{physics}
+\noindent\emph{Proof.} $e^{\pm\alpha}_{(-1)}e^{\pm\alpha}=0$ because $\langle\alpha,\alpha\rangle=2$ forces the Schur
+index $-(-1)-1-2<0$. The cross terms are $e^\alpha_{(-1)}e^{-\alpha}=\varepsilon(\alpha,-\alpha)S_2(\alpha)\mathbf 1$ and
+$e^{-\alpha}_{(-1)}e^\alpha=\varepsilon(-\alpha,\alpha)S_2(-\alpha)\mathbf 1$, where
+$S_2(\pm\alpha)=\tfrac12(\alpha(-1)^2\pm\alpha(-2))$. With $\varepsilon(-\alpha,\alpha)=\varepsilon(\alpha,-\alpha)$ (for a root the
+cocycle on $\pm\alpha$ is symmetric) and $\varepsilon^2=1$, the sum is $\alpha(-1)^2\mathbf 1$: the $\alpha(-2)$ terms
+cancel. Physically: the level-one $\mathfrak{sl}_2$ Sugawara vector $\tfrac14\alpha(-1)^2\mathbf 1$ can be
+written in any Cartan direction, and $e+\varepsilon f$ is another Cartan direction. \qed
+
+\begin{theorem}[$\sigma$ fixes $w_j(-1)^2\mathbf 1$]\label{ch13:thm:sig-dV-fw}
+$\sigma\bigl(d(w_j,w_j)\bigr)=d(w_j,w_j)$ for all $j$.
+\end{theorem}
+\begin{leancode}
+theorem golayToV0_qN (a b : lam0.carrier) : golayToV0 (qN a b) = dV (inclΛ a) (inclΛ b)
+
+theorem sig_dV_fw (j : Fin 24) : sig (dV (fw j) (fw j)) = dV (fw j) (fw j)
+\end{leancode}
+\begin{dictionary}
+\lean{qN a b} is $\iota_N(a)(-1)\iota_N(b)(-1)\mathbf 1\in V_N^{\langle\chi,\Theta\rangle}$. \lean{golayToV0_qN} says the
+bridge sends uncharged quadratic states to the corresponding uncharged quadratic states; this is
+\emph{independent} of the choice of \lean{golayE} and of the coboundaries, because these only rescale
+charged states. Hence \lean{sig_dV_fw} is a statement with no hidden choice. Same as the textbook
+statement.
+\end{dictionary}
+\begin{physics}
+The Cartan bilinears $w_j(-1)^2\mathbf 1$ along the frame directions are fixed by the triality symmetry: the operator measuring the squared momentum in direction $j$ is invariant. Physically these are the diagonal energy-like operators of the $24$ bosons, and a symmetry that merely permutes lattice sectors should preserve them. This is the first and simplest check that $\sigma$ is being built compatibly with the Heisenberg part of the algebra.
+\end{physics}
+\noindent\emph{Proof.} Under $A\to N$, $4e_j\mapsto 2\alpha_j$, and under $A\to\Leech$, $4e_j\mapsto w_j$; so
+$d(w_j,w_j)$ corresponds to $4\,\alpha_j(-1)^2\mathbf 1$ in $V_N$. On $V_N$, $\sigma$ sends the Cartan current
+$\alpha_j(-1)\mathbf 1$ to $e^{\alpha_j}+\varepsilon_je^{-\alpha_j}$ (Chapter~\ref{ch:11}, \lean{golaySigma_hSt}), and being a VOA
+automorphism it sends $\alpha_j(-1)^2\mathbf 1=\alpha_j(-1)\mathbf1_{(-1)}\alpha_j(-1)\mathbf 1$ to
+$(e^{\alpha_j}+\varepsilon_je^{-\alpha_j})_{(-1)}(e^{\alpha_j}+\varepsilon_je^{-\alpha_j})$, which is $\alpha_j(-1)^2\mathbf 1$ by
+Lemma~\ref{ch13:lem:root-square}. Transport along \lean{golayToV0}. \qed
+\begin{status}Unconditional; \leanpath{SigmaTopSigma.lean}; the \lean{golayE} choice drops out.
+\lean{#print axioms sig_dV_fw} $=$ [\lean{propext}, \lean{Classical.choice}, \lean{Quot.sound}]
+(checked for this chapter).\end{status}
+
+%======================================================================
+\section{The block maps and what the diagonal letters give for free}\label{ch13:sec:block}
+
+\subsection{\texorpdfstring{The map $\varphi_\tau$ on $V_3^+$}{The map varphitau on V3+}}
+Guided by the block structure we look for $\varphi$ of the form ``block-monomial'':
+\begin{definition}[\lean{phiV3}]\label{ch13:def:phiV3}
+For an arbitrary function $\tau\colon\Leech\to T$ let $\varphi_\tau\colon V_\Leech^+\to(V_\Leech^T)^+$ be the linear
+map with $\varphi_\tau(x_n)=h_{c_{j(n)}}(-\tfrac12)\otimes\tau(n)$ for $n\in S_1$, defined on all of
+$V_\Leech^+$ by reading off the coefficient of $e^n$: $\varphi_\tau=\sum_{n\in S_1}\mathrm{coef}_n(\cdot)\,
+h_{c_{j(n)}}\otimes\tau(n)$.
+\end{definition}
+\noindent File \leanpath{VOA/Moonshine/SigmaTop.lean}.
+\begin{leancode}
+noncomputable def coefN (n : leech.carrier) : VPlus →ₗ[ℂ] ℂ :=
+  (MvPolynomial.lcoeff ℂ 0) ∘ₗ coordEα leech n ∘ₗ (orbifold (Subgroup.zpowers leechTheta)).carrier.subtype
+
+noncomputable def phiV3 (τ : leech.carrier → TLeechT) : VPlus →ₗ[ℂ] TP :=
+  ∑ n ∈ halfFourChi 1, (coefN n).smulRight (hP (cw (blk n)) (τ n))
+
+theorem phiV3_frameX0P (τ : leech.carrier → TLeechT) {m : leech.carrier} (hm : m ∈ halfFourChi 1) :
+    phiV3 τ (frameX0P m) = hP (cw (blk m)) (τ m)
+\end{leancode}
+\begin{dictionary}
+\lean{coordEα leech n} extracts the Fock coefficient of $e^n$ and \lean{lcoeff ℂ 0} its constant term,
+so \lean{coefN n} is the coefficient of the charged vacuum $e^n$. \lean{f.smulRight y} is $x\mapsto
+f(x)y$. On the top level only the values on $x_m$ matter, and \lean{phiV3_frameX0P} confirms the
+intended values (for $m\in S_1$, $e^{-m}$ has zero coefficient because $-m\notin S_1$). Off the top level
+$\varphi_\tau$ has some values that are irrelevant: every clause of \lean{TopSigmaV3} quantifies only over
+\lean{OmegaV3}.
+\end{dictionary}
+\begin{physics}
+This is the explicit ansatz for the triality operator on the top level: each momentum ground state $x_n$ of the untwisted sector is sent to a weight-one-half oscillator in the block direction $j(n)$ tensored with a twist-field state $\tau(n)$. The arbitrary function $\tau$ is the unknown, the choice of twist-space vector attached to each momentum. Heuristically this is the T-duality map between sectors, which trades a momentum label for a twist label; the whole difficulty is to choose $\tau$ so that charges match.
+\end{physics}
+
+\begin{proposition}[what holds for every $\tau$]\label{ch13:prop:phiV3-basic}
+\begin{enumerate}[label=(\alph*)]
+\item $\varphi_\tau$ lands in weight two; if all $\tau(n)\in T_s$ it lands in $\chthirteenTs{s}$.
+\item If there is $t_0$ with $\tau(n_j)=t_0$ for one chosen $n_j\in S_1$ in each block $j$ (the vector
+  $\pm\bigl((1^{24})-4e_j\bigr)$, \lean{nvec j}), then $x_0^T(t_0)$ is in the image of the top level.
+\item The diagonal letters intertwine: \lean{ZM (phiV3 τ) OmegaV3 (dV (fw j) (fw j))}, for every $\tau$.
+\end{enumerate}
+\end{proposition}
+\begin{leancode}
+theorem phiV3_hits {τ : leech.carrier → TLeechT} {t₀ : TLeechT} (hblk : ∀ j, τ (nvec j) = t₀) :
+    ∃ x ∈ OmegaV3, phiV3 τ x = x0T t₀
+
+theorem phiV3_ZM_diag (τ : leech.carrier → TLeechT) (j : Fin 24) :
+    ZM (phiV3 τ) OmegaV3 (dV (fw j) (fw j))
+\end{leancode}
+\begin{physics}
+These are the properties of the ansatz that hold regardless of $\tau$: it lands at the right conformal weight, in the right twisted sector $T_s$, and it can hit a prescribed twist-field state. The last point is the non-vanishing requirement, that $\varphi$ is not the zero map; a zero map would satisfy every charge-matching condition trivially, so a genuine symmetry operator must reach a nonzero vector.
+\end{physics}
+\noindent\emph{Proof.} (a) Each $h_v\otimes t$ has weight two and lies in the $J=(-1)^s$ sector if $t$
+does. (b) The frame is complete: $\sum_j(c_j)_a(c_j)_b=8\delta_{ab}$ (\lean{cw_complete}, from
+$\langle w_j,w_k\rangle=8\delta_{jk}$ and the fact that a square matrix with $MM^{\mathsf T}=8$ also has
+$M^{\mathsf T}M=8$). Hence $h_0(-\tfrac12)=\tfrac18\sum_j(c_j)_0h_{c_j}(-\tfrac12)$, and
+$x=\tfrac18\sum_j(c_j)_0x_{n_j}$ maps to $x_0^T(t_0)$. (c) Both sides are eigenvectors with eigenvalue $9$
+or $1$ by Proposition~\ref{ch13:prop:frame-modes}(d) and $\sigma$ fixes the letter
+(Theorem~\ref{ch13:thm:sig-dV-fw}). \qed
+\begin{status}Unconditional; \leanpath{SigmaTop.lean}.\end{status}
+
+\begin{theorem}[partial (R-top) on $V_3^+$]\label{ch13:thm:partial}
+For every $s$ there is a linear $\varphi$ satisfying \lean{maps_frame}, \lean{maps_weight},
+\lean{hits_cyclic} of \lean{TopSigmaV3 s}, and the zero-mode identity for the $24$ diagonal letters
+$d(w_j,w_j)$.
+\end{theorem}
+\begin{leancode}
+theorem topSigmaV3_partial (s : ZMod 2) :
+    ∃ φ : VPlus →ₗ[ℂ] TP, (∀ x ∈ OmegaV3, φ x ∈ TPframe s) ∧
+      (∀ x ∈ OmegaV3, φ x ∈ plusModule.weight (2 : ℂ)) ∧
+      (∃ t₀ : TLeechT, t₀ ∈ leechFrameT s ∧ t₀ ≠ 0 ∧ ∃ x ∈ OmegaV3, φ x = x0T t₀) ∧
+      (∀ j : Fin 24, ∀ x ∈ OmegaV3,
+        φ (actV (dV (fw j) (fw j)) 1 x) = actT (sig (dV (fw j) (fw j))) 1 (φ x))
+\end{leancode}
+\begin{dictionary}
+The four conjuncts are the clauses of \lean{TopSigmaV3 s} \emph{except} \lean{zero_mode}, which is
+replaced by its restriction to $24$ letters. This is \textbf{much weaker} than \lean{TopSigmaV3}; the
+witness is $\varphi_\tau$ with $\tau$ constant, which certainly does not satisfy the remaining identities.
+\end{dictionary}
+\begin{physics}
+Already for an arbitrary choice of block value the diagonal Cartan letters intertwine and the image is nonzero. This is the statement that the easy part of charge matching, the diagonal currents, is automatically satisfied by the ansatz; the substantive conditions come from the off-diagonal letters and the lattice vertex operators. It is partial progress and is not enough to define $\sigma$.
+\end{physics}
+\begin{warning}
+\lean{topSigmaV3_partial} and \lean{topSigmaTT_partial} were milestones, not results about $\sigma$. A
+reader skimming the file headers of \leanpath{SigmaTop.lean} could mistake them for (R-top); the files
+say explicitly ``\lean{TopSigmaV3} itself is NOT proved'' there. Schur's lemma (the top levels are
+irreducible, Chapter~\ref{ch:12}) shows that at most one $\tau$ up to scalar satisfies all identities.
+\end{warning}
+\begin{status}Unconditional, but weak; \leanpath{SigmaTop.lean}; superseded by
+Theorem~\ref{ch13:thm:topSigmaV3}.\end{status}
+
+\begin{theorem}[\lean{topSigmaV3_of_offdiag}]\label{ch13:thm:of-offdiag}
+Let $\tau$ take values in $T_s$, with $\tau(n_j)=t_0\ne0$ for all $j$, $t_0\in T_s$. If
+\lean{ZhuGenerated G2}, the off-diagonal frame letters $d(w_j,w_k)$ $(j\ne k)$ and the lattice letters
+$u_\gamma$ $(\gamma\in S_0)$ intertwine for $\varphi_\tau$ on $(\chthirteenVt)_2$, then \lean{TopSigmaV3 s} $\varphi_\tau$.
+\end{theorem}
+\begin{leancode}
+theorem topSigmaV3_of_offdiag {s : ZMod 2} {τ : leech.carrier → TLeechT}
+    (hτ : ∀ n ∈ halfFourChi 1, τ n ∈ leechFrameT s) {t₀ : TLeechT} (ht₀ : t₀ ∈ leechFrameT s)
+    (h0 : t₀ ≠ 0) (hblk : ∀ j, τ (nvec j) = t₀) (hZhu : ZhuGenerated G2)
+    (hoff : ∀ j k : Fin 24, j ≠ k → ZM (phiV3 τ) OmegaV3 (dV (fw j) (fw k)))
+    (hlat : ∀ γ ∈ halfFourChi 0, ZM (phiV3 τ) OmegaV3 (lV' γ)) :
+    TopSigmaV3 s (phiV3 τ)
+\end{leancode}
+\begin{physics}
+The map $\varphi_\tau$ is a genuine intertwiner as soon as the remaining field zero modes (the off-diagonal Heisenberg bilinears and the lattice vertex operators) match charges, together with Zhu generation, i.e.\ the fact that these fields generate the whole algebra of light fields. Physically the zero modes of a generating set of the algebra determine the action on the ground states, so intertwining them suffices. This reduces the problem to explicit eigen-conditions on $\tau$.
+\end{physics}
+\noindent\emph{Proof.} Combine Theorem~\ref{ch13:thm:basis-red} (with $q_{ab}$ expanded in the frame
+letters), Proposition~\ref{ch13:prop:phiV3-basic}, and \lean{topSigmaV3_of_zhuGenerated}. \qed
+\begin{status}Conditional on \lean{hZhu}, \lean{hoff}, \lean{hlat} (and the data hypotheses);
+\leanpath{SigmaTop.lean}. All three inputs are later discharged.\end{status}
+
+\subsection{\texorpdfstring{The map $\varphi_\psi$ on $T_{s'}^+$}{The map varphipsi on Ts'+}}
+For the twisted source the analogous ansatz uses a family of $24$ linear maps $\psi_m\colon T\to T$:
+\begin{definition}[\lean{phiTT}]\label{ch13:def:phiTT}
+$\varphi_\psi(h_{c_m}(-\tfrac12)\otimes t)=h_{c_m}(-\tfrac12)\otimes\psi_m t$, extended linearly; the $h_{c_m}$
+component of a vector of $(T^+)_2$ is extracted by \lean{compW m}
+$=\tfrac18\sum_a(c_m)_a\cdot(\text{the }h_a\text{-component})$.
+\end{definition}
+\begin{leancode}
+noncomputable def phiTT (ψ : Fin 24 → TLeechT →ₗ[ℂ] TLeechT) : TP →ₗ[ℂ] TP :=
+  ∑ m, hPL m ∘ₗ ψ m ∘ₗ compW m
+
+theorem phiTT_hP (ψ : Fin 24 → TLeechT →ₗ[ℂ] TLeechT) (m : Fin 24) (t : TLeechT) :
+    phiTT ψ (hP (cw m) t) = hP (cw m) (ψ m t)
+
+theorem OmegaT_le_span (s' : ZMod 2) :
+    OmegaT s' ≤ span ℂ {y | ∃ (m : Fin 24) (t : TLeechT), t ∈ leechFrameT s' ∧ y = hP (cw m) t}
+\end{leancode}
+\begin{dictionary}
+\lean{hPL m} is $t\mapsto h_{c_m}\otimes t$. \lean{OmegaT_le_span} is the spanning statement
+$(\chthirteenTs{s'})_2=\operatorname{span}\{h_{c_m}\otimes t: t\in T_{s'}\}$ (proved by identifying the doubled
+degree-one part of $S[\theta]$ with $\{h_v(-\tfrac12)\}$ and projecting with $\tfrac12(1\pm J)$).
+\end{dictionary}
+\begin{physics}
+This is the same ansatz for the twisted-to-twisted piece: $\sigma$ maps the twisted ground states $h_{c_m}(-\tfrac12)\otimes t$ to the same oscillator tensored with $\psi_m t$, where each $\psi_m$ is a linear map on the $2^{12}$-dimensional twist space. Heuristically this is a Clifford-module intertwiner: $\sigma$ acts on the spinor-like twist space by an operator to be determined. The extraction map \lean{compW} just reads off the coefficient of a given oscillator.
+\end{physics}
+The analogues \lean{phiTT_ZMT_diag}, \lean{topSigmaTT_of_offdiag}, \lean{topSigmaTT_partial}
+(\leanpath{SigmaTopTT.lean}) are proved exactly as on $\chthirteenVt$; the diagonal letters intertwine for
+every $\psi$.
+\begin{status}Unconditional (\lean{topSigmaTT_partial}) resp.\ conditional on \lean{ZhuGenerated G2},
+off-diagonal and lattice letters (\lean{topSigmaTT_of_offdiag}); \leanpath{SigmaTopTT.lean}.\end{status}
+
+%======================================================================
+\section{Off-diagonal letters and the eigen-conditions}\label{ch13:sec:offdiag}
+
+\subsection{Charged states through the bridge}
+Uncharged states cross the bridge \lean{golayToV0} unchanged; charged states pick up constants.
+\begin{definition}[transport constant]\label{ch13:def:tc}
+For $a\in A$ let
+\begin{equation*}
+  t_c(a)=\frac{c_\Leech(a)}{g_e(a)\,c_N(a)},
+\end{equation*}
+where $c_\Leech=$\lean{latCob lam0 leech inclΛ}, $c_N=$\lean{latCob lam0 golayN inclN} are the comparison
+coboundaries and $g_e(a)=$\lean{charVal lam0 golayE a} is the chosen character.
+\end{definition}
+\begin{leancode}
+noncomputable def tc (a : lam0.carrier) : ℂ :=
+  latCob lam0 leech inclΛ a / (charVal lam0 golayE a * latCob lam0 golayN inclN a)
+
+theorem golayToV0_charged {ι : Type*} (s : Finset ι) (d : ι → ℂ) (a : ι → lam0.carrier)
+    (y : (orbifold golayK).carrier)
+    (hy : (y : LatModuleGen golayN) = ∑ i ∈ s, d i • latChargeGen golayN (inclN (a i))) :
+    (((golayToV0 y : V0Sub.carrier) : VPlus) : LatModuleGen leech)
+      = ∑ i ∈ s, (d i * tc (a i)) • latChargeGen leech (inclΛ (a i))
+\end{leancode}
+\begin{dictionary}
+The statement: if $y\in V_N^{\langle\chi,\Theta\rangle}$ equals $\sum_id_ie^{\iota_N a_i}$, then its image in
+$\chthirteenV\subset V_\Leech$ is $\sum_i d_i\,t_c(a_i)\,e^{\iota_\Leech a_i}$. The triple coercion on the left
+views an element of $\chthirteenV$ as an element of $V_\Leech$. $t_c(a)$ is a nonzero complex number whose
+value is \emph{not} computable (it involves \lean{golayE} and two basis-dependent coboundaries); it is
+always treated symbolically.
+\end{dictionary}
+\begin{physics}
+The transport constant is the ratio of cocycle data, the comparison coboundaries of the Leech and Niemeier lattices divided by the chosen character, that records the phase picked up when a lattice vertex operator is transported through the triality identification. Physically these are the cocycle (sign and phase) factors in the vertex operators that must be carried along when the same momentum is relabelled between two lattice descriptions of the same theory. It is a bookkeeping device; the physical content is that the phases are fixed uniquely by consistency.
+\end{physics}
+\noindent\emph{Proof.} By construction, \lean{golayToV0} is the inverse of ($V_A$-functoriality into $V_N$,
+after twisting by $g_e$) followed by $V_A$-functoriality into $V_\Leech$; functoriality sends $e^a$ to
+$c(a)e^{\iota a}$ and the twist multiplies $e^a$ by $g_e(a)$. \qed
+\begin{status}Unconditional; \leanpath{SigmaTopOffdiag.lean}.\end{status}
+
+\subsection{\texorpdfstring{$\sigma$ on $w_j(-1)w_k(-1)\mathbf 1$}{sigma on wj(-1)wk(-1)mathbf 1}}
+For $j\ne k$ set $\gamma_\pm=\gamma_\pm(j,k)=4e_j\pm4e_k\in\Leech_0$ (\lean{gP j k}, \lean{gM j k}); these are
+norm-four vectors of $\Leech_0$, the images of $a_\pm=2e_j\pm2e_k=\alpha_j\pm\alpha_k\in A$
+(\lean{aP}, \lean{aM}).
+\begin{proposition}\label{ch13:prop:sig-offdiag}
+For $j\ne k$,
+\begin{equation*}
+  \sigma\bigl(d(w_j,w_k)\bigr)=\sum_{i=0}^{3}4\,c_i\,t_c(a_i)\;e^{\iota_\Leech a_i},\qquad
+  (a_0,a_1,a_2,a_3)=(a_+,a_-,-a_-,-a_+),
+\end{equation*}
+with $c_i$ the coefficients of
+$(e^{\alpha_j}+\varepsilon_je^{-\alpha_j})_{(-1)}(e^{\alpha_k}+\varepsilon_ke^{-\alpha_k})$ on $e^{\pm\alpha_j\pm\alpha_k}$ in $V_N$.
+Consequently, on the twisted top level,
+\begin{equation*}
+  \chthirteeno\bigl(\sigma d(w_j,w_k)\bigr)(h_v\otimes t)=\kappa_+\,h_{v-2\langle v,\gamma_+\rangle\gamma_+}\otimes e_{\gamma_+}t
+  +\kappa_-\,h_{v-2\langle v,\gamma_-\rangle\gamma_-}\otimes e_{\gamma_-}t
+\end{equation*}
+for explicit symbolic constants $\kappa_\pm=$\lean{kP j k}, \lean{kM j k}.
+\end{proposition}
+\begin{leancode}
+theorem sig_dV_offdiag_coe {j k : Fin 24} (hjk : j ≠ k) :
+    (((sig (dV (fw j) (fw k)) : V0Sub.carrier) : VPlus) : LatModuleGen leech)
+      = ∑ i : Fin 4, (4 * cQ j k i * tc (aQ j k i)) • latChargeGen leech (inclΛ (aQ j k i))
+
+noncomputable def kP (j k : Fin 24) : ℂ :=
+  (2 : ℂ) ^ (-(4 : ℤ)) * (4 * cQ j k 0 * tc (aQ j k 0) + 4 * cQ j k 3 * tc (aQ j k 3))
+
+noncomputable def kM (j k : Fin 24) : ℂ :=
+  (2 : ℂ) ^ (-(4 : ℤ)) * (4 * cQ j k 1 * tc (aQ j k 1) + 4 * cQ j k 2 * tc (aQ j k 2))
+
+theorem actT_sig_dV_offdiag {j k : Fin 24} (hjk : j ≠ k) (v : Fin (rank leech) → ℂ) (t : TLeechT) :
+    actT (sig (dV (fw j) (fw k))) 1 (hP v t)
+      = kP j k • hP (latL (gP j k) v) (eT leech leech_even leech_isUnit_det_gramMat (gP j k) t)
+        + kM j k • hP (latL (gM j k) v) (eT leech leech_even leech_isUnit_det_gramMat (gM j k) t)
+\end{leancode}
+\begin{dictionary}
+\lean{aQ j k} $=(a_+,a_-,-a_-,-a_+)$ and \lean{cQ j k} $=(\varepsilon_N(\alpha_j,\alpha_k),\ \varepsilon_k\varepsilon_N(\alpha_j,-\alpha_k),\
+\varepsilon_j\varepsilon_N(-\alpha_j,\alpha_k),\ \varepsilon_j\varepsilon_k\varepsilon_N(-\alpha_j,-\alpha_k))$. The factor $4$ comes from
+$d(w_j,w_k)\leftrightarrow(2\alpha_j)(-1)(2\alpha_k)(-1)\mathbf 1$. The definitions of $\kappa_\pm$ add the two terms
+$e^{\pm\gamma_+}$ (resp.\ $e^{\pm\gamma_-}$) because both act by the same zero mode on the twisted module
+(Proposition~\ref{ch13:prop:target-modes}(c)). Exactly the proposition.
+\end{dictionary}
+\begin{physics}
+This gives $\sigma$ on an off-diagonal quadratic current explicitly: the image of $J^{w_j}J^{w_k}$ is a sum of four lattice vertex operators with momenta $\pm\alpha_j\pm\alpha_k$ in the Niemeier-type lattice, weighted by transport constants. This is the triality rotation of the Cartan bilinear into charged fields, the same mechanism by which an $SU(2)$ rotation turns a Cartan current into raising and lowering operators. It converts the abstract intertwining requirement into an explicit linear condition on the twist space.
+\end{physics}
+\noindent\emph{Proof.} In $V_N$, $\sigma(\alpha(-1)\mathbf 1)=e^{\alpha}+\varepsilon e^{-\alpha}$ for each root, so
+$\sigma(\alpha_j(-1)\alpha_k(-1)\mathbf 1)$ is the $(-1)$-product of two such states; since
+$\langle\alpha_j,\alpha_k\rangle=0$, each of the four products $e^{\pm\alpha_j}_{(-1)}e^{\pm\alpha_k}$ is just
+$\varepsilon(\pm\alpha_j,\pm\alpha_k)e^{\pm\alpha_j\pm\alpha_k}$ (\lean{root_prod}). Transport with
+\lean{golayToV0_charged}, then use Proposition~\ref{ch13:prop:frame-modes}(c) termwise. \qed
+\begin{status}Unconditional; \leanpath{SigmaTopOffdiag.lean}.\end{status}
+
+\subsection{The eigen-conditions}
+Now compare the two sides on the basis. On the source, $\chthirteeno(d(w_j,w_k))x_n=n_jn_k\,x_n$. On the
+target, for $\varphi_\tau(x_n)=h_{c_b}\otimes\tau(n)$ with $b=j(n)$: if $\tau(n)$ is a common eigenvector of
+$\kappa_+e_{\gamma_+}$ and $\kappa_-e_{\gamma_-}$ with the same eigenvalue $\lambda$, the right side is
+$\lambda\,h_{(\text{latL}_{\gamma_+}+\text{latL}_{\gamma_-})c_b}\otimes\tau(n)$, and a two-line computation gives
+\begin{equation*}
+  \bigl(\mathrm{latL}_{\gamma_+}+\mathrm{latL}_{\gamma_-}\bigr)c_m=\begin{cases}-6\,c_m,& m\in\{j,k\},\\ \ \ 2\,c_m,&\text{otherwise}\end{cases}
+\end{equation*}
+(\lean{latL_sum_cw}). Matching with $n_jn_k$ forces the eigenvalue
+\begin{equation*}
+  \lambda(j,k,n)=\begin{cases}-\tfrac16 n_jn_k,& j(n)\in\{j,k\},\\ \ \ \tfrac12 n_jn_k,&\text{otherwise.}\end{cases}
+\end{equation*}
+\begin{theorem}[off-diagonal letters $\Leftarrow$ eigen-conditions]\label{ch13:thm:offdiag}
+\begin{enumerate}[label=(\alph*)]
+\item If for all $n\in S_1$, $\kappa_+e_{\gamma_+}\tau(n)=\lambda(j,k,n)\tau(n)$ and
+  $\kappa_-e_{\gamma_-}\tau(n)=\lambda(j,k,n)\tau(n)$, then $d(w_j,w_k)$ intertwines for $\varphi_\tau$.
+\item If on $T_{s'}$ the maps $\psi_m$ satisfy $(\kappa_+e_{\gamma_+}+\kappa_-e_{\gamma_-})\psi_m=0$ and the
+  \emph{block links} $\psi_k=2\kappa_-e_{\gamma_-}\psi_j$, $\psi_j=2\kappa_-e_{\gamma_-}\psi_k$, then $d(w_j,w_k)$
+  intertwines for $\varphi_\psi$ on $(\chthirteenTs{s'})_2$.
+\end{enumerate}
+\end{theorem}
+\begin{leancode}
+noncomputable def lam (j k : Fin 24) (n : leech.carrier) : ℂ :=
+  if blk n = j ∨ blk n = k then -(((lv n j * lv n k : ℤ) : ℂ)) / 6 else ((lv n j * lv n k : ℤ) : ℂ) / 2
+
+theorem phiV3_ZM_offdiag (τ : leech.carrier → TLeechT) {j k : Fin 24} (hjk : j ≠ k)
+    (hτ : ∀ n ∈ halfFourChi 1,
+      kP j k • eT leech leech_even leech_isUnit_det_gramMat (gP j k) (τ n) = lam j k n • τ n ∧
+      kM j k • eT leech leech_even leech_isUnit_det_gramMat (gM j k) (τ n) = lam j k n • τ n) :
+    ZM (phiV3 τ) OmegaV3 (dV (fw j) (fw k))
+
+theorem phiTT_ZMT_offdiag (ψ : Fin 24 → TLeechT →ₗ[ℂ] TLeechT) (s' : ZMod 2) {j k : Fin 24}
+    (hjk : j ≠ k)
+    (h0 : ∀ (m : Fin 24) (t : TLeechT), t ∈ leechFrameT s' →
+      kP j k • eT leech leech_even leech_isUnit_det_gramMat (gP j k) (ψ m t)
+        + kM j k • eT leech leech_even leech_isUnit_det_gramMat (gM j k) (ψ m t) = 0)
+    (hk : ∀ t ∈ leechFrameT s', ψ k t = (2 * kM j k) • eT leech leech_even leech_isUnit_det_gramMat (gM j k) (ψ j t))
+    (hj : ∀ t ∈ leechFrameT s', ψ j t = (2 * kM j k) • eT leech leech_even leech_isUnit_det_gramMat (gM j k) (ψ k t)) :
+    ZMT (phiTT ψ) (OmegaT s') (dV (fw j) (fw k))
+\end{leancode}
+\begin{dictionary}
+\textbf{Hypotheses} are exactly the eigen-conditions (a), resp.\ the vanishing and the two block links
+(b). In (b) the source letter $d(w_j,w_k)$ acts on $h_{c_m}\otimes t$ by moving block $k$ to block $j$ and
+vice versa with factor $4$ (\lean{dL_fw_off}), which is why the links appear. Note: (a) is stated as
+sufficient; the file header records that, given $(\kappa_\pm e_{\gamma_\pm})^2=\tfrac14$
+(proved later, Proposition~\ref{ch13:prop:kappa}), it is also necessary, but necessity is not a Lean
+statement.
+\end{dictionary}
+\begin{physics}
+The matching of charges for an off-diagonal current is equivalent to eigenvalue conditions on the twist-space operators $e_{\gamma_\pm}$: the vertex-operator zero modes on the twist fields must act as multiples of the identity with the prescribed eigenvalue $\lambda$. In physical terms the twist-field state must be a joint eigenvector of the Clifford-type operators with definite charge, matching the momentum-space eigenvalue on the source. This is what turns the problem into finding a single common eigenvector.
+\end{physics}
+\noindent\emph{Proof.} The computation preceding the theorem, read in both directions on each basis
+vector, plus the linear reduction to basis vectors. \qed
+
+\begin{theorem}[(R-top) reduced to block data]\label{ch13:thm:of-eigen}
+\lean{TopSigmaV3 s (phiV3 τ)} follows from: $\tau$ valued in $T_s$, a common nonzero block value $t_0\in T_s$,
+\lean{ZhuGenerated G2}, the eigen-conditions of Theorem~\ref{ch13:thm:offdiag}(a) for all $j\ne k$, and the
+lattice letters. Likewise \lean{TopSigmaTT s' s (phiTT ψ)} from the conditions of (b) and the lattice letters.
+\end{theorem}
+\begin{leancode}
+theorem topSigmaV3_of_eigen {s : ZMod 2} {τ : leech.carrier → TLeechT}
+    (hτ : ∀ n ∈ halfFourChi 1, τ n ∈ leechFrameT s) {t₀ : TLeechT} (ht₀ : t₀ ∈ leechFrameT s)
+    (h0 : t₀ ≠ 0) (hblk : ∀ j, τ (nvec j) = t₀) (hZhu : ZhuGenerated G2)
+    (heig : ∀ j k : Fin 24, j ≠ k → ∀ n ∈ halfFourChi 1,
+      kP j k • eT leech leech_even leech_isUnit_det_gramMat (gP j k) (τ n) = lam j k n • τ n ∧
+      kM j k • eT leech leech_even leech_isUnit_det_gramMat (gM j k) (τ n) = lam j k n • τ n)
+    (hlat : ∀ γ ∈ halfFourChi 0, ZM (phiV3 τ) OmegaV3 (lV' γ)) :
+    TopSigmaV3 s (phiV3 τ)
+
+theorem topSigmaTT_of_eigen {s' s : ZMod 2} {ψ : Fin 24 → TLeechT →ₗ[ℂ] TLeechT}
+    (hψ : ∀ m t, ψ m t ∈ leechFrameT s) {t₁ t₀ : TLeechT} (ht₁ : t₁ ∈ leechFrameT s')
+    (ht₀ : t₀ ∈ leechFrameT s) (h0 : t₀ ≠ 0) (hblk : ∀ m, ψ m t₁ = t₀) (hZhu : ZhuGenerated G2)
+    (hsum : ∀ j k : Fin 24, j ≠ k → ∀ (m : Fin 24) (t : TLeechT), t ∈ leechFrameT s' →
+      kP j k • eT leech leech_even leech_isUnit_det_gramMat (gP j k) (ψ m t)
+        + kM j k • eT leech leech_even leech_isUnit_det_gramMat (gM j k) (ψ m t) = 0)
+    (hlink : ∀ j k : Fin 24, j ≠ k → ∀ t ∈ leechFrameT s',
+      ψ k t = (2 * kM j k) • eT leech leech_even leech_isUnit_det_gramMat (gM j k) (ψ j t))
+    (hlink' : ∀ j k : Fin 24, j ≠ k → ∀ t ∈ leechFrameT s',
+      ψ j t = (2 * kM j k) • eT leech leech_even leech_isUnit_det_gramMat (gM j k) (ψ k t))
+    (hlat : ∀ γ ∈ halfFourChi 0, ZMT (phiTT ψ) (OmegaT s') (lV' γ)) :
+    TopSigmaTT s' s (phiTT ψ)
+\end{leancode}
+\begin{physics}
+The full requirement that $\sigma$ be an intertwiner on the top level is reduced to a finite list of eigen-conditions, a nonzero block value and the remaining lattice letters. Physically one has found the exact charges that the twist ground states must carry; what remains is to show that such states exist. This is a reduction, conditional on the stated data, and does not itself construct $\sigma$.
+\end{physics}
+\begin{status}
+Conditional (as listed); \leanpath{SigmaTopOffdiag.lean}; \lean{#print axioms} clean. At the moment
+these were written, \emph{none} of the eigen-conditions was known to be satisfiable: the values of
+$\kappa_\pm$ involve \lean{golayE} and the coboundaries, and even the fact that $\kappa_\pm e_{\gamma_\pm}$ has
+eigenvalues $\pm\tfrac12$ was unproved (recorded as ``R-top partial'' in the project's gluing plan, \leanpath{Notes/M8GluingPlan.md}). The remaining sections
+discharge every hypothesis.
+\end{status}
+
+%======================================================================
+\section{The cocycle design question}\label{ch13:sec:design}
+
+At this point the project faced a design decision, recorded in \leanpath{Notes/M8GluingPlan.md}
+(status ``R-top partial'') as a question for both
+maintainers:
+\begin{quote}
+\emph{The Leech cocycle is \lean{latticeCocycle} over \lean{Module.Free.chooseBasis} and the oscillator
+frame is $\sqrt G$, not the Golay frame --- no explicit sign is computable; every identity must stay
+symbolic. An explicit (Golay-frame) basis/cocycle model, transported via the functoriality machinery
+(\lean{latMorph}), could drastically simplify R-top's remaining work.}
+\end{quote}
+The alternatives were: (i) continue symbolically; (ii) introduce a second, explicit model of $V_\Leech$
+(Golay-frame basis, explicit cocycle such as $\varepsilon(a,b)=(-1)^{a^{\mathsf T}Ub}$ with $U$ the strict upper
+triangle of a Gram matrix, as in the Python model of \S\ref{ch13:sec:numerics}), prove an isomorphism,
+and compute signs by \lean{decide}.
+
+The project took route (i), and after the construction the agent's assessment, recorded in the
+status ``$\sigma$ EXISTS on both twisted sectors'', was:
+\begin{quote}
+\emph{An explicit-basis refactor would NOT have materially reduced cost (all identities reduced to
+bimultiplicative-cocycle algebra / $\xi$ / Golay facts; no concrete cocycle value on chooseBasis was
+ever needed). Keep the foundations as they are.}
+\end{quote}
+It is worth understanding \emph{why} this is true, because it is the conceptual heart of the
+construction. Three mechanisms replace explicit signs:
+\begin{enumerate}
+\item \textbf{$\theta$-invariance pins products of unknown constants.} The state $\sigma(d(w_j,w_k))$ lies in
+  $V_\Leech^+$, so its coefficients of $e^{\gamma}$ and $e^{-\gamma}$ agree. This one fact determines the
+  square of the unknown character value $g_e(a_\pm)^2$ in terms of $\varepsilon_j\varepsilon_k$
+  (Proposition~\ref{ch13:prop:kappa}), which is all that is ever needed.
+\item \textbf{The $N$-cocycle reappears on the Leech side.} The rescaled operators
+  $W(a)=t_c(a)e_{\iota_\Leech a}$ satisfy $W(a)W(b)=\varepsilon_N(a,b)W(a+b)$: the \emph{Niemeier} cocycle, for
+  which the root lattice $\bigoplus\Z\alpha_j$ admits an explicit quadratic refinement $\xi$ (\S\ref{ch13:sec:xi}).
+  So every Leech-side computation can be re-expressed in terms of $\xi$, whose values on the
+  relevant vectors are known ($\xi(e_i)=i$) or follow from $\xi(x)\xi(y)=\varepsilon_N\xi(x+y)$.
+\item \textbf{Eigenvalues instead of values.} The seed $t$ is not computed; it is \emph{characterised}
+  as a joint eigenvector, and its existence is proved by a trace argument. All later identities only
+  use the eigenvalues, never $t$ itself.
+\end{enumerate}
+An explicit model would have required an isomorphism between two lattice VOAs \emph{and} between the
+corresponding twisted modules (the latter is not in the library), plus the transport of
+\lean{golaySigma}; and the octad identities involve $2^{8}$-term Hadamard sums that \lean{decide}
+could not have handled at the scale of the Leech lattice anyway. The symbolic route proved shorter.
+
+%======================================================================
+\section{\texorpdfstring{The constants $\kappa_\pm$ and the notion of a seed}{The constants kappapm and the notion of a seed}}\label{ch13:sec:kappa}
+
+\subsection{A bridge that is a definitional identity}
+Chapter~\ref{ch:12} proved Zhu generation for the set \lean{SigmaExist.weightTwo} of weight-two
+elements of the VOA $V_0^+$, whereas the reductions of this chapter use \lean{G2}, the set of
+elements of $\chthirteenV$ whose image in $V_\Leech^+$ has weight two. The two agree by definition, since
+the grading of the subVOA is the restriction of the grading of the ambient VOA.
+\begin{leancode}
+theorem G2_eq_weightTwo : G2 = weightTwo := rfl
+
+theorem zhuGenerated_G2 : ZhuGenerated G2 := zhuGenerated_weightTwo
+\end{leancode}
+\begin{dictionary}
+\lean{rfl} means that Lean accepts the equality by unfolding definitions: no mathematics is hidden.
+\lean{zhuGenerated_G2} is the Zhu-generation theorem of Chapter~\ref{ch:12} restated for \lean{G2}.
+It is unconditional (no \lean{VOA.pbw}).
+\end{dictionary}
+\begin{status}Unconditional; \leanpath{VOA/Moonshine/SigmaTop2Bridge.lean};
+\lean{#print axioms zhuGenerated_G2} clean (re-checked, \S\ref{ch13:sec:referee}). From now on the
+hypothesis \lean{ZhuGenerated G2} is discharged everywhere.\end{status}
+
+\subsection{\texorpdfstring{$\theta$-invariance and the squares of $\kappa_\pm$}{theta-invariance and the squares of kappapm}}
+Write $A_\pm=A_\pm(j,k)=\kappa_\pm e_{\gamma_\pm}\in\End T$ (\lean{AP j k}, \lean{AM j k}). The eigen-conditions
+ask that the vectors $\tau(n)$ be eigenvectors of $A_\pm$. The first thing to know is the spectrum of
+$A_\pm$.
+\begin{proposition}\label{ch13:prop:kappa}
+For $j\ne k$:
+\begin{enumerate}[label=(\alph*)]
+\item ($\theta$-invariance) the coefficients of $e^{\gamma_+}$ and $e^{-\gamma_+}$ in $\sigma(d(w_j,w_k))$ are equal,
+  and so are those of $e^{\pm\gamma_-}$; consequently $\kappa_+=\tfrac12\varepsilon_N(\alpha_j,\alpha_k)\,t_c(a_+)$,
+  $\kappa_-=\tfrac12\varepsilon_k\varepsilon_N(\alpha_j,\alpha_k)\,t_c(a_-)$, and $g_e(a_\pm)^2=\varepsilon_j\varepsilon_k$;
+\item $\kappa_\pm^2\,\varepsilon_\Leech(\gamma_\pm,\gamma_\pm)=\tfrac14$;
+\item $A_\pm^2=\tfrac14\cdot\mathrm{id}_T$. In particular $A_\pm$ is diagonalisable with eigenvalues in
+  $\{\pm\tfrac12\}$.
+\end{enumerate}
+\end{proposition}
+\noindent File \leanpath{VOA/Moonshine/SigmaTop2Eigen.lean}.
+\begin{leancode}
+theorem dQ_symm {j k : Fin 24} (hjk : j ≠ k) : dQ j k 0 = dQ j k 3 ∧ dQ j k 1 = dQ j k 2
+
+theorem kP_eq {j k : Fin 24} (hjk : j ≠ k) : kP j k = (1 / 2 : ℂ) * cQ j k 0 * tc (aP j k)
+
+theorem eV_aP_sq {j k : Fin 24} (hjk : j ≠ k) : eV (aP j k) * eV (aP j k) = golayEps j * golayEps k
+
+theorem kP_sq {j k : Fin 24} (hjk : j ≠ k) : kP j k * kP j k * εΛ (gP j k) (gP j k) = 1 / 4
+
+theorem AP_mul_self {j k : Fin 24} (hjk : j ≠ k) : AP j k * AP j k = (1 / 4 : ℂ) • 1
+
+theorem AM_mul_self {j k : Fin 24} (hjk : j ≠ k) : AM j k * AM j k = (1 / 4 : ℂ) • 1
+\end{leancode}
+\begin{dictionary}
+\lean{dQ j k i} $=4c_i\,t_c(a_i)$ is the $i$-th coefficient of Proposition~\ref{ch13:prop:sig-offdiag}, so
+\lean{dQ_symm} says: coefficient of $e^{\gamma_+}$ $=$ coefficient of $e^{-\gamma_+}$ (indices $0,3$), and
+likewise for $\gamma_-$ (indices $1,2$). \lean{eV a} is $g_e(a)$, \lean{golayEps j} is $\varepsilon_j=\varepsilon_N(\alpha_j,-\alpha_j)$,
+\lean{εΛ} is $\varepsilon_\Leech$. \lean{(1/4 : ℂ) • 1} is $\tfrac14$ times the identity of $\End T$, and
+\lean{AP j k * AP j k} is composition. The analogues \lean{kM_eq}, \lean{eV_aM_sq}, \lean{kM_sq} for
+$\gamma_-$ are in the same file. \textbf{Non-vacuity:} the only hypothesis is $j\ne k$, which is necessary
+($\gamma_\pm$ are only defined as norm-four vectors for $j\neq k$).
+\end{dictionary}
+\begin{physics}
+This pins down the constants $\kappa_\pm$ that normalise the twist-space operators $e_{\gamma_\pm}$ by theta-invariance, i.e.\ invariance under the $\mathbb Z/2$ lattice reflection, and derives that they square to the right cocycle value. Physically it says the Clifford-type operators acting on the twist field space have eigenvalues fixed by the reflection symmetry up to a sign, so the matching charges are determined and not free parameters.
+\end{physics}
+\noindent\emph{Proof.} (a) $\sigma$ maps $\chthirteenV$ to itself, and $\chthirteenV\subset V_\Leech^+$, on which $\theta$ acts trivially;
+$\theta e^\gamma=e^{-\gamma}$ on $V_\Leech$ (in the library's normalisation), so the coefficients of $e^{\pm\gamma}$ of any
+$\theta$-invariant state agree. Since $e^{\gamma_+}$ and $e^{-\gamma_+}$ have coefficients
+$4\varepsilon_N(\alpha_j,\alpha_k)t_c(a_+)$ and $4\varepsilon_j\varepsilon_k\varepsilon_N(-\alpha_j,-\alpha_k)t_c(-a_+)$, and
+$\varepsilon_N(-\alpha_j,-\alpha_k)=\varepsilon_N(\alpha_j,\alpha_k)$, $t_c(-a)=t_c(a)g_e(a)^2$, equality forces
+$\varepsilon_j\varepsilon_kg_e(a_+)^2=1$, i.e.\ $g_e(a_+)^2=\varepsilon_j\varepsilon_k$. The formula for $\kappa_+$ follows by adding two equal
+terms: $2^{-4}\cdot 2\cdot 4\varepsilon_N(\alpha_j,\alpha_k)t_c(a_+)=\tfrac12\varepsilon_N(\alpha_j,\alpha_k)t_c(a_+)$.
+(b) The coboundary relation $c(a)^2=\varepsilon_A(a,a)\varepsilon_L(\iota a,\iota a)$ (from the comparison identity at
+$b=a$ and $c(2a)=1$) for both lattices gives $t_c(a)^2g_e(a)^2=\varepsilon_\Leech(\iota_\Leech a,\iota_\Leech
+a)\varepsilon_N(\iota_Na,\iota_Na)$; with $\varepsilon_N(\alpha_j+\alpha_k,\alpha_j+\alpha_k)=\varepsilon_j\varepsilon_k$ (cocycle law and the
+symmetry $\varepsilon_N(\alpha_j,\alpha_k)=\varepsilon_N(\alpha_k,\alpha_j)$, both because $\langle\alpha_j,\alpha_k\rangle=0$) and (a) one gets
+$t_c(a_+)^2=\varepsilon_\Leech(\gamma_+,\gamma_+)$, hence $\kappa_+^2\varepsilon_\Leech(\gamma_+,\gamma_+)=\tfrac14\varepsilon_N(\alpha_j,\alpha_k)^2=\tfrac14$.
+(c) $e_\gamma^2=\varepsilon_\Leech(\gamma,\gamma)$ by \eqref{ch13:eq:Trel}. \qed
+\begin{status}Unconditional; \leanpath{VOA/Moonshine/SigmaTop2Eigen.lean}. This settles the
+``eigenvalue $\pm\tfrac12$'' question that was open in the ``R-top partial'' status.\end{status}
+
+\begin{remark}[Why this is surprising and why it works]
+Nothing in the definition of $\kappa_+$ looks like it should square to $\tfrac14$: it is a product of an
+$N$-cocycle value, a $\Leech$-coboundary, an $N$-coboundary and a value of a character chosen by
+\lean{Classical.choose}. The point is that \lean{golayE} was chosen precisely to make the transported
+$\Theta$ agree with the Leech $\theta$ (Chapter~\ref{ch:11}); $\theta$-invariance of the image of $\sigma$ is a
+consequence of that choice, and it encodes exactly the information about $g_e$ that is needed.
+\end{remark}
+
+\subsection{The eigenvalue pattern is a character}
+\begin{lemma}[\lean{lam_eq}]\label{ch13:lem:lam-eq}
+For $j\ne k$ and $n\in S_1$:
+$\lambda(j,k,n)=-\tfrac12(-1)^{\langle\gamma_+,n\rangle}=\tfrac12(-1)^{\langle\gamma_-,n\rangle}$.
+\end{lemma}
+\begin{leancode}
+theorem lam_eq {j k : Fin 24} (hjk : j ≠ k) {n : leech.carrier} (hn : n ∈ halfFourChi 1) :
+    lam j k n = -(1 / 2 : ℂ) * (-1 : ℂ) ^ (leech.form (gP j k) n) ∧
+      lam j k n = (1 / 2 : ℂ) * (-1 : ℂ) ^ (leech.form (gM j k) n)
+\end{leancode}
+\begin{dictionary}
+\lean{(-1 : ℂ) ^ m} with $m=\langle\gamma_\pm,n\rangle\in\Z$ is an integer power (\lean{zpow}). The statement
+is the lemma verbatim.
+\end{dictionary}
+\begin{physics}
+The eigenvalue that the twist-space operators must have is the sign $(-1)^{\langle\gamma_\pm,n\rangle}$ times $\pm\tfrac12$, a function of the momentum $n$ through a mod-two inner product. This is the charge-matching phase: the Fourier dual of momentum on the twist side is a character of the lattice. It is a technical identity used to put the eigen-conditions in a uniform form.
+\end{physics}
+\noindent\emph{Proof.} $\langle\gamma_\pm,n\rangle=\tfrac12(n_j\pm n_k)$. If neither $j$ nor $k$ is the block,
+$n_j,n_k\in\{\pm1\}$, $\lambda=\tfrac12n_jn_k$; if $n_j=n_k$ then $\tfrac12(n_j+n_k)=\pm1$ is odd and $\tfrac12(n_j-n_k)=0$,
+giving $\tfrac12=-\tfrac12(-1)=\tfrac12(+1)$; if $n_j=-n_k$ the roles swap and both sides are $-\tfrac12$. If $j$ is the
+block, $n_j=\pm3$, $n_k=\pm1$, $\lambda=-\tfrac16n_jn_k=\mp\tfrac12$, and $\tfrac12(n_j\pm n_k)\in\{\pm1,\pm2\}$ is checked in
+the four sign cases. \qed
+
+So the required eigenvalues of $A_\pm$ on $\tau(n)$ depend on $n$ only through the characters
+$(-1)^{\langle\gamma_\pm,n\rangle}$. On $T$, the operator $e_n$ satisfies $e_{\gamma}e_n=(-1)^{\langle\gamma,n\rangle}e_ne_\gamma$. Hence
+\emph{if $t$ is an eigenvector of $A_+$ with eigenvalue $-\tfrac12$ and of $A_-$ with eigenvalue $\tfrac12$, then
+$e_nt$ has exactly the eigenvalues $\lambda(j,k,n)$}. This motivates:
+
+\begin{definition}[seed]\label{ch13:def:seed}
+A vector $t\in T$ is a \emph{seed} if $A_+(j,k)t=-\tfrac12t$ and $A_-(j,k)t=\tfrac12t$ for all $j\ne k$.
+\lean{SeedExists} is the statement that a nonzero seed exists.
+\end{definition}
+\begin{leancode}
+def IsSeed (t : TLeechT) : Prop :=
+  ∀ j k : Fin 24, j ≠ k → AP j k t = -(1 / 2 : ℂ) • t ∧ AM j k t = (1 / 2 : ℂ) • t
+
+def SeedExists : Prop := ∃ t : TLeechT, t ≠ 0 ∧ IsSeed t
+\end{leancode}
+\begin{dictionary}
+The quantifier covers all $552$ ordered pairs $j\ne k$, i.e.\ $1104$ linear conditions on $t\in T$
+($\dim T=4096$). \lean{t ≠ 0} excludes the trivial seed. Note that a seed satisfies infinitely many
+\emph{a priori} incompatible conditions; that a nonzero one exists is a genuine theorem
+(Theorem~\ref{ch13:thm:seed}).
+\end{dictionary}
+\begin{physics}
+A seed is a twist-field state that carries the right eigenvalue $-\tfrac12$ and $+\tfrac12$ for the operators $A_\pm(j,k)$ for every pair of frame directions, a joint eigenvector of the Clifford-type operators. It is the image of one distinguished ground state: once it is known, all other images are obtained by acting with the operators $e_n$. The existence of a nonzero seed is exactly the existence of a state to which $\sigma$ can send a given reference ground state.
+\end{physics}
+
+\begin{theorem}[eigen-conditions from a seed]\label{ch13:thm:eig-seed}
+Let $t$ be a seed and $c\colon\Leech\to\C$ arbitrary. Then for $j\ne k$, $n\in S_1$,
+$A_\pm(c(n)e_nt)=\lambda(j,k,n)\,c(n)e_nt$. If moreover $t\ne0$, $t\in T_s$ and $c(n_j)=\mu_j$ for explicit
+nonzero constants $\mu_j$ (\lean{mu}), the assignment $\tau(n)=c(n)e_nt$ (\lean{tauOf c t}) satisfies all
+hypotheses of Theorem~\ref{ch13:thm:of-eigen} except the lattice letters, with values in $T_{s+1}$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/SigmaTop2Eigen.lean}.
+\begin{leancode}
+theorem eig_of_seed {t : TLeechT} (ht : IsSeed t) (c : leech.carrier → ℂ) {j k : Fin 24}
+    (hjk : j ≠ k) {n : leech.carrier} (hn : n ∈ halfFourChi 1) :
+    kP j k • eL (gP j k) (c n • eL n t) = lam j k n • (c n • eL n t) ∧
+      kM j k • eL (gM j k) (c n • eL n t) = lam j k n • (c n • eL n t)
+
+noncomputable def mu (j : Fin 24) : ℂ :=
+  if j = 0 then 1 else εΛ (mvec 0) (gM 0 j) * (2 * kM 0 j)
+
+noncomputable def tauOf (c : leech.carrier → ℂ) (t : TLeechT) (n : leech.carrier) : TLeechT :=
+  c n • eL n t
+
+theorem topSigmaV3_of_seed {s : ZMod 2} {t : TLeechT} (hts : t ∈ leechFrameT s) (ht0 : t ≠ 0)
+    (ht : IsSeed t) (c : leech.carrier → ℂ) (hc : ∀ j, c (nvec j) = mu j)
+    (hlat : ∀ γ ∈ halfFourChi 0, ZM (phiV3 (tauOf c t)) OmegaV3 (lV' γ)) :
+    TopSigmaV3 (s + 1) (phiV3 (tauOf c t))
+\end{leancode}
+\begin{dictionary}
+\lean{eL γ} is $e_\gamma$ on $T$. \lean{mvec j} is the odd vector $m_j=(1^{24})-4e_j$, which has its $-3$ in
+position $j$; \lean{nvec j} is $\pm m_j$, whichever lies in $S_1$. The constants $\mu_j$ make
+$\mu_je_{n_j}t=e_{m_0}t$ for all $j$ (\lean{mu_nvec}), so the ``common block value'' required by
+\lean{hits_cyclic} is $e_{m_0}t$. \textbf{The sector shift:} because $n$ is odd, $\langle w_0,n\rangle=n_0$ is
+odd, so $e_n$ anticommutes with $e_{w_0}$ and swaps $T_0\leftrightarrow T_1$; hence a seed in $T_s$ yields
+\lean{TopSigmaV3 (s + 1)}. The only remaining hypothesis \lean{hlat} is the lattice letters.
+\end{dictionary}
+\begin{physics}
+Given a seed, the images of all momentum ground states, obtained by acting with the Clifford-type operators $e_n$ on the seed, automatically satisfy the eigen-conditions with the correct phases. This is the statement that the single seed state generates a whole covariant family of ground states under the lattice translation operators, the analogue of generating a representation from a highest-weight vector. A nonzero seed also guarantees the image is nonzero, excluding the trivial zero map.
+\end{physics}
+\noindent\emph{Proof.} $A_+e_nt=\kappa_+e_{\gamma_+}e_nt=(-1)^{\langle\gamma_+,n\rangle}e_n\kappa_+e_{\gamma_+}t
+=-\tfrac12(-1)^{\langle\gamma_+,n\rangle}e_nt=\lambda e_nt$ by Lemma~\ref{ch13:lem:lam-eq}; likewise for $A_-$. For
+the block value: $m_j=m_0+\gamma_-(0,j)$, so $e_{m_j}=\varepsilon_\Leech(m_0,\gamma_-)^{-1}e_{m_0}e_{\gamma_-}$ and
+$e_{\gamma_-}t=(2\kappa_-)^{-1}t$ (seed), whence $e_{m_0}t=\varepsilon(m_0,\gamma_-)(2\kappa_-)e_{m_j}t=\mu_je_{m_j}t$. \qed
+\begin{status}Unconditional except for the displayed hypotheses;
+\leanpath{SigmaTop2Eigen.lean}.\end{status}
+
+\subsection{\texorpdfstring{The transported operators $W(a)$ and the block links}{The transported operators W(a) and the block links}}
+\begin{definition}\label{ch13:def:Wop}
+For $a\in A$ put $W(a)=t_c(a)\,e_{\iota_\Leech a}\in\End T$ (\lean{Wop a}), and for $j\ne k$,
+$Z_{jk}=2A_-(j,k)=2\kappa_-e_{\gamma_-}$ (\lean{ZZ j k}).
+\end{definition}
+\begin{leancode}
+noncomputable def Wop (a : lam0.carrier) : End ℂ TLeechT := tc a • eL (inclΛ a)
+
+theorem Wop_mul (a b : lam0.carrier) : Wop a * Wop b = εN (inclN a) (inclN b) • Wop (a + b)
+
+noncomputable def ZZ (j k : Fin 24) : End ℂ TLeechT := (2 : ℂ) • AM j k
+
+theorem ZZ_mul_self {j k : Fin 24} (hjk : j ≠ k) : ZZ j k * ZZ j k = 1
+
+theorem ZZ_comp {i j k : Fin 24} (hij : i ≠ j) (hjk : j ≠ k) (hik : i ≠ k) :
+    ZZ j k * ZZ i j = ZZ i k
+\end{leancode}
+\begin{dictionary}
+\lean{Wop_mul}: the rescaled operators multiply with the cocycle of $N$, not of $\Leech$. Thus $a\mapsto W(a)$
+is a projective representation of $A$ on $T$ whose 2-cocycle is $\varepsilon_N$. \lean{ZZ_comp}: the
+$Z$'s compose like ``transition functions'' $Z_{jk}=V_jV_k^{-1}$ (the file's formal $\mathfrak{sl}_2$-doublet
+picture). $Z_{jk}^2=1$ follows from $A_-^2=\tfrac14$.
+\end{dictionary}
+\begin{physics}
+The operators $W(a)$ are the transported vertex-operator zero modes acting on the twist space: for each Golay-type element $a$, $W(a)$ is the Clifford-type operator $e_{\iota a}$ times the transport phase. The operators $Z_{jk}$ are rescaled versions of the eigenvalue operators $A_-$ and are the commuting reflection-like symmetries whose joint eigenvalues label twist states. They are the discrete charges used to label the $2^{12}$ twist fields.
+\end{physics}
+\noindent\emph{Proof.} $W(a)W(b)=t_c(a)t_c(b)\varepsilon_\Leech(\iota a,\iota b)e_{\iota(a+b)}$, and the two
+comparison identities for $c_\Leech$ and $c_N$ together with $g_e(a+b)=g_e(a)g_e(b)$ give
+$t_c(a)t_c(b)\varepsilon_\Leech(\iota a,\iota b)=\varepsilon_N(a,b)t_c(a+b)$: the $\varepsilon_A$'s cancel. For \lean{ZZ_comp}: $Z_{jk}$
+is a scalar multiple of $W(a_-(j,k))$ and $a_-(j,k)+a_-(i,j)=a_-(i,k)$; the scalar works out by the
+cocycle identities for the orthogonal roots. \qed
+
+\begin{theorem}[\lean{topSigmaTT_of_seed}]\label{ch13:thm:TT-seed}
+Let $B\in\End T$ map into $T_s$, satisfy $(A_++A_-)(B t)=0$ for $t\in T_{s'}$ and $j\neq k$, and send some
+$t_1\in T_{s'}$ to a nonzero seed. Put $\psi_0=B$ and $\psi_m=Z_{0m}B$ (\lean{psiOf B}). If the lattice
+letters intertwine for $\varphi_\psi$, then \lean{TopSigmaTT s' s} $\varphi_\psi$.
+\end{theorem}
+\begin{leancode}
+noncomputable def psiOf (B : End ℂ TLeechT) (m : Fin 24) : TLeechT →ₗ[ℂ] TLeechT :=
+  if m = 0 then B else ZZ 0 m * B
+
+theorem topSigmaTT_of_seed {s' s : ZMod 2} {B : End ℂ TLeechT} (hBs : ∀ t, B t ∈ leechFrameT s)
+    (hBE : ∀ t ∈ leechFrameT s', ∀ j k : Fin 24, j ≠ k → AP j k (B t) + AM j k (B t) = 0)
+    {t₁ : TLeechT} (ht₁ : t₁ ∈ leechFrameT s') (hseed : IsSeed (B t₁)) (h0 : B t₁ ≠ 0)
+    (hlat : ∀ γ ∈ halfFourChi 0, ZMT (phiTT (psiOf B)) (OmegaT s') (lV' γ)) :
+    TopSigmaTT s' s (phiTT (psiOf B))
+\end{leancode}
+\begin{dictionary}
+Hypotheses: \lean{hBs} ($B$ lands in $T_s$), \lean{hBE} (the vanishing condition of
+Theorem~\ref{ch13:thm:offdiag}(b) for $\psi_0$; for the other $\psi_m$ it follows because $Z_{0m}$
+commutes with $A_\pm$, as all $\gamma$'s involved have coordinates divisible by $4$, so their pairings are
+even), \lean{hseed}, \lean{h0} (the block value $B t_1$ is a nonzero seed, giving \lean{hits_cyclic}),
+\lean{hlat} (open at this stage). The block links hold by \lean{ZZ_comp} and $Z^2=1$.
+\end{dictionary}
+\begin{physics}
+This is the twisted-to-twisted analogue: if an operator $B$ on the twist space produces a seed from some state and respects the eigenvalue relations, the family $\psi_m=Z_{0m}B$ gives an intertwiner for the diagonal and off-diagonal letters, provided the lattice letters also match charges. Physically the twisted sector is again determined by a single distinguished image state, the seed, and the other components are generated by the symmetry operators $Z_{0m}$. It is conditional on the lattice letters.
+\end{physics}
+\begin{status}Conditional on the displayed hypotheses; \leanpath{SigmaTop2Eigen.lean}. Discharged in
+\S\ref{ch13:sec:tt}.\end{status}
+
+%======================================================================
+\section{\texorpdfstring{The quadratic refinement $\xi$ and the spinor cube}{The quadratic refinement xi and the spinor cube}}\label{ch13:sec:xi}
+
+\subsection{\texorpdfstring{$\xi$}{xi}}
+On the root sublattice $R=\bigoplus_j\Z\alpha_j\subset N$ all inner products $\langle\alpha_i,\alpha_j\rangle=2\delta_{ij}$ are
+even, so the commutator $\varepsilon_N(x,y)\varepsilon_N(y,x)=(-1)^{\langle x,y\rangle}$ is trivial: $\varepsilon_N$ restricted to $R$
+is a \emph{symmetric} 2-cocycle with values $\pm1$, hence a coboundary over $\C^\times$ (a symmetric cocycle
+on a free abelian group with values in a divisible group is a coboundary). We fix an explicit
+trivialisation.
+\begin{definition}[\lean{xi}]\label{ch13:def:xi}
+Let $\phi_R\colon\Z^{24}\to N$, $x\mapsto\sum x_i\alpha_i=2x$ (\lean{phiR}). A function $\xi\colon\Z^{24}\to\C^\times$ with
+\begin{equation*}
+  \xi(x)\xi(y)=\varepsilon_N(\phi_Rx,\phi_Ry)\,\xi(x+y),\qquad \xi(e_i)=i
+\end{equation*}
+is constructed as $\xi=\xi_0\cdot\chi$, where $\xi_0(x)=i^{S(x,x)}$ for the symmetrised exponent $S$ of the
+cocycle (\lean{xi0}, via \lean{cobSign}), and $\chi(x)=\prod_iw_i^{x_i}$ is the character correcting
+$\xi(e_i)$ to $i$.
+\end{definition}
+\noindent File \leanpath{VOA/Moonshine/SigmaTop2Xi.lean}.
+\begin{leancode}
+def phiR : (Fin 24 → ℤ) →ₗ[ℤ] golayN.carrier where
+  toFun x := show ↥Leech.preG from ⟨(2 : ℤ) • x, two_smul_mem_preimageOfCode Code.golay x⟩
+  map_add' x y := Subtype.ext (by simp only [smul_add]; rfl)
+  map_smul' c x := Subtype.ext (by
+    change (2 : ℤ) • (c • x) = c • ((2 : ℤ) • x)
+    rw [smul_comm])
+
+noncomputable def xi (x : Fin 24 → ℤ) : ℂ := xi0 x * ∏ i, wXi i ^ (x i)
+
+theorem xi_mul (x y : Fin 24 → ℤ) : xi x * xi y = εN (phiR x) (phiR y) * xi (x + y)
+
+theorem xi_single (i : Fin 24) : xi (Pi.single i 1) = Complex.I
+\end{leancode}
+\begin{dictionary}
+\lean{phiR}'s body is shown (it contains no choices): $x\mapsto2x$, which lies in $N$ because $2x\equiv0$
+mod $2$ and $0\in\mathcal G$. \lean{wXi i} $=i/\xi_0(e_i)$. \lean{Pi.single i 1} is the unit vector $e_i$;
+\lean{Complex.I} is $i$. The normalisation $\xi(e_i)=i$ is a \emph{choice} --- $\xi$ is unique up to a character
+of $\Z^{24}$ --- and the choice $i$ is what makes the formulas of the cube (\lean{nuC}) produce the standard
+$\mathfrak{sl}_2$ doublet matrices. Note $\xi(2e_i)=\xi(e_i)^2/\varepsilon_N(\alpha_i,\alpha_i)=-\varepsilon_i$, consistent with $\xi$ being a
+refinement: $\xi(x)^2=\varepsilon_N(\phi_Rx,\phi_Rx)\xi(2x)$.
+\end{dictionary}
+\begin{physics}
+The function $\xi$ is a refinement of the cocycle $\varepsilon_N$ with value $i$ on the generators: it plays the role of the choice of phases for the lattice vertex operators in a way compatible with the frame. Heuristically it is the discrete torus-phase, the square root of the cocycle that appears when the lattice is halved to the frame. It is a technical phase refinement whose only physical content is that such a consistent choice of vertex-operator phases exists.
+\end{physics}
+\noindent\emph{Proof of \lean{xi_mul}.} Write $\varepsilon_N(\phi_Rx,\phi_Ry)=(-1)^{D(x,y)}$ with $D$ the
+$\Z$-bilinear exponent of the library's cocycle (\lean{cocForm}), pulled back along $\phi_R$. Since
+$\varepsilon_N$ is symmetric on $R$, $D(e_i,e_j)+D(e_j,e_i)$ is even for all $i,j$. Let $S$ be the symmetric
+bilinear form with $S(e_i,e_j)=D(e_i,e_j)$ for $i\le j$ (\lean{symForm}); then $S\equiv D\pmod 2$ entrywise
+(below the diagonal $S_{ij}-D_{ij}=D_{ji}-D_{ij}$, which is even). Put $\xi_0(x)=i^{S(x,x)}$. Then
+\begin{equation*}
+  \xi_0(x+y)=i^{S(x,x)}\,i^{S(y,y)}\,i^{2S(x,y)}=\xi_0(x)\xi_0(y)(-1)^{S(x,y)}=\xi_0(x)\xi_0(y)(-1)^{D(x,y)},
+\end{equation*}
+which, since $(-1)^{D}=(-1)^{-D}$, is the claimed identity. A character $\chi(x)=\prod_iw_i^{x_i}$ satisfies
+$\chi(x)\chi(y)=\chi(x+y)$, so $\xi=\xi_0\chi$ satisfies the same identity, and $w_i=i/\xi_0(e_i)$ gives
+$\xi(e_i)=i$. \qed
+\begin{status}Unconditional; \leanpath{SigmaTop2Xi.lean}.\end{status}
+
+\subsection{The spinor cube}
+Let $D\subseteq\{0,\dots,23\}$ with $4\mid|D|$ and $\beta\in N$ with coordinates the indicator $1_D$ (so $\beta=\tfrac12\sum_{i\in
+D}\alpha_i$, a ``spinor'' vector of $N$). The $2^{|D|}$ vectors $\beta-\delta_S$, $\delta_S=\sum_{i\in S}\alpha_i$, $S\subseteq D$,
+are obtained from $\beta$ by flipping signs in $S$. Physically: each coordinate $i\in D$ carries an
+$\mathfrak{sl}_2$ doublet (momentum $\pm\tfrac12\alpha_i$), and $V_N$ restricted to these states is a tensor product of
+$|D|$ doublets. The cube basis is
+\begin{equation*}
+  b_S=\nu(S)\,e^{\beta-\delta_S},\qquad \nu(S)=\varepsilon_N(\delta_S,\delta_S+\beta)\,\xi(1_S)\,i^{-|S|}
+\end{equation*}
+(\lean{bp}, \lean{nuC}). The normalisation $\nu$ is chosen so that the root operators act by the standard
+matrices: $E_i b_S=b_{S\setminus i}$ for $i\in S$, $F_ib_S=b_{S\cup i}$ for $i\notin S$ (and $0$ otherwise).
+\noindent File \leanpath{VOA/Moonshine/SigmaTop2Cube.lean}.
+\begin{leancode}
+noncomputable def nuC (S : Finset (Fin 24)) : ℂ :=
+  εN (dl S) (dl S + β) * xi (ind S) * (Complex.I ^ S.card)⁻¹
+
+noncomputable def bp (S : Finset (Fin 24)) : LatModuleGen golayN :=
+  nuC β S • latChargeGen golayN (β - dl S)
+
+noncomputable def vecP (φ : Fin 24 → Fin 2 → ℂ) : LatModuleGen golayN :=
+  ∑ S ∈ D.powerset, prodC D φ S • bp β S
+\end{leancode}
+\begin{dictionary}
+\lean{ind S} $=1_S\in\Z^{24}$, \lean{dl S} $=\delta_S=\phi_R(1_S)$. In \lean{nuC}, \lean{bp}, $\beta$ is a section
+variable (\lean{variable (β : golayN.carrier)}). \lean{vecP φ} is the \emph{product vector}
+$\bigotimes_{i\in D}\varphi_i=\sum_{S\subseteq D}\bigl(\prod_{i\in D}\varphi_i(\,[i\in S]\,)\bigr)b_S$ for local doublet vectors
+$\varphi_i\in\C^2$ (\lean{prodC}); index $0$ = ``up'' ($i\notin S$), $1$ = ``down''.
+\end{dictionary}
+
+\begin{theorem}[$\sigma$ and $\Theta$ on the cube]\label{ch13:thm:cube}
+Let $\beta\in N$ have coordinates $1_D$ with $4\mid|D|$. Then on product vectors
+\begin{equation*}
+  \sigma\Bigl(\bigotimes_i\varphi_i\Bigr)=c_D\bigotimes_i h(\varphi_i),\qquad
+  \Theta\Bigl(\bigotimes_i\varphi_i\Bigr)=\bigotimes_i h\chi h(\varphi_i),
+\end{equation*}
+where $h=g\,\chi\,g^{-1}$ with $g=\begin{psmallmatrix}1+ab&a\\ b&1\end{psmallmatrix}$, $a=1-\sqrt2$, $b=\tfrac{\sqrt2}{4}$,
+$\chi=\operatorname{diag}(1,-1)$, and $c_D=-1$ if $0\in D$, $+1$ otherwise. In particular
+\begin{equation*}
+  \Theta\,e^{\beta}=\xi(1_D)\,e^{-\beta}.
+\end{equation*}
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/SigmaTop2Cube.lean}.
+\begin{leancode}
+theorem golaySigma_vecP (hβ : gv β = ind D) (h4 : 4 ∣ D.card) (φ : Fin 24 → Fin 2 → ℂ) :
+    golaySigma (vecP β D φ) = cD D • vecP β D (fun m => gvec (chivec (ginv (φ m))))
+
+theorem golayTheta_vecP (hβ : gv β = ind D) (h4 : 4 ∣ D.card) (φ : Fin 24 → Fin 2 → ℂ) :
+    golayTheta (vecP β D φ) = vecP β D (fun m =>
+      gvec (chivec (ginv (chivec (gvec (chivec (ginv (φ m))))))))
+
+theorem theta_local :
+    gvec (chivec (ginv (chivec (gvec (chivec (ginv ![1, 0])))))) = ![0, 1]
+
+theorem golayTheta_codeword (hβ : gv β = ind D) (h4 : 4 ∣ D.card) :
+    golayTheta (latChargeGen golayN β) = xi (ind D) • latChargeGen golayN (-β)
+\end{leancode}
+\begin{dictionary}
+\lean{gv β} is the coordinate vector of $\beta\in N$ in $\Z^{24}$; the hypothesis \lean{gv β = ind D} says
+$\beta=1_D$. \lean{h4}: $4\mid|D|$ (needed so that the momentum sign of the extreme states is a global sign;
+it holds for every Golay codeword). \lean{gvec}, \lean{ginv}, \lean{chivec} are $g$, $g^{-1}$, $\chi$ applied to a
+vector of $\C^2$; \lean{![1, 0]} is the column $(1,0)^{\mathsf T}$. \lean{cD D} $=c_D$. The last statement is the
+one used later: the scalar by which $\Theta$ maps the codeword state $e^\beta$ to $e^{-\beta}$ is $\xi(1_D)$.
+Nothing here is vacuous: $D$ = any octad, or $D=\emptyset$ ($\beta=0$, where it says $\Theta\mathbf 1=\mathbf 1$).
+\end{dictionary}
+\begin{physics}
+On the spinor cube, the $2^{12}$-dimensional tensor product of two-dimensional factors, the triality operator $\sigma$ acts as a tensor product of one-qubit matrices $h$, and the reflection $\Theta$ as another tensor product. This is the explicit Clifford-module picture: the twist-field space is a spinor of the frame, the group element acts on it by a Hadamard-like transform on each qubit, up to a scalar. The one-qubit Hadamard is precisely the discrete Fourier transform exchanging the two basis labels, here the momentum-like and twist-like labels.
+\end{physics}
+\noindent\emph{Proof.} The root operators act on the cube coordinatewise (by the normalisation $\nu$):
+the recursion $\nu(S\cup i)=\nu(S)\varepsilon_i\varepsilon_N(\alpha_i,\beta-\delta_S)$ is exactly what makes $\varepsilon_iQ_{-\alpha_i}$
+send $b_S\mapsto b_{S\cup i}$ and $Q_{\alpha_i}$ send $b_S\mapsto b_{S\setminus i}$, and $Q_{\pm\alpha_i}^2=0$ on the cube. Hence
+$g_i=\exp(aE_i)\exp(bF_i)$ acts by the $2\times2$ matrix $g$ in the $i$-th factor, and $g_k$, $k\notin D$, acts
+trivially. The momentum signs: $\chi$ acts on $e^{\beta-\delta_S}$ by $(-1)^{\sum(\beta-\delta_S)_i/2}$, and
+$\sum(\beta-\delta_S)=|D|-2|S|$; since $4\mid|D|$ this is $(-1)^{|S|}=\prod_{i\in S}(-1)$, i.e.\ $\chi^{\otimes D}$. The
+extra $\gamma_0$-sign of \lean{golayChiMod} is the constant $c_D$. Composing, $\Theta=\sigma\chi\sigma$ is the tensor
+power of $h\chi h$ (the two $c_D$ cancel). Finally a $2\times2$ computation in $\Q(\sqrt2)$ shows $h\chi h$ sends
+$(1,0)\mapsto(0,1)$, i.e.\ ``all up'' $\mapsto$ ``all down'': $\Theta e^\beta=\Theta b_\emptyset=b_D=\nu(D)e^{-\beta}$, and
+$\nu(D)=\varepsilon_N(2\beta,3\beta)\xi(1_D)i^{-|D|}=\xi(1_D)$ (since $\varepsilon_N(\beta,\beta)^6=1$ and $4\mid|D|$). \qed
+\begin{status}Unconditional; \leanpath{SigmaTop2Cube.lean}; \lean{#print axioms golayTheta_codeword}
+clean (re-checked).\end{status}
+
+%======================================================================
+\section{The seed exists}\label{ch13:sec:seed}
+
+This is the single most important step of the chapter: a nonzero vector $t\in T$ satisfying the
+$1104$ conditions of Definition~\ref{ch13:def:seed}. The construction has two parts: a projector argument
+produces a common fixed vector of $12$ commuting involutions, and an algebraic ``closure'' argument
+shows that this fixed vector automatically satisfies all other conditions.
+
+\subsection{Common fixed vectors of a Lagrangian family}
+$T$ is the unique irreducible representation of an extraspecial group of order $2^{1+24}$, of dimension
+$2^{12}$. A maximal commuting family of its ``Pauli operators'' has a one-dimensional joint eigenspace
+for each character --- exactly as for $n$ qubits, where $Z_1,\dots,Z_n$ have the computational basis as
+joint eigenbasis. The library encodes such a family as a \emph{Lagrangian datum}.
+\begin{definition}[Lagrangian datum]\label{ch13:def:lagrangian}
+For an integral lattice $L$, a \lean{Lagrangian L} consists of $m$ with $2m=\operatorname{rank}L$, vectors
+$\gamma_0,\dots,\gamma_{m-1}$ with all $\langle\gamma_i,\gamma_j\rangle$ and $\tfrac12\langle\gamma_i,\gamma_i\rangle$ even (so their images in
+$L/2L$ span a totally singular subspace for the quadratic form $q(x)=\tfrac12\langle x,x\rangle$ mod $2$), and
+\emph{partners} $g_0,\dots,g_{m-1}$ with $\langle g_i,\gamma_j\rangle$ even for $j<i$ and odd for $j=i$.
+\end{definition}
+\begin{leancode}
+structure Lagrangian (L : VOA.IntegralLattice) where
+  m : ℕ
+  γ : ℕ → L.carrier
+  g : ℕ → L.carrier
+  form_even : ∀ i < m, ∀ j < m, _root_.Even (L.form (γ i) (γ j))
+  halfNorm_even : ∀ i < m, _root_.Even (halfNorm L (γ i))
+  partner_even : ∀ i < m, ∀ j < i, _root_.Even (L.form (g i) (γ j))
+  partner_odd : ∀ i < m, Odd (L.form (g i) (γ i))
+  two_mul_m : 2 * m = L.bRank
+\end{leancode}
+\begin{physics}
+A Lagrangian datum is a maximal isotropic (totally singular) subspace of the lattice modulo $2L$, the discrete analogue of choosing a polarisation or a maximal commuting set of observables. Physically one chooses half of the Clifford generators to be simultaneously diagonalised; the common eigenvectors form the lowest-energy states in the twisted sector. This is the standard stabiliser-code (Heisenberg group) construction of a state.
+\end{physics}
+(\leanpath{VOA/Moonshine/TFormLattice.lean}.) The Leech instance \lean{leechLagrangian}
+(\leanpath{TForm.lean}, Chapter~\ref{ch:09}) has $m=12$, $\gamma_0=8e_0=w_0$, $\gamma_i=4e_0+4e_i$
+($1\le i\le11$), and partners $g_0=u$, $g_i=2r_i$ with $r_i$ the rows of the Golay generator matrix.
+\begin{theorem}[\lean{exists_fixed_of_lagrangian}]\label{ch13:thm:fixed}
+Let $D$ be a Lagrangian datum for $\Leech$ and $\kappa_i\in\C$ with $\kappa_i^2\varepsilon_\Leech(\gamma_i,\gamma_i)=1$ for $i<m$.
+Then there is $t\in T$, $t\ne0$, with $\kappa_ie_{\gamma_i}t=t$ for all $i<m$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/SigmaTop2Seed.lean}.
+\begin{leancode}
+theorem exists_fixed_of_lagrangian (hκ : ∀ i < D.m, κ i * κ i * εΛ (D.γ i) (D.γ i) = 1) :
+    ∃ t : TLeechT, t ≠ 0 ∧ ∀ i < D.m, κ i • eL (D.γ i) t = t
+\end{leancode}
+\begin{dictionary}
+$D$ and $\kappa\colon\N\to\C$ are section variables. The hypothesis makes each $F_i=\kappa_ie_{\gamma_i}$ an
+involution. No choice of $\kappa_i$ beyond this normalisation is required --- in particular the theorem
+applies to the uncomputable constants that occur below. Same as the textbook statement.
+\end{dictionary}
+\begin{physics}
+Given a Lagrangian datum, the commuting Clifford-type operators have a common eigenvector with eigenvalue $1$: the stabiliser state exists. Physically a maximal commuting set of observables on the twist space has a simultaneous eigenvector with the prescribed charges, which gives a nonzero twist field. This is the existence statement behind the seed, and it guarantees the vector is nonzero, so the resulting operator cannot be the zero map.
+\end{physics}
+\noindent\emph{Proof.} The $F_i$ commute ($\langle\gamma_i,\gamma_j\rangle$ even) and square to $1$. Let
+$P_k=\prod_{i<k}\tfrac12(1+F_i)$. Claim: $\operatorname{tr}(P_k)\cdot2^k=\dim T$. Indeed
+$\operatorname{tr}P_{k+1}=\tfrac12\operatorname{tr}P_k+\tfrac12\operatorname{tr}(P_kF_k)$, and $\operatorname{tr}(P_kF_k)=0$: the
+partner $G=e_{g_k}$ commutes with $P_k$ (even pairings with $\gamma_j$, $j<k$) and anticommutes with $F_k$
+(odd pairing), and $G^2$ is a nonzero scalar, so
+$\operatorname{tr}(P_kF_k)=\operatorname{tr}(G^{-1}P_kF_kG)=-\operatorname{tr}(P_kF_k)$. With $k=m=12$ and $\dim T=2^{12}$,
+$\operatorname{tr}P_{12}=1$; so the projector $P_{12}$ is nonzero, and any nonzero vector in its image is fixed by all
+$F_i$ (since $F_iP_{12}=P_{12}$). \qed
+\begin{status}Unconditional; \leanpath{SigmaTop2Seed.lean}.\end{status}
+
+\subsection{\texorpdfstring{$\xi$-closure}{xi-closure}}
+\begin{definition}[\lean{chargesS}]\label{ch13:def:chargesS}
+For $t\in T$, $\mathrm{Ch}(t)=\{a\in A : \exists x\in\Z^{24},\ \iota_Na=\phi_Rx\ \text{and}\ W(a)t=\xi(x)t\}$. In words:
+$a$ lies in the root lattice $R$ (as a vector of $N$), and the transported operator $W(a)$ acts on $t$ by the
+refinement value $\xi$.
+\end{definition}
+\begin{leancode}
+noncomputable def chargesS (t : TLeechT) : AddSubgroup lam0.carrier where
+  carrier := {a | ∃ x, inclN a = phiR x ∧ Wop a t = xi x • t}
+  zero_mem' := ⟨0, by rw [map_zero, map_zero], by rw [Wop_zero, xi_zero, one_smul]; rfl⟩
+\end{leancode}
+\begin{dictionary}
+Only the carrier and the first closure field are quoted; the remaining fields of the structure
+(\lean{add_mem'}, \lean{neg_mem'}) are proofs that the set is closed under addition and negation. That
+$\mathrm{Ch}(t)$ is a \emph{subgroup} is the key point: it follows from $W(a)W(b)=\varepsilon_N(a,b)W(a+b)$
+(Definition~\ref{ch13:def:Wop}) and $\xi(x)\xi(y)=\varepsilon_N\xi(x+y)$ --- the two projective representations $W$ and
+$\xi\cdot\mathrm{id}$ have the same cocycle, so the set where they agree on $t$ is closed. This is
+\emph{why} $\xi$ was introduced.
+\end{dictionary}
+\begin{physics}
+The set $\mathrm{Ch}(t)$ collects the lattice directions along which the twist state $t$ is an eigenvector of the transported vertex-operator zero mode with the prescribed phase $\xi$. It is the set of charges carried by the state, the stabiliser group of $t$ in the stabiliser-state language. Demanding that this set be large is demanding that $t$ has definite values of many commuting observables.
+\end{physics}
+
+\begin{proposition}[from charges to seeds]\label{ch13:prop:charges}
+\begin{enumerate}[label=(\alph*)]
+\item If $a_+(0,j)=\alpha_0+\alpha_j\in\mathrm{Ch}(t)$ for all $j$ (including $j=0$, $a_+(0,0)=2\alpha_0$), then $t$ is a seed.
+\item (codewords) If $b\in A$ has $\iota_Nb=1_D$ with $4\mid|D|$, then $g_e(b)^{-2}=\xi(1_D)$, and $2b\in\mathrm{Ch}(t)$ for
+  every $t$.
+\end{enumerate}
+\end{proposition}
+\begin{leancode}
+theorem isSeed_of_charges {t : TLeechT} (h : ∀ j, aP 0 j ∈ chargesS t) : IsSeed t
+
+theorem eV_sq_codeword {b : lam0.carrier} {D : Finset (Fin 24)} (hb : gv (inclN b) = ind D)
+    (h4 : 4 ∣ D.card) : (eV b * eV b)⁻¹ = xi (ind D)
+
+theorem codeword_mem_chargesS (t : TLeechT) {b : lam0.carrier} {D : Finset (Fin 24)}
+    (hb : gv (inclN b) = ind D) (h4 : 4 ∣ D.card) : b + b ∈ chargesS t
+\end{leancode}
+\begin{dictionary}
+In (a) the hypothesis quantifies over all $j\in\{0,\dots,23\}$. In (b), \lean{gv (inclN b) = ind D}
+says that $b$, viewed in $N$, is the codeword vector $1_D$. Note \lean{codeword_mem_chargesS} holds for
+\emph{every} $t$ --- because $W(2b)$ is a scalar.
+\end{dictionary}
+\begin{physics}
+A state whose charge set contains the basic root combinations is a seed, and codewords of the Golay code automatically lie in the charge set of every state. Physically the Golay codewords act as charges that every twist field must carry, a selection rule coming from the code. The seed conditions thus reduce to checking finitely many charges on a lattice, which is a purely combinatorial statement about the stabiliser group.
+\end{physics}
+\noindent\emph{Proof.} (a) $\mathrm{Ch}(t)$ is a group, so $a_+(j,k)=a_+(0,j)+a_+(0,k)-a_+(0,0)$ and
+$a_-(j,k)=a_+(0,j)-a_+(0,k)$ lie in it. By Proposition~\ref{ch13:prop:kappa}(a),
+$A_+=\tfrac12\varepsilon_N(\alpha_j,\alpha_k)W(a_+)$ and $A_-=\tfrac12\varepsilon_k\varepsilon_N(\alpha_j,\alpha_k)W(a_-)$. With
+$\xi(e_j+e_k)=\xi(e_j)\xi(e_k)/\varepsilon_N(\alpha_j,\alpha_k)=-\varepsilon_N(\alpha_j,\alpha_k)$ and
+$\xi(e_j-e_k)=\varepsilon_k\varepsilon_N(\alpha_j,\alpha_k)$ one gets $A_+t=-\tfrac12t$ and $A_-t=\tfrac12t$.
+(b) $\Theta$ on the Leech side is $\theta$ ($e^\gamma\mapsto e^{-\gamma}$); pulled back through the bridge it becomes, on
+$e^{\iota_N b}$, the map $e^{\iota_Nb}\mapsto g_e(b)^{-2}e^{-\iota_Nb}$ (this is what the specification of
+\lean{golayE} says). Comparing with Theorem~\ref{ch13:thm:cube}, $\Theta e^\beta=\xi(1_D)e^{-\beta}$, gives
+$g_e(b)^{-2}=\xi(1_D)$. Finally $W(2b)=t_c(2b)e_{2\iota b}=t_c(2b)$, and $t_c(2b)=g_e(b)^{-2}$ (coboundaries are $1$
+on doubles), $=\xi(1_D)$, where $\iota_N(2b)=2\cdot1_D=\phi_R(1_D)$. \qed
+
+\subsection{The codeword relation and the seed}
+The Lagrangian gives $\alpha_0+\alpha_i\in\mathrm{Ch}(t)$ only for $i<12$ (and $2\alpha_0$). The other twelve come
+from codewords. Let $D_k$ ($0\le k\le11$) be the Golay codeword whose last twelve coordinates are $e_k$
+(so $D_k\cap\{12,\dots,23\}=\{12+k\}$); write $d_l$ ($1\le l\le 11$) for its coordinates and
+$m=\tfrac12(|D_k|-2[0\in D_k])$.
+\begin{lemma}[\lean{colD_key}, kernel-checked]\label{ch13:lem:colD}
+For each $k<12$, in $\Z^{24}$:
+$\alpha_0+\alpha_{12+k}=2\cdot1_{D_k}-\sum_{l=1}^{11}d_l(\alpha_0+\alpha_l)+m\cdot2\alpha_0$ (with $\alpha_i=2e_i$).
+\end{lemma}
+\noindent File \leanpath{VOA/Moonshine/SigmaTop2Seed.lean}.
+\begin{leancode}
+theorem colD_key : ∀ k : Fin 12, apv 0 (Fin.natAdd 12 k) =
+    (2 : ℤ) • colD k - ∑ l, ccD k l • apv 0 l + mmD k • apv 0 0 := by decide +kernel
+\end{leancode}
+\begin{dictionary}
+\lean{apv j k} $=2(e_j+e_k)$, \lean{colD k} $=1_{D_k}$ (computed from the library's Golay encoder),
+\lean{ccD k l} $=d_l$ for $1\le l\le11$ and $0$ otherwise, \lean{mmD k} $=m$. The proof \lean{decide +kernel}
+is shown because it is informative: the twelve vector identities are checked by the Lean
+kernel's own evaluator on explicit integer vectors. This is \emph{not} \lean{native_decide}: it uses no
+compiled code and adds no axiom (confirmed: \lean{#print axioms colD_key} is clean).
+\end{dictionary}
+\begin{physics}
+This is a lattice identity expressing one frame sum in terms of earlier ones and codeword vectors. Physically it is the linear dependence among charges of the stabiliser group that guarantees consistency, i.e.\ that imposing a handful of charges forces the rest. It is a technical computation checked by the kernel.
+\end{physics}
+\noindent\emph{Why it is true.} Compare coordinates: at $12+k$ both sides have $2$; at $l\in\{1,\dots,11\}$ the
+right side has $2d_l-2d_l=0$; at other positions $\ge12$ both vanish; at $0$ the coefficient $m$ is chosen to
+balance. \qed
+
+\begin{theorem}[the seed exists]\label{ch13:thm:seed}
+There is a nonzero $t\in T$ with $A_+(j,k)t=-\tfrac12t$ and $A_-(j,k)t=\tfrac12t$ for all $j\ne k$.
+Moreover one can take $t\in T_s$ for some $s$.
+\end{theorem}
+\noindent File \leanpath{VOA/Moonshine/SigmaTop2Eigen.lean}.
+\begin{leancode}
+theorem seedExists : SeedExists
+
+theorem seed_in_frame (h : SeedExists) :
+    ∃ s : ZMod 2, ∃ t : TLeechT, t ∈ leechFrameT s ∧ t ≠ 0 ∧ IsSeed t
+\end{leancode}
+\begin{dictionary}
+\lean{SeedExists} unfolds to $\exists t,\ t\ne0\wedge$\lean{IsSeed t} (Definition~\ref{ch13:def:seed}). No
+hypotheses. The second statement is the projection to a frame sector; the sector $s$ is not determined
+(Remark~\ref{ch13:rem:exists-s}).
+\end{dictionary}
+\begin{physics}
+A nonzero twist-field state with all the required charges exists. Physically this says the twisted-sector ground state, the image of the reference untwisted ground state under triality, exists in the $2^{12}$-dimensional space and has the right quantum numbers. The nonzero condition is essential: it makes $\sigma$ a genuine symmetry operator rather than the zero map. It is established in Lean, but the physical identification is heuristic.
+\end{physics}
+\noindent\emph{Proof.} Apply Theorem~\ref{ch13:thm:fixed} to the Leech Lagrangian with
+$\kappa_i=-\varepsilon_N(\alpha_0,\alpha_i)t_c(a_+(0,i))$; the normalisation $\kappa_i^2\varepsilon_\Leech(\gamma_i,\gamma_i)=1$ is
+Proposition~\ref{ch13:prop:kappa}(b) (for $i=0$ a separate but identical computation). The fixed vector
+$t$ satisfies $W(a_+(0,i))t=-\varepsilon_N(\alpha_0,\alpha_i)t=\xi(e_0+e_i)t$, i.e.\ $a_+(0,i)\in\mathrm{Ch}(t)$ for $i<12$. By
+Lemma~\ref{ch13:lem:colD} and Proposition~\ref{ch13:prop:charges}(b), also $a_+(0,12+k)\in\mathrm{Ch}(t)$, since
+$\mathrm{Ch}(t)$ is a group. Proposition~\ref{ch13:prop:charges}(a) concludes. For the sector: $A_\pm$ commute
+with $J$ (all $\gamma_\pm\in\Leech_0$ pair evenly with $w_0$), so $\tfrac12(1\pm J)t$ are seeds, not both zero. \qed
+\begin{status}
+\textbf{Unconditional}; \leanpath{SigmaTop2Seed.lean}; \lean{#print axioms seedExists} $=$
+[\lean{propext}, \lean{Classical.choice}, \lean{Quot.sound}] (re-checked for this chapter). Two
+\lean{decide +kernel} certificates (\lean{colD_four}, \lean{colD_key}) on explicit integer vectors.
+\end{status}
+
+\begin{remark}[Physical reading]
+In the qubit picture, $T\cong(\C^2)^{\otimes12}$ and the conditions on a seed are that $t$ be a joint
+eigenvector of a maximal abelian ``stabiliser group'' with prescribed eigenvalues: $t$ is a
+\emph{stabiliser state}. The Lagrangian half is the standard construction of a stabiliser state; the
+content is that the $\xi$-twisted signs prescribed by $\sigma$ are \emph{consistent}, i.e.\ define a character
+of the stabiliser group. The codeword relation is where consistency could have failed, and the cube
+computation $\Theta e^\beta=\xi(1_D)e^{-\beta}$ is what guarantees it does not.
+\end{remark}
+
+%======================================================================
+\section{\texorpdfstring{The root letters $(\pm4,\pm4,0^{22})$}{The root letters (pm4,pm4,022)}}\label{ch13:sec:root}
+
+The lattice letters $u_\gamma$, $\gamma\in S_0$, are of two shapes (Theorem~\ref{ch13:thm:classify}): the
+$1104$ ``root type'' vectors $\pm\gamma_\pm(j,k)$, and the $97152$ ``octad type'' vectors. This section treats
+the first.
+
+\subsection{\texorpdfstring{$\sigma$ on an $\mathfrak{sl}_2$ triple}{sigma on an mathfraksl2 triple}}
+For one root $\alpha_j$ of $N$, the weight-one space spanned by $e^{\alpha_j},\alpha_j(-1)\mathbf 1,e^{-\alpha_j}$ is a copy of
+$\mathfrak{sl}_2$; write $\mathrm{tri}_j(x_1,x_2,x_3)=x_1e^{\alpha_j}+x_2\alpha_j(-1)\mathbf 1+x_3e^{-\alpha_j}$ (Chapter~\ref{ch:11},
+\lean{tri}).
+\begin{proposition}[\lean{golaySigma_tri}]\label{ch13:prop:tri}
+$\sigma\,\mathrm{tri}_j(x_1,x_2,x_3)=\mathrm{tri}_j\bigl(x_2-\tfrac{x_1}2+\tfrac{\varepsilon_jx_3}2,\ \tfrac{x_1}2+\tfrac{\varepsilon_jx_3}2,\
+\varepsilon_jx_2+\tfrac{\varepsilon_jx_1}2-\tfrac{x_3}2\bigr)$.
+\end{proposition}
+\noindent File \leanpath{VOA/Moonshine/SigmaTop2Root.lean}.
+\begin{leancode}
+theorem golaySigma_tri (j : Fin 24) (x₁ x₂ x₃ : ℂ) :
+    golaySigma (tri j x₁ x₂ x₃) =
+      tri j (x₂ - x₁ / 2 + golayEps j * x₃ / 2) (x₁ / 2 + golayEps j * x₃ / 2)
+        (golayEps j * x₂ + golayEps j * x₁ / 2 - x₃ / 2)
+\end{leancode}
+\begin{dictionary}
+In the basis $H=\alpha_j(-1)\mathbf1$, $A=e+\varepsilon f$, $B=e-\varepsilon f$ (with $e=e^{\alpha_j}$, $f=e^{-\alpha_j}$), this says
+$\sigma H=A$, $\sigma A=H$, $\sigma B=-B$: $\sigma$ is the rotation by $\pi$ about the bisector of the $H$ and $A$ axes
+in $\mathfrak{so}_3\cong\mathfrak{sl}_2$. A direct transcription.
+\end{dictionary}
+\begin{physics}
+This gives the explicit action of $\sigma$ on the three-dimensional blocks of the Golay frame as a $3\times3$ matrix with entries $\tfrac12$, i.e.\ the triality rotation in the basis of frame blocks. It is the local form of the symmetry that permutes three isomorphic modules, and it is the finite-dimensional analogue of a Fourier-type rotation among the three sectors.
+\end{physics}
+\noindent\emph{Proof.} $\sigma H=A$ is Chapter~\ref{ch:11}'s \lean{golaySigma_hSt}; $\sigma^2=1$ gives $\sigma A=H$. For $B$:
+exhibit the preimage $y_B=\mathrm{tri}_j\bigl(4-2\sqrt2,0,-\varepsilon_j(2+\sqrt2)/4\bigr)$ with $g\,y_B=B$, observe
+$\chi z_0(y_B)=-y_B$, and conclude $\sigma B=g\chi z_0g^{-1}B=-B$; the identity $g\,y_B=B$ is an identity in
+$\Q(\sqrt2)$. \qed
+
+\subsection{\texorpdfstring{$\sigma(u_{\gamma_\pm})$ and the root letter identities}{sigma(ugammapm) and the root letter identities}}
+For $j\neq k$ the products $H_jH_k$, $A_jA_k$, $B_jB_k$ (normally ordered, $(-1)$-products) satisfy
+$\sigma(H_jH_k)=A_jA_k$, $\sigma(B_jB_k)=B_jB_k$. Now $A_jA_k\pm B_jB_k$ are combinations of $e^{\pm(\alpha_j+\alpha_k)}$
+resp.\ $e^{\pm(\alpha_j-\alpha_k)}$, i.e.\ (after transport) of the letters $u_{\gamma_+}$, $u_{\gamma_-}$, while $H_jH_k$
+corresponds to $\tfrac14d(w_j,w_k)$. Solving:
+\begin{theorem}[\lean{sig_lV_gP}, \lean{sig_lV_gM}]\label{ch13:thm:sig-lV}
+For $j\ne k$,
+\begin{align*}
+  \sigma(u_{\gamma_+})&=(2\kappa_+)^{-1}\bigl(\tfrac18d(w_j,w_k)+\kappa_+u_{\gamma_+}-\kappa_-u_{\gamma_-}\bigr),\\
+  \sigma(u_{\gamma_-})&=(2\kappa_-)^{-1}\bigl(\tfrac18d(w_j,w_k)-\kappa_+u_{\gamma_+}+\kappa_-u_{\gamma_-}\bigr).
+\end{align*}
+\end{theorem}
+\begin{leancode}
+theorem sig_lV_gP {j k : Fin 24} (hjk : j ≠ k) :
+    sig (lV (gP j k) (gP_mem j k)) = (2 * kP j k)⁻¹ • ((1 / 8 : ℂ) • dV (fw j) (fw k)
+      + kP j k • lV (gP j k) (gP_mem j k) - kM j k • lV (gM j k) (gM_mem j k))
+
+theorem sig_lV_gM {j k : Fin 24} (hjk : j ≠ k) :
+    sig (lV (gM j k) (gM_mem j k)) = (2 * kM j k)⁻¹ • ((1 / 8 : ℂ) • dV (fw j) (fw k)
+      - kP j k • lV (gP j k) (gP_mem j k) + kM j k • lV (gM j k) (gM_mem j k))
+\end{leancode}
+\begin{dictionary}
+\lean{gP_mem j k} is the proof that $\gamma_+\in\Leech_0$, needed to form the letter. Sanity check: applying $\sigma$ to
+the first formula and using Proposition~\ref{ch13:prop:sig-offdiag} for $\sigma(d(w_j,w_k))$ reproduces $u_{\gamma_+}$
+(since $\sigma^2=1$); the formulas are consistent with $\sigma$ being an involution. They involve only the same
+symbolic constants $\kappa_\pm$ --- no new unknowns.
+\end{dictionary}
+\begin{physics}
+The images of the root-type lattice vertex operators $u_{\gamma_\pm}$ under $\sigma$ are mixtures of a frame bilinear and the two charged operators with weights $\kappa_\pm$. Physically triality rotates charged and neutral currents into each other, the way a Weyl rotation mixes a Cartan current and its root vectors. This is the explicit formula needed to match zero modes on the twisted side.
+\end{physics}
+\begin{status}Unconditional; \leanpath{SigmaTop2Root.lean}.\end{status}
+
+\begin{theorem}[root letters intertwine]\label{ch13:thm:root-letters}
+Let $\tau$ be even ($\tau(-m)=\tau(m)$), satisfy the eigen-conditions, and the \emph{transport rule}
+$\varepsilon_\Leech(\gamma_+,n)\tau(\gamma_++n)=(2\kappa_+)^{-1}\tau(n)$ whenever $n$ is odd of norm $4$ with
+$\langle\gamma_+,n\rangle=-2$. Then $u_{\gamma_+}$ intertwines for $\varphi_\tau$; likewise for $\gamma_-$.
+\end{theorem}
+\begin{leancode}
+theorem phiV3_ZM_gP {τ : leech.carrier → TLeechT} (hev : ∀ m, τ (-m) = τ m) {j k : Fin 24}
+    (hjk : j ≠ k)
+    (heig : ∀ n ∈ halfFourChi 1, kP j k • eL (gP j k) (τ n) = lam j k n • τ n ∧
+      kM j k • eL (gM j k) (τ n) = lam j k n • τ n)
+    (hrule : ∀ n : leech.carrier, n ∉ lambda0 → leech.form n n = 4 → leech.form (gP j k) n = -2 →
+      εΛ (gP j k) n • τ (gP j k + n) = (2 * kP j k)⁻¹ • τ n) :
+    ZM (phiV3 τ) OmegaV3 (lV (gP j k) (gP_mem j k))
+\end{leancode}
+\begin{dictionary}
+\lean{hev} lets one evaluate $\varphi_\tau$ on $x_m$ for $m\notin S_1$ (then $-m\in S_1$ and $x_m=x_{-m}$). \lean{heig}
+are the eigen-conditions (now known to follow from a seed). \lean{hrule} is a genuinely new condition
+on $\tau$: it ties together $\tau$ on the two endpoints of each move $n\mapsto n+\gamma_+$. \lean{phiV3_ZM_gM} is
+identical with $\gamma_-$, $\kappa_-$.
+\end{dictionary}
+\begin{physics}
+The root-type lattice letters intertwine once the twist images are even and obey transport rules, which say that translating the momentum by $\gamma_+$ translates the twist state by the corresponding operator with prescribed phase. This is the matching of charges for the vertex operators of norm-four roots, the lattice-translation covariance that a T-duality-type map must have.
+\end{physics}
+\noindent\emph{Proof.} Source: $\chthirteeno(u_{\gamma_+})x_n=\varepsilon(\gamma_+,n)x_{\gamma_++n}$ or
+$\varepsilon(\gamma_+,-n)x_{\gamma_+-n}$ or $0$, according to $\langle\gamma_+,n\rangle=-2,2$, else. The move $n\mapsto n+\gamma_+$ with
+$\langle\gamma_+,n\rangle=-2$ means $n_j+n_k=-4$, so $\{n_j,n_k\}=\{-3,-1\}$: it moves the block from $j$ to $k$ or back.
+Target: by Theorem~\ref{ch13:thm:sig-lV}, $\chthirteeno(\sigma u_{\gamma_+})$ on $h_{c_m}\otimes\tau$, with $\tau$ an
+$A_\pm$-eigenvector with eigenvalue $\lambda$, is $(2\kappa_+)^{-1}(\tfrac12-\lambda)$ times ``swap $c_j\leftrightarrow c_k$''
+for $m\in\{j,k\}$ and $0$ otherwise --- the $d$-term contributes $4\cdot\tfrac18=\tfrac12$ and the lattice terms
+contribute $-\lambda$ via the $\mathrm{latL}$ computation. Matching both sides on each basis vector in the three
+cases (block $\in\{j,k\}$ with $\langle\gamma_+,n\rangle=\mp2$, block elsewhere where both sides are $0$ because
+$\lambda=\tfrac12$) gives exactly \lean{hrule}. \qed
+\begin{status}Conditional on \lean{hev}, \lean{heig}, \lean{hrule}; \leanpath{SigmaTop2Root.lean}.
+Discharged for $\tau_\star$ below.\end{status}
+
+%======================================================================
+\section{\texorpdfstring{The explicit candidate $\tau_\star$}{The explicit candidate taustar}}\label{ch13:sec:star}
+
+The transport rules determine the scalar $c(n)$ in $\tau(n)=c(n)e_nt$ along root moves. Solving them by
+hand (the root move $\gamma_+$ flips $\operatorname{sign}(n_{j(n)})$, $\gamma_-$ keeps it; octad moves multiply by the
+$\chi z_0$-sign) leads to:
+\begin{definition}[$\tau_\star$]\label{ch13:def:tauStar}
+For $n\in\Leech$ let $\operatorname{sgnBlk}(n)=n_{j(n)}/3$ and $c_\star(n)=i^{\,n_0}\operatorname{sgnBlk}(n)$ (an integer power of
+$i$; $n_0$ may be negative). Let $c_E(n)=\tfrac12(c_\star(n)+c_\star(-n))$ and $\tau_\star(n)=c_E(n)\,e_nt$.
+\end{definition}
+\noindent File \leanpath{VOA/Moonshine/SigmaTop2Main.lean}.
+\begin{leancode}
+noncomputable def sgnBlk (n : leech.carrier) : ℂ := ((lv n (blk n) : ℤ) : ℂ) / 3
+
+noncomputable def cStar (n : leech.carrier) : ℂ := Complex.I ^ (lv n 0) * sgnBlk n
+
+noncomputable def cE (n : leech.carrier) : ℂ := (cStar n + cStar (-n)) / 2
+
+noncomputable def tauStar (t : TLeechT) (n : leech.carrier) : TLeechT := cE n • eL n t
+\end{leancode}
+\begin{dictionary}
+On odd norm-four vectors $\operatorname{sgnBlk}(n)=\pm1$ (Lemma~\ref{ch13:lem:blk}), and $c_E=c_\star$ there
+(\lean{cE_eq}): $c_\star(-n)=i^{-n_0}(-\operatorname{sgnBlk}n)=c_\star(n)$ because $n_0$ is odd and $i^{-n_0}=-i^{n_0}$.
+The symmetrisation $c_E$ only serves to make $\tau_\star$ \emph{literally} even on all of $\Leech$ (\lean{tauStar_neg}),
+as required by \lean{hev}. So on the relevant vectors this is the formula of the introduction,
+$\tau_\star(n)=i^{n_0}\operatorname{sign}(n_{j(n)})e_nt$.
+\end{dictionary}
+\begin{physics}
+The explicit choice $\tau_\star$ is the candidate assignment of a twist state to each momentum: a phase $i^{n_0}$ times the sign of the large coordinate, acting on the seed by $e_n$, symmetrised in $n\mapsto-n$. It is the physical image of the ground state of momentum $n$, the seed translated by the Clifford operator $e_n$ with a specific phase. The choice is a trial that is verified by the intertwining theorems.
+\end{physics}
+\begin{theorem}[transport rules for $\tau_\star$]\label{ch13:thm:rules}
+If $t$ is a seed, $\tau_\star$ satisfies the transport rules of Theorem~\ref{ch13:thm:root-letters} for
+$\gamma_+$ and $\gamma_-$, for all $j\neq k$.
+\end{theorem}
+\begin{leancode}
+theorem tauStar_ruleP {t : TLeechT} (ht : IsSeed t) {j k : Fin 24} (hjk : j ≠ k) (n : leech.carrier)
+    (hn0 : n ∉ lambda0) (h4 : leech.form n n = 4) (hf : leech.form (gP j k) n = -2) :
+    εΛ (gP j k) n • tauStar t (gP j k + n) = (2 * kP j k)⁻¹ • tauStar t n
+
+theorem tauStar_ruleM {t : TLeechT} (ht : IsSeed t) {j k : Fin 24} (hjk : j ≠ k) (n : leech.carrier)
+    (hn0 : n ∉ lambda0) (h4 : leech.form n n = 4) (hf : leech.form (gM j k) n = -2) :
+    εΛ (gM j k) n • tauStar t (gM j k + n) = (2 * kM j k)⁻¹ • tauStar t n
+\end{leancode}
+\begin{physics}
+The explicit candidate $\tau_\star$ satisfies the required transport rules for the root letters: the phase $i^{n_0}\operatorname{sgnBlk}$ is exactly the factor that makes translation covariance work. Physically this is the check that the candidate is compatible with the momentum-conservation rules of the vertex operators in the root sector.
+\end{physics}
+\noindent\emph{Proof.} Since $\langle\gamma_+,n\rangle=-2$ is even, $e_{\gamma_++n}=\varepsilon(\gamma_+,n)^{-1}e_ne_{\gamma_+}$, and on the seed
+$e_{\gamma_+}t=-(2\kappa_+)^{-1}t$. So the rule reduces to $c_E(\gamma_++n)=-c_E(n)$. The $0$-th coordinate of $\gamma_+$ is
+divisible by $4$ (it is $0$, $4$ or $8$), so $i^{n_0}$ is unchanged; and $\{n_j,n_k\}=\{-3,-1\}$ becomes $\{+1,+3\}$ or
+the reverse, so the $\pm3$ entry changes sign: $\operatorname{sgnBlk}$ flips. For $\gamma_-$: $n_j-n_k=-4$, so
+$(n_j,n_k)\in\{(-3,1),(-1,3)\}$ becomes $(1,-3)$ resp.\ $(3,-1)$; the sign of the $\pm3$ entry is preserved,
+and $e_{\gamma_-}t=+(2\kappa_-)^{-1}t$; consistent. \qed
+\begin{status}Unconditional given the seed; \leanpath{SigmaTop2Main.lean}.\end{status}
+
+\begin{theorem}[(R-top) on $V_3^+$ reduced to the octad letters]\label{ch13:thm:octad-red}
+For a nonzero seed $t\in T_s$, if every octad-type letter intertwines for $\varphi_{\tau_\star}$, then
+\lean{TopSigmaV3 (s+1)} $\varphi_{\tau_\star}$.
+\end{theorem}
+\begin{leancode}
+def OctadV3 (τ : leech.carrier → TLeechT) : Prop :=
+  ∀ γ ∈ halfFourChi 0, (∀ j k : Fin 24, j ≠ k → γ ≠ gP j k ∧ γ ≠ -gP j k ∧ γ ≠ gM j k ∧ γ ≠ -gM j k) →
+    ZM (phiV3 τ) OmegaV3 (lV' γ)
+
+theorem topSigmaV3_of_octad {s : ZMod 2} {t : TLeechT} (hts : t ∈ leechFrameT s) (ht0 : t ≠ 0)
+    (ht : IsSeed t) (hoct : OctadV3 (tauStar t)) :
+    TopSigmaV3 (s + 1) (phiV3 (tauStar t))
+
+def OctadResidualV3 : Prop :=
+  ∀ (s : ZMod 2) (t : TLeechT), t ∈ leechFrameT s → t ≠ 0 → IsSeed t → OctadV3 (tauStar t)
+\end{leancode}
+\begin{dictionary}
+\lean{OctadV3 τ}: every letter $u_\gamma$, $\gamma\in S_0$, \emph{not} of root type, intertwines. (Which these are is
+identified in Theorem~\ref{ch13:thm:classify}; the definition avoids needing that classification by just
+excluding the root type.) \lean{hits_cyclic} for $\varphi_{\tau_\star}$ uses the nonzero block constants
+$c_E(n_j)/\mu_j$, which is why \lean{tauStar} need not literally equal \lean{tauOf mu}.
+\end{dictionary}
+\begin{physics}
+The only remaining charge conditions are those for the vertex operators of octad shape, namely the $(\pm2)^8$ momenta supported on Golay octads. Once these also match charges, the candidate $\varphi_{\tau_\star}$ is a genuine intertwiner on the top level. This is a reduction, conditional on the octad letters, and points at the Golay-code part as the hard core of the construction.
+\end{physics}
+\noindent\emph{Proof.} Assemble: Zhu generation (\lean{zhuGenerated_G2}), diagonal letters (any $\tau$),
+off-diagonal letters (eigen-conditions from the seed, Theorem~\ref{ch13:thm:eig-seed}), root letters
+(Theorems~\ref{ch13:thm:root-letters} and~\ref{ch13:thm:rules}), octad letters (hypothesis). \qed
+\begin{status}Conditional on \lean{hoct}; \leanpath{SigmaTop2Main.lean}.\end{status}
+
+%======================================================================
+\section{\texorpdfstring{The octad letters on $V_3^+$; classification; $\sigma$ on $V_3^+$}{The octad letters on V3+; classification; sigma on V3+}}\label{ch13:sec:octad}
+
+\subsection{The octad vectors}
+Let $D$ be an octad (a Golay codeword of weight $8$) and $S\subseteq D$ with $|S|$ even. In $A$-coordinates put
+$b_D=1_D$ (\lean{bAD hDA}), $\delta_S=2\cdot1_S$ (\lean{dSA S}), and
+\begin{equation*}
+  a_S=1_D-2\cdot1_S\in A\qquad(\text{\lean{aSA hDA S}}),
+\end{equation*}
+the vector with entries $+1$ on $D\setminus S$, $-1$ on $S$, $0$ off $D$ (it lies in $A$: mod $2$ it is the octad,
+and its coordinate sum $8-2|S|$ is divisible by $4$ because $|S|$ is even). In Leech coordinates
+$\gamma_S=\iota_\Leech a_S$ has entries $\pm2$ on $D$: the ``octad type'' norm-four vectors $(\pm2^8,0^{16})$ of
+$\Leech_0$. In $N$, $a_S$ is the spinor vector $1_D-\delta_S$ of the cube of \S\ref{ch13:sec:xi}.
+\noindent File \leanpath{VOA/Moonshine/SigmaTop2Octad.lean}.
+\begin{leancode}
+def bAD : lam0.carrier := (⟨ind D, hDA⟩ : ↥Leech.subA)
+
+noncomputable def dSA (S : Finset (Fin 24)) : lam0.carrier :=
+  if h : Even S.card then (⟨(2 : ℤ) • ind S, two_ind_mem S h⟩ : ↥Leech.subA) else 0
+
+noncomputable def aSA (S : Finset (Fin 24)) : lam0.carrier := bAD hDA - dSA S
+\end{leancode}
+\begin{dictionary}
+\lean{hDA : ind D ∈ Leech.subA} is the hypothesis that $1_D\in A$, i.e.\ $D$ is a codeword with $4\mid|D|$;
+together with \lean{hD8 : D.card = 8} it says $D$ is an octad. \lean{dSA} has a junk value $0$ for odd
+$|S|$, never used (all statements assume \lean{Even S.card}).
+\end{dictionary}
+
+\subsection{\texorpdfstring{$\sigma$ on the cube is a Hadamard transform}{sigma on the cube is a Hadamard transform}}
+\begin{theorem}[\lean{golaySigma_bp}, \lean{sig_lV_aSA}]\label{ch13:thm:hadamard}
+With $r=1/\sqrt2$: $\sigma(b_T)=c_D\sum_{S\subseteq D}r^{|D|}(-1)^{|T\cap S|}b_S$ for $T\subseteq D$. Consequently, for an
+octad $D$ and even $S\subseteq D$,
+\begin{equation*}
+  \sigma(u_{\gamma_S})=\sum_{S'\subseteq D,\ |S'|\ \mathrm{even}}K(S,S')\,e^{\gamma_{S'}}
+\end{equation*}
+with explicit symbolic coefficients $K(S,S')=2c_Dr^{8}X_S(-1)^{|S\cap S'|}\nu(S')t_c(a_{S'})$ (\lean{KS}); in
+particular only \emph{even} $S'$ occur.
+\end{theorem}
+\begin{leancode}
+theorem golaySigma_bp {β : golayN.carrier} {D T : Finset (Fin 24)} (hβ : gv β = ind D)
+    (h4 : 4 ∣ D.card) (hT : T ⊆ D) :
+    golaySigma (bp β T) = cD D • ∑ S ∈ D.powerset, (rH ^ D.card * (-1 : ℂ) ^ (T ∩ S).card) • bp β S
+
+theorem sig_lV_aSA {S : Finset (Fin 24)} (h : Even S.card) (hS : S ⊆ D) :
+    (((sig (lV (inclΛ (aSA hDA S)) (inclΛ_mem _)) : V0Sub.carrier) : VPlus) : LatModuleGen leech)
+      = ∑ S' ∈ D.powerset.filter (fun S' : Finset (Fin 24) => _root_.Even S'.card),
+          KS hDA S S' • latChargeGen leech (inclΛ (aSA hDA S')) := by
+\end{leancode}
+\begin{dictionary}
+\lean{rH} $=\sqrt2/2=r$. \lean{D.powerset.filter (… Even S'.card)} is the set of even subsets of $D$.
+\lean{sig_lV_aSA} carries the section hypotheses \lean{hDA}, \lean{hD8}. (The trailing \lean{:= by}
+belongs to the source line and is not part of the statement.)
+\end{dictionary}
+\begin{physics}
+On the Golay frame, $\sigma$ acts on the basis states indexed by subsets of an octad by the Hadamard matrix with entries $(-1)^{|T\cap S|}$ divided by $2^{|D|/2}$: a discrete Fourier transform over $\mathbb F_2^8$. This is a Fourier duality, in the spirit of T-duality, exchanging the two kinds of labels, the momentum-like subsets and the twist-like subsets. It gives the octad lattice letters $u_{\gamma_S}$ an explicit image as a sum over even subsets with symbolic coefficients.
+\end{physics}
+\noindent\emph{Proof.} By Theorem~\ref{ch13:thm:cube}, $\sigma$ acts on each doublet by $h=g\chi g^{-1}$, and a
+$2\times2$ computation gives $h=r\begin{psmallmatrix}1&1\\1&-1\end{psmallmatrix}$, the Hadamard matrix: so
+$\sigma b_T=c_D\bigotimes_i h(\text{basis vector})$, which expands to the stated sum. The letter $u_{\gamma_S}$ is the image
+under the bridge of $y_S=t_c(a_S)^{-1}e^{a_S}+t_c(-a_S)^{-1}e^{-a_S}\in V_N^{\langle\chi,\Theta\rangle}$
+(\lean{golayToV0_yA}), and $e^{\pm a_S}$ are cube states ($-a_S$ corresponds to $D\setminus S$). So $\sigma(y_S)$ is a
+sum over all $S'\subseteq D$. The odd-$|S'|$ coefficients vanish \emph{without computation}: $\sigma(y_S)$ lies in
+$V_N^{\langle\chi,\Theta\rangle}$, which contains only states $e^{x}$ with $x\in A$, i.e.\ $\sum x_i\equiv0\pmod4$, whereas
+$1_D-\delta_{S'}$ has coordinate sum $8-2|S'|\equiv2\pmod4$ for $|S'|$ odd. The same parity argument forces the
+coefficients $X_S$, $Y_S$ of $b_S$ and $b_{D\setminus S}$ in $y_S$ to be equal (\lean{XS_eq_YS}), which simplifies
+the even coefficients. Transport back along the bridge. \qed
+\begin{status}Unconditional; \leanpath{SigmaTop2Octad.lean}.\end{status}
+
+\subsection{The octad identity}
+\begin{theorem}[octad letters intertwine]\label{ch13:thm:octad}
+Let $t$ be a seed, $D$ an octad and $S\subseteq D$ even. Then $u_{\gamma_S}$ intertwines for $\varphi_{\tau_\star}$:
+$\varphi_{\tau_\star}(\chthirteeno(u_{\gamma_S})x)=\chthirteeno(\sigma u_{\gamma_S})\varphi_{\tau_\star}(x)$ for all $x\in(\chthirteenVt)_2$.
+\end{theorem}
+\begin{leancode}
+theorem phiV3_ZM_aSA {t : TLeechT} (ht : IsSeed t) {S : Finset (Fin 24)} (h : _root_.Even S.card)
+    (hS : S ⊆ D) : ZM (phiV3 (tauStar t)) OmegaV3 (lV (inclΛ (aSA hDA S)) (inclΛ_mem _))
+\end{leancode}
+\begin{dictionary}
+Section hypotheses: \lean{hDA : ind D ∈ Leech.subA}, \lean{hD8 : D.card = 8}. Explicit: $t$ is a seed,
+$|S|$ even, $S\subseteq D$. Note that no hypothesis ``$t\in T_s$'' or ``$t\ne0$'' is needed here.
+\end{dictionary}
+\begin{physics}
+The octad-type vertex operators intertwine for $\varphi_{\tau_\star}$: the Hadamard transform of the source side matches the Clifford-type action on the seed, so the charges agree. Physically this is the heart of the construction: the Fourier transform over each octad exchanges the momentum label with the twist label consistently. It completes the verification of charge matching for the top-level map.
+\end{physics}
+\noindent\emph{Proof.} Fix a basis vector $x_n$, $b=j(n)$, and write $p_i=\pm n_i$ with the sign $-$ on $S$, so
+$4\langle\gamma_S,n\rangle=\sum_{i\in D}p_i$.
+
+\emph{Source.} $\chthirteeno(u_{\gamma_S})x_n\ne0$ only if $\sum_Dp_i=\mp8$. If $b\notin D$, all $p_i=\pm1$ and this means
+all eight $p_i$ equal; if $b\in D$, $p_b=\pm3$ and exactly one other $l_0\in D$ has the opposite sign --- the
+move $n\mapsto n\pm\gamma_S$ then carries the block from $b$ to $l_0$.
+
+\emph{Target.} By Theorem~\ref{ch13:thm:hadamard} and Proposition~\ref{ch13:prop:frame-modes}(c),
+$\chthirteeno(\sigma u_{\gamma_S})(h_{c_b}\otimes\tau_\star(n))=2^{-4}\sum_{S'}K(S,S')\,h_{\mathrm{latL}_{\gamma_{S'}}c_b}\otimes
+e_{\gamma_{S'}}\tau_\star(n)$. Two facts make the sum computable:
+(i) $\mathrm{latL}_{\gamma_{S'}}(c_b)=c_b-[b\in D]\sum_{l\in D}s'_bs'_lc_l$ with $s'_i=\pm1$ the signs of $\gamma_{S'}$
+(\lean{latL_cw}); (ii) on the seed, $e_{\gamma_{S'}}e_nt=(-1)^{\langle\gamma_{S'},n\rangle}e_ne_{\gamma_{S'}}t$ and $e_{\gamma_{S'}}t$ is, by
+$\xi$-closure ($\delta_{S'}\in\mathrm{Ch}(t)$), a known multiple of $W(b_D)t$ (\lean{Wop_aSA_seed}). Each term becomes
+$C_0\prod_{i\in S'}\zeta_i\cdot e_nW(b_D)t$ with explicit $\pm1$-valued $\zeta_i$ depending on $n_i$ and $[i\in S]$
+(\lean{term_eval}). The sum over even $S'$ of $\prod_{S'}f_i$ for a $\pm1$-pattern $f$ is
+\begin{equation*}
+  \sum_{S'\subseteq D\ \mathrm{even}}\prod_{i\in S'}f_i=\tfrac12\Bigl(\prod_D(1+f_i)+\prod_D(1-f_i)\Bigr)=2^{|D|-1}\bigl([f\equiv1]+[f\equiv-1]\bigr)
+\end{equation*}
+(\lean{sum_even_pm}). So the target is nonzero exactly when the pattern $\zeta$ (or $\zeta\eta$, for the
+$l$-components) is constant --- the same condition as on the source. In the block-outside case the
+surviving term reproduces $x_{n\pm\gamma_S}$'s image with the coefficient matching
+$c_E(n\pm\gamma_S)=c_D\cdot(\dots)c_E(n)$, where $c_D$ (the $\chi z_0$-sign) is exactly the factor by which
+$i^{n_0}$ changes when $n_0$ changes by $\pm2\cdot[0\in D]$ (\lean{cE_aSA_add}). In the block-inside case the
+$l$-sum picks out $l=l_0$, moving the oscillator to the new block. In both cases the remaining scalar
+identity is $2^{-4}\cdot2c_Dr^8X_S\cdots=\dots$, with $r^8=\tfrac1{16}$. \qed
+\begin{status}Unconditional; \leanpath{SigmaTop2Octad.lean} (the longest file of the chapter);
+\lean{#print axioms} clean.\end{status}
+
+\subsection{\texorpdfstring{Classification of $S_0$ and the theorem on $V_3^+$}{Classification of S0 and the theorem on V3+}}
+\begin{theorem}[\lean{classify_S0}]\label{ch13:thm:classify}
+Every $\gamma\in S_0$ (norm $4$, in $\Leech_0$) is either $\pm\gamma_+(j,k)$ or $\pm\gamma_-(j,k)$ for some $j\ne k$ (shape
+$(\pm4,\pm4,0^{22})$), or $\gamma=\gamma_S$ for an octad $D$ and an even $S\subseteq D$ (shape $(\pm2^8,0^{16})$).
+\end{theorem}
+\begin{leancode}
+theorem classify_S0 {γ : leech.carrier} (hγ : γ ∈ halfFourChi 0) :
+    (∃ j k : Fin 24, j ≠ k ∧ (γ = gP j k ∨ γ = -gP j k ∨ γ = gM j k ∨ γ = -gM j k)) ∨
+    (∃ (D : Finset (Fin 24)) (hDA : ind D ∈ Leech.subA), D.card = 8 ∧
+      ∃ S : Finset (Fin 24), _root_.Even S.card ∧ S ⊆ D ∧ γ = inclΛ (aSA hDA S))
+\end{leancode}
+\begin{dictionary}
+The second disjunct quantifies over a codeword $D$ (\lean{ind D ∈ Leech.subA}) of size $8$ --- an octad
+--- and an even subset $S$. The statement is a disjunction, not a partition (the two cases are in fact
+disjoint, but that is not claimed). Same as the textbook statement.
+\end{dictionary}
+\begin{physics}
+Every norm-four vector in the even part of the Leech lattice has one of two shapes, $(\pm4,\pm4,0^{22})$ or $(\pm2^8,0^{16})$ on an octad. Physically this is the classification of the lowest vertex operators of the lattice by their momentum, which makes the check above exhaustive: no other type of lattice field has to be matched. It is a combinatorial fact about the Leech lattice, not a physical assumption.
+\end{physics}
+\noindent\emph{Proof.} Write $\gamma=2a$, $a\in A$, $a\cdot a=8$. Each $|a_i|\le2$. With $O=\{i:|a_i|=1\}$ and
+$F=\{i:|a_i|=2\}$, $|O|+4|F|=8$. Since $a\bmod2$ is a codeword with support $O$, and the Golay code has
+minimum weight $8$, either $O=\emptyset$ (so $|F|=2$: shape $(\pm2,\pm2,0^{22})$ in $A$, i.e.\ $\pm\gamma_\pm$) or
+$|O|=8$, $F=\emptyset$ (shape $(\pm1^8)$ on an octad $D=O$, with $S$ the set of $-1$ entries; $4\mid\sum a_i=8-2|S|$
+forces $|S|$ even). The shape $(\pm2,\pm1^4)$ is excluded because no codeword has weight $4$. \qed
+\begin{status}Unconditional; \leanpath{SigmaTop2Class.lean}. Counting check (not a Lean statement):
+$4\binom{24}{2}+759\cdot2^7=1104+97152=98256=2\cdot49128=2|S_0|$.\end{status}
+
+\begin{theorem}[$\sigma$ on $V_3^+$]\label{ch13:thm:topSigmaV3}
+\begin{enumerate}[label=(\alph*)]
+\item There are $s$ and $\varphi$ with \lean{TopSigmaV3 s φ}.
+\item There are $s$ and a $\sigma$-twisted intertwiner $\Phi\colon\chthirteenVt\to\chthirteenTs{s}$ of $\chthirteenV$-modules
+  (\lean{IsSigmaV3T Φ}) whose image contains a cyclic vector $x_0^T(t_0)$, $0\ne t_0\in T_s$.
+\end{enumerate}
+\end{theorem}
+\begin{leancode}
+theorem octadResidualV3 : OctadResidualV3
+
+theorem topSigmaV3 : ∃ s φ, TopSigmaV3 s φ := topSigmaV3_exists octadResidualV3
+
+theorem sigmaV3T_exists :
+    ∃ (s : ZMod 2) (Φ : VPlus →ₗ[ℂ] TP), IsSigmaV3T Φ ∧
+      ∃ t₀ : TLeechT, t₀ ∈ leechFrameT s ∧ t₀ ≠ 0 ∧ ∃ x ∈ OmegaV3, Φ x = x0T t₀ :=
+  sigmaV3T_exists_of_octad octadResidualV3
+\end{leancode}
+\begin{dictionary}
+\textbf{No hypotheses.} \lean{IsSigmaV3T Φ} is the full intertwining property for all $u\in\chthirteenV$ and all modes
+$n\in\Z$, on all of $\chthirteenVt$ (not just the top level). \textbf{Why it is not vacuous:} $\Phi=0$ would satisfy
+\lean{IsSigmaV3T}; the extra clause ``$\Phi x=x_0^T(t_0)$ with $t_0\ne0$'' rules it out. Also, \lean{IsSigmaV3T}
+does not by itself say $\Phi$ maps $\chthirteenVt$ into $T_s^+$; that follows from the cyclic-vector argument of
+Chapter~\ref{ch:12} and is what \lean{SigmaData} (Chapter~\ref{ch:14}) packages. \textbf{Compared with FLM:}
+FLM's $\sigma$ is an isomorphism $V_3^+\to T_0^+$; the Lean statement gives a nonzero intertwiner into the
+module generated by a cyclic vector, and bijectivity is proved downstream (Chapter~\ref{ch:14},
+\lean{Φ0_inj}, \lean{Φ0_surj}). The one-line proof terms are shown because they are informative.
+\end{dictionary}
+\begin{physics}
+There is a nonzero operator from the untwisted top level to a twisted sector, satisfying charge matching for every light field, i.e.\ an intertwiner twisted by $\sigma$, whose image contains a cyclic vector. This is the explicit existence of the triality operator on the lowest-energy states: the twist-field space acts as the spinor on which triality is realised, and the matching of all zero modes is exactly the Ward identity of the symmetry. The cyclic vector shows it is nonzero and hence a genuine symmetry rather than the zero map.
+\end{physics}
+\noindent\emph{Proof.} \lean{octadResidualV3}: a non-root letter of $S_0$ is of octad type by
+Theorem~\ref{ch13:thm:classify}, so Theorem~\ref{ch13:thm:octad} applies. Then
+Theorem~\ref{ch13:thm:octad-red} with the seed of Theorem~\ref{ch13:thm:seed} gives (a), and
+\lean{sigmaV3T_exists_of_top} (Chapter~\ref{ch:12}) gives (b). \qed
+\begin{status}
+\textbf{Unconditional.} \leanpath{SigmaTop2Class.lean}. \lean{#print axioms} of \lean{topSigmaV3},
+\lean{sigmaV3T_exists}: [\lean{propext}, \lean{Classical.choice}, \lean{Quot.sound}] --- no \lean{VOA.pbw}
+(re-checked, \S\ref{ch13:sec:referee}).
+\end{status}
+
+%======================================================================
+\section{\texorpdfstring{The twisted source: $\sigma$ on $T_s^+$}{The twisted source: sigma on Ts+}}\label{ch13:sec:tt}
+
+\subsection{\texorpdfstring{$A_-=-A_+$ on the seed's sector}{A-=-A+ on the seed's sector}}
+\begin{lemma}[\lean{AM_eq_neg_AP}]\label{ch13:lem:AM-AP}
+Let $t\in T_s$ be a nonzero seed. Then $A_-(j,k)x=-A_+(j,k)x$ for every $x\in T_s$ and $j\ne k$.
+\end{lemma}
+\noindent File \leanpath{VOA/Moonshine/SigmaTop2TT.lean}.
+\begin{leancode}
+theorem AM_eq_neg_AP {s : ZMod 2} {t : TLeechT} (hts : t ∈ leechFrameT s) (ht0 : t ≠ 0) (ht : IsSeed t)
+    {j k : Fin 24} (hjk : j ≠ k) {x : TLeechT} (hx : x ∈ leechFrameT s) : AM j k x = -AP j k x
+\end{leancode}
+\begin{physics}
+On the twisted sector, once a nonzero seed exists, the two eigenvalue operators $A_\pm$ are opposite on the whole sector: the sector decomposes by a single sign. Physically this is a statement that the two commuting reflection-like charges are not independent, which reduces the number of conditions to check on twisted ground states.
+\end{physics}
+\noindent\emph{Proof.} $\gamma_++\gamma_-=w_j$ and $w_j\equiv w_0\pmod{2\Leech}$, so $e_{\gamma_+}e_{\gamma_-}$ is a scalar multiple of
+$e_{w_0}$, which acts on $T_s$ by the frame scalar. Hence $A_+A_-$ is a scalar $c$ on $T_s$; on the seed,
+$A_+A_-t=-\tfrac14t$, so $c=-\tfrac14$ ($t\neq0$). With $A_+^2=\tfrac14$: $A_-=4A_+(A_+A_-)=-A_+$ on $T_s$. \qed
+
+So on $T_s$ the vanishing condition $(A_++A_-)\psi_m=0$ of Theorem~\ref{ch13:thm:TT-seed} is automatic for
+any $\psi_m$ with values in $T_s$. What is left is the choice of $B=\psi_0$.
+
+\subsection{\texorpdfstring{The operator $B$}{The operator B}}
+The $Z_{0k}$ ($k\ne0$) are commuting involutions on $T_s$ (\lean{ZZ_mul_self}, and they commute because the
+$\gamma_-$'s have coordinates divisible by $4$). Let $\omega=e^{i\pi/4}=(1+i)/\sqrt2$, $a=\tfrac{1+\omega}2$, $b=\tfrac{1-\omega}2$, so
+that $a+bu$ is $1$ for $u=1$ and $\omega$ for $u=-1$.
+\begin{definition}[\lean{Bop}]\label{ch13:def:Bop}
+$B_s=\Bigl(\prod_{k\ne0}(a+bZ_{0k})\Bigr)\circ\pi_s$, with $\pi_s=\tfrac12(1+(-1)^sJ)$ the projector onto $T_s$. On a
+joint eigenvector $z$ of the $Z_{0k}$ with eigenvalues $u_k$, $B_sz=\omega^{\#\{k:u_k=-1\}}z$.
+\end{definition}
+\noindent Files \leanpath{VOA/Moonshine/SigmaTop2TT.lean}, \leanpath{VOA/Moonshine/SigmaTopTT.lean}.
+\begin{leancode}
+noncomputable def ωB : ℂ := rH * (1 + Complex.I)
+noncomputable def aB : ℂ := (1 + ωB) / 2
+noncomputable def bB : ℂ := (1 - ωB) / 2
+
+noncomputable def factB (k : Fin 24) : End ℂ TLeechT := if k = 0 then 1 else aB • 1 + bB • ZZ 0 k
+
+noncomputable def Bprod : End ℂ TLeechT := ((List.finRange 24).map factB).prod
+
+noncomputable def Bop (s : ZMod 2) : End ℂ TLeechT := Bprod * projT s
+
+noncomputable def projT (s : ZMod 2) : End ℂ TLeechT := (1 / 2 : ℂ) • (1 + Extraspecial.sgn s • frameJL)
+\end{leancode}
+\begin{dictionary}
+\lean{rH} $=\sqrt2/2$, so \lean{ωB} $=(1+i)/\sqrt2=e^{i\pi/4}$ (\lean{ωB_sq : ωB ^ 2 = Complex.I}). The product over
+\lean{List.finRange 24} is an ordered product, but the factors commute so the order is irrelevant. Only
+the factors $k\ne0$ are nontrivial. The choice of $B$ is \emph{not} forced by the root letters; it is
+forced by the octad letters (\S\ref{ch13:ssec:octTT}) --- this phase $\omega$ per flipped coordinate is the
+twisted-sector shadow of the factor $i^{n_0}$ in $\tau_\star$.
+\end{dictionary}
+\begin{physics}
+The operator $B_s$ is a product of projectors that maps the twist space to the sector $T_s$ while multiplying a joint eigenvector by a phase depending on how many of its signs are negative. Heuristically it is the twisted-to-twisted piece of the triality operator, a function of the discrete charges of the twist field; its eigenvalue phase $\omega^{\#}$ is the discrete Fourier-dual dependence on the twist label.
+\end{physics}
+\begin{proposition}[properties of $B$]\label{ch13:prop:Bop}
+$B_s$ maps into $T_s$; it commutes with every $e_\gamma$, $\gamma\in\Leech_0$ with all coordinates divisible by $4$; and
+it fixes every seed in $T_s$ (on a seed, $Z_{0k}t=t$ for all $k$).
+\end{proposition}
+\noindent File \leanpath{VOA/Moonshine/SigmaTop2TT.lean}.
+\begin{leancode}
+theorem Bop_mem (s : ZMod 2) (x : TLeechT) : Bop s x ∈ leechFrameT s
+
+theorem Bop_seed {s : ZMod 2} {t : TLeechT} (hts : t ∈ leechFrameT s) (ht : IsSeed t) : Bop s t = t
+
+theorem commute_eL_Bop {γ : leech.carrier} (hγ : ∀ i, (4 : ℤ) ∣ lv γ i) (hγ0 : γ ∈ lambda0) (s : ZMod 2) :
+    Commute (eL γ) (Bop s)
+\end{leancode}
+\begin{physics}
+$B_s$ lands in the correct sector, commutes with the lattice-translation operators with $4$-divisible coordinates, and fixes every seed. These are the properties of a symmetry operator on the twist space: it respects the sector, commutes with the relevant translation charges, and acts as the identity on the reference ground state; the last property also guarantees it is nonzero.
+\end{physics}
+\noindent\emph{Proof.} $Z_{0k}=2A_-(0,k)$ acts on a seed by $2\cdot\tfrac12=1$, so each factor acts by $a+b=1$. The rest
+is commutation of $e$-operators with even pairings. \qed
+
+\begin{theorem}[root letters on $T_s^+$]\label{ch13:thm:TT-root}
+For a nonzero seed $t\in T_s$, with $\psi=\psi(B_s)$ (Theorem~\ref{ch13:thm:TT-seed}), the letters $u_{\gamma_\pm(j,k)}$
+intertwine for $\varphi_\psi$ on $(\chthirteenTs{s})_2$; and \lean{TopSigmaTT s s} $\varphi_\psi$ holds provided all lattice
+letters intertwine.
+\end{theorem}
+\begin{leancode}
+theorem phiTT_ZMT_gP {s : ZMod 2} {t : TLeechT} (hts : t ∈ leechFrameT s) (ht0 : t ≠ 0) (ht : IsSeed t)
+    {j k : Fin 24} (hjk : j ≠ k) :
+    ZMT (phiTT (psiOf (Bop s))) (OmegaT s) (lV (gP j k) (gP_mem j k))
+
+theorem topSigmaTT_of_seedB {s : ZMod 2} {t : TLeechT} (hts : t ∈ leechFrameT s) (ht0 : t ≠ 0)
+    (ht : IsSeed t) (hlat : ∀ γ ∈ halfFourChi 0, ZMT (phiTT (psiOf (Bop s))) (OmegaT s) (lV' γ)) :
+    TopSigmaTT s s (phiTT (psiOf (Bop s)))
+\end{leancode}
+\begin{dictionary}
+Note the sectors: the source is $T_s^+$ and the target is $T_s^+$ for the \emph{same} $s$ as the seed, whereas
+$\chthirteenVt$ went to $T_{s+1}^+$. This is the FLM pattern $\sigma\colon V_3^+\to T_0^+$, $T_3^+\to T_3^+$: the seed's sector
+is ``$T_3$'', the other one ``$T_0$''. (\lean{phiTT_ZMT_gM} is the $\gamma_-$ analogue.)
+\end{dictionary}
+\begin{physics}
+The root-type vertex operators intertwine on the twisted-twisted top level when the operator $B_s$ is built from a nonzero seed, so $\sigma$ on the twisted sector is determined up to the remaining lattice letters. Physically the root fields matching charges is the twisted-sector analogue of the untwisted check, with the seed again serving as the image of the reference ground state.
+\end{physics}
+\noindent\emph{Proof.} As on $\chthirteenVt$, using Theorem~\ref{ch13:thm:sig-lV}; on $T_s$, the sum $A_++A_-=0$ makes
+the $\mathrm{latL}$ contributions cancel against the $d$-term in the right way, and the block links are
+\lean{ZZ_comp}. \qed
+\begin{status}\lean{phiTT_ZMT_gP}: unconditional; \lean{topSigmaTT_of_seedB}: conditional on \lean{hlat};
+\leanpath{SigmaTop2TT.lean}.\end{status}
+
+\subsection{\texorpdfstring{The octad letters on $T_s^+$}{The octad letters on Ts+}}\label{ch13:ssec:octTT}
+Here the structure of $T_s$ under the abelian group generated by the $Z_{0k}$ enters.
+\begin{definition}[joint eigenvectors]\label{ch13:def:eigN}
+For $N\subseteq\{1,\dots,23\}$ let $u_N(k)=-1$ if $k\in N$, $+1$ otherwise. $z$ is a \emph{joint eigenvector with
+character $N$} if $Z_{0k}z=u_N(k)z$ for all $k\ne0$. Put $\beta(N)=\omega^{|N|}$.
+\end{definition}
+\noindent File \leanpath{VOA/Moonshine/SigmaTop2TTOct.lean}.
+\begin{leancode}
+noncomputable def uN (N : Finset (Fin 24)) (k : Fin 24) : ℂ := if k ∈ N then -1 else 1
+
+def IsEigN (N : Finset (Fin 24)) (z : TLeechT) : Prop := ∀ k, k ≠ 0 → ZZ 0 k z = uN N k • z
+
+noncomputable def betaN (N : Finset (Fin 24)) : ℂ := ∏ i, if i ∈ N then ωB else 1
+
+theorem eig_induct {s : ZMod 2} (P : TLeechT → Prop) (hadd : ∀ x y, P x → P y → P (x + y))
+    (heig : ∀ z ∈ leechFrameT s, ∀ N : Finset (Fin 24), (0 : Fin 24) ∉ N → IsEigN N z → P z) :
+    ∀ z ∈ leechFrameT s, P z
+\end{leancode}
+\begin{dictionary}
+\lean{eig_induct} is the spectral decomposition in induction form: an additive property holding on all
+joint eigenvectors in $T_s$ holds on $T_s$ (because the commuting involutions $Z_{0k}$ are simultaneously
+diagonalisable). Hypothesis \lean{(0 : Fin 24) ∉ N} is a normalisation ($k=0$ is not among the
+operators). Then $B_sz=\beta(N)z$ and $\psi_mz=u_N(m)\beta(N)z$ (\lean{Bop_eigN}, \lean{psiOf_eigN}).
+\end{dictionary}
+\begin{physics}
+A joint eigenvector with character $N$ is a twist state whose reflection-like charges $Z_{0k}$ have signs given by the subset $N$ of frame directions, with phase $\omega^{|N|}$. These are the basis states of the twist space labelled by the discrete charges, the analogue of a computational basis for the spinor, in which the Hadamard transform will act.
+\end{physics}
+
+\begin{proposition}[how $e_{\gamma_S}$ moves characters; twisted $\xi$-closure]\label{ch13:prop:flip}
+\begin{enumerate}[label=(\alph*)]
+\item If $z$ has character $N$, then $e_{\gamma_S}z$ has character $\mathrm{flip}_D(N)$: $u_k$ is flipped exactly for those
+  $k$ with $[k\in D]\ne[0\in D]$.
+\item For $z$ with character $N$, the set $\mathrm{Ch}_N(z)=\{a: \iota_Na=\phi_Rx,\ W(a)z=\xi(x)\chi_N(x)z\}$,
+  $\chi_N(x)=(-1)^{\sum_{i\in N}x_i}$, is a subgroup.
+\end{enumerate}
+\end{proposition}
+\noindent File \leanpath{VOA/Moonshine/SigmaTop2TTOct.lean}.
+\begin{leancode}
+noncomputable def flipN (D N : Finset (Fin 24)) : Finset (Fin 24) :=
+  Finset.univ.filter fun k => k ≠ 0 ∧ (k ∈ N ↔ (k ∈ D ↔ (0 : Fin 24) ∈ D))
+
+theorem eig_flip {S : Finset (Fin 24)} (h : _root_.Even S.card) {N : Finset (Fin 24)}
+    {z : TLeechT} (hE : IsEigN N z) : IsEigN (flipN D N) (eL (inclΛ (aSA hDA S)) z)
+
+noncomputable def chiN (N : Finset (Fin 24)) (x : Fin 24 → ℤ) : ℂ := (-1 : ℂ) ^ (∑ i ∈ N, x i)
+
+noncomputable def xiN (N : Finset (Fin 24)) (x : Fin 24 → ℤ) : ℂ := xi x * chiN N x
+
+noncomputable def chargesU (z : TLeechT) (N : Finset (Fin 24)) : AddSubgroup lam0.carrier where
+  carrier := {a | ∃ x, inclN a = phiR x ∧ Wop a z = xiN N x • z}
+  zero_mem' := ⟨0, by rw [map_zero, map_zero], by rw [Wop_zero, xiN_zero, one_smul]; rfl⟩
+\end{leancode}
+\begin{dictionary}
+\lean{flipN D N} written out: $k\ne0$, and $k\in\mathrm{flip}_D(N)\iff(k\in N\iff(k\in D\iff0\in D))$; i.e.\ membership is
+kept when $[k\in D]=[0\in D]$ and toggled otherwise. (a) is proved by
+$\langle\gamma_-(0,k),\gamma_S\rangle$ parity. For \lean{chargesU} only the carrier and the zero field are quoted, as for
+\lean{chargesS}. $\xi_N=\xi\chi_N$ still satisfies $\xi_N(x)\xi_N(y)=\varepsilon_N\xi_N(x+y)$ (\lean{xiN_mul}), so the
+subgroup property holds for the same reason.
+\end{dictionary}
+\begin{physics}
+Acting with the octad vertex operator on a state of character $N$ flips the signs exactly on the positions inside the octad that differ from the base point, a bit-flip action on the labels of the basis. Physically this is the statement that the vertex operator of the octad shifts the discrete twist charge, so it is the analogue of a Pauli operator on the spinor. It also shows the set of charges is closed under this action.
+\end{physics}
+
+\begin{theorem}[Golay constraint]\label{ch13:thm:golay-constraint}
+Let $z\ne0$ have character $N$ and suppose $\delta_{S'}\in\mathrm{Ch}_N(z)$ for all even $S'$. Then
+$\prod_{i\in D'}u_N(i)=1$ for every codeword $D'$ (with $1_{D'}\in A$). Consequently ($1_N$ is orthogonal mod $2$ to every
+codeword, hence a codeword) $4\mid|N|$.
+\end{theorem}
+\begin{leancode}
+theorem golay_constraint {z : TLeechT} (hz0 : z ≠ 0) {N : Finset (Fin 24)}
+    (hd : ∀ S' : Finset (Fin 24), _root_.Even S'.card → dSA S' ∈ chargesU z N)
+    {D' : Finset (Fin 24)} (hD' : ind D' ∈ Leech.subA) : ∏ i ∈ D', uN N i = 1
+
+theorem four_dvd_card_of_orth {N : Finset (Fin 24)}
+    (h : ∀ D' : Finset (Fin 24), ind D' ∈ Leech.subA → ∏ i ∈ D', uN N i = 1) : 4 ∣ N.card
+\end{leancode}
+\begin{dictionary}
+\lean{ind D' ∈ Leech.subA} means $D'$ is a Golay codeword (all codewords have $4\mid|D'|$, so every codeword
+qualifies). In \lean{four_dvd_card_of_orth}, $N$ is an arbitrary subset; the hypothesis is ``$|N\cap D'|$ is even
+for every codeword $D'$''. Both are the textbook statements. The hypothesis \lean{hd} is supplied on joint
+eigenvectors of the seed's sector by \lean{dSA_mem_chargesU} (from $a_+(0,0)$, where $W$ is the frame scalar
+read off at the seed, and $a_-(0,k)$, where $W$ is $Z_{0k}$ up to $\xi$).
+\end{dictionary}
+\begin{physics}
+If a nonzero twist state is stabilised by all even octad charges, then its sign pattern $N$ must be orthogonal to the Golay code and so is itself a codeword, with $4\mid|N|$. This is a code-theoretic selection rule: the allowed discrete twist charges are dual to the Golay code, a Fourier-dual constraint relating the twist labels to the momentum lattice. It is a rigorous constraint, not a heuristic, and it is what makes the Hadamard sums below collapse.
+\end{physics}
+\noindent\emph{Proof.} For a codeword $D'$, $2b_{D'}=\delta_{D'}$ and $W(2b_{D'})=\xi(1_{D'})$ is a scalar
+(Proposition~\ref{ch13:prop:charges}(b)). Membership in $\mathrm{Ch}_N(z)$ says $W(\delta_{D'})z=\xi(1_{D'})\chi_N(1_{D'})z$.
+As $z\ne0$, $\chi_N(1_{D'})=1$, i.e.\ $\prod_{D'}u_N=(-1)^{|N\cap D'|}=1$. For the consequence: $1_N\bmod2$ is
+orthogonal to the Golay code, which is self-dual, so $1_N$ is a codeword; Golay codewords have weight
+divisible by $4$ (double evenness). \qed
+\begin{status}Unconditional; \leanpath{SigmaTop2TTOct.lean}.\end{status}
+
+\begin{lemma}[Hadamard sums with $i$]\label{ch13:lem:hadI}
+Let $|D|=8$ and $\epsilon\colon D\to\{\pm1\}$ with $\prod_D\epsilon_i=1$. Then
+$\sum_{S'\subseteq D\ \mathrm{even}}\prod_{i\in S'}(i\epsilon_i)=16\prod_{i\in D}g(\epsilon_i)$, where $g(1)=1$, $g(-1)=i$.
+\end{lemma}
+\begin{leancode}
+noncomputable def gI (e : ℂ) : ℂ := if e = 1 then 1 else Complex.I
+
+theorem had_I (D : Finset (Fin 24)) (hD8 : D.card = 8) (ε : Fin 24 → ℂ)
+    (hε : ∀ i ∈ D, ε i = 1 ∨ ε i = -1) (hp : ∏ i ∈ D, ε i = 1) :
+    ∑ S' ∈ D.powerset.filter (fun S' : Finset (Fin 24) => _root_.Even S'.card),
+        ∏ i ∈ S', (Complex.I * ε i) = 16 * ∏ i ∈ D, gI (ε i)
+\end{leancode}
+\begin{physics}
+A Hadamard-type sum over the even subsets of an octad with phases $i\epsilon_i$ evaluates to a product of single-site factors. This is the factorisation of a discrete Fourier transform over $\mathbb F_2^8$, the same factorisation that makes the cube action $h^{\otimes 8}$ a tensor product. It is a technical identity used to simplify the octad action on twist states.
+\end{physics}
+\noindent\emph{Proof.} The even sum is $\tfrac12\bigl(\prod_D(1+i\epsilon_i)+\prod_D(1-i\epsilon_i)\bigr)$. If $p$ coordinates
+have $\epsilon=-1$ ($p$ even), $\prod(1+i\epsilon)=(1+i)^{8-p}(1-i)^p=(1+i)^8\bigl(\tfrac{1-i}{1+i}\bigr)^p=16(-i)^p$ and
+$\prod(1-i\epsilon)=16\,i^p$; their average is $16\,i^p$ for $p$ even ($(-i)^p=i^p$), and $\prod g(\epsilon_i)=i^p$. \qed
+
+\begin{lemma}[base identity]\label{ch13:lem:base}
+Let $|D|=8$, $S\subseteq D$, $0\notin N$, $4\mid|N|$ and $\prod_Du_N=1$. Then
+\begin{equation*}
+  i^{|S|}\Bigl(\prod_{i\in S}u_N(i)\Bigr)\beta(\mathrm{flip}_D N)=\beta(N)\prod_{i\in D}g\bigl(s_iu_N(i)\bigr),\qquad
+  s_i=-1\ (i\in S),\ s_i=1\ (i\notin S).
+\end{equation*}
+\end{lemma}
+\begin{leancode}
+theorem base_identity {D S N : Finset (Fin 24)} (hD8 : D.card = 8) (hS : S ⊆ D)
+    (hN0 : (0 : Fin 24) ∉ N) (hN4 : 4 ∣ N.card) (hND : ∏ i ∈ D, uN N i = 1) :
+    (∏ _i ∈ S, Complex.I) * (∏ i ∈ S, uN N i) * betaN (flipN D N)
+      = betaN N * ∏ i ∈ D, gI (sg S i * uN N i)
+\end{leancode}
+\begin{dictionary}
+\lean{sg S i} $=s_i$. The hypotheses $4\mid|N|$ and $\prod_Du_N=1$ are exactly the two outputs of the Golay
+constraint (Theorem~\ref{ch13:thm:golay-constraint}); without them the identity is false in general, which
+is why the constraint is needed.
+\end{dictionary}
+\begin{physics}
+This is the base identity showing that, for a joint eigenvector with Golay-constrained character, the phase produced by the octad operator agrees with the one produced by the Hadamard transform on the other side. It is the final charge-matching check for the octad letters on the twisted-twisted level; a technical lemma in the Hadamard/Golay computation.
+\end{physics}
+\noindent\emph{Proof.} Both sides are products of eighth roots of unity; compare them coordinate by
+coordinate. The ratio is a product of local correction factors $\rho_i$ (\lean{rhoF}) whose total product is
+$\omega^8\prod_Du_N=1$ when $0\notin D$, or $\omega^{16}(-i)^{|N|}=1$ when $0\in D$ --- the first case uses $\prod_Du_N=1$,
+the second uses $4\mid|N|$. \qed
+
+\begin{theorem}[octad letters on $T_s^+$; $\sigma$ on $T_s^+$]\label{ch13:thm:topSigmaTT}
+\begin{enumerate}[label=(\alph*)]
+\item For a nonzero seed $t\in T_s$, every octad letter $u_{\gamma_S}$ intertwines for $\varphi_{\psi(B_s)}$ on
+  $(\chthirteenTs{s})_2$; first on joint eigenvectors (\lean{octadTT_eig}), then on all of $T_s$ by \lean{eig_induct}.
+\item There are $s,\varphi$ with \lean{TopSigmaTT s s φ}.
+\item There are $s$ and a $\sigma$-twisted intertwiner $\Phi\colon\chthirteenTs{s}\to\chthirteenTs{s}$ (\lean{IsSigmaTT s Φ})
+  hitting a nonzero cyclic vector $x_0^T(t_0)$, $t_0\in T_s$.
+\item For one and the same $s$: \lean{TopSigmaV3 (s+1)} and \lean{TopSigmaTT s s} both hold.
+\end{enumerate}
+\end{theorem}
+\begin{leancode}
+theorem phiTT_ZMT_aSA {s : ZMod 2} {t : TLeechT} (hts : t ∈ leechFrameT s) (ht0 : t ≠ 0)
+    (ht : IsSeed t) {S : Finset (Fin 24)} (h : _root_.Even S.card) (hS : S ⊆ D) :
+    ZMT (phiTT (psiOf (Bop s))) (OmegaT s) (lV (inclΛ (aSA hDA S)) (inclΛ_mem _))
+
+theorem topSigmaTT : ∃ s φ, TopSigmaTT s s φ
+
+theorem sigmaTT_exists :
+    ∃ (s : ZMod 2) (Φ : TP →ₗ[ℂ] TP), IsSigmaTT s Φ ∧
+      ∃ t₀ : TLeechT, t₀ ∈ leechFrameT s ∧ t₀ ≠ 0 ∧ ∃ x ∈ OmegaT s, Φ x = x0T t₀
+
+theorem topSigma_both : ∃ s : ZMod 2, (∃ φ, TopSigmaV3 (s + 1) φ) ∧ ∃ φ, TopSigmaTT s s φ
+\end{leancode}
+\begin{dictionary}
+\textbf{No hypotheses} in (b)--(d); (a) carries the octad section hypotheses \lean{hDA}, \lean{hD8}.
+\lean{IsSigmaTT s Φ}: $\Phi(u_{(n)}y)=(\sigma u)_{(n)}\Phi(y)$ for all $u\in\chthirteenV$, $n\in\Z$, $y\in\chthirteenTs{s}$.
+Non-vacuity as for $\chthirteenVt$: the cyclic-vector clause excludes $\Phi=0$. \textbf{Why (d) matters.} (b) and
+Theorem~\ref{ch13:thm:topSigmaV3}(a) separately each assert existence for \emph{some} sector. For the
+assembly of $\sigma$ on all of $\Vnat$ (Chapter~\ref{ch:14}, \lean{SigmaData}) one needs
+$\sigma\colon V_3^+\to T_{s+1}^+$ and $\sigma\colon T_s^+\to T_s^+$ with the \emph{same} $s$, i.e.\ the images of $V_3^+$ and of
+$T_s^+$ are the two different twisted summands. \lean{topSigma_both} obtains both from a single seed
+and so guarantees the pattern. It is still stated with $\exists s$ (Remark~\ref{ch13:rem:exists-s}).
+\end{dictionary}
+\begin{physics}
+On the twisted top level the octad vertex operators also intertwine, first on joint eigenvectors using the Golay constraint and Hadamard sums, then on the whole $2^{12}$-dimensional twist space by induction over the eigenbasis. Together with the root letters this gives a nonzero charge-matching operator on the twisted-to-twisted top level, hence the symmetry operator on both pieces, which is combined in the final statement. Physically this completes the explicit construction of triality on the lowest-energy states of the twisted sectors as an operator that matches all light-field charges and is nonzero.
+\end{physics}
+\noindent\emph{Proof.} (a) On a joint eigenvector $z$ with character $N$: the twisted $\xi$-closure gives
+$W(a_{S'})z=\varepsilon\,\xi_N(-1_{S'})W(b_D)z$, so each term of the Hadamard sum for $\chthirteeno(\sigma u_{\gamma_S})$ is
+$C_1\prod_{S'}(i\,s_iu_N(i))\,W(b_D)z$; by Lemma~\ref{ch13:lem:hadI} the sum is $16\,C_1\prod_Dg(s_iu_N(i))$
+(the hypothesis $\prod_Ds_iu_N(i)=1$ holds because $|S|$ is even and $\prod_Du_N=1$). On the source side
+$\chthirteeno(u_{\gamma_S})$ maps $h_{c_b}\otimes z$ to $2^{-3}h_{\mathrm{latL}\,c_b}\otimes e_{\gamma_S}z$, and $\varphi_\psi$ multiplies by
+$u_{\mathrm{flip}N}(\cdot)\beta(\mathrm{flip}N)$ since $e_{\gamma_S}z$ has character $\mathrm{flip}_DN$. Equality of the two sides
+reduces, after the common factors, to the base identity (Lemma~\ref{ch13:lem:base}), whose hypotheses are
+supplied by the Golay constraint. (b) Combine (a), the root letters and Theorem~\ref{ch13:thm:TT-root} with
+\lean{classify_S0}, for the seed of Theorem~\ref{ch13:thm:seed}. (c) \lean{sigmaTT_exists_of_top}
+(Chapter~\ref{ch:12}). (d) Use the same seed for Theorems~\ref{ch13:thm:octad-red} and (b). \qed
+\begin{status}
+\textbf{Unconditional.} \leanpath{SigmaTop2TTOct.lean}. \lean{#print axioms} of \lean{topSigmaTT},
+\lean{sigmaTT_exists}, \lean{topSigma_both}: [\lean{propext}, \lean{Classical.choice}, \lean{Quot.sound}]
+(re-checked, \S\ref{ch13:sec:referee}). These are the results consumed by Chapter~\ref{ch:14}
+(\lean{SigmaAssemble.mkData}).
+\end{status}
+
+%======================================================================
+\section{The numerical evidence that preceded the proof}\label{ch13:sec:numerics}
+
+Before any of the Lean work of this chapter was attempted, the existence of $\sigma$ on the twisted
+sectors was tested numerically (\leanpath{Notes/TrialityTwisted.md}~\S4; scripts in
+\leanpath{scripts/moonshine/numerics/triality/}). This evidence is \emph{not} part of the proof and is
+reported here only because it shaped the construction --- and because it is honest to say what was known
+before the proof existed.
+
+\paragraph{The model.} A Python model of $V_N$, $N=N(A_1^{24})$, with an explicit basis cocycle
+$\varepsilon(a,b)=(-1)^{c(a)^{\mathsf T}Uc(b)}$ ($U$ the strict upper triangle of a Gram matrix; Golay code from
+quadratic residues mod $23$), the twisted vertex operator $Y^T(e^\gamma,z)=2^{-\langle\gamma,\gamma\rangle}z^{-\langle\gamma,\gamma\rangle/2}
+E^-E^+\otimes e_\gamma$, and a $T_N$ built as an induced module. All $196884$ states of $(V_N)_2$ were
+constructed; the library's $\sigma=G(\chi z_0)G^{-1}$ was computed on the $1083$ invariant blocks.
+
+\paragraph{What was confirmed.}
+\begin{enumerate}
+\item $\dim(\chthirteenV)_2=49428$ and $\operatorname{tr}(\sigma|(\chthirteenV)_2)=2324$ (for the unmodified DGM~(7.5) form
+  $G\chi G^{-1}$ one gets $6372$), reproducing the certificate of Chapter~\ref{ch:11}.
+\item $\Theta e^\gamma=c_\gamma e^{-\gamma}$ with $c_\gamma=1$ for all $98256$ norm-four $\gamma\in\Leech_0$ \emph{in the model} --- the
+  numerical counterpart of the $\theta$-invariance used in Proposition~\ref{ch13:prop:kappa}.
+\item An explicit $\sigma$-twisted intertwiner $(V_3^c)_2\to T(0,c)_2$ was built by breadth-first propagation
+  from one seed along the monomial lattice letters; \emph{every image vector had support $2$} in the
+  $h_j\otimes t$ basis (``essentially monomial'' --- the origin of the block-monomial ansatz of
+  Definition~\ref{ch13:def:phiV3}). $15000$ identities $\Phi(\chthirteeno(u)v)=\chthirteeno(\sigma u)\Phi(v)$: maximal
+  relative residual $4.2\times10^{-15}$; the wrong target sector: residual $2.0$ (no intertwiner).
+\item For DGM's unmodified (7.5) $\sigma$, the intertwiner goes to the \emph{wrong} sector --- an independent
+  confirmation that the $z_0$-modification (7.8) is needed.
+\item $T(1,+)\to T(1,+)$ on the full weight-two space: $3000$ identities, residual $4.8\times10^{-12}$
+  (the wrong sign: $2.0$). This is the numerical form of $\sigma\colon T_3^+\to T_3^+$.
+\item Block spectra (block $j=5$, $33166$ block-preserving letters): $V_3\leftrightarrow T(0,\cdot)$ match to
+  $2.5\times10^{-14}$, and $T(1,\cdot)$ is $\sigma$-stable ($3.1\times10^{-14}$).
+\end{enumerate}
+\paragraph{Caveats recorded at the time.} Only zero modes of weight-two elements on weight-two spaces
+were tested; the model uses the cocycle of $N$, not the library's Leech cocycle; and the identification of
+the model's sectors with the library's $T_s^+$ used an unchecked normalisation step. The Lean theorems of
+this chapter have none of these caveats: they are about the library's own objects, and the reduction to
+weight two is the theorem of Chapter~\ref{ch:12}.
+
+\paragraph{A related exact test.} Notes/ZhuGeneratorTest.md (exact arithmetic, no floating point) showed
+that the weight-two zero modes generate all of $\End$ of both $49152$-dimensional tops, so $\varphi$ is unique
+up to a scalar once it exists; this justified looking for \emph{one} explicit formula rather than a family.
+
+%======================================================================
+\section{Dead ends, traps and corrections}\label{ch13:sec:dead}
+
+\begin{warning}[title={Trap / dead end: ``Which $T_s^+$ is $T_0^+$'' is not well posed}]
+Do not try to prove $\sigma(V_3^+)=T_0^+$ (or $T_1^+$) from the library's definitions: the answer depends on
+the bit $g_e(w_0)$ hidden in \lean{Classical.choose} (\lean{golayE_not_determined}, Chapter~\ref{ch:12}). All
+results are stated with $\exists s$, and \lean{topSigma_both} supplies the matching pair.
+\end{warning}
+
+\begin{warning}[title={Trap / dead end: The partial theorems are not (R-top)}]
+\lean{topSigmaV3_partial}, \lean{topSigmaTT_partial} (constant $\tau$, $\psi$) satisfy only the frame,
+weight, cyclic-vector and $24$ diagonal-letter clauses. A constant $\tau$ cannot satisfy the off-diagonal
+letters (Schur: the solution is unique up to scalar). They must not be cited as $\sigma$-existence.
+\end{warning}
+
+\begin{warning}[title={Trap / dead end: Unknown constants: avoid evaluating them}]
+The constants $\kappa_\pm$, $t_c(a)$, $g_e(a)$, and every value of $\varepsilon_\Leech$ are uncomputable in the library.
+An early plan (``R-top partial'' status) considered a refactor to an explicit Golay-frame cocycle to compute
+them. This turned out unnecessary (\S\ref{ch13:sec:design}); every needed fact is a consequence of
+$\theta$-invariance, cocycle algebra, $\xi$ and Golay-code facts.
+\end{warning}
+
+\begin{warning}[title={Trap / dead end: The eigenvalue $\pm\tfrac12$ was once an unproved assumption}]
+\leanpath{SigmaTopOffdiag.lean} states the off-diagonal identity as following from eigen-conditions and
+notes that necessity would need ``$\kappa_\pm e_{\gamma_\pm}$ have eigenvalues $\pm\tfrac12$ (not proved here)''. This was
+later proved (Proposition~\ref{ch13:prop:kappa}); the file comment is historical.
+\end{warning}
+
+\begin{warning}[title={Trap / dead end: Stale file headers}]
+Several file headers of this chapter's files say ``Not wired into the umbrella''. Already when this chapter was
+first written, and still at a pre-release build commit, they \emph{are} imported by the umbrella \leanpath{VOA/Moonshine.lean} (which imports
+\leanpath{SigmaTop2TTOct}) and are used by \lean{VOA.Moonshine.moonshine}. The headers predate the wiring.
+\end{warning}
+
+\begin{warning}[title={Trap / dead end: The choice of $B$ on $T_s^+$ is forced by the octads}]
+The root letters on $T_s^+$ are satisfied by $\psi_m=Z_{0m}B$ for \emph{any} $B$ into $T_s$ sending some vector to a
+seed. A naive choice ($B=\pi_s$) fails the octad letters; the phase $\omega^{|N|}$ on the joint eigenspaces is
+what the base identity requires. The Golay constraint ($4\mid|N|$, $\prod_Du_N=1$) is used in an essential way:
+without it the base identity is false.
+\end{warning}
+
+%======================================================================
+\section{Referee's checklist}\label{ch13:sec:referee}
+
+\paragraph{Machine check performed for this chapter.} At an earlier commit (when the chapter was first written; not re-run for this edition), with the built
+library, the following file was compiled with \texttt{lake env lean -DmaxSynthPendingDepth=3}
+(the flag avoids the audit trap of Chapter~\ref{ch:01}):
+\begin{plaincode}
+import VOA.Moonshine.SigmaTop2TTOct
+open VOA.Moonshine.SigmaTop
+#print axioms topSigmaV3_partial
+#print axioms topSigmaTT_partial
+#print axioms topSigmaV3_of_eigen
+#print axioms topSigmaTT_of_eigen
+#print axioms sig_dV_fw
+#print axioms zhuGenerated_G2
+#print axioms golayTheta_codeword
+#print axioms seedExists
+#print axioms classify_S0
+#print axioms topSigmaV3
+#print axioms sigmaV3T_exists
+#print axioms topSigmaTT
+#print axioms sigmaTT_exists
+#print axioms topSigma_both
+#print axioms golay_constraint
+#print axioms four_dvd_card_of_orth
+#print axioms base_identity
+#print axioms had_I
+#print axioms colD_key
+\end{plaincode}
+Every one of the $19$ lines printed
+\begin{plaincode}
+'VOA.Moonshine.SigmaTop.<name>' depends on axioms: [propext, Classical.choice, Quot.sound]
+\end{plaincode}
+In particular none uses \lean{VOA.pbw} (the PBW theorem of Chapter~\ref{ch:L02}; formerly a project axiom, now a theorem). (The aggregate \texttt{lake build} of that
+commit, $10343$ jobs, is recorded in Chapter~\ref{ch:15}; it was not re-run for this chapter.)
+
+\begin{longtable}{p{3.6cm}p{5.4cm}p{3.0cm}p{2.4cm}}
+\toprule
+Lean declaration & Intended meaning & Hypotheses & Status / check\\
+\midrule
+\endhead
+\lean{actV_qV}, \lean{actV_lV} & source zero modes on $x_n$: diagonal / monomial & norms, $\gamma\in\Leech_0$, $n\notin\Leech_0$ & uncond.; Prop.~\ref{ch13:lem:source-modes}\\
+\lean{OmegaV3_le_span}, \lean{grading_two_V0_le_span} & spanning sets of the tops / of $(V_0^+)_2$ & none & uncond.; Prop.~\ref{ch13:prop:span}\\
+\lean{hGφ_V3_of_basis} & zero-mode clause reduced to letters $\times$ basis & the letter identities & uncond.\ impl.; Thm.~\ref{ch13:thm:basis-red}\\
+\lean{YML_quadSt}, \lean{YML_echg_X} & twisted zero modes on $h(-\tfrac12)\otimes T$ & norm 4 (for $e^\alpha$) & uncond.; Prop.~\ref{ch13:prop:target-modes}\\
+\lean{lv_sq}, \lean{blk} & odd norm-4 vectors have one entry $\pm3$ & $n$ odd, norm 4 & uncond.; Lem.~\ref{ch13:lem:blk}\\
+\lean{actV_dV_fw}, \lean{actT_dV_fw_hP} & diagonal letters act by $9$/$1$ on blocks & as stated & uncond.; Prop.~\ref{ch13:prop:frame-modes}\\
+\lean{sig_dV_fw} & $\sigma$ fixes $w_j(-1)^2\mathbf 1$ & none & uncond.; Thm.~\ref{ch13:thm:sig-dV-fw}\\
+\lean{phiV3}, \lean{phiTT} & block-monomial top maps & --- & defs; Defs.~\ref{ch13:def:phiV3}, \ref{ch13:def:phiTT}\\
+\lean{topSigmaV3_partial}, \lean{topSigmaTT_partial} & frame/weight/cyclic + diagonal letters only & none & uncond.\ but \emph{weak}; Thm.~\ref{ch13:thm:partial}\\
+\lean{sig_dV_offdiag_coe}, \lean{actT_sig_dV_offdiag} & $\sigma(w_jw_k)$ and its zero mode & $j\ne k$ & uncond.; Prop.~\ref{ch13:prop:sig-offdiag}\\
+\lean{topSigmaV3_of_eigen}, \lean{topSigmaTT_of_eigen} & (R-top) from eigen-conditions + lattice letters & Zhu, eigen, lattice & cond.; Thm.~\ref{ch13:thm:of-eigen}\\
+\lean{zhuGenerated_G2} & Zhu generation by weight two & none & uncond.; \S\ref{ch13:sec:kappa}\\
+\lean{AP_mul_self}, \lean{AM_mul_self}, \lean{kP_sq} & $(\kappa_\pm e_{\gamma_\pm})^2=\tfrac14$ & $j\ne k$ & uncond.; Prop.~\ref{ch13:prop:kappa}\\
+\lean{lam_eq} & eigenvalue pattern is a character & $j\ne k$, $n\in S_1$ & uncond.; Lem.~\ref{ch13:lem:lam-eq}\\
+\lean{IsSeed}, \lean{SeedExists} & seed: $A_+=-\tfrac12$, $A_-=\tfrac12$ & --- & defs; Def.~\ref{ch13:def:seed}\\
+\lean{eig_of_seed}, \lean{topSigmaV3_of_seed} & eigen-conditions from a seed & seed (+ lattice) & uncond.\ impl.; Thm.~\ref{ch13:thm:eig-seed}\\
+\lean{Wop_mul}, \lean{ZZ_comp} & $W$ has the $N$-cocycle; $Z$ compose & distinctness & uncond.; Def.~\ref{ch13:def:Wop}\\
+\lean{xi_mul}, \lean{xi_single} & quadratic refinement $\xi$ & none & uncond.; Def.~\ref{ch13:def:xi}\\
+\lean{golayTheta_codeword} & $\Theta e^{1_D}=\xi(1_D)e^{-1_D}$ & $\beta=1_D$, $4\mid|D|$ & uncond.; Thm.~\ref{ch13:thm:cube}\\
+\lean{exists_fixed_of_lagrangian} & common fixed vector of Lagrangian involutions & $\kappa_i^2\varepsilon=1$ & uncond.; Thm.~\ref{ch13:thm:fixed}\\
+\lean{colD_key} & codeword relation (kernel-checked) & none & uncond.; Lem.~\ref{ch13:lem:colD}\\
+\lean{seedExists} & a nonzero seed exists & \textbf{none} & \textbf{uncond.}; Thm.~\ref{ch13:thm:seed}\\
+\lean{sig_lV_gP}, \lean{sig_lV_gM} & $\sigma$ on root letters & $j\ne k$ & uncond.; Thm.~\ref{ch13:thm:sig-lV}\\
+\lean{phiV3_ZM_gP} & root letters intertwine & even, eigen, transport rule & cond.; Thm.~\ref{ch13:thm:root-letters}\\
+\lean{tauStar}, \lean{tauStar_ruleP} & explicit $\tau_\star$; transport rules & seed & uncond.; Thm.~\ref{ch13:thm:rules}\\
+\lean{phiV3_ZM_aSA} & octad letters intertwine on $V_3^+$ & seed, octad, $S$ even & uncond.; Thm.~\ref{ch13:thm:octad}\\
+\lean{classify_S0} & norm-4 vectors of $\Leech_0$: root or octad type & $\gamma\in S_0$ & uncond.; Thm.~\ref{ch13:thm:classify}\\
+\lean{topSigmaV3}, \lean{sigmaV3T_exists} & $\sigma\colon V_3^+\to T_s^+$ exists & \textbf{none} & \textbf{uncond.}; Thm.~\ref{ch13:thm:topSigmaV3}\\
+\lean{AM_eq_neg_AP} & $A_-=-A_+$ on the seed sector & nonzero seed in $T_s$ & uncond.; Lem.~\ref{ch13:lem:AM-AP}\\
+\lean{Bop} & $B=\prod(a+bZ_{0k})\pi_s$, $\omega=e^{i\pi/4}$ & --- & def; Def.~\ref{ch13:def:Bop}\\
+\lean{golay_constraint}, \lean{four_dvd_card_of_orth} & $\prod_{D'}u=1$; $4\mid|N|$ & $z\ne0$, closure & uncond.; Thm.~\ref{ch13:thm:golay-constraint}\\
+\lean{had_I}, \lean{base_identity} & Hadamard sum with $i$; base identity & as stated & uncond.; Lems.~\ref{ch13:lem:hadI}, \ref{ch13:lem:base}\\
+\lean{topSigmaTT}, \lean{sigmaTT_exists} & $\sigma\colon T_s^+\to T_s^+$ exists & \textbf{none} & \textbf{uncond.}; Thm.~\ref{ch13:thm:topSigmaTT}\\
+\lean{topSigma_both} & both, for one $s$ (sectors match) & \textbf{none} & \textbf{uncond.}; Thm.~\ref{ch13:thm:topSigmaTT}\\
+\bottomrule
+\end{longtable}
+
+\paragraph{What the referee should verify in particular.}
+(1) That \lean{TopSigmaV3}/\lean{TopSigmaTT} contain the nontriviality clause \lean{hits_cyclic} (they do), so
+that the headline theorems are not satisfied by $\varphi=0$. (2) That \lean{IsSigmaV3T}, \lean{IsSigmaTT} quantify
+over \emph{all} $u\in\chthirteenV$ and \emph{all} modes $n\in\Z$ (\lean{Set.univ}, \lean{∀ n}). (3) That $\sigma$ here is
+the library's \lean{v0Sigma}, i.e.\ DGM's (7.8)-modified triality transported to $\chthirteenV$ (Chapter~\ref{ch:11}).
+(4) That the sector is existential and why (Remark~\ref{ch13:rem:exists-s}).
+
+%======================================================================
+\section*{Notes and references}\addcontentsline{toc}{section}{Notes and references}\label{ch13:sec:notes}
+
+The triality and its extension to the twisted sectors is the heart of the original construction:
+I.~Frenkel, J.~Lepowsky and A.~Meurman, \emph{Vertex Operator Algebras and the Monster}, Pure and
+Applied Mathematics~134, Academic Press, 1988, Chapters~11 (``Triality''), 12 and 13. FLM construct $\sigma$
+explicitly through the Golay code and rank-one $\mathfrak{sl}_2$ isomorphisms between twisted and untwisted
+realisations; the book was not accessible to the project and its account was \emph{not} checked against
+this chapter. The modern restatement used throughout is L.~Dolan, P.~Goddard and P.~Montague,
+``Conformal field theories, representations and lattice constructions'', Comm.\ Math.\ Phys.\ 179 (1996)
+61--120, arXiv:hep-th/9410029, \S\S6--7: equations (7.1)--(7.8) define $\sigma$ on $V_N$ (the $z_0$-modified
+form (7.8) is the one in the library), and their Proposition~7.3 obtains the twisted extension
+\emph{non-constructively} (via the uniqueness of the twisted module and a partition-function comparison).
+We have not compared the formula of this chapter for $\sigma$ on twisted weight-two states with FLM's explicit
+construction (Chapter~11 of their book), which we could not consult.
+
+The Golay code and Leech lattice facts used (minimum weight $8$, self-duality, double evenness,
+the $(\pm2^8,0^{16})$ and $(\pm4^2,0^{22})$ shapes of norm-four vectors in $\Leech_0$) are in J.~H.~Conway and
+N.~J.~A.~Sloane, \emph{Sphere Packings, Lattices and Groups}, 3rd ed., Grundlehren~290, Springer, 1999,
+Chapters~4 and~10. The Griess algebra and the $196884$-dimensional weight-two space go back to R.~L.~Griess,
+``The friendly giant'', Invent.\ Math.\ 69 (1982) 1--102; the extraspecial group and its
+$2^{12}$-dimensional representation also appear there and in FLM Chapter~7. The modular-tensor-category
+picture of $V_\Leech^{++}=\chthirteenV$ (16 irreducibles, the dihedral group of order 12 acting on them, the
+triality as an $S_3$) is in G.~H\"ohn and M.~Seysen, ``The order of the Monster finite simple group'',
+arXiv:2508.01037 (2025), \S2.2 (the paper itself computes the order of the Monster), after H.~Shimakura, ``The automorphism group of the
+vertex operator algebra $V_L^+$ for an even lattice $L$ without roots'', J.~Algebra 280 (2004) 29--57, and
+T.~Abe, C.~Dong and H.~Li, ``Fusion rules for the vertex operator algebras $M(1)^+$ and $V_L^+$'', Comm.\
+Math.\ Phys.\ 253 (2005) 171--219. Zhu's algebra and the top-level correspondence used in
+Chapter~\ref{ch:12} are from Y.~Zhu, ``Modular invariance of characters of vertex operator algebras'',
+J.\ Amer.\ Math.\ Soc.\ 9 (1996) 237--302. The stabiliser-state language of the remark in
+\S\ref{ch13:sec:seed} is standard in quantum information (D.~Gottesman, \emph{Stabilizer Codes and Quantum
+Error Correction}, PhD thesis, Caltech, 1997, arXiv:quant-ph/9705052).
+
+The project-internal record is \leanpath{Notes/M8GluingPlan.md} (status sections ``R-top partial'' and
+``$\sigma$ EXISTS on both twisted sectors''), \leanpath{Notes/TrialityTwisted.md} and \leanpath{Notes/ZhuGeneratorTest.md}.

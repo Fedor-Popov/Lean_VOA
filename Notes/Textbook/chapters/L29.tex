@@ -1,0 +1,3183 @@
+\chapter[The (2,2n+3) series: coset transfer at every boundary level]{The \texorpdfstring{$(2,2n+3)$}{(2,2n+3)} series: coset transfer of graded unitarity at every boundary level}\label{ch:L29}
+\begingroup\setlength{\emergencystretch}{3em}\sloppy
+
+\providecommand{\ltwentyninesl}{\mathfrak{sl}_2}
+\providecommand{\ltwentyninegr}{\operatorname{gr}}
+\providecommand{\ltwentyninevac}{|0\rangle}
+\providecommand{\ltwentynineGU}{\mathrm{GU}}
+\providecommand{\ltwentynineJ}{J_\infty}
+\providecommand{\ltwentynineinv}{\mathcal I}
+\providecommand{\ltwentyninegc}{g}
+\providecommand{\ltwentynineRn}{R_n}
+\providecommand{\ltwentynineS}{S_{n,r}}
+\providecommand{\ltwentynineR}{\mathbb{R}}
+\providecommand{\ltwentynineln}[1]{\nolinkurl{#1}}
+
+This chapter was written against an earlier state of the LeanVOA library. It covers the files
+\leanpath{VOA/Examples/TwoSeries*.lean} (128 files in this release). Every Lean quotation below was copied from the source of
+that state, and for this edition the book's automatic check confirms that every one occurs verbatim (up to whitespace and
+comments) in the source files of this release. What the machine confirmed is collected in one place,
+Section~\ref{l29:sec:verification}.
+
+\paragraph{Conventions for quotations and status boxes.}
+\begin{itemize}
+\item \emph{Omitted proofs and docstrings.} A Lean quotation shows a statement, not its proof. A block that ends in
+  \lean{:=} or \lean{:= by} with nothing after it is a statement whose proof is omitted; it is not a truncated
+  quotation. Documentation comments (\lean{/-- ... -/}) are usually omitted; they are not part of the statement.
+\item \emph{``Axioms standard''.} This means that \texttt{\#print axioms} reports exactly
+  \lean{[propext, Classical.choice, Quot.sound]}, the three standard axioms of Lean's logic (Chapter~\ref{ch:01},
+  Section~\ref{ch01:sec:trust}). Since \lean{VOA.pbw} became a theorem the library has no project
+  axiom at all. A clean axiom list does \emph{not} mean ``unconditional'': \texttt{\#print axioms} does not list the
+  explicit hypotheses of a theorem (Section~\ref{ch01:sec:uncond}). Every status box below therefore names the
+  hypotheses separately, and the word \textbf{unconditional} is reserved for a statement with no hypothesis beyond the
+  natural-number parameters.
+\item \emph{Re-checked.} Every axiom claim in this chapter was re-run on a scratch file against the library's build
+  products for this edition; the list is in Section~\ref{l29:sec:verification}.
+\end{itemize}
+
+\paragraph{Prerequisites.} This chapter is the level-generic sequel of Chapter~\ref{ch:L28}, which treats the
+first member of the series, the Lee--Yang model, in full. We do not re-derive the Lee--Yang chain; we explain what
+changes when the level moves, and we present in detail the parts that are new. We use without re-development:
+(1) the graded-unitarity predicate of Arabi Ardehali, Beem, Lemos and Rastelli, its layers and the Virasoro length
+flag (Chapter~\ref{ch:L19}, Definitions~\ref{l19:def:gu} and \ref{l19:def:virgu}), the boundary central charges
+$c_{2,2m+1}$ and their real structures (Definition~\ref{l19:def:boundarycharge}, Theorem~\ref{l19:thm:boundaryreal});
+(2) the boundary admissible levels $k_n=-2+2/(2n+1)$ of $\ltwentyninesl$, the universal and simple affine VOAs
+$V^k(\ltwentyninesl)$, $L_k(\ltwentyninesl)$ and their vacuum characters (Chapter~\ref{ch:L20},
+Definitions~\ref{l20:def:level}, \ref{l20:def:simple} and \ref{l20:def:character}); (3) the Lee--Yang coset chain of
+Chapter~\ref{ch:L28}: the BRST complex at total level $-4$, the Beem--Garner Hodge package, the Koszul step, the
+dimension squeeze, and the Rogers--Ramanujan character. Mathlib notions (\lean{Submodule}, \lean{Module.finrank},
+\lean{Module.rank}, \lean{MvPolynomial}, \lean{PowerSeries}, \lean{Ideal.span}) are explained in plain words the
+first time they appear. \textbf{Reading the Lean.} A reader who has never read Lean should first read the primer of
+Chapter~\ref{ch:01}, Section~\ref{ch01:sec:lean}; the dictionaries below assume it.
+
+\paragraph{What this chapter is about, in one paragraph.} For every $n\ge1$ let $k_n=-2+\frac{2}{2n+1}$. The
+\emph{coset} $(L_{k_n}(\ltwentyninesl)\otimes L_1(\ltwentyninesl))/L_{k_n+1}(\ltwentyninesl)$ contains a Virasoro
+algebra of central charge
+\begin{equation}\label{l29:eq:charge}
+c_{2,2n+3}\;=\;\frac{3k_n}{k_n+2}+1-\frac{3(k_n+1)}{k_n+3}\;=\;1-\frac{3(2n+1)^2}{2n+3},
+\end{equation}
+the central charge of the non-unitary minimal model $M(2,2n+3)$. Chapter~\ref{ch:L28} proved, at $n=1$
+($k=-4/3$, $c=-22/5$), that \emph{graded unitarity} of the affine VOA implies graded unitarity of the Lee--Yang model.
+This chapter proves the same implication for every $n$:
+\begin{equation}\label{l29:eq:headline}
+\ltwentynineGU\bigl(L_{k_n}(\ltwentyninesl)\bigr)\ \Longrightarrow\ \ltwentynineGU\bigl(M(2,2n+3)\bigr)\qquad(n\ge1),
+\end{equation}
+as the Lean theorem \ltwentynineln{VOA.TwoSeries.JetPoincareTwo.twoSeries_gradedUnitary_of_affine_final}
+(Theorem~\ref{l29:thm:final}). Its only hypothesis is graded unitarity of the affine VOA, which is \textbf{open}; the
+theorem is a \emph{transfer}, not a proof that either side is graded unitary.
+
+\paragraph{Why formalize this.} Graded unitarity is the shadow, on a chiral algebra, of unitarity of a
+four-dimensional $\mathcal N=2$ superconformal field theory. The level-$k_n$ affine VOA is the chiral algebra of the
+Argyres--Douglas theory $(A_1,D_{2n+1})$, and $M(2,2n+3)$ is the chiral algebra of $(A_1,A_{2n})$; so
+\eqref{l29:eq:headline} says that a positivity property passes from one family of four-dimensional theories to the
+other, along the coset. The proof at $n=1$ (Chapter~\ref{ch:L28}) used one explicit model of the associated graded
+of $L_{-4/3}$ and one cyclic dual vector. Neither generalizes (warning on p.~\pageref{l29:warn:cyclic}). The general proof
+needed four new ingredients, each of independent interest, and each formalized here with no hypothesis: the vacuum
+characters of all $M(2,2n+3)$ via the Andrews--Gordon identity; a jet model of the associated graded of $L_{k_n}$ with
+the Chern--Tran--Wakhare fermionic character; a Drinfeld--Sokolov ``slice map'' with the descending half of Arakawa's
+theorem; and an ideal-membership theorem for the $n$-equal arrangement (block generators span the relevant ideal).
+
+\begin{remark}[The logical arc and the ledger]\label{l29:rem:arc}
+Write $\ltwentynineGU(A)$ for graded unitarity of the affine factor $A=L_{k_n}(\ltwentyninesl)$ (with its canonical
+form, compact conjugation and corrected flag, Definition~\ref{l29:def:endpoint}) and $\ltwentynineGU(T)$ for that of
+the target $T=L(c_{2,2n+3},0)$ (partition-basis real structure, length flag). The Lean proof of
+\eqref{l29:eq:headline} is the chain
+\begin{equation}\label{l29:eq:chain}
+\begin{aligned}
+&\text{(1)}\quad \ltwentynineGU(A)\wedge\mathrm{Hodge}\wedge\mathrm{Squeeze}(\mathrm{coeff})\ \Longrightarrow\ \ltwentynineGU(T);\\
+&\text{(2)}\quad \bigl(\dim\ltwentynineinv_{r,N}\le\mathrm{coeff}(N,r)\bigr)\wedge
+  \bigl(\textstyle\sum_{r\le p}\mathrm{coeff}(N,r)\le\dim F_pT_N\bigr)\ \Longrightarrow\ \mathrm{Squeeze}(\mathrm{coeff});\\
+&\text{(3)}\quad \textstyle\sum_{r\le p}\ltwentyninegc_n(N,r)\le\dim F_pT_N\quad(\text{take }\mathrm{coeff}=\ltwentyninegc_n);\\
+&\text{(4)}\quad \text{strict model maps}\wedge\text{model socle data}\ \Longrightarrow\ \text{socle data of }\ltwentyninegr_rA
+  \ \Longrightarrow\ \dim\ltwentynineinv_{r,N}\le\ltwentyninegc_n(N,r);\\
+&\text{(5)}\quad \mathrm{Detect}_n\wedge\mathrm{ModelChar}_n\ \Longrightarrow\ \text{strict model maps};\\
+&\text{(6)}\quad \text{slice map}\wedge\text{SliceArakawa}\wedge\text{VirSymbol}\ \Longrightarrow\ \mathrm{Detect}_n;\\
+&\text{(7)}\quad \text{$n$-equal arrangement inclusion}\ \Longrightarrow\ \text{jet-ideal Poincar\'e lemma}
+  \ \Longrightarrow\ \text{model socle data}.
+\end{aligned}
+\end{equation}
+Step (1) is Theorem~\ref{l29:thm:transfer}, with the Hodge package supplied by Theorem~\ref{l29:thm:hodge}; (2) is
+Theorem~\ref{l29:thm:invariants}; (3) is Theorem~\ref{l29:thm:hpbw}; (4) is Section~\ref{l29:sec:model}
+(Theorems~\ref{l29:thm:soclespectrum} and \ref{l29:thm:swc}); (5) is Theorem~\ref{l29:thm:strict}, with
+$\mathrm{ModelChar}_n$ proved in Theorem~\ref{l29:thm:modelchar}; (6) is Section~\ref{l29:sec:ds}, all three inputs
+proved; (7) is Sections~\ref{l29:sec:poincare} and \ref{l29:sec:arr}, the arrangement inclusion proved in
+Theorem~\ref{l29:thm:geninclusion}.
+Here $\ltwentynineinv_{r,N}$ is the space of $\ltwentyninesl[t]$-invariant tensors of weight $N$ in
+$\ltwentyninegr_rA\otimes L_1(\ltwentyninesl)$ (Definition~\ref{l29:def:invariants}), $F_pT_N$ is the length-$\le p$
+part of $T_N$, and $\ltwentyninegc_n(N,r)$ is the number of partitions of $N$ into $r$ parts $\ge2$ with
+$f_m+f_{m+1}\le n$ (Definition~\ref{l29:def:gordon}).
+
+The ledger:
+\begin{center}\small
+\begin{tabular}{p{0.38\textwidth}p{0.14\textwidth}p{0.38\textwidth}}
+\toprule
+step & form & status\\
+\midrule
+level data, coset charge \eqref{l29:eq:charge} & equality & proved, every $n$\\
+GU of the auxiliary factor $V^{k_U}$ & predicate & proved, every $n$ ($k_U<-2$)\\
+Hodge package (Beem--Garner) & construction & proved from $\ltwentynineGU(A)$, every $n$\\
+Koszul embedding $H\hookrightarrow\ltwentynineinv$ & injection & proved from $\ltwentynineGU(A)$, every $n$\\
+vacuum character of $M(2,2n+3)$ & equality & proved, every $n$ (Andrews--Gordon)\\
+refined PBW lower bound & $\le$ & proved, every $n$\\
+socle-word count $=$ Gordon count & equality & proved, every $n$\\
+model character bound & $\le$ & proved, every $n\ge1$ (Bailey chain)\\
+detection (slice map + Arakawa half) & vanishing & proved, every $n\ge1$\\
+model socle data (transversality; box count) & $\le$, disjoint & proved, every $n\ge1$\\
+jet-ideal Poincar\'e lemma, arrangement inclusion & containment & proved, every $n\ge1$\\
+$\ltwentynineGU(A)$ & predicate & \textbf{the one hypothesis; open}\\
+\bottomrule
+\end{tabular}
+\end{center}
+So the headline is \texttt{\#print axioms}-clean (standard axioms), \emph{conditional on $\ltwentynineGU(A)$ alone}.
+\end{remark}
+
+\paragraph{The findings of this chapter, in brief.}
+\begin{enumerate}
+\item \textbf{The transfer holds at every boundary level.} \ltwentynineln{twoSeries_gradedUnitary_of_affine_final}
+  (Theorem~\ref{l29:thm:final}) concludes graded unitarity of $M(2,2m+5)$ from graded unitarity of
+  $L_{-2+2/(2m+3)}(\ltwentyninesl)$, for every $m\in\N$, with no other hypothesis. At $m=0$ it is the Lee--Yang
+  theorem of Chapter~\ref{ch:L28} again, by a different route.
+\item \textbf{Several standalone theorems, all unconditional:} the vacuum character of every $M(2,2n+3)$
+  (Theorem~\ref{l29:thm:character}); the model character bound (Theorem~\ref{l29:thm:modelchar}); the descending half
+  of Arakawa's theorem for the Drinfeld--Sokolov slice map, at every level datum whose affine level is not a natural number,
+  hence at every $k_n$ (Theorem~\ref{l29:thm:slicearakawa}); the generation of $L_N\cap(\text{vanishing ideal of the $n$-equal arrangement})$ by explicit
+  block generators (Theorem~\ref{l29:thm:geninclusion}).
+\item \textbf{Two declarations share the short name} \ltwentynineln{twoSeries_gradedUnitary_of_affine}, in different
+  namespaces and with different hypotheses (warning on p.~\pageref{l29:warn:clash}). Neither is the headline. Always read the
+  fully qualified name.
+\item \textbf{Several docstrings are stale}: they still call ``open'' inputs that later files prove
+  (warning on p.~\pageref{l29:warn:stale}). The Lean statements are correct; only the prose lags.
+\item \textbf{What this chapter does not prove}: graded unitarity of any affine VOA, or of any $M(2,2n+3)$ with
+  $n\ge1$. Both remain open (Kaufmann's conjecture for the minimal models, Chapter~\ref{ch:L19}).
+\end{enumerate}
+
+\paragraph{Notation used in this chapter.} The sources use three different indices for the same family; we fix
+them here.
+\begin{center}\small
+\begin{longtable}{p{0.24\textwidth}p{0.68\textwidth}}
+\toprule
+symbol & meaning\\
+\midrule\endhead
+$n\ge1$ & the member index of the series: level $k_n=-2+\frac2{2n+1}$, target $M(2,2n+3)$. Lean
+  \lean{twoSeriesLevels n}.\\
+$m\ge0$, $n=m+1$ & the index of the headline theorem: level $-2+\frac2{2m+3}$, target $M(2,2m+5)$. Lean
+  \lean{twoSeriesLevels (m + 1)}. Used to exclude $n=0$.\\
+$c_{2,2j+1}$ & $1-\frac{3(2j-1)^2}{2j+1}$, Lean \lean{boundaryCharge j}; so the target is $c_{2,2n+3}$
+  $=$ \lean{boundaryCharge (n + 1)}, and the field \lean{CosetLevels.m} equals $n+1$.\\
+$q=2n+1$ & the denominator of the level; also the formal variable of $q$-series when no confusion is possible.
+  In Sections~\ref{l29:sec:char} and \ref{l29:sec:modelchar} $q$ is the formal variable of power series.\\
+$k=k_n$, $k_U$ & the boundary level and the auxiliary level $k_U=-5-k_n=-3-\frac{2}{2n+1}<-2$.\\
+$A$, $B$, $U$ & $A=L_{k}(\ltwentyninesl)$ (simple), $B=L_1(\ltwentyninesl)$, $U=V^{k_U}(\ltwentyninesl)$ (universal).\\
+$T$ & the target $L(c_{2,2n+3},0)$, the simple Virasoro VOA.\\
+$F_pT_N$ & the span of Virasoro words $L_{-j_1-2}\cdots L_{-j_\ell-2}\ltwentyninevac$ with $\ell\le p$ and weight $N$
+  (the length flag, Definition~\ref{l19:def:lengthflag}).\\
+$\ltwentyninegr_rA$ & the $r$-th layer of the corrected PBW filtration of $A$ (Chapter~\ref{ch:L28}).\\
+$\ltwentynineinv_{r,N}$ & the $\ltwentyninesl[t]$-invariant tensors of weight $N$ in $\ltwentyninegr_rA\otimes B$
+  (Definition~\ref{l29:def:invariants}).\\
+$\ltwentyninegc_n(N,r)$ & the Andrews--Gordon count (Definition~\ref{l29:def:gordon}).\\
+$\ltwentynineRn$ & $\C[T_0,T_1,\dots]/(\text{jets of }T^n)$, the arc algebra of $M(2,2n+1)$ (Definition~\ref{l29:def:Rn}).
+  Note the shift: $\ltwentynineRn$ belongs to $M(2,2n+1)$, the Drinfeld--Sokolov image of $A$, not to the target
+  $M(2,2n+3)$.\\
+$\ltwentynineS$ & the model: products of $r$ model letters in $\ltwentynineRn[u_j,v_j]$
+  (Definition~\ref{l29:def:model}).\\
+$e,f,h$; $J^a_m$ & the basis of $\ltwentyninesl$ and the current modes; in Lean the letters are indexed by
+  \lean{Fin 3} with $0=e$, $1=f$, $2=h$, and \lean{J k a m} is the mode $J^a_m$ on $V^k$.\\
+$\ltwentynineJ$ & the arc (infinite jet) functor.\\
+\bottomrule
+\end{longtable}
+\end{center}
+
+%======================================================================
+\section{The mathematics}\label{l29:sec:math}
+%======================================================================
+
+\subsection{The boundary levels and the \texorpdfstring{$(2,2n+3)$}{(2,2n+3)} series}
+
+An affine level $k$ of $\ltwentyninesl$ is \emph{admissible} when $k+2=p/p'$ with coprime integers $p\ge2$,
+$p'\ge1$. The admissible levels with the smallest possible numerator, $p=2$, are the \emph{boundary} levels
+$k=-2+2/p'$; for $p'$ odd we write $p'=2n+1$ and $k_n=-2+2/(2n+1)$. These are the levels of Chapter~\ref{ch:L20},
+where the vacuum character of $L_{k_n}(\ltwentyninesl)$ was computed and the VOA was shown to be classically free.
+Two other levels attach to $k_n$ in this chapter:
+\begin{itemize}
+\item the level $k_n+1$ of the diagonal $\ltwentyninesl$ inside $L_{k_n}\otimes L_1$, and
+\item the auxiliary level $k_U=-5-k_n$, chosen so that $(k_n+1)+k_U=-4=-2h^\vee$: the total level at which the
+  semi-infinite BRST charge of $\ltwentyninesl$ squares to zero.
+\end{itemize}
+
+\begin{example}[Level data for $n=1,2,3$]\label{l29:ex:levels}
+With $c(k)=3k/(k+2)$ the Sugawara central charge of $\ltwentyninesl$ at level $k$:
+\begin{center}\small
+\begin{tabular}{cccccccc}
+\toprule
+$n$ & $k_n$ & $k_n+1$ & $k_U$ & $c(k_n)$ & $c(k_n+1)$ & $c_{2,2n+3}$ & DS image of $A$\\
+\midrule
+1 & $-4/3$ & $-1/3$ & $-11/3$ & $-6$ & $-3/5$ & $-22/5$ & $M(2,3)$, $c=0$\\
+2 & $-8/5$ & $-3/5$ & $-17/5$ & $-12$ & $-9/7$ & $-68/7$ & $M(2,5)$, $c=-22/5$\\
+3 & $-12/7$ & $-5/7$ & $-23/7$ & $-18$ & $-5/3$ & $-46/3$ & $M(2,7)$, $c=-68/7$\\
+\bottomrule
+\end{tabular}
+\end{center}
+For $n=2$: $c(-8/5)=3(-8/5)/(2/5)=-12$, $c(-3/5)=3(-3/5)/(7/5)=-9/7$, and $-12+1+9/7=-68/7=1-3\cdot25/7$. Also
+$(k_2+1)+k_U=-3/5-17/5=-4$. In general $k_n=-4n/(2n+1)$ and $k_n+2=2/(2n+1)$, so
+$c(k_n)=3k_n(2n+1)/2=-6n$, and
+$c(k_n)+1-c(k_n+1)=1-\frac{3(2n+1)^2}{2n+3}$ (Theorem~\ref{l29:thm:charge}). The last column is the
+Drinfeld--Sokolov reduction of $A$: $H_{DS}(L_{k_n}(\ltwentyninesl))=L(c_{2,2n+1},0)$ (Arakawa), with
+$c_{\mathrm{DS}}(k)=1-6(k+1)^2/(k+2)$; it reappears in Section~\ref{l29:sec:ds}.
+\end{example}
+
+\begin{physics}
+Four-dimensional $\mathcal N=2$ superconformal theories have chiral algebras (Beem, Lemos, Liendo, Peelaers, Rastelli
+and van Rees). The Argyres--Douglas theory $(A_1,D_{2n+1})$ has flavour symmetry $SU(2)$ and chiral algebra
+$L_{k_n}(\ltwentyninesl)$; the Argyres--Douglas theory $(A_1,A_{2n})$ has no flavour symmetry and chiral algebra
+$M(2,2n+3)$. Their central charges are $c_{2d}=-12c_{4d}$. The coset of this chapter relates the two families, and
+the level $-4=-2h^\vee$ of the BRST step is the level of a gauged $SU(2)$: the coset is, physically, the gauging of
+the diagonal flavour symmetry with a compensating auxiliary sector.
+\end{physics}
+
+\subsection{The coset and its BRST form}\label{l29:sec:coset}
+
+The GKO construction says that the commutant of the diagonal $\ltwentyninesl$ in $L_k\otimes L_1$ contains the
+difference of Sugawara stress tensors $T_{\mathrm{coset}}=T_{(k)}+T_{(1)}-T_{(k+1)}$, a Virasoro field of central
+charge $c(k)+1-c(k+1)$. At admissible $k=-2+p/p'$ this coset is the minimal model $M(p,p+p')$; at $p=2$,
+$p'=2n+1$ it is $M(2,2n+3)$. The Lean development never identifies the coset VOA with the minimal model. It works
+with the \emph{relative semi-infinite BRST complex}
+\begin{equation}\label{l29:eq:brst}
+C\;=\;\bigl(A\otimes B\otimes U\bigr)\otimes\mathcal G,\qquad \text{total level }(k+1)+k_U=-4,
+\end{equation}
+where $\mathcal G$ is the $bc$-ghost system of $\ltwentyninesl$ and $U=V^{k_U}(\ltwentyninesl)$ is universal. The
+Virasoro algebra maps into $H^0(C)$ through $T_{\mathrm{coset}}$, and its kernel lies in the maximal ideal because
+the vacuum class survives; so the \emph{simple} quotient $T=L(c,0)$ is what is reached, with no simplicity statement
+about the coset needed. This is exactly the architecture of Chapter~\ref{ch:L28}; the level-generic files
+reproduce it with the numbers $-4/3$, $-11/3$, $-22/5$ replaced by the fields of a structure
+(Definition~\ref{l29:def:cosetlevels}).
+
+\subsection{What is transferred, and how}\label{l29:sec:howtransfer}
+
+Graded unitarity of a VOA $W$ with invariant form $B$, real structure $\rho$ and filtration $F$
+(Chapter~\ref{ch:L19}, Definition~\ref{l19:def:gu}) asks, weight by weight, that the layers
+$F_p\cap F_{p-1}^\perp$ be nondegenerate and that the sign-corrected Hermitian form be positive definite on each
+layer. The transfer argument of Chapter~\ref{ch:L28}, which this chapter re-runs at every level, has three parts.
+\begin{enumerate}
+\item \textbf{Hodge theory.} Positivity of the three factors $A$, $B$, $U$ gives a positive Hermitian form on each
+  finite piece of the relative complex $C$; with the Beem--Garner Kähler package (a BRST adjoint and an
+  $\mathfrak{sp}_2$-type Lefschetz structure) every cohomology class has a unique harmonic representative and the
+  form restricted to harmonic classes is positive in the graded sense. The positivity of $A$ is the hypothesis; the
+  positivity of $B=L_1$ (genuine unitarity) and of $U$ (below the critical level) are theorems.
+\item \textbf{Squeeze.} The images of Virasoro words of length $\le p$ in $H^0$ have harmonic representatives of
+  ``Kähler degree'' $\le 2p$. If one knows that the leading cohomology in Kähler degree $2r$ has dimension at most
+  $\mathrm{coeff}(N,r)$, and that $T$ has at least $\sum_{r\le p}\mathrm{coeff}(N,r)$ independent words of length
+  $\le p$ at weight $N$, then the two filtrations (length on $T$, Kähler degree on $H^0$) coincide dimensionally,
+  and the positivity of harmonic classes is exactly clause (vi) of graded unitarity for the length flag.
+\item \textbf{The dimension inputs.} (I) the leading cohomology is bounded by an \emph{affine} invariant count
+  (Koszul step); (II) the PBW lower bound is a statement about $T$ alone.
+\end{enumerate}
+At $n=1$ both dimension inputs were proved with $\mathrm{coeff}(N,r)=$ the number of partitions of $N$ into $r$
+parts differing by at least $2$ (Rogers--Ramanujan). For general $n$ the coefficient is the Andrews--Gordon count
+$\ltwentyninegc_n(N,r)$, (II) follows from the vacuum character of $M(2,2n+3)$, and (I) is the hard new input.
+
+\subsection{What changes with \texorpdfstring{$n$}{n}}\label{l29:sec:whatchanges}
+
+\begin{center}\small
+\begin{tabular}{p{0.24\textwidth}p{0.32\textwidth}p{0.34\textwidth}}
+\toprule
+ingredient & Lee--Yang ($n=1$, Chapter~\ref{ch:L28}) & general $n$ (this chapter)\\
+\midrule
+levels & literal $-4/3$, $-11/3$, $-22/5$ & fields of \lean{CosetLevels}\\
+BRST complex, coset, Hodge, Koszul & concrete files & level-generic ports, same proofs\\
+coefficient $\mathrm{coeff}(N,r)$ & parts differing by $\ge2$ & Andrews--Gordon count $\ltwentyninegc_n(N,r)$\\
+character of the target & Rogers--Ramanujan & Andrews--Gordon identity (Sec.~\ref{l29:sec:char})\\
+model of $\ltwentyninegr_rA$ & jet ring of $u^2,uv,v^2,u'v-uv'$ & same letters over $\ltwentynineRn=\C[T_j]/(T^n)_\infty$\\
+dual generators & one cyclic vector $w_r$ & a family indexed by socle words\\
+detection & level-one vacuum functional & Drinfeld--Sokolov slice map\\
+commutative algebra & none needed & jet-ideal Poincar\'e lemma, $n$-equal arrangement\\
+\bottomrule
+\end{tabular}
+\end{center}
+The new coefficient ring $\ltwentynineRn$ deserves a word. At $n=1$, $R_1=\C$ (the jets of $T^1$ are all the
+$T_j$), and the model is the jet ring of the Lee--Yang chapter. For $n\ge2$ the stress-tensor letter of the model
+carries a nilpotent ``tail'' $T_j\in\ltwentynineRn$: the model knows that $A$ reduces, under Drinfeld--Sokolov, to
+$M(2,2n+1)$, whose arc algebra is $\ltwentynineRn$ (classical freeness, Chapter~\ref{ch:L20}).
+
+%======================================================================
+\section{The level data}\label{l29:sec:levels}
+%======================================================================
+
+The whole level-generic development is parametrized by one structure that bundles the four levels and every
+arithmetic fact about them that any later proof uses. This is a design decision worth understanding: the
+Lee--Yang files of Chapter~\ref{ch:L28} were written with literal numbers ($-4/3$, $-11/3$, $-22/5$), and every
+place where a proof used arithmetic (``$-4/3+1+(-11/3)=-4$'') is now a field of the structure.
+
+\begin{definition}[Coset level data]\label{l29:def:cosetlevels}
+A \emph{coset level datum} consists of complex numbers $k_A$ (the level of the boundary factor), $k_{\mathrm{act}}$
+(the index of its current action), $k_U$ (the auxiliary level), a real number $k_U^{\ltwentynineR}$, a target central charge
+$c$, and a natural number $m$, such that: $k_{\mathrm{act}}=k_A$; $k_A+2\ne0$; $\overline{k_A}=k_A$;
+$k_U=k_U^{\ltwentynineR}$ and $k_U^{\ltwentynineR}<-2$; $k_U+2\ne0$; $k_{\mathrm{act}}+3\ne0$; $k_{\mathrm{act}}+1+k_U=-4$;
+$\frac{3k_A}{k_A+2}+1-\frac{3(k_{\mathrm{act}}+1)}{k_{\mathrm{act}}+3}=c$; and $c_{2,2m+1}=c$.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesLevels.lean}.
+\begin{leancode}
+structure CosetLevels where
+  /-- Level of the boundary affine carrier. -/
+  kA : ℂ
+  /-- Index of the boundary current action (equal to `kA`). -/
+  kAct : ℂ
+  /-- Level of the auxiliary universal factor. -/
+  kU : ℂ
+  /-- The auxiliary level as a real number. -/
+  kUr : ℝ
+  /-- Target central charge. -/
+  c : ℂ
+  /-- Index of `c` in the boundary family `c_{2,2m+1}`. -/
+  m : ℕ
+  kAct_eq : kAct = kA
+  aNoncritical : kA + 2 ≠ 0
+  aReal : (starRingEnd ℂ) kA = kA
+  kU_eq : kU = (kUr : ℂ)
+  kUr_lt : kUr < -2
+  uNoncritical : kU + 2 ≠ 0
+  diagNoncritical : kAct + 1 + 2 ≠ 0
+  /-- The total matter level cancels the ghost level `-4`. -/
+  sum : kAct + 1 + kU = -4
+  /-- Coset central charge `c(k) + c(1) - c(k+1)`. -/
+  charge : 3 * kA / (kA + 2) + 1 - 3 * (kAct + 1) / (kAct + 1 + 2) = c
+  /-- The target is the `m`th boundary minimal model. -/
+  boundary : boundaryCharge m = c
+\end{leancode}
+
+\begin{dictionary}
+\lean{structure ... where} declares a record type; each line \lean{name : type} is a field. Fields whose type is a
+proposition (\lean{kAct_eq}, \lean{aNoncritical}, \dots) are \emph{proofs} that the record must carry, so an
+inhabitant of \lean{CosetLevels} is a tuple of numbers \emph{together with} proofs of the listed identities.
+\lean{starRingEnd ℂ} is complex conjugation, so \lean{aReal} says $k_A\in\ltwentynineR$. \lean{(kUr : ℂ)} is the coercion
+$\ltwentynineR\hookrightarrow\C$. \lean{boundaryCharge m} is $c_{2,2m+1}=1-3(2m-1)^2/(2m+1)$ (Chapter~\ref{ch:L19},
+Definition~\ref{l19:def:boundarycharge}).
+
+\textbf{Why two copies of the level.} \lean{kA} is the level at which the carrier $L_{k_A}$ is built, \lean{kAct}
+the number that indexes its current action in the diagonal sum. They are provably equal (\lean{kAct_eq}). The
+duplication exists only to make the Lee--Yang instance reproduce the existing concrete objects \emph{definitionally}:
+there the carrier was built at \lean{level 1} (an expression equal to $-4/3$) and the action at the literal
+\lean{-4 / 3}. Mathematically it is one level.
+
+\textbf{Each hypothesis.} $k_A+2\ne0$, $k_U+2\ne0$, $k_{\mathrm{act}}+3\ne0$: the three Sugawara constructions
+(levels $k_A$, $k_U$, $k_A+1$) are non-critical. $k_A\in\ltwentynineR$: needed for the compact real structure on $A$.
+$k_U<-2$ real: needed for the auxiliary positivity (Theorem~\ref{l29:thm:aux}). The sum $=-4$: nilpotency of the BRST
+charge. \lean{charge}: the coset central charge is $c$. \lean{boundary}: $c$ is a boundary minimal-model charge, which
+is what selects the real structure on the target. Nothing in the record is a hidden assumption about any VOA; it is
+pure arithmetic, and it is inhabited for every $n$ (Definition~\ref{l29:def:twolevels}), so it is not vacuous.
+
+\textbf{Index.} The field \lean{m} is the index of $c$ in the family $c_{2,2m+1}$; for the $n$-th member of the series
+it is $n+1$ (Notation table).
+\end{dictionary}
+
+\begin{physics}
+A coset level datum is the list of numbers that make a gauging consistent: the gauged diagonal $SU(2)$ current
+algebra sits at level $k+1$, the auxiliary sector at $k_U$, and their sum must cancel the ghost contribution $-4$
+(the level-matching, or anomaly-cancellation, condition of a $G/G$-type BRST reduction). The charge field is the GKO
+central-charge bookkeeping $c_{\mathrm{coset}}=c_{\mathrm{UV}}-c_{\mathrm{gauged}}$.
+\end{physics}
+
+\begin{status}
+Definition. Inhabited for every $n$ (below), so no theorem quantifying over it is vacuous.
+\end{status}
+
+\begin{theorem}[The coset central charge]\label{l29:thm:charge}
+For every $n\in\N$, with $k=k_n=-2+\frac{2}{2n+1}$,
+\begin{equation*}
+\frac{3k}{k+2}+1-\frac{3(k+1)}{k+3}\;=\;c_{2,2n+3}\;=\;1-\frac{3(2n+1)^2}{2n+3}.
+\end{equation*}
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesLevels.lean}.
+\begin{leancode}
+theorem twoSeries_charge (n : ℕ) :
+    3 * level n / (level n + 2) + 1 - 3 * (level n + 1) / (level n + 1 + 2) =
+      boundaryCharge (n + 1) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{level n} is $k_n=-2+2/(2n+1)$ as a complex number (Chapter~\ref{ch:L20}, Definition~\ref{l20:def:level};
+\lean{level_eq} restates it with the denominator written out). \lean{boundaryCharge (n + 1)} is
+$c_{2,2(n+1)+1}=c_{2,2n+3}=1-3(2n+1)^2/(2n+3)$. Division in \lean{ℂ} is total (with $x/0=0$), so one must check that no
+denominator vanishes: $k_n+2=2/(2n+1)\ne0$ and $k_n+3=(2n+3)/(2n+1)\ne0$ (\lean{diag_noncritical}); hence the
+identity is the genuine rational identity. Same as the textbook statement, for every $n\in\N$ including $n=0$
+($k_0=0$, $c_{2,3}=0$: the trivial coset $L_0\otimes L_1/L_1$).
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+Put $q=2n+1$. Then $k+2=2/q$, $k=-2(q-1)/q$, $k+1=(2-q)/q$, $k+3=(q+2)/q$. So $3k/(k+2)=-3(q-1)$ and
+$3(k+1)/(k+3)=3(2-q)/(q+2)$. Hence the left side is
+$-3q+3+1-\frac{3(2-q)}{q+2}=\frac{(4-3q)(q+2)-6+3q}{q+2}=\frac{-3q^2+q+2}{q+2}$, and
+$1-\frac{3q^2}{q+2}=\frac{q+2-3q^2}{q+2}$, the same.
+\end{proof}
+
+\begin{physics}
+The GKO formula for the central charge of $(\widehat{\mathfrak{su}}(2)_k\times\widehat{\mathfrak{su}}(2)_1)/
+\widehat{\mathfrak{su}}(2)_{k+1}$, here continued to the negative fractional levels of the Argyres--Douglas chiral
+algebras. At $n=1$ it is the familiar $-6+1+3/5=-22/5$ of the Lee--Yang edge singularity.
+\end{physics}
+
+\begin{status}
+Proved, unconditional. Axioms standard (re-checked).
+\end{status}
+
+\begin{definition}[The level data of the series]\label{l29:def:twolevels}
+For $n\in\N$, \lean{boundaryFamilyLevels n} is the datum $k_A=k_{\mathrm{act}}=k_n$, $k_U=-5-k_n$,
+$k_U^{\ltwentynineR}=-3-2/(2n+1)$, $c=c_{2,2n+3}$, $m=n+1$. \lean{leeYangLevels} is the same datum at $n=1$ written with the
+literal numbers of Chapter~\ref{ch:L28}. \lean{twoSeriesLevels n} is \lean{boundaryFamilyLevels n}, except at $n=1$
+where it is \lean{leeYangLevels}.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesLevels.lean}.
+\begin{leancode}
+def boundaryFamilyLevels (n : ℕ) : CosetLevels where
+  kA := level n
+  kAct := level n
+  kU := -5 - level n
+  kUr := uLevelReal n
+  c := boundaryCharge (n + 1)
+  m := n + 1
+  kAct_eq := rfl
+  aNoncritical := level_noncritical n
+  aReal := level_real n
+  kU_eq := uLevel_cast n
+  kUr_lt := uLevelReal_lt n
+  uNoncritical := uLevel_noncritical n
+  diagNoncritical := diag_noncritical n
+  sum := by ring
+  charge := twoSeries_charge n
+  boundary := rfl
+
+def leeYangLevels : CosetLevels where
+  kA := level 1
+  kAct := -4 / 3
+  kU := -11 / 3
+  kUr := -11 / 3
+  c := LeeYang.leeYangC
+  m := 2
+  kAct_eq := level_one.symm
+  aNoncritical := level_noncritical 1
+  aReal := level_real 1
+  kU_eq := by push_cast; ring
+  kUr_lt := by norm_num
+  uNoncritical := by norm_num
+  diagNoncritical := by norm_num
+  sum := by norm_num
+  charge := by rw [level_one]; norm_num [LeeYang.leeYangC]
+  boundary := boundaryCharge_two_eq_leeYangC
+
+def twoSeriesLevels : ℕ → CosetLevels
+  | 1 => leeYangLevels
+  | n => boundaryFamilyLevels n
+
+theorem twoSeriesLevels_one : twoSeriesLevels 1 = leeYangLevels := rfl
+
+theorem twoSeriesLevels_c (n : ℕ) : (twoSeriesLevels n).c = boundaryCharge (n + 1) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{uLevelReal n} is $-3-2/(2n+1)\in\ltwentynineR$ and \lean{uLevelReal_lt} proves it is $<-2$. The proof fields are filled by
+the lemmas of the same file: e.g. \lean{sum := by ring} is the identity $k+1+(-5-k)=-4$. \lean{LeeYang.leeYangC} is
+$-22/5$. The definition of \lean{twoSeriesLevels} is by pattern matching: the first clause \lean{| 1 => ...} catches
+$n=1$, the second every other $n$. \lean{twoSeriesLevels_one} holds by \lean{rfl}, i.e.\ by unfolding definitions; and
+\lean{boundaryFamilyLevels_one_kA}, \dots, \lean{_one_m} (same file) check field by field that the two descriptions
+of $n=1$ agree as numbers. \lean{twoSeriesLevels_c} gives the target charge for every $n$. Companion lemmas give
+\lean{twoSeriesLevels_kA n = level n}, \lean{twoSeriesLevels_kU n = -3 - 2/(2n+1)} and \lean{twoSeriesLevels_m n = n + 1}.
+
+\textbf{Why the special case at $n=1$.} So that every general theorem, specialised to $n=1$, is \emph{literally}
+(definitionally) a statement about the Lee--Yang objects of Chapter~\ref{ch:L28}, with no transport lemma. This is a
+choice of convenience; the numbers are the same either way.
+\end{dictionary}
+
+\begin{physics}
+The family $n\mapsto(A_1,D_{2n+1})\to(A_1,A_{2n})$ of Argyres--Douglas pairs, with $n=1$ the pair $(A_1,D_3)=(A_1,A_3)$
+and Lee--Yang $(A_1,A_2)$.
+\end{physics}
+
+\begin{status}
+Definitions; the field lemmas are proved, unconditional. Axioms standard for \lean{twoSeriesLevels_c} (re-checked).
+\end{status}
+
+\begin{warning}[title={Index conventions, and the member $n=0$}]\label{l29:warn:index}
+Three indices coexist (Notation table). (1) Theorems stated for \lean{(n : ℕ)} with no hypothesis $1\le n$ also cover
+$n=0$: \lean{twoSeriesLevels 0} has $k_A=0$ and $c=c_{2,3}=0$. That instance is harmless (it is a statement about
+the trivial coset and the trivial VOA $L(0,0)=\C$), but it is not a member of the series. (2) The headline and the
+slice-map files use \lean{twoSeriesLevels (m + 1)} precisely to exclude it; their $m=0$ is $n=1$, Lee--Yang, and their
+target $M(2,2m+5)$ is the $n$-th member. (3) The field \lean{CosetLevels.m} is $n+1$, not $n$ and not the $m$ of the
+headline. (4) The coefficient ring $R_n$ of Section~\ref{l29:sec:model} uses the member index $n$ but describes
+$M(2,2n+1)$, one step \emph{below} the target. A reader checking a statement should translate every index to $n$
+first.
+\end{warning}
+
+%======================================================================
+\section{The objects at the two ends}\label{l29:sec:endpoints}
+%======================================================================
+
+The hypothesis and the conclusion of every theorem in this chapter are instances of the graded-unitarity predicate
+\lean{GradedUnitary B R F} of Chapter~\ref{ch:L19} (Definition~\ref{l19:def:gu}). Each instance needs an invariant
+form $B$, a real structure $R$ and a flag $F$. For the Virasoro target the predicate is pinned as
+\lean{VirGradedUnitary c R} (Definition~\ref{l19:def:virgu}). The level-generic file builds the three data for every
+level datum.
+
+\begin{definition}[The data on the boundary factor]\label{l29:def:endpoint}
+For a level datum $L$, let $A=L_{k_A}(\ltwentyninesl)$ be the simple quotient of $V^{k_A}(\ltwentyninesl)$ by its
+maximal graded ideal. Its data are: the canonical invariant form normalised by $(\ltwentyninevac|\ltwentyninevac)=1$;
+the \emph{corrected current-and-stress flag} (the PBW-type filtration of Chapter~\ref{ch:L28} in which a current mode
+$J^a_{-j}$ and a Sugawara mode $L_{-j}$ each raise the degree by one, descended to the quotient); and the compact
+conjugation (the antilinear involution fixing the compact real form $\mathfrak{su}(2)$), descended from
+$V^{k_A}$ to $A$.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesAffine.lean}.
+\begin{leancode}
+abbrev affineForm : InvariantForm (AVOA L) := simpleForm L.kA L.aNoncritical
+
+def affineFlag : GradedFlag (AVOA L) :=
+  CorrectedR.correctedAffineRQuotientFlag L.kA L.aNoncritical
+    (QuotVOA.maxGradedIdeal (universal L.kA L.aNoncritical))
+    (QuotVOA.maxGradedIdeal_isIdeal _)
+    (QuotVOA.maxGradedIdeal_isGradedIdeal _)
+
+def affineConj : ASpace L →ₛₗ[starRingEnd ℂ] ASpace L :=
+  (QuotVOA.maxGradedIdeal (universal L.kA L.aNoncritical)).mapQ
+    (QuotVOA.maxGradedIdeal (universal L.kA L.aNoncritical))
+    (affineUniversalConj L) (affineUniversalConj_maxIdeal_stable L)
+\end{leancode}
+
+\begin{dictionary}
+\lean{AVOA L} is \lean{AffineSl2GeneralRigidity.simple L.kA L.aNoncritical}, the maximal quotient
+\lean{QuotVOA.maxQuotientVOA} of the universal affine VOA (Chapter~\ref{ch:L20}, Definition~\ref{l20:def:simple});
+\lean{ASpace L} is its underlying space, the quotient of the Wakimoto-model space \lean{WakModule L.kA} by the maximal
+graded ideal. So the hypothesis is about the \emph{actual simple} VOA, not a surrogate. \lean{→ₛₗ[starRingEnd ℂ]} is a
+semilinear map for complex conjugation, i.e.\ an antilinear map; \lean{mapQ} descends a map to quotients, and
+\ltwentynineln{affineUniversalConj_maxIdeal_stable} is the proof that the conjugation preserves the maximal ideal (any
+conjugation-stable proper ideal is contained in the maximal one). The real structure \lean{affineRealStructure L}
+bundles \lean{affineConj} with the proofs that it is antilinear, respects the vertex operation, fixes the vacuum and
+the conformal vector, and squares to the identity (\lean{parity := fun _ => 1}: all states are even). The theorems
+\lean{affineForm_leeYang}, \lean{affineFlag_leeYang}, \lean{affineRealStructure_leeYang} prove by \lean{rfl} that at
+\lean{leeYangLevels} these are the objects of Chapter~\ref{ch:L28}.
+
+The hypothesis of every transfer theorem is therefore
+\begin{equation*}
+\lean{hA : GradedUnitary (affineForm L) (affineRealStructure L) (affineFlag L)},
+\end{equation*}
+graded unitarity of the actual simple $L_{k_A}(\ltwentyninesl)$ with these three data.
+\end{dictionary}
+
+\begin{physics}
+The flag is the chiral-algebra image of the four-dimensional $SU(2)_R$-charge filtration (the ``$R$-filtration'' of
+ABLR), with currents of $R$-charge one and the stress tensor of $R$-charge one. The compact conjugation is the CPT
+conjugation of the four-dimensional theory restricted to Schur operators. Graded unitarity of $L_{k_n}$ is then the
+positivity that four-dimensional unitarity of $(A_1,D_{2n+1})$ is expected to force.
+\end{physics}
+
+\begin{status}
+Definitions. The flag is the \emph{corrected} one of Chapter~\ref{ch:L28}; whether it is the physically correct
+$R$-filtration is a modelling choice inherited from there, not something this chapter re-examines.
+\end{status}
+
+\begin{theorem}[Graded unitarity of the auxiliary factor]\label{l29:thm:aux}
+For every level datum $L$, the universal affine VOA $V^{k_U}(\ltwentyninesl)$ with its canonical form, compact
+conjugation and ordinary PBW flag is graded unitary.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesAffine.lean}.
+\begin{leancode}
+abbrev auxiliaryForm : InvariantForm (UVOA L) := universalForm L.kU L.uNoncritical
+
+abbrev auxiliaryRealStructure : RealStructure (UVOA L) :=
+  compactRealStructure L.uReal L.uNoncritical
+
+abbrev auxiliaryFlag : GradedFlag (UVOA L) := ordinaryFlag L.kU L.uNoncritical
+
+theorem auxiliaryGradedUnitary :
+    GradedUnitary (auxiliaryForm L) (auxiliaryRealStructure L) (auxiliaryFlag L) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{UVOA L} is the universal $V^{k_U}(\ltwentyninesl)$ (not a quotient). The proof specialises the theorem
+\ltwentynineln{universal_gradedUnitary_belowCritical_unconditional} of the below-critical files (Chapter~\ref{ch:L19}) at the
+real level \lean{L.kUr < -2}. No hypothesis besides the level datum; and the datum's field \lean{kUr_lt} is exactly what
+is used. Same as the textbook statement.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+On each weight space of $V^k(\ltwentyninesl)$ fix the PBW basis adapted to the ordinary flag. The entries of the Gram
+matrix of the canonical form in that basis are polynomials in $k$. The below-critical files show that no leading
+principal minor (in the flag-adapted order) vanishes for real $k<-2$ (``no wall''; this is consistent with the
+irreducibility of the vacuum module there, whose Kac--Kazhdan reducibility walls lie at $k+2\in\Q_{>0}$, but the
+statement needed is the finer one about flag steps). The signs of the minors, hence the signs demanded by
+clause (vi), are therefore constant on the half-line, and they are computed at an anchor, in the regime
+$k\to-\infty$ where the form is dominated by its leading power of $k$ and each layer behaves like a free
+(Heisenberg-type) system whose sign on layer $p$ is $(-1)^p$, which is exactly the sign twist of clause (vi). The
+compact conjugation turns the bilinear form into the Hermitian one with the same diagonal on real vectors. The
+proof lives in the below-critical files (assigned to Chapter~\ref{ch:L19}); this chapter only specialises it.
+\end{proof}
+
+\begin{physics}
+At level $k_U<-2$ the vacuum module is ``unitary up to the expected signs'': it behaves like a non-compact current
+algebra. In the BRST picture it is the auxiliary sector that absorbs the anomaly of the gauged $SU(2)$; that it has
+the right positivity is what lets positivity flow from $A$ alone.
+\end{physics}
+
+\begin{status}
+Proved, unconditional (for every level datum). Axioms standard (re-checked).
+\end{status}
+
+\begin{definition}[The target real structure]\label{l29:def:target}
+For a level datum $L$, \lean{targetRealStructure L} is the partition-basis real structure on $L(c,0)$ obtained from the
+real Feigin--Fuchs parameter $\lambda$ with $1-12\lambda^2=c$ given by the boundary family (Chapter~\ref{ch:L19},
+Theorem~\ref{l19:thm:boundaryreal}).
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesAffine.lean}.
+\begin{leancode}
+def targetRealStructure : RealStructure (VirSimple.virasoroSimple L.c) :=
+  virasoroSimpleRealStructure L.lam_spec (VirGradedUnitarity.boundaryBackgroundCharge_fixed L.m)
+\end{leancode}
+
+\begin{dictionary}
+\lean{L.lam_spec} is the identity $1-12\lambda_m^2=c$ derived from the field \lean{boundary} (file
+\leanpath{TwoSeriesLevels.lean}), where $\lambda_m=$ \lean{boundaryBackgroundCharge L.m} is real; \lean{_fixed} says
+conjugation fixes it. The conclusion of every transfer theorem is
+\lean{VirGradedUnitary L.c (targetRealStructure L)}, i.e.\ \lean{GradedUnitary (Bsimp c) R (virGradedFlag c)}:
+graded unitarity of the actual simple Virasoro VOA with its canonical form and length flag. By
+Theorem~\ref{l19:thm:rhostable} every step of the length flag is stable under every real structure, and the
+reduction of Chapter~\ref{ch:L19} is insensitive to the choice of $\rho$.
+\end{dictionary}
+
+\begin{physics}
+The real structure is the CPT conjugation of the Virasoro chiral algebra in the basis of partition (Feigin--Fuchs)
+states; the boundary family is exactly the case where the background charge is real.
+\end{physics}
+
+\begin{status}
+Definition. At \lean{leeYangLevels} it is \ltwentynineln{LeeYangTransferAssembly.leeYangRealStructure} (\lean{rfl}).
+\end{status}
+
+%======================================================================
+\section{The level-generic coset chain}\label{l29:sec:chain}
+%======================================================================
+
+\subsection{The infrastructure files, described collectively}
+
+About forty files port the Lee--Yang chain of Chapter~\ref{ch:L28} to an arbitrary level datum $L$. Each is a
+re-run of a concrete file with the numbers replaced by the fields of $L$; each ends with \lean{rfl} lemmas showing
+that at \lean{leeYangLevels} it reproduces the concrete object. We list them by role and do not re-present their
+internal lemmas, which are the Lee--Yang lemmas with a different level.
+\begin{center}\small
+\begin{tabular}{p{0.38\textwidth}p{0.52\textwidth}}
+\toprule
+files & content\\
+\midrule
+\leanpath{TwoSeriesFactors} & the factors $A$, $U$; the diagonal current action on $A\otimes B\otimes U$ at level $-4$
+  (\lean{matterAction}); the semi-infinite BRST complex \lean{brstComplex L}, with nonzero vacuum class\\
+\leanpath{TwoSeriesCoset} & the coset stress tensor \lean{cosetOmega}; the coset VOA \lean{cosetVOA L} on the actual
+  diagonal commutant, central charge \lean{L.c} from the field \lean{charge}; its map into the BRST complex\\
+\leanpath{TwoSeriesImage} & \lean{virasoroToH0 L}: $V(c,0)\to H^0$, kernel inside the maximal ideal; the finite relative
+  complexes \lean{relativeWeight L n}\\
+\leanpath{TwoSeriesHodge}, \leanpath{TwoSeriesHodgeGeometry}, \leanpath{-Good}, \leanpath{-Goodness}, \leanpath{-Kahler},
+  \leanpath{-BG}, \leanpath{-GhostConj}, \leanpath{-ConjIdentity}, \leanpath{-Harmonic}, \leanpath{-Inputs} & the
+  Beem--Garner Kähler package on the actual relative complexes, its positivity from $\ltwentynineGU(A)$, the two BRST
+  conjugation identities, the harmonic-metric bridges; assembled in \lean{brstHodgeInputs} (Theorem~\ref{l29:thm:hodge})\\
+\leanpath{TwoSeriesAssembly} & the transfer theorem with two packaged inputs (Theorem~\ref{l29:thm:transfer})\\
+\leanpath{TwoSeriesKoszulGr}, \leanpath{-U}, \leanpath{-Matter}, \leanpath{-Native}, \leanpath{-Homotopy},
+  \leanpath{-Ident}, \leanpath{-Grading}, \leanpath{-Exact}, \leanpath{-Endpoint}, \leanpath{-Eval}, \leanpath{-SymA},
+  \leanpath{-Symbol}, \leanpath{-SymbolMaps}, \leanpath{-Parity}, \leanpath{-Invariants} & the symbol module
+  $\ltwentyninegr_rA$, the Koszul exactness of the leading BRST differential, the two symbol maps, the vanishing of odd
+  and negative degrees; the leading Koszul embedding (Theorem~\ref{l29:thm:koszul})\\
+\bottomrule
+\end{tabular}
+\end{center}
+(All paths are \leanpath{VOA/Examples/<name>.lean}; ``\leanpath{-X}'' abbreviates the name with the preceding prefix.)
+The definitions and theorems that a reader needs to check the headline statements are the following.
+
+\subsection{The two packaged inputs and the transfer theorem}
+
+\begin{definition}[The Hodge package]\label{l29:def:hodge}
+For a level datum $L$, a \emph{BRST/Hodge package} consists of: a Kähler geometry on the finite relative BRST
+complexes at each conformal weight (a positive form $P$ and a Kähler-type decomposition whose differential is the
+actual BRST residue); a proof that $\ltwentynineGU(A)$ and $\ltwentynineGU(U)$ make every $P$ positive definite; the
+graded-unitarity data on harmonic classes; a proof that the classes of Virasoro words of length $\le p$ lie in Kähler
+degree $\le 2p$ (generator tests); and three bridges identifying the harmonic metric on the classes of Virasoro words
+with the canonical form of $T$ (vacuum normalisation, adjointness of creation operators, reality of words).
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesAssembly.lean}.
+\begin{leancode}
+structure BRSTHodgeInputs where
+  kahler : BRSTKahlerGeometry L
+  weakGU : GradedUnitary (affineForm L) (affineRealStructure L) (affineFlag L) →
+    GradedUnitary (auxiliaryForm L) (auxiliaryRealStructure L) (auxiliaryFlag L) →
+    ∀ n, IsPosOn (kahler.geometry n).P ⊤
+  gu : BRSTGUData L kahler
+  generators : ∀ hp : (∀ n, IsPosOn (kahler.geometry n).P ⊤),
+    ClassGeneratorFiltration L kahler hp
+  vacuumNormalized : HarmonicVacuumNormalized L kahler gu
+  creationAdjoint : HarmonicCreationAdjoint L kahler gu
+  wordsReal : HarmonicWordsReal L kahler gu
+\end{leancode}
+
+\begin{dictionary}
+The seven fields are the seven named inputs of the Lee--Yang assembly of Chapter~\ref{ch:L28}, now at level $L$;
+their types are defined in \leanpath{TwoSeriesHodge.lean} and are statements about the \emph{actual} relative complexes
+\lean{relativeWeight L n} and the actual Virasoro classes, not about abstract surrogates. \lean{IsPosOn P ⊤} says
+the Hermitian form $P$ is positive definite on the whole space (\lean{⊤} is the top submodule; Chapter~\ref{ch:L19},
+Definition~\ref{l19:def:isposon}). Note that \lean{weakGU} is an \emph{implication} from the two graded-unitarity
+statements to positivity: the package does not assume positivity. The package asserts nothing about the target $T$
+(no positivity, nondegeneracy, injectivity or filtered isomorphism on $T$); all such statements are derived.
+\end{dictionary}
+
+\begin{physics}
+The package is the chiral-algebra version of the statement that gauging a unitary theory produces a unitary theory:
+the BRST cohomology of a positive complex, computed by harmonic representatives, inherits positivity. The Kähler
+($\mathfrak{sp}_2$) structure is what makes harmonic theory compatible with the extra grading that graded unitarity
+needs; it is the content of Beem and Garner's analysis of BRST cosets.
+\end{physics}
+
+\begin{status}
+Definition (a structure type). It is inhabited at every level datum from $\ltwentynineGU(A)$ alone
+(Theorem~\ref{l29:thm:hodge}).
+\end{status}
+
+\begin{definition}[The squeeze input]\label{l29:def:squeeze}
+For a level datum $L$ and a Kähler geometry $S$, a \emph{squeeze input} is a function
+$\mathrm{coeff}:\Z\times\N\to\N$ with (I) for every weight $n$ at which the form $P$ of $S$ is positive definite and every
+Kähler degree $j$, the leading cohomology in
+bidegree $(j,0)$ has dimension at most $\mathrm{coeff}(n,j/2)$ if $j\ge0$ is even, and $0$ otherwise; and (II) for every
+$n$ and $p$, $\sum_{0\le j\le 2p}(\text{that bound})\le\dim F_pT_n$.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesAssembly.lean}.
+\begin{leancode}
+def evenCoeff (a : ℤ → ℕ → ℕ) (n j : ℤ) : ℕ :=
+  if 0 ≤ j ∧ j % 2 = 0 then a n (j.toNat / 2) else 0
+
+structure SqueezeInput (S : BRSTKahlerGeometry L) where
+  /-- `coeff n r`: the expected dimension of the PBW-length-`r` layer at weight `n`. -/
+  coeff : ℤ → ℕ → ℕ
+  /-- (I) leading-cohomology / invariant-symbol upper bound. -/
+  invariantBound : ∀ n (hp : IsPosOn (S.geometry n).P ⊤) j,
+    Module.finrank ℂ ((S.model n hp).leadCohom (j, 0)) ≤ evenCoeff coeff n j
+  /-- (II) PBW lower bound for the simple target. -/
+  pbwLower : ∀ (n : ℤ) (p : ℕ),
+    (∑ j ∈ Finset.Icc 0 (2 * (p : ℤ)), evenCoeff coeff n j) ≤
+      Module.finrank ℂ ((virGradedFlag L.c).pieceIn p n)
+\end{leancode}
+
+\begin{dictionary}
+\lean{Module.finrank ℂ X} is $\dim_\C X$ (and $0$ if $X$ is infinite-dimensional; for (I) this matters only as an
+upper bound on a finite-dimensional space, since the relative complexes are finite-dimensional at each weight).
+\lean{(virGradedFlag L.c).pieceIn p n} is $F_pT_n$, the length-$\le p$ step of the length flag of $T$ at weight $n$
+(Definition~\ref{l19:def:lengthflag}). \lean{Finset.Icc 0 (2 * p)} is the integer interval $[0,2p]$. The Kähler degree
+$j$ is twice the PBW length, hence \lean{evenCoeff}. Weights are integers (\lean{ℤ}); negative weights are empty.
+\end{dictionary}
+
+\begin{physics}
+(I) bounds the number of gauge-invariant ``classical'' states in each $R$-charge sector; (II) counts the states of the
+minimal model with at most $p$ stress-tensor insertions. When the two counts agree, every state of the minimal model
+is accounted for by a positive harmonic class with the right $R$-charge, which is the physical content of graded
+unitarity.
+\end{physics}
+
+\begin{status}
+Definition. Supplied for every $n$ by Theorems~\ref{l29:thm:invariants} and \ref{l29:thm:hpbw} together with the
+invariant count of Section~\ref{l29:sec:model}.
+\end{status}
+
+\begin{theorem}[Coset transfer for any level datum]\label{l29:thm:transfer}
+Let $L$ be a level datum. If $A=L_{k_A}(\ltwentyninesl)$ is graded unitary, and a Hodge package and a squeeze input
+are given, then $L(c,0)$ is graded unitary for its partition-basis real structure. In particular, for the $n$-th
+member of the series: $\ltwentynineGU(L_{k_n})\wedge\mathrm{Hodge}\wedge\mathrm{Squeeze}\Rightarrow
+\ltwentynineGU(M(2,2n+3))$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesAssembly.lean}.
+\begin{leancode}
+theorem cosetLevels_gradedUnitary_of_affine
+    (hA : GradedUnitary (affineForm L) (affineRealStructure L) (affineFlag L))
+    (hodge : BRSTHodgeInputs L) (hsq : SqueezeInput L hodge.kahler) :
+    VirGradedUnitary L.c (targetRealStructure L) := by
+
+theorem twoSeries_gradedUnitary_of_affine (n : ℕ)
+    (hA : GradedUnitary (affineForm (twoSeriesLevels n)) (affineRealStructure (twoSeriesLevels n))
+      (affineFlag (twoSeriesLevels n)))
+    (hodge : BRSTHodgeInputs (twoSeriesLevels n))
+    (hsq : SqueezeInput (twoSeriesLevels n) hodge.kahler) :
+    VirGradedUnitary (twoSeriesLevels n).c (targetRealStructure (twoSeriesLevels n)) :=
+  cosetLevels_gradedUnitary_of_affine (twoSeriesLevels n) hA hodge hsq
+\end{leancode}
+
+\begin{dictionary}
+Full names \ltwentynineln{VOA.TwoSeries.cosetLevels_gradedUnitary_of_affine} and \ltwentynineln{VOA.TwoSeries.twoSeries_gradedUnitary_of_affine}.
+Hypotheses: \lean{hA}, graded unitarity of the actual simple $L_{k_A}$ (Definition~\ref{l29:def:endpoint}); \lean{hodge}
+and \lean{hsq}, the two packages above (the second depends on the first through its Kähler geometry). Conclusion:
+graded unitarity of the actual simple Virasoro VOA at $c=$ \lean{L.c}. The second theorem is the first at
+$L=$ \lean{twoSeriesLevels n}, with $(\lean{twoSeriesLevels n}).c=c_{2,2n+3}$ by \lean{twoSeriesLevels_c}. Same as the
+textbook statement, with the two packages as explicit hypotheses. It covers $n=0$ (warning on p.~\pageref{l29:warn:index}).
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+From \lean{hodge.weakGU} and Theorem~\ref{l29:thm:aux}, every finite relative complex carries a positive form. Fix a
+weight $n$. Let $f$ be the map sending a universal Virasoro state to its BRST class, and $g$ the projection to the simple
+quotient $T_n$. The kernel of $f$ lies in the kernel of $g$ (the vacuum class survives), so $T_n$ is a quotient of the
+image of $f$. The generator tests put the image of $F_p$ (universal words of length $\le p$) into Kähler degree
+$\le 2p$; hence $\dim F_pT_n\le\sum_{j\le 2p}\dim(\text{leading cohomology})_{(j,0)}$. Input (I) bounds the right side by
+$\sum_{r\le p}\mathrm{coeff}(n,r)$ and (II) bounds that by $\dim F_pT_n$: all inequalities are equalities (the
+\emph{squeeze}). Equality means that the length flag of $T_n$ is carried isomorphically onto the Kähler-degree flag of
+harmonic classes, layer by layer, and that odd Kähler degrees carry nothing. The metric bridges identify the canonical
+form of $T$ with the harmonic metric on these classes, and the latter is positive with the graded sign pattern. Hence
+clauses (iv) and (vi) hold at weight $n$.
+\end{proof}
+
+\begin{physics}
+The physical slogan: gauge-invariant states of a positive theory are positive, \emph{provided} one can match them one to
+one with the states of the coset; the squeeze is the counting argument that does the matching.
+\end{physics}
+
+\begin{status}
+Proved; \texttt{\#print axioms}-clean (re-checked), \textbf{conditional} on \lean{hA}, \lean{hodge}, \lean{hsq}.
+\end{status}
+
+\begin{warning}[title={The short name \texttt{twoSeries\_gradedUnitary\_of\_affine} denotes two different theorems}]\label{l29:warn:clash}
+\ltwentynineln{VOA.TwoSeries.twoSeries_gradedUnitary_of_affine} (above, in \leanpath{TwoSeriesAssembly.lean}) takes \lean{hA},
+\lean{hodge} and \lean{hsq}. \ltwentynineln{VOA.TwoSeries.SliceMap.twoSeries_gradedUnitary_of_affine} (in
+\leanpath{TwoSeriesArakawaUnconditional.lean}, Theorem~\ref{l29:thm:slicegu}) takes \lean{hA} and the jet-ideal
+Poincar\'e input \lean{JetPoincareCoreT0 (m + 1)}, and is indexed by $m$ with $n=m+1$. Inside the namespace
+\lean{VOA.TwoSeries.SliceMap} the short name resolves to the second; elsewhere in \lean{VOA.TwoSeries}, to the first.
+\emph{Neither} is the headline: the headline is \ltwentynineln{VOA.TwoSeries.JetPoincareTwo.twoSeries_gradedUnitary_of_affine_final},
+which is declared in \leanpath{TwoSeriesGenIncl.lean}, not in \leanpath{TwoSeriesJetPoincareTwo.lean} as its namespace
+suggests. These are naming defects (severity S4: documentation, not statements), not mathematical ones; always
+cite the fully qualified name.
+\end{warning}
+
+\begin{theorem}[The Hodge package exists at every level]\label{l29:thm:hodge}
+For every level datum $L$ and every proof $h_A$ of $\ltwentynineGU(A)$ there is a BRST/Hodge package. Consequently
+$\ltwentynineGU(A)\wedge\mathrm{Squeeze}\Rightarrow\ltwentynineGU(L(c,0))$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesHodgeInputs.lean}.
+\begin{leancode}
+def brstHodgeInputs
+    (hA : GradedUnitary (affineForm L) (affineRealStructure L) (affineFlag L)) :
+    BRSTHodgeInputs L where
+
+theorem twoSeries_gradedUnitary_of_affine_hodgeFree (n : ℕ)
+    (hA : GradedUnitary (affineForm (twoSeriesLevels n)) (affineRealStructure (twoSeriesLevels n))
+      (affineFlag (twoSeriesLevels n)))
+    (hsq : SqueezeInput (twoSeriesLevels n) (brstHodgeInputs (twoSeriesLevels n) hA).kahler) :
+    VirGradedUnitary (twoSeriesLevels n).c (targetRealStructure (twoSeriesLevels n)) :=
+  cosetLevels_gradedUnitary_of_affine_hodgeFree (twoSeriesLevels n) hA hsq
+\end{leancode}
+
+\begin{dictionary}
+\lean{brstHodgeInputs} is a \lean{def}: a construction of a package, with all seven fields filled by theorems
+(\lean{endpointKahler}, \lean{concreteKahler_weakGU}, \lean{sp2GUData0}, \lean{interpretedGenerators_std}, and the three
+\lean{harmonic..._proved} bridges, all in the Hodge files). The construction takes \lean{hA} as an argument because the
+ghost package uses positivity of $A$; the unitarity of $B=L_1(\ltwentyninesl)$ is the proved
+\lean{LevelOneUnitary.bUnitary}. The docstring of \lean{BRSTHodgeInputs} in \leanpath{TwoSeriesAssembly.lean} still says
+the package is ``proved so far only at Lee--Yang''; that is stale (warning on p.~\pageref{l29:warn:stale}): this \lean{def}
+provides it at every level datum.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+The Lee--Yang proof of Chapter~\ref{ch:L28} used the level only through the identities now recorded as fields of $L$
+(non-criticality, reality, the level sum $-4$). The ghost-conjugation identities
+(\lean{ghostConjRhoD_proved}, \lean{ghostConjBE_proved}) are identities in the BRST algebra in which the level enters
+through the cancellation $k+1+k_U=-4$; the harmonic bridges use only the invariance of the forms under the modes.
+Re-running each argument with symbolic levels gives the package.
+\end{proof}
+
+\begin{physics}
+That the BRST--Hodge mechanism is level-independent is expected: the ghost system and the anomaly cancellation do not
+care which $(A_1,D_{2n+1})$ theory is being gauged.
+\end{physics}
+
+\begin{status}
+Proved (construction), \texttt{\#print axioms}-clean (re-checked); the endpoint theorem is \textbf{conditional} on
+\lean{hA} and \lean{hsq}.
+\end{status}
+
+\subsection{The Koszul step: from cohomology to an affine invariant count}
+
+\begin{definition}[The affine invariant spaces]\label{l29:def:invariants}
+For $r\in\N$ and $N\in\Z$, $\ltwentynineinv_{r,N}$ is the space of tensors in $\ltwentyninegr_rA\otimes B$ of total
+conformal weight $N$ annihilated by every diagonal non-negative current mode $J^a_m\otimes1+1\otimes J^a_m$
+($a\in\{e,f,h\}$, $m\ge0$). Here $\ltwentyninegr_rA$ is the $r$-th layer of the corrected flag of $A$ with its induced
+mode action, and $B=L_1(\ltwentyninesl)$.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesKoszulInvariants.lean}.
+\begin{leancode}
+def affineInvariants (r : ℕ) (N : ℤ) : Submodule ℂ (GrA L r ⊗[ℂ] BSpace) :=
+  VOA.CyclicEval.tensorWeight (grDeg L r) VOA.CyclicEval.bWeight N ⊓ jointKer (grDiag L r)
+\end{leancode}
+
+\begin{dictionary}
+\lean{GrA L r} is $\ltwentyninegr_rA$ (file \leanpath{TwoSeriesKoszulGr.lean}); \lean{BSpace} is the space of
+$L_1(\ltwentyninesl)$; \lean{⊗[ℂ]} the tensor product over $\C$. \lean{tensorWeight ... N} is the weight-$N$ part for the
+sum of the two gradings, \lean{jointKer (grDiag L r)} the common kernel of the diagonal non-negative modes, and
+\lean{⊓} the intersection of submodules. The companion lemma \lean{mem_affineInvariants} restates membership as
+``weight $N$ and \lean{IsInv}'' (killed by all diagonal modes). Note that the definition involves only the affine
+algebra: neither the BRST complex nor $T$.
+\end{dictionary}
+
+\begin{physics}
+$\ltwentynineinv_{r,N}$ counts the classical (leading-order) gauge-invariant states of the gauged system at
+$R$-charge $r$ and weight $N$: invariance under the non-negative modes of the diagonal current algebra is the
+classical form of the BRST condition.
+\end{physics}
+
+\begin{status}
+Definition.
+\end{status}
+
+\begin{theorem}[The leading Koszul embedding]\label{l29:thm:koszul}
+For every level datum $L$, every $h_A:\ltwentynineGU(A)$ and every weight $n$ at which the modified Hermitian form $P$ of the
+Kähler geometry is positive definite (hypothesis $h_p$), the leading cohomology of the relative complex at weight $n$ and Kähler
+degree $(2r,0)$ has dimension at most $\dim\ltwentynineinv_{r,n}$. (Under $h_A$ the form is positive definite at every weight, so in the
+application $h_p$ is not an extra assumption.)
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesKoszulInvariants.lean}.
+\begin{leancode}
+theorem rank_leadCohom_le_affineInvariants (n : ℤ)
+    (hp : IsPosOn ((endpointKahler L hA).geometry n).P ⊤) (r : ℕ) :
+    Module.rank ℂ (((endpointKahler L hA).model n hp).leadCohom (2 * (r : ℤ), 0)) ≤
+      Module.rank ℂ (affineInvariants L r n) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{Module.rank} is the dimension as a cardinal (it can be infinite), so the inequality is meaningful even if
+$\ltwentynineinv_{r,n}$ were infinite-dimensional. \lean{endpointKahler L hA} is the Kähler geometry of
+Theorem~\ref{l29:thm:hodge}; \lean{hp} its positivity at weight $n$. \lean{hp} is a genuine explicit hypothesis of the Lean
+statement (the Kähler complex at weight $n$ is defined only once it is given); in every use it is discharged from \lean{hA}
+and \lean{auxiliaryGradedUnitary} through the \lean{weakGU} field of the Hodge package (Theorem~\ref{l29:thm:hodge}). Here
+\lean{L} and \lean{hA} are section variables, explicit arguments in the order \lean{(L) (hA)}. The proof is an injective linear map
+(\lean{leadKoszulEmbedding}) from the leading cohomology into the invariant space. Same as the textbook statement.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+This is the Koszul argument of Chapter~\ref{ch:L28}, re-run at level $L$. Filter the relative complex by the corrected
+PBW degree. The leading part of the BRST differential is a Koszul
+differential for the action of the non-negative diagonal modes on $\ltwentyninegr A\otimes B\otimes\ltwentyninegr U$,
+twisted by ghosts. The universal factor $\ltwentyninegr U$ is free, so the Koszul complex is exact away from ghost
+number zero and the ghost-number-zero leading cohomology injects into the invariants of $\ltwentyninegr A\otimes B$; the
+symbol maps $\pi_0,\pi_1$ make this explicit. Odd and negative Kähler degrees have no leading cohomology
+(\lean{endpoint_oddZero}, \lean{endpoint_negZero}).
+\end{proof}
+
+\begin{physics}
+The Koszul step is the statement that, at leading order, BRST cohomology is just the space of gauge invariants: the
+ghosts and the auxiliary sector cancel the gauge directions.
+\end{physics}
+
+\begin{status}
+Proved, conditional on \lean{hA} (which enters only through the Kähler geometry) and on the weightwise positivity \lean{hp}, which
+follows from \lean{hA}; \texttt{\#print axioms}-clean (re-checked).
+\end{status}
+
+\begin{theorem}[Transfer with an invariant count]\label{l29:thm:invariants}
+For every $n$: if $\ltwentynineGU(L_{k_n})$ holds and a function $\mathrm{coeff}$ satisfies
+$\dim\ltwentynineinv_{r,N}\le\mathrm{coeff}(N,r)$ for all $N,r$ and
+$\sum_{r\le p}\mathrm{coeff}(N,r)\le\dim F_pT_N$ for all $N,p$, then $M(2,2n+3)$ is graded unitary.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesKoszulInvariants.lean}.
+\begin{leancode}
+theorem twoSeries_gradedUnitary_of_affine_invariants (n : ℕ)
+    (hA : GradedUnitary (affineForm (twoSeriesLevels n)) (affineRealStructure (twoSeriesLevels n))
+      (affineFlag (twoSeriesLevels n)))
+    (coeff : ℤ → ℕ → ℕ)
+    (hinv : ∀ (N : ℤ) (r : ℕ),
+      Module.rank ℂ (affineInvariants (twoSeriesLevels n) r N) ≤ coeff N r)
+    (hpbw : ∀ (N : ℤ) (p : ℕ), ∑ r ∈ Finset.range (p + 1), coeff N r ≤
+      Module.finrank ℂ ((virGradedFlag (twoSeriesLevels n).c).pieceIn p N)) :
+    VirGradedUnitary (twoSeriesLevels n).c (targetRealStructure (twoSeriesLevels n)) :=
+\end{leancode}
+
+\begin{dictionary}
+\lean{Finset.range (p + 1)} is $\{0,\dots,p\}$. \lean{hinv} is stated with \lean{Module.rank}, so an
+infinite-dimensional invariant space makes \lean{hinv} \emph{false} (a cardinal $\ge\aleph_0$ is not $\le$ a natural
+number), never vacuously true; a \lean{_finrank} variant takes \lean{finrank} plus finite-dimensionality. The
+proof assembles \lean{squeezeInput_of_invariants} (Theorem~\ref{l29:thm:koszul} plus the parity vanishing) with
+Theorem~\ref{l29:thm:hodge}. Both remaining inputs are about separate objects: \lean{hinv} about the affine algebra,
+\lean{hpbw} about $T$.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+Set the squeeze coefficient to $\mathrm{coeff}$. Half (I): by Theorem~\ref{l29:thm:koszul} and \lean{hinv} for even
+Kähler degree, and by the parity vanishing for odd or negative degree. Half (II) is \lean{hpbw} after rewriting the sum
+over Kähler degrees $j\le2p$ as a sum over lengths $r\le p$ (\lean{sum_evenCoeff}). Apply Theorem~\ref{l29:thm:hodge}.
+\end{proof}
+
+\begin{physics}
+After this step, the transfer needs one count on each side of the coset: the classical gauge invariants of the
+$(A_1,D_{2n+1})$ side, and the states of the $(A_1,A_{2n})$ side.
+\end{physics}
+
+\begin{status}
+Proved, \texttt{\#print axioms}-clean (re-checked), \textbf{conditional} on \lean{hA}, \lean{hinv}, \lean{hpbw}.
+\end{status}
+
+%======================================================================
+\section{The vacuum characters of \texorpdfstring{$M(2,2n+3)$}{M(2,2n+3)}}\label{l29:sec:char}
+%======================================================================
+
+This section supplies the input \lean{hpbw} of Theorem~\ref{l29:thm:invariants} with the Andrews--Gordon count, for
+every $n$, and in passing proves the vacuum character of every $M(2,2n+3)$. All of it is about the Virasoro side
+only.
+
+\subsection{The Andrews--Gordon count}
+
+A Virasoro creation word $L_{-j_1-2}\cdots L_{-j_\ell-2}\ltwentyninevac$ is encoded by the list $(j_1,\dots,j_\ell)$
+of natural numbers; its \emph{energy} (conformal weight) is $\sum_i(j_i+2)$ (\lean{energyVir}), and it is
+\emph{sorted} if $j_1\ge j_2\ge\cdots$ (\lean{SortedWord}). The parts of the corresponding partition are $j_i+2\ge2$.
+
+\begin{definition}[Gordon-good words; the Andrews--Gordon count]\label{l29:def:gordon}
+A list $w=(w_0,\dots,w_{\ell-1})$ is \emph{Gordon-good of order $n$} if $w_i\ge w_{i+n}+2$ whenever both entries
+exist. The \emph{Andrews--Gordon count} $\ltwentyninegc_n(N,r)$ is the number of sorted Gordon-good words of length
+exactly $r$ and energy $N$ (and $0$ for $N<0$). Equivalently, it is the number of partitions of $N$ into exactly $r$
+parts $\ge2$ in which, writing $f_j$ for the multiplicity of the part $j$, $f_j+f_{j+1}\le n$ for every $j$.
+\end{definition}
+
+\noindent Files \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesCharacterSpanning.lean} (Gordon-good) and
+\leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesCharacterReduction.lean} (the count).
+\begin{leancode}
+def GordonGood (n : ℕ) (w : List ℕ) : Prop :=
+  ∀ i < w.length - n, w.getD (i + n) 0 + 2 ≤ w.getD i 0
+
+def tupleList {N r : ℕ} (a : Fin r → Fin (N + 1)) : List ℕ := List.ofFn fun j => (a j : ℕ)
+
+def gordonWords (n N r : ℕ) : Finset (List ℕ) :=
+  ((Finset.univ : Finset (Fin r → Fin (N + 1))).image tupleList).filter
+    (fun u => SortedWord u ∧ GordonGood n u ∧ energyVir u = N)
+
+def gordonCoeff (n : ℕ) (N : ℤ) (r : ℕ) : ℕ :=
+  if 0 ≤ N then (gordonWords n N.toNat r).card else 0
+\end{leancode}
+
+\begin{dictionary}
+\lean{w.getD i 0} is the $i$-th entry of $w$ (or $0$ if $i$ is out of range; it is never out of range here because
+$i<\ell-n$). \lean{gordonWords n N r} enumerates all functions $\{0,\dots,r-1\}\to\{0,\dots,N\}$ (\lean{Fin r → Fin (N + 1)}),
+turns each into a list, and keeps the sorted, Gordon-good lists of energy $N$; since every entry of a word of energy $N$
+is $\le N$, nothing is lost by the bound. \lean{.card} is the number of elements of the finite set. So
+\lean{gordonCoeff n N r} is exactly $\ltwentyninegc_n(N,r)$; \lean{mem_gordonWords} proves the membership
+characterisation (sorted, Gordon-good, energy $N$, length $r$).
+
+\textbf{Why the two descriptions agree.} For a sorted list, $w_i\ge w_{i+n}+2$ says that no window of $n+1$
+consecutive entries spans fewer than three consecutive values; equivalently no two adjacent values $j,j+1$ occur more
+than $n$ times in total, i.e.\ $f_j+f_{j+1}\le n$. At $n=1$ it is the Rogers--Ramanujan condition ``parts differ by at
+least $2$''.
+\end{dictionary}
+
+\begin{example}[The counts for $n=1,2,3$]\label{l29:ex:gordon}
+Summing over $r$, the first coefficients of $\sum_N\bigl(\sum_r\ltwentyninegc_n(N,r)\bigr)q^N$ are (computed by
+enumeration, and agreeing with the alternating sums of Definition~\ref{l29:def:rcq}):
+\begin{center}\small
+\begin{tabular}{c|cccccccccccccc}
+$N$ & 0&1&2&3&4&5&6&7&8&9&10&11&12&13\\ \hline
+$n=1$ (Lee--Yang) & 1&0&1&1&1&1&2&2&3&3&4&4&6&6\\
+$n=2$ ($M(2,7)$) & 1&0&1&1&2&2&3&3&5&6&8&9&13&14\\
+$n=3$ ($M(2,9)$) & 1&0&1&1&2&2&4&4&6&7&10&12&17&19\\
+\end{tabular}
+\end{center}
+By length, at $n=2$: $N=8$ has $\ltwentyninegc_2(8,1)=1$ (the word $(6)$, i.e.\ $L_{-8}\ltwentyninevac$),
+$\ltwentyninegc_2(8,2)=3$ (parts $\{6,2\},\{5,3\},\{4,4\}$) and $\ltwentyninegc_2(8,3)=1$ (parts $\{4,2,2\}$; the
+partition $\{3,3,2\}$ is excluded because $f_2+f_3=3>2$). At $n=1$ the partition $\{4,4\}$ is also excluded
+($f_4=2>1$), and indeed $\ltwentyninegc_1(8,2)=2$.
+\end{example}
+
+\begin{physics}
+The partitions with $f_j+f_{j+1}\le n$ are the ``Gordon'' or ``$(n+1)$-exclusion'' configurations: stress-tensor
+quanta behave like particles of which at most $n$ may occupy two adjacent momentum levels. This is the quasi-particle
+(fermionic) description of the $(A_1,A_{2n})$ chiral algebra, and for $n=1$ the Lee--Yang ``hard-hexagon'' exclusion.
+\end{physics}
+
+\begin{status}
+Definitions.
+\end{status}
+
+\subsection{Spanning: the upper bound}
+
+\begin{definition}[Jet relations]\label{l29:def:jetrel}
+For $c\in\C$ and $n\in\N$, $V(c,0)$ \emph{has jet relations of order $n+1$} if there is $\alpha\ne0$ such that for every
+$k\in\N$ some vector of the maximal ideal of $V(c,0)$ agrees with $\alpha\sum_{e_1+\cdots+e_{n+1}=k}
+L_{-e_1-2}\cdots L_{-e_{n+1}-2}\ltwentyninevac$ modulo words of length $\le n$ and weight $2n+2+k$.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesCharacterLeading.lean}.
+\begin{leancode}
+def jetSum : ℕ → ℕ → VirUniv c
+  | 0, k => if k = 0 then vacVec c else 0
+  | m + 1, k => ∑ p ∈ Finset.antidiagonal k, Lop c (-(p.1 : ℤ) - 2) (jetSum m p.2)
+
+def HasJetRelations (c : ℂ) (n : ℕ) : Prop :=
+  ∃ α : ℂ, α ≠ 0 ∧ ∀ k : ℕ, ∃ σ ∈ maxIdealVir c,
+    σ - α • jetSum c (n + 1) k ∈ virFil c n ((2 * n + 2 + k : ℕ) : ℤ)
+\end{leancode}
+
+\begin{dictionary}
+\lean{VirUniv c} is the universal vacuum module $V(c,0)$; \lean{Lop c j} is the mode $L_j$; \lean{vacVec c} the vacuum.
+\lean{Finset.antidiagonal k} is the set of pairs $(a,b)$ with $a+b=k$, so \lean{jetSum c m k} is the sum over
+compositions $e_1+\cdots+e_m=k$ of $L_{-e_1-2}\cdots L_{-e_m-2}\ltwentyninevac$: the weight-$(2m+k)$ coefficient of the
+normally ordered power $(T^m)$, i.e.\ the $k$-th jet of $T^m$. \lean{maxIdealVir c} is the maximal ideal, and
+\lean{virFil c n N} the span of words of length $\le n$ and weight $N$. So the definition is the textbook one.
+\end{dictionary}
+
+\begin{physics}
+The minimal model $M(2,2n+3)$ has a null vector at weight $2n+2$ whose leading term is $T^{n+1}$ (the normally ordered
+$(n+1)$-st power of the stress tensor): ``$T^{n+1}=0$ up to derivatives''. Its jets are the relations $\partial^k(T^{n+1})$.
+\end{physics}
+
+\begin{status}
+Definition.
+\end{status}
+
+\begin{theorem}[Jet relations of the series]\label{l29:thm:jetrel}
+For every $n\in\N$, $V(c_{2,2n+3},0)$ has jet relations of order $n+1$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesCharacterEndpoint.lean}.
+\begin{leancode}
+theorem twoSeries_hasJetRelations_all (n : ℕ) :
+    VOA.TwoSeriesCharacter.HasJetRelations (twoSeriesLevels n).c n := by
+\end{leancode}
+
+\begin{dictionary}
+For $n\ge1$ the relation comes from the vacuum singular vector of Benoit--Saint-Aubin type at level $2n+2$
+(\lean{bsaSource_mem_maxIdeal}), whose length-$(n+1)$ part is a nonzero multiple of $L_{-2}^{n+1}\ltwentyninevac$
+(\lean{bsaLead_ne_zero}); its divided $L_{-1}$-powers give all jets (\lean{hasJetRelations_of_singular}). For $n=0$,
+$c=0$ and $L_{-2}\ltwentyninevac$ itself lies in the maximal ideal. The charge is matched by
+\ltwentynineln{twoSeriesLevels_c_eq_bsaCharge}: $c_{2,2n+3}=$ \lean{bsaCharge (2n+2)}. No hypothesis.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+At $c=c_{2,2n+3}$ the vacuum Verma module has a singular vector at level $(2-1)(2n+3-1)=2n+2$ (Kac determinant). Its
+expansion in PBW words has leading length-$(n+1)$ term $\alpha L_{-2}^{n+1}\ltwentyninevac$, $\alpha\ne0$ (an explicit
+Benoit--Saint-Aubin formula, checked in the library). Applying $L_{-1}^k/k!$ and using $[L_{-1},L_{-j}]=(j-1)L_{-j-1}$
+produces, at length $n+1$, exactly $\alpha$ times the $k$-th jet sum, and the maximal ideal is $L_{-1}$-stable.
+\end{proof}
+
+\begin{physics}
+The null vector $\chi_{2n+2}$ of $M(2,2n+3)$ and its descendants; the leading term says the classical limit of the
+model is the arc space of $\C[T]/(T^{n+1})$.
+\end{physics}
+
+\begin{status}
+Proved, unconditional. Axioms standard (re-checked).
+\end{status}
+
+\begin{theorem}[Gordon spanning: the refined upper bound]\label{l29:thm:upper}
+If $V(c,0)$ has jet relations of order $n+1$, then for all $N\in\Z$ and $p\in\N$,
+$\dim F_pL(c,0)_N\le\sum_{r\le p}\ltwentyninegc_n(N,r)$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesCharacterReduction.lean}.
+\begin{leancode}
+theorem finrank_pieceIn_le_gordon (hJ : HasJetRelations c n) (N : ℤ) (p : ℕ) :
+    Module.finrank ℂ ((virGradedFlag c).pieceIn p N) ≤
+      ∑ r ∈ Finset.range (p + 1), gordonCoeff n N r := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{(virGradedFlag c).pieceIn p N} is $F_pL(c,0)_N$. The proof rests on \lean{goodFil_eq_gordonSpan}: under the jet
+relations, $F_pL(c,0)_N$ is the image of the span of sorted Gordon-good words of length $\le p$ and energy $N$. Then
+the dimension is at most the number of such words, which is \lean{card_gordonWordsLe} $=\sum_{r\le p}\ltwentyninegc_n(N,r)$.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+Straightening: a sorted word that is not Gordon-good contains a window $w_i,\dots,w_{i+n}$ with $w_i\le w_{i+n}+1$.
+Among all sorted words with the same length and energy, the quantity $\sum w_i^2$ is minimised by the ``flat''
+windows, and the jet relation of the appropriate $k$ expresses the flattest window's product of $n+1$ modes as minus
+the sum of the other compositions (all with larger $\sum w_i^2$ after sorting) plus shorter words plus the maximal
+ideal. Induction on $\sum w_i^2$ (\lean{sqSum_lt_of_not_perm}, \lean{defect}) rewrites every sorted word into
+Gordon-good ones of the same energy and no larger length, modulo the maximal ideal.
+\end{proof}
+
+\begin{physics}
+The null vector, used as a rewriting rule, removes all states violating the exclusion rule: at most $n$ quanta of
+$T$ in two adjacent momentum levels.
+\end{physics}
+
+\begin{status}
+Proved, \texttt{\#print axioms}-clean (re-checked), conditional on \lean{hJ} (supplied for the series by
+Theorem~\ref{l29:thm:jetrel}).
+\end{status}
+
+\subsection{The lower bound: Rocha-Caridi and Andrews--Gordon}
+
+\begin{definition}[The total lower bound; its refined form]\label{l29:def:gordonlower}
+$\mathrm{GordonLowerBound}(c,n)$: for every $N\in\N$, $\sum_{r\le N}\ltwentyninegc_n(N,r)\le\dim L(c,0)_N$.
+$\mathrm{GordonPBWLower}(c,n)$: for every $N\in\Z$, $p\in\N$, $\sum_{r\le p}\ltwentyninegc_n(N,r)\le\dim F_pL(c,0)_N$.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesCharacterReduction.lean}.
+\begin{leancode}
+def GordonLowerBound (c : ℂ) (n : ℕ) : Prop :=
+  ∀ N : ℕ, (∑ r ∈ Finset.range (N + 1), gordonCoeff n (N : ℤ) r) ≤
+    Module.finrank ℂ ((virasoroSimple c).grading (N : ℤ))
+
+def GordonPBWLower (c : ℂ) (n : ℕ) : Prop :=
+  ∀ (N : ℤ) (p : ℕ), ∑ r ∈ Finset.range (p + 1), gordonCoeff n N r ≤
+    Module.finrank ℂ ((virGradedFlag c).pieceIn p N)
+\end{leancode}
+
+\begin{dictionary}
+\lean{(virasoroSimple c).grading N} is the weight-$N$ space $L(c,0)_N$ of the simple Virasoro VOA. The range
+$r\le N$ in \lean{GordonLowerBound} loses nothing: a word of energy $N$ has length $\le N/2$. \lean{GordonPBWLower} is
+the shape of the input \lean{hpbw} of Theorem~\ref{l29:thm:invariants} with $\mathrm{coeff}=\ltwentyninegc_n$.
+\end{dictionary}
+
+\begin{physics}
+The total lower bound says that the minimal model has \emph{at least} as many states as the exclusion statistics
+allows; together with spanning it says it has exactly that many.
+\end{physics}
+
+\begin{status}
+Definitions (predicates). Both are proved for the series (Theorems~\ref{l29:thm:character} and
+\ref{l29:thm:hpbw}). The docstring of \lean{GordonLowerBound} still reads ``OPEN for general $n$ \dots\ not formalised
+here''; that is stale (warning on p.~\pageref{l29:warn:stale}).
+\end{status}
+
+\begin{theorem}[The refined lower bound is equivalent to the total one]\label{l29:thm:hpbwiff}
+If $V(c,0)$ has jet relations of order $n+1$, then $\mathrm{GordonPBWLower}(c,n)\iff\mathrm{GordonLowerBound}(c,n)$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesCharacterReduction.lean}.
+\begin{leancode}
+theorem hpbw_iff_gordonLowerBound (hJ : HasJetRelations c n) :
+    GordonPBWLower c n ↔ GordonLowerBound c n :=
+  ⟨gordonLowerBound_of_hpbw c n, hpbw_of_gordonLowerBound c n hJ⟩
+\end{leancode}
+
+\begin{dictionary}
+\lean{↔} is logical equivalence; \lean{⟨a, b⟩} pairs the two directions. Only the direction ``total $\Rightarrow$
+refined'' uses \lean{hJ}.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+($\Rightarrow$) Take $p=N$: $F_NL(c,0)_N=L(c,0)_N$. ($\Leftarrow$) By Gordon spanning (Theorem~\ref{l29:thm:upper})
+the Gordon-good words of length $\le N$ span $L(c,0)_N$; there are $\sum_r\ltwentyninegc_n(N,r)$ of them, and by the
+total lower bound this number is at most $\dim L(c,0)_N$. So they form a basis, and in particular the subfamily of
+length $\le p$ is linearly independent inside $F_pL(c,0)_N$, which gives the refined bound. This is a squeeze in the
+same spirit as Theorem~\ref{l29:thm:transfer}.
+\end{proof}
+
+\begin{physics}
+Once the total number of states is right, the exclusion-statistics basis is automatically adapted to the number of
+stress-tensor quanta.
+\end{physics}
+
+\begin{status}
+Proved, \texttt{\#print axioms}-clean (re-checked), conditional on \lean{hJ}.
+\end{status}
+
+\begin{definition}[The Rocha-Caridi coefficient]\label{l29:def:rcq}
+With $p(N)$ the number of partitions of $N$ ($p(N)=0$ for $N<0$) and $e_n(k)=k\bigl((2n+3)k+2n+1\bigr)/2$,
+\begin{equation*}
+\mathrm{rcq}_n(N)\;=\;\sum_{k\in\Z}(-1)^k\,p\bigl(N-e_n(k)\bigr),
+\end{equation*}
+a finite sum (the terms with $|k|>N$ vanish).
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesCharacterKacCount.lean}.
+\begin{leancode}
+def eeq (k : ℤ) : ℤ := k * ((2 * n + 3) * k + (2 * n + 1)) / 2
+
+def rcq (N : ℕ) : ℤ := ∑ k ∈ Ico (-(N : ℤ) - 1) ((N : ℤ) + 1), VOA.RRLower.sgn k * VOA.RRLower.pp ((N : ℤ) - eeq n k)
+\end{leancode}
+
+\begin{dictionary}
+Integer division \lean{/ 2} is exact here (\lean{two_mul_eeq}: the numerator $k((2n+3)k+2n+1)$ is always even).
+\lean{Ico a b} is $[a,b)$, so $k$ runs over $-N-1\le k\le N$, which contains every $k$ with $e_n(k)\le N$
+(\lean{abs_le_eeq}). \lean{VOA.RRLower.sgn k} is $(-1)^k$ and \lean{VOA.RRLower.pp} the partition function extended by
+$0$ to negative arguments (both from the Lee--Yang character files of Chapter~\ref{ch:L28}).
+\end{dictionary}
+
+\begin{physics}
+This is the Rocha-Caridi (Feigin--Fuchs) formula for the vacuum character of $M(2,2n+3)$:
+$\chi_0=\frac{1}{(q)_\infty}\sum_k(-1)^kq^{e_n(k)}$, the alternating sum over the embedding diagram of Verma
+submodules, here at $p=2$, $p'=2n+3$.
+\end{physics}
+
+\begin{status}
+Definition.
+\end{status}
+
+\begin{theorem}[Rocha-Caridi lower bound]\label{l29:thm:rcq}
+For every $n,N\in\N$, $\mathrm{rcq}_n(N)\le\dim L(c_{2,2n+3},0)_N$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesCharacterGramRank.lean}.
+\begin{leancode}
+theorem rcq_le_finrank (N : ℕ) :
+    rcq n N ≤ (Module.finrank ℂ ((VOA.VirSimple.virasoroSimple
+      (VOA.VirModule.bsaCharge (2 * n + 2))).grading (N : ℤ)) : ℤ) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{bsaCharge (2n+2)} is $c_{2,2n+3}$ (Theorem~\ref{l29:thm:jetrel}). The inequality is in $\Z$ (the cast \lean{: ℤ}).
+Only the lower bound is claimed here; the matching upper bound is Theorem~\ref{l29:thm:upper}.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+$\dim L(c,0)_N$ is the rank of the Shapovalov Gram matrix of $V(c,0)$ at level $N$. Its determinant (Kac) is a product
+of factors $(h-h_{r,s}(c))^{p(N-rs)}$. Deforming $c$ away from $c_{2,2n+3}$ along a line and counting the orders of
+vanishing of the Kac factors at the special point (\lean{rcq_eq_orders}, \lean{gram_shift_det_q}) bounds the corank by
+$\sum_{k\ne0}$ of the partition numbers with alternating signs; the rank is therefore at least $\mathrm{rcq}_n(N)$.
+\end{proof}
+
+\begin{physics}
+The rank of the Gram matrix is the number of physical (non-null) states; the Kac determinant counts the nulls.
+\end{physics}
+
+\begin{status}
+Proved, unconditional. \texttt{\#print axioms}-clean as part of Theorem~\ref{l29:thm:character} (re-checked there).
+\end{status}
+
+\begin{theorem}[The Andrews--Gordon identity, coefficientwise]\label{l29:thm:ag}
+For all $n,N\in\N$, $\sum_{r\le N}\ltwentyninegc_n(N,r)=\mathrm{rcq}_n(N)$. Equivalently,
+\begin{equation*}
+\sum_{\substack{\lambda\vdash N,\ \text{parts}\ge2\\ f_j+f_{j+1}\le n}}1\;=\;\sum_{k\in\Z}(-1)^k\,p\bigl(N-e_n(k)\bigr).
+\end{equation*}
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesCharacterAGIdentity.lean}.
+\begin{leancode}
+theorem gordon_sum_eq_rcq (N : ℕ) :
+    ((∑ r ∈ Finset.range (N + 1), gordonCoeff n (N : ℤ) r : ℕ) : ℤ) = KacGram.rcq n N := by
+\end{leancode}
+
+\begin{dictionary}
+Full name \ltwentynineln{VOA.TwoSeriesCharacter.AG.gordon_sum_eq_rcq}. The left side is cast from \lean{ℕ} to \lean{ℤ}. This is
+the identity for one coefficient $N$ at a time, for every $N$ and $n$; it is equivalent to the identity of power
+series $\sum_N(\cdots)q^N=\prod_{j\not\equiv0,\pm1\ (\mathrm{mod}\ 2n+3)}(1-q^j)^{-1}$ by Jacobi's triple product,
+but the library states and uses only the coefficientwise form against the alternating sum.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+Andrews' proof. Let $G_i(x;q)=\sum_{m,N}\#\{\text{partitions with }m\text{ parts},\ \text{weight }N,\ f_j+f_{j+1}\le n,
+\ f_1\le i-1\}\,x^mq^N$ (the shift by one between ``parts $\ge1$ with $f_1\le i-1$'' and ``parts $\ge2$'' is the
+bookkeeping of \lean{gC}). Removing the smallest parts gives Andrews' recursion
+$G_{a+1}-G_a=x^aq^aG_{n+1-a}(xq)$ (\lean{GG_rec}). On the other side, Andrews' explicit series
+$H_i=F\cdot A_i$, with $A_i$ an alternating sum of the Rocha-Caridi shape and $F=1/(xq)_\infty$, satisfies the same
+recursion and boundary values (\lean{HH_rec}). The recursion determines the series uniquely (induction on the
+$q$-degree, \lean{GG_eq_HH}). Setting $x=1$, $i=1$ and reading off the $q^N$ coefficient gives the identity; the
+evaluation at $x=1$ is done on a ring of ``admissible'' two-variable series where it is a ring homomorphism
+(\lean{Adm}, \lean{ev}).
+\end{proof}
+
+\begin{physics}
+The Andrews--Gordon identity is the statement that the quasi-particle (fermionic) and the Feigin--Fuchs (bosonic)
+descriptions of the $(A_1,A_{2n})$ vacuum character agree. For $n=1$ it is the first Rogers--Ramanujan identity.
+\end{physics}
+
+\begin{status}
+Proved, unconditional. Axioms standard (re-checked).
+\end{status}
+
+\begin{theorem}[The vacuum character of $M(2,2n+3)$]\label{l29:thm:character}
+For all $n,N\in\N$,
+\begin{equation*}
+\dim L(c_{2,2n+3},0)_N\;=\;\sum_{r\le N}\ltwentyninegc_n(N,r)\;=\;\mathrm{rcq}_n(N).
+\end{equation*}
+In particular the total lower bound $\mathrm{GordonLowerBound}(c_{2,2n+3},n)$ holds.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesCharacterAGIdentity.lean}.
+\begin{leancode}
+theorem gordonLowerBound_twoSeries (n : ℕ) :
+    VOA.TwoSeriesCharacter.GordonLowerBound (twoSeriesLevels n).c n := by
+
+theorem twoSeries_character (n N : ℕ) :
+    Module.finrank ℂ ((VOA.VirSimple.virasoroSimple (twoSeriesLevels n).c).grading (N : ℤ)) =
+      ∑ r ∈ Finset.range (N + 1), VOA.TwoSeriesCharacter.gordonCoeff n (N : ℤ) r ∧
+    ((∑ r ∈ Finset.range (N + 1), VOA.TwoSeriesCharacter.gordonCoeff n (N : ℤ) r : ℕ) : ℤ) =
+      VOA.TwoSeriesCharacter.KacGram.rcq n N :=
+\end{leancode}
+
+\begin{dictionary}
+\lean{∧} is ``and''. The first conjunct is an equality of natural numbers, the second of integers. Both are about the
+\emph{actual simple} Virasoro VOA at $c=c_{2,2n+3}$, for every $n$ including $n=0$ (where $c=0$, every count vanishes
+for $N>0$ and $L(0,0)=\C$). No hypothesis.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+$\le$: Gordon spanning (Theorem~\ref{l29:thm:upper}) with $p=N$ and the jet relations (Theorem~\ref{l29:thm:jetrel}).
+$\ge$: the Andrews--Gordon identity (Theorem~\ref{l29:thm:ag}) turns the count into $\mathrm{rcq}_n(N)$, which is at
+most $\dim L(c,0)_N$ by Theorem~\ref{l29:thm:rcq}. The second conjunct is Theorem~\ref{l29:thm:ag}.
+\end{proof}
+
+\begin{physics}
+The Schur index of the $(A_1,A_{2n})$ Argyres--Douglas theory, $\prod_{j\not\equiv0,\pm1\,(2n+3)}(1-q^j)^{-1}$, is the
+vacuum character of $M(2,2n+3)$: this theorem proves its coefficients one by one from the definition of the simple
+Virasoro VOA.
+\end{physics}
+
+\begin{status}
+Proved, \textbf{unconditional}. Axioms standard (re-checked, both declarations).
+\end{status}
+
+\begin{theorem}[The refined PBW character of $M(2,2n+3)$]\label{l29:thm:hpbw}
+For every $n\in\N$, $N\in\Z$, $p\in\N$: $\sum_{r\le p}\ltwentyninegc_n(N,r)\le\dim F_pL(c_{2,2n+3},0)_N$. Combined with
+Theorem~\ref{l29:thm:upper}, the inequality is an equality.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesCharacterAGIdentity.lean}.
+\begin{leancode}
+theorem twoSeries_hpbw (n : ℕ) :
+    ∀ (N : ℤ) (p : ℕ), ∑ r ∈ Finset.range (p + 1), VOA.TwoSeriesCharacter.gordonCoeff n N r ≤
+      Module.finrank ℂ ((virGradedFlag (twoSeriesLevels n).c).pieceIn p N) :=
+\end{leancode}
+
+\begin{dictionary}
+Exactly the hypothesis \lean{hpbw} of Theorem~\ref{l29:thm:invariants} at $\mathrm{coeff}=\ltwentyninegc_n$
+(\lean{gordonCoeff n}, read as a function of $(N,r)$). Proved from Theorems~\ref{l29:thm:hpbwiff},
+\ref{l29:thm:jetrel} and \ref{l29:thm:character}.
+\end{dictionary}
+
+\begin{physics}
+The number of states of $M(2,2n+3)$ with at most $p$ stress-tensor insertions is exactly the number of exclusion
+configurations with at most $p$ quanta.
+\end{physics}
+
+\begin{status}
+Proved, unconditional. Axioms standard (re-checked).
+\end{status}
+
+\begin{theorem}[Transfer with the PBW input discharged]\label{l29:thm:gordonfinal}
+For every $n$: if $L_{k_n}(\ltwentyninesl)$ is graded unitary and $\dim\ltwentynineinv_{r,N}\le\ltwentyninegc_n(N,r)$
+for all $N,r$, then $M(2,2n+3)$ is graded unitary.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesCharacterAGIdentity.lean}.
+\noindent File \leanpath{VOA/Examples/TwoSeriesCharacterGU.lean}.
+\begin{leancode}
+theorem twoSeries_gradedUnitary_of_affine_invariants_gordon_final (n : ℕ)
+    (hA : GradedUnitary (affineForm (twoSeriesLevels n)) (affineRealStructure (twoSeriesLevels n))
+      (affineFlag (twoSeriesLevels n)))
+    (hinv : ∀ (N : ℤ) (r : ℕ), Module.rank ℂ (affineInvariants (twoSeriesLevels n) r N) ≤
+      VOA.TwoSeriesCharacter.gordonCoeff n N r) :
+    VirGradedUnitary (twoSeriesLevels n).c (targetRealStructure (twoSeriesLevels n)) :=
+\end{leancode}
+
+\begin{dictionary}
+Theorem~\ref{l29:thm:invariants} with $\mathrm{coeff}=\ltwentyninegc_n$ and \lean{hpbw} discharged by
+Theorem~\ref{l29:thm:hpbw}. The remaining hypothesis \lean{hinv} is the \emph{affine invariant count}: it compares a
+space built from $L_{k_n}(\ltwentyninesl)$ and $L_1(\ltwentyninesl)$ with a count of partitions attached to
+$M(2,2n+3)$. At $n=1$ it was proved in Chapter~\ref{ch:L28}; for $n\ge2$ it is discharged in
+Section~\ref{l29:sec:model}.
+\end{dictionary}
+
+\begin{physics}
+``The classical gauge invariants of $(A_1,D_{2n+1})\otimes(\text{free }SU(2)_1)$ are no more numerous than the states
+of $(A_1,A_{2n})$.''
+\end{physics}
+
+\begin{status}
+Proved, \texttt{\#print axioms}-clean (re-checked), \textbf{conditional} on \lean{hA} and \lean{hinv}.
+\end{status}
+
+%======================================================================
+\section{The affine invariant count: socle words and the jet model}\label{l29:sec:model}
+%======================================================================
+
+The remaining input is the affine invariant count
+\begin{equation}\label{l29:eq:hinv}
+\dim\ltwentynineinv_{r,N}\;\le\;\ltwentyninegc_n(N,r)\qquad\text{for all }N\in\Z,\ r\in\N.
+\end{equation}
+This section explains how it is reduced, with proofs, to statements about one commutative algebra; the last two of
+those statements are proved in Sections~\ref{l29:sec:ds} and \ref{l29:sec:arr}.
+
+\subsection{Why the Lee--Yang argument does not generalize}
+
+\begin{warning}[title={Dead end: one cyclic dual vector}]\label{l29:warn:cyclic}
+At $n=1$ (Chapter~\ref{ch:L28}) the bound \eqref{l29:eq:hinv} was proved by evaluating an invariant tensor
+$\Phi\in(\ltwentyninegr_rA\otimes B)^{\ltwentyninesl[t]}$ against \emph{one} cyclic dual vector $w_r$ of
+$\ltwentyninegr_rA$, landing in a sector of $B=L_1$ of charge $2r$ whose dimension is the Rogers--Ramanujan count. For
+$n\ge2$ this cannot work. At $n=2$, $r=2$, $N=4$ there is a nonzero invariant tensor (the count is
+$\ltwentyninegc_2(4,2)=1$; exact linear algebra over $\mathbb F_p$ confirms the invariant), but its evaluation against
+$w_2$ would land in the $L_1$ sector of charge $4$ and energy $N-r=2$, which is zero because that sector starts at
+energy $4$. So the restricted dual of $\ltwentyninegr_rA$ is \emph{not} cyclic over $\ltwentyninesl[t]$ for $n\ge2$:
+several dual generators are needed, one for each $\ltwentyninesl[t]$-singular vector (the \emph{socle}). (Source:
+the docstring of \leanpath{TwoSeriesInvariantsSocle.lean} and the project's numerical records; the
+computation is numerical evidence, not a proof, and it is not used by any theorem.)
+\end{warning}
+
+\subsection{Socle words}
+
+\begin{definition}[Socle words, their degree, and the socle-word count]\label{l29:def:socle}
+A \emph{socle word} of size $r$ is a word $x=(x_1,\dots,x_{N_1})$ in the letters $\{0,\dots,n-1\}$ with
+$\sum_j(x_j+1)=r$ (a letter $t$ is a cluster of size $t+1$). With $c_t(x)=\#\{j:x_j\ge t\}$ and $\mathrm{inv}(x)$ the
+number of inversions, its degree is $\deg x=N_1+\sum_{t=1}^{n-1}(c_t^2+c_t)+\mathrm{inv}(x)$. The \emph{socle-word
+count} is
+\begin{equation*}
+\mathrm{swc}_n(N,r)=\sum_{x}\#\bigl\{\text{partitions of }N-N_1^2-\deg x\text{ into at most }N_1\text{ parts}\bigr\},
+\end{equation*}
+the sum over socle words of size $r$ (of any length $N_1\le r$).
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesInvariantsSocle.lean}.
+\begin{leancode}
+def SocleWord (n r N₁ : ℕ) : Type := {x : Fin N₁ → Fin n // ∑ j, ((x j : ℕ) + 1) = r}
+
+def clusterAtLeast {n N₁ : ℕ} (x : Fin N₁ → Fin n) (t : ℕ) : ℕ :=
+  (Finset.univ.filter fun j => t ≤ (x j : ℕ)).card
+
+def inversions {n N₁ : ℕ} (x : Fin N₁ → Fin n) : ℕ :=
+  (Finset.univ.filter fun p : Fin N₁ × Fin N₁ => p.1 < p.2 ∧ x p.2 < x p.1).card
+
+def socleDegree {n N₁ : ℕ} (x : Fin N₁ → Fin n) : ℕ :=
+  N₁ + ∑ t ∈ Finset.Ico 1 n, (clusterAtLeast x t ^ 2 + clusterAtLeast x t) + inversions x
+
+abbrev SocleIndex (n r : ℕ) : Type := Σ N₁ : Fin (r + 1), SocleWord n r N₁
+
+def socleWordCount (n : ℕ) (N : ℤ) (r : ℕ) : ℕ :=
+  ∑ i : SocleIndex n r, LeeYangTransferAssembly.gapTwoCoefficient
+    (N - (socleDegree i.2.1 : ℤ) + ((i.1 : ℕ) : ℤ)) (i.1 : ℕ)
+\end{leancode}
+
+\begin{dictionary}
+\lean{{x : X // P x}} is the subtype of elements satisfying $P$. \lean{Σ N₁ : Fin (r + 1), ...} is a dependent pair:
+a length $N_1\le r$ together with a word of that length. \lean{gapTwoCoefficient M s} is the Lee--Yang coefficient of
+Chapter~\ref{ch:L28}, the number of partitions of $M-s(s+1)$ into at most $s$ parts (equivalently the coefficient of
+$q^M$ in $q^{s(s+1)}/(q)_s$); with $M=N-\deg x+N_1$ and $s=N_1$ this is the number of partitions of $N-\deg x-N_1^2$
+into at most $N_1$ parts. The definitions match the textbook ones.
+\end{dictionary}
+
+\begin{example}[$n=2$, $r=2$]\label{l29:ex:socle}
+The socle words of size $2$ in the letters $\{0,1\}$ are $(0,0)$ (two clusters of size one: $N_1=2$, $c_1=0$, no
+inversion, degree $2$) and $(1)$ (one cluster of size two: $N_1=1$, $c_1=1$, degree $1+2=3$). So
+$\mathrm{swc}_2(N,2)=\#\{\lambda\vdash N-6,\ \le2\text{ parts}\}+\#\{\lambda\vdash N-4,\ \le1\text{ part}\}$. At $N=4$:
+$0+1=1$; at $N=6$: $1+1=2$; at $N=8$: $2+1=3$. These are $\ltwentyninegc_2(N,2)$ from Example~\ref{l29:ex:gordon}.
+\end{example}
+
+\begin{physics}
+A socle word labels a lowest-weight $\ltwentyninesl[t]$-singular state of the classical limit of $L_{k_n}$: $N_1$
+clusters of currents, a cluster of size $t+1$ being a bound state of $t+1$ current quanta. The degree is the energy of
+the bound-state configuration; the partitions count its descendants. This is the bound-state (``fermionic'') picture of
+the $(A_1,D_{2n+1})$ chiral algebra.
+\end{physics}
+
+\begin{status}
+Definitions.
+\end{status}
+
+\begin{theorem}[The socle-word count is the Andrews--Gordon count]\label{l29:thm:swc}
+For all $n,N,r\in\N$, $\mathrm{swc}_n(N,r)=\ltwentyninegc_n(N,r)$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesSocleCountGordon.lean}.
+\begin{leancode}
+theorem socleWordCount_eq (n N r : ℕ) :
+    socleWordCount n (N : ℤ) r = gordonCoeff n (N : ℤ) r := by
+\end{leancode}
+
+\begin{dictionary}
+Full name \ltwentynineln{VOA.SocleCount.socleWordCount_eq}. An equality of natural numbers for all $n,N,r$. The corollary
+\lean{socleWordGordon n} is the inequality form $\mathrm{swc}_n\le\ltwentyninegc_n$ (for all integer $N$), which the
+docstring of \lean{SocleWordGordon} in \leanpath{TwoSeriesInvariantsSocle.lean} still calls ``OPEN''
+(warning on p.~\pageref{l29:warn:stale}).
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+$\#\{\text{partitions of }M\text{ into}\le s\text{ parts}\}$ is the $q^M$ coefficient of $1/(q)_s$. For a fixed
+content (the multiset of letters, i.e.\ the cluster profile), MacMahon's theorem says that the inversion generating
+function of the words with that content is the $q$-multinomial coefficient. Summing, the socle-word count becomes the
+fixed-$r$ coefficient of the Andrews (fermionic) multisum
+$\sum q^{N_1^2+\cdots+N_{n-1}^2+N_1+\cdots+N_{n-1}}/\prod(q)_{N_i-N_{i+1}}$ with an extra variable marking $r$
+(\lean{sum_words_eq}, \lean{coeff_F_one_eq}). That multisum satisfies Andrews' recursion and therefore equals the
+Gordon series of Theorem~\ref{l29:thm:ag} (\lean{F_eq_GG}).
+\end{proof}
+
+\begin{physics}
+The bound-state count of the affine side equals the exclusion-statistics count of the Virasoro side: the two
+quasi-particle descriptions of the coset agree.
+\end{physics}
+
+\begin{status}
+Proved, unconditional. Axioms standard (re-checked).
+\end{status}
+
+\begin{definition}[Socle data of a mode module]\label{l29:def:soclespectrum}
+Let $M$ be a $\C$-vector space with operators $\rho(a,j)$ ($a\in\{e,f,h\}$, $j\ge0$) and a grading $M=\bigoplus_dM_d$.
+The \emph{lowest-weight singular vectors} of degree $d$ and charge $c$ are the $s\in M_d$ with $\rho(a,j+1)s=0$ for all
+$a,j$, $f_0s=0$ and $h_0s=cs$. Given labels $i$ with degrees $\deg i$ and cluster numbers $\mathrm{cl}(i)$, and a
+``Cartan image'' $\mathrm{Cart}(N)\subseteq M$, \emph{socle data} means: (rank) the singular space of degree $d$ and
+charge $c$ has dimension at most the number of labels with $\deg i=d$ and $c=-2\,\mathrm{cl}(i)$; (transversality) a
+singular vector of charge $-2N$ and degree $d$ that lies in $\mathrm{Cart}(N)+\sum_{d'\ne d}M_{d'}+\operatorname{im}(h_0+2N)$
+is zero.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesSocleDualCore.lean}.
+\begin{leancode}
+def sing (d : ℤ) (c : ℂ) : Submodule ℂ M where
+  carrier := {s | s ∈ Mdeg d ∧ (∀ a j, ρ (a, j + 1) s = 0) ∧ ρ (1, 0) s = 0 ∧
+    ρ (2, 0) s = c • s}
+
+def avoid (d : ℤ) (N : ℕ) : Submodule ℂ M :=
+  Cart N ⊔ (⨆ (d' : ℤ) (_ : d' ≠ d), Mdeg d') ⊔
+    LinearMap.range (ρ (2, 0) + (2 * (N : ℂ)) • (1 : Module.End ℂ M))
+
+structure SocleSpectrum : Prop where
+  rank_le : ∀ (d : ℤ) (c : ℂ), finrank ℂ (sing ρ Mdeg d c) ≤
+    Nat.card {i : ι // (deg i : ℤ) = d ∧ c = -(2 * (cl i : ℂ))}
+  transverse : ∀ (d : ℤ) (N : ℕ),
+    Disjoint (sing ρ Mdeg d (-(2 * (N : ℂ)))) (avoid ρ Mdeg Cart d N)
+\end{leancode}
+
+\begin{dictionary}
+\lean{ρ (a, j)} with \lean{a : Fin 3} ($0=e$, $1=f$, $2=h$) is the mode $J^a_j$; so \lean{ρ (1, 0)} is $f_0$ and
+\lean{ρ (2, 0)} is $h_0$. \lean{⊔} is the sum of submodules and \lean{⨆} an indexed sum; \lean{LinearMap.range} the
+image. \lean{Disjoint U W} for submodules means $U\cap W=0$. \lean{Nat.card} of the subtype of labels is the number of
+labels with the stated degree and charge. The proof fields of the omitted part of the definition (closure under
+addition and scalars) are routine. Same as the textbook definition. (The source writes \lean{sing} with its proof
+fields; the quotation omits them, which is why the block stops at \lean{carrier}.)
+\end{dictionary}
+
+\begin{physics}
+The socle is the space of ``primary'' classical states for the current algebra: those annihilated by all positive
+modes and by $f_0$. The rank clause says the bound-state labels exhaust them; transversality says they are detected by
+their charge and energy.
+\end{physics}
+
+\begin{status}
+Definitions.
+\end{status}
+
+\begin{theorem}[Transfer from the socle data of $\ltwentyninegr_rA$]\label{l29:thm:soclespectrum}
+For every $n$: if $L_{k_n}(\ltwentyninesl)$ is graded unitary and $\ltwentyninegr_rA$ (for every $r$, with the socle
+words of size $r$ as labels and the Cartan image $I_N\cdot\ltwentyninegr_rA$) has socle data, then $M(2,2n+3)$ is
+graded unitary.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesSocleDual.lean}.
+\begin{leancode}
+structure TwoSeriesSocleSpectrum (n : ℕ) : Prop where
+  rank_le : ∀ (r : ℕ) (d : ℤ) (c : ℂ),
+    finrank ℂ (sing (grRho (twoSeriesLevels n) r) (grDeg (twoSeriesLevels n) r) d c) ≤
+      Nat.card {i : SocleIndex n r //
+        (socleDegree i.2.1 : ℤ) = d ∧ c = -(2 * (((i.1 : ℕ) : ℕ) : ℂ))}
+  transverse : ∀ (r : ℕ) (d : ℤ) (N : ℕ),
+    Disjoint (sing (grRho (twoSeriesLevels n) r) (grDeg (twoSeriesLevels n) r) d
+        (-(2 * (N : ℂ))))
+      (avoid (grRho (twoSeriesLevels n) r) (grDeg (twoSeriesLevels n) r)
+        (grCart (twoSeriesLevels n) r) d N)
+
+theorem twoSeries_gradedUnitary_of_socleSpectrum (n : ℕ)
+    (hA : GradedUnitary (affineForm (twoSeriesLevels n)) (affineRealStructure (twoSeriesLevels n))
+      (affineFlag (twoSeriesLevels n)))
+    (S : TwoSeriesSocleSpectrum n) :
+    VirGradedUnitary (twoSeriesLevels n).c (targetRealStructure (twoSeriesLevels n)) :=
+  twoSeries_gradedUnitary_of_socleInput n hA S.toSocleInput
+\end{leancode}
+
+\begin{dictionary}
+\lean{grRho L r} and \lean{grDeg L r} are the induced mode action and the conformal grading on $\ltwentyninegr_rA$;
+\lean{grCart L r N} is the image of the Cartan ideal $I_N$ (polynomials in the Cartan modes $h_{i+1}$ acting through
+$H_{i+1}\mapsto-J^h_{i+1}$). \lean{TwoSeriesSocleSpectrum n} is socle data (Definition~\ref{l29:def:soclespectrum})
+of the actual $\ltwentyninegr_rA$ for every $r$. Its docstring still calls it ``OPEN''; it is now derivable for every
+$n\ge1$ from the results of this and the next two sections, though no declaration states it as a standalone theorem
+(warning on p.~\pageref{l29:warn:stale}).
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+From the socle data one constructs, by duality, a family of functionals on $\ltwentyninegr_rA$, one per socle word,
+that is \emph{jointly cyclic}: their translates by mode words separate points (\lean{exists_socleDuals}). Each is
+supported in one degree, has charge $2N_1$ and is killed by the Cartan ideal $I_{N_1}$. Evaluating an invariant tensor
+against them maps $\ltwentynineinv_{r,N}$ injectively into a sum of $L_1$ sectors; each sector's Cartan-annihilated
+dual is bounded by the Heisenberg separation of $L_1$ (\lean{levelOneHeisenbergSeparation}), giving
+$\dim\ltwentynineinv_{r,N}\le\mathrm{swc}_n(N,r)$ (\ltwentynineln{twoSeries_affineInvariants_rank_le_socleWordCount}). By
+Theorem~\ref{l29:thm:swc} this is $\ltwentyninegc_n(N,r)$, and Theorem~\ref{l29:thm:gordonfinal} applies.
+\end{proof}
+
+\begin{physics}
+Each bound-state primary of the $(A_1,D_{2n+1})$ classical limit pairs with a lattice sector of the free $SU(2)_1$
+boson; the invariant states are counted sector by sector.
+\end{physics}
+
+\begin{status}
+Proved, \texttt{\#print axioms}-clean, \textbf{conditional} on \lean{hA} and \lean{S}. (The intermediate
+\ltwentynineln{twoSeries_gradedUnitary_of_socleInput}, re-checked: axioms standard.)
+\end{status}
+
+\subsection{The jet model}
+
+The socle data of $\ltwentyninegr_rA$ are hard to compute directly. The route taken embeds $\ltwentyninegr_rA$ into an
+explicit commutative model, proves the socle data for the model, and pulls them back along the injective intertwiner
+(\lean{SocleSpectrum.comap}).
+
+\begin{definition}[The coefficient ring $\ltwentynineRn$]\label{l29:def:Rn}
+Let $\C[T]=\C[T_0,T_1,\dots]$ and $T(s)=\sum_jT_js^j$. The \emph{jet ideal} of $T^n$ is the ideal generated by the
+coefficients of $T(s)^n$, and $\ltwentynineRn=\C[T]/(\text{jet ideal of }T^n)$, with $t_j$ the image of $T_j$.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesStrictEndpoint.lean}.
+\noindent File \leanpath{VOA/Examples/TwoSeriesJetRing.lean}.
+\begin{leancode}
+abbrev TPoly : Type := MvPolynomial ℕ ℂ
+
+def tSer : PowerSeries TPoly := PowerSeries.mk X
+
+def jetIdealT (n : ℕ) : Ideal TPoly :=
+  Ideal.span (Set.range fun j => PowerSeries.coeff j (tSer ^ n))
+
+abbrev Rn (n : ℕ) : Type := TPoly ⧸ jetIdealT n
+
+def tn (n : ℕ) (j : ℕ) : Rn n := Ideal.Quotient.mk (jetIdealT n) (X j)
+\end{leancode}
+
+\begin{dictionary}
+\lean{MvPolynomial ℕ ℂ} is the polynomial ring in countably many variables $X_0,X_1,\dots$; \lean{PowerSeries.mk X}
+is the series $\sum_jX_js^j$ with coefficients in that ring; \lean{PowerSeries.coeff j} extracts the coefficient of
+$s^j$. \lean{Ideal.span (Set.range f)} is the ideal generated by the values of $f$; \lean{⧸} is the quotient ring.
+At $n=1$ the jet ideal contains every $T_j$, so $R_1=\C$ (\lean{jetIdealT_one}).
+\end{dictionary}
+
+\begin{example}[$n=2$]
+The jet ideal of $T^2$ is generated by $T_0^2$, $2T_0T_1$, $2T_0T_2+T_1^2$, $2T_0T_3+2T_1T_2$, \dots. So in $R_2$:
+$t_0^2=0$, $t_0t_1=0$, $t_1^2=-2t_0t_2$, and so on. $R_2$ is the arc algebra of the double point $\C[T]/(T^2)$, which by
+classical freeness (Chapter~\ref{ch:L20}) is $\ltwentyninegr^{\mathrm{Li}}$ of $M(2,5)$, the Lee--Yang model.
+\end{example}
+
+\begin{physics}
+$\ltwentynineRn$ is the ring of classical (arc-space) configurations of the stress tensor of $M(2,2n+1)$: $T^n=0$ with
+all its derivatives. It enters because $L_{k_n}$ reduces, under Drinfeld--Sokolov, to $M(2,2n+1)$, and the model
+remembers the stress tensor of the reduction.
+\end{physics}
+
+\begin{status}
+Definitions.
+\end{status}
+
+\begin{definition}[The model $\ltwentynineS$]\label{l29:def:model}
+Let $\ltwentynineRn[u_j,v_j]$ be the polynomial ring in two sequences of jet variables over $\ltwentynineRn$. Each
+generator letter of the corrected PBW basis of $V^k(\ltwentyninesl)$ gets a \emph{model symbol}: a current letter
+$(J^a,j)$ gets the $j$-th jet of $u^2$, $uv$ or $v^2$ (the Adamovi\'c symbols of Chapter~\ref{ch:L28}); the Sugawara
+letter $(L,j)$ gets the $j$-th jet of $-(u'v-uv')$ plus $t_j$. A word's symbol is the product of its letters' symbols.
+The model $\ltwentynineS$ is the span of the symbols of words of length $r$; its degree-$d$ piece is the span of symbols
+of words of length $r$ and weight $d$.
+\end{definition}
+
+\noindent Files \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesStrictRing.lean} and
+\leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesStrictWords.lean}.
+\begin{leancode}
+abbrev MPoly : Type := MvPolynomial (Fin 2 × ℕ) R
+
+def mletter : Generator × ℕ → MPoly R
+  | (.current a, n) => ι R (letterSym (.current a, n))
+  | (.sugawara, n) => ι R (letterSym (.sugawara, n)) + MvPolynomial.C (t n)
+
+def mword (w : List (Generator × ℕ)) : MPoly R := (w.map (mletter R t)).prod
+
+def modelImage (r : ℕ) : Submodule ℂ (MPoly R) :=
+  Submodule.span ℂ {Q | ∃ w : List (Generator × ℕ), w.length = r ∧ mword R t w = Q}
+
+def modelDeg (r : ℕ) (d : ℤ) : Submodule ℂ (MPoly R) :=
+  Submodule.span ℂ
+    {Q | ∃ w : List (Generator × ℕ), w.length = r ∧ wordWt w = d ∧ mword R t w = Q}
+\end{leancode}
+
+\begin{dictionary}
+The variables of \lean{MPoly R} are indexed by \lean{Fin 2 × ℕ}: $(0,j)\mapsto u_j$, $(1,j)\mapsto v_j$. \lean{ι R}
+includes $\C[u_j,v_j]$ into $R[u_j,v_j]$; \lean{letterSym} is the Adamovi\'c letter symbol (Chapter~\ref{ch:L28});
+\lean{MvPolynomial.C (t n)} is the constant $t_n\in R$. \lean{Generator} has the constructors \lean{.current a}
+($a$ in \lean{Fin 3}) and \lean{.sugawara}. \lean{wordWt w} is the conformal weight of the word. The ring $R$ and
+$t:\N\to R$ are parameters; the model of the series is $R=\ltwentynineRn$, $t=t_\bullet$. So
+$\ltwentynineS=$ \lean{modelImage (Rn n) (tn n) r}.
+\end{dictionary}
+
+\begin{physics}
+This is a free-field (Wakimoto-type) realisation of the classical limit of $L_{k_n}$: the currents are bilinears in a
+pair of symplectic bosons $(u,v)$, and the stress tensor is the bilinear $-(u'v-uv')$ corrected by the stress tensor
+$T$ of the Drinfeld--Sokolov reduction. The nilpotency $T^n=0$ is what distinguishes level $k_n$.
+\end{physics}
+
+\begin{status}
+Definitions.
+\end{status}
+
+\begin{definition}[Detection and the model character bound]\label{l29:def:detect}
+\emph{Detection} at member $n$: for every $r$, if a pair (state $y$, symbol $Q$) lies in the span of the pairs
+(state of a length-$r$ word, its model symbol), modulo (lower PBW length)$\times0$, and $y$ lies in the maximal ideal of
+$V^{k_n}(\ltwentyninesl)$, then $Q$ evaluated at the base point $(u,v)=(0,1)$ vanishes in $\ltwentynineRn$.
+\emph{Model character bound}: for every $N$, the $q^N$ coefficient of the Arakawa--Dai product
+$\bigl((q^{2n+1};q^{2n+1})_\infty/(q;q)_\infty\bigr)^3$ is at most $\sum_{r\le N}\dim(\ltwentynineS)_N$.
+\end{definition}
+
+\noindent Files \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesStrictWords.lean},
+\leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesStrictDescent.lean} and
+\leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesStrictEndpoint.lean}.
+\begin{leancode}
+def symModM (r : ℕ) : Submodule ℂ (WakModule k × MPoly R) :=
+  symPairsM R t k hk r ⊔ (lowerP k hk r).prod ⊥
+
+def Detects (I : Submodule ℂ (WakModule k)) (r : ℕ) : Prop :=
+  ∀ (y : WakModule k) (Q : MPoly R), (y, Q) ∈ symModM R t k hk r → y ∈ I → evR R Q = 0
+
+def ModelDetects : Prop :=
+  ∀ r, Detects R t L.kA L.aNoncritical (ImaxL L) r
+
+def TwoSeriesModelDetects (n : ℕ) : Prop :=
+  ModelDetects (twoSeriesLevels n) (Rn n) (tn n)
+
+def TwoSeriesModelCharacter (n : ℕ) : Prop :=
+  ∀ N : ℕ, PowerSeries.coeff N (AffineSl2BoundaryCharacter.product n) ≤
+    ∑ r ∈ Finset.range (N + 1), (Module.finrank ℂ (modelDeg (Rn n) (tn n) r (N : ℤ)) : ℚ)
+\end{leancode}
+
+\begin{dictionary}
+\lean{symPairsM} is the span of the pairs (\lean{correctedWordState} of a length-$r$ word, \lean{mword} of it), and
+\lean{(lowerP k hk r).prod ⊥} is $F_{r-1}\times0$ (lower PBW length, zero symbol). \lean{ImaxL L} is the maximal ideal of
+$V^{k_A}$. \lean{evR R} is evaluation at $(u_j,v_j)=$ the base point $(0,1)$ (only $v_0=1$, all other variables $0$),
+with values in $R$. \lean{AffineSl2BoundaryCharacter.product n} is the Arakawa--Dai product of Chapter~\ref{ch:L20},
+Definition~\ref{l20:def:character}, which equals the vacuum character of $L_{k_n}$ for $n\ge1$
+(\lean{character_eq_product}). The inequality is in $\Q$.
+
+\textbf{Why detection is the right condition.} Detection is equivalent to the model symbol map being well defined on
+the simple quotient $A$ (\lean{symbol_eq_zero_of_detect}; conversely trivially). The base-point evaluation suffices
+because the model is cyclic under the modes (\lean{m_cyclic}).
+\end{dictionary}
+
+\begin{physics}
+Detection says that every null state of $L_{k_n}$ has zero classical symbol after restriction to the Kostant slice
+$f+\C e$; i.e.\ the nulls of the affine theory are invisible on the slice where the Drinfeld--Sokolov reduction lives.
+The character bound says that the model has at least as many states as $L_{k_n}$.
+\end{physics}
+
+\begin{status}
+Definitions (predicates). Detection is proved for every $n\ge1$ in Section~\ref{l29:sec:ds}
+(Theorem~\ref{l29:thm:detect}); its $T$-free part was proved earlier at every non-integral level
+(\lean{evR_aug_eq_zero}); at $n=1$ it is \lean{twoSeriesModelDetects_one} (re-checked). The character bound is
+Theorem~\ref{l29:thm:modelchar}.
+\end{status}
+
+\begin{definition}[Strict model maps; model socle data]\label{l29:def:strict}
+A \emph{strict model map} at $(n,r)$ is an injective linear map $\ltwentyninegr_rA\to\ltwentynineS$ that intertwines the
+mode actions and preserves the conformal degree. \emph{Model socle data} at $(n,r)$ are socle data
+(Definition~\ref{l29:def:soclespectrum}) for $\ltwentynineS$ with its own mode action and Cartan image, labelled by the
+socle words of size $r$.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesStrictEndpoint.lean}.
+\begin{leancode}
+structure StrictModelMap (n r : ℕ) where
+  f : GrA (twoSeriesLevels n) r →ₗ[ℂ] modelImage (Rn n) (tn n) r
+  injective : Function.Injective f
+  intertwine : ∀ k, f ∘ₗ grRho (twoSeriesLevels n) r k = mImgRho (Rn n) (tn n) r k ∘ₗ f
+  degree : ∀ d, ∀ m ∈ grDeg (twoSeriesLevels n) r d, f m ∈ mImgDeg (Rn n) (tn n) r d
+
+def ModelSocleSpectrum (n r : ℕ) : Prop :=
+  SocleSpectrum (mImgRho (Rn n) (tn n) r) (mImgDeg (Rn n) (tn n) r)
+    (fun i : SocleIndex n r => socleDegree i.2.1) (fun i => (i.1 : ℕ))
+    (modelCart (mImgRho (Rn n) (tn n) r) (mImg_cartanCommute (Rn n) (tn n) r))
+\end{leancode}
+
+\begin{dictionary}
+\lean{→ₗ[ℂ]} is a $\C$-linear map, \lean{∘ₗ} composition of linear maps. \lean{mImgRho} is the mode action on the model
+(the jet derivations of $u,v$ together with the derivation of $\ltwentynineRn$), \lean{mImgDeg} the degree pieces,
+\lean{modelCart} the image of the Cartan ideal on the model. The labels are the socle words of
+Definition~\ref{l29:def:socle}: degree \lean{socleDegree}, cluster number $N_1$.
+\end{dictionary}
+
+\begin{physics}
+A strict model map is a faithful free-field realisation of the classical limit, compatible with the current algebra
+and with energy. Model socle data are the bound-state spectrum computed in the free-field model.
+\end{physics}
+
+\begin{status}
+Definitions.
+\end{status}
+
+\begin{theorem}[Transfer from the strict model]\label{l29:thm:strict}
+For every $n\ge1$: graded unitarity of $L_{k_n}$, detection, the model character bound and model socle data for every
+$r$ imply graded unitarity of $M(2,2n+3)$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesStrictEndpoint.lean}.
+\begin{leancode}
+theorem twoSeries_gradedUnitary_of_strictModel (n : ℕ) (hn : 1 ≤ n)
+    (hA : GradedUnitary (affineForm (twoSeriesLevels n)) (affineRealStructure (twoSeriesLevels n))
+      (affineFlag (twoSeriesLevels n)))
+    (det : TwoSeriesModelDetects n) (chi : TwoSeriesModelCharacter n)
+    (spec : ∀ r, ModelSocleSpectrum n r) :
+    VirGradedUnitary (twoSeriesLevels n).c (targetRealStructure (twoSeriesLevels n)) :=
+  twoSeries_gradedUnitary_of_socleModels n hA
+    fun r => twoSeriesSocleModel_of_strict hn det chi r (spec r)
+\end{leancode}
+
+\begin{dictionary}
+Full name \ltwentynineln{VOA.TwoSeries.StrictModel.twoSeries_gradedUnitary_of_strictModel}. The hypothesis $1\le n$ is needed
+because the equality of the Arakawa--Dai product with the character is proved only for $n\ge1$ (\lean{character_eq_product}; at
+$n=0$ both sides are $1$, but no declaration states it). The strict
+maps are \lean{twoSeriesStrictModel hn det chi r}: the model symbol is well defined on $A$ by detection, and injective
+by a dimension squeeze against the character bound (\ltwentynineln{ModelSymbol.injective_of_bound}).
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+Detection makes the symbol map $\sigma:\ltwentyninegr_rA\to\ltwentynineS$ well defined; it is surjective onto
+$\ltwentynineS$ by construction (both are spanned by words). Summed over $r$, $\dim A_N=\sum_r\dim\ltwentyninegr_rA_N$
+(\lean{sum_finrank_grDegL}) is the character of $A$, which by the model character bound is at most
+$\sum_r\dim(\ltwentynineS)_N$; a surjection between spaces whose dimensions go the other way is an isomorphism, so each
+$\sigma$ is injective. Socle data pull back along injective intertwiners (\lean{SocleSpectrum.comap}); apply
+Theorem~\ref{l29:thm:soclespectrum}.
+\end{proof}
+
+\begin{physics}
+If the free-field model is faithful (no affine null state survives in it) and big enough (at least as many states), it
+is exact, and its bound-state spectrum is that of $L_{k_n}$.
+\end{physics}
+
+\begin{status}
+Proved, \texttt{\#print axioms}-clean (re-checked), \textbf{conditional} on \lean{hA}, \lean{det}, \lean{chi},
+\lean{spec}.
+\end{status}
+
+\subsection{The model character: the Bailey chain}\label{l29:sec:modelchar}
+
+\begin{definition}[The Chern--Tran--Wakhare fermionic series]\label{l29:def:ferm}
+Let $\beta^{(0)}_N=\delta_{N,0}$ and $\beta^{(n+1)}_N=\sum_{k\le N}q^{k^2+k}\beta^{(n)}_k/(q)_{N-k}$ (the Bailey chain
+started at the unit sequence). The \emph{fermionic series} is
+\begin{equation*}
+\mathrm{ferm}_n(q)\;=\;\sum_{N\ge0}q^N\Bigl(\sum_{k\le 2N}\begin{bmatrix}2N\\k\end{bmatrix}_q\Bigr)\beta^{(n)}_N .
+\end{equation*}
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesModelCharFermionic.lean}.
+\begin{leancode}
+def bet : ℕ → ℕ → PowerSeries ℚ
+  | 0, N => if N = 0 then 1 else 0
+  | n + 1, N => ∑ k ∈ Finset.range (N + 1),
+      PowerSeries.X ^ (k * k + k) * reciprocalQFactorial (N - k) * bet n k
+
+def fermTerm (n N : ℕ) : PowerSeries ℚ :=
+  PowerSeries.X ^ N * (∑ k ∈ Finset.range (2 * N + 1), gaussian PowerSeries.X (2 * N) k) *
+    bet n N
+
+def fermSeries (n : ℕ) : PowerSeries ℚ := VOA.LocallyFinitePowerSeriesSum.sum (fermTerm n)
+\end{leancode}
+
+\begin{dictionary}
+\lean{PowerSeries.X} is $q$; \lean{reciprocalQFactorial m} is $1/(q)_m$; \lean{gaussian PowerSeries.X M k} the Gaussian
+binomial $\left[\begin{smallmatrix}M\\k\end{smallmatrix}\right]_q$. \ltwentynineln{LocallyFinitePowerSeriesSum.sum} is the sum of
+a sequence of power series in which each coefficient receives finitely many contributions (here \lean{fermTerm n N}
+starts at $q^N$), Chapter~\ref{ch:L20}, Definition~\ref{l20:def:lfsum}. Unwinding the recursion,
+$\beta^{(n)}_N=\sum_{N\ge N_1\ge\cdots\ge N_{n-1}\ge0}q^{\sum_s(N_s^2+N_s)}/\prod_s(q)_{N_s-N_{s+1}}$ (with the
+conventions $N_0=N$, $N_n=0$, the sums and products over $1\le s\le n-1$ and $0\le s\le n-1$ respectively), a Gordon
+colour-profile sum.
+\end{dictionary}
+
+\begin{physics}
+A quasi-particle formula for the vacuum character of $L_{k_n}(\ltwentyninesl)$: $N$ counts current quasi-particles,
+$\sum_k[2N,k]_q$ their $\ltwentyninesl$ weights, and $\beta^{(n)}$ the clustering into bound states of size $\le n$.
+\end{physics}
+
+\begin{status}
+Definition. At $n=1$ it is the level-one jet series of Chapter~\ref{ch:L28} (\lean{fermSeries_one}).
+\end{status}
+
+\begin{theorem}[The fermionic series is the product; the model character bound]\label{l29:thm:modelchar}
+For every $n\in\N$, $\mathrm{ferm}_n=\bigl((q^{2n+1};q^{2n+1})_\infty/(q;q)_\infty\bigr)^3$. For every $n\ge1$ the
+model character bound holds.
+\end{theorem}
+
+\noindent Files \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesModelCharFermionic.lean} and
+\leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesModelCharEndpoint.lean}.
+\begin{leancode}
+theorem fermSeries_eq_product (n : ℕ) :
+    fermSeries n = AffineSl2BoundaryCharacter.product n := by
+
+theorem twoSeriesModelCharacter_all (n : ℕ) (hn : 1 ≤ n) : TwoSeriesModelCharacter n := by
+  intro N
+  rw [← fermSeries_eq_product n]
+  exact fermSeries_le_model hn N
+\end{leancode}
+
+\begin{dictionary}
+Full names \ltwentynineln{VOA.TwoSeries.ModelChar.fermSeries_eq_product} and \ltwentynineln{VOA.TwoSeries.ModelChar.twoSeriesModelCharacter_all}.
+The first is an equality of power series over $\Q$ (all coefficients), for every $n$. The second rewrites the product
+as the fermionic series and applies the lower bound \lean{fermSeries_le_model}: the $q^N$ coefficient of the fermionic
+series is at most $\sum_{r\le N}\dim(\ltwentynineS)_N$. No hypothesis beyond $n\ge1$.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+\emph{Product.} Multiply by $(q;q)_\infty^3$. A terminating $q$-binomial identity
+$\sum_m[M,m]_q(-1)^mq^{\binom{M-m}{2}}(x;q)_m=q^{\binom M2}x^M$ (\lean{newton_sum}) shows, by induction on $n$, that
+the Bailey transform of $\beta^{(n)}$ is a pure power $q^{nj(j+1)+\binom j2}$ (\lean{cTr_eq}). Combined with a moment
+identity for $(q)_\infty^3\sum_Nq^N\sum_k[2N,k]_q(\cdots)$ and Jacobi's identity
+$(q)_\infty^3=\sum_j(-1)^j(2j+1)q^{j(j+1)/2}$, this gives $(q;q)_\infty^3\,\mathrm{ferm}_n=(q^{2n+1};q^{2n+1})_\infty^3$
+(\lean{euler_cube_mul_fermSeries}). \emph{Lower bound.} For each Gordon colour profile one writes down explicit
+elements of $\ltwentynineS$ (block covariants $T^cG$ times symmetrised Feigin--Stoyanovsky functions) and functionals
+that are triangular against them (\lean{fFS}, \lean{gFS}, \lean{LamG}); triangularity proves linear independence, and
+the number of these elements in weight $N$ is the $q^N$ coefficient of the fermionic series
+(\lean{fermSeries_le_model}).
+\end{proof}
+
+\begin{physics}
+The vacuum character of the $(A_1,D_{2n+1})$ chiral algebra has the quasi-particle form of Chern, Tran and Wakhare and
+the product form of Kac--Wakimoto/Arakawa--Dai; the theorem identifies the two and shows the free-field model is
+big enough to carry all of it.
+\end{physics}
+
+\begin{status}
+Proved, \textbf{unconditional} (the second for $n\ge1$). Axioms standard (re-checked, both).
+\end{status}
+
+\begin{theorem}[Transfer with the character bound discharged]\label{l29:thm:strictdet}
+For every $n\ge1$: $\ltwentynineGU(L_{k_n})$, detection and model socle data imply $\ltwentynineGU(M(2,2n+3))$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesModelCharEndpoint.lean}.
+\begin{leancode}
+theorem twoSeries_gradedUnitary_of_strictModel_det (n : ℕ) (hn : 1 ≤ n)
+    (hA : GradedUnitary (affineForm (twoSeriesLevels n)) (affineRealStructure (twoSeriesLevels n))
+      (affineFlag (twoSeriesLevels n)))
+    (det : TwoSeriesModelDetects n) (spec : ∀ r, ModelSocleSpectrum n r) :
+    VirGradedUnitary (twoSeriesLevels n).c (targetRealStructure (twoSeriesLevels n)) :=
+  twoSeries_gradedUnitary_of_strictModel n hn hA det (twoSeriesModelCharacter_all n hn) spec
+\end{leancode}
+
+\begin{dictionary}
+Theorem~\ref{l29:thm:strict} with \lean{chi} supplied by Theorem~\ref{l29:thm:modelchar}. Full name
+\ltwentynineln{VOA.TwoSeries.ModelChar.twoSeries_gradedUnitary_of_strictModel_det}.
+\end{dictionary}
+
+\begin{physics}
+What is left: the nulls are invisible on the slice (detection), and the bound-state spectrum of the free-field model
+is the expected one (socle data).
+\end{physics}
+
+\begin{status}
+Proved, \texttt{\#print axioms}-clean (re-checked), \textbf{conditional} on \lean{hA}, \lean{det}, \lean{spec}.
+\end{status}
+
+\subsection{The model socle data, and the jet-ideal Poincar\'e lemma}\label{l29:sec:poincare}
+
+The model socle data have two halves. \textbf{Transversality} is proved outright for every coefficient ring with a
+scaling automorphism (\lean{model_transverse}, re-checked: axioms standard): the functional ``coefficient of $v_0^{2N}$''
+kills $\operatorname{im}(h_0+2N)$ and the Cartan image, separates degrees through the scaling $t_j\mapsto2^{j+1}t_j$, and
+is injective on singular vectors of charge $-2N$, which all have the form $\tau\,v_0^{2N}$. The \textbf{rank} half is
+reduced, through a chain of files, to a statement about $\C[T]$ alone:
+\begin{enumerate}
+\item A singular vector of degree $d$ and charge $-q$ in $\ltwentynineS$ is $\tau\,v_0^{q}$ with $\tau$ in the
+  \emph{membership space} $\{\tau\in\ltwentynineRn:\tau v_0^q\in(\ltwentynineS)_d\}$, injectively; odd $q$ give nothing
+  (\leanpath{TwoSeriesModelSocleEndpoint}).
+\item The membership space for $N$ clusters lies in the image of $T$-polynomials of degree $r-N$ and weight $d-r$, and the
+  cases $N\ge r$ are immediate (\leanpath{TwoSeriesMembershipLine}).
+\item \emph{Box count} (proved for every $n,r$: \lean{boxCount_all}, re-checked): the polynomials in $T_0,\dots,T_{N-1}$
+  of degree $r-N$ and weight $d-r$ have image in $\ltwentynineRn$ of dimension at most the socle-word count. The proof
+  is a fusion-product recursion for symmetric polynomials (\leanpath{TwoSeriesBoxFusion}).
+\item \emph{Box inclusion}: the membership space lies in the span of monomials in $T_0,\dots,T_{N-1}$ (the ``box''). It is
+  proved directly in the slots with $N\le1$, with $T$-degree $\le n+1$, and with weight below $2N+k$; the remaining
+  slots are exactly the jet-ideal Poincar\'e lemma below (\leanpath{TwoSeriesHighReduce}, \leanpath{TwoSeriesHighEndpoint},
+  \leanpath{TwoSeriesHighDegSucc}, \leanpath{TwoSeriesPoincareZero}).
+\end{enumerate}
+
+\begin{definition}[$T$-monomial spans; the box]\label{l29:def:box}
+For a ring $R$ with elements $t_j$: $\mathrm{tMon}(k,e)$ is the span of the products $t_{m_1}\cdots t_{m_k}$ with
+$\sum_i(m_i+1)=e$; $\mathrm{box}(N,k,e)$ is the span of those products with every $m_i<N$.
+\end{definition}
+
+\noindent Files \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesMembershipLine.lean} and
+\leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesMembershipEndpoint.lean}.
+\begin{leancode}
+def tMonW (t : ℕ → R) (k : ℕ) (e : ℤ) : Submodule ℂ R :=
+  Submodule.span ℂ
+    {x | ∃ l : List ℕ, l.length = k ∧ (((l.map fun m => m + 1).sum : ℕ) : ℤ) = e ∧
+      (l.map t).prod = x}
+
+def boxW (t : ℕ → R) (N k : ℕ) (e : ℤ) : Submodule ℂ R :=
+  Submodule.span ℂ {x | ∃ l : List ℕ, l.length = k ∧ (((l.map fun m => m + 1).sum : ℕ) : ℤ) = e ∧
+    (∀ m ∈ l, m < N) ∧ (l.map t).prod = x}
+\end{leancode}
+
+\begin{dictionary}
+A list $l=(m_1,\dots,m_k)$ encodes the monomial $t_{m_1}\cdots t_{m_k}$; its weight is $\sum(m_i+1)$ (the jet $T_m$ has
+weight $m+1$ in these files). \lean{R} is \lean{TPoly} (with $t=X$) or \lean{Rn n} (with $t=t_\bullet$).
+\end{dictionary}
+
+\begin{physics}
+The box is the space of classical stress-tensor configurations that use only the first $N$ Fourier modes; the Poincar\'e
+lemma says a configuration whose high-mode derivatives are null is, up to nulls, of this low-mode form.
+\end{physics}
+
+\begin{status}
+Definitions.
+\end{status}
+
+\begin{definition}[The jet-ideal Poincar\'e lemma, and its core slots]\label{l29:def:poincare}
+$\mathrm{JP}_n(N,k,E)$: every $F\in\C[T]$ of degree $k$ and weight $E$ (a combination of monomials
+$T_{m_1}\cdots T_{m_k}$ with $\sum(m_i+1)=E$) such that $\partial F/\partial T_M$ lies in the jet ideal of $T^n$ for every
+$M\ge N$ is, modulo the jet ideal, in $\mathrm{box}(N,k,E)$. The \emph{core} $\mathrm{JPCore}_n$ is $\mathrm{JP}_n(N,k,E)$
+for all $N\ge2$, $k\ge n+2$, $2N+k\le E$ and $2N+2k<E+n+2$.
+\end{definition}
+
+\noindent Files \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesHighJet.lean} and
+\leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesPoincareZero.lean}.
+\begin{leancode}
+def JetPoincare (n N k E : ℕ) : Prop :=
+  ∀ F ∈ tMonW TPoly MvPolynomial.X k (E : ℤ), (∀ M, N ≤ M → pderiv M F ∈ jetIdealT n) →
+    Ideal.Quotient.mk (jetIdealT n) F ∈ boxW (tn n) N k (E : ℤ)
+
+def JetPoincareCoreT0 (n : ℕ) : Prop :=
+  ∀ N k E : ℕ, 2 ≤ N → n + 2 ≤ k → 2 * N + k ≤ E → 2 * N + 2 * k < E + n + 2 →
+    JetPoincare n N k E
+\end{leancode}
+
+\begin{dictionary}
+\lean{pderiv M F} is $\partial F/\partial T_M$; \lean{Ideal.Quotient.mk} the projection $\C[T]\to\ltwentynineRn$.
+\lean{JetPoincare} lives in the namespace \ltwentynineln{VOA.TwoSeries.StrictModel.HighJet}, \lean{JetPoincareCoreT0} in
+\ltwentynineln{VOA.TwoSeries.StrictModel.PoincareZero}. Our $\mathrm{JPCore}_n$ is \lean{JetPoincareCoreT0 n}; the library also
+has a predicate \lean{JetPoincareCore n} (\leanpath{TwoSeriesHighDegSucc.lean}) without the last constraint, a different and
+stronger statement, converted by \lean{jetPoincareCore_of_T0}. The slots outside the core are proved: $N=0$ (Euler identity,
+\lean{jetPoincare_zero}), $N=1$ (\lean{jetPoincare_one}), $E<2N+k$ (\lean{jetPoincare_of_wt_lt}: no monomial has two
+indices $\ge N$), $k=n+1$ (\lean{jetPoincare_degSucc}, by an explicit primitive), and $E+n+2\le2N+2k$
+(\lean{jetPoincare_of_T0}: every monomial with two high indices contains $T_0^n=(T^n)_0$). The box inclusions with
+$T$-degree $k\le n$ never use the lemma; they are proved through a separate ``test ring''
+(\lean{boxInclusion_low}, \lean{boxInclusion_degN}). This is why the core starts at $k\ge n+2$ and $N\ge2$.
+\end{dictionary}
+
+\begin{physics}
+A ``Poincar\'e lemma'' for the arc space of the fat point $T^n=0$: a classical configuration that is closed in the high
+directions is exact up to the constraints. It is the classical statement that the null-vector constraints of
+$M(2,2n+1)$ do not generate unexpected bound states.
+\end{physics}
+
+\begin{status}
+Definitions (predicates). $\mathrm{JPCore}_n$ is proved for every $n\ge1$ (Theorem~\ref{l29:thm:poincarecore}).
+\end{status}
+
+\begin{theorem}[Transfer from detection and the Poincar\'e core]\label{l29:thm:strictpoincare}
+For every $n\ge1$: $\ltwentynineGU(L_{k_n})$, detection and $\mathrm{JPCore}_n$ imply $\ltwentynineGU(M(2,2n+3))$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesPoincareZero.lean}.
+\begin{leancode}
+theorem twoSeries_gradedUnitary_of_strictModel_jetPoincareCoreT0 (n : ℕ) (hn : 1 ≤ n)
+    (hA : GradedUnitary (affineForm (twoSeriesLevels n)) (affineRealStructure (twoSeriesLevels n))
+      (affineFlag (twoSeriesLevels n)))
+    (det : TwoSeriesModelDetects n) (h : JetPoincareCoreT0 n) :
+    VirGradedUnitarity.VirGradedUnitary (twoSeriesLevels n).c
+      (targetRealStructure (twoSeriesLevels n)) :=
+  twoSeries_gradedUnitary_of_strictModel_jetPoincareCore n hn hA det (jetPoincareCore_of_T0 h)
+\end{leancode}
+
+\begin{dictionary}
+Full name \ltwentynineln{VOA.TwoSeries.StrictModel.twoSeries_gradedUnitary_of_strictModel_jetPoincareCoreT0}. The model socle
+data are assembled from transversality, box count, and box inclusion (proved slots plus \lean{h}); the character bound
+from Theorem~\ref{l29:thm:modelchar}.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+Box inclusion in every slot follows from the proved slots and $\mathrm{JPCore}_n$: given a membership element $\tau$,
+lift it to $F\in\C[T]$; the model relations show that $\partial F/\partial T_M$ is in the jet ideal for $M\ge N$
+(\leanpath{TwoSeriesHighReduce}); the Poincar\'e lemma puts $\tau$ in the box. With the box count this bounds the
+membership spaces by the socle-word count, which is the rank half; transversality is proved. Apply
+Theorem~\ref{l29:thm:strictdet}.
+\end{proof}
+
+\begin{physics}
+Everything about the free-field model reduces to one classical fact about the arc space of $T^n=0$, plus the
+statement that the affine nulls are invisible on the slice.
+\end{physics}
+
+\begin{status}
+Proved, \texttt{\#print axioms}-clean (re-checked), \textbf{conditional} on \lean{hA}, \lean{det}, \lean{h}.
+\end{status}
+
+%======================================================================
+\section{Detection: the Drinfeld--Sokolov slice map}\label{l29:sec:ds}
+%======================================================================
+
+Detection (Definition~\ref{l29:def:detect}) asks that the model symbol of every null vector of $V^{k_n}$ vanish at the
+base point. At $n=1$ ($R_1=\C$) it followed from the level-one vacuum functional. For $n\ge2$ the values lie in the
+non-reduced ring $\ltwentynineRn$, and the vacuum functional only sees their constant part (\lean{evR_aug_eq_zero}).
+The idea that closes the gap is that evaluating at the base point $(u,v)=(0,1)$ is the classical shadow of
+\emph{Drinfeld--Sokolov reduction}: restricting to the Kostant slice $f+\C e$. So one builds a quantum map from
+$V^{k}$ to the Virasoro vacuum module at the Drinfeld--Sokolov central charge, shows it sends nulls to nulls, and
+composes with the leading-symbol map of the Virasoro side, whose target is exactly $\ltwentynineRn$.
+
+\subsection{The Virasoro side: leading symbols into $\ltwentynineRn$}
+
+\begin{definition}[The Virasoro symbol property]\label{l29:def:virsymbol}
+For $c\in\C$, a ring $R$ and $t:\N\to R$: there are linear maps $\sigma_b:V(c,0)\to R$ ($b\in\N$) that kill the
+maximal ideal, kill every creation word of length $<b$, and send every creation word
+$L_{-j_1-2}\cdots L_{-j_b-2}\ltwentyninevac$ of length $b$ (in any order) to $t_{j_1}\cdots t_{j_b}$.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesDSVirSymbol.lean}.
+\begin{leancode}
+def vLen (b : ℕ) : Submodule ℂ (VirUniv c) :=
+  Submodule.span ℂ {x | ∃ w : List ℕ, w.length ≤ b ∧ negWordVir c w = x}
+
+def vBelow (b : ℕ) : Submodule ℂ (VirUniv c) :=
+  Submodule.span ℂ {x | ∃ w : List ℕ, w.length < b ∧ negWordVir c w = x}
+
+def VirSymbol : Prop :=
+  ∃ σ : ℕ → (VirUniv c →ₗ[ℂ] R),
+    (∀ b, ∀ v ∈ maxIdealVir c, σ b v = 0) ∧
+    (∀ b, ∀ v ∈ vBelow c b, σ b v = 0) ∧
+    (∀ w : List ℕ, σ w.length (negWordVir c w) = (w.map t).prod)
+\end{leancode}
+
+\begin{dictionary}
+\lean{negWordVir c w} is the creation word $L_{-w_1-2}\cdots L_{-w_\ell-2}\ltwentyninevac$ for the list $w$ (no
+ordering assumed). \lean{(w.map t).prod} is $t_{w_1}\cdots t_{w_\ell}$. The words in \lean{vLen}, \lean{vBelow} have
+any weight and any order. Same as the textbook definition.
+\end{dictionary}
+
+\begin{physics}
+A leading-symbol (classical-limit) map for the Virasoro chiral algebra with values in a ring where $T^{n}$'s jets vanish:
+the quantum states of the minimal model project onto classical stress-tensor configurations.
+\end{physics}
+
+\begin{status}
+Definition.
+\end{status}
+
+\begin{theorem}[Leading symbols of $M(2,2m+3)$]\label{l29:thm:virsymbol}
+For every $m\in\N$, the Virasoro symbol property holds for $c=c_{2,2m+3}$ with values in $R_{m+1}$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesDSVirSymbol.lean}.
+\begin{leancode}
+theorem virSymbol_twoSeries (m : ℕ) :
+    VirSymbol (twoSeriesLevels m).c (Rn (m + 1)) (tn (m + 1)) :=
+  virSymbol_of _ _ _ m (twoSeries_hasJetRelations_all m) (gordonLowerBound_twoSeries m)
+    (jet_rel_Rn m)
+\end{leancode}
+
+\begin{dictionary}
+Full name \ltwentynineln{VOA.TwoSeries.DSSlice.virSymbol_twoSeries}. Note the indices: $(\lean{twoSeriesLevels m}).c=c_{2,2m+3}$
+and the ring is $R_{m+1}$, the arc algebra of $\C[T]/(T^{m+1})$. The proof uses the jet relations
+(Theorem~\ref{l29:thm:jetrel}), the total Gordon lower bound (Theorem~\ref{l29:thm:character}) and the jet relations of
+$R_{m+1}$ (\lean{jet_rel_Rn}).
+
+\textbf{Scope.} This is a PBW-length leading-symbol statement into the \emph{presented} ring $R_{m+1}$; it does not
+mention Li's filtration or $V/C_2V$. Intrinsic classical freeness of $M(2,2m+3)$ is a separate theorem
+(\ltwentynineln{VOA.VirasoroClassicalFreeness.classicallyFree}, Chapter~\ref{ch:L20}) that uses this one as its injectivity
+input. The docstring of \leanpath{TwoSeriesDSSlice.lean} still calls this input ``classical freeness of $M(2,2n+1)$''
+(warning on p.~\pageref{l29:warn:stale}).
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+The Gordon-good sorted words form a basis of $L(c,0)$ (spanning plus the character). Define $\sigma_b$ on this basis:
+a Gordon-good word of length $b$ goes to the product of its jets, every other basis word to $0$. It remains to see
+that $\sigma_b$ has the product property on \emph{every} word. Straighten simultaneously: a pair (Virasoro word, its
+$T$-monomial) is rewritten, by the same jet relation applied on both sides (in $V(c,0)$ the null vector of
+Theorem~\ref{l29:thm:jetrel}, in $R_{m+1}$ the jets of $T^{m+1}$), into a combination of pairs of Gordon-good words of
+the same length, modulo (shorter words $+$ maximal ideal)$\times0$ (\lean{pair_mem_pairGood}). Both sides of the product
+property are linear and compatible with this rewriting.
+\end{proof}
+
+\begin{physics}
+The null-vector relation of $M(2,2m+3)$ and the classical constraint $T^{m+1}=0$ have the same leading term, so the
+quantum straightening and the classical one run in parallel.
+\end{physics}
+
+\begin{status}
+Proved, \textbf{unconditional}. Axioms standard (re-checked).
+\end{status}
+
+\subsection{The slice map and its Arakawa property}
+
+\begin{definition}[A Drinfeld--Sokolov slice map; the slice Arakawa property]\label{l29:def:dsslice}
+For a central charge $c$ and a level datum $L$, a \emph{slice map} is a linear map $W:V^{k_A}(\ltwentyninesl)\to
+\bigoplus_{a\in\Z}V(c,0)$ (graded by the Rees parameter $a$) with: $W(\ltwentyninevac)=\ltwentyninevac$ in degree $0$;
+the Whittaker relations $W\circ f_{-1}=-(\text{shift by one})\circ W$ and $W\circ f_{-j-2}=0$; the filtration property
+that a corrected PBW word of length $\ell$ has degree-$a$ image of Virasoro length $\le\ell-a$, one less if it starts with
+an $e$- or $h$-letter; and the Sugawara letter acting as $L_{-m-2}$ up to that lower piece. The \emph{slice Arakawa
+property} of $W$: $W$ maps the maximal ideal of $V^{k_A}$ into the maximal ideal of $V(c,0)$, in every degree.
+\end{definition}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesDSSlice.lean}.
+\begin{leancode}
+structure DSSliceMap where
+  /-- The map, with its Rees-parameter grading. -/
+  W : WakModule L.kA →ₗ[ℂ] (ℤ →₀ VirUniv c)
+  vacuum : W (correctedWordState L.kA L.aNoncritical []) = Finsupp.single 0 (vacVec c)
+  f_one : ∀ (y : WakModule L.kA) (a : ℤ), W (J L.kA 1 (-1) y) a = -(W y (a - 1))
+  f_high : ∀ (j : ℕ) (y : WakModule L.kA), W (J L.kA 1 (-(j : ℤ) - 2) y) = 0
+  filtered : ∀ (w : List (Generator × ℕ)) (a : ℤ),
+    W (correctedWordState L.kA L.aNoncritical w) a ∈ vLenZ c ((w.length : ℤ) - a)
+  current_lower : ∀ (b : Fin 3), b ≠ 1 → ∀ (m : ℕ) (w : List (Generator × ℕ)) (a : ℤ),
+    W (correctedWordState L.kA L.aNoncritical ((Generator.current b, m) :: w)) a ∈
+      vLenZ c ((w.length : ℤ) - a)
+  sugawara : ∀ (m : ℕ) (w : List (Generator × ℕ)) (a : ℤ),
+    W (correctedWordState L.kA L.aNoncritical ((Generator.sugawara, m) :: w)) a -
+      Lop c (-(m : ℤ) - 2) (W (correctedWordState L.kA L.aNoncritical w) a) ∈
+        vLenZ c ((w.length : ℤ) - a)
+
+def SliceArakawa (S : DSSliceMap c L) : Prop :=
+  ∀ y ∈ ImaxL L, ∀ a : ℤ, S.W y a ∈ maxIdealVir c
+\end{leancode}
+
+\begin{dictionary}
+\lean{ℤ →₀ VirUniv c} is the space of finitely supported functions $\Z\to V(c,0)$, i.e.\ $\bigoplus_{a\in\Z}V(c,0)$;
+\lean{W y a} is the degree-$a$ component, \lean{Finsupp.single 0 v} the element $v$ in degree $0$. \lean{J L.kA 1 (-1)}
+is $f_{-1}$ (\lean{Fin 3}: $1=f$), \lean{J L.kA 1 (-j-2)} is $f_{-j-2}$. \lean{correctedWordState k hk w} is the
+corrected PBW word of $V^k$ for the list of letters $w$ (Chapter~\ref{ch:L28}). \lean{vLenZ c b} is the span of
+Virasoro words of length $\le b$ (and $0$ for $b<0$). \lean{ImaxL L} is the maximal ideal of $V^{k_A}$. All the fields
+of \lean{DSSliceMap} are statements about the \emph{universal} objects; only \lean{SliceArakawa} mentions the maximal
+ideals.
+\end{dictionary}
+
+\begin{physics}
+$W$ is the quantum Hamiltonian reduction $V^k(\ltwentyninesl)\to\mathrm{Vir}^{c_{\mathrm{DS}}(k)}$ made concrete on the
+vacuum module: impose $f(z)=1$ (the Whittaker character, $f_{-1}\mapsto-1$, higher $f$-modes $\mapsto0$), and read the
+result in the Virasoro algebra generated by the improved Sugawara field. The slice Arakawa property says the reduction
+of the simple affine VOA is a quotient of the simple Virasoro VOA's universal cover by something containing its nulls:
+the ``nulls go to nulls'' half of Arakawa's theorem $H_{DS}(L_k(\ltwentyninesl))\cong L(c_{\mathrm{DS}}(k),0)$.
+\end{physics}
+
+\begin{status}
+Definitions. Inhabited for every $c$ and $L$ (Definition~\ref{l29:def:dsslicemap}); the Arakawa property is proved
+at every level datum whose affine level is not a natural number (Theorem~\ref{l29:thm:slicearakawa}).
+\end{status}
+
+\begin{theorem}[Detection from a slice map]\label{l29:thm:detectreduce}
+For every $m$: a slice map $V^{k_{m+1}}\to\bigoplus_aV(c_{2,2m+3},0)$ with the slice Arakawa property gives detection at
+member $n=m+1$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesDSSlice.lean}.
+\begin{leancode}
+theorem twoSeriesModelDetects_of_dsSlice (m : ℕ)
+    (S : DSSliceMap (twoSeriesLevels m).c (twoSeriesLevels (m + 1))) (hS : SliceArakawa S) :
+    TwoSeriesModelDetects (m + 1) :=
+  modelDetects_of_dsSlice S hS (virSymbol_twoSeries m)
+\end{leancode}
+
+\begin{dictionary}
+The Virasoro charge is $c_{2,2m+3}=c_{\mathrm{DS}}(k_{m+1})$, one step below the target $c_{2,2m+5}$ of the member
+$n=m+1$ (Example~\ref{l29:ex:levels}, last column). The Virasoro symbol input is Theorem~\ref{l29:thm:virsymbol}.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+Put $\Lambda_r=\sum_a\sigma_{r-a}\circ W_a:V^k\to R_{m+1}$. It kills the maximal ideal (Arakawa property, then $\sigma$
+kills the Virasoro maximal ideal), kills corrected words of length $<r$ (filtration property), and on a word of length
+$r$ equals the model symbol evaluated at the base point (Whittaker relations for the $f$-letters, which give
+$v_0\mapsto1$; the lower-term properties for $e$, $h$; the Sugawara property for the $L$-letters, whose symbol is $t_j$
+at the base point). Hence the base-point evaluation of the symbol of a null vector is $\Lambda_r$ of it, which is $0$.
+\end{proof}
+
+\begin{physics}
+Evaluating classical symbols on the Kostant slice is the classical limit of Drinfeld--Sokolov reduction; detection is
+the classical limit of ``nulls reduce to nulls''.
+\end{physics}
+
+\begin{status}
+Proved, \texttt{\#print axioms}-clean (re-checked), conditional on \lean{S} and \lean{hS} (both supplied below).
+\end{status}
+
+\begin{definition}[The constructed slice map]\label{l29:def:dsslicemap}
+For every $c$ and non-critical $k$: $W_0:V^k\to\C[X_0,X_1,\dots]$ is the Whittaker coinvariant map (on the
+$(f,h,e)$-ordered PBW basis, $f^\lambda h^\nu e^\mu\ltwentyninevac\mapsto\chi(f^\lambda)[\nu=0]X^\mu$); $\psi$ is the
+inverse of the isomorphism $V(c,0)\to\C[X]$ sending a Virasoro word to the corresponding word of descended Sugawara
+operators applied to $1$; $W_1=\psi\circ W_0$; and $W$ places the image of a word of charge $\#f-\#e=a$ in degree $a$.
+\end{definition}
+
+\noindent Files \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesSliceMap.lean} and
+\leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesArakawaPositive.lean}.
+\begin{leancode}
+def W1 : WakModule k →ₗ[ℂ] VirUniv c := (psi c k hk).toLinearMap.comp (W0 k hk)
+
+def Wslice : WakModule k →ₗ[ℂ] (ℤ →₀ VirUniv c) := chargeLift k hk (W1 c k hk)
+
+def dsSliceMap (L : CosetLevels) : DSSliceMap c L where
+  W := Wslice c L.kA L.aNoncritical
+  vacuum := Wslice_vacuum c L.kA L.aNoncritical
+  f_one := Wslice_f_one c L.kA L.aNoncritical
+  f_high := Wslice_f_high c L.kA L.aNoncritical
+  filtered := Wslice_filtered c L.kA L.aNoncritical
+  current_lower := Wslice_current_lower c L.kA L.aNoncritical
+  sugawara := fun m w a => by
+    rw [Wslice_sugawara c L.kA L.aNoncritical m w a]
+    exact Submodule.zero_mem _
+
+def cDS (k : ℂ) : ℂ := 1 - 6 * (k + 1) ^ 2 / (k + 2)
+\end{leancode}
+
+\begin{dictionary}
+\lean{psi c k hk} is a linear \emph{equivalence} (\lean{phi_injective}, \lean{phi_surjective} in
+\leanpath{TwoSeriesSliceMapVir.lean}); \lean{.toLinearMap.comp} is composition. \lean{chargeLift} implements the Rees
+grading. Every field of the structure is a proved lemma; the Sugawara property holds \emph{exactly} (difference $0$).
+\lean{cDS k} is the Drinfeld--Sokolov central charge $1-6(k+1)^2/(k+2)$. The construction works for every $c$; only the
+Arakawa property needs $c=c_{\mathrm{DS}}(k)$.
+\end{dictionary}
+
+\begin{physics}
+The Whittaker coinvariants of the vacuum module are a polynomial ring in the $e$-modes, and the improved Sugawara
+modes act on them triangularly, which identifies them with the Virasoro vacuum module: the vacuum-module version of
+Kostant's theorem on Whittaker vectors.
+\end{physics}
+
+\begin{status}
+Construction, proved; \texttt{\#print axioms} of \lean{dsSliceMap} standard (re-checked).
+\end{status}
+
+\begin{theorem}[The slice form of Arakawa's theorem, unconditionally]\label{l29:thm:slicearakawa}
+For every level datum $L$ (Definition~\ref{l29:def:cosetlevels}) whose affine level $k=k_A$ is not a natural number, the slice map
+at $c=c_{\mathrm{DS}}(k)$ sends the maximal ideal of $V^k(\ltwentyninesl)$ into the maximal ideal of $V(c_{\mathrm{DS}}(k),0)$, in every
+Rees degree. For an arbitrary non-critical $k\notin\N$ (no level datum) the same holds for the ungraded map $W_1$. In particular, for every $m$, the slice map of
+the member $n=m+1$ at $c=c_{2,2m+3}$ has the slice Arakawa property.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesArakawaUnconditional.lean}.
+\begin{leancode}
+theorem W1_maxIdeal (hkN : ∀ i : ℕ, k ≠ i) {y : WakModule k} (hy : y ∈ Imax k hk) :
+    W1 (cDS k) k hk y ∈ maxIdealVir (cDS k) := by
+
+theorem sliceArakawa_unconditional (L : CosetLevels) (hkN : ∀ i : ℕ, L.kA ≠ i) :
+    SliceArakawa (dsSliceMap (cDS L.kA) L) := by
+
+theorem twoSeries_kA_not_nat (m : ℕ) (i : ℕ) : (twoSeriesLevels (m + 1)).kA ≠ i := by
+
+theorem twoSeries_sliceArakawa (m : ℕ) :
+    SliceArakawa (dsSliceMap (twoSeriesLevels m).c (twoSeriesLevels (m + 1))) := by
+\end{leancode}
+
+\begin{dictionary}
+\lean{hkN : ∀ i : ℕ, k ≠ i} says $k\notin\{0,1,2,\dots\}$ (as complex numbers). \lean{Imax k hk} is the maximal graded
+ideal of $V^k$. For generic $k$ that ideal is $0$ and the statement is trivial; it has content exactly at levels where
+$V^k$ is reducible, such as $k_n$. \lean{twoSeries_kA_not_nat}: $k_{m+1}=-2+2/(2m+3)\in(-2,0)$ is not a natural number.
+\lean{twoSeries_sliceArakawa} rewrites $c_{2,2m+3}=c_{\mathrm{DS}}(k_{m+1})$ (\lean{twoSeries_c_eq_cDS}) and applies the
+general theorem. No other hypothesis.
+
+\textbf{Same, stronger or weaker than Arakawa?} Weaker, deliberately: Arakawa's theorem identifies $H_{DS}(L_k)$ with
+$L(c_{\mathrm{DS}}(k),0)$ (including non-vanishing and surjectivity statements about cohomology). Here only the
+``descends'' half is proved, for this explicit map on the vacuum module, and only it is used. No result of Arakawa's is
+assumed.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+Let $I$ be the maximal ideal of $V^k$ and $S=W_1(I)\subseteq V(c,0)$, $c=c_{\mathrm{DS}}(k)$. (1) $S$ is stable under the
+Virasoro creation modes, because $W_1\circ L^{\mathrm{sug}}_{n}=L_n\circ W_1$ for $n\le-1$ and $I$ is stable under the
+Sugawara modes. (2) $S$ is stable under $L_1,L_2$, hence under all $L_{n\ge1}$: there are explicit lifts
+$Q_1=L_1+h_1+kf_0+\frac12f_0h_0$ and $Q_2$ (a similar quadratic expression) with $W_1\circ Q_i=L_i\circ W_1$, and
+$Q_iI\subseteq I$ since $I$ is an ideal. (3) No vector of $S$ has a vacuum component: the vacuum coefficient of $W_1(y)$
+only sees the PBW words of Drinfeld--Sokolov weight zero, the powers $f_{-1}^N\ltwentyninevac$; a polynomial projector in
+the commuting operators $L_0,h_0$ keeps $y$ in $I$ and isolates such a component, and
+$e_1^Nf_{-1}^N\ltwentyninevac=N!\,k(k-1)\cdots(k-N+1)\ltwentyninevac\ne0$ for $k\notin\N$, while
+$\ltwentyninevac\notin I$; so that component is $0$ (\lean{eps_maxIdeal}). (4) A subspace stable under all modes with no
+vacuum component lies in the radical of the Shapovalov form, which is the maximal ideal of $V(c,0)$ (Li). The graded
+components of $W=$ \lean{chargeLift} $W_1$ are separated by a Lagrange projector in $h_0$.
+\end{proof}
+
+\begin{physics}
+``Under quantum Hamiltonian reduction, null states of $L_k(\ltwentyninesl)$ go to null states of the Virasoro algebra.''
+For $k_n$ this is the statement that the reduction of the $(A_1,D_{2n+1})$ chiral algebra by its $SU(2)$ lands in
+$M(2,2n+1)$, the chiral algebra of $(A_1,A_{2n-2})$.
+\end{physics}
+
+\begin{status}
+Proved, \textbf{unconditional} for \lean{twoSeries_sliceArakawa}. The general \lean{sliceArakawa_unconditional} is stated for a
+level datum $L$ (a discrete set of levels, since $c(k)$ must be a boundary charge) with $k_A\notin\N$; only the ungraded
+\lean{W1_maxIdeal} is stated for every non-critical $k\notin\N$. Axioms standard (re-checked: \lean{sliceArakawa_unconditional},
+\lean{twoSeries_sliceArakawa}).
+\end{status}
+
+\begin{theorem}[Detection holds for every member]\label{l29:thm:detect}
+For every $n\ge1$, detection holds at member $n$.
+\end{theorem}
+
+\noindent This theorem is not a separate declaration of the library: it is the term
+\lean{twoSeriesModelDetects_of_dsSlice m (dsSliceMap _ _) (twoSeries_sliceArakawa m)} with $n=m+1$. For this edition the composite
+was checked as a standalone statement in a scratch file importing \lean{VOA.Examples.TwoSeriesGenIncl} (with the namespaces
+\lean{VOA.TwoSeries}, \lean{.DSSlice}, \lean{.SliceMap}, \lean{.StrictModel} opened):
+\begin{plaincode}
+theorem detect_check (m : ℕ) : TwoSeriesModelDetects (m + 1) :=
+  twoSeriesModelDetects_of_dsSlice m (dsSliceMap _ _) (twoSeries_sliceArakawa m)
+
+'detect_check' depends on axioms: [propext, Classical.choice, Quot.sound]
+\end{plaincode}
+\noindent It is used in this form inside Theorem~\ref{l29:thm:slicegu} (file \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesDSSlice.lean},
+through \ltwentynineln{twoSeries_gradedUnitary_of_dsSlice}). The quoted components are Theorems~\ref{l29:thm:detectreduce} and
+\ref{l29:thm:slicearakawa} and Definition~\ref{l29:def:dsslicemap}.
+
+\begin{physics}
+The free-field model of the classical limit of $L_{k_n}$ is faithful on the null vectors.
+\end{physics}
+
+\begin{status}
+Proved as a composite term, not as a named declaration; unconditional; the composite and each component re-checked with
+standard axioms. The same holds for ``model socle data for every $n\ge1$'' and for \lean{TwoSeriesSocleSpectrum} at every $n\ge1$:
+they are obtained inside the proof of the headline, not as standalone declarations.
+\end{status}
+
+\begin{theorem}[Transfer conditional on the Poincar\'e core]\label{l29:thm:slicegu}
+For every $m$: $\ltwentynineGU(L_{-2+2/(2m+3)})\wedge\mathrm{JPCore}_{m+1}\Rightarrow\ltwentynineGU(M(2,2m+5))$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesArakawaUnconditional.lean}.
+\begin{leancode}
+theorem twoSeries_gradedUnitary_of_affine (m : ℕ)
+    (hA : GradedUnitary (affineForm (twoSeriesLevels (m + 1)))
+      (affineRealStructure (twoSeriesLevels (m + 1))) (affineFlag (twoSeriesLevels (m + 1))))
+    (h : PoincareZero.JetPoincareCoreT0 (m + 1)) :
+    VirGradedUnitary (twoSeriesLevels (m + 1)).c (targetRealStructure (twoSeriesLevels (m + 1))) :=
+  twoSeries_gradedUnitary_of_sliceArakawa m hA (twoSeries_sliceArakawa m) h
+\end{leancode}
+
+\begin{dictionary}
+Full name \ltwentynineln{VOA.TwoSeries.SliceMap.twoSeries_gradedUnitary_of_affine}: the \emph{second} declaration with this short
+name (warning on p.~\pageref{l29:warn:clash}). Its hypotheses are \lean{hA} and \lean{h}; detection has been discharged.
+\end{dictionary}
+
+\begin{physics}
+At this point the transfer depends on graded unitarity of the $(A_1,D_{2n+1})$ chiral algebra and one classical fact
+about the arc space of $T^n=0$.
+\end{physics}
+
+\begin{status}
+Proved, \texttt{\#print axioms}-clean (re-checked), \textbf{conditional} on \lean{hA} and \lean{h}.
+\end{status}
+
+%======================================================================
+\section{The jet-ideal Poincar\'e lemma and the \texorpdfstring{$n$}{n}-equal arrangement}\label{l29:sec:arr}
+%======================================================================
+
+The last input, $\mathrm{JPCore}_n$, is pure commutative algebra. It is proved by duality: a linear functional on
+$\C[T]$ of weight $E$ and degree $k$ is the same as a symmetric polynomial $f(x_0,\dots,x_{k-1})$ (``polarisation'':
+$T_{m_1}\cdots T_{m_k}\leftrightarrow$ the symmetrised monomial $x^{m}$); a functional that kills the jet ideal of
+$T^n$ corresponds to an $f$ that vanishes whenever $n$ of the variables coincide; and a functional that kills the box
+corresponds to an $f$ in the ideal $(x_0^N,\dots,x_{k-1}^N)$. The Poincar\'e lemma then becomes an ideal-membership
+statement for the \emph{$n$-equal arrangement}, the union of the diagonals $\{x_{s_1}=\cdots=x_{s_n}\}$.
+
+\subsection{The arrangement inclusion}
+
+\begin{definition}[Diagonals and the arrangement inclusion]\label{l29:def:arrangement}
+In $\C[x_0,\dots,x_{k-1}]$: for $S\subseteq\{0,\dots,k-1\}$, $Y$ \emph{vanishes on the diagonal of $S$} if substituting
+$x_s\mapsto x_{s_0}$ for all $s\in S$ (any $s_0\in S$) gives $0$. $L_N=(x_0^N,\dots,x_{k-1}^N)$. $W_{N,n}$ is the span of
+the products $x_l^NY$ with $Y$ vanishing on every $n$-element diagonal not containing $l$. The \emph{arrangement
+inclusion} $\mathrm{AI}_n$: every symmetric $f\in L_N$ vanishing on all $n$-element diagonals lies in $W_{N,n}$ (for all
+$k,N$). Its \emph{narrowed} form $\mathrm{SAI}_n$ asks this only for $f$ homogeneous of degree $d$ in the window
+$N\ge2$, $k\ge n+2$, $2N\le d$, $2N+k<d+n+2$.
+\end{definition}
+
+\noindent Files \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesJetPoincareVdm.lean},
+\leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesJetPoincareArr.lean} and
+\leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesArrangementSym.lean}.
+\begin{leancode}
+abbrev XP (k : ℕ) : Type := MvPolynomial (Fin k) ℂ
+
+def Lid (k N : ℕ) : Ideal (XP k) := Ideal.span (Set.range fun i : Fin k => (X i ^ N : XP k))
+
+def collapseTo (s₀ : Fin k) (S : Finset (Fin k)) (i : Fin k) : Fin k := if i ∈ S then s₀ else i
+
+def VanishOn (S : Finset (Fin k)) (Y : XP k) : Prop := ∀ s₀ ∈ S, rename (collapseTo s₀ S) Y = 0
+
+def Wn (k N n : ℕ) : Submodule ℂ (XP k) :=
+  Submodule.span ℂ {Z | ∃ (l : Fin k) (Y : XP k),
+    (∀ S : Finset (Fin k), #S = n → l ∉ S → VanishOn S Y) ∧ Z = X l ^ N * Y}
+
+def ArrangementInclusion (n : ℕ) : Prop :=
+  ∀ (k N : ℕ) (f : XP k), (∀ σ : Equiv.Perm (Fin k), rename σ f = f) → f ∈ Lid k N →
+    (∀ S : Finset (Fin k), #S = n → VanishOn S f) → f ∈ Wn k N n
+
+def SymArrangementInclusion (n : ℕ) : Prop :=
+  ∀ (N k d : ℕ), 2 ≤ N → n + 2 ≤ k → 2 * N ≤ d → 2 * N + k < d + n + 2 →
+    ∀ f : XP k, f.IsHomogeneous d → (∀ σ : Equiv.Perm (Fin k), rename σ f = f) →
+      f ∈ Lid k N → (∀ S : Finset (Fin k), #S = n → VanishOn S f) → f ∈ Wn k N n
+\end{leancode}
+
+\begin{dictionary}
+\lean{rename g Y} substitutes $x_i\mapsto x_{g(i)}$. So \lean{rename (collapseTo s₀ S) Y = 0} is $Y|_{x_S=x_{s_0}}=0$;
+quantifying over $s_0\in S$ is harmless (all choices give the same substitution up to renaming). \lean{#S = n} is
+$|S|=n$. \lean{rename σ f = f} for all permutations $\sigma$ says $f$ is symmetric. \lean{f.IsHomogeneous d}: all
+monomials of $f$ have total degree $d$. \lean{Wn k N n} is $W_{N,n}$; note $W_{N,n}\subseteq L_N$ and every element of
+$W_{N,n}$ vanishes on all $n$-element diagonals, so $\mathrm{AI}_n$ is the nontrivial inclusion
+``$L_N\cap(\text{vanishing})\cap(\text{symmetric})\subseteq W_{N,n}$''. \ltwentynineln{symArrangementInclusion_of_arrangementInclusion}
+shows $\mathrm{AI}_n\Rightarrow\mathrm{SAI}_n$.
+\end{dictionary}
+
+\begin{physics}
+The vanishing on $n$-fold diagonals is the functional (Feigin--Stoyanovsky) form of the exclusion rule ``at most $n-1$
+quanta at the same point'', i.e.\ of $T^n=0$. The inclusion says that the exclusion rule and the mode cutoff
+$x^N$ interact in the simplest possible way.
+\end{physics}
+
+\begin{status}
+Definitions (predicates). Both are proved for every $n\ge1$ (Theorem~\ref{l29:thm:geninclusion}).
+\end{status}
+
+\begin{theorem}[The Poincar\'e core from the arrangement inclusion]\label{l29:thm:poincarecore}
+For every $n\ge1$, $\mathrm{SAI}_n\Rightarrow\mathrm{JPCore}_n$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesArrangementSym.lean}.
+\begin{leancode}
+theorem jetPoincareCoreT0_of_symArrangement {n : ℕ} (hn : 1 ≤ n)
+    (hA : SymArrangementInclusion n) : PoincareZero.JetPoincareCoreT0 n :=
+  fun _ _ _ hN hk hE hE' => jetPoincare_of_symArrangement hn hA hN hk hE hE'
+\end{leancode}
+
+\begin{dictionary}
+Here \lean{hA} is the arrangement hypothesis (not graded unitarity; the letter is reused). The window of
+$\mathrm{SAI}_n$ is exactly the image of the core window $2\le N$, $n+2\le k$, $2N+k\le E$, $2N+2k<E+n+2$ under $d=E-k$.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+Suppose $F$ of degree $k$, weight $E$ has $\partial_MF\in J_n$ for $M\ge N$, and suppose its image in $\ltwentynineRn$ is
+not in the box. Then some functional $\psi$ on $\C[T]_{k,E}$ kills $J_n$ and the box but not $F$. Its dual polynomial
+$f$ (symmetric, homogeneous of degree $d=E-k$) vanishes on the $n$-fold diagonals (because $\psi$ kills the jets of
+$T^n$; \lean{dot_pol_jet_n}) and lies in $L_N$ (because $\psi$ kills the box). By $\mathrm{SAI}_n$, $f=\sum_lx_l^NY_l$
+with $Y_l$ vanishing on the diagonals avoiding $l$. Pairing $F$ against $x_l^NY_l$ is pairing $\partial$-derivatives of
+$F$ in the high variables against $Y_l$, and $Y_l$'s vanishing makes this a pairing of an element of $J_n$ with a
+functional that kills $J_n$ (\lean{dot_pol_Wn}); so $\psi(F)=0$, a contradiction.
+\end{proof}
+
+\begin{physics}
+The Poincar\'e lemma on the arc space and the exclusion statistics of the functional realisation are dual descriptions of
+the same fact.
+\end{physics}
+
+\begin{status}
+Proved, \texttt{\#print axioms}-clean (re-checked), conditional on $\mathrm{SAI}_n$ (supplied below).
+\end{status}
+
+\subsection{The Gr\"obner basis of the \texorpdfstring{$n$}{n}-equal ideal}
+
+\begin{definition}[Block generators; the generation input]\label{l29:def:geninclusion}
+For $k$ variables, a \emph{block labelling} is a map $c:\{0,\dots,k-1\}\to\{0,\dots,n-2\}$ (there are $n-1$ blocks). For
+a strictly increasing list of points $p_0<\cdots<p_r$ inside one block and a power $m\ge N$, the \emph{block generator}
+is
+\begin{equation*}
+g=\prod_{\substack{a<b,\ c(a)=c(b)\\ \{a,b\}\not\subseteq\{p_0,\dots,p_r\}}}(x_b-x_a)\;\cdot\;
+\det\bigl(x_{p_i}^{0},x_{p_i}^{1},\dots,x_{p_i}^{r-1},x_{p_i}^{m}\bigr)_{i=0}^{r}.
+\end{equation*}
+The \emph{generation input} $\mathrm{GI}_n$: every $f\in L_N$ vanishing on all $n$-element diagonals lies in the ideal
+generated by the block generators. The \emph{vanishing ideal} is the ideal of polynomials vanishing on all $n$-fold
+diagonals.
+\end{definition}
+
+\noindent Files \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesJetPoincareVdm.lean},
+\leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesArrangementGen.lean} and
+\leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesGenIncl.lean}.
+\begin{leancode}
+def pprod (P : Finset (Fin k × Fin k)) : XP k := ∏ q ∈ P, (X q.2 - X q.1)
+
+def dmat (pt : Fin (r + 1) → Fin k) (m : ℕ) : Matrix (Fin (r + 1)) (Fin (r + 1)) (XP k) :=
+  Matrix.of fun p q => X (pt p) ^ (if q = Fin.last r then m else (q : ℕ))
+
+def dD (pt : Fin (r + 1) → Fin k) (m : ℕ) : XP k := (dmat pt m).det
+
+def blockPairs {M : ℕ} (c : Fin k → Fin M) (pt : Fin (r + 1) → Fin k) : Finset (Fin k × Fin k) :=
+  univ.filter fun q => q.1 < q.2 ∧ c q.1 = c q.2 ∧ ¬ (q.1 ∈ univ.image pt ∧ q.2 ∈ univ.image pt)
+
+def blockProd {M : ℕ} (c : Fin k → Fin M) (pt : Fin (r + 1) → Fin k) : XP k :=
+  pprod (blockPairs c pt)
+
+def genSet (n k N : ℕ) : Set (XP k) :=
+  {g | ∃ (c : Fin k → Fin (n - 1)) (r : ℕ) (pt : Fin (r + 1) → Fin k) (m : ℕ),
+    StrictMono pt ∧ (∀ p, c (pt p) = c (pt 0)) ∧ N ≤ m ∧ g = blockProd c pt * dD pt m}
+
+def GenInclusion (n : ℕ) : Prop :=
+  ∀ (k N : ℕ) (f : XP k), f ∈ Lid k N → (∀ S : Finset (Fin k), #S = n → VanishOn S f) →
+    f ∈ Ideal.span (genSet n k N)
+\end{leancode}
+
+\begin{dictionary}
+\lean{Matrix.of} builds the $(r+1)\times(r+1)$ matrix whose row $p$ is $(x_{p_p}^0,\dots,x_{p_p}^{r-1},x_{p_p}^m)$
+(\lean{Fin.last r} is the last column); \lean{.det} its determinant, an alternant. \lean{StrictMono pt} says the points
+are strictly increasing; \lean{c (pt p) = c (pt 0)} that they lie in one block. \lean{univ.image pt} is the set of
+points. Note that $\mathrm{GI}_n$ does not ask $f$ to be symmetric: it is a statement about the full ideal.
+\lean{vanIdeal n k} (in \leanpath{TwoSeriesGenIncl.lean}) is the vanishing ideal, and
+\lean{span_genSet_le_vanIdeal} shows every block generator vanishes on the $n$-fold diagonals (by pigeonhole, $n$
+coinciding points among $n-1$ blocks put two of them in one block, killing a Vandermonde factor or the alternant).
+\end{dictionary}
+
+\begin{physics}
+These are, up to normalisation, the generators of the ideal of the $n$-equal arrangement found by Li and Li; the
+alternant factor implements the cutoff $x^N$.
+\end{physics}
+
+\begin{status}
+Definitions.
+\end{status}
+
+\begin{example}[$n=2$]
+At $n=2$ there is one block, the labelling is constant, and a block generator is the Vandermonde product over all pairs
+not both among the points, times an alternant in the points. With $r=k-1$ (all points) it is the single alternant
+$\det(x_i^0,\dots,x_i^{k-2},x_i^m)$, which is divisible by the Vandermonde $\Delta=\prod_{a<b}(x_b-x_a)$; the
+case $n=2$ of the inclusion is ``$f\in L_N$ vanishing on all $2$-fold diagonals (hence, being symmetric, divisible by
+$\Delta^2$) lies in $\sum_lx_l^NQ_l$'', proved in \leanpath{TwoSeriesJetPoincareVdm.lean} by Vandermonde division
+(\lean{arrangementInclusion_two}).
+\end{example}
+
+\begin{theorem}[The generation input for every $n\ge2$; the arrangement inclusions for every $n\ge1$]\label{l29:thm:geninclusion}
+For every $n\ge2$, $\mathrm{GI}_n$ holds; hence $\mathrm{AI}_n$ holds. For every $n\ge1$, $\mathrm{SAI}_n$ holds.
+\end{theorem}
+
+\noindent Files \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesGenIncl.lean} (and
+\leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesArrangementGen.lean} for the passage $\mathrm{GI}\Rightarrow\mathrm{AI}$).
+\begin{leancode}
+theorem genInclusion {n : ℕ} (hn : 2 ≤ n) : GenInclusion n := by
+
+theorem arrangementInclusion {n : ℕ} (hn : 2 ≤ n) : ArrangementInclusion n :=
+  arrangementInclusion_of_genInclusion hn (genInclusion hn)
+
+theorem symArrangementInclusion {n : ℕ} (hn : 1 ≤ n) :
+    ArrangementSym.SymArrangementInclusion n := by
+\end{leancode}
+
+\begin{dictionary}
+Full names \ltwentynineln{VOA.TwoSeries.GenIncl.genInclusion}, \lean{.arrangementInclusion}, \lean{.symArrangementInclusion}.
+\ltwentynineln{arrangementInclusion_of_genInclusion} uses \lean{span_genSet_le_Wn}: every block generator is in $W_{N,n}$
+(expand the alternant along its last column: each term is $x_{p}^m$ times a cofactor that, together with the block
+Vandermonde, vanishes on the diagonals avoiding $p$). At $n=1$, $\mathrm{SAI}_1$ is immediate: vanishing on all
+$1$-element ``diagonals'' (the substitution $x_i\mapsto x_i$) means $f=0$ (\lean{symArrangementInclusion_one}).
+\textbf{What is not formalized.} The Lean statements are ideal \emph{membership}: every $f\in L_N\cap(\text{vanishing ideal})$ lies in
+the span of the block generators. The stronger statement that the block generators form a lexicographic Gr\"obner basis of
+$L_N\cap(\text{vanishing ideal})$ (their leading monomials generate its initial ideal) can be read off the paper proof below, since the
+division remainder is $0$ for every such $f$; it is a consequence on paper and is not a Lean declaration. Note also that the ideal is
+$L_N\cap(\text{vanishing ideal})$, not the vanishing ideal of the $n$-equal arrangement itself.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+Divide $f$ by the nonzero block generators in the lexicographic monomial order (\lean{MonomialOrder.div_set}): $f=\sum
+a_bg_b+\rho$ with no monomial of the remainder $\rho$ divisible by a leading monomial of a generator. The remainder
+still lies in $L_N$ and in the vanishing ideal. Suppose $\rho\ne0$ with leading exponent $e$. Since $L_N$ is a monomial
+ideal, some $e_i\ge N$. Since $\rho$ vanishes at every point with an $n$-fold repeated value (\lean{eval_eq_zero_of_Q}),
+a combinatorial ``point game'' on $e$ (\lean{not_win_of_vanish}, \lean{exists_blocks_of_not_win}) produces a block
+labelling $c$ with $\#\{j>i':c_j=c_{i'}\}\le e_{i'}$ for every $i'$. From $c$, the suffix of the block of $i$ starting at
+$i$, and the power $\max(N,r)$, one builds a nonzero block generator whose leading exponent is $\le e$ componentwise
+(\lean{exists_small_gen}); this contradicts the remainder property. So $\rho=0$.
+\end{proof}
+
+\begin{physics}
+The functional realisation of the $(A_1,A_{2n-2})$ arc space has a clean, explicit basis of exclusion-rule
+constraints; nothing beyond the obvious Vandermonde-type relations is needed.
+\end{physics}
+
+\begin{status}
+Proved, \textbf{unconditional}. Axioms standard (re-checked: all three).
+\end{status}
+
+%======================================================================
+\section{The headline theorem}\label{l29:sec:headline}
+%======================================================================
+
+\begin{theorem}[Graded unitarity transfers along the coset, at every boundary level]\label{l29:thm:final}
+For every $m\in\N$: if $L_{-2+2/(2m+3)}(\ltwentyninesl)$, with its canonical form, compact conjugation and corrected
+current-and-stress flag, is graded unitary, then the minimal model $M(2,2m+5)=L(c_{2,2m+5},0)$, with its canonical form,
+partition-basis real structure and length flag, is graded unitary.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesGenIncl.lean}.
+\begin{leancode}
+theorem twoSeries_gradedUnitary_of_affine_final (m : ℕ)
+    (hA : GradedUnitary (affineForm (twoSeriesLevels (m + 1)))
+      (affineRealStructure (twoSeriesLevels (m + 1))) (affineFlag (twoSeriesLevels (m + 1)))) :
+    VirGradedUnitary (twoSeriesLevels (m + 1)).c (targetRealStructure (twoSeriesLevels (m + 1))) :=
+  twoSeries_gradedUnitary_of_affine_symArrangement m hA
+    (GenIncl.symArrangementInclusion (by omega))
+\end{leancode}
+
+\begin{dictionary}
+Full name \ltwentynineln{VOA.TwoSeries.JetPoincareTwo.twoSeries_gradedUnitary_of_affine_final}, declared in
+\leanpath{TwoSeriesGenIncl.lean} (the file reopens the namespace \lean{VOA.TwoSeries.JetPoincareTwo} at its end).
+\begin{itemize}
+\item \textbf{Index.} $n=m+1\ge1$: $(\lean{twoSeriesLevels (m + 1)}).kA=k_{m+1}=-2+2/(2m+3)$ and
+  $(\lean{twoSeriesLevels (m + 1)}).c=c_{2,2m+5}$ (Definition~\ref{l29:def:twolevels}). At $m=0$ the objects are
+  definitionally those of the Lee--Yang chapter.
+\item \textbf{The one hypothesis} \lean{hA}: graded unitarity (Chapter~\ref{ch:L19}, Definition~\ref{l19:def:gu}) of the
+  actual simple VOA \lean{AVOA} with the data of Definition~\ref{l29:def:endpoint}. It is open for every $m$.
+\item \textbf{The conclusion}: \lean{VirGradedUnitary c R} is \lean{GradedUnitary (Bsimp c) R (virGradedFlag c)}
+  (Definition~\ref{l19:def:virgu}) for the actual simple Virasoro VOA, with $R$ the target real structure
+  (Definition~\ref{l29:def:target}).
+\item \textbf{The proof term} composes: Theorem~\ref{l29:thm:geninclusion} $\to$ Theorem~\ref{l29:thm:poincarecore}
+  $\to$ Theorem~\ref{l29:thm:slicegu} (slice map, Arakawa property, Virasoro symbol) $\to$
+  Theorem~\ref{l29:thm:strictpoincare} $\to$ strict model maps and model socle data $\to$
+  Theorem~\ref{l29:thm:soclespectrum} (socle words, Theorem~\ref{l29:thm:swc}) $\to$
+  Theorem~\ref{l29:thm:gordonfinal} (characters, Section~\ref{l29:sec:char}) $\to$ Theorem~\ref{l29:thm:invariants}
+  (Koszul) $\to$ Theorem~\ref{l29:thm:hodge} (Hodge package) $\to$ Theorem~\ref{l29:thm:transfer}.
+\end{itemize}
+\textbf{Could it be vacuous?} Only if \lean{hA} were unsatisfiable, i.e.\ if $L_{k_n}$ provably failed graded
+unitarity; then the theorem would say nothing. That is not known either way. The predicate itself is not degenerate:
+its bilinear-positivity version, which \emph{was} unsatisfiable, was repaired (Chapter~\ref{ch:L19},
+Theorem~\ref{l19:thm:bilpos}), and its weight-zero slice is checked to have the right sign
+(Theorem~\ref{l19:thm:vacuum}). Numerical evidence (not a proof; computed outside the library, not re-run here):
+$L_{-4/3}$, $L_{-8/5}$ and $L_{-12/7}$ pass the corrected-flag graded-unitarity test through weight $7$.
+\textbf{Could the conclusion be weaker than intended?} No: the conclusion is about the simple quotient, with the pinned
+length flag, at every weight.
+\end{dictionary}
+
+\begin{proof}[Proof on paper]
+The chain \eqref{l29:eq:chain} of Remark~\ref{l29:rem:arc}, with every input other than $\ltwentynineGU(A)$ discharged:
+the Hodge package and the Koszul embedding from $\ltwentynineGU(A)$ (Section~\ref{l29:sec:chain}); the refined PBW
+character of $M(2,2n+3)$ (Section~\ref{l29:sec:char}); the invariant count $\dim\ltwentynineinv_{r,N}\le\ltwentyninegc_n(N,r)$
+from the socle data of $\ltwentyninegr_rA$, obtained by pulling back the socle data of the jet model along strict model
+maps (Section~\ref{l29:sec:model}), with detection from the slice map (Section~\ref{l29:sec:ds}) and the model socle data
+from the jet-ideal Poincar\'e lemma (Section~\ref{l29:sec:arr}).
+\end{proof}
+
+\begin{physics}
+If the chiral algebra of the Argyres--Douglas theory $(A_1,D_{2m+3})$ satisfies the positivity constraints that
+four-dimensional unitarity imposes, so does the chiral algebra of $(A_1,A_{2m+2})$. Equivalently, a violation of graded
+unitarity in any $M(2,2n+3)$ would rule out graded unitarity of $L_{k_n}(\ltwentyninesl)$. Since Kaufmann's conjecture
+(graded unitarity of the boundary minimal models) is open, the theorem reduces the whole $(2,2n+3)$ family to the affine
+side.
+\end{physics}
+
+\begin{status}
+Proved implication; \texttt{\#print axioms} $=$ \lean{[propext, Classical.choice, Quot.sound]} (re-checked for this edition
+against the existing build products; the aggregate \texttt{lake build} was not re-run, Section~\ref{l29:sec:verification});
+\textbf{conditional on \lean{hA} only}. Not unconditional: \lean{hA} is open for every $m$.
+\end{status}
+
+\begin{corollary}[The first two members, and the arrangement form]\label{l29:cor:m27}
+$\ltwentynineGU(L_{-8/5})\Rightarrow\ltwentynineGU(M(2,7))$ and $\ltwentynineGU(L_{-4/3})\Rightarrow\ltwentynineGU(M(2,5))$,
+each with no other hypothesis; and for every $m$, $\ltwentynineGU(L_{k_{m+1}})\wedge\mathrm{AI}_{m+1}\Rightarrow
+\ltwentynineGU(M(2,2m+5))$.
+\end{corollary}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesJetPoincareTwoEndpoint.lean}.
+\begin{leancode}
+theorem twoSeries_gradedUnitary_M27_of_affine
+    (hA : GradedUnitary (affineForm (twoSeriesLevels 2))
+      (affineRealStructure (twoSeriesLevels 2)) (affineFlag (twoSeriesLevels 2))) :
+    VirGradedUnitary (twoSeriesLevels 2).c (targetRealStructure (twoSeriesLevels 2)) :=
+  SliceMap.twoSeries_gradedUnitary_of_affine 1 hA jetPoincareCoreT0_two
+
+theorem twoSeries_gradedUnitary_M25_of_affine
+    (hA : GradedUnitary (affineForm (twoSeriesLevels 1))
+      (affineRealStructure (twoSeriesLevels 1)) (affineFlag (twoSeriesLevels 1))) :
+    VirGradedUnitary (twoSeriesLevels 1).c (targetRealStructure (twoSeriesLevels 1)) :=
+  SliceMap.twoSeries_gradedUnitary_of_affine 0 hA jetPoincareCoreT0_one
+\end{leancode}
+
+\begin{dictionary}
+These predate the general theorem: they use the direct proofs of $\mathrm{JPCore}_2$ (\lean{jetPoincareCoreT0_two},
+by the $n=2$ Vandermonde argument) and $\mathrm{JPCore}_1$. \lean{twoSeriesLevels 2}: $k=-8/5$, $c=-68/7$. The arrangement
+form \ltwentynineln{twoSeries_gradedUnitary_of_affine_arrangement} (same file) takes $\mathrm{AI}_{m+1}$ as a hypothesis, now
+discharged by Theorem~\ref{l29:thm:geninclusion}.
+\end{dictionary}
+
+\begin{physics}
+$(A_1,D_5)\to(A_1,A_4)$ and $(A_1,D_3)\to(A_1,A_2)$.
+\end{physics}
+
+\begin{status}
+Proved, \texttt{\#print axioms}-clean (re-checked), conditional on \lean{hA} only (and \lean{hArr} for the arrangement
+form).
+\end{status}
+
+%======================================================================
+\section{Consistency at \texorpdfstring{$n=1$}{n=1}}\label{l29:sec:leeyang}
+%======================================================================
+
+Five files check that the general machinery reproduces the Lee--Yang results of Chapter~\ref{ch:L28}:
+\leanpath{TwoSeriesLeeYang} (the general Theorem~\ref{l29:thm:transfer} at $n=1$, with the Hodge package and the squeeze
+input taken from the concrete Lee--Yang proofs), \leanpath{TwoSeriesKoszulLeeYang} (the invariant count at $n=1$ from one
+cyclic vector), \leanpath{TwoSeriesSpectrumLeeYang} (the socle data of $\ltwentyninegr_rL_{-4/3}$, proved directly),
+\leanpath{TwoSeriesModelSocleLevelOne} and \leanpath{TwoSeriesStrictLevelOne} (the model at $n=1$, where $R_1=\C$, and its
+character bound). Each ends in a Lee--Yang theorem conditional only on graded unitarity of $L_{-4/3}$. We quote the first.
+
+\begin{theorem}[Lee--Yang from the general theorem]\label{l29:thm:leeyang}
+$\ltwentynineGU(L_{-4/3}(\ltwentyninesl))\Rightarrow\ltwentynineGU(M(2,5))$, via Theorem~\ref{l29:thm:transfer} at $n=1$.
+\end{theorem}
+
+\noindent File \leanpath{VOA/\allowbreak Examples/\allowbreak TwoSeriesLeeYang.lean}.
+\begin{leancode}
+theorem leeYang_gradedUnitary_of_affine_viaTwoSeries
+    (hA : GradedUnitary LeeYangTransferAssembly.affineForm
+      LeeYangTransferAssembly.affineRealStructure LeeYangTransferAssembly.affineFlag) :
+    VirGradedUnitarity.VirGradedUnitary LeeYang.leeYangC leeYangRealStructure :=
+  twoSeries_gradedUnitary_of_affine 1 hA (leeYangHodgeInputs hA) (twoSeriesSqueezeInput_one hA)
+\end{leancode}
+
+\begin{dictionary}
+The hypothesis and conclusion are stated with the \emph{concrete} Lee--Yang objects of Chapter~\ref{ch:L28}; the proof
+applies the general \ltwentynineln{VOA.TwoSeries.twoSeries_gradedUnitary_of_affine} at $n=1$ (the short name resolves to the
+\leanpath{TwoSeriesAssembly} declaration inside \lean{VOA.TwoSeries}). That this typechecks is the content of the
+\lean{rfl} lemmas: \lean{twoSeriesLevels 1} \emph{is} \lean{leeYangLevels}, and every generic object at it is the concrete
+one. The squeeze coefficient at $n=1$ is \lean{gapTwoCoefficient} (Rogers--Ramanujan).
+\end{dictionary}
+
+\begin{physics}
+The general machine, run at $(A_1,D_3)\to(A_1,A_2)$, reproduces the Lee--Yang result.
+\end{physics}
+
+\begin{status}
+Proved, \texttt{\#print axioms}-clean (re-checked), conditional on \lean{hA} only.
+\end{status}
+
+%======================================================================
+\section{The other endpoints}\label{l29:sec:endpointstable}
+%======================================================================
+
+The library keeps every intermediate endpoint of the reduction, each with its own extra hypotheses. They are all
+\texttt{\#print axioms}-clean and all \textbf{conditional} on \lean{hA} plus the listed inputs; none is needed once the
+headline is available, but each records an honest reduction and some are reused by others. Namespaces abbreviate
+\lean{VOA.TwoSeries} as \lean{TS}; $n\ge1$ is assumed where marked.
+\begin{center}\small
+\begin{longtable}{p{0.40\textwidth}p{0.20\textwidth}p{0.30\textwidth}}
+\toprule
+declaration (file) & index & extra hypotheses\\
+\midrule\endhead
+\ltwentynineln{TS.cosetLevels_gradedUnitary_of_affine} (Assembly) & any $L$ & Hodge, squeeze\\
+\ltwentynineln{TS.twoSeries_gradedUnitary_of_affine} (Assembly) & $n$ & Hodge, squeeze\\
+\ltwentynineln{TS.twoSeries_gradedUnitary_of_affine_hodgeFree} (HodgeInputs) & $n$ & squeeze\\
+\ltwentynineln{TS.twoSeries_gradedUnitary_of_affine_invariants} (KoszulInvariants) & $n$ & coeff, \lean{hinv}, \lean{hpbw}\\
+\ltwentynineln{TS.twoSeries_gradedUnitary_of_affine_invariants_gordon} (CharacterEndpoint) & $n$ & \lean{hinv}, \lean{GordonLowerBound}\\
+\ltwentynineln{TS.twoSeries_gradedUnitary_of_affine_invariants_gordon_final} (CharacterAGIdentity) & $n$ & \lean{hinv}\\
+\ltwentynineln{TS.twoSeries_gradedUnitary_of_socle} (InvariantsSocle) & $n$ & socle input, \lean{SocleWordGordon}\\
+\ltwentynineln{TS.twoSeries_gradedUnitary_of_socleInput} (SocleCountGordon) & $n$ & socle input\\
+\ltwentynineln{TS.twoSeries_gradedUnitary_of_socleSpectrum} (SocleDual) & $n$ & socle data of $\ltwentyninegr A$\\
+\ltwentynineln{TS.twoSeries_gradedUnitary_of_socleModels} (SpectrumModel) & $n$ & socle models\\
+\ltwentynineln{TS.StrictModel.twoSeries_gradedUnitary_of_strictModel} (StrictEndpoint) & $n\ge1$ & det, chi, spec\\
+\ltwentynineln{TS.ModelChar.twoSeries_gradedUnitary_of_strictModel_det}, \lean{_of_fermionicLower}, \lean{_two_of_strictModel} (ModelCharEndpoint) & $n\ge1$; $n=2$ & det, spec (and ferm)\\
+\ltwentynineln{TS.StrictModel.twoSeries_gradedUnitary_of_evalFunctional}, \lean{_of_coinv} (DetectFunctional) & $n\ge1$ & eval.\ functionals, spec\\
+\ltwentynineln{..._of_strictModel_membership}, \lean{_of_coinv_membership} (ModelSocleEndpoint) & $n\ge1$ & det (or functionals), membership\\
+\lean{..._of_strictModel_testBound}, \lean{_box} (MembershipEndpoint) & $n\ge1$ & det, test bound / box inclusion and count\\
+\lean{..._of_strictModel_incl} (BoxFusion), \lean{_symBox} (BoxSym), \lean{_box_two} (BoxTwo) & $n\ge1$; $n=2$ & det, box inclusion (and \lean{SymBoxBound})\\
+\lean{..._of_strictModel_inclHigh}, \lean{_level_one} (InclDegOne); \lean{_inclTail} (InclLow) & $n\ge1$; $n=1$ & det, inclusion variants\\
+\lean{..._of_strictModel_singular} (TailWitt); \lean{_singularLift} (SingTailLift); \lean{_singularLift_gt} (SingTailDiag); \lean{_singularLiftHigh}, \ltwentynineln{twoSeries_gradedUnitary_one_of_strictModel} (LiftDegN) & $n\ge1$; $n=1$ & det, singular-tail / lift inputs\\
+\ltwentynineln{..._of_strictModel_jetPoincare} (HighEndpoint); \lean{_jetPoincare2}, \lean{_jetPoincareCore} (HighDegSucc); \lean{_jetPoincareCoreT0} (PoincareZero) & $n\ge1$ & det, a Poincar\'e input\\
+\ltwentynineln{TS.DSSlice.twoSeries_gradedUnitary_of_dsSlice} (DSSlice) & $n=m+1$ & slice map, Arakawa, \lean{JetPoincareCoreT0}\\
+\ltwentynineln{TS.SliceMap.twoSeries_gradedUnitary_of_sliceArakawa} (SliceMap) & $n=m+1$ & Arakawa, \lean{JetPoincareCoreT0}\\
+\ltwentynineln{TS.SliceMap.twoSeries_gradedUnitary_of_maximalGeneration}, \lean{_of_adamovicMilas} (ArakawaBottom); \lean{_of_singularBottom}, \lean{_of_singularBottomInput} (ArakawaEndpoint) & $n=m+1$ & generation of the maximal ideal / Adamovi\'c--Milas data / bottom input, \lean{JetPoincareCoreT0}\\
+\ltwentynineln{TS.SliceMap.twoSeries_gradedUnitary_of_affine} (ArakawaUnconditional) & $n=m+1$ & \lean{JetPoincareCoreT0}\\
+\ltwentynineln{TS.JetPoincareTwo.twoSeries_gradedUnitary_of_affine_arrangement} (JetPoincareTwoEndpoint) & $n=m+1$ & \lean{ArrangementInclusion}\\
+\ltwentynineln{TS.JetPoincareTwo.twoSeries_gradedUnitary_of_affine_symArrangement} (ArrangementSym) & $n=m+1$ & \lean{SymArrangementInclusion}\\
+\ltwentynineln{TS.JetPoincareTwo.twoSeries_gradedUnitary_M27_of_affine}, \lean{_M25_of_affine} & $n=2$, $1$ & none\\
+\ltwentynineln{TS.JetPoincareTwo.twoSeries_gradedUnitary_of_affine_final} (GenIncl) & $n=m+1$ & \textbf{none}\\
+\ltwentynineln{TS.leeYang_gradedUnitary_of_affine_viaTwoSeries}, \lean{_viaInvariants}, \ltwentynineln{leeYang_gradedUnitary_viaSocleSpectrum} & $n=1$ & none\\
+\bottomrule
+\end{longtable}
+\end{center}
+The \leanpath{TwoSeriesArakawaBottom}/\leanpath{TwoSeriesArakawaEndpoint} endpoints are an earlier route to the slice
+Arakawa property through a description of the maximal ideal by a singular vector (Adamovi\'c--Milas); the unconditional
+route of Theorem~\ref{l29:thm:slicearakawa} made it unnecessary. The remaining files not mentioned so far
+(\leanpath{TwoSeriesSliceMapBasis}, \leanpath{-Whittaker}, \leanpath{-Sugawara}, \leanpath{-Vir};
+\leanpath{TwoSeriesArakawaClosure}, \leanpath{-Intertwine}, \leanpath{-Positive}, \leanpath{-Sugawara},
+\leanpath{-Transport}, \leanpath{-Triplet}; \leanpath{TwoSeriesModelChar*}; \leanpath{TwoSeriesCharacter*};
+\leanpath{TwoSeriesSocleCount*}, \leanpath{TwoSeriesSocleDualCore}, \leanpath{TwoSeriesSpectrumCore};
+\leanpath{TwoSeriesBox*}, \leanpath{TwoSeriesIncl*}, \leanpath{TwoSeriesHigh*}, \leanpath{TwoSeriesStrict*},
+\leanpath{TwoSeriesMembership*}, \leanpath{TwoSeriesJetPoincare*}, \leanpath{TwoSeriesArrangementGen},
+\leanpath{TwoSeriesGenInclLex}) are the internal lemmas of the proofs sketched above: PBW bases and Whittaker
+coinvariants for the slice map; the lifts $Q_0,Q_1,Q_2$ and the vacuum-row argument; the Bailey chain, the
+Feigin--Stoyanovsky functionals and the profile counting of the model character; Andrews' recursion and the
+Kac-determinant rank bound; MacMahon's theorem and the fusion recursion; the Vandermonde and alternant calculus and the
+point game.
+
+%======================================================================
+\section{Warnings: stale documentation and dead ends}\label{l29:sec:deadends}
+%======================================================================
+
+\begin{warning}[title={Stale docstrings that call proved inputs ``open''}]\label{l29:warn:stale}
+The Lean statements are correct; the following documentation comments lag behind later files. A reader who trusts the
+docstring over the declaration will under-estimate what is proved.
+\begin{enumerate}
+\item \lean{BRSTHodgeInputs} (\leanpath{TwoSeriesAssembly.lean}): ``in Lean proved so far only at Lee--Yang''. It is
+  provided at every level datum by \lean{brstHodgeInputs} (Theorem~\ref{l29:thm:hodge}).
+\item \lean{GordonLowerBound} and the header of \leanpath{TwoSeriesCharacterReduction.lean}: ``OPEN for general $n$ \dots\
+  not formalised here''. Proved for the series (\lean{gordonLowerBound_twoSeries}, Theorem~\ref{l29:thm:character}).
+\item \leanpath{TwoSeriesInvariantsSocle.lean}: \lean{SocleWordGordon} ``OPEN as a Lean statement''; proved
+  (\lean{socleWordGordon}, Theorem~\ref{l29:thm:swc}). \lean{TwoSeriesSocleInput} and \lean{TwoSeriesSocleSpectrum}
+  (\leanpath{TwoSeriesSocleDual.lean}) are labelled ``OPEN''; for every $n\ge1$ they now follow from the chain of
+  Sections~\ref{l29:sec:model}--\ref{l29:sec:arr}, although no declaration states them as standalone theorems.
+\item \leanpath{TwoSeriesJetPoincareArr.lean} and \leanpath{TwoSeriesArrangementSym.lean}: ``\lean{ArrangementInclusion n}
+  (resp.\ \lean{SymArrangementInclusion n}) for $n\ge3$ is the named open input''. Proved for every $n\ge2$ (resp.\ $\ge1$)
+  in \leanpath{TwoSeriesGenIncl.lean} (Theorem~\ref{l29:thm:geninclusion}).
+\item \leanpath{TwoSeriesDSSlice.lean} header: calls the Virasoro symbol input ``classical freeness of $M(2,2n+1)$''.
+  \lean{virSymbol_twoSeries} is only a PBW-length leading-symbol theorem into the presented ring; intrinsic classical
+  freeness is a separate theorem (Theorem~\ref{l29:thm:virsymbol}, dictionary). The docstring of
+  \lean{virSymbol_twoSeries} itself was corrected in a later revision of that file.
+\item \leanpath{TwoSeriesSliceMap.lean} header: ``the only universal-object input used is the sanctioned library PBW
+  machinery''. Since \lean{VOA.pbw} is a theorem there is no sanctioned axiom; the phrase is historical, and
+  \texttt{\#print axioms} of \lean{dsSliceMap} is standard.
+\end{enumerate}
+These are documentation defects (severity S4: a docstring or note is wrong or stale; no statement is affected).
+\end{warning}
+
+\begin{warning}[title={Dead ends}]\label{l29:warn:deadends}
+The following routes were tried for the invariant count and the detection input and failed; they are recorded so that
+they are not re-attempted. The evidence is the project's record (exact linear algebra modulo a large prime, computed outside the
+library); it was not re-run for this chapter.
+\begin{enumerate}
+\item \emph{One cyclic dual vector} (warning on p.~\pageref{l29:warn:cyclic}): fails at $n=2$, $r=2$, $N=4$.
+\item \emph{Test substitutions in the membership bound}: with the plain substitution $T\mapsto J$ (no correction term)
+  the test space is strictly larger than the socle count at $T$-degree $\ge n$ ($n=2$); with $T\mapsto J+\tilde z$ it is
+  also too large; with $\tilde x$ or $\tilde y$ it is sharp (\leanpath{TwoSeriesMembershipEndpoint.lean} docstring).
+\item \emph{Detection with the wrong ring}: the model symbols satisfy every relation of $\ltwentyninegr_rL_{k_n}$ modulo the
+  jets of $T^n$, but \emph{not} modulo the jets of $T^{n+1}$ ($n=2$, weight $\le8$; $n=3$, weight $\le7$). So $\ltwentynineRn$,
+  the arc algebra of $M(2,2n+1)$, is forced.
+\item \emph{The slice map at the wrong central charge}: the inclusion of the image of the affine maximal ideal into the
+  Virasoro maximal ideal holds at $c_{2,2n+1}$ and fails at $c_{2,2n+3}$ ($n=2,3$, weights $\le10$).
+\item \emph{Other detection attempts}: a weight-zero Witt operator, single-$\varepsilon$
+  specialisations at $k\ge n$, a test using only $J$, and Riccati-type maps. None gave detection; the slice map did.
+\end{enumerate}
+\end{warning}
+
+\begin{warning}[title={The converse is not proved}]\label{l29:warn:converse}
+Nothing in this chapter goes from $M(2,2n+3)$ back to $L_{k_n}$. At $n=1$ there is no coset route back: the coset partner
+$L_{-1/3}(\ltwentyninesl)$ fails graded unitarity at weight $3$ (a norm $-7/15$; the project's numerical record, not
+machine-checked), and BRST positivity only flows forward.
+No converse implication is stated or claimed in this edition.
+\end{warning}
+
+%======================================================================
+\section{Verification record}\label{l29:sec:verification}
+%======================================================================
+
+\paragraph{Files.} The chapter was written against an earlier state of the library; the files it documents are
+\leanpath{VOA/Examples/TwoSeries*.lean} (126 files at that state, 128 in this release). All are in the import closure of the umbrella \leanpath{VOA/Examples.lean}.
+
+\paragraph{Quotations.} Every \texttt{leancode} block of this chapter was compared, piece by piece with comments and whitespace
+normalized, with the current Lean sources for this edition: all occur verbatim. Every Lean identifier and Lean file
+path cited in the chapter resolves to a declaration or file of the current library.
+
+\paragraph{What was re-run for this edition.} \texttt{\#print axioms} on one scratch file importing
+\lean{TwoSeriesGenIncl}, \lean{TwoSeriesArakawaUnconditional}, \lean{TwoSeriesCharacterAGIdentity}, \lean{TwoSeriesModelCharEndpoint},
+\lean{TwoSeriesJetPoincareTwoEndpoint}, \lean{TwoSeriesLeeYang}, \lean{TwoSeriesSocleCountGordon}, \lean{TwoSeriesBoxFusion},
+\lean{TwoSeriesHighDegSucc}, \lean{TwoSeriesModelSocleCartan} and \lean{TwoSeriesKoszulLeeYang} (all under \lean{VOA.Examples}), run as
+\texttt{lake env lean -DmaxSynthPendingDepth=3} from the repository root against the build products already in the checkout (no
+\texttt{lake build} was run). Every declaration below, and the composite \lean{detect_check} of Theorem~\ref{l29:thm:detect}, reported
+exactly \lean{[propext, Classical.choice, Quot.sound]}, with no error and no \lean{sorryAx}:
+\begin{plaincode}
+JetPoincareTwo.twoSeries_gradedUnitary_of_affine_final, GenIncl.genInclusion,
+GenIncl.arrangementInclusion, GenIncl.symArrangementInclusion,
+ArrangementSym.jetPoincareCoreT0_of_symArrangement,
+JetPoincareTwo.twoSeries_gradedUnitary_of_affine_symArrangement,
+SliceMap.twoSeries_sliceArakawa, SliceMap.sliceArakawa_unconditional, SliceMap.W1_maxIdeal,
+SliceMap.twoSeries_gradedUnitary_of_affine, SliceMap.dsSliceMap,
+DSSlice.twoSeriesModelDetects_of_dsSlice, DSSlice.virSymbol_twoSeries,
+StrictModel.twoSeries_gradedUnitary_of_strictModel_jetPoincareCoreT0,
+StrictModel.twoSeriesModelDetects_one, gordonLowerBound_twoSeries, twoSeries_character,
+twoSeries_hpbw, twoSeries_gradedUnitary_of_affine_invariants_gordon_final,
+twoSeries_hasJetRelations_all, twoSeries_gradedUnitary_of_affine_invariants,
+rank_leadCohom_le_affineInvariants, twoSeries_gradedUnitary_of_affine_hodgeFree,
+brstHodgeInputs, twoSeries_gradedUnitary_of_affine, cosetLevels_gradedUnitary_of_affine,
+auxiliaryGradedUnitary, twoSeries_charge, twoSeriesLevels_c,
+ModelChar.twoSeriesModelCharacter_all, ModelChar.fermSeries_eq_product,
+ModelChar.twoSeries_gradedUnitary_of_strictModel_det,
+StrictModel.twoSeries_gradedUnitary_of_strictModel,
+JetPoincareTwo.twoSeries_gradedUnitary_M27_of_affine,
+JetPoincareTwo.twoSeries_gradedUnitary_M25_of_affine,
+JetPoincareTwo.twoSeries_gradedUnitary_of_affine_arrangement,
+JetPoincareArr.arrangementInclusion_two, leeYang_gradedUnitary_of_affine_viaTwoSeries,
+leeYang_gradedUnitary_of_affine_viaInvariants, twoSeries_gradedUnitary_of_socleInput,
+StrictModel.boxCount_all, StrictModel.symBoxBound,
+StrictModel.twoSeries_gradedUnitary_of_strictModel_jetPoincareCore,
+StrictModel.model_transverse
+  (the names above relative to VOA.TwoSeries)
+TwoSeriesCharacter.AG.gordon_sum_eq_rcq, TwoSeriesCharacter.finrank_pieceIn_le_gordon,
+TwoSeriesCharacter.hpbw_iff_gordonLowerBound, TwoSeriesCharacter.KacGram.rcq_le_finrank,
+SocleCount.socleWordCount_eq, SocleCount.socleWordGordon
+  (these relative to VOA)
+\end{plaincode}
+The same run printed the type of the headline as
+\begin{plaincode}
+VOA.TwoSeries.JetPoincareTwo.twoSeries_gradedUnitary_of_affine_final : ∀ (m : ℕ),
+  VOA.GradedUnitary (VOA.TwoSeries.affineForm (VOA.TwoSeries.twoSeriesLevels (m + 1)))
+      (VOA.TwoSeries.affineRealStructure (VOA.TwoSeries.twoSeriesLevels (m + 1)))
+      (VOA.TwoSeries.affineFlag (VOA.TwoSeries.twoSeriesLevels (m + 1))) →
+    VOA.VirGradedUnitarity.VirGradedUnitary (VOA.TwoSeries.twoSeriesLevels (m + 1)).c
+      (VOA.TwoSeries.targetRealStructure (VOA.TwoSeries.twoSeriesLevels (m + 1)))
+\end{plaincode}
+so, besides the natural number $m$, its only argument is the hypothesis \lean{hA}. The build products used are those already in the
+checkout; they were not rebuilt for this edition.
+
+\paragraph{Records of earlier builds (not re-run).} The project's records give, for the state in which the headline was first
+obtained, an aggregate \texttt{lake build} green at 13\,672 jobs and the maintained axiom audit passing, with the headline
+reporting the three standard axioms; and a later aggregate \texttt{lake build VOA} green at 13\,868 jobs. The aggregate build was not
+re-run for this edition. The numerical evidence quoted in the warnings on pp.~\pageref{l29:warn:cyclic} and \pageref{l29:warn:deadends}
+and in the dictionary of Theorem~\ref{l29:thm:final} is the project's record (computations outside the library), not machine-checked here.
+
+\paragraph{Forbidden constructs.} A search of the \leanpath{TwoSeries*} files for \lean{sorry}, \lean{admit}, \lean{native_decide},
+\lean{implemented_by} (as words) and for lines beginning with \lean{axiom} finds no occurrence; this is consistent with the axiom
+checks above.
+
+%======================================================================
+\section{Referee's checklist}\label{l29:sec:checklist}
+%======================================================================
+
+\begin{center}\small
+\begin{longtable}{p{0.29\textwidth}p{0.26\textwidth}p{0.17\textwidth}p{0.16\textwidth}}
+\toprule
+declaration & intended meaning & hypotheses & where checked\\
+\midrule\endhead
+\lean{TS.JetPoincareTwo.}\allowbreak\ltwentynineln{twoSeries_gradedUnitary_of_affine_final} & $\ltwentynineGU(L_{k_{m+1}})\Rightarrow\ltwentynineGU(M(2,2m+5))$ & \lean{hA} only; conditional & Thm.~\ref{l29:thm:final}\\
+\lean{TS.twoSeries_charge} & coset charge $=c_{2,2n+3}$ & none & Thm.~\ref{l29:thm:charge}\\
+\lean{TS.twoSeriesLevels} & level data, $=$ Lee--Yang at $n=1$ & -- & Def.~\ref{l29:def:twolevels}\\
+\lean{TS.auxiliaryGradedUnitary} & GU of $V^{k_U}$, $k_U<-2$ & none & Thm.~\ref{l29:thm:aux}\\
+\ltwentynineln{TS.cosetLevels_gradedUnitary_of_affine} & coset transfer, packaged & \lean{hA}, Hodge, squeeze & Thm.~\ref{l29:thm:transfer}\\
+\ltwentynineln{TS.twoSeries_gradedUnitary_of_affine} (Assembly) & same, at member $n$ & same & Thm.~\ref{l29:thm:transfer}, warning p.~\pageref{l29:warn:clash}\\
+\lean{TS.brstHodgeInputs} & Hodge package at every level & \lean{hA} & Thm.~\ref{l29:thm:hodge}\\
+\ltwentynineln{TS.rank_leadCohom_le_affineInvariants} & Koszul embedding & \lean{hA} & Thm.~\ref{l29:thm:koszul}\\
+\ltwentynineln{TS.twoSeries_gradedUnitary_of_affine_invariants} & transfer from counts & \lean{hA}, \lean{hinv}, \lean{hpbw} & Thm.~\ref{l29:thm:invariants}\\
+\ltwentynineln{TS.twoSeries_hasJetRelations_all} & null vector $T^{n+1}$ & none & Thm.~\ref{l29:thm:jetrel}\\
+\lean{VOA.TwoSeriesCharacter.}\allowbreak\lean{finrank_pieceIn_le_gordon} & Gordon spanning & jet relations & Thm.~\ref{l29:thm:upper}\\
+\lean{...AG.gordon_sum_eq_rcq} & Andrews--Gordon identity & none & Thm.~\ref{l29:thm:ag}\\
+\lean{TS.twoSeries_character} & vacuum character of $M(2,2n+3)$ & none; \textbf{unconditional} & Thm.~\ref{l29:thm:character}\\
+\lean{TS.twoSeries_hpbw} & refined PBW character & none & Thm.~\ref{l29:thm:hpbw}\\
+\ltwentynineln{TS.twoSeries_gradedUnitary_of_affine_invariants_gordon_final} & transfer from \lean{hinv} & \lean{hA}, \lean{hinv} & Thm.~\ref{l29:thm:gordonfinal}\\
+\ltwentynineln{VOA.SocleCount.socleWordCount_eq} & socle count $=$ Gordon count & none & Thm.~\ref{l29:thm:swc}\\
+\ltwentynineln{TS.twoSeries_gradedUnitary_of_socleSpectrum} & transfer from socle data & \lean{hA}, socle data & Thm.~\ref{l29:thm:soclespectrum}\\
+\lean{TS.StrictModel.}\allowbreak\ltwentynineln{twoSeries_gradedUnitary_of_strictModel} & transfer from model & \lean{hA}, det, chi, spec & Thm.~\ref{l29:thm:strict}\\
+\ltwentynineln{TS.ModelChar.fermSeries_eq_product}, \lean{twoSeriesModelCharacter_all} & fermionic $=$ product; model big enough & none ($n\ge1$) & Thm.~\ref{l29:thm:modelchar}\\
+\lean{TS.StrictModel.}\allowbreak\lean{..._jetPoincareCoreT0} & transfer from det $+$ Poincar\'e & \lean{hA}, det, \lean{h} & Thm.~\ref{l29:thm:strictpoincare}\\
+\ltwentynineln{TS.DSSlice.virSymbol_twoSeries} & Virasoro leading symbols into $R_{m+1}$ & none & Thm.~\ref{l29:thm:virsymbol}\\
+\lean{TS.DSSlice.}\allowbreak\ltwentynineln{twoSeriesModelDetects_of_dsSlice} & detection from slice map & slice map, Arakawa & Thm.~\ref{l29:thm:detectreduce}\\
+\lean{TS.SliceMap.dsSliceMap} & slice map constructed & -- & Def.~\ref{l29:def:dsslicemap}\\
+\ltwentynineln{TS.SliceMap.twoSeries_sliceArakawa} & nulls go to nulls under DS & none & Thm.~\ref{l29:thm:slicearakawa}\\
+\ltwentynineln{TS.SliceMap.twoSeries_gradedUnitary_of_affine} & transfer from Poincar\'e core & \lean{hA}, \lean{h} & Thm.~\ref{l29:thm:slicegu}, warning p.~\pageref{l29:warn:clash}\\
+\lean{TS.ArrangementSym.}\allowbreak\ltwentynineln{jetPoincareCoreT0_of_symArrangement} & Poincar\'e core by duality & $\mathrm{SAI}_n$ & Thm.~\ref{l29:thm:poincarecore}\\
+\lean{TS.GenIncl.genInclusion}, \lean{symArrangementInclusion} & block generators span $L_N\cap(\text{vanishing ideal})$ & $2\le n$ (resp.\ $1\le n$) & Thm.~\ref{l29:thm:geninclusion}\\
+\lean{TS.JetPoincareTwo.}\allowbreak\ltwentynineln{twoSeries_gradedUnitary_M27_of_affine} & $(A_1,D_5)\to(A_1,A_4)$ & \lean{hA} & Cor.~\ref{l29:cor:m27}\\
+\ltwentynineln{TS.leeYang_gradedUnitary_of_affine_viaTwoSeries} & Lee--Yang recovered & \lean{hA} & Thm.~\ref{l29:thm:leeyang}\\
+\bottomrule
+\end{longtable}
+\end{center}
+(\lean{TS} abbreviates \lean{VOA.TwoSeries}.)
+
+%======================================================================
+\section{Notes and references}\label{l29:sec:notes}
+%======================================================================
+
+\paragraph{Graded unitarity and the four-dimensional origin.} A.~Arabi Ardehali, C.~Beem, M.~Lemos and L.~Rastelli,
+\emph{Graded unitarity in the SCFT/VOA correspondence}, arXiv:2507.23781 (2025). The SCFT/VOA correspondence: C.~Beem,
+M.~Lemos, P.~Liendo, W.~Peelaers, L.~Rastelli and B.~C.~van Rees, \emph{Infinite chiral symmetry in four dimensions},
+Comm.\ Math.\ Phys.\ 336 (2015) 1359--1433, arXiv:1312.5344. The identification of the chiral algebras of the
+Argyres--Douglas theories $(A_1,A_{2n})$ with $M(2,2n+3)$ and of $(A_1,D_{2n+1})$ with $L_{-4n/(2n+1)}(\ltwentyninesl)$ is
+due to C.~Cordova and S.-H.~Shao, \emph{Schur indices, BPS particles, and Argyres--Douglas theories}, JHEP 01 (2016) 040,
+arXiv:1506.00265; see also T.~Creutzig, \emph{W-algebras for
+Argyres--Douglas theories}, Eur.\ J.\ Math.\ 3 (2017) 659--690, arXiv:1701.05926. The BRST coset construction and the
+Hodge package: C.~Beem and S.~Garner, arXiv:2509.10364 (2025), as cited in the source files. The conjecture that the
+boundary minimal models are graded unitary goes back to R.~M.~Kaufmann, hep-th/9405041 (1994) (see Chapter~\ref{ch:L19}).
+
+\paragraph{Cosets and admissible levels.} P.~Goddard, A.~Kent and D.~Olive, \emph{Unitary representations of the
+Virasoro and super-Virasoro algebras}, Comm.\ Math.\ Phys.\ 103 (1986) 105--119 (the coset construction); V.~G.~Kac and
+M.~Wakimoto, \emph{Modular invariant representations of infinite-dimensional Lie algebras and superalgebras}, Proc.\ Natl.\
+Acad.\ Sci.\ USA 85 (1988) 4956--4960 (admissible levels). T.~Arakawa and C.~Dai, on classical freeness and characters at
+boundary admissible levels, as in Chapter~\ref{ch:L20}.
+
+\paragraph{Drinfeld--Sokolov reduction.} B.~Feigin and E.~Frenkel, \emph{Quantization of the Drinfeld--Sokolov
+reduction}, Phys.\ Lett.\ B 246 (1990) 75--81; T.~Arakawa, \emph{Representation theory of $W$-algebras}, Invent.\ Math.\
+169 (2007) 219--320, where (in the ``$-$'' reduction) the reduction of an irreducible highest-weight module is shown to be
+irreducible or zero; for admissible $k$ this gives $H_{DS}(L_k(\ltwentyninesl))\cong L(c_{\mathrm{DS}}(k),0)$. No result of
+Arakawa's is assumed by the Lean development; only the ``descends'' half is proved, for the explicit slice map. The Whittaker coinvariant description is in the spirit of
+B.~Kostant, \emph{On Whittaker vectors and representation theory}, Invent.\ Math.\ 48 (1978) 101--184. The slice map of this
+chapter is the project's own construction.
+
+\paragraph{Characters.} G.~E.~Andrews, \emph{An analytic generalization of the Rogers--Ramanujan identities for odd
+moduli}, Proc.\ Natl.\ Acad.\ Sci.\ USA 71 (1974) 4082--4085, and \emph{The Theory of Partitions}, Addison-Wesley 1976,
+Chapter~7 (Andrews' recursion); B.~Gordon, \emph{A combinatorial generalization of the Rogers--Ramanujan identities},
+Amer.\ J.\ Math.\ 83 (1961) 393--399. A.~Rocha-Caridi, \emph{Vacuum vector representations of the Virasoro algebra}, in
+\emph{Vertex Operators in Mathematics and Physics}, MSRI Publ.\ 3 (1985) 451--473. A.~Benoit and Y.~Saint-Aubin, \emph{Degenerate
+conformal field theories and explicit expressions for some null vectors}, Phys.\ Lett.\ B 215 (1988) 517--522. B.~Feigin and
+A.~Stoyanovsky, \emph{Quasi-particles models for the representations of Lie algebras and geometry of flag manifold},
+arXiv:hep-th/9308079 (functional realisations). The fermionic formula for the boundary levels: S.~Chern, D.~Tran and A.~Wakhare,
+as cited in the source files (we do not reproduce the title). The Bailey chain: G.~E.~Andrews, \emph{Multiple series
+Rogers--Ramanujan type identities}, Pacific J.\ Math.\ 114 (1984) 267--283. P.~A.~MacMahon, \emph{Combinatory Analysis}
+(1915--16), for the inversion generating function of words.
+
+\paragraph{The $n$-equal arrangement.} S.-Y.~R.~Li and W.~C.~W.~Li, \emph{Independence numbers of graphs and generators of
+ideals}, Combinatorica 1 (1981) 55--61 (generators of the ideal of the $n$-equal arrangement). The point that the jet-ideal
+Poincar\'e lemma reduces to this arrangement, via a fermionic realisation, is suggested by Ait El Manssour--Pogudin's work on
+arcs of fat points.
+
+\endgroup
