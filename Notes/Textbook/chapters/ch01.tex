@@ -22,8 +22,9 @@ Chapter~\ref{ch:L01}.
 
 The LeanVOA library is a body of roughly ten thousand Lean files (the per-chapter counts at the book's commit are tabulated in
 Appendix~\ref{ch:provenance})
-which formalise a large part of the theory of vertex operator algebras and, as its headline result,
-construct the Moonshine module $\Vnat$ of Frenkel, Lepowsky and Meurman. The Lean system has checked
+which formalise a large part of the theory of vertex operator algebras and, as its headline results,
+construct the Moonshine module $\Vnat$ of Frenkel, Lepowsky and Meurman and prove monstrous moonshine for it (the
+Conway--Norton conjecture, in a genus-zero form, for every automorphism of $\Vnat$; Part~VIII). The Lean system has checked
 every proof in it. That is a strong guarantee, but it is a guarantee about \emph{proofs}, not about
 \emph{statements}. A Lean theorem can be completely verified and still not say what its authors
 meant: a hypothesis may be stronger than intended, a conclusion weaker, a definition may be vacuous
@@ -62,7 +63,7 @@ references}. Section~\ref{ch01:sec:boxes} explains the boxes in more detail.
 \subsection{How to use the book}
 
 A reader who wants to verify the construction of $\Vnat$ can follow the \emph{Moonshine path} of
-Section~\ref{ch01:sec:paths}; a reader interested in the library as a whole can follow the
+Section~\ref{ch01:sec:paths}, and continue on the \emph{monstrous-moonshine path} of the same section; a reader interested in the library as a whole can follow the
 \emph{general path}. In both cases the recommended way to use a chapter is the referee's way: read
 the mathematical statement, then read the Lean statement \emph{before} reading the fidelity check,
 and try to decode it yourself with the help of Sections~\ref{ch01:sec:lean}
@@ -473,8 +474,11 @@ preserved: that is a \emph{theorem} (Chapter~\ref{ch:L04}), proved from $\alpha\
 \begin{physics}
 An automorphism of the chiral algebra is a global internal symmetry of the conformal field theory
 that commutes with conformal transformations (it fixes the stress tensor). For $\Vnat$ the
-automorphism group is the Monster (a theorem of Frenkel, Lepowsky and Meurman, not formalized in
-the library).
+automorphism group is the Monster (a theorem of Frenkel, Lepowsky and Meurman). In the library,
+$\Aut(\Vnat)$ is proved, with no hypotheses, to be finite and isomorphic to the subgroup of \lean{AutO} (a Lean model
+of the Monster ported from the AxiomMath library) formed by the elements that act on $\Vnat$; that this subgroup is all
+of \lean{AutO} is proved given the one named hypothesis \lean{GmatEqAutO} (Section~\ref{ch01:sec:gmat};
+Chapters~\ref{ch:20}--\ref{ch:22}).
 \end{physics}
 
 \begin{status}
@@ -1287,6 +1291,65 @@ condition of the theorem or an unproved input. The library contains many results
 Chapter~\ref{ch:L16} takes hypotheses \lean{hfib} and \lean{hrank} that are discharged only for the trivial
 VOA --- and the status boxes name them. (Such inputs are sometimes later proved: the Arakawa--Kawasetsu weight grading
 \lean{AKWeightGrading W}, long carried as such a hypothesis, is now the theorem \lean{VOA.akWeightGrading} for every VOA.) The headline theorem \lean{VOA.Moonshine.moonshine} has no hypotheses at all.
+The part on monstrous moonshine has exactly one hypothesis of the second kind in its final theorems, \lean{GmatEqAutO};
+it is a theorem of another Lean library, but not of this one, so the two theorems that take it are conditional in the
+sense just defined (Section~\ref{ch01:sec:gmat}).
+
+\subsection{The one named hypothesis of the moonshine part}\label{ch01:sec:gmat}
+
+Part~VIII (Chapters~\ref{ch:16}--\ref{ch:22}) proves monstrous moonshine for the library's $\Vnat$. Its final
+theorems, all in the namespace \lean{VOA.Moonshine.ConwayNorton}, fall into two groups.
+
+\textbf{With no hypotheses} (beyond, for \lean{conwayNorton_gmat}, membership of the element in $\mathrm{Gmat}$), and with \texttt{\#print axioms} contained in \lean{[propext, Classical.choice, Quot.sound]}:
+\begin{itemize}
+\item \lean{conwayNorton : ConwayNortonConjecture}: for every automorphism $g$ of $\Vnat$, the McKay--Thompson series
+  $T_g(\tau)=q^{-1}+\sum_{n\ge1}\tr(g\,|\,\Vnat_{n+1})\,q^n$ is the normalised Hauptmodul of a genus-zero group
+  $\Gamma_g\le\mathrm{SL}_2(\mathbb R)$ that contains some $\Gamma_0(N)$ and is commensurable with
+  $\mathrm{SL}_2(\Z)$. This is the Conway--Norton conjecture in a qualitative genus-zero form: it does not identify
+  $\Gamma_g$ with the group of Conway and Norton's table, nor relate $N$ to the order of $g$
+  (Chapter~\ref{ch:16}; proof assembled in Chapter~\ref{ch:20});
+\item \lean{conwayNorton_gmat}: every element of the group $\mathrm{Gmat}$ generated inside AxiomMath's Monster by the
+  visible subgroup $2^{1+24}.\mathrm{Co}_1$ and a triality element acts on $\Vnat$, and its McKay--Thompson series is as
+  above (Chapter~\ref{ch:22}); its only premise is the membership $g\in\mathrm{Gmat}$ of the element it talks about;
+\item \lean{M8.finite_autVnat}: $\Aut(\Vnat)$ is a finite group (Chapter~\ref{ch:20});
+\item \lean{rationalTraces}: every coefficient of every McKay--Thompson series is rational (Chapter~\ref{ch:22});
+\item \lean{nonempty_autVnat_mulEquiv_liftable}: $\Aut(\Vnat)$ is isomorphic to the subgroup of AxiomMath's Monster
+  \lean{AutO} consisting of the elements that act on $\Vnat$ (Chapter~\ref{ch:22}). Tits's theorem on the automorphism
+  group of the Griess algebra is not used.
+\end{itemize}
+
+\textbf{Conditionally on one named hypothesis}, the proposition
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineLRMonsterHeadline.lean}.
+\begin{leancode}
+def GmatEqAutO : Prop :=
+  Generated.Gmat = AutO
+\end{leancode}
+(``the generated group $\mathrm{Gmat}$ is the whole automorphism group \lean{AutO} of AxiomMath's rational Griess
+algebra''), the library proves \lean{monsterEquivAutVnat (hM : GmatEqAutO)}, a group isomorphism
+$\mathrm{AutO}\cong\Aut(\Vnat)$ compatible with the Griess algebras, and \lean{monstrousMoonshine (hM : GmatEqAutO)},
+which adds that the McKay--Thompson series of every element of the Monster is a normalised Hauptmodul as above
+(Chapter~\ref{ch:22}, Section~\ref{ch22:sec:headline}).
+
+\lean{GmatEqAutO} is \emph{not} an axiom. It is a definition of a proposition, and the two theorems take a proof of it
+as an explicit argument \lean{hM}; nothing in the library asserts it. Its content is a theorem of the AxiomMath CFSG
+library (a Lean formalisation of parts of the classification of finite simple groups),
+\lean{CFSG.Blueprint.NativeSporadic.MonsterModel.gmat_eq_griess}, at AxiomMath's commit \texttt{69cb972f}, on Lean~4.35.
+The definitions it mentions were ported to this library and agree with AxiomMath's up to renaming (one of them,
+\lean{phi0}, is restated in a form definitionally equal to the original; \texttt{Notes/monster\_aut/CFSG\_PORT\_FIDELITY.md}),
+so \lean{GmatEqAutO} is the statement AxiomMath proves. Its proof (about $15{,}500$ files, through a recognition of the
+Baby Monster) does not run on this library's Lean~4.30, so it cannot be imported. Release v1.1 of the library is planned
+to move to Lean~4.35 and import it, which would discharge the hypothesis. Until then the book calls
+\lean{monsterEquivAutVnat} and \lean{monstrousMoonshine} ``\texttt{\#print axioms}-clean, conditional on
+\lean{GmatEqAutO}'', never unconditional. The library still declares no axiom. Inside the library, ``the Monster''
+means the Lean group \lean{AutO}; that it is the Monster of the classification is also a theorem of AxiomMath's library,
+not of this one.
+
+\begin{physics}
+The two groups of theorems say different things about the moonshine conformal field theory. The first says that the
+twisted partition function (McKay--Thompson series) of \emph{every} global symmetry of the theory is the Hauptmodul of
+a genus-zero modular group, whatever the symmetry group is; the second says that the symmetry group is exactly an
+independently constructed copy of the Monster, given one identification proved in group theory.
+\end{physics}
 
 \subsection{The aggregate build}
 
@@ -1454,9 +1517,9 @@ chapter quickly can start from that table.
 
 \subsection{The parts}
 
-The book has eight parts. Parts~I--V document the general library; Part~VI formalizes recent research
+The book has nine parts. Parts~I--V document the general library; Part~VI formalizes recent research
 theorems, and conditional reductions of further ones, on top of it; Part~VII constructs the Moonshine
-module; Part~VIII records how all of it was verified.
+module; Part~VIII proves monstrous moonshine for it; Part~IX records how all of it was verified.
 \begin{description}
 \item[Part I, Foundations.] This chapter; Chapter~\ref{ch:L01}, formal calculus and locality
   (formal distributions, modes, the delta function, generalised binomials, locality and its
@@ -1574,7 +1637,35 @@ module; Part~VIII records how all of it was verified.
   and twisted lattice modules; the intertwiners $W$ and $\overline W$; the vertex algebra on $\Vnat$
   modulo one relation, and simplicity; the Golay frame and the untwisted triality; the existence of
   the twisted triality (two chapters); the key identity and the completion of the proof.
-\item[Part VIII, Verification.] Chapter~\ref{ch:15}: the verification record, the dead ends, the
+\item[Part VIII, Monstrous moonshine.] Chapters~\ref{ch:16}--\ref{ch:22}: the Conway--Norton conjecture for every
+  automorphism of $\Vnat$, and the identification of $\Aut(\Vnat)$ with a Lean model of the Monster. The final theorems
+  and the one named hypothesis \lean{GmatEqAutO} are listed in Section~\ref{ch01:sec:gmat}.
+  \begin{itemize}
+  \item Chapter~\ref{ch:16}: the statement. The automorphism group \lean{AutVnat}, graded traces and the McKay--Thompson
+    series, Hauptmoduln and moonshine groups (without Riemann surfaces), the Lean proposition
+    \lean{ConwayNortonConjecture} compared clause by clause with the conjecture of Conway and Norton, replication, and
+    the passage from $\Gamma_1(N)$ to $\Gamma_0(N)$; it also lays out the logical dependencies of the part.
+  \item Chapter~\ref{ch:17}: the vertex algebra of the even unimodular Lorentzian lattice $\mathrm{II}_{1,1}$ (not a
+    vertex operator algebra: its grading is not bounded below) and the tensor theory $\Vnat\otimes V_{\mathrm{II}_{1,1}}$
+    of central charge $26$, with its invariant form and Virasoro action.
+  \item Chapter~\ref{ch:18}: the Monster Lie algebra $\mathfrak m$ of physical string states; the no-ghost theorem,
+    the root spaces $\mathfrak m_{(m,n)}\cong\Vnat_{mn+1}$, the invariant form, and the Borcherds--Kac--Moody structure
+    given generation by the simple root spaces.
+  \item Chapter~\ref{ch:19}: the product formula for $J(p)-J(q)$ (the denominator identity, proved analytically), the
+    twisted denominator identities, replication, and the case-free genus-zero argument (the $\Gamma_1$ form).
+  \item Chapter~\ref{ch:20}: $\Aut(\Vnat)$: faithfulness on the Griess algebra, the triality automorphism, finite order
+    of every automorphism and finiteness of the group (rigid Ising vectors), generation of $\mathfrak m$ by its simple
+    root spaces, and the assembly of \lean{conwayNorton}, with no hypotheses.
+  \item Chapter~\ref{ch:21}: the Griess algebra of $\Vnat$ and AxiomMath's Monster: the ported rational Griess
+    algebra, its automorphism group \lean{AutO}, the visible subgroup $2^{1+24}.\mathrm{Co}_1$, the triality element and
+    $\mathrm{Gmat}$, and an explicit isomorphism of algebras with forms between $\Vnat_2$ and the complexified rational
+    Griess algebra.
+  \item Chapter~\ref{ch:22}: every element of $\mathrm{Gmat}$ acts on $\Vnat$ (\lean{conwayNorton_gmat}); conversely
+    $\Aut(\Vnat)$ is isomorphic to the subgroup of liftable elements of \lean{AutO}
+    (\lean{nonempty_autVnat_mulEquiv_liftable}; rationality of traces and a commutant lemma, no Tits); and the headline
+    \lean{monstrousMoonshine}, conditional on \lean{GmatEqAutO}.
+  \end{itemize}
+\item[Part IX, Verification.] Chapter~\ref{ch:15}: the verification record, the dead ends, the
   numerical evidence and the open problems.
 \end{description}
 
@@ -1607,6 +1698,13 @@ forms of Chapter~\ref{ch:L04} --- together with the modules of Chapter~\ref{ch:L
 intertwiners of Chapter~\ref{ch:09} and the Zhu-algebra arguments of Chapter~\ref{ch:12}) and the
 lattice data of Chapter~\ref{ch:L02}; the modular function $J$ enters in Chapter~\ref{ch:05}. Within Part~VII the chapters
 are in logical order.
+Part~VIII needs Part~VII (the vertex operator algebra $\Vnat$, and the triality $\sigma^\natural$ of
+Chapters~\ref{ch:12}--\ref{ch:14}), the axioms and structure theory of Chapters~\ref{ch:L03} and~\ref{ch:L04}, the
+lattice vertex algebras of Chapter~\ref{ch:L05} (for Chapter~\ref{ch:17}) and the modular forms of
+Chapter~\ref{ch:L14}. Its chapters are ordered for reading, \emph{not} in logical order: the complete replicability
+proved in Chapter~\ref{ch:19} is conditional on two inputs (generation and finite order) proved in
+Chapter~\ref{ch:20}, and Chapters~\ref{ch:21}--\ref{ch:22} are needed only to identify $\Aut(\Vnat)$ with the Monster.
+The dependency graph is drawn in Chapter~\ref{ch:16}, Section~\ref{ch16:sec:roadmap}.
 
 \subsection{Two reading paths}\label{ch01:sec:paths}
 
@@ -1619,6 +1717,13 @@ algebra when Chapters~\ref{ch:09} and~\ref{ch:12} use them; finally Chapter~\ref
 a hurry can start from the end: Chapter~\ref{ch:14}, Section~\ref{ch14:sec:decode}, decodes the
 headline theorem clause by clause and points back to every definition it uses.
 
+\textbf{The monstrous-moonshine path} (to verify the Conway--Norton theorem and the Monster action): after the
+Moonshine path, Chapter~\ref{ch:16} (the statement, and the dependency graph of Section~\ref{ch16:sec:roadmap}); then
+Chapters~\ref{ch:17}--\ref{ch:20} for \lean{conwayNorton}, and Chapters~\ref{ch:21}--\ref{ch:22} for the Monster. A
+referee in a hurry can read Chapter~\ref{ch:16}, Section~\ref{ch16:sec:statement} (the clause-by-clause comparison of
+\lean{ConwayNortonConjecture} with Conway and Norton's conjecture) and Chapter~\ref{ch:22},
+Section~\ref{ch22:sec:headline} (the headline and its one hypothesis).
+
 \textbf{The general path} (to learn the library as a whole): Part~I in order; then the examples of
 Chapters~\ref{ch:L05} and~\ref{ch:L06}; then representation theory (Chapter~\ref{ch:L12}) and
 modularity (Chapters~\ref{ch:L14}, \ref{ch:L15}); then the remaining chapters by interest.
@@ -1628,9 +1733,9 @@ $\mathfrak{sl}_2$), Chapter~\ref{ch:L23}, then Chapters~\ref{ch:L24}--\ref{ch:L2
 wants only the final statements and their named inputs can start from Chapter~\ref{ch:L27}. For graded
 unitarity, read Chapter~\ref{ch:L19}, then Chapters~\ref{ch:L28} and~\ref{ch:L29} (the BRST coset).
 
-\subsection{What is proved, and what is conditional, in Parts IV to VI}\label{ch01:sec:newstatus}
+\subsection{What is proved, and what is conditional, in Parts IV to VI and VIII}\label{ch01:sec:newstatus}
 
-The chapters of Parts~IV to~VI mix unconditional theorems with conditional reductions, and their
+The chapters of Parts~IV to~VI and~VIII mix unconditional theorems with conditional reductions, and their
 titles do not say which is which. Table~\ref{ch01:tab:newstatus} records the status of their headline
 results as the chapters themselves state it. ``Unconditional'' means: \texttt{\#print axioms}-clean (Lean's
 three standard axioms) and no hypothesis beyond the evident parameters (Section~\ref{ch01:sec:uncond}).
@@ -1639,7 +1744,7 @@ theorems are \emph{not} proofs of their conclusions.
 
 \begingroup\small
 \begin{longtable}{>{\raggedright\arraybackslash}p{0.09\textwidth}>{\raggedright\arraybackslash}p{0.47\textwidth}>{\raggedright\arraybackslash}p{0.36\textwidth}}
-\caption{Status of the headline results of Parts~IV to~VI.}\label{ch01:tab:newstatus}\\
+\caption{Status of the headline results of Parts~IV to~VI and~VIII.}\label{ch01:tab:newstatus}\\
 \toprule
 Chapter & Headline & Status\\
 \midrule\endhead
@@ -1681,6 +1786,23 @@ Chapter & Headline & Status\\
   conditional on \lean{hA} (graded unitarity of $L_{-4/3}(\mathfrak{sl}_2)$), open\\
 \ref{ch:L29} & the same for $M(2,2n+1)$, every $n\ge2$, from the boundary admissible $L_k(\mathfrak{sl}_2)$ &
   conditional on \lean{hA} at that level, open\\
+\ref{ch:18} & no-ghost theorem; the Monster Lie algebra $\mathfrak m$ as Borcherds data & no-ghost unconditional;
+  the Borcherds-data theorem takes generation by simple root spaces (\lean{hgen}) as a hypothesis, discharged in
+  Chapter~\ref{ch:20}\\
+\ref{ch:19} & product formula for $J(p)-J(q)$; complete replicability; genus zero in the $\Gamma_1$ form &
+  product formula unconditional; the others proved from generation and finite order, both discharged in
+  Chapter~\ref{ch:20}\\
+\ref{ch:20} & Conway--Norton, genus-zero form, for every $g\in\Aut(\Vnat)$ (\lean{conwayNorton}); every automorphism
+  has finite order; $\Aut(\Vnat)$ finite (\lean{M8.finite_autVnat}) & unconditional; qualitative form ($\Gamma_g$ not
+  identified with the table group, $N$ not related to $o(g)$)\\
+\ref{ch:21} & $\Vnat_2\cong\C\otimes_\Q$ (AxiomMath's rational Griess algebra), as algebras with forms & unconditional
+  (AxiomMath's definitions ported; that \lean{AutO} is the Monster is AxiomMath's theorem, not ported)\\
+\ref{ch:22} & Conway--Norton for every element of $\mathrm{Gmat}$ (\lean{conwayNorton_gmat}); rational traces
+  (\lean{rationalTraces}); $\Aut(\Vnat)\cong$ liftable subgroup of \lean{AutO}
+  (\lean{nonempty_autVnat_mulEquiv_liftable}) & unconditional; Tits's theorem not used\\
+\ref{ch:22} & $\mathrm{AutO}\cong\Aut(\Vnat)$ (\lean{monsterEquivAutVnat}); monstrous moonshine for the Monster
+  (\lean{monstrousMoonshine}) & conditional on \lean{GmatEqAutO} only, a theorem of AxiomMath's library on Lean~4.35
+  (Section~\ref{ch01:sec:gmat})\\
 \bottomrule
 \end{longtable}
 \endgroup
@@ -1797,6 +1919,10 @@ weight-one states (the Leech lattice has no roots, and the orbifold removes the 
 and the Monster group as its symmetry group. The Lean construction (Chapters~\ref{ch:02}
 to~\ref{ch:14}) follows this physical recipe step by step; its hardest part is to prove that the
 fields of the twisted sector are local with each other, the step physicists take for granted.
+Part~VIII then follows Borcherds: tensoring $\Vnat$ with the chiral bosons of the two-dimensional Lorentzian lattice
+gives a theory of central charge $26$, the physical states of the bosonic string built on it form the Monster Lie
+algebra, and its denominator identities show that the twisted partition functions $T_g$ of the symmetries of $\Vnat$
+are Hauptmoduln of genus-zero groups.
 
 \begin{physics}
 \textbf{Summary of the dictionary.} States $\leftrightarrow$ vectors of $V$; local operators
@@ -1928,6 +2054,7 @@ Lean declaration & Intended meaning & Hypotheses / status & Check\\
 \lean{VOA.SuperVertexAlgebra} & super vertex algebra & definition & §\ref{ch01:sec:super}; Chapter~\ref{ch:L17}\\
 \lean{VOA.Moonshine.moonshine} & $\Vnat$ exists with the FLM data, $c=24$, $V_1=0$, $\dim V_2=196884$, character $J$, simple & no hypotheses; unconditional; standard axioms & §\ref{ch01:sec:headline}; §\ref{ch14:sec:decode}\\
 \lean{VOA.pbw} & two PBW consequences & theorem, unconditional (formerly a project axiom); not used by Moonshine & §\ref{ch01:sec:trust}; §\ref{l02:sec:axiom}\\
+\lean{VOA.Moonshine.ConwayNorton.GmatEqAutO} & $\mathrm{Gmat}=\mathrm{AutO}$ in AxiomMath's Monster & definition of a proposition, not an axiom; the only hypothesis of \lean{monsterEquivAutVnat} and \lean{monstrousMoonshine}; proved in AxiomMath's library (Lean~4.35) & §\ref{ch01:sec:gmat}; §\ref{ch22:sec:headline}\\
 \bottomrule
 \end{longtable}
 \endgroup

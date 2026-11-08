@@ -4,8 +4,9 @@
 Theoretical Physics, Stony Brook University)
 
 LeanVOA is a Lean 4 library for the theory of vertex operator algebras (VOAs), together with a companion book that
-sets each formalized result next to its textbook statement. The library constructs the Moonshine module V♮ and
-formalizes Zhu's modular invariance, Huang's tensor categories with the Verlinde formula, the Gannon–Rayhaun
+sets each formalized result next to its textbook statement. The library constructs the Moonshine module V♮, proves
+the Conway–Norton moonshine conjecture for every automorphism of V♮ (Borcherds' theorem), and identifies Aut V♮ with
+the Monster, given one named theorem of AxiomMath's CFSG library. It also formalizes Zhu's modular invariance, Huang's tensor categories with the Verlinde formula, the Gannon–Rayhaun
 classification of c = 1 VOAs, and classical freeness of the boundary admissible L<sub>k</sub>(sl₂) (Arakawa–Dai) and
 of the minimal models M(2,2m+3) (van Ekeren–Heluani). It also contains new results: graded first-order rigidity of
 all Virasoro minimal models and of L<sub>k</sub>(sl₂) at every admissible level; classical freeness of
@@ -13,7 +14,7 @@ L<sub>−3/2</sub>(sl₃), and of the other members of the Deligne series under 
 graded unitarity of the boundary admissible L<sub>k</sub>(sl₂) implies that of the minimal models M(2,2n+1). The
 library declares no axiom of its own.
 
-- **Release:** v1.0 (tag `v1.0`)
+- **Release:** v1.05 (tag `v1.05`; previous release v1.0)
 - **Book:** [`Notes/book.pdf`](Notes/book.pdf), *Vertex Operator Algebras in Lean* (sources in
   [`Notes/Textbook/`](Notes/Textbook/))
 - **Brief:** [`Notes/brief.pdf`](Notes/brief.pdf), the book's headline statements with their Lean names and verbatim
@@ -34,7 +35,14 @@ and the theory is developed for VOAs of CFT type, V₀ = ℂ𝟙 and V<sub>n</su
 ## Scope
 
 The headline results, with what each assumes. Every listed declaration depends only on Lean's three standard axioms
-(`propext`, `Classical.choice`, `Quot.sound`); the book gives the precise statements and conventions.
+(`propext`, `Classical.choice`, `Quot.sound`); the book gives the precise statements and conventions. The only result
+stated with a hypothesis that is a theorem proved elsewhere is the Monster identification: `GmatEqAutO` is
+AxiomMath's theorem `CFSG.Blueprint.NativeSporadic.MonsterModel.gmat_eq_griess` (commit `69cb972f`, Lean v4.35).
+Its proof, about 15,500 files through the Baby Monster recognition, does not run on this library's toolchain. It
+will be imported when the library moves to Lean v4.35. Our hypothesis is their statement after renaming (the ported
+definitions were compared declaration by declaration with that commit). The literature milestones on that proof's path
+that we inspected (the Stroth–Leon–Sims recognition of the Baby Monster, Goldschmidt's theorem) are theorems in their
+library, not axioms. We have not re-run `#print axioms` on their theorem, which needs a v4.35 build.
 
 ### Foundations and classical theorems
 
@@ -42,6 +50,8 @@ The headline results, with what each assumes. Every listed declaration depends o
 |---|---|
 | **Foundations.** VOAs of CFT type, with the Borcherds identity derived from locality. Constructed examples: the Heisenberg VOA, the universal Virasoro VOA at every central charge, the universal affine VOA V<sup>k</sup>(sl₂), and the lattice VOA of every positive-definite even lattice. | `VOA.VertexOperatorAlgebra.borcherds`, `VOA.heisenbergVOA`, `VOA.VirModule.virasoroVOA`, `VOA.AffineVOA.affineSl2VOA_closed`, `VOA.LatGen.latticeVOAGen` |
 | **Moonshine module.** The Frenkel–Lepowsky–Meurman module V♮, with no hypotheses: a simple VOA with c = 24, V♮₁ = 0 and dim V♮₂ = 196884, whose graded dimensions are the coefficients of j(τ) − 744. | `VOA.Moonshine.moonshine`, `VOA.Moonshine.hasSum_JShift` |
+| **Monstrous moonshine (Conway–Norton, Borcherds).** For every automorphism g of V♮, the McKay–Thompson series T<sub>g</sub>(τ) = q<sup>−1</sup> + Σ tr(g \| V♮<sub>n+1</sub>) q<sup>n</sup> is the normalised Hauptmodul of a genus-zero group that contains some Γ₀(N) and is commensurable with SL₂(ℤ). No hypotheses. The proof follows Borcherds: the vertex algebra of the hyperbolic plane II<sub>1,1</sub>, the no-ghost theorem, the Monster Lie algebra as a Borcherds–Kac–Moody algebra, the twisted denominator identities, complete replicability, and a case-free proof that completely replicable series are Hauptmoduln. Aut V♮ is finite and every automorphism has rational traces. | `VOA.Moonshine.ConwayNorton.conwayNorton`, `VOA.Moonshine.ConwayNorton.M8.finite_autVnat`, `VOA.Moonshine.ConwayNorton.rationalTraces` |
+| **The Monster acts on V♮.** AxiomMath's Monster is `AutO`, the automorphism group of their rational Griess algebra. Its definition is ported from their CFSG library. The Griess algebra of V♮ is that algebra tensored with ℂ. Every element of AxiomMath's generated group G<sub>mat</sub> = ⟨2<sup>1+24</sup>.Co₁, τ<sub>B</sub>⟩ acts on V♮, and moonshine holds for it, with no hypotheses. Aut V♮ is isomorphic to the subgroup of `AutO` acting on V♮, with no hypotheses and without Tits' theorem. Given AxiomMath's generation theorem G<sub>mat</sub> = `AutO`, carried as the named hypothesis `GmatEqAutO`, Aut V♮ ≅ `AutO` and moonshine holds for every element of the Monster. | `VOA.Moonshine.ConwayNorton.conwayNorton_gmat`, `VOA.Moonshine.ConwayNorton.nonempty_autVnat_mulEquiv_liftable`, `VOA.Moonshine.ConwayNorton.monstrousMoonshine` |
 | **Zhu's modular invariance.** For a C₂-cofinite rational VOA, the torus one-point functions of the irreducible modules transform according to a representation of SL₂(ℤ). Instances with every hypothesis checked: all rank-one lattice VOAs and their ℤ₂-orbifolds. | `VOA.zhuModularity_canonical_of_C2Cofinite_admissiblyRational`, `VOA.Classification.COne.DLMRat.admissiblyRational_of_dlmRational`, `VOA.Classification.COne.zhuModularity_V2m` |
 | **Affine VOAs for every simple Lie algebra.** The universal affine VOA V<sup>k</sup>(𝔤) and its simple quotient L<sub>k</sub>(𝔤) at every non-critical level, with concrete models of sl<sub>n</sub> and of the exceptional Lie algebras. | `VOA.AffineGeneral.universalAffineVOA`, `VOA.AffineGeneral.simpleAffineQuotientVOA_isSimple` |
 
@@ -115,7 +125,7 @@ The book and the Brief are built with LuaLaTeX from `Notes/Textbook/`: `lualatex
 
 ## Size and structure
 
-The library has 11,660 Lean files and 3,752,244 lines under `VOA/`.
+The library has 12,051 Lean files and 3,843,978 lines under `VOA/`.
 
 | Directory | Files | Lines | Content |
 |---|---:|---:|---|
@@ -126,16 +136,16 @@ The library has 11,660 Lean files and 3,752,244 lines under `VOA/`.
 | `Examples` | 1,181 | 307,367 | constructions; rigidity; Arakawa–Dai; graded unitarity |
 | `AffineGeneral` | 354 | 21,641 | affine VOAs for every simple 𝔤 |
 | `LatticesAndCodes` | 25 | 8,472 | lattices, Golay code, Leech lattice |
-| `Moonshine` | 170 | 55,246 | V♮ |
+| `Moonshine` | 561 | 146,923 | V♮; monstrous moonshine; the Monster's action |
 | `Huang` | 931 | 183,719 | tensor categories, rigidity, Verlinde, congruence |
 | `Classification` | 1,756 | 1,627,513 | Gannon–Rayhaun c = 1 classification |
 | `DeligneAudit` | 6,173 | 1,241,760 | Deligne series |
 | `Commutative`, `Filtered`, `Geometric` | 201 | 45,436 | commutative algebra, Li filtration |
-| umbrella files | 12 | 5,354 | |
+| umbrella files | 12 | 5,411 | |
 
 A large part of the line count is certificate data: the 167 files larger than 200 KB contain 1,518,787 lines, mostly
-exact rational data for the c = 1 orbifold computations, checked by kernel reduction. The book has 2,337 pages and
-the Brief 219; the 1,315 Lean blocks quoted in the Brief are checked verbatim against the source.
+exact rational data for the c = 1 orbifold computations, checked by kernel reduction. The book has 2,786 pages and
+the Brief 257; the 1,575 Lean excerpts quoted in the Brief are checked verbatim against the source.
 
 ## Method
 
@@ -148,6 +158,8 @@ counts only when the aggregate build is green.
 
 ## In preparation
 
+- **Lean v4.35** (release v1.1): the library moves to AxiomMath's toolchain, and `GmatEqAutO` becomes an imported
+  theorem.
 - **Deligne series beyond A₂:** removing the assumptions of the conditional theorems.
 - **Graded unitarity in the other direction**, from the minimal models to the affine algebra, through Adamović's
   free-field realization (inverse Drinfeld–Sokolov reduction).

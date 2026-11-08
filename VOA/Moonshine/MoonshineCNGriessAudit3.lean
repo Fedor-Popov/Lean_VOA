@@ -1,0 +1,171 @@
+import VOA.Moonshine.MoonshineCNGriessAudit2
+import VOA.Moonshine.MonsterGriess.SpinMatrixMap
+import VOA.Moonshine.MoonshineCNGriessSpinForm
+import VOA.Moonshine.MoonshineCNGriessTwistedTop
+import VOA.Moonshine.MoonshineCNGriessSpinDict
+import VOA.Moonshine.MoonshineCNGriessIso
+
+/-! Kernel dependency audit for the third Griess-dictionary round: the ported CFSG change of
+coefficient ring for the spin matrices (`MonsterGriess/SpinMatrixMap`: `map_sgnR`, `map_spm`,
+`map_qmatR`), the invariant form of `T` in the spin model (`MoonshineCNGriessSpinForm`), the
+twisted weight-two space in Conway/spin coordinates with the `A·W`, `X·W` module channels and the
+block facts of `V♮` (`MoonshineCNGriessTwistedTop`), the `W`-dictionary in Axiom's coordinates with
+the phases `ζ' = fullShortSign` and Axiom's `W·W` invariance (`MoonshineCNGriessSpinDict`), and the
+assembly `griessIso : ℂ ⊗[ℚ] SpaceB ≃ₗ[ℂ] V♮₂` with `griessIso_mul`, `griessIso_form` and the
+block statements (`MoonshineCNGriessIso`).
+Expected output for every line: `[propext, Classical.choice, Quot.sound]` (or a subset). -/
+
+#print axioms VOA.Moonshine.MonsterGriess.Spin.map_sgnR
+#print axioms VOA.Moonshine.MonsterGriess.Spin.map_spm
+#print axioms VOA.Moonshine.MonsterGriess.Spin.map_qmatR
+#print axioms VOA.Moonshine.GriessDictionary.phi0_coordOfRed_red
+#print axioms VOA.Moonshine.GriessDictionary.pair_coordOfRed_red
+#print axioms VOA.Moonshine.GriessDictionary.spinOp_transpose
+#print axioms VOA.Moonshine.GriessDictionary.spinOp_red_transpose
+#print axioms VOA.Moonshine.GriessDictionary.spinIsoC
+#print axioms VOA.Moonshine.GriessDictionary.spinIsoC_apply
+#print axioms VOA.Moonshine.GriessDictionary.spinIsoC_surjective
+#print axioms VOA.Moonshine.GriessDictionary.spinIsoC_injective
+#print axioms VOA.Moonshine.GriessDictionary.spinPullForm
+#print axioms VOA.Moonshine.GriessDictionary.spinPullForm_apply
+#print axioms VOA.Moonshine.GriessDictionary.spinGram
+#print axioms VOA.Moonshine.GriessDictionary.spinPullForm_eq
+#print axioms VOA.Moonshine.GriessDictionary.spinPullForm_spinOp
+#print axioms VOA.Moonshine.GriessDictionary.spinOp_mul_spinGram
+#print axioms VOA.Moonshine.GriessDictionary.spinMatLin
+#print axioms VOA.Moonshine.GriessDictionary.spinMatLin_algBasis
+#print axioms VOA.Moonshine.GriessDictionary.spinMatLin_surjective
+#print axioms VOA.Moonshine.GriessDictionary.commute_spinGram
+#print axioms VOA.Moonshine.GriessDictionary.spinIdxBase
+#print axioms VOA.Moonshine.GriessDictionary.spinFormScale
+#print axioms VOA.Moonshine.GriessDictionary.spinGram_eq_smul_one
+#print axioms VOA.Moonshine.GriessDictionary.TForm_spinIso
+#print axioms VOA.Moonshine.GriessDictionary.spinFormScale_ne_zero
+#print axioms VOA.Moonshine.GriessDictionary.conwayVec
+#print axioms VOA.Moonshine.GriessDictionary.sum_conwayVec_mul
+#print axioms VOA.Moonshine.GriessDictionary.sum_conwayVec_mul_chargeCoord
+#print axioms VOA.Moonshine.GriessDictionary.sum_vec_smul_conwayVec
+#print axioms VOA.Moonshine.GriessDictionary.conwayVec_eq_sum
+#print axioms VOA.Moonshine.GriessDictionary.spinTopState
+#print axioms VOA.Moonshine.GriessDictionary.spinTopState_apply
+#print axioms VOA.Moonshine.GriessDictionary.spinTopState_mem_weight_two
+#print axioms VOA.Moonshine.GriessDictionary.spinTopVec
+#print axioms VOA.Moonshine.GriessDictionary.spinTopVec_apply
+#print axioms VOA.Moonshine.GriessDictionary.spinTopVec_mem_weight_two
+#print axioms VOA.Moonshine.GriessDictionary.sum_spinTopState_recombine
+#print axioms VOA.Moonshine.GriessDictionary.topAct
+#print axioms VOA.Moonshine.GriessDictionary.topAct_add
+#print axioms VOA.Moonshine.GriessDictionary.topAct_smul
+#print axioms VOA.Moonshine.GriessDictionary.topAct_zero
+#print axioms VOA.Moonshine.GriessDictionary.topAct_sum
+#print axioms VOA.Moonshine.GriessDictionary.topAct_hP_sum
+#print axioms VOA.Moonshine.GriessDictionary.dL_chargeCoord
+#print axioms VOA.Moonshine.GriessDictionary.dL_conwayAxis
+#print axioms VOA.Moonshine.GriessDictionary.topAct_conwayQuad_hP
+#print axioms VOA.Moonshine.GriessDictionary.quadCoeff
+#print axioms VOA.Moonshine.GriessDictionary.conwayQuad_dL_sum
+#print axioms VOA.Moonshine.GriessDictionary.topAct_conwayQuad_spinTopVec
+#print axioms VOA.Moonshine.GriessDictionary.two_zpow_neg_three
+#print axioms VOA.Moonshine.GriessDictionary.topAct_frameX0P_hP
+#print axioms VOA.Moonshine.GriessDictionary.reflCoeff
+#print axioms VOA.Moonshine.GriessDictionary.latL_conwayVec
+#print axioms VOA.Moonshine.GriessDictionary.eT_spinIso_col
+#print axioms VOA.Moonshine.GriessDictionary.topAct_frameX0P_spinTopVec
+#print axioms VOA.Moonshine.GriessDictionary.TPForm_spinTopState
+#print axioms VOA.Moonshine.GriessDictionary.TPForm_spinTopVec
+#print axioms VOA.Moonshine.GriessDictionary.vnat_smul_untwisted_twisted
+#print axioms VOA.Moonshine.GriessDictionary.vnat_smul_twisted_twisted_snd
+#print axioms VOA.Moonshine.GriessDictionary.vnat_smul_one_comm
+#print axioms VOA.Moonshine.GriessDictionary.vnat_L_one_of_two
+#print axioms VOA.Moonshine.GriessDictionary.natForm_smul_one_adjoint
+#print axioms VOA.Moonshine.GriessDictionary.latticeCocycle_mul_self
+#print axioms VOA.Moonshine.GriessDictionary.ratSgn_mul_self
+#print axioms VOA.Moonshine.GriessDictionary.fullShortSign
+#print axioms VOA.Moonshine.GriessDictionary.fullShortSign_ne_zero
+#print axioms VOA.Moonshine.GriessDictionary.fullShortSign_eq
+#print axioms VOA.Moonshine.GriessDictionary.fullShortSign_sign
+#print axioms VOA.Moonshine.GriessDictionary.shortSignDictionary_fullShortSign
+#print axioms VOA.Moonshine.GriessDictionary.coordOfRed_red_shortVec
+#print axioms VOA.Moonshine.GriessDictionary.Rmat_map
+#print axioms VOA.Moonshine.GriessDictionary.fullShortSign_smul_spinOp
+#print axioms VOA.Moonshine.GriessDictionary.spinToConway
+#print axioms VOA.Moonshine.GriessDictionary.spinToConway_apply
+#print axioms VOA.Moonshine.GriessDictionary.spinToConway_smul
+#print axioms VOA.Moonshine.GriessDictionary.spinToConway_mul_right
+#print axioms VOA.Moonshine.GriessDictionary.spinToConway_mul_left
+#print axioms VOA.Moonshine.GriessDictionary.axiomToConway_Umat
+#print axioms VOA.Moonshine.GriessDictionary.spinDictScale
+#print axioms VOA.Moonshine.GriessDictionary.spinDictScale_sq
+#print axioms VOA.Moonshine.GriessDictionary.spinDict
+#print axioms VOA.Moonshine.GriessDictionary.spinDict_apply
+#print axioms VOA.Moonshine.GriessDictionary.spinDict_smul
+#print axioms VOA.Moonshine.GriessDictionary.spinDict_mem_weight_two
+#print axioms VOA.Moonshine.GriessDictionary.TPForm_spinDict
+#print axioms VOA.Moonshine.GriessDictionary.topAct_matDict_spinDict
+#print axioms VOA.Moonshine.GriessDictionary.topAct_frameX0P_spinDict
+#print axioms VOA.Moonshine.GriessDictionary.topAct_shortDict_spinDict
+#print axioms VOA.Moonshine.GriessDictionary.spinBlockAction
+#print axioms VOA.Moonshine.GriessDictionary.topAct_untwistedDict_spinDict
+#print axioms VOA.Moonshine.GriessDictionary.spinBlock_add
+#print axioms VOA.Moonshine.GriessDictionary.gmul_symBlock_spinBlock
+#print axioms VOA.Moonshine.GriessDictionary.gmul_spinBlock_symBlock
+#print axioms VOA.Moonshine.GriessDictionary.gmul_shortBlock_spinBlock
+#print axioms VOA.Moonshine.GriessDictionary.gmul_spinBlock_shortBlock
+#print axioms VOA.Moonshine.GriessDictionary.gmul_untwisted_spinBlock
+#print axioms VOA.Moonshine.GriessDictionary.gmul_spinBlock_untwisted
+#print axioms VOA.Moonshine.GriessDictionary.Rmat_transpose_of_short
+#print axioms VOA.Moonshine.GriessDictionary.qf_eq_trace_mul_Umat
+#print axioms VOA.Moonshine.GriessDictionary.sum_mul_eq_trace
+#print axioms VOA.Moonshine.GriessDictionary.bform_gmul_spinBlock_spinBlock
+#print axioms VOA.Moonshine.GriessDictionary.bform_symm
+#print axioms VOA.Moonshine.GriessDictionary.bform_nondegenerate
+#print axioms VOA.Moonshine.GriessDictionary.untwistedPart
+#print axioms VOA.Moonshine.GriessDictionary.untwistedPart_snd_snd
+#print axioms VOA.Moonshine.GriessDictionary.eq_untwistedPart_add
+#print axioms VOA.Moonshine.GriessDictionary.untwistedDict_untwistedPart
+#print axioms VOA.Moonshine.GriessDictionary.spinBlockAction_untwistedPart
+#print axioms VOA.Moonshine.GriessDictionary.spinBlock_snd_snd
+#print axioms VOA.Moonshine.GriessDictionary.untwistedDict_spinBlock
+#print axioms VOA.Moonshine.GriessDictionary.gmul_snd_snd_of_untwisted
+#print axioms VOA.Moonshine.GriessDictionary.gmul_eq_blocks
+#print axioms VOA.Moonshine.GriessDictionary.bform_eq_untwistedPart_add
+#print axioms VOA.Moonshine.GriessDictionary.fullUntwistedImage
+#print axioms VOA.Moonshine.GriessDictionary.plusForm_dual_fullUntwistedImage
+#print axioms VOA.Moonshine.GriessDictionary.linearIndependent_fullUntwistedImage
+#print axioms VOA.Moonshine.GriessDictionary.span_fullUntwistedImage
+#print axioms VOA.Moonshine.GriessDictionary.eq_zero_of_plusForm_untwistedDict
+#print axioms VOA.Moonshine.GriessDictionary.spinDict_pair_mem
+#print axioms VOA.Moonshine.GriessDictionary.untwistedDict_pair_mem
+#print axioms VOA.Moonshine.GriessDictionary.vnat_smul_spinDict_spinDict
+#print axioms VOA.Moonshine.GriessDictionary.griessNat_mem
+#print axioms VOA.Moonshine.GriessDictionary.griessNat
+#print axioms VOA.Moonshine.GriessDictionary.griessNat_coe
+#print axioms VOA.Moonshine.GriessDictionary.griessNat_smul
+#print axioms VOA.Moonshine.GriessDictionary.griessNat_coe_split
+#print axioms VOA.Moonshine.GriessDictionary.griessNat_gmul
+#print axioms VOA.Moonshine.GriessDictionary.griessNat_form
+#print axioms VOA.Moonshine.GriessDictionary.griessBasisQ
+#print axioms VOA.Moonshine.GriessDictionary.griessImage
+#print axioms VOA.Moonshine.GriessDictionary.natForm_dual_griessImage
+#print axioms VOA.Moonshine.GriessDictionary.linearIndependent_griessImage
+#print axioms VOA.Moonshine.GriessDictionary.finrank_spaceB
+#print axioms VOA.Moonshine.GriessDictionary.griessBasisC
+#print axioms VOA.Moonshine.GriessDictionary.griessBasisC_apply
+#print axioms VOA.Moonshine.GriessDictionary.griessIso
+#print axioms VOA.Moonshine.GriessDictionary.griessIso_tmul
+#print axioms VOA.Moonshine.GriessDictionary.griessIso_tmul_smul
+#print axioms VOA.Moonshine.GriessDictionary.vnat_griessMul_smul_left
+#print axioms VOA.Moonshine.GriessDictionary.vnat_griessMul_smul_right
+#print axioms VOA.Moonshine.GriessDictionary.vnat_griessMul_zero_left
+#print axioms VOA.Moonshine.GriessDictionary.vnat_griessMul_zero_right
+#print axioms VOA.Moonshine.GriessDictionary.griessIso_mul
+#print axioms VOA.Moonshine.GriessDictionary.griessIso_form
+#print axioms VOA.Moonshine.GriessDictionary.griessIso_tmul_spinBlock
+#print axioms VOA.Moonshine.GriessDictionary.griessIso_tmul_untwisted
+#print axioms VOA.Moonshine.GriessDictionary.spinToConway_single
+#print axioms VOA.Moonshine.GriessDictionary.spinDictScale_ne_zero
+#print axioms VOA.Moonshine.GriessDictionary.spinTopVec_injective
+#print axioms VOA.Moonshine.GriessDictionary.span_range_spinDict
+#print axioms VOA.Moonshine.GriessDictionary.spinDict_mem_TPframe
+#print axioms VOA.Moonshine.GriessDictionary.frameSign_eq_sgn
+#print axioms VOA.Moonshine.GriessDictionary.spinDict_mem_TPframe_shift

@@ -1,0 +1,101 @@
+import VOA.Moonshine.MoonshineCNAudit14
+import VOA.Moonshine.MoonshineCNBorcherdsRootCutoff
+import VOA.Moonshine.MoonshineCNBorcherdsRootDuality
+import VOA.Moonshine.MoonshineCNBorcherdsCasimir
+import VOA.Moonshine.MoonshineCNBorcherdsCasimirCommutator
+import VOA.Moonshine.MoonshineCNBorcherdsCasimirBoundary
+import VOA.Moonshine.MoonshineCNBorcherdsCasimirTelescoping
+import VOA.Moonshine.MoonshineCNBorcherdsCasimirCentral
+import VOA.Moonshine.MoonshineCNBorcherdsResolutionRange
+import VOA.Moonshine.MoonshineCNBorcherdsCasimirInduction
+
+/-! Kernel dependency audit for the locally finite Casimir and multiplication range. -/
+
+#print axioms VOA.Moonshine.ConwayNorton.borcherdsPositiveRoot_boundedHeight_finite
+#print axioms VOA.Moonshine.ConwayNorton.borcherdsRootCutoff
+#print axioms VOA.Moonshine.ConwayNorton.mem_borcherdsRootCutoff
+#print axioms VOA.Moonshine.ConwayNorton.borcherdsRootCutoff_mono
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.lowering_eq_zero_of_height
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.exists_lowering_height_bound
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.lowering_common_height_bound
+#print axioms VOA.Moonshine.ConwayNorton.borcherdsRootTerms_finiteSupport
+#print axioms VOA.Moonshine.ConwayNorton.borcherdsLocallyFiniteRootSum
+#print axioms VOA.Moonshine.ConwayNorton.borcherdsLocallyFiniteRootSum_eq_cutoff
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsData.rootPairingToDual
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsData.rootPairingToDual_injective
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsData.rootPairingToDual_flip_injective
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsData.rootPairingToDual_bijective
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsData.rootPairingEquiv
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsData.rootOppositeBasis
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsData.rootOppositeBasis_pairing
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsData.rootOppositeBasis_repr
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsData.rootBasis_expansion
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsData.rootOppositeBasis_expansion
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsData.rootContraction_basis_independent
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsData.rootFiniteBasis
+#print axioms VOA.Moonshine.ConwayNorton.rootActionContraction
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsData.rootCasimirTerm
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsData.rootCasimirTerm_eq_basis
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsData.rootCasimirTerm_apply
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsData.rootCasimirTerm_zero_of_lowering
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsData.cartanCasimirOperator
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.rootCasimirTerm_height_vanishes
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.rootCasimirTerm_preserves_weight
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.rootCasimirTerms_finiteSupport
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.positiveCasimirOperator
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.casimirOperator
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.positiveCasimirOperator_eq_cutoff
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.positiveCasimirOperator_preserves_weight
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.cartanCasimirOperator_on_weight
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.casimirOperator_preserves_weight
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.casimirOperator_commutes_cartan
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.casimirOperator_lowest_vector
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.lowest_casimir_zero_first_coordinate
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsData.rootBracketContraction
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsData.rootDualTensor_bracket_identity
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsData.rootCasimirBoundaryTerm
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsData.rootCasimirTerm_commutator
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.rootCasimirBoundaryTerm_height_vanishes
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.positiveCasimirOperator_commutator_cutoff
+#print axioms VOA.Moonshine.ConwayNorton.borcherdsSimpleRoot_positive_boundary
+#print axioms VOA.Moonshine.ConwayNorton.borcherdsSimpleRoot_negative_boundary
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsData.rootCasimirBoundaryTerm_unsupported
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsData.rootCasimirBoundaryTerm_self
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsData.cartan_bracket_eq_root_form
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsData.rootCasimirBoundaryTerm_zero
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.shiftedCasimirBoundary_finiteSupport
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.positiveCasimirOperator_commutator_finsum
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.positiveCasimirOperator_commutator_positive_simple
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.positiveCasimirOperator_commutator_negative_simple
+#print axioms VOA.Moonshine.ConwayNorton.borcherdsCasimirScalar_positive_simple_step
+#print axioms VOA.Moonshine.ConwayNorton.borcherdsCasimirScalar_negative_simple_step
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.casimirOperator_commutes_positive_simple_weight
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.casimirOperator_commutes_negative_simple_weight
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.casimirOperator_commutes_simple
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.casimirOperator_commutes
+#print axioms VOA.Moonshine.ConwayNorton.envelopingGeneratorMultiplication
+#print axioms VOA.Moonshine.ConwayNorton.envelopingGeneratorMultiplication_tmul
+#print axioms VOA.Moonshine.ConwayNorton.envelopingGeneratorMultiplication_left
+#print axioms VOA.Moonshine.ConwayNorton.envelopingGeneratorMultiplication_range
+#print axioms VOA.Moonshine.ConwayNorton.envelopingGeneratorMultiplication_exact
+#print axioms VOA.Moonshine.ConwayNorton.envelopingAugmentation_surjective
+#print axioms VOA.Moonshine.ConwayNorton.tensorGeneratorToEnveloping
+#print axioms VOA.Moonshine.ConwayNorton.tensorGeneratorToEnveloping_generator
+#print axioms VOA.Moonshine.ConwayNorton.enveloping_lieSpan_mem_tensorRange
+#print axioms VOA.Moonshine.ConwayNorton.tensorGeneratorToEnveloping_surjective
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsData.positiveGeneratorMultiplication_exact
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsData.positiveTensorGeneratorToEnveloping_surjective
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.casimirOperator_commutes_enveloping
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.casimirOperator_enveloping_eigenvector
+#print axioms VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.casimirOperator_simple_lowest_enveloping
+#print axioms VOA.Moonshine.ConwayNorton.relativeInducedAlgebra_eq_lift
+#print axioms VOA.Moonshine.ConwayNorton.inducedCasimir_scalar_of_bottom
+
+#check @VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.casimirOperator_commutes
+#check @VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.casimirOperator_lowest_vector
+#check @VOA.Moonshine.ConwayNorton.BorcherdsAdmissible.lowest_casimir_zero_first_coordinate
+#check @VOA.Moonshine.ConwayNorton.inducedCasimir_scalar_of_bottom
+#check @VOA.Moonshine.ConwayNorton.BorcherdsData.positiveGeneratorMultiplication_exact
+#check @VOA.Moonshine.ConwayNorton.BorcherdsData.positiveTensorGeneratorToEnveloping_surjective
+

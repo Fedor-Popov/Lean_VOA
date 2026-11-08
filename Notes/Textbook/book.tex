@@ -1,4 +1,4 @@
-% Vertex Operator Algebras in Lean -- release v1.0 of the book.
+% Vertex Operator Algebras in Lean -- release v1.05 of the book.
 % Build from this folder (three passes settle the table of contents and the index):
 %   lualatex book.tex && lualatex book.tex && lualatex book.tex
 %
@@ -71,9 +71,9 @@
 \newcommand{\tr}{\operatorname{tr}}
 
 % Edition
-\newcommand{\bookrelease}{release v1.0}
+\newcommand{\bookrelease}{release v1.05}
 \newcommand{\bookcommit}{(recorded at release)}
-\newcommand{\bookdate}{2026-11-03}
+\newcommand{\bookdate}{2026-11-08}
 %
 \title{\Huge Vertex Operator Algebras in Lean\\[0.6em]
   \Large The LeanVOA library and the construction of the Moonshine module}
@@ -134,6 +134,14 @@
 \input{chapters/ch12}% Existence of the twisted triality I: reduction to Zhu generation
 \input{chapters/ch13}% Existence of the twisted triality II: the explicit construction
 \input{chapters/ch14}% The key identity and the completion of the proof
+\part{Monstrous moonshine}
+\input{chapters/ch16}% Monstrous moonshine: McKay--Thompson series, Hauptmoduln and the statement
+\input{chapters/ch17}% The vertex algebra of the hyperbolic plane and the tensor theory of central charge 26
+\input{chapters/ch18}% The Monster Lie algebra: string states, the no-ghost theorem and the Borcherds--Kac--Moody structure
+\input{chapters/ch19}% Denominator identities, replication and genus zero
+\input{chapters/ch20}% Conway--Norton for the automorphism group of the moonshine module
+\input{chapters/ch21}% The Griess algebra of the moonshine module and AxiomMath's Monster
+\input{chapters/ch22}% The Monster acts on the moonshine module: lifts, triality, the commutant and the converse
 \part{Verification}
 \input{chapters/ch15}% Verification, dead ends, numerics and open problems
 \appendix

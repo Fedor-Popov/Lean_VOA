@@ -7,8 +7,8 @@ comments) in the source files of that release. Its body was first written agains
 Moonshine module $V^\natural$ (FLM) unconditionally'' (7 October 2026, then the head of the main branch; ``the Moonshine
 commit'' below); records tied to that snapshot, and other checks not re-run for this edition, are marked as such, and the
 update of October 2026 is described below. The
-preceding fourteen chapters presented the mathematics of the LeanVOA library and, as their
-culmination, the construction of the Moonshine module $\Vnat$. Each of them followed the same
+preceding chapters presented the mathematics of the LeanVOA library, the construction of the Moonshine module
+$\Vnat$ and, in Part~VIII, monstrous moonshine for it. Each of them followed the same
 discipline: a mathematical statement, the Lean declaration copied verbatim from the repository, a
 fidelity check explaining why the one is the other, an argument on paper, and an honest status
 report. This last chapter turns the discipline on the library as a whole. It asks four questions
@@ -59,6 +59,19 @@ trust base at the manifest commit (Section~\ref{ch15:sec:bookrecord}); the indep
 (Section~\ref{ch15:sec:deadends-oct}); and the open problems that those chapters name
 (Section~\ref{ch15:sec:open-later}). Following the book's scope decision, work in progress in the library is not
 described; where a route is under development, we say so and nothing more.
+
+\paragraph{The update of release v1.05.} Release v1.05 adds Part~VIII, ``Monstrous moonshine''
+(Chapters~\ref{ch:16}--\ref{ch:22}): the Conway--Norton conjecture, in a qualitative genus-zero form, for every
+automorphism of $\Vnat$, with no hypotheses; and the identification of $\Aut(\Vnat)$ with a Lean model of the Monster
+ported from the AxiomMath library, with no hypotheses for the subgroup of elements that act on $\Vnat$, and conditionally
+on one named hypothesis, \lean{GmatEqAutO}, for the whole group (Chapter~\ref{ch:01}, Section~\ref{ch01:sec:gmat}). This
+chapter was again extended, not rewritten: the verification record of the moonshine part
+(Section~\ref{ch15:sec:moonrecord}), with a slot for the release figures of v1.05 in Section~\ref{ch15:sec:record}; an
+index of the dead ends recorded in Chapters~\ref{ch:16}--\ref{ch:22} (Section~\ref{ch15:sec:deadends-moon}); and the open
+problems of the moonshine part (Section~\ref{ch15:sec:open}), where the former open problem ``$\Aut(\Vnat)\cong\mathbb M$''
+is replaced by its present, much narrower, form. The Deligne-series files added to the library after v1.0 (\texttt{G2Star},
+\texttt{D4Core}, \texttt{SL4T}, \texttt{F4Star}) are held from this release and have no
+coverage in the book.
 
 \begin{remark}[A note on the physics]\label{ch15:rem:physics}
 A physicist reading this chapter may wonder why so much effort goes into checking that a
@@ -455,6 +468,17 @@ added to exclude the square-zero extension, Section~\ref{ch15:sec:trap-sqzero}).
 intermediate reductions had to be guarded against vacuous satisfaction by trivial data (the
 \lean{hits_cyclic} clause, Section~\ref{ch15:sec:phi0}).
 
+The moonshine part of Part~VIII applies the rule twice. Several of its intermediate theorems carry hypotheses ---
+generation of the Monster Lie algebra by its simple root spaces (\lean{hgen}, Chapter~\ref{ch:18}) and finite order of
+every automorphism (\lean{hfin}, Chapter~\ref{ch:19}) --- that are discharged inside the library (Chapter~\ref{ch:20}),
+so the hypothesis closure of the final theorem \lean{VOA.Moonshine.ConwayNorton.conwayNorton} is empty and it is
+unconditional. By contrast \lean{monstrousMoonshine} and \lean{monsterEquivAutVnat} take the explicit argument
+\lean{(hM : GmatEqAutO)}, the proposition $\mathrm{Gmat}=\mathrm{AutO}$. It is a theorem of the AxiomMath CFSG library
+(\lean{CFSG.Blueprint.NativeSporadic.MonsterModel.gmat_eq_griess}, commit \texttt{69cb972f}, Lean~4.35), but not of this
+library, whose toolchain cannot load its proof; inside LeanVOA it is an unestablished datum, so those two theorems are
+``\texttt{\#print axioms}-clean, conditional on \lean{GmatEqAutO}''. It is not an axiom: no declaration of the library
+asserts it (Chapter~\ref{ch:01}, Section~\ref{ch01:sec:gmat}).
+
 \subsection{Independent re-verification of agent-produced work}\label{ch15:sec:agents}
 
 Most of the roughly 155 files of \leanpath{VOA/Moonshine/} were written by background agents (Lean
@@ -509,6 +533,31 @@ material listed in Chapter~\ref{ch:01}):
   \lean{VOA.Moonshine.moonshine}, \lean{A2_classicallyFree_final}, \lean{D4_classicallyFree_of_inputT} and
   \lean{twoSeries_gradedUnitary_of_affine_final}): every one reports exactly
   \lean{[propext, Classical.choice, Quot.sound]}.
+\end{itemize}
+\end{status}
+
+\begin{status}[title={The release build of v1.05}]
+Release v1.05 adds Part~VIII (Chapters~\ref{ch:16}--\ref{ch:22}); the Deligne-series files added after v1.0
+(\texttt{G2Star}, \texttt{D4Core}, \texttt{SL4T}, \texttt{F4Star}) are held.
+The aggregate build, the repository check and the axiom audit at the v1.05 release, and the axiom reports of
+the moonshine headlines listed in Section~\ref{ch15:sec:moonrecord}:
+%% V105-RECORD
+\begin{itemize}
+\item \emph{No full rebuild was needed.} All 11{,}661 Lean files of v1.0 are byte-identical in v1.05
+  (git blob hashes compared with the public \texttt{v1.0} tag), except four import-only umbrella files, and the
+  toolchain and \texttt{lake} files are unchanged. So the v1.0 aggregate build above certifies them; the cached
+  build was reused.
+\item \lean{lake build VOA.Moonshine} (all new files): \lean{Build completed successfully (9504 jobs)}, exit code 0.
+\item \lean{scripts/audit/run_axiom_audits.py}: passed, 5{,}983 reports across 25 probes. This includes the new
+  probe \texttt{MonstrousMoonshine} (\leanpath{scripts/audit/MonstrousMoonshineAxiomAudit.lean}), whose 25
+  headlines, among them \lean{conwayNorton}, \lean{conwayNorton_gmat}, \lean{nonempty_autVnat_mulEquiv_liftable},
+  \lean{M8.finite_autVnat} and \lean{monstrousMoonshine}, each report exactly
+  \lean{[propext, Classical.choice, Quot.sound]}.
+\item \lean{VOA/Moonshine/MoonshineLRLiftAudit.lean}: 997 reports, all within the three standard axioms, 0
+  \lean{sorryAx}.
+\item \lean{scripts/check_repository.py}: 12{,}627 library files, 0 axiom declarations, no forbidden construct. Its
+  only failure is three held \texttt{COneBootstrap} files that the release does not contain. The export leaves out the
+  held files and strips their imports from the umbrellas, with 0 dangling imports.
 \end{itemize}
 \end{status}
 
@@ -583,7 +632,8 @@ points that the protocol of this section is designed to protect.
 \item \emph{Axioms.} Standard only; no \lean{VOA.pbw}.
 \end{itemize}
 What the statement does \emph{not} say: nothing about $\Aut(V)$, the Monster, or uniqueness;
-see Section~\ref{ch15:sec:open}.
+see Section~\ref{ch15:sec:open}. ($\Aut(\Vnat)$ and the Monster are the subject of Part~VIII; their record is
+Section~\ref{ch15:sec:moonrecord}.)
 \end{dictionary}
 
 \begin{physics}
@@ -598,6 +648,76 @@ graded dimension is the torus partition function $Z(\tau)=J(\tau)$ up to the fac
 the vacuum (the only state of weight $0$ up to scale) is CFT type, built into the library's definition
 of a vertex operator algebra; simplicity says that no consistent subsector decouples, i.e.\ the operator product expansion genuinely couples the twisted states
 back into the untwisted ones ($\overline W\neq 0$).
+\end{physics}
+
+\subsection{The verification record of the moonshine part}\label{ch15:sec:moonrecord}
+
+Part~VIII documents the files of \leanpath{VOA/Moonshine/} whose names begin with \texttt{MoonshineCN} and \texttt{MoonshineLR}, the files \texttt{Aut*.lean} and the folder
+\leanpath{VOA/Moonshine/MonsterGriess/}. Its final theorems are listed, with their meaning, in Chapter~\ref{ch:01},
+Section~\ref{ch01:sec:gmat}, and are presented under the fidelity protocol in Chapters~\ref{ch:16}, \ref{ch:20}
+and~\ref{ch:22}.
+
+\paragraph{The headline record.} As recorded for the release (not
+re-run for this chapter):
+\begin{itemize}
+\item with \emph{no hypotheses}: \lean{VOA.Moonshine.ConwayNorton.conwayNorton : ConwayNortonConjecture},
+  \lean{conwayNorton_gmat}, \lean{M8.finite_autVnat}, \lean{rationalTraces} and
+  \lean{nonempty_autVnat_mulEquiv_liftable} (all in the namespace \lean{VOA.Moonshine.ConwayNorton}); Tits's theorem is
+  not used;
+\item \emph{conditional on} \lean{GmatEqAutO} \emph{only}: \lean{monsterEquivAutVnat} and \lean{monstrousMoonshine};
+\item for every audited headline, \texttt{\#print axioms} is contained in \lean{[propext, Classical.choice, Quot.sound]};
+  the library declares no axiom.
+\end{itemize}
+
+\paragraph{The audit modules.} Unlike the earlier parts of the library, the moonshine part carries its axiom audits as
+library modules: files of \leanpath{VOA/Moonshine/} consisting of \texttt{\#print axioms} commands (and, for the final
+audits, the re-export of the headline under its official name). They are imported by the umbrella module
+\lean{VOA.Moonshine}, so every aggregate build elaborates them and prints their reports in the build log. Since
+v1.05 the release headlines are also enforced by the probe \texttt{MonstrousMoonshine} of
+\lean{scripts/audit/run_axiom_audits.py} (25 declarations; Section~\ref{ch15:sec:record}). The remaining module
+audits are checked by reading the build log.
+\begin{itemize}
+\item \lean{MoonshineCNFinalAudit}: the audit of the fixed statement \lean{ConwayNortonConjecture}
+  (from \leanpath{VOA/Moonshine/MoonshineCNStatement.lean}, fixed before the proof was written); defines \lean{conwayNorton} as
+  the re-export of \lean{M8.conwayNortonConjecture_holds} and prints it, together with
+  \lean{M8.monsterLieSimpleRootGeneration}.
+\item \lean{MoonshineCNMonsterFinalAudit}: Conway--Norton for the Monster model: \lean{conwayNorton_gmat} (no
+  hypotheses beyond the membership $g\in\mathrm{Gmat}$), \lean{conwayNorton_monster} (given $\mathrm{Gmat}=\mathrm{AutO}$), \lean{tauB_mem_AutO},
+  \lean{Generated.Gmat_le_AutO}, and the multiplicativity and isometry of the Griess isomorphism (\lean{griessIso_mul},
+  \lean{griessIso_form}).
+\item \lean{MoonshineCNSymmetryFinalAudit}: the converse direction: \lean{autVnat_rational},
+  \lean{nonempty_autVnat_mulEquiv_liftable}, \lean{autVnat_mulEquiv_autO}, the commutant lemma
+  \lean{M8.gmatCommutantScalar}, \lean{rationalTraces}, \lean{conwayNorton}, \lean{conwayNorton_gmat}.
+\item \lean{MoonshineCNRationalAudit}: one report per public declaration of the rationality files (Schur's span formula,
+  rationality of traces, rationality on the Griess algebra given the commutant).
+\item \lean{MoonshineCNGenusZeroAudit}, \lean{MoonshineCNGenusZeroAudit2}, \lean{MoonshineCNGenusZeroAudit3}: one report per
+  public declaration of the genus-zero files (Chapter~\ref{ch:19}).
+\item \lean{MoonshineCNGammaZeroAudit}: the passage from $\Gamma_1(N)$ to $\Gamma_0(N)$ (Chapter~\ref{ch:16}); its
+  headlines are conditional on their explicit hypotheses, which the final theorem discharges.
+\item \lean{MoonshineCNAudit}, \lean{MoonshineCNAudit2}, \dots, \lean{MoonshineCNAudit18}: the statement interface, the
+  vertex algebra of $\mathrm{II}_{1,1}$ and the tensor theory (Chapter~\ref{ch:17}), the no-ghost theorem, the Monster Lie
+  algebra and its Borcherds data (Chapter~\ref{ch:18}), and the twisted denominator identities and complete replicability
+  (Chapter~\ref{ch:19}); \lean{MoonshineCNGriessAudit}, \lean{MoonshineCNGriessAudit2}, \lean{MoonshineCNGriessAudit3},
+  \lean{MoonshineCNMonsterActionAudit} and the audits of \leanpath{VOA/Moonshine/MonsterGriess/}: the Griess
+  dictionary, the ported Monster model and its action (Chapters~\ref{ch:21}--\ref{ch:22}).
+\item \lean{MoonshineLRLiftAudit}: every theorem of the \texttt{Aut*.lean} files and of the lift chain, up to
+  \lean{monstrousMoonshine}: $997$ reports, every one with standard axioms only and none containing \lean{sorryAx}
+  (green at the release; Chapter~\ref{ch:20}).
+\item \lean{MoonshineLRFinOrderAudit}, \lean{MoonshineLRGenerationAudit}, \lean{MoonshineLRM5Audit},
+  \lean{MoonshineLRConwayNortonAudit}, \lean{MoonshineLRFaberAudit}, \lean{MoonshineLRHeckeAudit},
+  \lean{MoonshineLRNontrivialAudit}, \lean{MoonshineLRCoeffBoundAudit}, \lean{MoonshineLRJUnboundedAudit},
+  \lean{MoonshineLRTowerAudit}: finite order, simple-root generation, the untwisted denominator identity, complete
+  replicability, Faber polynomials, the prime Hecke identity, nontriviality and the coefficient bounds
+  (Chapters~\ref{ch:19}--\ref{ch:20}).
+\end{itemize}
+The chapters' status boxes record, for each theorem, which audit module prints it and whether the book's authors re-ran
+it; most were not re-run for the book, and the release figures belong in the slot of Section~\ref{ch15:sec:record}.
+
+\begin{physics}
+For the physicist the record separates two claims about the moonshine conformal field theory. ``The twisted partition
+function of every global symmetry is a genus-zero Hauptmodul'' is proved outright. ``The global symmetry group is the
+Monster'' is proved up to one group-theoretic identification, which is a theorem in another Lean library and enters
+here as a named, explicit premise.
 \end{physics}
 
 \subsection{The book's own verification record (October 2026)}\label{ch15:sec:bookrecord}
@@ -702,7 +822,7 @@ audit results''). One line each:
 \item \lean{RELEASE_AUDIT_MOONSHINE.md} (Chapters~\ref{ch:02}--\ref{ch:14}, $\Vnat$), 27~October: announceable with caveats,
   wording only; 0~BLOCKING, 0~MAJOR, 6~MINOR. \lean{moonshine} takes no hypotheses, has standard axioms and a unique
   witness; $J$ is a formal $q$-series; the isomorphism with FLM's explicit $\Vnat$ is on paper only; no Monster,
-  holomorphy or uniqueness claim.
+  holomorphy or uniqueness claim. (The Monster is now treated in Part~VIII; Section~\ref{ch15:sec:moonrecord}.)
 \item \lean{RELEASE_AUDIT_RIGIDITY.md} (Chapters~\ref{ch:L07} and~\ref{ch:L09}), 27~October: announceable with caveats;
   0~BLOCKING, 0~MAJOR, 3~MINOR (say ``graded first-order''; non-vacuity argued on paper only).
 \item \lean{RELEASE_AUDIT_ZHU.md} (Chapters~\ref{ch:L12}--\ref{ch:L15}), 27~October: no headline blocked, but ``Zhu's
@@ -1684,6 +1804,143 @@ a reminder that a filtration on a fusion product, the mathematical form of an op
 of vanishing at the insertion points, need not respect an auxiliary grading that is natural on the factors.
 \end{physics}
 
+\subsection{Dead ends recorded in the moonshine part}\label{ch15:sec:deadends-moon}
+
+Chapters~\ref{ch:16}--\ref{ch:22} record their dead ends, traps and documentation defects in \lean{warning} boxes. This
+subsection indexes all of them, by the kinds (A)--(F) of this section, with one or two sentences each and the chapter
+where the box, its certificate and its discussion are found. Where a finding is a paper argument or a computation outside
+Lean, the cited chapter says so.
+
+\paragraph{(B) Hypotheses and properties that do not single out the intended object.}
+\begin{enumerate}
+\item \textbf{Modular fictions satisfy replication} (Chapters~\ref{ch:16} and~\ref{ch:19}). For every $a\in\C$, the series
+  $q^{-1}+aq$ satisfies all replication identities, with replicates $q^{-1}+a^kq$. So rationality of the coefficients does
+  not follow from replication alone, and a genus-zero theorem for replicable families cannot hold unless the family is
+  tied to $J$; the library's proof uses $T_1=J$ exactly in its nontriviality step.
+\item \textbf{A rational character does not give rational matrices} (Chapter~\ref{ch:22}). The quaternion group $Q_8$ on
+  $\C^2$ has a rational character but no rational model (Schur index $2$). The converse direction therefore needs an
+  already rational, absolutely irreducible subgroup: the commutant lemma for $\mathrm{Gmat}$.
+\item \textbf{Finite order is not finiteness} (Chapters~\ref{ch:16} and~\ref{ch:20}). An infinite group can have every
+  element of finite order; the moonshine theorem uses only finite order, and finiteness of $\Aut(\Vnat)$ needed a
+  separate argument.
+\end{enumerate}
+
+\paragraph{(C) Wrong formulas and conventions.}
+\begin{enumerate}
+\item \textbf{The sign of the momenta} (Chapters~\ref{ch:16}--\ref{ch:20}). Borcherds' root $(m,n)$, with root space
+  $\Vnat_{1+mn}$, is the library's momentum $(m,-n)$ for the lattice of norm $+2xy$. A denominator product over library
+  momenta $x,y\ge1$ is wrong: those root spaces vanish, except the real root space.
+\item \textbf{The index shift of the McKay--Thompson series} (Chapter~\ref{ch:16}): coefficient $n$ of
+  \lean{mckayThompson} is the trace on weight $n+1$, while coefficient $n$ of \lean{JShift} is the dimension of weight
+  $n$; recorded by the negative lemma \lean{mckayThompson_one_ne_JShift}.
+\item \textbf{The total-weight cutoff is false for near-VOAs} (Chapters~\ref{ch:17} and~\ref{ch:18}). In
+  $V_{\mathrm{II}_{1,1}}$ the state $L_{-1}e^{(1,-1)}$ has total weight $0$ but $L_1$ does not kill it (a kernel-checked
+  counterexample); the correct cutoff is the oscillator level above the ground energy of the momentum sector.
+\item \textbf{No positive-definiteness witness; two cocycles} (Chapter~\ref{ch:17}). The positive-definite lattice
+  construction cannot be instantiated at $\mathrm{II}_{1,1}$ (\lean{lorentzian_not_posDef}); two local field families with
+  different cocycles exist and are not claimed equal, so the sign \lean{chSign} cannot be dropped.
+\item \textbf{The naive Ising vector need not be idempotent} (Chapter~\ref{ch:20}): $\tfrac1{16}\alpha(-1)^2\mathbf
+  1+\tfrac14x_\alpha$ is an idempotent of the right normalisation only if $\varepsilon(\alpha,-\alpha)=1$, and the
+  library's cocycle signs are never evaluated; the scalar is kept symbolic.
+\item \textbf{The phases of the Griess dictionary} (Chapters~\ref{ch:21} and~\ref{ch:22}): the full dictionary needs the
+  phases $\zeta'=Z^{-1}$, not $Z$; they differ by $\varepsilon(\alpha_c,\alpha_c)$, which is not always $+1$ for the
+  library's cocycle. Whether it is $+1$ on all short classes depends on the chosen basis of $\Leech$ and was left open as
+  unneeded.
+\item \textbf{Published steps that fail as printed} (Chapters~\ref{ch:16} and~\ref{ch:19}). Cummins--Gannon's Prop.~5.1 is
+  not usable for $\Gamma_1$ (its prime-clearing step uses exponents outside the admissible set); the last step of Cummins
+  (2002), Prop.~2.1, is wrong as printed; Cummins--Gannon's Prop.~2.3 needs equal multiplicities at doubly critical pairs,
+  which their Lemma~2.4 does not give. The library uses corrected versions, and never constructs a symmetry at a critical
+  target.
+\end{enumerate}
+
+\paragraph{(E) Circular or insufficient reductions.}
+\begin{enumerate}
+\item \textbf{The product formula cannot be derived from the Monster Lie algebra} (Chapters~\ref{ch:18}--\ref{ch:20}).
+  Given the other Borcherds data, generation of $\mathfrak m$ by its simple root spaces is equivalent to the
+  denominator identity for $J(p)-J(q)$; the Casimir argument excludes relations among the known simple roots but not
+  extra simple roots $(m,n)$ with $m\ge2$. The library proves the product formula analytically and derives generation
+  from it.
+\item \textbf{Freeness in the wrong form} (Chapter~\ref{ch:18}): the positive part $E$ is not free (it satisfies
+  $(\mathrm{ad}\,e)^j\mathfrak g_{\alpha_j}=0$), and freeness on the imaginary simple root spaces alone gives the graded
+  dimension $1/(1-\sum_jc(j)pq^j)$, not the product side; the needed statement is freeness of $\mathfrak u^+$ on $U$.
+\item \textbf{Same-momentum comparison of forms} (Chapters~\ref{ch:17} and~\ref{ch:18}). The no-ghost sector form is
+  nondegenerate, while the vertex-algebra form vanishes on a single nonzero momentum sector; a Lean theorem
+  (\lean{moonshineMatterSector_no_same_momentum_isometry}) shows that no map, linear or not, identifies them. The fix is
+  momentum reversal.
+\item \textbf{Complete replicability needs finite order} (Chapter~\ref{ch:19}): for an element of infinite order $T_g$
+  need not converge, so the library proves complete replicability for finite-order elements first and passes to all of
+  $\Aut(\Vnat)$ only after finite order is proved.
+\item \textbf{The local-to-global step of genus zero} (Chapter~\ref{ch:19}): canonical cusp charts do not give
+  M\"obius-ness (one global input is unavoidable), and a second independent differential equation pinning down the
+  symmetry does not exist.
+\item \textbf{Rationality through a rational form of $\Vnat$} (Chapter~\ref{ch:16}): showing that every automorphism
+  preserves a $\Q$-form of $\Vnat_2$ needs either Tits-level group theory or rationality of every Ising vector; the Galois
+  twist alone is circular. Superseded: rationality of traces is a corollary of the moonshine theorem.
+\item \textbf{Galois descent on $\Aut(\Vnat)$ alone} (Chapter~\ref{ch:22}) gives only that the rational subgroup is
+  self-normalising; it cannot exclude a finite overgroup. Also recorded there: ``real first, then real $\Rightarrow$
+  rational'' needs Tits's theorem, and was superseded.
+\item \textbf{The monomial subgroup is not enough for the commutant lemma} (Chapter~\ref{ch:22}): $2^{12}{:}M_{24}$
+  together with $Q$, $x_B$, $\tau_B$ preserves the $23$-dimensional space of traceless diagonal matrices, so its commutant
+  is too large; a non-monomial element such as $\xi$ is indispensable.
+\item \textbf{Two generators that preserve the MOG columns} (Chapters~\ref{ch:16} and~\ref{ch:22}): the first attempt at
+  the octad step of the commutant lemma used two permutations lying in a sextet stabiliser, which cannot be transitive on
+  the $759$ octads; a third, column-breaking involution was needed.
+\item \textbf{A false induction criterion} (Chapter~\ref{ch:20}): ``every $\beta$ with $|\beta|^2\ge6$ has a minimal
+  $\alpha$ with $\langle\alpha,\beta\rangle\in\{3,4\}$'' fails for $\beta=k\alpha_0$, $k\ge5$ (numerical sample: $400$
+  failures in $4800$, all of this shape).
+\item \textbf{Two routes to finite order that do not work} (Chapter~\ref{ch:20}): $c=1$ Virasoro vectors form a continuous
+  $O(24)$-family and are not rigid; diagonal zero modes do not separate the twisted sector. Only $c=\tfrac12$ rigidity
+  starts the argument.
+\item \textbf{Counting all Ising vectors} (Chapter~\ref{ch:20}) needs rigidity at every Ising vector, which is known only
+  through the representation theory of $c=\tfrac12$; the library counts \emph{rigid} idempotents instead.
+\item \textbf{AxiomMath's finiteness proof does not transfer to $\C$} (Chapter~\ref{ch:21}): it uses the ordered field
+  $\Q$, and over $\C$ the form is not a norm; ``real and finite $\Rightarrow$ rational'' is Tits's theorem. The converse
+  of Chapter~\ref{ch:22} avoids it.
+\end{enumerate}
+
+\paragraph{(F) Tooling, and routes deliberately not taken.}
+\begin{enumerate}
+\item \textbf{Porting \texttt{gmat\_eq\_griess} to Lean~4.30} (Chapters~\ref{ch:21} and~\ref{ch:22}). The import closure of
+  AxiomMath's proof is about $15{,}500$ CFSG files ($16{,}361$ files and $208$\,MB at file level), with $13{,}487$ kernel
+  \lean{decide} proofs, and it cannot avoid the Stroth--Leon--Sims recognition of the Baby Monster. This is why
+  \lean{GmatEqAutO} is a named hypothesis; the different figures quoted in the sources are consistent.
+\item \textbf{Parts of the original plan that were not formalised} (Chapter~\ref{ch:19}): the modular polynomials, the
+  Hecke identity for composite $n$, an explicit injective region, the exponential identity, Rouch\'e's ``large values from
+  the top'', the Parseval step and the logarithmic Faber identity were argued on paper and found unnecessary; they are not
+  Lean theorems.
+\item \textbf{``Product'' means a series with the product's logarithmic derivative} (Chapter~\ref{ch:19}): \lean{coneProd}
+  is defined by a differential equation, and its comparison with literal finite products was not written (a documentation
+  gap, not a mathematical one).
+\item \textbf{Route deviations, none a defect} (Chapters~\ref{ch:16} and~\ref{ch:22}): six deviations of the
+  $\Gamma_1\Rightarrow\Gamma_0$ proof from its paper blueprint, and the Golay sign-character step of the rationality plan,
+  replaced by an argument from triality.
+\end{enumerate}
+
+\paragraph{Documentation defects (severity S4).} None affects a Lean statement.
+\begin{enumerate}
+\item \textbf{Docstrings that say more than the Lean} (Chapter~\ref{ch:16}): the module docstring of the statement file
+  identifies \lean{AutVnat} with the Monster, which holds only given \lean{GmatEqAutO}; the docstring of
+  \lean{RationalTraces} describes a superseded role.
+\item \textbf{Stale docstrings and notes} (Chapter~\ref{ch:20}): the docstring of \lean{MonsterLieSimpleRootGeneration}
+  still calls generation unproved; earlier working notes list finite
+  order and finiteness as open. The paper route of the finite-order proof was unrefereed; its normalisations are settled
+  by the Lean proofs.
+\item \textbf{The ported \lean{phi0}} (Chapter~\ref{ch:21}) is a plain function rather than AxiomMath's bundled linear map;
+  the two are definitionally equal. Several port docstrings still call ported statements ``not ported''.
+\item \textbf{Stale module docstrings of the lift chain} (Chapter~\ref{ch:22}): \texttt{MoonshineLRLiftTwisted},
+  \texttt{LiftTwisted2}, \texttt{LiftLiftable2}--\texttt{4}, \texttt{LiftVisible}, \texttt{SigmaBlock},
+  \texttt{SigmaBlock2}, \texttt{SigmaB} and \texttt{TauB} describe gaps closed in later files; an earlier working note
+  calls the converse direction open research, although it is proved without Tits.
+\end{enumerate}
+
+\begin{physics}
+Two of these dead ends are physics statements in disguise. The impossibility of deriving the denominator identity from the
+Monster Lie algebra says that the no-ghost theorem alone does not know about the modularity of $J$, i.e.\ about the
+one-loop consistency of the string theory; the library must import that modularity analytically. And the failure of the
+total-weight cutoff is the familiar fact that a charged ground state of a Lorentzian compactification can have negative
+energy, so that conformal weight is not a good measure of ``how many oscillators are excited''.
+\end{physics}
+
 % ---------------------------------------------------------------------------------------------
 \section{The numerical evidence}\label{ch15:sec:numerics}
 
@@ -1944,8 +2201,8 @@ finite weight-2 identity, and that identity to explicit Golay arithmetic.
 \begin{itemize}
 \item \textbf{H\"ohn's Lean ATLAS} (repository \lean{Moonshine-in-Kansas/atlas}) formalises
   $\mathrm{Co}_0$, $\mathrm{Co}_1$ and $M_{24}$; its licence forbids copying
-  into this Apache-2.0 repository, so nothing was taken from it. It is the natural partner for the
-  Monster problem below.
+  into this Apache-2.0 repository, so nothing was taken from it. The Monster model the library uses was
+  instead ported from the AxiomMath CFSG library (Chapter~\ref{ch:21}).
 \item \textbf{Carnahan's vertex operators in Mathlib}: Mathlib 4.30.0 contains
   \leanpath{Mathlib/Algebra/Vertex/VertexOperator.lean} and \lean{HVertexOperator.lean} (vertex
   operators as maps to Laurent series; its TODO lists locality and residue products). The library
@@ -1994,21 +2251,41 @@ import VOA
 
 \subsection{Moonshine}
 \begin{enumerate}
-\item \textbf{$\Aut(\Vnat)\cong\mathbb M$.} There is no Monster in Lean. A realistic first form
-  defines $\mathbb M:=\Aut(\Vnat)$ and proves facts about it: its order (H\"ohn--Seysen give a
-  VOA-based computation of $|\mathbb M|$), the Griess algebra on $\Vnat_2$, the subgroup
-  $2^{1+24}.\mathrm{Co}_1$. The library has the ingredients for the extraspecial group acting on $T$,
-  and H\"ohn's ATLAS has $\mathrm{Co}_1$, but its licence forbids copying.
-\item \textbf{McKay--Thompson series and Borcherds' theorem.} For $g\in\mathbb M$,
-  $T_g(\tau)=\sum\tr(g|\Vnat_n)q^{n-1}$ is a Hauptmodul (Borcherds 1992). Needed: the Monster action,
-  twined characters, the monster Lie algebra and the no-ghost theorem. The library's
-  \leanpath{VOA/Modularity/Moonshine*} files contain abstract $c=24$ statements conditional on
-  hypotheses never instantiated.
+\item \textbf{Discharge \lean{GmatEqAutO}.} Earlier editions listed ``$\Aut(\Vnat)\cong\mathbb M$'' here as out of
+  reach. It is now proved conditionally on the one named hypothesis \lean{GmatEqAutO}, $\mathrm{Gmat}=\mathrm{AutO}$
+  (\lean{monsterEquivAutVnat}, \lean{monstrousMoonshine}; Chapter~\ref{ch:22}), and $\Aut(\Vnat)$ is isomorphic, with no
+  hypotheses, to the subgroup of AxiomMath's Monster of elements that act on $\Vnat$. The hypothesis is AxiomMath's
+  theorem \lean{CFSG.Blueprint.NativeSporadic.MonsterModel.gmat_eq_griess} (commit \texttt{69cb972f}, Lean~4.35), whose
+  proof does not run on Lean~4.30 (Section~\ref{ch15:sec:deadends-moon}, paragraph (F), item~1). Release v1.1 is planned to move the
+  library to Lean~4.35 and import it, which would make both theorems unconditional.
+\item \textbf{The table-level Conway--Norton statement.} The library proves the qualitative genus-zero form: $T_g$ is the
+  normalised Hauptmodul of \emph{some} genus-zero $\Gamma_g$ containing \emph{some} $\Gamma_0(N)$ and commensurable with
+  $\mathrm{SL}_2(\Z)$ (\lean{conwayNorton}, Chapter~\ref{ch:20}). Open: to identify $\Gamma_g$ with the group of Conway and
+  Norton's table (a group between $\Gamma_0(N)$ and its normaliser), to relate $N$ to the order of $g$ ($N=o(g)\,h$ with
+  $h\mid\gcd(24,o(g))$), and to state anything about conjugacy classes, the character table or integrality of the
+  coefficients (rationality is proved, \lean{rationalTraces}). Chapter~\ref{ch:16}, Section~\ref{ch16:sec:roadmap}, lists
+  what is not formalised.
+\item \textbf{Generalized moonshine} (Norton; Carnahan): Hauptmoduln for commuting pairs, through twisted modules of
+  $\Vnat$ and their modularity. Not stated.
+\item \textbf{Jurisich's form of the free subalgebra.} The library proves that the positive part $\mathfrak u^+$ of the
+  Monster Lie algebra is free on the generating space $U$ (Chapter~\ref{ch:18}), which is what the twisted denominator
+  identities need. Jurisich's statement, that the subalgebra generated by the imaginary simple root spaces is free on
+  them, follows on paper and is not formalised.
+\item \textbf{The explicit product form of the twisted denominator identities.} The library's twisted identities are
+  stated through series defined by their logarithmic derivatives (Chapter~\ref{ch:19}); neither the exponential form nor
+  the product form with roots of unity is a Lean statement, and the comparison of \lean{coneProd} with literal finite
+  products was not written.
+\item \textbf{Tits's theorem.} That the automorphism group of the complex Griess algebra is the Monster is not
+  needed: the converse direction of Chapter~\ref{ch:22} goes through rationality of traces and the commutant lemma. It is
+  not formalised.
+\item \textbf{The abstract $c=24$ files.} The library's \leanpath{VOA/Modularity/Moonshine*} files contain abstract $c=24$
+  statements conditional on hypotheses never instantiated; they are independent of Part~VIII.
 \item \textbf{Uniqueness of $\Vnat$.} FLM conjectured that $\Vnat$ is the unique holomorphic VOA of
   central charge 24 with $V_1=0$. Dong--Griess--Lam proved uniqueness under an additional frame
   hypothesis (cited, not checked); the general conjecture is open.
-\item \textbf{A Moonshine audit probe} in \leanpath{scripts/audit/}, so that the maintained audit
-  covers \lean{VOA.Moonshine}.
+\item \textbf{A wider Moonshine audit probe.} Since v1.05 the probe \texttt{MonstrousMoonshine} enforces the 25
+  release headlines. The module audits of Part~VIII (thousands of supporting declarations) are still checked only by
+  reading the build log (Section~\ref{ch15:sec:moonrecord}).
 \item \textbf{Simplifications}: formalise the failure for $\varepsilon=-1$; make \lean{golayE} explicit;
   prove irreducibility of the four $V_0^+$-sectors; the full intertwining Jacobi identity for $W$;
   route (B) as an independent check.
@@ -2194,6 +2471,10 @@ declaration & meaning & status & fidelity\\
 \lean{nsProjectiveKernelAll_holds} & kernel half of Ng--Schauenburg 6.8 & unconditional; FS half open & \S\ref{ch15:sec:open-later}\\
 \lean{gannonRayhaun_classification} & nice $c=1$ VOAs, both directions & no hypotheses; rational $=$ \lean{AdmissiblyRational}; \lean{Type 0} & \S\ref{ch15:sec:releaseaudits}\\
 \lean{X_classicallyFree_final} & Deligne series: classical freeness & $A_2$: no hypothesis (aggregate build green 2026-10-28; standard axioms); other types conditional on named inputs (Ch.~\ref{ch:L27}) & \S\ref{ch15:sec:open-later}\\
+\lean{ConwayNorton.conwayNorton} & Conway--Norton, genus-zero form, every $g\in\Aut(\Vnat)$ & no hypotheses; standard axioms & \S\ref{ch15:sec:moonrecord}, Ch.~\ref{ch:16}, \ref{ch:20}\\
+\lean{conwayNorton_gmat}, \lean{rationalTraces}, \lean{M8.finite_autVnat} & the same for $\mathrm{Gmat}$; rational traces; $\Aut(\Vnat)$ finite & no hypotheses (for \lean{conwayNorton_gmat}: beyond $g\in\mathrm{Gmat}$); standard axioms & \S\ref{ch15:sec:moonrecord}, Ch.~\ref{ch:20}, \ref{ch:22}\\
+\lean{nonempty_autVnat_mulEquiv_liftable} & $\Aut(\Vnat)\cong$ liftable subgroup of \lean{AutO} & no hypotheses; no Tits & \S\ref{ch15:sec:moonrecord}, Ch.~\ref{ch:22}\\
+\lean{monsterEquivAutVnat}, \lean{monstrousMoonshine} & $\mathrm{AutO}\cong\Aut(\Vnat)$; moonshine for the Monster & conditional on \lean{GmatEqAutO} only & \S\ref{ch15:sec:uncond}, Ch.~\ref{ch:22}\\
 \bottomrule
 \end{longtable}
 

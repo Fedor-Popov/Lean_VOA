@@ -71,9 +71,9 @@
 \newcommand{\tr}{\operatorname{tr}}
 
 % Edition
-\newcommand{\bookrelease}{release v1.0}
+\newcommand{\bookrelease}{release v1.05}
 \newcommand{\bookcommit}{(recorded at release)}
-\newcommand{\bookdate}{2026-11-03}
+\newcommand{\bookdate}{2026-11-08}
 
 % Brief statement environments carry the book's own number: \begin{btheorem}{5.4}[title] ... \end{btheorem}
 \newtheoremstyle{briefplain}{6pt}{3pt}{\itshape}{}{\bfseries}{.}{0.5em}{\thmname{#1}~\thmnote{#3}}
@@ -113,7 +113,12 @@ commit above. The qualified names are computed from the \texttt{namespace} block
 
 A clean \texttt{\#print axioms} does not make a theorem unconditional: explicit hypotheses are
 listed in the status line. The library has no project axiom (\texttt{VOA.pbw} is a theorem)
-(book Chapter~3).
+(book Chapter~3). Part~VIII (monstrous moonshine) has exactly one named hypothesis,
+\texttt{GmatEqAutO}: AxiomMath's generation theorem for their model of the Monster, a theorem of their
+library that does not run on this library's toolchain. It enters only the identification of
+$\operatorname{Aut}V^\natural$ with the whole Monster (\texttt{monstrousMoonshine}). The Conway--Norton theorem for
+every automorphism of $V^\natural$, and the isomorphism of $\operatorname{Aut}V^\natural$ with the subgroup of the
+Monster that acts on $V^\natural$, do not use it.
 \tableofcontents
 \mainmatter
 \pagestyle{plain}% chapter titles are too long for running heads
@@ -1374,7 +1379,7 @@ For every $t\in\C\setminus\{0\}$, every $n\in\N$ and every $h\in\C$,
 \end{equation*}
 Since every $c\in\C$ is some $c(t)$, this is the Kac determinant for all Virasoro Verma modules.
 \end{btheorem}
-\noindent\emph{(The chapter quotes no Lean declaration for this statement; see book p.~340.)}\par
+\noindent\emph{(The chapter quotes no Lean declaration for this statement; see book p.~343.)}\par
 \noindent\textbf{Hypotheses / status.} $t\ne0$; unconditional\ (check not in this release)\par
 \medskip
 \endgroup
@@ -2933,7 +2938,7 @@ Every $f\in\lfourteenE$ of weight $k$ is a linear combination of monomials $E_4^
 \lean{E46HasWeightedPolynomialReps} holds.
 \end{btheorem}
 {\raggedright\noindent File \leanpath{VOA/\allowbreak Modularity/\allowbreak EisensteinSerreClosure.lean}.\par}
-\noindent\emph{(The chapter quotes no Lean declaration for this statement; see book p.~684.)}\par
+\noindent\emph{(The chapter quotes no Lean declaration for this statement; see book p.~687.)}\par
 \medskip
 \begin{btheorem}{14.23}[Holomorphy and term-by-term differentiation]
 Let $\chi$ be a formal $q$-series with $\|\chi(h+n)\|$ subexponential. Then $z\mapsto\chi^{\C}_h(z)$ is holomorphic on
@@ -3003,7 +3008,7 @@ theorem subexponential_of_majorant_recursion {χ a b p : ℕ → ℝ}
 For every super character system $S$: $\mathtt{CompleteRationalFamily}\,S\,P\iff P$; $\mathtt{Conjecture\_HalfWeight}\,S\,
 \mathrm{False}$ holds; and the zero family satisfies \lean{SuperRealisesLawOn} for every $\Gamma$, $J$, $\rho$.
 \end{bproposition}
-\noindent\emph{(The chapter quotes no Lean declaration for this statement; see book p.~719.)}\par
+\noindent\emph{(The chapter quotes no Lean declaration for this statement; see book p.~722.)}\par
 \medskip
 \endgroup
 \setcounter{chapter}{14}
@@ -3029,7 +3034,7 @@ Let $V$ be rational and $C_2$-cofinite, with irreducible modules $M_1,\dots,M_r$
   unique.
 \end{enumerate}
 \end{btheorem}
-\noindent\emph{(The chapter quotes no Lean declaration for this statement; see book p.~731.)}\par
+\noindent\emph{(The chapter quotes no Lean declaration for this statement; see book p.~734.)}\par
 \medskip
 \begin{btheorem}{15.16}[Convergence of one-point functions; Zhu 1996 \S4.4, Dong--Li--Mason 2000 \S\S6--7]
 Let $V$ be $C_2$-cofinite and $M$ an ordinary module with conformal weight $h$. Then for every $v\in V$ the coefficients
@@ -3331,7 +3336,7 @@ theorem V2m_stronglyRational (m : ℕ) (hm : 1 ≤ m) : StronglyRational (V2m m 
 If $R$ is a finitely generated Poisson algebra whose variety $\operatorname{Specm}R$ has finitely many
 symplectic leaves, then $\dim\lsixteenHP(R)<\infty$.
 \end{btheorem}
-\noindent\emph{(The chapter quotes no Lean declaration for this statement; see book p.~797.)}\par
+\noindent\emph{(The chapter quotes no Lean declaration for this statement; see book p.~800.)}\par
 \medskip
 \begin{bdefinition}{16.9}[Etingof-finite]
 $V$ is \emph{Etingof-finite} if $\dim_\C\lsixteenHP(R_V)<\infty$.
@@ -3624,7 +3629,7 @@ There is a three-dimensional super vertex algebra in the library's sense (purely
 and $2$) on which the super Jacobi identity fails at $(u,v,x,\ell,m,n)=(x_1,\lseventeenvac,\lseventeenvac,-2,0,-2)$
 and on which $Y(Tu,z)\neq\partial_zY(u,z)$.
 \end{btheorem}
-\noindent\emph{(The chapter quotes no Lean declaration for this statement; see book p.~847.)}\par
+\noindent\emph{(The chapter quotes no Lean declaration for this statement; see book p.~850.)}\par
 \medskip
 \begin{btheorem}{17.14}[Super Borcherds / Jacobi identity]
 Let $V$ be a super near-VOA, $u\in V_{\bar p}$, $v\in V_{\bar q}$, $x\in V$. For all $\ell,m,n\in\Z$,
@@ -3666,12 +3671,12 @@ Let $W$ be any super VOA, $g$ any even automorphism, $N\ge2$, and $T$ any
 subsingleton, every weight space of $T$ is zero, and every parity-twisted (Ramond) carrier
 \lean{W.ParityTwistedModule M} is zero.
 \end{btheorem}
-\noindent\emph{(The chapter quotes no Lean declaration for this statement; see book p.~861.)}\par
+\noindent\emph{(The chapter quotes no Lean declaration for this statement; see book p.~864.)}\par
 \medskip
 \begin{btheorem}{17.27}[$\psi$ is not a field]
 $\neg\,\mathrm{IsField}(\psi)$: there is no $B$ with $\psi(n)\lseventeenvac=0$ for all $n<B$.
 \end{btheorem}
-\noindent\emph{(The chapter quotes no Lean declaration for this statement; see book p.~864.)}\par
+\noindent\emph{(The chapter quotes no Lean declaration for this statement; see book p.~867.)}\par
 \medskip
 \begin{btheorem}{17.38}[The super Zhu ring of symplectic fermions is not semisimple]
 The super Zhu algebra $A(SF)$ (Definition~17.42) is an associative ring of dimension
@@ -3784,7 +3789,7 @@ theorem tripletW_centralCharge_eq_tripletW2 (hp : 1 ≤ 2) :
 \begin{btheorem}{18.7}[$E\ne0$ and $W(2)\ne V_{L_2}$; Lean check outside the library]
 At $p=2$, $E\ne0$, and $e^\alpha\notin W(2)$; hence $W(2)$ is a proper subalgebra of $V_{L_2}$.
 \end{btheorem}
-\noindent\emph{(The chapter quotes no Lean declaration for this statement; see book p.~909.)}\par
+\noindent\emph{(The chapter quotes no Lean declaration for this statement; see book p.~912.)}\par
 \noindent\textbf{Hypotheses / status.} None\par
 \medskip
 \begin{btheorem}{18.10}[Adamovi\'c--Milas relations]
@@ -6617,7 +6622,7 @@ V_1*\dots*V_m=\bigoplus_{d\ge0}\Phi_{\le d}/\Phi_{<d},
 on which $x(r)$ acts by the map $\Phi_{\le d}/\Phi_{<d}\to\Phi_{\le d+r}/\Phi_{<d+r}$ that it induces. We write $V^{*m}$ for
 $m$ factors equal to $V$.
 \end{bdefinition}
-\noindent\emph{(The chapter quotes no Lean declaration for this statement; see book p.~1390.)}\par
+\noindent\emph{(The chapter quotes no Lean declaration for this statement; see book p.~1393.)}\par
 \medskip
 \begin{bdefinition}{26.6}[The $A_2$ relations and two named statements]
 Let $\rho$ be a current module and $w\in V$.
@@ -7215,7 +7220,7 @@ $\ltwentysevenF_m=M_{0,m}$, is the \emph{truncated Weyl module} $W(m\theta,m)$ o
 quotient of $W_{\mathrm{loc}}(m\theta)$ on which $\ltwentyseveng\otimes t^m\C[t]$ acts by zero. In particular $M_{0,m}$ does not
 depend on the choice of $\mathcal S$ within these bounds.
 \end{blemma}
-\noindent\emph{(The chapter quotes no Lean declaration for this statement; see book p.~1460.)}\par
+\noindent\emph{(The chapter quotes no Lean declaration for this statement; see book p.~1463.)}\par
 \noindent\textbf{Hypotheses / status.} On paper; no Lean statement\par
 \medskip
 \begin{bdefinition}{27.7}[Input R]
@@ -8693,7 +8698,7 @@ Every $\chfiveSL$-invariant holomorphic function on $\chfiveH$ with at most a po
 cusp is a polynomial of degree $\le m$ in $j$. In particular $J$ is the unique invariant function
 of the form $q^{-1} + O(q)$.
 \end{btheorem}
-\noindent\emph{(The chapter quotes no Lean declaration for this statement; see book p.~1740.)}\par
+\noindent\emph{(The chapter quotes no Lean declaration for this statement; see book p.~1743.)}\par
 \medskip
 \begin{bdefinition}{33.9}[Formal $\Delta$]
 $\Delta = (E_4^3 - E_6^2)/1728\in\C[[q]]$.
@@ -10341,12 +10346,1895 @@ theorem moonshine :
 {\raggedright\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak TopPairs.lean}.\par}
 \medskip
 \endgroup
+\part{Monstrous moonshine}
+\chapter{Monstrous moonshine: McKay--Thompson series, Hauptmoduln and the statement}
+\begingroup
+\providecommand{\chsixteenH}{\mathbb{H}}
+\providecommand{\chsixteenR}{\mathbb{R}}
+\providecommand{\chsixteenM}{\mathbb{M}}
+\providecommand{\chsixteenSL}{\mathrm{SL}_2(\mathbb{Z})}
+\providecommand{\chsixteenSLR}{\mathrm{SL}_2(\mathbb{R})}
+\providecommand{\chsixteenGLR}{\mathrm{GL}_2(\mathbb{R})}
+\providecommand{\chsixteenP}{\mathbb{P}^1}
+\providecommand{\chsixteenX}{X(\Gamma)}
+\providecommand{\chsixteenT}{T_g}
+\providecommand{\chsixteenmat}[4]{\left(\begin{smallmatrix}#1&#2\\#3&#4\end{smallmatrix}\right)}
+\providecommand{\chsixteenlean}[1]{\texttt{\directlua{ local s = "\luaescapestring{\detokenize{#1}}" for piece, sep in string.gmatch(s, "([^_.]*)([_.]?)") do if not (piece == "" and sep == "") then tex.sprint(-2, piece .. sep) if not (sep == "") then tex.sprint(string.char(92) .. "allowbreak{}") end end end}}}
+\noindent{\small 7 of the chapter's 31 numbered statements: its headline results and every definition they use.}\par\medskip
+\begin{bproposition}{43.3}[Basic properties of graded traces]
+For every vertex operator algebra $V$, $n\in\Z$ and $g,h\in\Aut(V)$:
+\begin{enumerate}[label=(\alph*)]
+\item $\tr(1\,|\,V_n)=\dim V_n$;
+\item $\tr(hgh^{-1}\,|\,V_n)=\tr(g\,|\,V_n)$ (traces are class functions);
+\item for $V=\Vnat$: every $g\in\Aut(\Vnat)$ maps $\Vnat_n$ onto $\Vnat_n$.
+\end{enumerate}
+\end{bproposition}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{gradedAutTrace_one},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{gradedAutTrace_conjugate},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{vnatAut_preserves_grading}\par}
+\begin{leancode}
+theorem gradedAutTrace_one (V : VertexOperatorAlgebra M) (n : ℤ) :
+    gradedAutTrace V 1 n = (Module.finrank ℂ (V.grading n) : ℂ)
+
+theorem gradedAutTrace_conjugate (V : VertexOperatorAlgebra M) (g h : Aut V) (n : ℤ) :
+    gradedAutTrace V (h * g * h⁻¹) n = gradedAutTrace V g n
+
+theorem vnatAut_preserves_grading (g : AutVnat) (n : ℤ) :
+    (VnatVOA.grading n).map g.toLinearEquiv.toLinearMap = VnatVOA.grading n
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNTrace.lean}.
+\medskip
+\begin{bproposition}{43.5}[First properties of $\mathrm{MT}_g$]
+For all $g,h\in\Aut(\Vnat)$ and $n\in\N$:
+\begin{enumerate}[label=(\alph*)]
+\item the $n$-th coefficient of $\mathrm{MT}_g$ is $\tr(g\,|\,\Vnat_{n+1})$;
+\item the constant coefficient vanishes: $\tr(g\,|\,\Vnat_1)=0$;
+\item $\mathrm{MT}_{hgh^{-1}}=\mathrm{MT}_g$;
+\item $\mathrm{MT}_1=\sum_{n\ge0}[q^{n+1}](qJ)\,X^n$, i.e.\ the coefficients of $\mathrm{MT}_1$ are those of $J$;
+  equivalently $q\,T_1=qJ$;
+\item $\mathrm{MT}_1\ne qJ$ (a reminder that the two series live in different normalisations).
+\end{enumerate}
+\end{bproposition}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{mckayThompson_coeff},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{mckayThompson_coeff_zero},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{mckayThompson_conjugate},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{mckayThompson_one},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{mckayThompsonShift_one},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{mckayThompson_one_ne_JShift}\par}
+\begin{leancode}
+@[simp] theorem mckayThompson_coeff (g : AutVnat) (n : ℕ) :
+    PowerSeries.coeff n (mckayThompson g) =
+      gradedAutTrace VnatVOA g ((n : ℤ) + 1)
+
+theorem mckayThompson_coeff_zero (g : AutVnat) :
+    PowerSeries.coeff 0 (mckayThompson g) = 0
+
+theorem mckayThompson_conjugate (g h : AutVnat) :
+    mckayThompson (h * g * h⁻¹) = mckayThompson g
+
+theorem mckayThompson_one :
+    mckayThompson 1 = PowerSeries.mk (fun n => PowerSeries.coeff (n + 1) JShift)
+
+theorem mckayThompsonShift_one : mckayThompsonShift 1 = JShift
+
+theorem mckayThompson_one_ne_JShift : mckayThompson 1 ≠ JShift
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNTrace.lean}.
+\medskip
+\begin{btheorem}{43.6}[Trace bounds]
+\begin{enumerate}[label=(\alph*)]
+\item If $f$ is a linear endomorphism of finite order of a finite-dimensional complex vector space $M$, then
+  $|\tr f|\le\dim M$.
+\item If $g$ is an automorphism of finite order of a vertex operator algebra $V$, then $|\tr(g|V_n)|\le\dim V_n$ for
+  all $n$.
+\item If $g\in\Aut(\Vnat)$ has finite order, then $|[X^n]\,\mathrm{MT}_g|\le|[X^n]\,\mathrm{MT}_1|=c(n)$ for all
+  $n\ge0$.
+\end{enumerate}
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{finiteOrderTrace_norm_le},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{gradedAutTrace_norm_le},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{mckayThompson_coeff_norm_le}\par}
+\begin{leancode}
+theorem finiteOrderTrace_norm_le {M : Type*} [AddCommGroup M] [Module ℂ M]
+    [FiniteDimensional ℂ M] (f : Module.End ℂ M) (hf : IsOfFinOrder f) :
+    ‖LinearMap.trace ℂ M f‖ ≤ Module.finrank ℂ M
+
+theorem gradedAutTrace_norm_le {M : Type*} [AddCommGroup M] [Module ℂ M]
+    (V : VertexOperatorAlgebra M) (g : Aut V) (hg : IsOfFinOrder g) (n : ℤ) :
+    ‖gradedAutTrace V g n‖ ≤ Module.finrank ℂ (V.grading n)
+
+theorem mckayThompson_coeff_norm_le (g : AutVnat) (hg : IsOfFinOrder g) (n : ℕ) :
+    ‖PowerSeries.coeff n (mckayThompson g)‖ ≤
+      ‖PowerSeries.coeff n (mckayThompson 1)‖
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNTraceBounds.lean}.
+\medskip
+\begin{bproposition}{43.13}[What the eight fields mean; on paper]
+Let $\Gamma\le\chsixteenSLR$ be commensurable with $\chsixteenSL$ and contain $\chsixteenmat1101$.
+\begin{enumerate}[label=(\alph*)]
+\item If $f$ satisfies ??--??, then the width of $\infty$ is $1$, the map
+  $F:\chsixteenX\to\chsixteenP(\C)$ is an isomorphism of Riemann surfaces, $\chsixteenX$ has genus zero, and $f$ is
+  the normalised Hauptmodul of $\Gamma$.
+\item Conversely, if $\chsixteenX$ has genus zero and $\infty$ has width $1$, the normalised Hauptmodul satisfies
+  ??--??.
+\end{enumerate}
+\end{bproposition}
+\noindent\emph{(The chapter quotes no Lean declaration for this statement; see book p.~2224.)}\par
+\medskip
+\begin{bdefinition}{43.16}[The Conway--Norton property and the Conway--Norton conjecture]
+$g\in\Aut(\Vnat)$ has the \emph{Conway--Norton property} if there are a subgroup $\Gamma\le\chsixteenGLR$ and
+$N\in\N$ such that $\Gamma$ is a moonshine group of level $N$ and $T_g$ is a normalised Hauptmodul for $\Gamma$.  The
+\emph{Conway--Norton conjecture} (for $\Aut(\Vnat)$) is: every $g\in\Aut(\Vnat)$ has the Conway--Norton property.  For a
+group homomorphism $\iota:G\to\Aut(\Vnat)$, \emph{Conway--Norton via $\iota$} means: $\iota(g)$ has the Conway--Norton
+property for every $g\in G$.
+\end{bdefinition}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{ConwayNortonFor},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{ConwayNortonConjecture},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{ConwayNortonVia}\par}
+\begin{leancode}
+def ConwayNortonFor (g : AutVnat) : Prop :=
+  ∃ (Γ : Subgroup (GL (Fin 2) ℝ)) (N : ℕ), IsMoonshineGroup Γ N ∧
+    IsNormalizedHauptmodul Γ (mckayThompsonFun g)
+
+def ConwayNortonConjecture : Prop :=
+  ∀ g : AutVnat, ConwayNortonFor g
+
+def ConwayNortonVia {𝕄 : Type*} [Group 𝕄] (ι : 𝕄 →* AutVnat) : Prop :=
+  ∀ g : 𝕄, ConwayNortonFor (ι g)
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNStatement.lean}.
+\medskip
+\begin{btheorem}{43.24}[Constancy under a non-discrete set; Shimizu]
+Let $\psi:\chsixteenH\to\C$ be holomorphic.
+\begin{enumerate}[label=(\alph*)]
+\item If $C_n\in\chsixteenGLR$ converge entrywise to the identity, each $C_n$ moves some point of $\chsixteenH$, and
+  $\psi(C_n\tau)=\psi(\tau)$ for all $n,\tau$, then $\psi$ is constant.
+\item If $\psi(\tau+1)=\psi(\tau)$ and $\psi(L_y\tau)=\psi(\tau)$ for all $\tau$, for some $0<y<1$, then $\psi$ is
+  constant.
+\end{enumerate}
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{eq_of_invariant_of_entries_tendsto_one},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{eq_of_invariant_upper_lower_unipotent}\par}
+\begin{leancode}
+theorem eq_of_invariant_of_entries_tendsto_one {ψ : ℍ → ℂ}
+    (hψ : MDifferentiable 𝓘(ℂ) 𝓘(ℂ) ψ) {C : ℕ → GL (Fin 2) ℝ}
+    (hC : ∀ i j, Tendsto (fun n => (C n : Matrix (Fin 2) (Fin 2) ℝ) i j) atTop
+      (𝓝 ((1 : Matrix (Fin 2) (Fin 2) ℝ) i j)))
+    (hmove : ∀ n, ∃ τ : ℍ, C n • τ ≠ τ) (hinv : ∀ n τ, ψ (C n • τ) = ψ τ) (τ σ : ℍ) :
+    ψ τ = ψ σ
+
+theorem eq_of_invariant_upper_lower_unipotent {ψ : ℍ → ℂ} (hψ : MDifferentiable 𝓘(ℂ) 𝓘(ℂ) ψ)
+    {y : ℝ} (hy0 : 0 < y) (hy1 : y < 1) (hT : ∀ τ, ψ (glUpperUnipotent 1 • τ) = ψ τ)
+    (hL : ∀ τ, ψ (glLowerUnipotent y • τ) = ψ τ) (τ σ : ℍ) : ψ τ = ψ σ
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNGammaZeroShimizu.lean}.
+\medskip
+\begin{btheorem}{43.29}[Replicate equals Hauptmodul; diamond in $\pm\Gamma$]
+Let $f$ be a normalised Hauptmodul for $\Gamma\le\chsixteenSLR$ with $\Gamma_1(M)\le\Gamma$, $M\ge1$.  Let $p>M$ be prime,
+$mp-nM=1$, and $f'$ holomorphic, $1$-periodic and normalised, with
+$\Phi(f(\tau))=\sum_{j<p}f((\tau+j)/p)+f'(p\tau)$ for some $\Phi:\C\to\C$.  Then $f'=f$, and $\sigma\in\Gamma$ or
+$-\sigma\in\Gamma$.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{replicate_eq_and_diamond_mem}\par}
+\begin{leancode}
+theorem replicate_eq_and_diamond_mem {Γ : Subgroup (GL (Fin 2) ℝ)} {f f' : ℍ → ℂ}
+    {Φ : ℂ → ℂ} {M p : ℕ} (hH : IsNormalizedHauptmodul Γ f) (hdet : Γ.HasDetOne)
+    (hΓ1 : gamma1GL M ≤ Γ) (hM : 0 < M) (hp : p.Prime) (hMp : M < p) {m n : ℤ}
+    (hmn : m * p - n * M = 1) (hf'hol : MDifferentiable 𝓘(ℂ) 𝓘(ℂ) f')
+    (hf'per : ∀ τ : ℍ, f' (glUpperUnipotent 1 • τ) = f' τ)
+    (hf'norm : Tendsto (fun τ : ℍ => f' τ - (qPar τ)⁻¹) atImInfty (𝓝 0))
+    (hrep : ∀ τ : ℍ, Φ (f τ) = ∑ j ∈ Finset.range p, f (heckePoint 1 p j one_pos hp.pos τ) +
+      f' (heckePoint p 1 0 hp.pos one_pos τ)) :
+    f' = f ∧ (mapGL ℝ (diamondLift M p m n hmn) ∈ Γ ∨ -mapGL ℝ (diamondLift M p m n hmn) ∈ Γ)
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNGammaZeroBridge.lean}.
+\medskip
+\endgroup
+\chapter{The vertex algebra of the hyperbolic plane and the tensor theory of central charge 26}
+\begingroup
+\providecommand{\chseventeenL}[1]{\texttt{\directlua{ local s = "\luaescapestring{\detokenize{#1}}" local first = true for c in s:gmatch(utf8.charpattern) do if (not first) and c:match("^[A-Z]$") then tex.sprint("\string\\allowbreak{}") end tex.sprint(-2, c) if c == "_" or c == "." then tex.sprint("\string\\allowbreak{}") end first = false end}}}
+\providecommand{\chseventeenII}{{\mathrm{II}_{1,1}}}
+\providecommand{\chseventeenVII}{{V_{\mathrm{II}_{1,1}}}}
+\providecommand{\chseventeenvac}{\mathbb{1}}
+\providecommand{\chseventeenF}{\mathcal{F}}
+\providecommand{\chseventeenM}{\mathcal{M}}
+\noindent{\small 9 of the chapter's 60 numbered statements: its headline results and every definition they use.}\par\medskip
+\begin{bdefinition}{44.5}[Complex lattice frame]
+A \emph{complex lattice frame} for an integral lattice $L$ of rank $r$ is an additive map
+$\alpha\mapsto\alpha^\perp$, $L\to\C^r$, satisfying (44.3).  The \emph{frame oscillator}
+of $\alpha$ is $\alpha(m)=\sum_a\alpha^\perp_a h_a(m)$ on $\chseventeenF_r$.  The Lorentzian frame is
+(44.4), reindexed along $\operatorname{rank}\chseventeenII=2$.
+\end{bdefinition}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{ComplexLatticeFrame},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{complexHyperbolicCoordinate},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{lorentzianComplexFrame},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{frameOscillator}\par}
+{\raggedright\noindent {\raggedright Files \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNComplexFrame.lean},
+\leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNOscillators.lean}.\par}\par}
+\begin{leancode}
+/-- Complex bilinear coordinates for the integral lattice pairing. -/
+structure ComplexLatticeFrame (L : IntegralLattice) where
+  coordinate : L.carrier →+ (Fin (rank L) → ℂ)
+  pairing : ∀ x y, ∑ a, coordinate x a * coordinate y a = (L.form x y : ℂ)
+
+/-- An explicit complex frame: `(x+y/2, i(x-y/2))` has bilinear norm `2xy`. -/
+noncomputable def complexHyperbolicCoordinate (x : lorentzianLattice.carrier) : Fin 2 → ℂ :=
+  ![(x 0 : ℂ) + (x 1 : ℂ) / 2, Complex.I * ((x 0 : ℂ) - (x 1 : ℂ) / 2)]
+
+/-- The explicit hyperbolic frame, reindexed to the existing Fock carrier. -/
+noncomputable def lorentzianComplexFrame : ComplexLatticeFrame lorentzianLattice where
+  coordinate :=
+    { toFun := fun x a => complexHyperbolicCoordinate x (finCongr lorentzian_rank a)
+
+/-- The oscillator defined by an arbitrary complex lattice frame. -/
+noncomputable def frameOscillator {L : IntegralLattice} (F : ComplexLatticeFrame L)
+    (α : L.carrier) (m : ℤ) : Module.End ℂ (FockN (rank L)) :=
+  ∑ a, F.coordinate α a • oscN (rank L) 1 a m
+\end{leancode}
+\medskip
+\begin{bdefinition}{44.8}[Near-VOA, following Gannon]
+A \emph{near-VOA} on a complex vector space $\mathcal V$ consists of: a family of subspaces
+$\mathcal V_n$, $n\in\Z$, with $\mathcal V=\bigoplus_n\mathcal V_n$ (internal direct sum); a linear map
+$Y:\mathcal V\to\End(\mathcal V)[[z^{\pm1}]]$; a vacuum $\chseventeenvac\in\mathcal V_0$; a conformal vector
+$\omega\in\mathcal V_2$; and a central charge $c\in\C$; such that, writing $L_n=\omega_{(n+1)}$:
+(VA1) $u_{(n)}\mathcal V_j\subseteq\mathcal V_{k+j-n-1}$ for $u\in\mathcal V_k$;
+(VA2) $Y(\chseventeenvac,z)=\mathrm{id}$;
+(VA3) $u_{(-1)}\chseventeenvac=u$ and $u_{(n)}\chseventeenvac=0$ for $n\ge0$;
+(VA4) all $Y(u,z),Y(v,z)$ are mutually local;
+(VA5) for all $u,v$, $u_{(n)}v=0$ for $n\gg0$;
+(VOA1) $[L_m,L_n]=(m-n)L_{m+n}+\tfrac{c}{12}(m^3-m)\delta_{m+n,0}$;
+(VOA2) $L_0=n$ on $\mathcal V_n$;
+(VOA3) $Y(L_{-1}v,z)=\partial_zY(v,z)$.
+No finiteness of $\dim\mathcal V_n$ and no lower bound on $n$ is required.
+\end{bdefinition}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{NearVOA}\par}
+{\raggedright\noindent File \leanpath{VOA/\allowbreak Core/\allowbreak VertexOperatorAlgebra.lean}.\par}
+\begin{leancode}
+structure NearVOA (𝒱 : Type u) [AddCommGroup 𝒱] [Module ℂ 𝒱] where
+  /-- The internal `ℤ`-grading (pieces possibly infinite-dimensional). -/
+  grading : ℤ → Submodule ℂ 𝒱
+  /-- The grading is an internal direct-sum decomposition of `𝒱`. -/
+  isInternal : DirectSum.IsInternal grading
+  /-- The state–field correspondence. -/
+  Y : 𝒱 →ₗ[ℂ] (End ℂ 𝒱)⟦z^±⟧
+  /-- The vacuum vector. -/
+  vacuum : 𝒱
+  /-- `𝟙 ∈ 𝒱₀`. -/
+  vacuum_mem : vacuum ∈ grading 0
+  /-- **VA1.** -/
+  grading_mode : ∀ {k ℓ : ℤ} (u : 𝒱), u ∈ grading k → ∀ (v : 𝒱), v ∈ grading ℓ →
+    ∀ (n : ℤ), mode (Y u) n v ∈ grading (k + ℓ - n - 1)
+  /-- **VA2.** -/
+  vacuum_Y : Y vacuum = (1 : (End ℂ 𝒱)⟦z^±⟧)
+  /-- **VA3.** -/
+  creation : ∀ u : 𝒱, mode (Y u) (-1) vacuum = u ∧ ∀ n : ℤ, 0 ≤ n → mode (Y u) n vacuum = 0
+  /-- **VA4 (locality).** -/
+  locality : ∀ u v : 𝒱, Local (Y u) (Y v)
+  /-- **VA5 (regularity).** -/
+  regularity : ∀ u v : 𝒱, ∃ N : ℤ, ∀ n : ℤ, N ≤ n → mode (Y u) n v = 0
+  /-- The conformal vector `ω`. -/
+  conformalVector : 𝒱
+  /-- `ω ∈ 𝒱₂`. -/
+  conformal_mem : conformalVector ∈ grading 2
+  /-- The central charge `c`. -/
+  centralCharge : ℂ
+  /-- **VOA1.** -/
+  virasoro : ∀ m n : ℤ,
+      ⁅mode (Y conformalVector) (m + 1), mode (Y conformalVector) (n + 1)⁆
+        = ((m : ℂ) - n) • mode (Y conformalVector) (m + n + 1)
+          + (if m + n = 0 then (((m : ℂ) ^ 3 - m) / 12 * centralCharge) • (1 : End ℂ 𝒱)
+             else 0)
+  /-- **VOA2.** -/
+  L0_grading : ∀ {n : ℤ} (v : 𝒱), v ∈ grading n → mode (Y conformalVector) 1 v = (n : ℂ) • v
+  /-- **VOA3.** -/
+  translation : ∀ v : 𝒱, Y (mode (Y conformalVector) 0 v) = deriv (Y v)
+\end{leancode}
+\noindent\textbf{Hypotheses / status.} — (structure)\par
+\medskip
+\begin{btheorem}{44.10}[No lower bound is possible]
+Let $(\mathcal V_n)_{n\in\Z}$ be \emph{any} family of subspaces of $\chseventeenVII$'s state space such that each
+charged vacuum $e^x$ lies in $\mathcal V_{\Delta(x)}$.  Then there is no $N$ with $\mathcal V_n=0$ for all $n<N$.
+In particular the weight grading of $\chseventeenVII$ is not bounded below.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{lorentzian_grading_not_bounded_below},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{lorentzianWeightGrading_not_bounded_below}\par}
+{\raggedright\noindent {\raggedright Files \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNVertexTarget.lean},
+\leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNGrading.lean}.\par}\par}
+\begin{leancode}
+theorem lorentzian_grading_not_bounded_below
+    (grading : ℤ → Submodule ℂ LorentzianFockSpace)
+    (charge_mem : ∀ x : lorentzianLattice.carrier,
+      lorentzianChargeState x ∈ grading (lorentzianEnergy x)) :
+    ¬ ∃ N : ℤ, ∀ n : ℤ, n < N → grading n = ⊥ := by
+
+theorem lorentzianWeightGrading_not_bounded_below :
+    ¬ ∃ N : ℤ, ∀ n : ℤ, n < N → lorentzianWeightGrading n = ⊥ :=
+\end{leancode}
+\noindent\textbf{Hypotheses / status.} Any grading\par
+\medskip
+\begin{btheorem}{44.12}[Internality without positivity; infinite weight spaces]
+(i) For \emph{every} integral lattice $L$, $V_L=\bigoplus_{n\in\Z}(V_L)_n$ is an internal direct sum.
+(ii) For $\chseventeenII$, $\chseventeenL{halfNorm}(\alpha)=\Delta(\alpha)$ and $e^\alpha\in(V)_{\Delta(\alpha)}$.
+(iii) The states $e^{(i,0)}$, $i\in\Z$, are linearly independent; hence $(\chseventeenVII)_0$ is
+infinite-dimensional.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{latticeWeightGrading_isInternal},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{lorentzian_halfNorm},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{lorentzianChargeState_mem_weight},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{lorentzianIsotropicChargeStates_independent},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{lorentzianWeightZero_not_finiteDimensional}\par}
+{\raggedright\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNGrading.lean}.\par}
+\begin{leancode}
+/-- Internal integer grading, including indefinite lattices and infinite fibers. -/
+theorem latticeWeightGrading_isInternal (L : IntegralLattice) :
+    DirectSum.IsInternal (gradingLatGen L) :=
+
+theorem lorentzian_halfNorm (α : lorentzianLattice.carrier) :
+    halfNorm lorentzianLattice α = lorentzianEnergy α := by
+
+theorem lorentzianChargeState_mem_weight (α : lorentzianLattice.carrier) :
+    lorentzianChargeState α ∈ lorentzianWeightGrading (lorentzianEnergy α) := by
+
+/-- Infinitely many linearly independent isotropic charged ground states. -/
+theorem lorentzianIsotropicChargeStates_independent :
+    LinearIndependent ℂ (fun i : ℤ => lorentzianChargeState ![i, 0]) := by
+
+/-- This is an actual obstruction to the finite-weight-space `VertexAlgebra`. -/
+theorem lorentzianWeightZero_not_finiteDimensional :
+    ¬ FiniteDimensional ℂ (lorentzianWeightGrading 0) := by
+\end{leancode}
+\noindent\textbf{Hypotheses / status.} None\par
+\medskip
+\begin{btheorem}{44.17}[Reconstruction on the lattice state space]
+Let $L$ be even, with a complex frame $F$.  Define the \emph{word states}
+$h_{a_1}(-i_1-1)\cdots h_{a_k}(-i_k-1)e^\alpha$ and the \emph{word fields}
+${:}\tfrac{\partial^{i_1}h_{a_1}}{i_1!}\cdots\tfrac{\partial^{i_k}h_{a_k}}{i_k!}Y(e^\alpha,z){:}$ (with the FLM-cocycle charged
+field).  There is a linear map $Y:V_L\to\End(V_L)[[z^{\pm1}]]$ sending every word state to its word field,
+such that every $Y(u,z)$ is a field, all are mutually local, $Y(u,z)\chseventeenvac=u+O(z)$, and every $Y(u,z)$ is
+$T$-covariant.  The library's \chseventeenL{frameStateField F hEven} is such a map, chosen once and for all.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{frameWordState},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{frameStateField_exists},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{frameStateField}\par}
+{\raggedright\noindent {\raggedright Files \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNReconstruction.lean},
+\leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNStateFields.lean}.\par}\par}
+\begin{leancode}
+noncomputable def frameWordState (L : IntegralLattice) : List (ℕ × Fin (rank L)) → L.carrier → LatModuleGen L
+  | [], α => latChargeGen L α
+  | (ia :: rest), α =>
+      LinearMap.rTensor (L.carrier →₀ ℂ) (currentN (rank L) 1 ia.2 ia.1) (frameWordState L rest α)
+
+theorem frameStateField_exists (hEven : L.Even)  :
+    ∃ Yfull : LatModuleGen L →ₗ[ℂ] FormalDist (End ℂ (LatModuleGen L)),
+      (∀ (lα : List (ℕ × Fin (rank L)) × L.carrier),
+        Yfull (Function.uncurry (frameWordState L) lα)
+          = Function.uncurry (fun l α => frameWordField F l α) lα) ∧
+      (∀ u : LatModuleGen L, IsField (Yfull u)) ∧
+      (∀ u v : LatModuleGen L, Local (Yfull u) (Yfull v)) ∧
+      (∀ u : LatModuleGen L, (Yfull u) 0 (latVacuumGen L) = u) ∧
+      (∀ u : LatModuleGen L, ∀ q : ℤ, q < 0 → (Yfull u) q (latVacuumGen L) = 0) ∧
+      (∀ u : LatModuleGen L, Reconstruction.DCovariant (frameTranslation F) (Yfull u)) :=
+
+noncomputable def frameStateField (hEven : L.Even)  :
+    LatModuleGen L →ₗ[ℂ] FormalDist (End ℂ (LatModuleGen L)) :=
+  (frameStateField_exists F hEven).choose
+\end{leancode}
+\noindent\textbf{Hypotheses / status.} Even\par
+\medskip
+\begin{btheorem}{44.19}[Virasoro, $L_0$, translation, grading]
+Let $L$ be even with a complex frame.  Then, for $Y=$ \chseventeenL{frameStateField F hEven} and $\omega=\omega_L$:
+$[L_m,L_n]=(m-n)L_{m+n}+\tfrac{\operatorname{rank}L}{12}(m^3-m)\delta_{m+n,0}$; $L_0=n$ on $(V_L)_n$;
+$Y(L_{-1}v,z)=\partial_zY(v,z)$; and $u_{(j)}(V_L)_q\subseteq(V_L)_{p+q-j-1}$ for $u\in(V_L)_p$.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{frameStateField_virasoro},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{frameStateField_L0_grading},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{frameStateField_translation_omega},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{frameStateField_grading_mode}\par}
+{\raggedright\noindent {\raggedright Files \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNVirasoro.lean},
+\leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNConformalTranslation.lean},
+\leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNGradedFields.lean}.\par}\par}
+\begin{leancode}
+theorem frameStateField_virasoro (hEven : L.Even)  (m n : ℤ) :
+    ⁅mode (frameStateField F hEven (latticeConformalVector L)) (m + 1),
+      mode (frameStateField F hEven (latticeConformalVector L)) (n + 1)⁆
+      = ((m : ℂ) - n) • mode (frameStateField F hEven (latticeConformalVector L)) (m + n + 1)
+        + (if m + n = 0 then (((m : ℂ) ^ 3 - m) / 12 * (rank L : ℂ)) • (1 : End ℂ (LatModuleGen L))
+           else 0) := by
+
+theorem frameStateField_L0_grading (hEven : L.Even)  {n : ℤ} (v : LatModuleGen L)
+    (hv : v ∈ gradingLatGen L n) :
+    mode (frameStateField F hEven (latticeConformalVector L)) 1 v = (n : ℂ) • v := by
+
+theorem frameStateField_translation_omega (hEven : L.Even)  (v : LatModuleGen L) :
+    frameStateField F hEven (mode (frameStateField F hEven (latticeConformalVector L)) 0 v)
+      = deriv (frameStateField F hEven v) := by
+
+theorem frameStateField_grading_mode (hEven : L.Even)  {p q : ℤ} (u : LatModuleGen L)
+    (hu : u ∈ gradingLatGen L p) (v : LatModuleGen L) (hv : v ∈ gradingLatGen L q) (j : ℤ) :
+    mode (frameStateField F hEven u) j v ∈ gradingLatGen L (p + q - j - 1) := by
+\end{leancode}
+\noindent\textbf{Hypotheses / status.} Even\par
+\medskip
+\begin{btheorem}{44.34}[Leading term, PBW map, light-cone splitting]
+Fix $\kappa,\lambda$.  (i) For $p$ homogeneous of $b$-count $d$ and $b$-level $w$,
+$L_{-(j+1)}p-\kappa\,b_{j+1}p$ is strictly lower than $(d+1,w+j+1)$ in the lexicographic order.
+(ii) Let $\Phi$ send a monomial $a^\alpha b_{\lambda_1}\cdots b_{\lambda_k}$ ($\lambda_1\ge\dots\ge\lambda_k$) to
+$L_{-\lambda_1}\cdots L_{-\lambda_k}a^\alpha$.  Then $\Phi(m)-\kappa^km$ is strictly lower than $m$; hence if $\kappa\ne0$,
+$\Phi$ is a linear automorphism of $\chseventeenF^{\mathrm{iso}}$.
+(iii) If $\kappa\ne0$, then $\chseventeenF^{\mathrm{iso}}=\Bigl(\sum_{n\ge1}\operatorname{im}L_{-n}\Bigr)\oplus\chseventeenF^{\mathrm{iso}}(a)$; if $\lambda\ne0$,
+the same with $\chseventeenF^{\mathrm{iso}}(b)$; so for every nonzero momentum one of the two common kernels
+$\bigcap_j\ker \varphi(j)$ is a complement of the spurious space.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{hypSugawara_negative_leading_filtered},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{hypPBWMap},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{hypPBWMap_leading},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{hypPBWEquiv},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{hypNegativeSpurious},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{hypFock_lightConeSplit},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{hypFock_lightConeSplit_swapped},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{hypFock_lightConeSplit_nonzero}\par}
+{\raggedright\noindent {\raggedright Files \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNHyperbolicFiltration.lean},
+\leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNHyperbolicPBWMap.lean},
+\leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNHyperbolicPBWEquiv.lean},
+\leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNHyperbolicLightCone.lean},
+\leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNHyperbolicSwap.lean}.\par}\par}
+\begin{leancode}
+theorem hypSugawara_negative_leading_filtered (κ ell : ℂ) (j d w : ℕ)
+    (p : hypFock) (hp : p ∈ hypBHomogeneous d w) :
+    hypSugawara κ ell (-(j + 1 : ℤ)) p - κ • (X (j, 1) * p) ∈
+      hypBFiltered (d + 1) (w + j + 1) := by
+
+def hypPBWMap (κ ell : ℂ) : Module.End ℂ hypFock :=
+  Finsupp.lsum ℂ fun e => LinearMap.smulRight LinearMap.id
+    (stringNegativeWord (fun j => hypSugawara κ ell (-(j + 1 : ℤ)))
+      (monomial (hypAExponent e) 1) (hypCanonicalBWord e))
+
+/-- The sorted-word map is triangular with diagonal `κ` to the b-count. -/
+theorem hypPBWMap_leading (κ ell : ℂ) (e : (ℕ × Fin 2) →₀ ℕ) :
+    hypPBWMap κ ell (monomial e 1) -
+      κ ^ (Finsupp.weight hypBCountWeight e) • monomial e 1 ∈
+      hypBFiltered (Finsupp.weight hypBCountWeight e) (Finsupp.weight hypBLevelWeight e) := by
+
+/-- A linear automorphism of the polynomial space supplied by negative Sugawara words. -/
+def hypPBWEquiv (κ ell : ℂ) (hκ : κ ≠ 0) : hypFock ≃ₗ[ℂ] hypFock :=
+
+/-- The actual sum of negative Sugawara ranges. -/
+def hypNegativeSpurious (κ ell : ℂ) : Submodule ℂ hypFock :=
+  ⨆ j : ℕ, LinearMap.range (hypSugawara κ ell (-(j + 1 : ℤ)))
+
+/-- Concrete Fock-space light-cone splitting with only the nonzero-momentum hypothesis. -/
+theorem hypFock_lightConeSplit (κ ell : ℂ) (hκ : κ ≠ 0) :
+    IsCompl (hypNegativeSpurious κ ell) (hypOneFamily 0) := by
+
+/-- The complementary light-cone choice when the other momentum is nonzero. -/
+theorem hypFock_lightConeSplit_swapped (κ ell : ℂ) (hell : ell ≠ 0) :
+    IsCompl (hypNegativeSpurious κ ell) (hypOneFamily 1) := by
+
+/-- Every nonzero momentum has a concrete choice of longitudinal common kernel. -/
+theorem hypFock_lightConeSplit_nonzero (κ ell : ℂ) (h : κ ≠ 0 ∨ ell ≠ 0) :
+    ∃ a : Fin 2, IsCompl (hypNegativeSpurious κ ell)
+      (⨅ j : ℕ, LinearMap.ker (hypOscillator a (if a = 0 then κ else ell) (j + 1 : ℤ))) := by
+\end{leancode}
+\noindent\textbf{Hypotheses / status.} $\kappa\ne0$ / $(\kappa,\lambda)\ne0$\par
+\medskip
+\begin{btheorem}{44.54}[Opposite Borcherds identity; adjoint closure]
+Let $V$ be a near-VOA with $L_1$ locally nilpotent.  (i) For $u\in\mathcal V_p$, any $v$, any $q,\ell,m,n$:
+\begin{multline*}
+\sum_i(-1)^i\binom\ell i\Bigl(v^{\mathrm{op},q}_{(n+i)}u^{\mathrm{op},p}_{(\ell+m-i)}y-(-1)^\ell u^{\mathrm{op},p}_{(m+i)}v^{\mathrm{op},q}_{(\ell+n-i)}y\Bigr)
+=\sum_i\binom mi\,(u_{(\ell+i)}v)^{\mathrm{op},\,p+q-\ell-i-1}_{(m+n-i)}y,
+\end{multline*}
+where $w^{\mathrm{op},N}$ denotes \chseventeenL{oppositeModeAtWeight N}.  (ii) $V$ satisfies the opposite iterate identity.
+(iii) Let $B$ be any bilinear form and $G$ a set of states generating $V$ under all products $u_{(\ell)}v$.  If every $u\in G$
+satisfies $B(u_{(n)}x,y)=B(x,u^{\mathrm{op}}_{(n)}y)$, then every $u\in\mathcal V$ does.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{NearVOA.}\allowbreak\lean{oppositeModeAtWeight_borcherds},\allowbreak\ \lean{VOA.}\allowbreak\lean{NearVOA.}\allowbreak\lean{oppositeIterateIdentity_of_locallyNilpotent},\allowbreak\ \lean{VOA.}\allowbreak\lean{NearVOA.}\allowbreak\lean{adjoint_of_locallyNilpotent_generators}\par}
+{\raggedright\noindent {\raggedright Files \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNNearOppositeIterate.lean},
+\leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNNearAdjointClosure.lean}.\par}\par}
+\begin{leancode}
+theorem oppositeModeAtWeight_borcherds (hNil : ∀ w : H, ∃ k : ℕ, (V.L 1 ^ k) w = 0)
+    {p q : ℤ} {u : H} (hu : u ∈ V.grading p) (v : H) (ℓ m n : ℤ) (y : H) :
+    (∑ᶠ i : ℤ, (negOnePow i * cbz ℓ i) •
+        (V.oppositeModeAtWeight q (n + i) v (V.oppositeModeAtWeight p (ℓ + m - i) u y)
+          - negOnePow ℓ • V.oppositeModeAtWeight p (m + i) u
+              (V.oppositeModeAtWeight q (ℓ + n - i) v y)))
+      = ∑ᶠ i : ℤ, cbz m i •
+          V.oppositeModeAtWeight (p + q - (ℓ + i) - 1) (m + n - i) (V.smul u (ℓ + i) v) y := by
+
+/-- **The opposite iterate identity holds** for every near-VOA with locally nilpotent `L₁`. -/
+theorem oppositeIterateIdentity_of_locallyNilpotent
+    (hNil : ∀ u : H, ∃ k : ℕ, (V.L 1 ^ k) u = 0) : V.OppositeIterateIdentity hNil := by
+
+/-- Adjointness of all fields from adjointness of generators, for every near-VOA with
+locally nilpotent `L₁`. The opposite iterate law is now proved, not assumed. -/
+theorem adjoint_of_locallyNilpotent_generators
+    (hNil : ∀ u : H, ∃ k : ℕ, (V.L 1 ^ k) u = 0) (B : LinearMap.BilinForm ℂ H) (G : Set H)
+    (hGen : ∀ S : Submodule ℂ H, G ⊆ S →
+      (∀ u ∈ S, ∀ v ∈ S, ∀ ℓ : ℤ, V.smul u ℓ v ∈ S) → S = ⊤)
+    (hAdj : ∀ u ∈ G, ∀ (n : ℤ) (x y : H),
+      B (mode (V.Y u) n x) y = B x (V.oppositeModes hNil n u y))
+    (u : H) (n : ℤ) (x y : H) :
+    B (mode (V.Y u) n x) y = B x (V.oppositeModes hNil n u y) :=
+\end{leancode}
+\noindent\textbf{Hypotheses / status.} $L_1$ loc.\ nilpotent\par
+\medskip
+\begin{btheorem}{44.59}[Momentum reversal and the cross-momentum pairing]
+$\Theta$ is an involution, maps $\chseventeenM^\alpha$ to $\chseventeenM^{-\alpha}$ and commutes with every $L_n$.  For polynomials
+$p,q$: $B_L(\theta(pe^\alpha),qe^\alpha)=\chi(\alpha)\,B_{\mathcal F}(\sigma p,q)$, and for the sector states
+$B(\Theta\Psi_\alpha(a\otimes p),\Psi_\alpha(b\otimes q))=\chi(\alpha)\,B_{\mathcal F}(\sigma\Phi p,\Phi q)\,B_\natural(a,b)$.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{moonshineMatterReversal_involutive},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{moonshineMatterReversal_momentum},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{moonshineMatterReversal_virasoro},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{lorentzianReversal_form},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{moonshineMatterReversal_sector_pairing}\par}
+{\raggedright\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNMomentumReversal.lean}.\par}
+\begin{leancode}
+theorem moonshineMatterReversal_involutive : Function.Involutive moonshineMatterReversal := by
+
+theorem moonshineMatterReversal_momentum (α : lorentzianLattice.carrier)
+    (u : moonshineMatterSpace) (hu : u ∈ moonshineMatterMomentum α) :
+    moonshineMatterReversal u ∈ moonshineMatterMomentum (-α) := by
+
+theorem moonshineMatterReversal_virasoro (n : ℤ) (u : moonshineMatterSpace) :
+    moonshineMatterReversal (moonshineMatterNearVOA.L n u) =
+      moonshineMatterNearVOA.L n (moonshineMatterReversal u) := by
+
+/-- Exact cross-momentum normalization for arbitrary oscillator polynomials. -/
+theorem lorentzianReversal_form (α : lorentzianLattice.carrier)
+    (p q : FockN (rank lorentzianLattice)) :
+    lorentzianBilinearForm (thetaLat lorentzianLattice (latStateGen lorentzianLattice p α))
+      (latStateGen lorentzianLattice q α) =
+      chSign lorentzianLattice α * uForm (rank lorentzianLattice)
+        (sigmaN (rank lorentzianLattice) p) q := by
+
+/-- The tensor-sector pairing after momentum reversal, before identifying its polynomial part. -/
+theorem moonshineMatterReversal_sector_pairing (α : lorentzianLattice.carrier)
+    (a b : Vnat) (p q : hypFock) :
+    moonshineMatterForm
+      (moonshineMatterReversal (moonshineMatterSectorEquiv α (a ⊗ₜ p)))
+      (moonshineMatterSectorEquiv α (b ⊗ₜ q)) =
+      chSign lorentzianLattice α *
+        uForm (rank lorentzianLattice)
+          (sigmaN (rank lorentzianLattice) (hypLorentzianPolynomialEquiv p))
+          (hypLorentzianPolynomialEquiv q) * natForm a b := by
+\end{leancode}
+\noindent\textbf{Hypotheses / status.} None\par
+\medskip
+\endgroup
+\chapter{The Monster Lie algebra: string states, the no-ghost theorem and the Borcherds--Kac--Moody structure}
+\begingroup
+\providecommand{\chXVIIIm}{\mathfrak{m}}
+\providecommand{\chXVIIIg}{\mathfrak{g}}
+\providecommand{\chXVIIIu}{\mathfrak{u}}
+\providecommand{\chXVIIIp}{\mathfrak{p}}
+\providecommand{\chXVIIIl}{\mathfrak{l}}
+\providecommand{\chXVIIIh}{\mathfrak{h}}
+\providecommand{\chXVIIIII}{\mathrm{II}_{1,1}}
+\providecommand{\chXVIIIS}{\mathcal{S}}
+\providecommand{\chXVIIIP}{\mathcal{P}}
+\providecommand{\chXVIIIK}{\mathcal{K}}
+\providecommand{\chXVIIIT}{\mathcal{T}}
+\providecommand{\chXVIIIU}{\mathcal{U}}
+\providecommand{\chXVIIIN}{\mathcal{N}}
+\noindent{\small 6 of the chapter's 58 numbered statements: its headline results and every definition they use.}\par\medskip
+\begin{btheorem}{45.5}[Orthogonals inside a weight space]
+For every $N\in\Z$, inside the finite-dimensional space $H^N$ with the nondegenerate form $B^N$:
+\begin{equation*}
+  (\chXVIIIS^N)^{\perp}=\chXVIIIP^N,\quad (\chXVIIIP^N)^{\perp}=\chXVIIIS^N,\quad
+  (\chXVIIIS_K^N)^{\perp}=\chXVIIIK^N,\quad (\chXVIIIK^N)^{\perp}=\chXVIIIS_K^N,
+\end{equation*}
+and consequently $\dim\chXVIIIS^N+\dim\chXVIIIP^N=\dim H^N=\dim\chXVIIIS_K^N+\dim\chXVIIIK^N$.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{StringModule.}\allowbreak\lean{orthogonal_spurious_eq},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{StringModule.}\allowbreak\lean{orthogonal_kSpurious_eq},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{StringModule.}\allowbreak\lean{orthogonal_physical_eq},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{StringModule.}\allowbreak\lean{orthogonal_kVacuum_eq},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{StringModule.}\allowbreak\lean{physical_spurious_finrank}\par}
+\begin{leancode}
+theorem orthogonal_spurious_eq (N : ℤ) :
+    (M.stringWeightForm N).orthogonal (M.weightSlice M.spurious N) =
+      M.weightSlice M.physical N := by
+theorem orthogonal_kSpurious_eq (N : ℤ) :
+    (M.stringWeightForm N).orthogonal (M.weightSlice M.kSpurious N) =
+      M.weightSlice M.kVacuum N := by
+theorem orthogonal_physical_eq (N : ℤ) :
+    (M.stringWeightForm N).orthogonal (M.weightSlice M.physical N) =
+      M.weightSlice M.spurious N := by
+theorem orthogonal_kVacuum_eq (N : ℤ) :
+    (M.stringWeightForm N).orthogonal (M.weightSlice M.kVacuum N) =
+      M.weightSlice M.kSpurious N := by
+theorem physical_spurious_finrank (N : ℤ) :
+    Module.finrank ℂ (M.weightSlice M.spurious N) +
+      Module.finrank ℂ (M.weightSlice M.physical N) = Module.finrank ℂ (M.wt N) := by
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNStringOrthogonals.lean}.
+\noindent\textbf{Hypotheses / status.} None\par
+\medskip
+\begin{btheorem}{45.6}[Radicals of the physical and longitudinal spaces]
+In every string module, at every central charge: the radical of $B$ on $\chXVIIIP^1$ is $\chXVIIIP^1\cap\chXVIIIS$, and for every
+$N$ the radical of $B$ on $\chXVIIIK^N$ is $\chXVIIIK^N\cap\chXVIIIS_K$.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{StringModule.}\allowbreak\lean{physicalOne_radical_eq},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{StringModule.}\allowbreak\lean{kVacuum_radical_eq}\par}
+\begin{leancode}
+theorem physicalOne_radical_eq :
+    M.formRadicalIn M.physical 1 = M.weightSlice (M.physical ⊓ M.spurious) 1 := by
+theorem kVacuum_radical_eq (N : ℤ) :
+    M.formRadicalIn M.kVacuum N = M.weightSlice (M.kVacuum ⊓ M.kSpurious) N := by
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNStringPhysical.lean}.
+\noindent\textbf{Hypotheses / status.} None\par
+\medskip
+\begin{btheorem}{45.7}[Virasoro generation]
+(a) $\chXVIIIS=L_{-1}H+L_{-2}H$.  (b) If $L_1x=L_2x=0$ then $x\in\chXVIIIP$.  (c) $L_n\chXVIIIK\subseteq\chXVIIIK$ for $n\ge1$
+and $K_n\chXVIIIK\subseteq\chXVIIIK$ for all $n$.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{StringModule.}\allowbreak\lean{spurious_eq_sup_two},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{StringModule.}\allowbreak\lean{physical_of_L_one_two},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{StringModule.}\allowbreak\lean{kVacuum_L_stable},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{StringModule.}\allowbreak\lean{kVacuum_K_stable}\par}
+\begin{leancode}
+theorem spurious_eq_sup_two :
+    M.spurious = LinearMap.range (M.L (-1)) ⊔ LinearMap.range (M.L (-2)) := by
+theorem physical_of_L_one_two (x : H) (h₁ : M.L 1 x = 0)
+    (h₂ : M.L 2 x = 0) : x ∈ M.physical :=
+theorem kVacuum_L_stable (n : ℕ) (x : H) (hx : x ∈ M.kVacuum) :
+    M.L (n + 1 : ℤ) x ∈ M.kVacuum := by
+theorem kVacuum_K_stable (n : ℤ) (x : H) (hx : x ∈ M.kVacuum) :
+    M.K n x ∈ M.kVacuum := by
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNStringGenerators.lean}.
+\noindent\textbf{Hypotheses / status.} None\par
+\medskip
+\begin{btheorem}{45.22}[No-ghost theorem for $\Vnat$, nonzero momentum]
+For every $(x,y)\in\Z^2\setminus\{0\}$ there is a linear isomorphism
+\begin{equation*}
+  \Theta_{(x,y)}:\ \chXVIIIP^1_{(x,y)}\big/\mathrm{rad}\bigl(B|_{\chXVIIIP^1_{(x,y)}}\bigr)\ \xrightarrow{\ \sim\ }\ \Vnat_{1-xy}
+\end{equation*}
+which is an isometry for the descended form and $B^\natural$, and intertwines the action of every
+$g\in\Aut(\Vnat)$.  Here $\chXVIIIP^1_{(x,y)}$ is the weight-one physical space of the string sector $H_{(x,y)}$, and
+$\mathrm{rad}=\chXVIIIP^1_{(x,y)}\cap\chXVIIIS$.  In particular $\dim\chXVIIIP^1_{(x,y)}/\mathrm{rad}=\dim\Vnat_{1-xy}$.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{stringSectorNoGhostEquiv},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{stringSectorNoGhostEquiv_isometry},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{stringSectorNoGhostEquiv_equivariant},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{stringSectorNoGhost_finrank}\par}
+\begin{leancode}
+def stringSectorNoGhostEquiv (x y : ℤ) (h : x ≠ 0 ∨ y ≠ 0) :
+    (stringSector x y h).weightRadicalQuotient (stringSector x y h).physical 1 ≃ₗ[ℂ]
+      VnatVOA.grading (1 - x * y) :=
+  ((stringSector x y h).physicalKQuotientEquiv (stringSector_charge x y h)
+    (stringSector_lightConeSplit x y h)).trans
+      (vnatKVacuumQuotientEquiv x y (stringSectorFamily x y h) 1)
+theorem stringSectorNoGhostEquiv_isometry (x y : ℤ) (h : x ≠ 0 ∨ y ≠ 0)
+    (u v : (stringSector x y h).weightRadicalQuotient (stringSector x y h).physical 1) :
+    natForm (stringSectorNoGhostEquiv x y h u) (stringSectorNoGhostEquiv x y h v) =
+      (stringSector x y h).radicalQuotientForm (stringSector x y h).physical 1 u v := by
+theorem stringSectorNoGhostEquiv_equivariant (x y : ℤ) (h : x ≠ 0 ∨ y ≠ 0)
+    (g : AutVnat)
+    (u : (stringSector x y h).weightRadicalQuotient (stringSector x y h).physical 1) :
+    stringSectorNoGhostEquiv x y h
+      ((stringSectorAction x y h).stableWeightQuotientAction _
+        (stringSectorAction x y h).action_preserves_physical 1 g u) =
+      GriessAut.autRestrict g (1 - x * y) (stringSectorNoGhostEquiv x y h u) := by
+\end{leancode}
+\begin{leancode}
+theorem stringSectorNoGhost_finrank (x y : ℤ) (h : x ≠ 0 ∨ y ≠ 0) :
+    Module.finrank ℂ
+      ((stringSector x y h).weightRadicalQuotient (stringSector x y h).physical 1) =
+      Module.finrank ℂ (VnatVOA.grading (1 - x * y)) :=
+\end{leancode}
+\noindent Files \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNVnatNoGhost.lean}, \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNVnatNoGhostConsequences.lean}.
+\noindent\textbf{Hypotheses / status.} $(x,y)\neq0$\par
+\medskip
+\begin{btheorem}{45.29}[Sector comparison]
+For all $x,y,n,N\in\Z$, writing $\Psi=$ \lean{moonshineMatterSectorMap ![x, y]}:
+(a) $\Psi\circ L_n^{\text{sector}}=L_n^{\Vnat\otimes V_{\chXVIIIII}}\circ\Psi$;
+(b) $\Psi u$ has weight $N$ iff $u\in H^N_{(x,y)}$;
+(c) $\Psi u$ is spurious in $\Vnat\otimes V_{\chXVIIIII}$ iff $u$ is spurious in the sector;
+(d) $\Psi u$ is a weight-one primary iff $u\in H^1_{(x,y)}\cap\chXVIIIP$.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{moonshineMatterSectorMap_virasoro},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{moonshineMatterSector_weight_iff},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{moonshineMatterSector_spurious_iff},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{moonshineMatterSector_primary_iff}\par}
+\begin{leancode}
+theorem moonshineMatterSectorMap_virasoro (x y n : ℤ) (u : Vnat ⊗[ℂ] hypFock) :
+    moonshineMatterSectorMap ![x, y] (vnatHypMode x y n u) =
+      moonshineMatterNearVOA.L n (moonshineMatterSectorMap ![x, y] u) := by
+theorem moonshineMatterSector_weight_iff (x y N : ℤ) (u : Vnat ⊗[ℂ] hypFock) :
+    moonshineMatterSectorMap ![x, y] u ∈ moonshineMatterNearVOA.grading N ↔
+      u ∈ vnatSectorWeight x y N := by
+\end{leancode}
+\begin{leancode}
+theorem moonshineMatterSector_spurious_iff (x y : ℤ) (a : Fin 2)
+    (u : Vnat ⊗[ℂ] hypFock) :
+    moonshineMatterSectorMap ![x, y] u ∈ moonshineMatterNearVOA.spurious ↔
+      u ∈ (vnatStringModule x y a).spurious := by
+theorem moonshineMatterSector_primary_iff (x y : ℤ) (a : Fin 2)
+    (u : Vnat ⊗[ℂ] hypFock) :
+    moonshineMatterSectorMap ![x, y] u ∈ moonshineMatterNearVOA.primaryWeightOne ↔
+      u ∈ vnatSectorWeight x y 1 ∧ u ∈ (vnatStringModule x y a).physical := by
+\end{leancode}
+\noindent Files \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNSectorVirasoroComparison.lean}, \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNSectorPhysicalTransfer.lean}.
+\noindent\textbf{Hypotheses / status.} None\par
+\medskip
+\begin{btheorem}{45.31}[The zero root space]
+$\chXVIIIm_0\cong\mathbb C^2$, the isomorphism sending the class of $c_0\,\mathbb 1\otimes a_1+c_1\,\mathbb 1\otimes b_1$ (transported to
+the vertex algebra) to $(c_0,c_1)$.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{monsterLieZeroMomentumEquiv}\par}
+\begin{leancode}
+def monsterLieZeroMomentumEquiv : monsterLieMomentum 0 ≃ₗ[ℂ] (Fin 2 → ℂ) :=
+  monsterLieZeroMomentumTransport.symm.trans
+    ((monsterLieSectorQuotientEquiv 0 0 0).symm.trans vnatZeroNoGhostEquiv)
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNRootSpaces.lean}.
+\noindent\textbf{Hypotheses / status.} None\par
+\medskip
+\endgroup
+\chapter{Denominator identities, replication and genus zero}
+\begingroup
+\providecommand{\chnineteenH}{\mathbb{H}}
+\providecommand{\chnineteenR}{\mathbb{R}}
+\providecommand{\chnineteenSL}{\mathrm{SL}_2(\mathbb{Z})}
+\providecommand{\chnineteenSLR}{\mathrm{SL}_2(\mathbb{R})}
+\providecommand{\chnineteenGLR}{\mathrm{GL}_2(\mathbb{R})}
+\providecommand{\chnineteenP}{\mathbb{P}^1}
+\providecommand{\chnineteenm}{\mathfrak{m}}
+\providecommand{\chnineteenu}{\mathfrak{u}}
+\providecommand{\chnineteenmat}[4]{\left(\begin{smallmatrix}#1&#2\\#3&#4\end{smallmatrix}\right)}
+\providecommand{\chnineteenlean}[1]{\texttt{\directlua{ local s = "\luaescapestring{\detokenize{#1}}" for piece, sep in string.gmatch(s, "([^_.]*)([_.]?)") do if not (piece == "" and sep == "") then tex.sprint(-2, piece .. sep) if not (sep == "") then tex.sprint(string.char(92) .. "allowbreak{}") end end end}}}
+\noindent{\small 12 of the chapter's 61 numbered statements: its headline results and every definition they use.}\par\medskip
+\begin{bdefinition}{46.2}[Unit part, Laurent series, Faber polynomials]
+For $c:\N\to\C$ let $u_c=1+\sum_{n\ge1}c(n)q^{n+1}\in\C[[q]]$ (no $q^1$ term) and $f_c=q^{-1}u_c=q^{-1}+\sum_{n\ge1}c(n)q^n\in
+\C((q))$.  The Faber polynomials $F_m=F_{c,m}\in\C[X]$ are defined by strong recursion on $m$:
+\begin{equation}
+  F_m=X^m-\sum_{j=0}^{m-1}\bigl([q^{-j}]f_c^{\,m}\bigr)\,F_j .
+\end{equation}
+\end{bdefinition}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{qSeriesUnit},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{qSeriesLaurent},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{faberPoly}\par}
+\begin{leancode}
+noncomputable def qSeriesUnit (c : ℕ → ℂ) : PowerSeries ℂ :=
+  PowerSeries.mk fun k => if k = 0 then 1 else if k = 1 then 0 else c (k - 1)
+noncomputable def qSeriesLaurent (c : ℕ → ℂ) : LaurentSeries ℂ :=
+  HahnSeries.single (-1 : ℤ) (1 : ℂ) * HahnSeries.ofPowerSeries ℤ ℂ (qSeriesUnit c)
+noncomputable def faberPoly (c : ℕ → ℂ) (m : ℕ) : ℂ[X] :=
+  X ^ m - ∑ j : Fin m, C ((qSeriesLaurent c ^ m).coeff (-((j : ℕ) : ℤ))) * faberPoly c j
+termination_by m
+decreasing_by exact j.isLt
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineLRFaber.lean}.
+\medskip
+\begin{btheorem}{46.4}[Faber polynomials: characterisation]
+For every $c$ and $m$:
+\begin{enumerate}[label=(\alph*)]
+\item $F_m$ is monic of degree $m$;
+\item for every $k\le0$, $[q^k]F_m(f_c)=1$ if $k=-m$ and $0$ otherwise; that is, $F_m(f_c)-q^{-m}\in q\,\C[[q]]$;
+\item if $P\in\C[X]$ satisfies the conclusion of (b), then $P=F_m$.
+\end{enumerate}
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{faberPoly_monic},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{faberPoly_natDegree},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{coeff_aeval_faberPoly},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{eq_faberPoly_of_coeff}\par}
+\begin{leancode}
+theorem faberPoly_monic (c : ℕ → ℂ) (m : ℕ) : (faberPoly c m).Monic
+theorem faberPoly_natDegree (c : ℕ → ℂ) (m : ℕ) : (faberPoly c m).natDegree = m
+theorem coeff_aeval_faberPoly (c : ℕ → ℂ) (m : ℕ) {k : ℤ} (hk : k ≤ 0) :
+    (aeval (qSeriesLaurent c) (faberPoly c m)).coeff k = if k = -(m : ℤ) then 1 else 0
+theorem eq_faberPoly_of_coeff (c : ℕ → ℂ) (m : ℕ) (P : ℂ[X])
+    (h : ∀ k : ℤ, k ≤ 0 → (aeval (qSeriesLaurent c) P).coeff k = if k = -(m : ℤ) then 1 else 0) :
+    P = faberPoly c m
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineLRFaber.lean}.
+\medskip
+\begin{btheorem}{46.7}[The $q$-expansion of a Hecke sum]
+If $c$ is $J$-dominated and $M\ge1$, then for every $\tau\in\chnineteenH$
+\begin{equation*}
+  R_M(\tau)-q^{-M}=\sum_{r\ge1}h_c(M,r)\,q^r ,
+\end{equation*}
+the series converging (in Mathlib's \lean{HasSum} sense) at every point.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{hasSum_qHeckeBlock},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{hasSum_qHeckeSum}\par}
+\begin{leancode}
+theorem hasSum_qHeckeBlock {c : ℕ → ℂ} (hc : IsJDominated c) (a d : ℕ) (ha : 0 < a) (hd : 0 < d)
+    (τ : ℍ) :
+    HasSum (fun r : ℕ => (if r ≠ 0 ∧ a ∣ r then (d : ℂ) * c (d * (r / a)) else 0) * qPar τ ^ r)
+      (qHeckeBlock c a d τ - if d = 1 then (qPar τ ^ a)⁻¹ else 0)
+theorem hasSum_qHeckeSum {c : ℕ → ℂ} (hc : IsJDominated c) {m : ℕ} (hm : 0 < m) (τ : ℍ) :
+    HasSum (fun r : ℕ => (if r = 0 then 0 else qHeckeCoeff c m r) * qPar τ ^ r)
+      (qHeckeSum c m τ - (qPar τ ^ m)⁻¹)
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineLRM5Hecke.lean}.
+\medskip
+\begin{btheorem}{46.16}[Existence, uniqueness, multiplicativity]
+Let $L,L_1,L_2\in K[[p]]$ have constant term $0$.
+\begin{enumerate}[label=(\alph*)]
+\item $A=\mathrm{odeSol}(L)$ satisfies $pA'=AL$ and $A(0)=1$;
+\item two solutions of $pA'=AL$ with the same constant term are equal;
+\item $\mathrm{odeSol}(L_1+L_2)=\mathrm{odeSol}(L_1)\,\mathrm{odeSol}(L_2)$.
+\end{enumerate}
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{odeSol_spec},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{eq_of_ode},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{odeSol_add}\par}
+\begin{leancode}
+theorem odeSol_spec (L : PowerSeries K) (hL : PowerSeries.constantCoeff L = 0) :
+    PowerSeries.X * PowerSeries.derivative K (odeSol L) = odeSol L * L
+theorem eq_of_ode {A B L : PowerSeries K} (hL : PowerSeries.constantCoeff L = 0)
+    (hA : PowerSeries.X * PowerSeries.derivative K A = A * L)
+    (hB : PowerSeries.X * PowerSeries.derivative K B = B * L)
+    (h0 : PowerSeries.constantCoeff A = PowerSeries.constantCoeff B) : A = B
+theorem odeSol_add (L₁ L₂ : PowerSeries K) (h₁ : PowerSeries.constantCoeff L₁ = 0)
+    (h₂ : PowerSeries.constantCoeff L₂ = 0) :
+    odeSol (L₁ + L₂) = odeSol L₁ * odeSol L₂
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineLRM5Ode.lean}.
+\medskip
+\begin{bdefinition}{46.17}[Cone products]
+For $e:\N\times\N\to\C$ let
+\begin{equation*}
+  \mathrm{coneLog}(e)=-\sum_{k,m,n\ge1}m\,e(m,n)\,p^{mk}q^{nk}\in\C((q))[[p]],\qquad
+  \mathrm{coneProd}(e)=\mathrm{odeSol}\bigl(\mathrm{coneLog}(e)\bigr),
+\end{equation*}
+so that $\mathrm{coneProd}(e)$ ``is'' $\prod_{m,n\ge1}(1-p^mq^n)^{e(m,n)}$.
+\end{bdefinition}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{coneLogCoeff},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{coneLog},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{coneProd}\par}
+\begin{leancode}
+noncomputable def coneLogCoeff (e : ℕ → ℕ → ℂ) (a : ℕ) : LaurentSeries ℂ :=
+  -HahnSeries.ofPowerSeries ℤ ℂ (PowerSeries.mk fun b =>
+    ∑ m ∈ a.divisors, if a / m ∣ b ∧ b ≠ 0 then (m : ℂ) * e m (b / (a / m)) else 0)
+noncomputable def coneLog (e : ℕ → ℕ → ℂ) : PowerSeries (LaurentSeries ℂ) :=
+  PowerSeries.mk (coneLogCoeff e)
+noncomputable def coneProd (e : ℕ → ℕ → ℂ) : PowerSeries (LaurentSeries ℂ) :=
+  odeSol (coneLog e)
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineLRM5Product.lean}.
+\medskip
+\begin{btheorem}{46.18}[The product identity (KNZ)]
+\begin{enumerate}[label=(\alph*)]
+\item $\prod_{m,n\ge1}(1-p^mq^n)^{c(mn)}=1-\sum_{a,b\ge1}c(a+b-1)\,p^aq^b$ in $\C((q))[[p]]$, where $c(n)$ are the
+  coefficients of $J$ and the product is $\mathrm{coneProd}$;
+\item $\mathrm{coneProd}(e_1+e_2)=\mathrm{coneProd}(e_1)\,\mathrm{coneProd}(e_2)$;
+\item if $\mathrm{coneProd}(e_1)=\mathrm{coneProd}(e_2)$ then $e_1(m,n)=e_2(m,n)$ for all $m,n\ge1$.
+\end{enumerate}
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{knz_product},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{coneProd_add},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{coneProd_exponent_unique}\par}
+\begin{leancode}
+theorem knz_product : coneProd (fun m n => cJ (m * n)) = knzSeries cJ
+theorem coneProd_add (e₁ e₂ : ℕ → ℕ → ℂ) : coneProd (e₁ + e₂) = coneProd e₁ * coneProd e₂
+theorem coneProd_exponent_unique {e₁ e₂ : ℕ → ℕ → ℂ} (h : coneProd e₁ = coneProd e₂) :
+    ∀ m n : ℕ, 0 < m → 0 < n → e₁ m n = e₂ m n
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineLRM5Product.lean}.
+\medskip
+\begin{bdefinition}{46.19}[Euler derivation; the twisted series; the twisted denominator identity]
+In $\C[[q]][[p]]$ let $D=p\,\partial_p$.  For $c:\N\to\N\to\C$ (with $c(k,\cdot)$ the coefficient sequence of the $k$-th
+replicate) define
+\begin{equation*}
+  \tilde u=\sum_{a,b\ge1}c(1,a+b-1)\,p^aq^{a+b},\qquad
+  \tilde P=\sum_{k\ge1}\sum_{a,b\ge1}a\,c(k,ab)\,p^{ak}q^{(a+b)k},
+\end{equation*}
+and say that $c$ satisfies the \emph{twisted denominator identity} if $D\tilde u=(1-\tilde u)\tilde P$.
+\end{bdefinition}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{eulerDeriv},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{twistedUnitSeries},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{twistedPowerSum},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{TwistedDenominatorIdentity}\par}
+\begin{leancode}
+def eulerDeriv (F : PowerSeries R) : PowerSeries R :=
+  PowerSeries.mk fun n => (n : R) * PowerSeries.coeff n F
+def twistedUnitSeries (c : ℕ → ℂ) : PowerSeries (PowerSeries ℂ) :=
+  PowerSeries.mk fun a => PowerSeries.mk fun N => if 1 ≤ a ∧ a < N then c (N - 1) else 0
+def twistedPowerSum (c : ℕ → ℕ → ℂ) : PowerSeries (PowerSeries ℂ) :=
+  PowerSeries.mk fun A => PowerSeries.mk fun N =>
+    ∑ k ∈ A.divisors,
+      if k ∣ N ∧ A < N then ((A / k : ℕ) : ℂ) * c k (A / k * ((N - A) / k)) else 0
+def TwistedDenominatorIdentity (c : ℕ → ℕ → ℂ) : Prop :=
+  eulerDeriv (twistedUnitSeries (c 1)) = (1 - twistedUnitSeries (c 1)) * twistedPowerSum c
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNReplicationFormal.lean}.
+\noindent\textbf{Hypotheses / status.} Definition\par
+\medskip
+\begin{btheorem}{46.40}[The tower down to $J$]
+\begin{enumerate}[label=(\alph*)]
+\item For any $c:\N\to\N\to\C$ and $k$: if for every $m\ge1$ the numbers $\rho_{k}(m,r)=\sum_{a\mid(m,r)}\frac ma\,c(ka,\frac{mr}{a^2})$,
+  $r\ge1$, are bounded, then for every $m\ge1$ the sequence $\ell\mapsto c(km,\ell)$, $\ell\ge1$, is bounded.
+\item For a replicable family of period $N\ge1$ and every $k$, the numbers $\rho_k(m,r)$ are \emph{not} bounded for every $m$.
+\end{enumerate}
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{bounded_replicate_of_bounded_faberRemainderCoeff},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{ReplicableFamily_c_mul_period},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{not_bounded_faberRemainderCoeff}\par}
+\begin{leancode}
+theorem bounded_replicate_of_bounded_faberRemainderCoeff (c : ℕ → ℕ → ℂ) (k : ℕ)
+    (h : ∀ m : ℕ, 1 ≤ m → ∃ M : ℝ, ∀ r : ℕ, 1 ≤ r → ‖faberRemainderCoeff c k m r‖ ≤ M) :
+    ∀ m : ℕ, 1 ≤ m → ∃ M : ℝ, ∀ ℓ : ℕ, 1 ≤ ℓ → ‖c (k * m) ℓ‖ ≤ M
+theorem ReplicableFamily_c_mul_period {N : ℕ} (F : ReplicableFamily N) (k : ℕ) :
+    F.c (k * N) = F.c 0
+theorem not_bounded_faberRemainderCoeff {N : ℕ} (hN : 0 < N) (F : ReplicableFamily N) (k : ℕ) :
+    ¬ ∀ m : ℕ, 1 ≤ m → ∃ M : ℝ, ∀ r : ℕ, 1 ≤ r → ‖faberRemainderCoeff F.c k m r‖ ≤ M
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineLRTower.lean}.
+\medskip
+\begin{btheorem}{46.51}[Which explicit solutions are global symmetries]
+Let $\mathfrak c$ be $J$-dominated and $f=\mathtt{qSeriesFun}\ \mathfrak c$.
+\begin{enumerate}[label=(\alph*)]
+\item No $Ke^{Az}+M_0$ ($A,K\ne0$) maps $\chnineteenH$ into $\chnineteenH$.
+\item No $B\log(z-c_0)+K$ maps $\chnineteenH$ into $\chnineteenH$ and satisfies $f\circ\beta=f$ on $\chnineteenH$.
+\item If $Bz+K$ does, then $B=1$ and $K\in\Z$.
+\item If $K(z-c_0)^A+M_0$ ($A,K\ne0$) does, then either $A=1$ and $K>0$ real, or $A=-1$ and $K<0$ real.
+\end{enumerate}
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{false_of_exp_family},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{false_of_log_family},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{exists_int_of_affine_family},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{power_family_cases}\par}
+\begin{leancode}
+theorem false_of_exp_family {A M₀ : ℝ} {K : ℂ} (hA : A ≠ 0) (hK : K ≠ 0)
+    (hinto : ∀ z : ℂ, 0 < z.im → 0 < (K * Complex.exp (A * z) + M₀).im) : False
+theorem false_of_log_family {c : ℕ → ℂ} (hc : IsJDominated c) {B c₀ : ℝ} {K : ℂ}
+    (hglob : ∀ z : ℂ, 0 < z.im → 0 < ((B : ℂ) * Complex.log (z - c₀) + K).im ∧
+      qSeriesExt c ((B : ℂ) * Complex.log (z - c₀) + K) = qSeriesExt c z) : False
+theorem exists_int_of_affine_family {c : ℕ → ℂ} (hc : IsJDominated c) {B : ℝ} {K : ℂ}
+    (hglob : ∀ z : ℂ, 0 < z.im → 0 < ((B : ℂ) * z + K).im ∧
+      qSeriesExt c ((B : ℂ) * z + K) = qSeriesExt c z) :
+    B = 1 ∧ ∃ n : ℤ, K = n
+theorem power_family_cases {c : ℕ → ℂ} (hc : IsJDominated c) {c₀ A M₀ : ℝ} {K : ℂ}
+    (hA : A ≠ 0) (hK : K ≠ 0)
+    (hglob : ∀ z : ℂ, 0 < z.im → 0 < (K * (z - c₀) ^ (A : ℂ) + M₀).im ∧
+      qSeriesExt c (K * (z - c₀) ^ (A : ℂ) + M₀) = qSeriesExt c z) :
+    (A = 1 ∧ ∃ a : ℝ, 0 < a ∧ K = a) ∨ (A = -1 ∧ ∃ a : ℝ, a < 0 ∧ K = a)
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNGenusZeroClassification.lean}.
+\medskip
+\begin{btheorem}{46.58}[Level]
+Let $F$ have period $N\ge1$, satisfy the prime Hecke identity for $k$, and let $f=f_k$ not be injective modulo translations.  Then:
+\begin{enumerate}[label=(\alph*)]
+\item (rationality) for $\chnineteenmat abcd\in G$ with $c\ne0$: $a/c\in\Q$ and $c^2\in\Q$;
+\item (an integral element) $G$ contains an integral matrix $\chnineteenmat ABCD$ with $C\ne0$, $N\mid C$, $D\equiv1\pmod N$;
+\item (integrality of the Hecke step) if $\chnineteenmat ABCD\in G$ is integral, $C\ne0$, $p>|C|$ is a prime with the prime Hecke identity and
+  $p\mid D$, then $\chnineteenmat{pA}BC{D/p}\in G$;
+\item (a lower unipotent) $\chnineteenmat10L1\in G$ for some integer $L\ne0$ with $N\mid L$;
+\item (all first columns) if moreover $L\mid c_0$, $a_0\equiv1\pmod L$ and $\gcd(a_0,c_0)=1$, some integral element of $G$ has first column
+  $(a_0,c_0)$;
+\item $\Gamma_1(|L|)\le G$; hence $\Gamma_1(N')\le G$ for some $N'\ge1$ with $N\mid N'$.
+\end{enumerate}
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{exists_rat_upperLeft_div_lowerLeft},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{exists_rat_lowerLeft_sq},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{exists_integral_mem_symmetryGroup},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{exists_mem_symmetryGroup_heckeStep_of_integral},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{exists_glLowerUnipotent_mem_symmetryGroup},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{exists_mem_symmetryGroup_firstColumn},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{gamma1GL_le_symmetryGroup_of_lowerUnipotent},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{ReplicableFamily.}\allowbreak\lean{exists_gamma1GL_le_symmetryGroup}\par}
+\begin{leancode}
+theorem exists_rat_upperLeft_div_lowerLeft (hN : 0 < N) (hB1 : PrimeHeckeIdentity F k)
+    {g : GL (Fin 2) ℝ} (hg : g ∈ symmetryGroup (qSeriesFun (F.c k))) (hc0 : g 1 0 ≠ 0) :
+    ∃ q : ℚ, g 0 0 / g 1 0 = q
+theorem exists_rat_lowerLeft_sq (hN : 0 < N) (hB1 : PrimeHeckeIdentity F k)
+    {g : GL (Fin 2) ℝ} (hg : g ∈ symmetryGroup (qSeriesFun (F.c k))) (hc0 : g 1 0 ≠ 0) :
+    ∃ q : ℚ, g 1 0 ^ 2 = q
+theorem exists_integral_mem_symmetryGroup (hN : 0 < N) (hB1 : PrimeHeckeIdentity F k)
+    (hD7 : ¬ IsInjectiveModTranslations (qSeriesFun (F.c k))) :
+    ∃ m ∈ symmetryGroup (qSeriesFun (F.c k)), ∃ A B C D : ℤ, m 0 0 = A ∧ m 0 1 = B ∧
+      m 1 0 = C ∧ m 1 1 = D ∧ C ≠ 0 ∧ (N : ℤ) ∣ C ∧ D ≡ 1 [ZMOD N]
+theorem exists_mem_symmetryGroup_heckeStep_of_integral {p : ℕ} (hp : p.Prime)
+    (hB1p : PrimeHeckeIdentityAt F k p hp.pos) {m : GL (Fin 2) ℝ}
+    (hm : m ∈ symmetryGroup (qSeriesFun (F.c k))) {A B C D : ℤ} (hA : m 0 0 = A)
+    (hB : m 0 1 = B) (hC : m 1 0 = C) (hD : m 1 1 = D) (hC0 : C ≠ 0) (hCp : |C| < p)
+    (hpD : (p : ℤ) ∣ D) :
+    ∃ m' ∈ symmetryGroup (qSeriesFun (F.c k)), m' 0 0 = p * A ∧ m' 0 1 = B ∧ m' 1 0 = C ∧
+      m' 1 1 = D / p
+theorem exists_glLowerUnipotent_mem_symmetryGroup (hN : 0 < N) (hB1 : PrimeHeckeIdentity F k)
+    (hD7 : ¬ IsInjectiveModTranslations (qSeriesFun (F.c k))) :
+    ∃ L : ℤ, L ≠ 0 ∧ (N : ℤ) ∣ L ∧ glLowerUnipotent L ∈ symmetryGroup (qSeriesFun (F.c k))
+theorem exists_mem_symmetryGroup_firstColumn (hB1 : PrimeHeckeIdentity F k)
+    {L : ℤ} (hNL : (N : ℤ) ∣ L)
+    (hLmem : glLowerUnipotent L ∈ symmetryGroup (qSeriesFun (F.c k))) {a₀ c₀ : ℤ}
+    (hc₀ : L ∣ c₀) (ha₀ : a₀ ≡ 1 [ZMOD L]) (hcop : IsCoprime a₀ c₀) :
+    ∃ m ∈ symmetryGroup (qSeriesFun (F.c k)), ∃ B D : ℤ, m 0 0 = a₀ ∧ m 0 1 = B ∧
+      m 1 0 = c₀ ∧ m 1 1 = D
+theorem gamma1GL_le_symmetryGroup_of_lowerUnipotent (hB1 : PrimeHeckeIdentity F k)
+    {L : ℤ} (hNL : (N : ℤ) ∣ L)
+    (hLmem : glLowerUnipotent L ∈ symmetryGroup (qSeriesFun (F.c k))) :
+    gamma1GL L.natAbs ≤ symmetryGroup (qSeriesFun (F.c k))
+theorem ReplicableFamily.exists_gamma1GL_le_symmetryGroup {N : ℕ} (hN : 0 < N)
+    (F : ReplicableFamily N) (k : ℕ) (hB1 : PrimeHeckeIdentity F k)
+    (hD7 : ¬ IsInjectiveModTranslations (qSeriesFun (F.c k))) :
+    ∃ N' : ℕ, 0 < N' ∧ N ∣ N' ∧ gamma1GL N' ≤ symmetryGroup (qSeriesFun (F.c k))
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNGenusZeroLevel.lean}.
+\medskip
+\begin{btheorem}{46.60}[Commensurability]
+If $\mathfrak c$ is $J$-dominated, $f=\mathtt{qSeriesFun}\ \mathfrak c$ has property P and $\Gamma_1(M)\le G$ ($M\ge1$), then $G$ is commensurable with $\chnineteenSL$.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{exists_smul_eq_smul_fd},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{exists_im_bound_norm_sub_ge},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{commensurable_symmetryGroup_of_gamma1GL_le}\par}
+\begin{leancode}
+theorem exists_smul_eq_smul_fd (G : Subgroup (GL (Fin 2) ℝ)) (τ : ℍ) :
+    ∃ r : SL(2, ℤ) ⧸ G.comap (mapGL ℝ), ∃ g : SL(2, ℤ), mapGL ℝ g ∈ G ∧
+      ∃ σ ∈ 𝒟, mapGL ℝ g • τ = mapGL ℝ (Quotient.out r)⁻¹ • σ
+theorem exists_im_bound_norm_sub_ge (hc : IsJDominated c)
+    (hP : ∀ z w : ℍ, qSeriesFun c z = qSeriesFun c w →
+      ∃ γ ∈ symmetryGroup (qSeriesFun c), γ • z = w)
+    {δ : GL (Fin 2) ℝ} (hδ : δ.det.val = 1) {h : ℝ} (hh : 0 < h)
+    (hpar : δ * glUpperUnipotent h * δ⁻¹ ∈ symmetryGroup (qSeriesFun c)) {v : ℂ}
+    (hv : (∀ γ ∈ symmetryGroup (qSeriesFun c), (γ * δ) 1 0 ≠ 0) →
+      ∀ w, Tendsto (fun τ : ℍ => qSeriesFun c (δ • τ)) atImInfty (𝓝 w) → v ≠ w) :
+    ∃ Y ε : ℝ, 0 < ε ∧ ∀ σ : ℍ, Y ≤ σ.im → ε ≤ ‖qSeriesFun c (δ • σ) - v‖
+theorem commensurable_symmetryGroup_of_gamma1GL_le (hc : IsJDominated c)
+    (hP : ∀ z w : ℍ, qSeriesFun c z = qSeriesFun c w →
+      ∃ γ ∈ symmetryGroup (qSeriesFun c), γ • z = w)
+    {M : ℕ} (hM : 0 < M) (hΓ1 : gamma1GL M ≤ symmetryGroup (qSeriesFun c)) :
+    Subgroup.Commensurable (symmetryGroup (qSeriesFun c)) 𝒮ℒ
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNGenusZeroIndex.lean}.
+\medskip
+\begin{btheorem}{46.63}[The genus-zero theorem for replicable families]
+Let $N\ge1$ and $F$ a replicable family of period $N$ satisfying the prime Hecke identity for every member, with no member injective modulo
+translations.  For every $k$ there are $\Gamma\le\chnineteenGLR$ and $N'\ge1$ with $\Gamma\le\chnineteenSLR$, $\Gamma_1(N')\le\Gamma$, $\Gamma$ commensurable
+with $\chnineteenSL$, and $f_k$ a normalised Hauptmodul of $\Gamma$.  (The proof takes $\Gamma=G(f_k)$ and also obtains $N\mid N'$;
+neither fact is part of the Lean type.)
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{ReplicableFamily.}\allowbreak\lean{exists_hauptmodul_gammaOne}\par}
+\begin{leancode}
+theorem ReplicableFamily.exists_hauptmodul_gammaOne {N : ℕ} (hN : 0 < N)
+    (F : ReplicableFamily N) (hB1 : ∀ k, PrimeHeckeIdentity F k)
+    (hD7 : F.NotInjectiveModTranslations) (k : ℕ) :
+    ∃ (Γ : Subgroup (GL (Fin 2) ℝ)) (N' : ℕ), 0 < N' ∧ Γ.HasDetOne ∧ gamma1GL N' ≤ Γ ∧
+      Subgroup.Commensurable Γ 𝒮ℒ ∧ IsNormalizedHauptmodul Γ (qSeriesFun (F.c k))
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNGenusZeroMain.lean}.
+\medskip
+\endgroup
+\chapter{Conway--Norton for the automorphism group of the moonshine module}
+\begingroup
+\providecommand{\chtwentylean}[1]{\texttt{\directlua{ local s = "\luaescapestring{\detokenize{#1}}" local first = true for c in s:gmatch(utf8.charpattern) do if (not first) and c:match("^[A-Z]$") then tex.sprint("\string\\allowbreak{}") end tex.sprint(-2, c) if c == "_" or c == "." then tex.sprint("\string\\allowbreak{}") end first = false end}}}
+\providecommand{\chtwentyfile}[1]{\texttt{\directlua{ local s = "\luaescapestring{\detokenize{#1}}" local first = true for c in s:gmatch(utf8.charpattern) do if (not first) and c:match("^[A-Z]$") then tex.sprint("\string\\allowbreak{}") end tex.sprint(-2, c) first = false end}}}
+\providecommand{\chtwentyVL}{V_\Leech^{+}}
+\providecommand{\chtwentyTp}{T^{+}}
+\providecommand{\chtwentyvac}{\mathbf 1}
+\providecommand{\chtwentym}{\mathfrak m}
+\providecommand{\chtwentyg}{\mathfrak g}
+\providecommand{\chtwentyLf}{\Leech_4}
+\noindent{\small 13 of the chapter's 27 numbered statements: its headline results and every definition they use.}\par\medskip
+\begin{bdefinition}{47.2}[Griess algebra, its automorphism group, restriction]
+Let $W$ be a vertex operator algebra with $\chtwentyvac\neq0$.  On $W_2$ put the product $u\times v=u_{(1)}v$ and the
+\emph{intrinsic form} $\langle u,v\rangle_3$ defined by $u_{(3)}v=\langle u,v\rangle_3\,\chtwentyvac$ (note
+$u_{(3)}v\in W_0$).  $\mathrm{GriessAut}(W)$ is the group of linear automorphisms of $W_2$ that preserve $\times$ and
+$\langle\cdot,\cdot\rangle_3$.  Restriction $g\mapsto g|_{W_2}$ is a group homomorphism
+$\Aut(W)\to\mathrm{GriessAut}(W)$.  $W$ is \emph{generated by $W_2$} if every subspace containing $W_2$ and closed
+under all $n$-th products is $W$.  For $W=\Vnat$ these are \lean{GriessAutVnat} and \lean{vnatGriessRestrict}.
+\end{bdefinition}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{GriessAut.}\allowbreak\lean{griessAut},\allowbreak\ \lean{VOA.}\allowbreak\lean{GriessAut.}\allowbreak\lean{griessRestrict},\allowbreak\ \lean{VOA.}\allowbreak\lean{GriessAut.}\allowbreak\lean{GeneratedByWeightTwo},\allowbreak\ \lean{VOA.}\allowbreak\lean{GriessAut.}\allowbreak\lean{griessForm},\allowbreak\ \lean{VOA.}\allowbreak\lean{GriessAut.}\allowbreak\lean{griessForm_spec},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{AutMonster.}\allowbreak\lean{vnat_griessMul_comm},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{AutMonster.}\allowbreak\lean{GriessAutVnat},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{AutMonster.}\allowbreak\lean{vnatGriessRestrict}\par}
+\begin{leancode}
+noncomputable def griessAut (hvac : W.vacuum ≠ 0) : Subgroup (W.grading 2 ≃ₗ[ℂ] W.grading 2) where
+  carrier := {g | (∀ u v, g (W.griessMul u v) = W.griessMul (g u) (g v)) ∧
+    ∀ u v, griessForm hvac (g u) (g v) = griessForm hvac u v}
+
+noncomputable def griessRestrict (hvac : W.vacuum ≠ 0) : Aut W →* griessAut hvac where
+  toFun α := ⟨autRestrict α 2, fun u v => griessMul_aut α u v, fun u v => griessForm_aut hvac α u v⟩
+
+def GeneratedByWeightTwo (W : VertexOperatorAlgebra 𝒱) : Prop :=
+  ∀ S : Submodule ℂ 𝒱, W.grading 2 ≤ S → (∀ u ∈ S, ∀ v ∈ S, ∀ n : ℤ, W.smul u n v ∈ S) → S = ⊤
+
+noncomputable def griessForm (hvac : W.vacuum ≠ 0) (u v : W.grading 2) : ℂ :=
+  RigidBridge.vacCoeff W hvac (griessThree u v)
+
+theorem griessForm_spec (hvac : W.vacuum ≠ 0) (u v : W.grading 2) :
+    W.smul (u : 𝒱) 3 (v : 𝒱) = griessForm hvac u v • W.vacuum :=
+\end{leancode}
+\begin{leancode}
+theorem vnat_griessMul_comm (u v : VnatVOA.grading 2) :
+    VnatVOA.griessMul u v = VnatVOA.griessMul v u :=
+
+noncomputable abbrev GriessAutVnat := GriessAut.griessAut VnatVOA_vacuum_ne_zero
+
+noncomputable def vnatGriessRestrict : AutVnat →* GriessAutVnat :=
+  GriessAut.griessRestrict VnatVOA_vacuum_ne_zero
+\end{leancode}
+\noindent Files \leanpath{VOA/\allowbreak Core/\allowbreak GriessAutomorphism.lean}, \leanpath{VOA/\allowbreak Moonshine/\allowbreak AutVnat.lean}.
+\medskip
+\begin{btheorem}{47.4}[$\Aut(\Vnat)$ acts faithfully on the Griess algebra]
+An automorphism of $\Vnat$ that fixes $\Vnat_2$ pointwise is the identity.  Consequently restriction
+$\Aut(\Vnat)\to\mathrm{GriessAut}(\Vnat)$, $g\mapsto g|_{\Vnat_2}$, is an injective group homomorphism.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{AutMonster.}\allowbreak\lean{aut_eq_one_of_fix_frame},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{AutMonster.}\allowbreak\lean{aut_eq_one_of_fix_weightTwo},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{AutMonster.}\allowbreak\lean{vnatGriessRestrict_injective}\par}
+\begin{leancode}
+theorem aut_eq_one_of_fix_frame (g : AutVnat) (hg : ∀ v ∈ VnatVOA.grading 2, g v = v)
+    (hx : ∀ β : leech.carrier, g ((frameX0P β, 0) : Vnat) = ((frameX0P β, 0) : Vnat)) : g = 1 := by
+
+theorem aut_eq_one_of_fix_weightTwo (g : AutVnat) (hg : ∀ v ∈ VnatVOA.grading 2, g v = v) :
+    g = 1 := by
+
+theorem vnatGriessRestrict_injective : Function.Injective vnatGriessRestrict := by
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak AutFaithfulAssembly.lean}.
+\medskip
+\begin{blemma}{47.5}[Zero mode of $q_{ab}$ on a lattice VOA]
+For every even positive-definite lattice $L$, frame directions $a,b$, polynomial $q$ in the oscillators and charge
+$\gamma\in L$, formula (47.1) holds, with $N_{ab}$ given on polynomials by the finite sum over any
+level bound $K$ of $q$.
+\end{blemma}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{LatGen.}\allowbreak\lean{quadState},\allowbreak\ \lean{VOA.}\allowbreak\lean{LatGen.}\allowbreak\lean{smul_quadState_one},\allowbreak\ \lean{VOA.}\allowbreak\lean{HeisenbergN.}\allowbreak\lean{nprod_currentN_neg_two}\par}
+\begin{leancode}
+noncomputable abbrev quadState (a b : Fin (rank L)) : LatModuleGen L :=
+  wordStateLatGen L [(0, a), (0, b)] 0
+
+theorem smul_quadState_one (hEven : L.Even) (hPos : L.PosDef) (a b : Fin (rank L))
+    (q : FockN (rank L)) (γ : L.carrier) :
+    (latticeVOAGen L hEven hPos).smul (quadState L a b) 1 (latStateGen L q γ)
+      = latStateGen L
+          ((chargeCoord L γ a * chargeCoord L γ b) • q
+            + nprod (currentN_isField (rank L) 1 a) (currentN_isField (rank L) 1 b) (-2) q) γ := by
+\end{leancode}
+\begin{leancode}
+theorem nprod_currentN_neg_two (a b : Fin r) (q : FockN r) (K : ℕ)
+    (hK : ∀ v ∈ q.vars, v.1 < K) :
+    nprod (currentN_isField r 1 a) (currentN_isField r 1 b) (-2) q
+      = ∑ k ∈ Finset.range K, ((k : ℂ) + 1) •
+          (X (k, a) * pderiv (k, b) q + X (k, b) * pderiv (k, a) q) := by
+\end{leancode}
+\noindent Files \leanpath{VOA/\allowbreak Moonshine/\allowbreak AutZeroModes.lean}, \leanpath{VOA/\allowbreak Moonshine/\allowbreak AutFockEigen.lean}.
+\medskip
+\begin{blemma}{47.6}[The joint-eigenvector lemma]
+Let $r$ have two distinct directions, $\mu:\N\to\C$ injective with $\mu_k+\mu_{k'}\neq0$ for all $k,k'$, and
+$N^\mu_{ab}=\sum_{k<K}\mu_k(X_{k,a}\partial_{k,b}+X_{k,b}\partial_{k,a})$ on $\C[X_{k,a}]$.  If $q\neq0$ has all
+variables of level $<K$ and $N^\mu_{ab}q=c_{ab}q$ for all $a,b$, then $c_{ab}=0$ for all $a,b$ and $q$ is constant.
+Consequently (Lean: \lean{eigen_quadState_span}), in a lattice VOA $V_L$ of rank $\ge2$, a joint eigenvector of all
+$o(q_{ab})$ with eigenvalues $\beta_a\beta_b$ lies in $\C e^\beta+\C e^{-\beta}$; and (Lean: \lean{eigen_plus}) in
+$\chtwentyVL$ it lies in $\C x_\beta$.
+\end{blemma}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{HeisenbergN.}\allowbreak\lean{quadOp},\allowbreak\ \lean{VOA.}\allowbreak\lean{HeisenbergN.}\allowbreak\lean{quadOp_joint_eigen},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{AutMonster.}\allowbreak\lean{eigen_quadState_span},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{AutMonster.}\allowbreak\lean{eigen_plus}\par}
+\begin{leancode}
+noncomputable def quadOp (μ : ℕ → ℂ) (K : ℕ) (a b : Fin r) (q : FockN r) : FockN r :=
+  ∑ k ∈ Finset.range K, μ k • (X (k, a) * pderiv (k, b) q + X (k, b) * pderiv (k, a) q)
+
+theorem quadOp_joint_eigen (μ : ℕ → ℂ) (hsum : ∀ k k', μ k + μ k' ≠ 0)
+    (hinj : ∀ k k', μ k = μ k' → k = k') (hr : ∀ b : Fin r, ∃ a, a ≠ b) (K : ℕ)
+    (q : FockN r) (hK : ∀ v ∈ q.vars, v.1 < K) (c : Fin r → Fin r → ℂ)
+    (h : ∀ a b, quadOp μ K a b q = c a b • q) (hq : q ≠ 0) :
+    (∀ a b, c a b = 0) ∧ q = MvPolynomial.C (coeff 0 q) := by
+\end{leancode}
+\begin{leancode}
+theorem eigen_quadState_span (hEven : L.Even) (hPos : L.PosDef)
+    (hr : ∀ b : Fin (rank L), ∃ a, a ≠ b) (β : L.carrier) (v : LatModuleGen L)
+    (h : ∀ a b, (latticeVOAGen L hEven hPos).smul (quadState L a b) 1 v
+      = (chargeCoord L β a * chargeCoord L β b) • v) :
+    ∃ c₁ c₂ : ℂ, v = c₁ • latChargeGen L β + c₂ • latChargeGen L (-β) := by
+\end{leancode}
+\begin{leancode}
+theorem eigen_plus (β : leech.carrier) (x : VPlus)
+    (h : ∀ a b, leechVOAPlus.smul (qP a b) 1 x = (chargeCoord leech β a * chargeCoord leech β b) • x) :
+    ∃ c : ℂ, x = c • frameX0P β := by
+\end{leancode}
+\noindent Files \leanpath{VOA/\allowbreak Moonshine/\allowbreak AutFockEigen.lean}, \leanpath{VOA/\allowbreak Moonshine/\allowbreak AutChargeEigen.lean}, \leanpath{VOA/\allowbreak Moonshine/\allowbreak AutFaithfulVnat.lean}.
+\medskip
+\begin{blemma}{47.7}[Twisted zero modes and twisted exclusion]
+On the twisted block, $(q_{ab},0)_{(1)}(0,t)=\bigl(0,((N^{\mathrm{tw}}_{ab}+\tfrac18\delta_{ab})\otimes1)t\bigr)$.  If
+$\beta\in\C^{24}$ and $(u,0)_{(1)}(0,t)=\beta_a\beta_b(0,t)$ for all $a,b$ and all $u\in\chtwentyVL$ whose underlying state is
+$h_a(-1)h_b(-1)\chtwentyvac$, then $t=0$.
+\end{blemma}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{AutZeroTw.}\allowbreak\lean{VnatVOA_smul_quad_one_snd},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{AutZeroTw.}\allowbreak\lean{VnatVOA_twisted_outer_eigen_eq_zero}\par}
+\begin{leancode}
+theorem VnatVOA_smul_quad_one_snd (a b : Fin (rank leech)) (u : SkewVP)
+    (hu : (u : LatModuleGen leech) = LatGen.quadState leech a b) (t : TP) :
+    (VnatVOA.smul ((u, 0) : Vnat) 1 ((0, t) : Vnat)).1 = 0 ∧
+      (((VnatVOA.smul ((u, 0) : Vnat) 1 ((0, t) : Vnat)).2 : TP) : Tw)
+        = (quadNT 24 (cc a) (cc b)
+            + (if a = b then (1 / 8 : ℂ) else 0) • (1 : End ℂ (FockT 24))).rTensor leechT (t : Tw) := by
+\end{leancode}
+\begin{leancode}
+theorem VnatVOA_twisted_outer_eigen_eq_zero (β' : Fin (rank leech) → ℂ) (t : TP)
+    (h : ∀ a b : Fin (rank leech), ∀ u : SkewVP,
+      (u : LatModuleGen leech) = LatGen.quadState leech a b →
+        VnatVOA.smul ((u, 0) : Vnat) 1 ((0, t) : Vnat) = (β' a * β' b) • ((0, t) : Vnat)) :
+    t = 0 := by
+\end{leancode}
+\noindent Files \leanpath{VOA/\allowbreak Moonshine/\allowbreak AutZeroModesTwisted.lean}, \leanpath{VOA/\allowbreak Moonshine/\allowbreak AutTwistedExclusion.lean}.
+\medskip
+\begin{blemma}{47.8}[The leading product]
+For $\alpha,\gamma\in\Leech$ with $\langle\alpha,\gamma\rangle<0$, (47.2) holds in $\chtwentyVL$, and
+hence $(x_\alpha,0)_{(-\langle\alpha,\gamma\rangle-1)}(x_\gamma,0)=\varepsilon(\alpha,\gamma)(x_{\alpha+\gamma},0)$ in $\Vnat$.
+\end{blemma}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{AutMonster.}\allowbreak\lean{frameX0P_smul_frameX0P_of_neg},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{AutMonster.}\allowbreak\lean{VnatVOA_smul_xN_of_neg}\par}
+\begin{leancode}
+theorem frameX0P_smul_frameX0P_of_neg (α γ : leech.carrier) (h : leech.form α γ < 0) :
+    leechVOAPlus.smul (frameX0P α) (-(leech.form α γ) - 1) (frameX0P γ)
+      = latticeCocycle leech α γ • frameX0P (α + γ) := by
+\end{leancode}
+\begin{leancode}
+theorem VnatVOA_smul_xN_of_neg (α γ : leech.carrier) (h : leech.form α γ < 0) :
+    VnatVOA.smul ((frameX0P α, 0) : Vnat) (-(leech.form α γ) - 1) ((frameX0P γ, 0) : Vnat)
+      = latticeCocycle leech α γ • ((frameX0P (α + γ), 0) : Vnat) := by
+\end{leancode}
+\noindent Files \leanpath{VOA/\allowbreak Moonshine/\allowbreak AutFaithful.lean}, \leanpath{VOA/\allowbreak Moonshine/\allowbreak AutFaithfulVnat.lean}.
+\medskip
+\begin{btheorem}{47.9}[The Leech lattice is generated by its minimal vectors]
+Every $\beta\in\Leech$ is an integral linear combination of vectors of norm $4$.  Equivalently: if a property $P$ of
+lattice vectors holds at $0$ and is preserved by $\gamma\mapsto\gamma\pm\alpha$ for every minimal $\alpha$, it holds on
+all of $\Leech$.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{LeechSpan.}\allowbreak\lean{leech_mem_closure_minimal},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{LeechSpan.}\allowbreak\lean{leech_closure_minimal_eq_top},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{LeechSpan.}\allowbreak\lean{leech_induction}\par}
+\begin{leancode}
+theorem leech_mem_closure_minimal (β : leech.carrier) :
+    β ∈ AddSubgroup.closure {α : leech.carrier | leech.form α α = 4} := by
+
+theorem leech_closure_minimal_eq_top :
+    AddSubgroup.closure {α : leech.carrier | leech.form α α = 4} = ⊤ :=
+
+theorem leech_induction (P : leech.carrier → Prop) (h0 : P 0)
+    (hadd : ∀ γ α : leech.carrier, leech.form α α = 4 → P γ → P (γ + α))
+    (hsub : ∀ γ α : leech.carrier, leech.form α α = 4 → P γ → P (γ - α))
+    (β : leech.carrier) : P β := by
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak AutLeechSpan.lean}.
+\medskip
+\begin{btheorem}{47.11}[$\sigma^\natural\in\Aut(\Vnat)$]
+The involution $\sigma^\natural=$ \lean{sigNat Dnat} is an automorphism of $\Vnat$: it is a linear involution, it
+intertwines every product, and it fixes the vacuum and the conformal vector.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{AutMonster.}\allowbreak\lean{Dnat},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{AutMonster.}\allowbreak\lean{sigmaEquiv},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{AutMonster.}\allowbreak\lean{sigmaAut},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{AutMonster.}\allowbreak\lean{sigmaAut_apply}\par}
+\begin{leancode}
+noncomputable abbrev Dnat : SigmaData :=
+  mkData cStar0 1 (c_ne_of_norm cStar0_norm) (by norm_num)
+
+noncomputable def sigmaEquiv : Vnat ≃ₗ[ℂ] Vnat :=
+  LinearEquiv.ofInvolutive (sigNat Dnat) sigNat_invol
+
+noncomputable def sigmaAut : AutVnat where
+  toLinearEquiv := sigmaEquiv
+
+@[simp] theorem sigmaAut_apply (v : Vnat) : sigmaAut v = sigNat Dnat v := rfl
+\end{leancode}
+\noindent Files \leanpath{VOA/\allowbreak Moonshine/\allowbreak AutVnat.lean}, \leanpath{VOA/\allowbreak Moonshine/\allowbreak AutSigma.lean}.
+\noindent\textbf{Hypotheses / status.} None; definition; used by std.\ theorems\par
+\medskip
+\begin{blemma}{47.18}[Ising vectors determine the untwisted block]
+(a) If $g\in\Aut(\Vnat)$ fixes, for every minimal $\alpha$, both $e_{\alpha,s}$ and $e_{\alpha,-s}$ for some normalised $s$, then
+$g$ fixes every $(q_{ab},0)$ and every $(x_\alpha,0)$, $\alpha\in\chtwentyLf$.  (b) If $g$ fixes every $(q_{ab},0)$ and every
+$(x_\alpha,0)$, $\alpha\in\chtwentyLf$, then $g$ fixes $\chtwentyVL\times0$.  (c) If $g$ fixes $\chtwentyVL\times0$ and the
+twisted generator $(0,x)$, then $g=1$.
+\end{blemma}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{aut_fix_quad_minimal_of_fix_ising},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{aut_fix_untwisted_of_fix_quad_minimal},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{aut_eq_one_of_fix_untwisted_twistedGen},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{AutMonster.}\allowbreak\lean{xGen}\par}
+\begin{leancode}
+theorem aut_fix_quad_minimal_of_fix_ising (g : AutVnat)
+    (hg : ∀ α : leech.carrier, leech.form α α = 4 →
+      ∃ s : ℂ, s ^ 2 * latticeCocycle leech α (-α) = 1 ∧
+        g (isingVec α s) = isingVec α s ∧ g (isingVec α (-s)) = isingVec α (-s)) :
+    (∀ a b : Fin (rank leech), g ((qP a b, 0) : Vnat) = ((qP a b, 0) : Vnat)) ∧
+      (∀ α : leech.carrier, leech.form α α = 4 →
+        g ((frameX0P α, 0) : Vnat) = ((frameX0P α, 0) : Vnat)) := by
+
+theorem aut_fix_untwisted_of_fix_quad_minimal (g : AutVnat)
+    (hq : ∀ a b : Fin (rank leech), g ((qP a b, 0) : Vnat) = ((qP a b, 0) : Vnat))
+    (hx : ∀ α : leech.carrier, leech.form α α = 4 →
+      g ((frameX0P α, 0) : Vnat) = ((frameX0P α, 0) : Vnat)) :
+    ∀ x : VPlus, g ((x, 0) : Vnat) = ((x, 0) : Vnat) := by
+
+theorem aut_eq_one_of_fix_untwisted_twistedGen (g : AutVnat)
+    (hU : ∀ x : VPlus, g ((x, 0) : Vnat) = ((x, 0) : Vnat))
+    (hx : g ((0, xGen) : Vnat) = ((0, xGen) : Vnat)) : g = 1 := by
+\end{leancode}
+\begin{leancode}
+noncomputable abbrev xGen : TP := x0T (tF Dnat.s)
+\end{leancode}
+\noindent Files \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineLRFinOrderRigid.lean}, \leanpath{VOA/\allowbreak Moonshine/\allowbreak AutSigma.lean}.
+\medskip
+\begin{btheorem}{47.19}[Every automorphism of $\Vnat$ has finite order]
+For every $g\in\Aut(\Vnat)$ there is $n\ge1$ with $g^n=1$.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{aut_isingVec_periodic},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{aut_pow_fix_untwisted},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{autVnat_isOfFinOrder}\par}
+\begin{leancode}
+theorem aut_isingVec_periodic (g : AutVnat) {α : leech.carrier}
+    (hα : leech.form α α = 4) (s : ℂ)
+    (hs : s ^ 2 * latticeCocycle leech α (-α) = 1) :
+    ∃ K : ℕ, 1 ≤ K ∧ (g ^ K) (isingVec α s) = isingVec α s := by
+
+theorem aut_pow_fix_untwisted (g : AutVnat) :
+    ∃ K : ℕ, 1 ≤ K ∧ ∀ x : VPlus, (g ^ K) ((x, 0) : Vnat) = ((x, 0) : Vnat) := by
+
+theorem autVnat_isOfFinOrder : ∀ g : AutVnat, IsOfFinOrder g := by
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineLRFinOrderRigid.lean}.
+\medskip
+\begin{btheorem}{47.22}[$\Aut(\Vnat)$ is finite]
+(a) An automorphism of $\Vnat$ that fixes every rigid idempotent of $\Vnat_2$ is the identity.  (b) If $R(\Vnat)$ is finite,
+$\Aut(\Vnat)$ is finite.  (c) $\Aut(\Vnat)$ is finite.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{eq_one_of_fix_rigid},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{finite_autVnat_of_finite_rigid},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{finite_autVnat}\par}
+\begin{leancode}
+theorem eq_one_of_fix_rigid (k : AutVnat)
+    (hk : ∀ e ∈ vnatRigidSet, GriessAut.autRestrict k 2 e = e) : k = 1 := by
+
+theorem finite_autVnat_of_finite_rigid (hR : vnatRigidSet.Finite) : Finite AutVnat := by
+
+theorem finite_autVnat : Finite AutVnat := by
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineLRFiniteAut.lean}.
+\medskip
+\begin{btheorem}{47.25}[The Monster Lie algebra is generated by its simple root spaces]
+$\chtwentym$ is generated by $\chtwentym_0$ and the root spaces $\chtwentym_{\pm(1,-1)}$, $\chtwentym_{\pm(1,j)}$, $j\ge1$.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{monsterLiePreData},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{finrank_monsterLieBorcherdsWeight_cone},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{monsterLiePreData_KNZ},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{monsterLieSimpleRootGeneration}\par}
+\begin{leancode}
+def monsterLiePreData : BorcherdsPreData monsterLieAlgebra where
+  weightSpace := monsterLieBorcherdsWeight
+  weight_internal := monsterLieBorcherdsWeight_isInternal
+  weight_finite := monsterLieBorcherdsWeight_finite
+
+theorem finrank_monsterLieBorcherdsWeight_cone (m n : ℕ) (hm : 0 < m) (_hn : 0 < n) :
+    (finrank ℂ (monsterLieBorcherdsWeight ((m : ℤ), (n : ℤ))) : ℂ) = cJ (m * n) := by
+
+theorem monsterLiePreData_KNZ : monsterLiePreData.KNZ := by
+
+theorem monsterLieSimpleRootGeneration : MonsterLieSimpleRootGeneration :=
+  monsterLiePreData.lieSpan_eq_top_of_KNZ monsterLiePreData_KNZ
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineLRGenerationMonster.lean}.
+\medskip
+\begin{btheorem}{47.27}[Conway--Norton for $\Aut(\Vnat)$; Borcherds]
+For every automorphism $g$ of $\Vnat$ there are a subgroup $\Gamma_g\le\mathrm{SL}_2(\mathbb R)$ and $N\ge1$ such that
+$\Gamma_0(N)\le\Gamma_g$, $\Gamma_g$ is commensurable with $\mathrm{SL}_2(\Z)$, and $T_g=q^{-1}+\sum_{n\ge1}\tr(g|\Vnat_{n+1})q^n$ is
+the normalised Hauptmodul of $\Gamma_g$.  (This is the qualitative genus-zero form: $\Gamma_g$ is not identified with
+Conway and Norton's group and $N$ is not related to the order of $g$; it is weaker than the table-level conjecture.)
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{conwayNorton_of_isOfFinOrder},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{conwayNortonConjecture_holds},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{conwayNorton}\par}
+\begin{leancode}
+theorem conwayNorton_of_isOfFinOrder (hfin : ∀ g : AutVnat, IsOfFinOrder g) :
+    ConwayNortonConjecture :=
+  conwayNorton_of_simpleRootGeneration monsterLieSimpleRootGeneration hfin
+\end{leancode}
+\begin{leancode}
+theorem conwayNortonConjecture_holds : ConwayNortonConjecture :=
+  conwayNorton_of_isOfFinOrder autVnat_isOfFinOrder
+\end{leancode}
+\begin{leancode}
+theorem conwayNorton : ConwayNortonConjecture :=
+  M8.conwayNortonConjecture_holds
+\end{leancode}
+\noindent Files \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineLRGenerationMonster.lean}, \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineLRConwayNortonFinal.lean}, \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNFinalAudit.lean}.
+\noindent\textbf{Hypotheses / status.} \chtwentylean{hfin}; std.\par
+\medskip
+\endgroup
+\chapter{The Griess algebra of the moonshine module and AxiomMath's Monster}
+\begingroup
+\providecommand{\chXXIB}{\mathcal{B}}
+\providecommand{\chXXIC}{\mathcal{C}}
+\providecommand{\chXXIS}{\mathcal{S}}
+\providecommand{\chXXIL}{\bar{\Lambda}}
+\providecommand{\chXXIF}{\mathbb{F}_2}
+\providecommand{\chXXISym}{\mathrm{Sym}}
+\providecommand{\chXXIT}{\mathcal{T}}
+\noindent{\small 10 of the chapter's 59 numbered statements: its headline results and every definition they use.}\par\medskip
+\begin{bdefinition}{48.17}[The space $\chXXIB$ and the form $b$]
+$\chXXISym$ is the space of symmetric $24\times24$ rational matrices, $X=\Q^{\chXXIS}$ with standard basis
+$(e_c)_{c\in\chXXIS}$, $W$ the space of $I\times24$ rational matrices, and
+$\chXXIB=\chXXISym\times X\times W$.  For $u=(A,x,N)$, $v=(A',x',N')$,
+\begin{equation*}
+  b(u,v)=\tr(AA')+\sum_{c\in\chXXIS}x_cx'_c+\sum_{j\in I}\sum_{i<24}N_{ji}N'_{ji}.
+\end{equation*}
+\end{bdefinition}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterGriess.}\allowbreak\lean{symMat},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterGriess.}\allowbreak\lean{SpaceX},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterGriess.}\allowbreak\lean{SpaceW},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterGriess.}\allowbreak\lean{SpaceB},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterGriess.}\allowbreak\lean{bform},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterGriess.}\allowbreak\lean{finrank_B}\par}
+\begin{leancode}
+def symMat : Submodule ℚ (Matrix (Fin 24) (Fin 24) ℚ) where
+  carrier := {A | Aᵀ = A}
+\end{leancode}
+\begin{leancode}
+abbrev SpaceX : Type := ShortIdx → ℚ
+
+abbrev SpaceW : Type := Matrix SpinIdx (Fin 24) ℚ
+
+abbrev SpaceB : Type := symMat × SpaceX × SpaceW
+\end{leancode}
+\begin{leancode}
+noncomputable def bform : LinearMap.BilinForm ℚ SpaceB :=
+  LinearMap.mk₂ ℚ (fun u v => trace ((u.1 : Matrix (Fin 24) (Fin 24) ℚ) *
+      (v.1 : Matrix (Fin 24) (Fin 24) ℚ)) +
+      ∑ c, u.2.1 c * v.2.1 c + ∑ j, ∑ i, u.2.2 j i * v.2.2 j i)
+\end{leancode}
+\begin{leancode}
+theorem finrank_B : finrank ℚ SpaceB = 196884 := by
+\end{leancode}
+\noindent Files \leanpath{VOA/\allowbreak Moonshine/\allowbreak MonsterGriess/\allowbreak Algebra.lean}, \leanpath{VOA/\allowbreak Moonshine/\allowbreak MonsterGriess/\allowbreak TrialityBasis.lean}.
+\noindent\textbf{Hypotheses / status.} — (definitions)\par
+\medskip
+\begin{bdefinition}{48.18}[The Griess product of $\chXXIB$]
+The product is the bilinear map determined by the following table (and commutativity), for
+$A,A'\in\chXXISym$, $x,y\in X$, $N,M\in W$ (``$\cdot$'' is the product, each entry lists the
+$(\chXXISym,X,W)$-components):
+
+\begin{center}\small
+\begin{tabular}{lll}
+\toprule
+product & $\chXXISym$-part & $X$-part\quad/\quad $W$-part\\\midrule
+$A\cdot A'$ & $2(AA'+A'A)$ & $0$\quad/\quad$0$\\
+$A\cdot x$ & $0$ & $c\mapsto\tfrac18x_cq_c(A)$\quad/\quad$0$\\
+$x\cdot y$ & $\tfrac18\sum_cx_cy_cU_c$ & $c\mapsto\sum_{d,e}x_dy_e\tau(d,e,c)$\quad/\quad$0$\\
+$A\cdot N$ & $0$ & $0$\quad/\quad$\tfrac{\tr A}8N+NA$\\
+$x\cdot N$ & $0$ & $0$\quad/\quad$\tfrac18\sum_cx_c(R_cN-\tfrac14R_cNU_c)$\\
+$N\cdot M$ & $\tfrac18\tr(N^{\mathsf T}M)1+\tfrac12(N^{\mathsf T}M+M^{\mathsf T}N)$ &
+  $c\mapsto\tfrac18(\tr(N^{\mathsf T}R_cM)-\tfrac14q_c(N^{\mathsf T}R_cM))$\quad/\quad$0$\\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{bdefinition}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterGriess.}\allowbreak\lean{Umat},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterGriess.}\allowbreak\lean{Rmat},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterGriess.}\allowbreak\lean{qf},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterGriess.}\allowbreak\lean{tau},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterGriess.}\allowbreak\lean{gmulA},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterGriess.}\allowbreak\lean{gmulX},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterGriess.}\allowbreak\lean{gmulWHalf},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterGriess.}\allowbreak\lean{gmulW},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterGriess.}\allowbreak\lean{gmulFun},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterGriess.}\allowbreak\lean{gmul},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterGriess.}\allowbreak\lean{gmul_spinBlock_spinBlock_snd_fst}\par}
+\begin{leancode}
+noncomputable def Umat (c : ShortIdx) : Matrix (Fin 24) (Fin 24) ℚ := vecMulVec (uQ c) (uQ c)
+
+noncomputable def Rmat (c : ShortIdx) : Matrix SpinIdx SpinIdx ℚ := qmatR ℚ 0 c.1.1 c.1.2
+
+noncomputable def qf (c : ShortIdx) (M : Matrix (Fin 24) (Fin 24) ℚ) : ℚ :=
+  uQ c ⬝ᵥ (M *ᵥ uQ c)
+
+noncomputable def tau (d e c : ShortIdx) : ℚ :=
+  open Classical in if c.1 = d.1 + e.1 then sgn (pair e.1.1 d.1.2) else 0
+\end{leancode}
+\begin{leancode}
+noncomputable def gmulA (u v : SpaceB) : Matrix (Fin 24) (Fin 24) ℚ :=
+  (2 : ℚ) • (Am u * Am v + Am v * Am u) + (8 : ℚ)⁻¹ • ∑ c, (xs u c * xs v c) • Umat c +
+    (trace ((Nm u)ᵀ * Nm v) / 8) • (1 : Matrix (Fin 24) (Fin 24) ℚ) +
+    (2 : ℚ)⁻¹ • ((Nm u)ᵀ * Nm v + (Nm v)ᵀ * Nm u)
+\end{leancode}
+\begin{leancode}
+noncomputable def gmulX (u v : SpaceB) (c : ShortIdx) : ℚ :=
+  (xs v c * qf c (Am u) + xs u c * qf c (Am v)) / 8 +
+    ∑ d, ∑ e, xs u d * xs v e * tau d e c +
+    (trace ((Nm u)ᵀ * Rmat c * Nm v) - qf c ((Nm u)ᵀ * Rmat c * Nm v) / 4) / 8
+
+noncomputable def gmulWHalf (u v : SpaceB) : SpaceW :=
+  (trace (Am u) / 8) • Nm v + Nm v * Am u +
+    (8 : ℚ)⁻¹ • ∑ c, xs u c • (Rmat c * Nm v - (4 : ℚ)⁻¹ • (Rmat c * Nm v * Umat c))
+
+noncomputable def gmulW (u v : SpaceB) : SpaceW := gmulWHalf u v + gmulWHalf v u
+
+noncomputable def gmulFun (u v : SpaceB) : SpaceB :=
+  (⟨gmulA u v, gmulA_symm u v⟩, gmulX u v, gmulW u v)
+\end{leancode}
+\begin{leancode}
+noncomputable def gmul : SpaceB →ₗ[ℚ] SpaceB →ₗ[ℚ] SpaceB :=
+  LinearMap.mk₂ ℚ gmulFun gmulFun_add_left gmulFun_smul_left gmulFun_add_right
+    gmulFun_smul_right
+\end{leancode}
+\begin{leancode}
+theorem gmul_spinBlock_spinBlock_snd_fst (N M : SpaceW) :
+    (gmul (spinBlock N) (spinBlock M)).2.1
+      = fun c => (trace (Nᵀ * Rmat c * M) - qf c (Nᵀ * Rmat c * M) / 4) / 8 := by
+\end{leancode}
+\noindent Files \leanpath{VOA/\allowbreak Moonshine/\allowbreak MonsterGriess/\allowbreak Algebra.lean}, \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNGriessTable.lean}.
+\noindent\textbf{Hypotheses / status.} — (definitions)\par
+\medskip
+\begin{bdefinition}{48.23}[Algebra automorphisms; \lean{AutO}]
+A $\Q$-linear automorphism $f$ of $\chXXIB$ is an \emph{algebra automorphism} if
+$f(u\cdot v)=f(u)\cdot f(v)$ for all $u,v$.  \lean{AutO} is the subgroup of $GL_\Q(\chXXIB)$ of algebra
+automorphisms preserving $b$.
+\end{bdefinition}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterGriess.}\allowbreak\lean{IsAlgAut},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterGriess.}\allowbreak\lean{AutO},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterGriess.}\allowbreak\lean{mem_AutO}\par}
+\begin{leancode}
+def IsAlgAut (f : SpaceB ≃ₗ[ℚ] SpaceB) : Prop := ∀ u v, f (gmul u v) = gmul (f u) (f v)
+\end{leancode}
+\begin{leancode}
+def AutO : Subgroup (SpaceB ≃ₗ[ℚ] SpaceB) where
+  carrier := {g | IsAlgAut g ∧ ∀ u v, bform (g u) (g v) = bform u v}
+\end{leancode}
+\begin{leancode}
+theorem mem_AutO {g : SpaceB ≃ₗ[ℚ] SpaceB} :
+    g ∈ AutO ↔ (∀ u v, g (gmul u v) = gmul (g u) (g v)) ∧ ∀ u v, bform (g u) (g v) = bform u v :=
+  Iff.rfl
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MonsterGriess/\allowbreak AutO.lean}.
+\noindent\textbf{Hypotheses / status.} — (definition)\par
+\medskip
+\begin{btheorem}{48.33}[$\tau_B$ is an automorphism; $G_{\mathrm{mat}}\le$ \lean{AutO}]
+$\tau_B(u\cdot v)=\tau_B(u)\cdot\tau_B(v)$ for all $u,v$; hence $\tau_B\in$ \lean{AutO} and
+$G_{\mathrm{mat}}\le$ \lean{AutO}.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterGriess.}\allowbreak\lean{tauB_gmul},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterGriess.}\allowbreak\lean{tauB_mem_AutO},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterGriess.}\allowbreak\lean{Generated.}\allowbreak\lean{Gmat_le_AutO}\par}
+\begin{leancode}
+theorem tauB_gmul (u v : SpaceB) : tauB (gmul u v) = gmul (tauB u) (tauB v) := by
+\end{leancode}
+\begin{leancode}
+theorem tauB_mem_AutO : tauB ∈ AutO := ⟨isAlgAut_tauB, bform_tauB⟩
+\end{leancode}
+\begin{leancode}
+theorem Gmat_le_AutO : Gmat ≤ AutO := Gmat_le_AutO_of_isAlgAut isAlgAut_tauB
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MonsterGriess/\allowbreak ProductInvariance.lean}.
+\noindent\textbf{Hypotheses / status.} None\par
+\medskip
+\begin{btheorem}{48.34}[AxiomMath's rational parity-centralizer theorem]
+(1) A $\Q$-linear automorphism $f$ of $\chXXIB$ preserves the product and the form and commutes with
+$x_B$ if and only if $f\in G_{\mathrm{vis}}$.  (2) Every such $f$ is $\theta_p$ for a visible pair $p$,
+unique up to $p\mapsto p\cdot(-1,-1)$.  (3) $p\cdot(-1,-1)=(-s,-g)$.  Equivalently,
+\lean{AutO} $\cap\,C(x_B)=G_{\mathrm{vis}}$.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterGriess.}\allowbreak\lean{Parity.}\allowbreak\lean{rational_parity_centralizer_equals_visible},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterGriess.}\allowbreak\lean{Parity.}\allowbreak\lean{AutO_inf_centralizer_xB_eq_Gvis}\par}
+\begin{leancode}
+theorem rational_parity_centralizer_equals_visible :
+    (∀ f : SpaceB ≃ₗ[ℚ] SpaceB, ((∀ u v, f (gmul u v) = gmul (f u) (f v)) ∧
+        (∀ u v, bform (f u) (f v) = bform u v) ∧ ∀ u, f (xB u) = xB (f u)) ↔ f ∈ Gvis) ∧
+    (∀ f : SpaceB ≃ₗ[ℚ] SpaceB, (∀ u v, f (gmul u v) = gmul (f u) (f v)) →
+      (∀ u v, bform (f u) (f v) = bform u v) → (∀ u, f (xB u) = xB (f u)) →
+      ∃ p : Pvis, thetaEquiv p = f ∧
+        ∀ p' : Pvis, thetaEquiv p' = f ↔ p' = p ∨ p' = p * negPair) ∧
+    ∀ p : Pvis, (((p * negPair : Pvis).1.1 : GL SpinIdx ℚ) : Matrix SpinIdx SpinIdx ℚ) =
+        -((p.1.1 : GL SpinIdx ℚ) : Matrix SpinIdx SpinIdx ℚ) ∧
+      mat (p * negPair : Pvis).1.2 = -mat p.1.2 := by
+\end{leancode}
+\begin{leancode}
+theorem AutO_inf_centralizer_xB_eq_Gvis :
+    AutO ⊓ Subgroup.centralizer {xB} = Gvis := by
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MonsterGriess/\allowbreak ParityEqualsVisible.lean}.
+\noindent\textbf{Hypotheses / status.} None\par
+\medskip
+\begin{btheorem}{48.36}[The untwisted Griess products in Conway coordinates]
+For symmetric $A,B$ and $\beta\in\Leech$ with integer coordinates $y_\beta$:
+(a) $Q_C(A)_{(1)}Q_C(B)=2\,Q_C(AB+BA)$;
+(b) $Q_C(A)_{(1)}x_\beta=\tfrac18(y_\beta^{\mathsf T}Ay_\beta)\,x_\beta$, where $x_\beta=e^\beta+e^{-\beta}$;
+(c) $\beta(-1)^2\mathbb1=Q_C(\tfrac18y_\beta y_\beta^{\mathsf T})$;
+(d) $\langle Q_C(A),Q_C(B)\rangle=2\tr(AB)$; $\langle x_\alpha,x_\beta\rangle=2\varepsilon(\alpha,\alpha)$ if
+$\beta=\pm\alpha$ and $0$ otherwise ($\alpha$ minimal).
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{GriessDictionary.}\allowbreak\lean{conwayQuad_one_conwayQuad_of_symm},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{GriessDictionary.}\allowbreak\lean{conwayQuad_one_frameX0P},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{GriessDictionary.}\allowbreak\lean{dV_self_eq_conwayQuad},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{GriessDictionary.}\allowbreak\lean{plusForm_conwayQuad_conwayQuad_of_symm},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{GriessDictionary.}\allowbreak\lean{plusForm_frameX0P_frameX0P}\par}
+\begin{leancode}
+theorem conwayQuad_one_conwayQuad_of_symm {A B : Matrix (Fin 24) (Fin 24) ℂ} (hA : Aᵀ = A)
+    (hB : Bᵀ = B) :
+    leechVOAPlus.smul (conwayQuad A) 1 (conwayQuad B) = (2 : ℂ) • conwayQuad (A * B + B * A) := by
+\end{leancode}
+\begin{leancode}
+theorem conwayQuad_one_frameX0P (A : Matrix (Fin 24) (Fin 24) ℂ) (β : leech.carrier) :
+    leechVOAPlus.smul (conwayQuad A) 1 (frameX0P β)
+      = ((8 : ℂ)⁻¹ * ((fun i => (vec β i : ℂ)) ⬝ᵥ (A *ᵥ fun i => (vec β i : ℂ)))) • frameX0P β := by
+\end{leancode}
+\begin{leancode}
+theorem dV_self_eq_conwayQuad (β : leech.carrier) :
+    (dV β β : VPlus)
+      = conwayQuad ((8 : ℂ)⁻¹ • vecMulVec (fun i => (vec β i : ℂ)) (fun i => (vec β i : ℂ))) := by
+\end{leancode}
+\begin{leancode}
+theorem plusForm_conwayQuad_conwayQuad_of_symm {A B : Matrix (Fin 24) (Fin 24) ℂ}
+    (hB : Bᵀ = B) : plusForm (conwayQuad A) (conwayQuad B) = 2 * trace (A * B) := by
+\end{leancode}
+\begin{leancode}
+theorem plusForm_frameX0P_frameX0P {α : leech.carrier} (hα : leech.form α α = 4)
+    (β : leech.carrier) :
+    plusForm (frameX0P α) (frameX0P β)
+      = if β = α ∨ β = -α then 2 * latticeCocycle leech α α else 0 := by
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNGriessConway.lean}.
+\noindent\textbf{Hypotheses / status.} Displayed\par
+\medskip
+\begin{btheorem}{48.39}[The untwisted dictionary is an isometric algebra map]
+If $\zeta$ is a sign dictionary, then for all $u,v\in\chXXIB$ with zero $W$-part,
+$\Phi_\zeta(u\cdot v)=\Phi_\zeta(u)_{(1)}\Phi_\zeta(v)$ and $\langle\Phi_\zeta u,\Phi_\zeta v\rangle=2\,b(u,v)$.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{GriessDictionary.}\allowbreak\lean{untwistedDict_gmul},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{GriessDictionary.}\allowbreak\lean{untwistedDict_form}\par}
+\begin{leancode}
+theorem untwistedDict_gmul (hζ : ShortSignDictionary ζ) {u v : SpaceB} (hu : u.2.2 = 0)
+    (hv : v.2.2 = 0) :
+    untwistedDict ζ (gmul u v) = leechVOAPlus.smul (untwistedDict ζ u) 1 (untwistedDict ζ v) := by
+\end{leancode}
+\begin{leancode}
+theorem untwistedDict_form (hζ : ShortSignDictionary ζ) {u v : SpaceB} (hu : u.2.2 = 0)
+    (hv : v.2.2 = 0) :
+    plusForm (untwistedDict ζ u) (untwistedDict ζ v) = 2 * (bform u v : ℂ) := by
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNGriessUntwisted.lean}.
+\noindent\textbf{Hypotheses / status.} Sign dictionary, $W=0$\par
+\medskip
+\begin{btheorem}{48.43}[The untwisted dictionary, unconditionally]
+\lean{griessShortSign} is a sign dictionary; hence for all $u,v$ with zero $W$-part the dictionary
+$\Phi_\zeta$ (into $\Vnat$) is multiplicative and $\langle\Phi_\zeta u,\Phi_\zeta v\rangle=2b(u,v)$, and its
+$\C$-linear extension is an isomorphism $\C\otimes_\Q(\chXXISym\oplus X)\cong(V_\Leech^+)_2$.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{GriessDictionary.}\allowbreak\lean{shortSignDictionary_griessShortSign},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{GriessDictionary.}\allowbreak\lean{untwistedGriessNat_gmul},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{GriessDictionary.}\allowbreak\lean{untwistedGriessNat_form},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{GriessDictionary.}\allowbreak\lean{untwistedIsoC},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{GriessDictionary.}\allowbreak\lean{untwistedIsoC_tmul}\par}
+\begin{leancode}
+theorem shortSignDictionary_griessShortSign : ShortSignDictionary griessShortSign :=
+\end{leancode}
+\begin{leancode}
+theorem untwistedGriessNat_gmul {u v : SpaceB} (hu : u.2.2 = 0) (hv : v.2.2 = 0) :
+    untwistedDictNat griessShortSign (gmul u v)
+      = VnatVOA.griessMul (untwistedDictNat griessShortSign u)
+          (untwistedDictNat griessShortSign v) :=
+\end{leancode}
+\begin{leancode}
+theorem untwistedGriessNat_form {u v : SpaceB} (hu : u.2.2 = 0) (hv : v.2.2 = 0) :
+    SimpleNat.natForm (untwistedDictNat griessShortSign u : Vnat)
+        (untwistedDictNat griessShortSign v : Vnat) = 2 * (bform u v : ℂ) :=
+\end{leancode}
+\begin{leancode}
+noncomputable def untwistedIsoC : ℂ ⊗[ℚ] untwistedSub ≃ₗ[ℂ] leechVOAPlus.grading 2 :=
+  (Algebra.TensorProduct.basis ℂ untwistedBasisQ).equiv untwistedBasisC (Equiv.refl _)
+\end{leancode}
+\begin{leancode}
+theorem untwistedIsoC_tmul (u : untwistedSub) :
+    (untwistedIsoC (1 ⊗ₜ u) : VPlus) = untwistedDict griessShortSign (u : SpaceB) := by
+\end{leancode}
+\noindent Files \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNGriessSign.lean}, \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNGriessUntwistedBasis.lean}.
+\noindent\textbf{Hypotheses / status.} None\par
+\medskip
+\begin{btheorem}{48.51}[The $W$-block: form, module channels, and AxiomMath's invariance]
+(a) $\langle\mathrm{spinDict}N,\mathrm{spinDict}M\rangle=2\sum N_{ji}M_{ji}$.
+(b) $\mathrm{matDict}(A)_{(1)}\mathrm{spinDict}(N)=\mathrm{spinDict}(\tfrac{\tr A}8N+NA)$ and
+$\mathrm{shortDict}_{\zeta'}(x)_{(1)}\mathrm{spinDict}(N)=\mathrm{spinDict}(\tfrac18\sum_cx_c(R_cN-\tfrac14R_cNU_c))$.
+(c) On AxiomMath's side, for $u$ with zero $W$-part, $b(N\cdot M,u)=b(M,u\cdot N)$.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{GriessDictionary.}\allowbreak\lean{TPForm_spinDict},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{GriessDictionary.}\allowbreak\lean{topAct_matDict_spinDict},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{GriessDictionary.}\allowbreak\lean{topAct_shortDict_spinDict},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{GriessDictionary.}\allowbreak\lean{bform_gmul_spinBlock_spinBlock}\par}
+\begin{leancode}
+theorem TPForm_spinDict (N M : SpaceW) :
+    TPForm (spinDict N) (spinDict M) = 2 * ((∑ j, ∑ i, N j i * M j i : ℚ) : ℂ) := by
+\end{leancode}
+\begin{leancode}
+theorem topAct_matDict_spinDict (A : symMat) (N : SpaceW) :
+    topAct (matDict A) (spinDict N)
+      = spinDict ((trace (A : Matrix (Fin 24) (Fin 24) ℚ) / 8) • N + N * (A : Matrix (Fin 24) (Fin 24) ℚ)) := by
+\end{leancode}
+\begin{leancode}
+theorem topAct_shortDict_spinDict (x : SpaceX) (N : SpaceW) :
+    topAct (shortDict fullShortSign x) (spinDict N)
+      = spinDict ((8 : ℚ)⁻¹ • ∑ c, x c • (Rmat c * N - (4 : ℚ)⁻¹ • (Rmat c * N * Umat c))) := by
+\end{leancode}
+\begin{leancode}
+theorem bform_gmul_spinBlock_spinBlock (N M : SpaceW) {u : SpaceB} (hu : u.2.2 = 0) :
+    bform (gmul (spinBlock N) (spinBlock M)) u
+      = bform (spinBlock M) (spinBlock (spinBlockAction u N)) := by
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNGriessSpinDict.lean}.
+\noindent\textbf{Hypotheses / status.} None\par
+\medskip
+\begin{btheorem}{48.54}[\lean{griessIso}: the Griess algebra of $\Vnat$ is AxiomMath's, over $\C$]
+There is a $\C$-linear isomorphism $\Theta:\C\otimes_\Q\chXXIB\to\Vnat_2$ with
+$\Theta(1\otimes u)=\mathrm{griessNat}(u)$, such that $\Theta$ carries the $\C$-bilinear extension of the
+product of $\chXXIB$ to the Griess product of $\Vnat$ and the $\C$-bilinear extension of $2b$ to the
+invariant form of $\Vnat$.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{GriessDictionary.}\allowbreak\lean{griessIso},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{GriessDictionary.}\allowbreak\lean{griessIso_tmul},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{GriessDictionary.}\allowbreak\lean{griessIso_mul},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{GriessDictionary.}\allowbreak\lean{griessIso_form}\par}
+\begin{leancode}
+noncomputable def griessIso : ℂ ⊗[ℚ] SpaceB ≃ₗ[ℂ] VnatVOA.grading 2 :=
+  (Algebra.TensorProduct.basis ℂ griessBasisQ).equiv griessBasisC (Equiv.refl _)
+\end{leancode}
+\begin{leancode}
+theorem griessIso_tmul (u : SpaceB) : griessIso (1 ⊗ₜ u) = griessNat u := by
+\end{leancode}
+\begin{leancode}
+theorem griessIso_mul (x y : ℂ ⊗[ℚ] SpaceB) :
+    griessIso (LinearMap.BilinMap.baseChange ℂ gmul x y)
+      = VnatVOA.griessMul (griessIso x) (griessIso y) := by
+\end{leancode}
+\begin{leancode}
+theorem griessIso_form (x y : ℂ ⊗[ℚ] SpaceB) :
+    SimpleNat.natForm (griessIso x : Vnat) (griessIso y : Vnat)
+      = 2 * LinearMap.BilinForm.baseChange ℂ bform x y := by
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNGriessIso.lean}.
+\noindent\textbf{Hypotheses / status.} \textbf{none}\par
+\medskip
+\endgroup
+\chapter{The Monster acts on the moonshine module: lifts, triality, the commutant and the converse}
+\begingroup
+\providecommand{\chtwentytwoM}{\mathbb{M}}
+\providecommand{\chtwentytwoB}{\mathcal{B}}
+\providecommand{\chtwentytwoA}{\mathcal{A}}
+\providecommand{\chtwentytwoX}{\mathcal{X}}
+\providecommand{\chtwentytwoW}{\mathcal{W}}
+\providecommand{\chtwentytwoGvis}{G_{\mathrm{vis}}}
+\providecommand{\chtwentytwoGmat}{G_{\mathrm{mat}}}
+\providecommand{\chtwentytwoAutO}{\mathrm{AutO}}
+\providecommand{\chtwentytwoCo}{\mathrm{Co}}
+\providecommand{\chtwentytwoiota}{\iota_{\natural}}
+\providecommand{\chtwentytwolean}[1]{\texttt{\directlua{ local s = "\luaescapestring{\detokenize{#1}}" for piece, sep in string.gmatch(s, "([^_.]*)([_.]?)") do if not (piece == "" and sep == "") then tex.sprint(-2, piece .. sep) if not (sep == "") then tex.sprint(string.char(92) .. "allowbreak{}") end end end}}}
+\noindent{\small 10 of the chapter's 34 numbered statements: its headline results and every definition they use.}\par\medskip
+\begin{btheorem}{49.4}[$\chtwentytwoCo_0$ on $T^+$, covariantly]
+For a surjective isometry $\iota$ of $\Leech$, the map $\varphi_\iota=O_\iota\otimes\rho$ restricted to $T^+$ satisfies
+$\varphi_\iota(u_{(n)}t)=(\Phi_\iota u)_{(n)}\varphi_\iota(t)$ for all $u\in V_\Leech^+$, $n$, $t$; and some nonzero
+multiple $\lambda_\iota\varphi_\iota$ preserves \lean{TPForm}.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{liftTwPlusEquiv_mode},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{liftTwExists_formScalar}\par}
+\begin{leancode}
+theorem liftTwPlusEquiv_mode (hsurj : Function.Surjective ι)
+    (u : (orbifold (Subgroup.zpowers leechTheta)).carrier) (n : ℤ) (t : TP) :
+    liftTwPlusEquiv ι hι (mode (plusModule.YM u) n t) =
+      mode (plusModule.YM (leechPlusLatMorphAut ι hι hsurj u)) n (liftTwPlusEquiv ι hι t)
+\end{leancode}
+\begin{leancode}
+theorem liftTwExists_formScalar : ∃ c : ℂˣ, ∀ t t' : TP,
+    TPForm (liftTwNormalizedPlusEquiv ι hι c t)
+      (liftTwNormalizedPlusEquiv ι hι c t') = TPForm t t'
+\end{leancode}
+\noindent Files \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineLRLiftTwisted2.lean}, \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineLRLiftTwisted3.lean}.
+\noindent\textbf{Hypotheses / status.} Isometry, onto\par
+\medskip
+\begin{btheorem}{49.8}[Rational criterion for lattice lifts]
+Let $\iota$ be a surjective isometry of $\Leech$.
+\begin{enumerate}[label=(\alph*)]
+\item $\mathrm{liftTwVnatAut}(\iota)$ is the lift of an element of $\chtwentytwoAutO$ if and only if its normalised
+  twisted part maps rational spin-dictionary vectors to rational ones.
+\item For every $\alpha$ the number $w(\iota,\alpha)=c(\alpha)Z(\iota\alpha)/Z(\alpha)$ is $\pm1$.
+\item If $R$ is a rational $4096\times4096$ matrix with $R^{\mathsf T}R=1$ and $RQ_\alpha=w(\iota,\alpha)\,Q_{\iota\alpha}R$
+  for all $\alpha\in\Leech$ (equivalently, for the $24$ basis vectors of $\Leech$), then $\mathrm{liftTwVnatAut}(\iota)$ is
+  the lift of an element of $\chtwentytwoAutO$.
+\end{enumerate}
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{liftLiftableSpinRational},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{liftLiftableIffSpinRational},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{liftMonoPhase},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{liftMonoPhase_sign},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{liftMonoOfUnphasedIntertwiner},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{liftGenOfBasisIntertwiner}\par}
+\begin{leancode}
+def liftLiftableSpinRational : Prop :=
+  ∀ N : SpaceW, ∃ N' : SpaceW,
+    liftTwNormalizedPlusEquiv ι hι (liftWScalar ι hι) (spinDict N) = spinDict N'
+-- ⋯
+theorem liftLiftableIffSpinRational (hsurj : Function.Surjective ι) :
+    (∃ g : liftableSubgroup, monsterLift g = liftTwVnatAut ι hι hsurj) ↔
+      liftLiftableSpinRational ι hι
+\end{leancode}
+\begin{leancode}
+def liftMonoPhase (α : leech.carrier) : ℂ :=
+  latCob leech leech ι α * signRefinement (coordOfRed (red leech (ι α))) /
+    signRefinement (coordOfRed (red leech α))
+-- ⋯
+theorem liftMonoPhase_sign (α : leech.carrier) :
+    liftMonoPhase ι α = 1 ∨ liftMonoPhase ι α = -1
+-- ⋯
+theorem liftMonoOfUnphasedIntertwiner (hsurj : Function.Surjective ι)
+    (R : Matrix SpinIdx SpinIdx ℚ) (horth : Rᵀ * R = 1)
+    (hinter : ∀ α : leech.carrier,
+      R * liftMonoQmat α = liftMonoWeight ι α • (liftMonoQmat (ι α) * R)) :
+    ∃ g : liftableSubgroup, monsterLift g = liftTwVnatAut ι hι hsurj
+\end{leancode}
+\begin{leancode}
+theorem liftGenOfBasisIntertwiner (ι : leech.carrier →ₗ[ℤ] leech.carrier)
+    (hι : ∀ α β, leech.form (ι α) (ι β) = leech.form α β)
+    (hsurj : Function.Surjective ι) (R : Matrix SpinIdx SpinIdx ℚ)
+    (horth : Rᵀ * R = 1)
+    (hB : ∀ j, R * liftMonoQmat (latticeBasis leech j) =
+      liftMonoWeight ι (latticeBasis leech j) •
+        (liftMonoQmat (ι (latticeBasis leech j)) * R)) :
+    ∃ g : liftableSubgroup, monsterLift g = liftTwVnatAut ι hι hsurj
+\end{leancode}
+\noindent Files \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineLRLiftLiftable.lean}, \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineLRLiftLiftable2.lean}, \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineLRLiftLiftable3.lean}.
+\noindent\textbf{Hypotheses / status.} Rational orthogonal intertwiner\par
+\medskip
+\begin{btheorem}{49.13}[Every visible element is liftable]
+Every element of $\chtwentytwoGvis$, regarded as an element of $\chtwentytwoAutO$, is liftable.  Consequently
+Conway--Norton holds for every element of $\chtwentytwoAutO$ as soon as some liftable $\tau$ together with
+$\chtwentytwoGvis$ generates $\chtwentytwoAutO$.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{liftVisRAllVisible},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{visibleSetAutO},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{isVnatLiftable_of_mem_visibleSetAutO},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{conwayNorton_autO_of_tauB}\par}
+\begin{leancode}
+theorem liftVisRAllVisible : ∀ (g : SpaceB ≃ₗ[ℚ] SpaceB) (hg : g ∈ Gvis),
+    IsVnatLiftable ⟨g, Gvis_le_AutO hg⟩
+\end{leancode}
+\begin{leancode}
+def visibleSetAutO : Set AutO := {g | (g : SpaceB ≃ₗ[ℚ] SpaceB) ∈ Gvis}
+-- ⋯
+theorem isVnatLiftable_of_mem_visibleSetAutO : ∀ g ∈ visibleSetAutO, IsVnatLiftable g
+-- ⋯
+theorem conwayNorton_autO_of_tauB {τ : AutO} (hτ : IsVnatLiftable τ)
+    (hGmat : Subgroup.closure (insert τ visibleSetAutO) = ⊤) (g : AutO) :
+    ∃ h : AutVnat, vnatWeightTwoRestrict h = griessConj (g : SpaceB ≃ₗ[ℚ] SpaceB) ∧
+      ∃ (Γ : Subgroup (GL (Fin 2) ℝ)) (N : ℕ), IsMoonshineGroup Γ N ∧
+        IsNormalizedHauptmodul Γ (mckayThompsonFun h)
+\end{leancode}
+\noindent Files \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineLRLiftVisible2.lean}, \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineLRMonsterVisible.lean}.
+\noindent\textbf{Hypotheses / status.} None\par
+\medskip
+\begin{btheorem}{49.17}[$\tau_B$ is liftable]
+$\tau_B$, as an element of $\chtwentytwoAutO$, is liftable.  More precisely:
+(a) $\sigma_Bx_B\sigma_B^{-1}\in\{y_B,z_B\}$;
+(b) if $g\in\chtwentytwoAutO$ satisfies $gx_Bg^{-1}=\sigma_Bx_B\sigma_B^{-1}$, then $g$ is liftable;
+(c) hence $\tau_B$ is liftable.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{tauBLiftConjugate},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{tauBLiftConjugate_dict},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{tauBLiftSigma_conj_xB},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{tauBLift_of_conjugate},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{tauBLift_isVnatLiftable_tauB_of_mem_AutO},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{isVnatLiftable_tauB}\par}
+\begin{leancode}
+def tauBLiftConjugate : AutO :=
+  (tauBLiftSigma : AutO) * ⟨xB, xB_mem_AutO⟩ * (tauBLiftSigma : AutO)⁻¹
+-- ⋯
+theorem tauBLiftConjugate_dict (u : SpaceB) :
+    (griessNat ((tauBLiftConjugate : SpaceB ≃ₗ[ℚ] SpaceB) u) : Vnat) =
+      sigmaBlockFrameSign Dnat.s (griessNat u : Vnat)
+-- ⋯
+theorem tauBLiftSigma_conj_xB (hτ : tauB ∈ AutO) :
+    (tauBLiftConjugate : SpaceB ≃ₗ[ℚ] SpaceB) = yB ∨
+      (tauBLiftConjugate : SpaceB ≃ₗ[ℚ] SpaceB) = zB
+-- ⋯
+theorem tauBLift_of_conjugate (g : AutO)
+    (hg : (g : SpaceB ≃ₗ[ℚ] SpaceB) * xB * (g : SpaceB ≃ₗ[ℚ] SpaceB)⁻¹ =
+      (tauBLiftConjugate : SpaceB ≃ₗ[ℚ] SpaceB)) : IsVnatLiftable g
+-- ⋯
+theorem tauBLift_isVnatLiftable_tauB_of_mem_AutO (hτ : tauB ∈ AutO) :
+    IsVnatLiftable ⟨tauB, hτ⟩
+\end{leancode}
+\begin{leancode}
+theorem isVnatLiftable_tauB : IsVnatLiftable ⟨tauB, tauB_mem_AutO⟩ :=
+  tauBLift_isVnatLiftable_tauB_of_mem_AutO tauB_mem_AutO
+\end{leancode}
+\noindent Files \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineLRTauB.lean}, \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineLRMonsterFinal.lean}.
+\noindent\textbf{Hypotheses / status.} \lean{hτ} (a theorem)\par
+\medskip
+\begin{btheorem}{49.18}[Every element of $\chtwentytwoGmat$ acts on $\Vnat$; Conway--Norton for $\chtwentytwoGmat$]
+(a) $\chtwentytwoGmat$ is the image in $\mathrm{GL}_\Q(\chtwentytwoB)$ of the subgroup of $\chtwentytwoAutO$ generated by $\tau_B$ and
+the visible elements.
+(b) Every $g\in\chtwentytwoAutO$ with $g\in\chtwentytwoGmat$ is liftable.
+(c) For every $g\in\chtwentytwoAutO$ with $g\in\chtwentytwoGmat$ there is an automorphism $h$ of $\Vnat$ acting on
+$\Vnat_2\cong\C\otimes\chtwentytwoB$ as $1\otimes g$, whose McKay--Thompson function $T_h$ is the normalised Hauptmodul of a
+genus-zero group $\Gamma\supseteq\Gamma_0(N)$ commensurable with $\mathrm{SL}_2(\Z)$.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{tauBAutO},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{gmat_eq_map_closure_insert_tauB},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{isVnatLiftable_of_mem_gmat},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{conwayNorton_gmat}\par}
+\begin{leancode}
+noncomputable def tauBAutO : AutO := ⟨tauB, tauB_mem_AutO⟩
+-- ⋯
+theorem gmat_eq_map_closure_insert_tauB :
+    Generated.Gmat = (Subgroup.closure (insert tauBAutO M8.visibleSetAutO)).map AutO.subtype
+-- ⋯
+theorem isVnatLiftable_of_mem_gmat (g : AutO)
+    (hg : (g : SpaceB ≃ₗ[ℚ] SpaceB) ∈ Generated.Gmat) : IsVnatLiftable g
+-- ⋯
+theorem conwayNorton_gmat (g : AutO) (hg : (g : SpaceB ≃ₗ[ℚ] SpaceB) ∈ Generated.Gmat) :
+    ∃ h : AutVnat, vnatWeightTwoRestrict h = griessConj (g : SpaceB ≃ₗ[ℚ] SpaceB) ∧
+      ∃ (Γ : Subgroup (GL (Fin 2) ℝ)) (N : ℕ), IsMoonshineGroup Γ N ∧
+        IsNormalizedHauptmodul Γ (mckayThompsonFun h)
+\end{leancode}
+\begin{leancode}
+example (g : SpaceB ≃ₗ[ℚ] SpaceB)
+    (hA : (∀ u v, g (gmul u v) = gmul (g u) (g v)) ∧ ∀ u v, bform (g u) (g v) = bform u v)
+    (hg : g ∈ Subgroup.closure ((Visible.Gvis : Set (SpaceB ≃ₗ[ℚ] SpaceB)) ∪ {tauB})) :
+    ∃ h : AutVnat, vnatWeightTwoRestrict h
+        = (griessIso.symm ≪≫ₗ LinearEquiv.baseChange ℚ ℂ SpaceB SpaceB g ≪≫ₗ griessIso) ∧
+      ∃ (Γ : Subgroup (GL (Fin 2) ℝ)) (N : ℕ), IsMoonshineGroup Γ N ∧
+        IsNormalizedHauptmodul Γ (mckayThompsonFun h) :=
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNMonsterFinalAudit.lean}.
+\noindent\textbf{Hypotheses / status.} None beyond membership $g\in\chtwentytwoGmat$\par
+\medskip
+\begin{btheorem}{49.27}[The identity line is the conformal line, and is fixed]
+$\mathrm{griessNat}(\mathbf{e}_1)=2\omega$; hence every automorphism of $\Vnat$ fixes $\mathrm{griessNat}(\mathbf{e}_1)$, every element of
+$\chtwentytwoGmat$ fixes $\mathbf{e}_1$, and $P_0$ commutes with $\chtwentytwoGmat$.  Moreover $\chtwentytwoGmat$ is finite.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterAction.}\allowbreak\lean{griessNat_griessIdentityVec},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterAction.}\allowbreak\lean{autVnat_apply_griessNat_identityVec},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{MonsterAction.}\allowbreak\lean{finite_gmat}\par}
+\begin{leancode}
+theorem griessNat_griessIdentityVec :
+    griessNat griessIdentityVec = (2 : ℂ) • vnatConformalTwo
+-- ⋯
+theorem autVnat_apply_griessNat_identityVec (h : AutVnat) :
+    h (griessNat griessIdentityVec : Vnat) = griessNat griessIdentityVec
+-- ⋯
+theorem finite_gmat : Finite Generated.Gmat
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNRationalGriess.lean}.
+\noindent\textbf{Hypotheses / status.} None\par
+\medskip
+\begin{btheorem}{49.32}[The converse, without Tits]
+(a) Every automorphism $h$ of $\Vnat$ maps the rational Griess lattice into itself: for each $u\in\chtwentytwoB$ there is
+$u'\in\chtwentytwoB$ with $h(\mathrm{griessNat}\,u)=\mathrm{griessNat}\,u'$.
+(b) $\Aut(\Vnat)$ is isomorphic to the subgroup of $\chtwentytwoAutO$ of liftable elements; the isomorphism is inverse to
+\lean{monsterLift}.
+(c) If $\chtwentytwoGmat=\chtwentytwoAutO$, then $\Aut(\Vnat)\cong\chtwentytwoAutO$.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{autVnat_mulEquiv_liftable},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{M8.}\allowbreak\lean{autVnat_mulEquiv_liftable_symm_apply},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{autVnat_rational},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{nonempty_autVnat_mulEquiv_liftable},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{autVnat_mulEquiv_autO}\par}
+\begin{leancode}
+noncomputable def autVnat_mulEquiv_liftable : AutVnat ≃* liftableSubgroup :=
+  autVnat_mulEquiv_liftable_of_commutant gmatCommutantScalar
+-- ⋯
+theorem autVnat_mulEquiv_liftable_symm_apply (g : liftableSubgroup) :
+    autVnat_mulEquiv_liftable.symm g = monsterLift g
+\end{leancode}
+\begin{leancode}
+theorem autVnat_rational (h : AutVnat) (u : SpaceB) :
+    ∃ u' : SpaceB, h (griessNat u : Vnat) = griessNat u' :=
+  autVnat_rational_of_commutant M8.gmatCommutantScalar h u
+-- ⋯
+theorem nonempty_autVnat_mulEquiv_liftable : Nonempty (AutVnat ≃* liftableSubgroup) :=
+  ⟨M8.autVnat_mulEquiv_liftable⟩
+-- ⋯
+theorem autVnat_mulEquiv_autO (hGmat : Generated.Gmat = AutO) : Nonempty (AutVnat ≃* AutO) :=
+  autVnat_mulEquiv_autO_of_commutant_of_Gmat M8.gmatCommutantScalar hGmat
+\end{leancode}
+\noindent Files \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineLRCommutantFinal.lean}, \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineCNSymmetryFinalAudit.lean}.
+\noindent\textbf{Hypotheses / status.} None\par
+\medskip
+\begin{bdefinition}{49.33}[The generation theorem, as a proposition]
+$\mathrm{GmatEqAutO}$ is the proposition $\chtwentytwoGmat=\chtwentytwoAutO$: the subgroup of $\mathrm{GL}_\Q(\chtwentytwoB)$
+generated by the visible group and $\tau_B$ is the full group of $\Q$-linear automorphisms of AxiomMath's rational Griess
+algebra preserving its product and its form.  It is AxiomMath's statement \lean{gmat_eq_griess} after renaming, with one
+definition (\lean{SpinLattice.phi0}) restated in a definitionally equal form; that statement is proved in AxiomMath's library (Lean~4.35, commit \texttt{69cb972f}); the literature milestones on its proof path that were
+inspected (\lean{cl_lit_stroth_leon_sims_baby_monster_recognition}, its \lean{_models} variant, and
+\lean{cl_lit_goldschmidt_strongly_closed_abelian}) are theorems there, not axioms; its full axiom footprint has not been
+re-checked (that needs \texttt{\#print axioms} on a Lean~4.35 build of AxiomMath's library).
+\end{bdefinition}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{GmatEqAutO}\par}
+\begin{leancode}
+def GmatEqAutO : Prop :=
+  Generated.Gmat = AutO
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineLRMonsterHeadline.lean}.
+\noindent\textbf{Hypotheses / status.} (a \lean{Prop})\par
+\medskip
+\begin{btheorem}{49.34}[$\chtwentytwoAutO\cong\Aut(\Vnat)$, given $\mathrm{GmatEqAutO}$]
+Assume $\chtwentytwoGmat=\chtwentytwoAutO$.  Then every element of $\chtwentytwoAutO$ is liftable, the lift
+$\chtwentytwoAutO\to\Aut(\Vnat)$ is bijective, and the resulting group isomorphism $\varphi$ satisfies
+$\varphi(g)|_{\Vnat_2}=\mathcal G\circ(1_\C\otimes g)\circ\mathcal G^{-1}$ for every $g$, $\mathcal G=$ \lean{griessIso}.
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{isVnatLiftable_of_gmatEqAutO},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{monsterLiftOfAll_bijective},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{monsterEquivAutVnat},\allowbreak\ \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{monsterEquivAutVnat_restrict}\par}
+\begin{leancode}
+theorem isVnatLiftable_of_gmatEqAutO (hM : GmatEqAutO) (g : AutO) : IsVnatLiftable g
+-- ⋯
+theorem monsterLiftOfAll_bijective (hM : GmatEqAutO) :
+    Function.Bijective (monsterLiftOfAll (isVnatLiftable_of_gmatEqAutO hM))
+-- ⋯
+noncomputable def monsterEquivAutVnat (hM : GmatEqAutO) : AutO ≃* AutVnat :=
+  MulEquiv.ofBijective (monsterLiftOfAll (isVnatLiftable_of_gmatEqAutO hM))
+    (monsterLiftOfAll_bijective hM)
+-- ⋯
+theorem monsterEquivAutVnat_restrict (hM : GmatEqAutO) (g : AutO) :
+    vnatWeightTwoRestrict (monsterEquivAutVnat hM g) =
+      griessConj (g : SpaceB ≃ₗ[ℚ] SpaceB) :=
+  monsterLiftOfAll_restrict (isVnatLiftable_of_gmatEqAutO hM) g
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineLRMonsterHeadline.lean}.
+\noindent\textbf{Hypotheses / status.} \lean{GmatEqAutO}\par
+\medskip
+\begin{btheorem}{49.35}[Monstrous moonshine for the Monster; Conway--Norton, Borcherds]
+Assume $\chtwentytwoGmat=\chtwentytwoAutO$.  Then there is a group isomorphism $\varphi:\chtwentytwoAutO\to\Aut(\Vnat)$ such that
+\begin{enumerate}[label=(\roman*)]
+\item for every $g\in\chtwentytwoAutO$, $\varphi(g)$ acts on $\Vnat_2\cong\C\otimes_\Q\chtwentytwoB$ as $1\otimes g$; and
+\item for every $g\in\chtwentytwoAutO$ there are a subgroup $\Gamma\le\mathrm{SL}_2(\mathbb{R})$ (in Lean: a subgroup of
+  $\mathrm{GL}_2(\mathbb{R})$ all of whose elements have determinant $1$) and $N\ge1$ with $\Gamma_0(N)\le\Gamma$, $\Gamma$ commensurable with $\mathrm{SL}_2(\Z)$, such that
+  \begin{equation*}
+    T_{\varphi(g)}(\tau)=q^{-1}+\sum_{n\ge1}\tr\bigl(\varphi(g)\big|\Vnat_{n+1}\bigr)q^n,\qquad q=e^{2\pi i\tau},
+  \end{equation*}
+  is a normalised Hauptmodul for $\Gamma$.
+\end{enumerate}
+\end{btheorem}
+{\raggedright\noindent\textbf{Lean.} \lean{VOA.}\allowbreak\lean{Moonshine.}\allowbreak\lean{ConwayNorton.}\allowbreak\lean{monstrousMoonshine}\par}
+\begin{leancode}
+theorem monstrousMoonshine (hM : GmatEqAutO) :
+    ∃ φ : AutO ≃* AutVnat,
+      (∀ g : AutO, vnatWeightTwoRestrict (φ g) = griessConj (g : SpaceB ≃ₗ[ℚ] SpaceB)) ∧
+        ConwayNortonVia (φ : AutO →* AutVnat) :=
+  ⟨monsterEquivAutVnat hM, monsterEquivAutVnat_restrict hM, fun _ => conwayNorton _⟩
+\end{leancode}
+\noindent File \leanpath{VOA/\allowbreak Moonshine/\allowbreak MoonshineLRMonsterHeadline.lean}.
+\noindent\textbf{Hypotheses / status.} \textbf{\lean{GmatEqAutO}}\par
+\medskip
+\endgroup
 \part{Verification}
 \chapter{Verification, dead ends, numerics and open problems}
 \begingroup
 \providecommand{\chXVsq}{\mathbin{\ltimes}}
 \noindent{\small 3 of the chapter's 5 numbered statements: its headline results and every definition they use.}\par\medskip
-\begin{btheorem}{43.2}[The all-indices twisted Jacobi identity forces $M=0$]
+\begin{btheorem}{50.2}[The all-indices twisted Jacobi identity forces $M=0$]
 Let $V$ be a vertex operator algebra, $g\in\Aut V$, $N\ge 2$, and let $Y_M$ be a linear map from $V$
 to fractional-mode families of endomorphisms of a vector space $M$ such that $Y_M(\mathbf 1,z)=\mathrm{id}$
 (only the mode $\mathbf 1_{(-1)}$, label $k=-N$, is nonzero, and it is the identity). If $Y_M$
@@ -10363,7 +12251,7 @@ theorem jacobiAllIndices_eq_zero {g : Aut W} {N : ℕ} (hN : 2 ≤ N) {M : Type*
 \end{leancode}
 \noindent\textbf{Hypotheses / status.} Unconditional\par
 \medskip
-\begin{btheorem}{43.3}[A $\C$-bilinear form is never positive on a nonzero $\C$-subspace]
+\begin{btheorem}{50.3}[A $\C$-bilinear form is never positive on a nonzero $\C$-subspace]
 Let $\beta$ be a $\C$-bilinear form on a complex vector space $E$ and $S\le E$ a subspace. If
 $\beta(x,x)$ is a positive real number for every nonzero $x\in S$, then $S=0$.
 \end{btheorem}
@@ -10375,7 +12263,7 @@ theorem eq_bot_of_bilinear_pos (β : BilinForm ℂ E) (S : Submodule ℂ E)
 \end{leancode}
 \noindent\textbf{Hypotheses / status.} Unconditional\par
 \medskip
-\begin{btheorem}{43.6}[golayE is not determined]
+\begin{btheorem}{50.6}[golayE is not determined]
 There are two characters $e_1,e_2$ of $\Lambda_0$ with values in $\C^\times$, both satisfying the
 specification $\psi=g_e\,\theta\,g_e^{-1}$, whose values at the preimage $w_0$ of $8e_0$ differ by a
 sign.

@@ -275,6 +275,37 @@ PHASE5_DECLARATIONS = (
 
 PROBES = (
     Probe(
+        "MonstrousMoonshine",
+        "MonstrousMoonshineAxiomAudit.lean",
+        (
+            'VOA.Moonshine.ConwayNorton.conwayNorton',
+            'VOA.Moonshine.ConwayNorton.conwayNortonGammaOne_holds',
+            'VOA.Moonshine.ConwayNorton.M8.conwayNortonConjecture_holds',
+            'VOA.Moonshine.ConwayNorton.M8.autVnat_isOfFinOrder',
+            'VOA.Moonshine.ConwayNorton.M8.monsterLieSimpleRootGeneration',
+            'VOA.Moonshine.ConwayNorton.M8.finite_autVnat',
+            'VOA.Moonshine.AutMonster.vnatGriessRestrict_injective',
+            'VOA.Moonshine.GriessDictionary.griessIso_mul',
+            'VOA.Moonshine.GriessDictionary.griessIso_form',
+            'VOA.Moonshine.ConwayNorton.M8.liftVisRAllVisible',
+            'VOA.Moonshine.ConwayNorton.M8.sigmaBOdd_liftable',
+            'VOA.Moonshine.ConwayNorton.M8.isVnatLiftable_tauB',
+            'VOA.Moonshine.ConwayNorton.M8.conwayNorton_monster_of_Gmat',
+            'VOA.Moonshine.ConwayNorton.conwayNorton_gmat',
+            'VOA.Moonshine.ConwayNorton.conwayNorton_monster',
+            'VOA.Moonshine.ConwayNorton.rationalTraces',
+            'VOA.Moonshine.ConwayNorton.M8.gmatCommutantScalar',
+            'VOA.Moonshine.ConwayNorton.autVnat_rational',
+            'VOA.Moonshine.ConwayNorton.M8.autVnat_mulEquiv_liftable',
+            'VOA.Moonshine.ConwayNorton.nonempty_autVnat_mulEquiv_liftable',
+            'VOA.Moonshine.ConwayNorton.autVnat_mulEquiv_autO',
+            'VOA.Moonshine.ConwayNorton.GmatEqAutO',
+            'VOA.Moonshine.ConwayNorton.monsterEquivAutVnat',
+            'VOA.Moonshine.ConwayNorton.monsterEquivAutVnat_restrict',
+            'VOA.Moonshine.ConwayNorton.monstrousMoonshine',
+        ),
+    ),
+    Probe(
         "ClassicalFreeness",
         "ClassicalFreenessAxiomAudit.lean",
         (

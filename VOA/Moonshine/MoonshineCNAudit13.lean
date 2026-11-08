@@ -1,0 +1,75 @@
+import VOA.Moonshine.MoonshineCNAudit12
+import VOA.Moonshine.MoonshineCNNearNilpotence
+import VOA.Moonshine.MoonshineCNChargeNilpotence
+import VOA.Moonshine.MoonshineCNMatterNilpotence
+import VOA.Moonshine.MoonshineCNNearOppositeModes
+import VOA.Moonshine.MoonshineCNNearAdjointClosure
+import VOA.Moonshine.MoonshineCNMatterOpposite
+import VOA.Moonshine.MoonshineCNGeneratorPrimary
+import VOA.Moonshine.MoonshineCNMatterAdjointReduction
+import VOA.Moonshine.MoonshineCNChargeCutoffWitness
+
+/-! Kernel dependency audit of charge-sensitive nilpotence, opposite modes and the
+conditional adjoint reduction. Opposite iteration remains an explicit hypothesis. -/
+
+#print axioms VOA.NearVOA.virasoroOne_translation_primary
+#print axioms VOA.Moonshine.ConwayNorton.lorentzianNegativeChargeDescendant
+#print axioms VOA.Moonshine.ConwayNorton.lorentzianNegativeChargeDescendant_weight
+#print axioms VOA.Moonshine.ConwayNorton.lorentzianNegativeChargeDescendant_virasoroOne
+#print axioms VOA.Moonshine.ConwayNorton.lorentzianVirasoroOne_weightZero_not_zero
+#print axioms VOA.NearVOA.modeIterate_terms_finite
+#print axioms VOA.NearVOA.oppositeIterate_terms_finite
+#print axioms VOA.NearVOA.oppositeIntertwinedStates
+#print axioms VOA.NearVOA.OppositeIterateIdentity
+#print axioms VOA.NearVOA.mode_mem_oppositeIntertwinedStates
+#print axioms VOA.NearVOA.adjoint_of_oppositeIterate_generators
+#print axioms VOA.Moonshine.ConwayNorton.moonshineMatterOppositeModes_charge_adjoint
+#print axioms VOA.Moonshine.ConwayNorton.moonshineMatterOppositeModes_current_adjoint
+#print axioms VOA.Moonshine.ConwayNorton.moonshineMatterOppositeModes_vnat_adjoint
+#print axioms VOA.Moonshine.ConwayNorton.moonshineMatterOppositeModes_adjoint_of_iterate
+#print axioms VOA.Moonshine.ConwayNorton.monsterLieBilinearForm_invariant_of_oppositeIterate
+#print axioms VOA.Moonshine.ConwayNorton.frameChargeState_virasoroOne
+#print axioms VOA.Moonshine.ConwayNorton.frameCurrentState_mem_weight
+#print axioms VOA.Moonshine.ConwayNorton.frameCurrentState_virasoroOne
+#print axioms VOA.Moonshine.ConwayNorton.moonshineMatterLatticeVirasoroOne_pow
+#print axioms VOA.Moonshine.ConwayNorton.moonshineMatterVnatVirasoroOne_pow
+#print axioms VOA.Moonshine.ConwayNorton.moonshineMatterVnatGenerator_mem_weight
+#print axioms VOA.Moonshine.ConwayNorton.moonshineMatterLatticeGenerator_mem_weight
+#print axioms VOA.Moonshine.ConwayNorton.moonshineMatterOppositeModes
+#print axioms VOA.Moonshine.ConwayNorton.moonshineMatterOppositeModes_charge_cutoff
+#print axioms VOA.Moonshine.ConwayNorton.moonshineMatterOppositeModes_primary
+#print axioms VOA.Moonshine.ConwayNorton.moonshineMatter_generated_by_tensor_generators
+#print axioms VOA.Moonshine.ConwayNorton.monsterLieBilinearForm_invariant_of_oppositeAdjoint
+#print axioms VOA.NearVOA.virasoroMode_mem_weight
+#print axioms VOA.NearVOA.virasoroOne_pow_mem_weight
+#print axioms VOA.NearVOA.virasoroOne_pow_mem_stable
+#print axioms VOA.NearVOA.virasoroOne_pow_zero_of_lower_bound
+#print axioms VOA.NearVOA.virasoroOneNilpotentStates
+#print axioms VOA.NearVOA.virasoroOne_locallyNilpotent_of_weight_sectors
+#print axioms VOA.Moonshine.ConwayNorton.moonshineMatterMomentum_weight_below_halfNorm
+#print axioms VOA.Moonshine.ConwayNorton.moonshineMatterMomentum_weight_span
+#print axioms VOA.Moonshine.ConwayNorton.moonshineMatterVirasoroOne_pow_eq_zero
+#print axioms VOA.Moonshine.ConwayNorton.moonshineMatterVirasoroOne_cutoff
+#print axioms VOA.Moonshine.ConwayNorton.moonshineMatterVirasoroOne_locallyNilpotent
+#print axioms VOA.Moonshine.ConwayNorton.latticeMomentum_weight_intersection
+#print axioms VOA.Moonshine.ConwayNorton.latticeMomentum_weight_below_halfNorm
+#print axioms VOA.Moonshine.ConwayNorton.latticeMomentum_weight_span
+#print axioms VOA.Moonshine.ConwayNorton.frameVirasoroMode_preserves_momentum
+#print axioms VOA.Moonshine.ConwayNorton.frameVirasoroMode_mem_weight
+#print axioms VOA.Moonshine.ConwayNorton.frameVirasoroOne_pow_eq_zero
+#print axioms VOA.Moonshine.ConwayNorton.lorentzianVirasoroOne_locallyNilpotent
+#print axioms VOA.NearVOA.oppositeModeTerm
+#print axioms VOA.NearVOA.oppositeModeTerm_finiteSupport
+#print axioms VOA.NearVOA.oppositeModeAtWeight
+#print axioms VOA.NearVOA.oppositeModeAtWeight_eq_sum
+#print axioms VOA.NearVOA.oppositeModeAtWeight_zero
+#print axioms VOA.NearVOA.oppositeModeAtWeight_add
+#print axioms VOA.NearVOA.oppositeModeAtWeight_smul
+#print axioms VOA.NearVOA.oppositeModeAtWeightLinear
+#print axioms VOA.NearVOA.oppositeModes
+#print axioms VOA.NearVOA.oppositeModes_homogeneous
+#print axioms VOA.NearVOA.oppositeModeAtWeight_primary
+#print axioms VOA.NearVOA.oppositeModes_primary
+#print axioms VOA.NearVOA.oppositeModeAtWeight_eventually_zero
+#print axioms VOA.NearVOA.oppositeModes_eventually_zero
+

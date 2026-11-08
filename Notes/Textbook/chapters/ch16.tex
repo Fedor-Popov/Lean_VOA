@@ -1,0 +1,2459 @@
+\chapter{Monstrous moonshine: McKay--Thompson series, Hauptmoduln and the statement}\label{ch:16}
+
+\providecommand{\chsixteenH}{\mathbb{H}}
+\providecommand{\chsixteenR}{\mathbb{R}}
+\providecommand{\chsixteenM}{\mathbb{M}}
+\providecommand{\chsixteenSL}{\mathrm{SL}_2(\mathbb{Z})}
+\providecommand{\chsixteenSLR}{\mathrm{SL}_2(\mathbb{R})}
+\providecommand{\chsixteenGLR}{\mathrm{GL}_2(\mathbb{R})}
+\providecommand{\chsixteenP}{\mathbb{P}^1}
+\providecommand{\chsixteenX}{X(\Gamma)}
+\providecommand{\chsixteenT}{T_g}
+\providecommand{\chsixteenmat}[4]{\left(\begin{smallmatrix}#1&#2\\#3&#4\end{smallmatrix}\right)}
+\providecommand{\chsixteenlean}[1]{\texttt{\directlua{ local s = "\luaescapestring{\detokenize{#1}}" for piece, sep in string.gmatch(s, "([^_.]*)([_.]?)") do if not (piece == "" and sep == "") then tex.sprint(-2, piece .. sep) if not (sep == "") then tex.sprint(string.char(92) .. "allowbreak{}") end end end}}}
+\chaptermark{Monstrous moonshine: the statement}
+\begingroup\setlength{\emergencystretch}{3em}\sloppy
+
+This chapter documents the release of the library named in the front matter; every Lean quotation below is checked by
+\texttt{scripts/textbook/sync.py} to occur verbatim (up to whitespace and comments) in the source files of that
+release.  It
+opens the part of the book devoted to \emph{monstrous moonshine}: the Conway--Norton conjecture, proved by
+Borcherds in 1992, and the action of the Monster on the moonshine module $\Vnat$.  Chapters~\ref{ch:02}
+to~\ref{ch:14} constructed $\Vnat$ as a vertex operator algebra.  The present chapter states, in Lean and on paper,
+what it means for $\Vnat$ to exhibit \emph{moonshine}.  Chapters~\ref{ch:17}--\ref{ch:20} prove it for every
+automorphism of $\Vnat$; Chapters~\ref{ch:21}--\ref{ch:22} identify the automorphism group with the Monster.
+
+\paragraph{The result in one sentence.}  The library proves, with no hypotheses and only Lean's three standard
+axioms (\lean{propext}, \lean{Classical.choice}, \lean{Quot.sound}; Chapter~\ref{ch:01}, \S\ref{ch01:sec:trust}), the theorem
+\begin{equation*}
+  \lean{VOA.Moonshine.ConwayNorton.conwayNorton : ConwayNortonConjecture},
+\end{equation*}
+which says: \emph{for every automorphism $g$ of the moonshine vertex operator algebra $\Vnat$, the McKay--Thompson
+series $T_g(\tau)=q^{-1}+\sum_{n\ge1}\tr(g\,|\,\Vnat_{n+1})\,q^n$ is the normalised Hauptmodul of a genus-zero group
+$\Gamma_g\le\chsixteenSLR$ that contains $\Gamma_0(N)$ for some $N\ge1$ and is commensurable with $\chsixteenSL$.}
+That the automorphism group of $\Vnat$ is the Monster is a separate matter, treated in Chapters~\ref{ch:21}
+and~\ref{ch:22}: there the library proves, again with no hypotheses, that $\Aut(\Vnat)$ is isomorphic to a subgroup
+of $\mathrm{AutO}$, an independently constructed Lean model of the Monster taken from the AxiomMath library (a Lean
+formalisation of parts of the classification of finite simple groups, CFSG), which contains a certain generated
+subgroup $\mathrm{Gmat}$ (all of this is explained in \S\ref{ch16:sec:gmat}), and,
+\emph{conditionally on one named hypothesis} (\lean{GmatEqAutO}: $\mathrm{Gmat}=\mathrm{AutO}$, a theorem of the
+AxiomMath CFSG library that is not available on this library's toolchain), that $\Aut(\Vnat)\cong\mathrm{AutO}$ and
+that monstrous moonshine holds for every element of $\mathrm{AutO}$.
+
+\paragraph{What this chapter does.}  Its job is to make the statement checkable.  (The ``Fidelity Protocol'' mentioned below is the book's
+fixed format for presenting a definition or theorem: statement, verbatim Lean, dictionary, proof on paper, physical
+meaning, machine status; Chapter~\ref{ch:01}, \S\ref{ch01:sec:boxes}.)  It
+\begin{enumerate}[label=(\arabic*)]
+\item tells the story of moonshine and lays out the logical dependencies of Chapters~\ref{ch:16}--\ref{ch:22}
+  (\S\ref{ch16:sec:history}--\S\ref{ch16:sec:roadmap});
+\item defines every object in the statement: the named vertex operator algebra \lean{VnatVOA}, its automorphism
+  group \lean{AutVnat}, graded traces and the McKay--Thompson series, the upper half-plane and its cusps, the
+  normalised Hauptmodul of a genus-zero group, moonshine groups, and the conjecture itself, each under the Fidelity
+  Protocol (\S\ref{ch16:sec:objects}--\S\ref{ch16:sec:statement});
+\item presents the auxiliary notions on which the proof runs: complete replicability, replicable families and
+  rationality of traces (\S\ref{ch16:sec:replication});
+\item proves, on paper and in Lean, the step from $\Gamma_1(N)$ to $\Gamma_0(N)$ that converts the output of the
+  genus-zero argument of Chapter~\ref{ch:19} into the Conway--Norton statement (\S\ref{ch16:sec:gammazero});
+\item records the final theorem and the audit modules that check it (\S\ref{ch16:sec:final}), the recorded traps
+  (\S\ref{ch16:sec:traps}), the referee's checklist and the references.
+\end{enumerate}
+The most important section for a referee is \S\ref{ch16:sec:statement}, the clause-by-clause comparison of the Lean
+proposition \lean{ConwayNortonConjecture} with the conjecture of Conway and Norton.  As everywhere in this book, our
+concern is the \emph{meaning} of the Lean statements; proofs are explained mathematically, and we do not describe how
+the Lean proof scripts are organised.
+
+%======================================================================
+\section{Monstrous moonshine: the story}\label{ch16:sec:history}
+%======================================================================
+
+\subsection{Two numbers}
+
+In 1978 John McKay noticed that
+\begin{equation}\label{ch16:eq:mckay}
+  196884 \;=\; 1 + 196883 .
+\end{equation}
+The left-hand side is the first nontrivial coefficient of the normalised elliptic modular function
+\begin{equation}\label{ch16:eq:J}
+\begin{aligned}
+  J(\tau) \;=\; j(\tau)-744 \;&=\; q^{-1} + 196884\,q + 21493760\,q^2 + 864299970\,q^3\\
+  &\qquad + 20245856256\,q^4+\cdots,\qquad q=e^{2\pi i\tau},
+\end{aligned}
+\end{equation}
+the function of which every \emph{modular function} for $\chsixteenSL$ is a rational function; here a modular function is
+a $\chsixteenSL$-invariant meromorphic function on the upper half-plane $\chsixteenH=\{\tau\in\C:\operatorname{Im}\tau>0\}$
+that is also meromorphic at the cusp, i.e.\ has a $q$-expansion with only finitely many negative powers of $q$
+(Chapter~\ref{ch:05}, Theorem~\ref{ch05:thm:haupt}; without the cusp condition the claim is false, e.g.\ for
+$e^{J}$).  The
+right-hand side involves $196883$, the dimension of the smallest nontrivial irreducible complex representation of
+the \emph{Monster} $\chsixteenM$, the largest of the twenty-six sporadic finite simple groups, whose existence had been
+predicted by Fischer and Griess in 1973 and which Griess constructed in 1980--82 as the automorphism group of a
+commutative non-associative algebra of dimension $196884$, the \emph{Griess algebra}.  Its order is
+\begin{equation*}
+  |\chsixteenM| = 2^{46}\cdot3^{20}\cdot5^{9}\cdot7^{6}\cdot11^{2}\cdot13^{3}\cdot17\cdot19\cdot23\cdot29\cdot31\cdot41
+  \cdot47\cdot59\cdot71\approx 8.08\times10^{53}.
+\end{equation*}
+John Thompson observed that the coincidence continues: if $1$, $196883$, $21296876$, $842609326,\dots$ are the
+dimensions of the irreducible representations of $\chsixteenM$ in increasing order, then
+\begin{equation*}
+  21493760 = 1+196883+21296876,\qquad 864299970 = 2\cdot1+2\cdot196883+21296876+842609326,
+\end{equation*}
+and so on.  Thompson proposed that there should be a natural \emph{graded} representation
+$V=\bigoplus_{n\ge0}V_n$ of $\chsixteenM$ whose graded dimension $\sum_n(\dim V_n)\,q^{n-1}$ is $J$, and that the
+\emph{graded traces}
+\begin{equation}\label{ch16:eq:Tg-intro}
+  T_g(\tau) \;=\; \sum_{n\ge0}\tr(g\,|\,V_n)\,q^{n-1}, \qquad g\in\chsixteenM,
+\end{equation}
+now called the \emph{McKay--Thompson series}, should also be interesting functions.
+
+\subsection{The conjecture of Conway and Norton}
+
+Conway and Norton (1979) computed the first coefficients of $T_g$ for all $194$ conjugacy classes of $\chsixteenM$
+from the (then conjectural) character table and the (then conjectural) decomposition of the first few $V_n$, and
+found that every one of them appears to be the \emph{normalised Hauptmodul} of a \emph{genus-zero} subgroup of
+$\chsixteenSLR$.  The terms will be defined carefully in \S\ref{ch16:sec:haupt}, and the congruence subgroups
+$\Gamma_0(N)=\{\chsixteenmat abcd\in\chsixteenSL: N\mid c\}$ and $\Gamma_1(N)\subseteq\Gamma_0(N)$ (also $a\equiv d\equiv1$
+mod $N$) in \S\ref{ch16:sec:analytic}.  Two subgroups $H,K$ of a group are \emph{commensurable} if $H\cap K$ has finite
+index in both $H$ and $K$.  For the moment: a discrete group
+$\Gamma\le\chsixteenSLR$ commensurable with $\chsixteenSL$ acts on $\chsixteenH$, the quotient $\Gamma\backslash
+\chsixteenH$ can be compactified by adding finitely many \emph{cusps} to a compact Riemann surface
+$\chsixteenX$, and $\Gamma$ has \emph{genus zero} if $\chsixteenX$ is a sphere.  In that case there is an isomorphism
+$\chsixteenX\to\chsixteenP(\C)$ sending the cusp $\infty$ to $\infty$, and it can be normalised uniquely so that its
+expansion at $\infty$ is $q^{-1}+0+O(q)$; that function is the \emph{normalised Hauptmodul} (German:
+``principal modulus'').  For example $J$ is the normalised Hauptmodul of $\chsixteenSL$, and
+\begin{equation}\label{ch16:eq:T2B}
+  T_{2B}(\tau)=\Bigl(\frac{\eta(\tau)}{\eta(2\tau)}\Bigr)^{24}+24
+  = q^{-1}+276\,q-2048\,q^2+11202\,q^3-49152\,q^4+\cdots
+\end{equation}
+is the normalised Hauptmodul of $\Gamma_0(2)$, while
+\begin{equation}\label{ch16:eq:T2A}
+  T_{2A}(\tau)=\Bigl(\frac{\eta(\tau)}{\eta(2\tau)}\Bigr)^{24}+24+2^{12}\Bigl(\frac{\eta(2\tau)}{\eta(\tau)}\Bigr)^{24}
+  = q^{-1}+4372\,q+96256\,q^2+1240002\,q^3+\cdots
+\end{equation}
+is the normalised Hauptmodul of the larger group $\Gamma_0(2)+$ generated by $\Gamma_0(2)$ and the Fricke
+involution $\tau\mapsto-1/(2\tau)$.  (Here $\eta(\tau)=q^{1/24}\prod_{n\ge1}(1-q^n)$ is Dedekind's eta function, and
+the coefficients were checked numerically for this chapter by expanding the products; $276=1+275$ and
+$4372=1+4371$, where $275$ and $4371$ are the values of the $196883$-dimensional character on the classes $2B$
+and~$2A$.)  The \emph{Conway--Norton conjecture}, in the form proved by Borcherds, reads:
+
+\begin{quote}\itshape
+There is a graded representation $V=\bigoplus_{n\ge0}V_n$ of the Monster with graded dimension $J$ such that, for
+every $g\in\chsixteenM$, the McKay--Thompson series $T_g$ is the normalised Hauptmodul of a genus-zero group
+$\Gamma_g\le\chsixteenSLR$ which contains $\Gamma_0(N)$ for some $N$ and is commensurable with $\chsixteenSL$.
+\end{quote}
+Conway and Norton said much more: they proposed for every class an explicit group $\Gamma_g$ and an explicit
+Hauptmodul.  Their groups have the form ``$\Gamma_0(n|h)+e,f,\dots$'', where $n$ is the order of $g$, $h\mid\gcd(24,n)$,
+\begin{equation*}
+  \Gamma_0(n|h)=\Bigl\{\chsixteenmat{a}{b/h}{cn}{d}: a,b,c,d\in\Z,\ ad-bcn/h=1\Bigr\}
+\end{equation*}
+(conjugate to $\Gamma_0(n/h)$ by $\tau\mapsto h\tau$, and containing $\Gamma_0(nh)$), and ``$+e,f,\dots$'' means that
+certain Atkin--Lehner involutions $W_e,W_f,\dots$ (for exact divisors $e,f,\dots$ of $n/h$; the Fricke involution is
+$W_{n/h}$) are adjoined.  These groups lie between $\Gamma_0(N)$, $N=nh$, and its normaliser in $\chsixteenSLR$.  This
+notation is for orientation only; nothing in the library uses it. there are $171$ distinct functions among the $194$
+classes.  The Lean statement of this library is the \emph{qualitative} form displayed above; the relation between
+the two is discussed in detail in \S\ref{ch16:sec:fidelity}.  Two striking consequences: the \emph{supersingular
+primes} $2,3,5,7,11,13,17,19,23,29,31,41,47,59,71$ (the primes $p$ for which $\Gamma_0(p)+$ has genus zero, as Ogg
+had observed in 1974) are exactly the primes dividing $|\chsixteenM|$; and all the coefficients of all $T_g$ are
+integers.
+
+\subsection{The moonshine module and Borcherds' proof}
+
+Frenkel, Lepowsky and Meurman (1984, 1988) constructed Thompson's representation $V$: the \emph{moonshine module}
+$\Vnat$, a vertex operator algebra of central charge $24$ obtained from the Leech lattice by a $\Z/2$-orbifold, with
+$\Vnat_1=0$, $\dim\Vnat_2=196884$ and graded dimension $J$, and they showed that its automorphism group is the
+Monster.  This library constructs $\Vnat$ in Chapters~\ref{ch:02}--\ref{ch:14}; the headline is the theorem
+\lean{VOA.Moonshine.moonshine} of Chapter~\ref{ch:14}.
+
+Borcherds (1992) proved the Conway--Norton conjecture for FLM's $\Vnat$.  His argument has five steps, and the
+library follows it closely for the first four:
+\begin{enumerate}[label=(B\arabic*)]
+\item Tensor $\Vnat$ with the vertex algebra $V_{I\!I_{1,1}}$ of the even unimodular Lorentzian lattice of rank
+  two; the result has central charge $26$.
+\item The \emph{no-ghost theorem} of string theory (Goddard--Thorn) identifies the space of physical states of
+  momentum $(m,n)\in I\!I_{1,1}$, $(m,n)\ne0$, with $\Vnat_{mn+1}$, $\chsixteenM$-equivariantly.  The physical states
+  modulo null states form a Lie algebra, the \emph{Monster Lie algebra} $\mathfrak m$.
+\item $\mathfrak m$ is a Borcherds--Kac--Moody (generalised Kac--Moody) algebra, and its Weyl--Kac--Borcherds
+  denominator identity is the product formula
+  \begin{equation}\label{ch16:eq:denominator}
+    p^{-1}\prod_{m>0,\;n\in\Z}(1-p^mq^n)^{c(mn)} = J(p)-J(q),\qquad J(q)=\sum_n c(n)q^n .
+  \end{equation}
+\item Taking $g$-traces in the homology of a free Lie subalgebra of $\mathfrak m$ gives \emph{twisted denominator
+  identities}, which say that the $T_g$ are \emph{completely replicable} (\S\ref{ch16:sec:replication}).
+\item A completely replicable function whose first few coefficients agree with those of the conjectured Hauptmodul
+  is that Hauptmodul; Borcherds verified the agreement class by class.
+\end{enumerate}
+Step (B5) is a finite case check that needs the character table of $\chsixteenM$.  Cummins and Gannon (1997) showed
+how to replace it by a uniform argument: \emph{completely replicable functions with suitable growth are Hauptmoduln of
+genus-zero groups}.  The library uses a case-free route of this kind (Chapter~\ref{ch:19}), re-proved and corrected
+where needed, so that no character table, no list of $171$ groups and no case check enter the formal proof.
+
+\begin{physics}
+\textbf{Moonshine as a statement about a conformal field theory.}  $\Vnat$ is the chiral algebra of a holomorphic
+two-dimensional conformal field theory with central charge $c=24$; physically, $24$ free chiral bosons compactified
+on the Leech torus $\chsixteenR^{24}/\Leech$ and orbifolded by $x\mapsto-x$.  The Monster is its \emph{global symmetry group}:
+it commutes with the stress tensor and preserves all operator product expansions.  The graded dimension
+$\sum_n\dim\Vnat_n\,q^{n-1}=\tr_{\Vnat}q^{L_0-c/24}$ is the torus partition function $Z(\tau)$ (the shift by
+$c/24=1$ is the Casimir energy), and its $\chsixteenSL$-invariance is the modular invariance of the theory on a torus
+of modulus $\tau$.  The McKay--Thompson series is the \emph{twisted partition function}
+\begin{equation*}
+  T_g(\tau)=Z\bigl[\,{}^{\;1}_{\;g}\,\bigr](\tau)=\tr_{\Vnat}\bigl(g\,q^{L_0-1}\bigr),
+\end{equation*}
+the path integral on the torus with the symmetry defect $g$ inserted along the time circle.  Modular
+transformations move the defect: $\tau\mapsto-1/\tau$ exchanges ``$g$ along time'' with ``$g$ along space'', which is
+the partition function of the \emph{$g$-twisted sector}.  This is why one expects each $T_g$ to be invariant under a
+subgroup $\Gamma_g$ of finite index (the subgroup that brings the defect back to itself), as in the orbifold
+constructions of Dixon--Ginsparg--Harvey (1988) and of Dong--Li--Mason.  The \emph{genus-zero} property is much
+stronger and has no generally accepted physical derivation; the most suggestive heuristics connect it to the
+uniqueness of $\Vnat$ (Tuite 1995) and to three-dimensional gravity (Witten 2007).  We label these as heuristics: none
+of them is used by the library.
+
+\textbf{Borcherds' proof as string theory.}  Steps (B1)--(B3) are the quantisation of the bosonic string in $26$
+dimensions with $24$ of them compactified on the moonshine orbifold and two forming a Lorentzian torus $I\!I_{1,1}$.
+The physical states of the string at momentum $r$ (the BRST cohomology at ghost number one, or the old covariant
+quantisation: Virasoro-primary weight-one states modulo null states) form the Lie algebra $\mathfrak m$; the no-ghost
+theorem says they are counted by the transverse ($24$-dimensional) excitations.  The denominator identity
+\eqref{ch16:eq:denominator} is then a statement about the spectrum of this string theory, and the twisted
+denominator identities are its versions with a symmetry twist.
+\end{physics}
+
+%======================================================================
+\section{The logical structure of the moonshine part}\label{ch16:sec:roadmap}
+%======================================================================
+
+\subsection{The dependency graph}
+
+The part ``Monstrous moonshine'' (Chapters~\ref{ch:16}--\ref{ch:22}) documents the files of the library whose names
+begin with \texttt{MoonshineCN} (written by Fedor Popov's side of the project) and \texttt{MoonshineLR} (Leonardo
+Rastelli's side), the files \texttt{Aut*.lean} and the folder \texttt{MonsterGriess/}.  The chapters are ordered for
+reading, \emph{not} in logical order: the dependencies form a graph, not a chain.  In particular, the theorems of
+Chapter~\ref{ch:19} that produce complete replicability are \emph{conditional} on two inputs that are proved in
+Chapter~\ref{ch:20}; and the theorem for $\Aut(\Vnat)$ needs only Chapters~\ref{ch:17}--\ref{ch:20} (and this chapter),
+while Chapters~\ref{ch:21}--\ref{ch:22} are needed only to identify $\Aut(\Vnat)$ with the Monster.
+
+The nodes are the following; ``uses'' lists the nodes whose results are used.
+\begin{enumerate}[label=(\Alph*)]
+\item\label{ch16:node:A} \textbf{$\Vnat$} (Chapters~\ref{ch:02}--\ref{ch:14}): the vertex operator algebra
+  \lean{VnatVOA}, $c=24$, $\Vnat_1=0$, graded dimension $J$, simple.  \lean{AutVnat} and the McKay--Thompson series are
+  defined in this chapter.
+\item\label{ch16:node:B} \textbf{$V_{I\!I_{1,1}}$ and $\Vnat\otimes V_{I\!I_{1,1}}$} (Chapter~\ref{ch:17}): the vertex
+  algebra of the hyperbolic plane (not a vertex operator algebra: its grading is not bounded below) and the tensor
+  theory of central charge $26$ with its invariant form and Virasoro action.  Uses (A).
+\item\label{ch16:node:C} \textbf{No-ghost theorem and $\mathfrak m$} (Chapter~\ref{ch:18}): physical states modulo null
+  states, the root spaces $\mathfrak m_{(m,n)}\cong\Vnat_{mn+1}$, the bracket and invariant form, and $\mathfrak m$ as
+  Borcherds data \emph{given} generation by its simple root spaces.  Uses (B).
+\item\label{ch16:node:D} \textbf{Product identity} (Chapter~\ref{ch:19}): the denominator formula
+  \eqref{ch16:eq:denominator}, proved analytically.  Uses (A).
+\item\label{ch16:node:E} \textbf{Simple-root generation of $\mathfrak m$} (Chapter~\ref{ch:20}): a dimension sandwich
+  between $\mathfrak m$ and the algebra generated by its simple root spaces.  Uses (C), (D).
+\item\label{ch16:node:F} \textbf{Finite order} (Chapter~\ref{ch:20}): every automorphism of $\Vnat$ has finite order
+  (rigid Ising vectors); also $\Aut(\Vnat)$ is finite.  Uses (A).
+\item\label{ch16:node:G} \textbf{Twisted denominator identities and complete replicability} (Chapter~\ref{ch:19}):
+  \lean{CompletelyReplicable}, as a theorem with hypotheses ``generation'' and ``finite order''.  Uses (C), and the
+  hypotheses are discharged by (E), (F).
+\item\label{ch16:node:H} \textbf{Genus zero, $\Gamma_1$ form} (Chapter~\ref{ch:19}): the case-free argument, from complete
+  replicability to \lean{ConwayNortonGammaOne}.  Uses (F), (G) (through the abstract interface of
+  \S\ref{ch16:sec:replication}).
+\item\label{ch16:node:I} \textbf{From $\Gamma_1$ to $\Gamma_0$} (this chapter, \S\ref{ch16:sec:gammazero}), and the
+  \textbf{assembly} \lean{conwayNorton} (Chapter~\ref{ch:20}; recorded in \S\ref{ch16:sec:final}).  Uses (F), (G), (H).
+\item\label{ch16:node:J} \textbf{The Griess algebra and AxiomMath's Monster} (Chapter~\ref{ch:21}): an explicit
+  isomorphism $\Vnat_2\cong\C\otimes_\Q\mathrm{SpaceB}$ of algebras with forms, where $\mathrm{SpaceB}$ is AxiomMath's
+  rational Griess algebra and $\mathrm{AutO}$ its automorphism group.  Uses (A).
+\item\label{ch16:node:K} \textbf{The Monster acts on $\Vnat$} (Chapter~\ref{ch:22}): every element of
+  $\mathrm{Gmat}=\langle\mathrm{Gvis},\tau_B\rangle\le\mathrm{AutO}$ lifts to $\Vnat$; $\Aut(\Vnat)$ is isomorphic to the
+  subgroup of liftable elements (via a commutant lemma); given \lean{GmatEqAutO}, $\Aut(\Vnat)\cong\mathrm{AutO}$ and
+  monstrous moonshine holds for the Monster.  Uses (J), (I), and for rationality of traces (H).
+\end{enumerate}
+As a list of edges (``$X\Rightarrow Y$'': $Y$ uses $X$):
+\begin{plaincode}
+(A) ⇒ (B) ⇒ (C)                    V♮, the c = 26 theory, the Monster Lie algebra 𝔪
+(A) ⇒ (D)                          product identity for J(p) − J(q)
+(C), (D) ⇒ (E)                     𝔪 is generated by its simple root spaces
+(A) ⇒ (F)                          every automorphism of V♮ has finite order
+(C), (E), (F) ⇒ (G)                complete replicability of every T_g
+(F), (G) ⇒ (H)                     genus zero, Γ₁ form
+(F), (G), (H) ⇒ (I)                Γ₁ ⇒ Γ₀ and conwayNorton        [Chapters 16–20 only]
+(A) ⇒ (J)                          V♮₂ ≅ ℂ ⊗ SpaceB
+(H), (I), (J) ⇒ (K)                the Monster; GmatEqAutO          [Chapters 21–22]
+\end{plaincode}
+The Lean names of the terms used here (``rigid Ising vectors'', ``Borcherds data'', ``simple root spaces'', ``commutant
+lemma'') are defined in the chapters indicated.
+
+\subsection{The final theorems of the part}
+
+The following table lists the final theorems informally; the precise Lean statements, with their fidelity checks,
+are in the chapters indicated.  ``No hypotheses'' means: the Lean theorem has no explicit hypotheses, and its
+\texttt{\#print axioms} output is \lean{[propext, Classical.choice, Quot.sound]}.
+\begin{center}\small
+\begin{longtable}{p{0.33\textwidth}p{0.38\textwidth}p{0.2\textwidth}}
+\toprule
+Lean name & informal content & hypotheses; where\\
+\midrule
+\endhead
+\chsixteenlean{ConwayNorton.conwayNorton} & for every $g\in\Aut(\Vnat)$, $T_g$ is the normalised Hauptmodul of a group
+  $\Gamma_g\supseteq\Gamma_0(N)$ commensurable with $\chsixteenSL$ (genus zero follows on paper,
+  Prop.~\ref{ch16:prop:haupt}) & none; statement here, proof Ch.~\ref{ch:20}\\
+\chsixteenlean{ConwayNorton.conwayNortonGammaOne_holds} & the same with $\Gamma_1(N)$ in place of $\Gamma_0(N)$, for every $g$
+  of finite order & none; Ch.~\ref{ch:19}, \ref{ch:22}\\
+\chsixteenlean{ConwayNorton.M8.autVnat_isOfFinOrder}, \chsixteenlean{ConwayNorton.M8.finite_autVnat} & every automorphism of $\Vnat$ has
+  finite order; $\Aut(\Vnat)$ is finite & none; Ch.~\ref{ch:20}\\
+\chsixteenlean{ConwayNorton.rationalTraces} & every coefficient of every $T_g$ is rational & none; Ch.~\ref{ch:22}\\
+\chsixteenlean{ConwayNorton.conwayNorton_gmat} & every $g\in\mathrm{Gmat}$ is the restriction to $\Vnat_2\cong\C\otimes
+  \mathrm{SpaceB}$ of an automorphism $h$ of $\Vnat$, and $T_h$ is as in \chsixteenlean{conwayNorton} & none; Ch.~\ref{ch:22}\\
+\chsixteenlean{ConwayNorton.nonempty_autVnat_mulEquiv_liftable} & $\Aut(\Vnat)$ is isomorphic to the subgroup of $\mathrm{AutO}$
+  of elements that act on $\Vnat$ & none; Ch.~\ref{ch:22}\\
+\chsixteenlean{ConwayNorton.monsterEquivAutVnat} & a group isomorphism $\mathrm{AutO}\cong\Aut(\Vnat)$ compatible with the
+  Griess algebras & \textbf{\chsixteenlean{GmatEqAutO}}; Ch.~\ref{ch:22}\\
+\chsixteenlean{ConwayNorton.monstrousMoonshine} & monstrous moonshine for AxiomMath's Monster: an isomorphism
+  $\varphi:\mathrm{AutO}\to\Aut(\Vnat)$ as above such that $T_{\varphi(g)}$ is a normalised Hauptmodul as in
+  \chsixteenlean{conwayNorton}, for every $g$ & \textbf{\chsixteenlean{GmatEqAutO}}; Ch.~\ref{ch:22}\\
+\bottomrule
+\end{longtable}
+\end{center}
+All names are in the namespace \lean{VOA.Moonshine}.
+
+\subsection{The one named hypothesis, and why it is a hypothesis}\label{ch16:sec:gmat}
+
+The Monster enters the library through a port of definitions from the AxiomMath CFSG library (a Lean formalisation
+of parts of the classification of finite simple groups, on Lean 4.35): the rational Griess algebra
+$\mathrm{SpaceB}$ (a $\Q$-vector space of dimension $196884$ with a commutative product and a form), its
+automorphism group $\mathrm{AutO}\le\mathrm{GL}_\Q(\mathrm{SpaceB})$, the ``visible'' subgroup $\mathrm{Gvis}$ (of
+shape $2^{1+24}.\mathrm{Co}_1$), the extra element $\tau_B$, and the subgroup $\mathrm{Gmat}$ that they generate.  The
+definitions are copied verbatim from AxiomMath's commit \texttt{69cb972f}; Chapter~\ref{ch:21} presents them.  The
+proposition
+\begin{leancode}
+def GmatEqAutO : Prop :=
+  Generated.Gmat = AutO
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineLRMonsterHeadline.lean}, \lean{VOA.Moonshine.ConwayNorton.GmatEqAutO}) says that the
+generated group is the whole automorphism group.  It is a theorem of the AxiomMath library,
+\lean{CFSG.Blueprint.NativeSporadic.MonsterModel.gmat_eq_griess}, at that commit.  Its proof passes through the
+Stroth--Leon--Sims recognition of the Baby Monster; the project measured its import closure at about $16{,}000$ files
+and $208$\,MB on a newer toolchain, so it cannot be ported to this
+library's Lean~4.30 / Mathlib~v4.30 at reasonable cost.  It therefore enters as an \emph{explicit hypothesis}, never
+as an axiom, of exactly two final theorems, \lean{monsterEquivAutVnat} and \lean{monstrousMoonshine}.
+
+Three points must be kept in mind.
+\begin{enumerate}[label=(\alph*)]
+\item A theorem with the hypothesis \lean{(hM : GmatEqAutO)} is \textbf{conditional}, however clean its
+  \texttt{\#print axioms} output; \texttt{\#print axioms} does not report explicit hypotheses
+  (Chapter~\ref{ch:01}, \S\ref{ch01:sec:uncond}).  This book never calls such a theorem unconditional.
+\item The project checked that the ported definitions agree with AxiomMath's up to definitional equality
+  (\texttt{Notes/monster\_aut/CFSG\_PORT\_FIDELITY.md}; one definition, \lean{SpinLattice.phi0}, is an unbundled
+  form of the original), so that \lean{GmatEqAutO} is the statement AxiomMath proves.  The project did \emph{not}
+  check the axiom footprint of AxiomMath's proof inside AxiomMath's library.
+\item That $\mathrm{AutO}$ is \emph{the Monster} (finite, simple, of the order displayed above) is likewise a
+  theorem of AxiomMath's library; only the definitions are ported (the docstring of
+  \leanpath{VOA/Moonshine/MonsterGriess/AutO.lean} says so).  Inside LeanVOA, ``the Monster'' means the Lean group
+  \lean{AutO}.
+\end{enumerate}
+The Conway--Norton theorem \lean{conwayNorton} itself does \emph{not} depend on \lean{GmatEqAutO}: it is a statement
+about $\Aut(\Vnat)$, whatever that group is.  How large $\Aut(\Vnat)$ is, and why the theorem is therefore not
+vacuous, is discussed in \S\ref{ch16:sec:fidelity}.
+
+\begin{physics}
+Physically, the distinction is between ``the moonshine CFT has the McKay--Thompson twisted partition functions of
+every one of its global symmetries as genus-zero Hauptmoduln'' (proved without hypotheses) and ``its global symmetry
+group is precisely the Monster as constructed by AxiomMath'' (proved given one group-theoretic identification).  The
+first is a statement about the theory; the second identifies its symmetry group with an independently constructed
+finite group.
+\end{physics}
+
+\subsection{What is not formalised}
+
+For the record, the following parts of the classical story are \emph{not} statements of the library.
+\begin{itemize}
+\item The identification of $\Gamma_g$ with the group of the Conway--Norton table, and of $N$ with $o(g)\,h$; the Lean
+  statement is qualitative (\S\ref{ch16:sec:fidelity}).
+\item Any statement about conjugacy classes or the character table of the Monster, the $194$ classes, the $171$
+  functions.
+\item Integrality of the coefficients of $T_g$ (rationality is proved: \lean{rationalTraces}, Chapter~\ref{ch:22}).
+\item The uniqueness of $\Vnat$ among holomorphic $c=24$ vertex operator algebras with $V_1=0$ (an open problem in
+  general), and the identification of the library's $\Vnat$ with FLM's beyond the paper argument recorded in
+  Chapter~\ref{ch:14}.
+\item Generalised moonshine (Norton), modularity of twisted modules, and the physical heuristics above.
+\end{itemize}
+
+
+%======================================================================
+\section{The objects of the statement}\label{ch16:sec:objects}
+%======================================================================
+
+The Lean statement \lean{ConwayNortonConjecture} mentions, after all definitions are unfolded: the vertex operator
+algebra \lean{VnatVOA}, its automorphisms, the trace of a linear map on a finite-dimensional space, power series, the
+upper half-plane with its $q$-parameter, the action of $\chsixteenGLR$ on $\chsixteenH$ and on $\chsixteenP(\chsixteenR)$,
+cusps, the congruence subgroups $\Gamma_0(N)$, $\Gamma_1(N)$, commensurability, and holomorphy.  This section
+introduces each of them, with its Lean form.
+
+\subsection{The moonshine module as a named vertex operator algebra}
+
+Chapter~\ref{ch:14} ended with the theorem \lean{VOA.Moonshine.moonshine}, an existential statement: \emph{there is} a
+vertex operator algebra structure on the carrier \lean{Vnat} with the listed properties, and its vertex map, vacuum and
+conformal vector are pinned to explicit definitions.  To speak about automorphisms one needs the structure itself as a
+named object.
+
+\begin{definition}[The moonshine module and its automorphism group]\label{ch16:def:vnatvoa}
+$\Vnat$ denotes the vertex operator algebra on the space $V_\Leech^+\oplus(V_\Leech^T)^+$ of
+Chapters~\ref{ch:10}--\ref{ch:14}, with the block vertex map, vacuum and conformal vector constructed there.  An
+\emph{automorphism} of $\Vnat$ is a linear bijection $g:\Vnat\to\Vnat$ with
+\begin{equation*}
+  g\bigl(u_{(n)}v\bigr)=(gu)_{(n)}(gv)\quad(u,v\in\Vnat,\ n\in\Z),\qquad g\mathbf 1=\mathbf 1,\qquad g\omega=\omega .
+\end{equation*}
+They form a group $\Aut(\Vnat)$ under composition.
+\end{definition}
+\begin{leancode}
+noncomputable def VnatVOA : VertexOperatorAlgebra Vnat := vnatVOA vnat_twistedLocality
+
+theorem VnatVOA_grading : VnatVOA.grading = gradingNat := rfl
+
+theorem VnatVOA_grading_one : VnatVOA.grading 1 = ⊥ := gradingNat_one
+
+theorem VnatVOA_finrank_two : Module.finrank ℂ (VnatVOA.grading 2) = 196884 :=
+  finrank_gradingNat_two
+
+abbrev AutVnat : Type := Aut VnatVOA
+\end{leancode}
+(\leanpath{VOA/Moonshine/AutVnat.lean}, namespace \lean{VOA.Moonshine.AutMonster}.)  The automorphism structure is
+\begin{leancode}
+structure Aut (W : VertexOperatorAlgebra 𝒱) where
+  /-- The underlying `ℂ`-linear equivalence `α : 𝒱 ≃ₗ 𝒱`. -/
+  toLinearEquiv : 𝒱 ≃ₗ[ℂ] 𝒱
+  /-- `α` intertwines every product: `α(u₍ₙ₎v) = (αu)₍ₙ₎(αv)`. -/
+  map_smul' : ∀ (u : 𝒱) (n : ℤ) (v : 𝒱),
+    toLinearEquiv (W.smul u n v) = W.smul (toLinearEquiv u) n (toLinearEquiv v)
+  /-- `α` fixes the vacuum: `α(𝟙) = 𝟙`. -/
+  map_vacuum : toLinearEquiv W.vacuum = W.vacuum
+  /-- `α` fixes the conformal vector: `α(ω) = ω`. -/
+  map_omega : toLinearEquiv W.conformalVector = W.conformalVector
+\end{leancode}
+(\leanpath{VOA/Core/Automorphism.lean}, \lean{VOA.Aut}; it was presented in Chapter~\ref{ch:L04},
+Definition~\ref{l04:def:aut}).
+
+\begin{dictionary}
+\textbf{\lean{VnatVOA}.}  \lean{vnatVOA htt} is the vertex operator algebra of Chapter~\ref{ch:10} built from the
+block vertex map, whose only hypothesis is the twisted$\times$twisted locality \lean{htt}; Chapter~\ref{ch:14}
+proved that locality, and \lean{vnat_twistedLocality} extracts it from the existential theorem
+\lean{moonshine}.  So \lean{VnatVOA} is \emph{the} object of \lean{moonshine}, not a new construction: its vertex map,
+vacuum and conformal vector are \lean{Ynat wbarL}, \lean{vacNat}, \lean{omegaNat} (the theorems
+\lean{VnatVOA_Y}, \lean{VnatVOA_vacuum}, \lean{VnatVOA_conformalVector} in the same file state this by \lean{rfl}).
+\lean{VnatVOA.grading n} is the weight-$n$ subspace $\Vnat_n$ (a \lean{Submodule ℂ Vnat}), equal by definition to
+\lean{gradingNat n}, the grading of Chapter~\ref{ch:10}; \lean{VnatVOA_grading_one} says $\Vnat_1=0$ (\lean{⊥} is
+the zero subspace) and \lean{VnatVOA_finrank_two} says $\dim\Vnat_2=196884$.
+
+\textbf{\lean{Aut}.}  A term of \lean{Aut W} bundles a $\C$-linear equivalence \lean{toLinearEquiv} with three
+proofs.  \lean{W.smul u n v} is the $n$-th product $u_{(n)}v$ (Chapter~\ref{ch:L03}); \lean{map_smul'} is
+$g(u_{(n)}v)=(gu)_{(n)}(gv)$ for every $n\in\Z$, \lean{map_vacuum} is $g\mathbf 1=\mathbf 1$, \lean{map_omega} is
+$g\omega=\omega$.  This is exactly the textbook definition of a VOA automorphism.  Fixing $\omega$ makes $g$ commute
+with every $L_n=\omega_{(n+1)}$, hence preserve each $\Vnat_n$ (the $L_0$-eigenspaces); this is proved as
+\lean{GriessAut.aut_map_grading} and restated below as \lean{vnatAut_preserves_grading}.  The group structure on
+\lean{Aut W} (composition, identity, inverse) is defined in the same file; \lean{g * h} is ``apply $h$ first''.
+
+\textbf{\lean{AutVnat}} is an \lean{abbrev}, i.e.\ a transparent name: \lean{AutVnat} \emph{is} \lean{Aut VnatVOA}.
+The docstring's phrase ``the target is \lean{AutVnat ≃* 𝕄}'' records an intention; the identification with
+the Monster is the subject of Chapter~\ref{ch:22} and is conditional on \lean{GmatEqAutO}.
+
+\textbf{Could this be vacuous?}  If the structure on \lean{Vnat} were degenerate, $\Aut$ could be enormous and
+traces meaningless; but \lean{VnatVOA} is simple, has $c=24$, $\Vnat_1=0$ and graded dimension $J$
+(Chapter~\ref{ch:14}, \S\ref{ch14:sec:decode}).  If, at the other extreme, \lean{AutVnat} were trivial, the
+conjecture would collapse to its $g=1$ case; Chapter~\ref{ch:22} proves that \lean{AutVnat} contains an isomorphic
+copy of AxiomMath's group $\mathrm{Gmat}$, which contains $2^{1+24}.\mathrm{Co}_1$.
+\end{dictionary}
+\begin{physics}
+\lean{VnatVOA} is the chiral algebra of the Monster CFT; \lean{AutVnat} is its group of global (internal) symmetries:
+the operators that commute with the stress tensor ($g\omega=\omega$), fix the vacuum, and preserve every operator
+product expansion ($g(u_{(n)}v)=(gu)_{(n)}(gv)$ is the statement that $g$ intertwines the OPE coefficients).
+$\Vnat_1=0$ says the theory has no conserved currents, hence no continuous symmetries; that is why $\Aut(\Vnat)$ can
+be (and, by Chapter~\ref{ch:20}, is) finite.
+\end{physics}
+\begin{status}
+\lean{VnatVOA}, \lean{AutVnat}: definitions with no hypotheses.  The theorems quoted are unconditional and are used by
+\lean{conwayNorton}, whose \texttt{\#print axioms} is \lean{[propext, Classical.choice, Quot.sound]}
+(\S\ref{ch16:sec:final}).  The file \leanpath{VOA/Moonshine/AutVnat.lean} is documented in Chapter~\ref{ch:20}.
+\end{status}
+
+\subsection{The upper half-plane, the \texorpdfstring{$q$}{q}-parameter and the action of \texorpdfstring{$\mathrm{GL}_2(\mathbb{R})$}{GL2(R)}}\label{ch16:sec:analytic}
+
+We collect the Mathlib notions that occur in the statement, each explained in plain words.
+\begin{itemize}
+\item \lean{ℍ} (Mathlib's \lean{UpperHalfPlane}) is the type of complex numbers with positive imaginary part; a term
+  \lean{τ : ℍ} coerces to a complex number \lean{(τ : ℂ)}.
+\item \lean{GL (Fin 2) ℝ} is the group $\chsixteenGLR$ of invertible real $2\times2$ matrices; \lean{γ 0 0},
+  \lean{γ 0 1}, \lean{γ 1 0}, \lean{γ 1 1} are the entries $a,b,c,d$ of $\gamma=\chsixteenmat abcd$, and
+  \lean{γ.det} its determinant (a unit of $\chsixteenR$, coerced to a real number by \lean{(γ.det : ℝ)}).  It acts on
+  \lean{ℍ} by \lean{γ • τ}; for $\det\gamma>0$ this is the M\"obius action $\tau\mapsto(a\tau+b)/(c\tau+d)$ (Mathlib
+  extends it to negative determinant by complex conjugation, which never occurs below).  The scalar matrices act
+  trivially; in particular $-1$ acts trivially.
+\item \lean{OnePoint ℝ} is $\chsixteenP(\chsixteenR)=\chsixteenR\cup\{\infty\}$, on which $\chsixteenGLR$ acts by the same M\"obius
+  formula: $\gamma\cdot x=(ax+b)/(cx+d)$ and $\gamma\cdot\infty=a/c$ (or $\infty$ if $c=0$).
+\item \lean{SL(2, ℤ)} is $\chsixteenSL$, and \lean{mapGL ℝ : SL(2, ℤ) →* GL (Fin 2) ℝ} the inclusion.  The notation
+  \lean{𝒮ℒ} (scoped in \lean{MatrixGroups}) is Mathlib's name for its image, the subgroup $\chsixteenSL$ of
+  $\chsixteenGLR$.  A subgroup of \lean{SL(2, ℤ)} is coerced to a subgroup of \lean{GL (Fin 2) ℝ} by mapping along
+  \lean{mapGL ℝ}.
+\item \lean{Gamma0 N} and \lean{Gamma1 N} are Mathlib's congruence subgroups of $\chsixteenSL$:
+  \begin{equation*}
+    \Gamma_0(N)=\Bigl\{\chsixteenmat abcd: c\equiv0\ (N)\Bigr\},\qquad
+    \Gamma_1(N)=\Bigl\{\chsixteenmat abcd: a\equiv d\equiv1,\ c\equiv0\ (N)\Bigr\},
+  \end{equation*}
+  with congruences in \lean{ZMod N}.  (For $N=0$, ``mod $0$'' means equality, a degenerate case that the statement
+  excludes by requiring $0<N$.)
+\item \lean{Subgroup.HasDetOne Γ} (a Mathlib class, used as a proposition) says every element of \lean{Γ} has
+  determinant~$1$: $\Gamma\le\chsixteenSLR$.
+\item \lean{Subgroup.Commensurable H K} is Mathlib's commensurability:
+  \lean{H.relIndex K ≠ 0 ∧ K.relIndex H ≠ 0}, where \lean{H.relIndex K} is the index $[K:H\cap K]$ and the value $0$
+  encodes ``infinite''.  So $H\cap K$ has finite index in both $H$ and $K$.
+\item \lean{IsCusp c Γ} (Mathlib) holds if some \lean{g ∈ Γ} is \emph{parabolic} (not scalar, with discriminant
+  $(\operatorname{tr}g)^2-4\det g=0$) and fixes \lean{c}.  For a group commensurable with $\chsixteenSL$ the cusps are
+  exactly the points of $\chsixteenP(\Q)=\Q\cup\{\infty\}$.
+\item \lean{atImInfty} is the filter ``$\operatorname{Im}\tau\to\infty$'' on \lean{ℍ}: its neighbourhoods are the
+  horoballs $\{\operatorname{Im}\tau>R\}$, so \lean{Tendsto f atImInfty (𝓝 w)} means $f(\tau)\to w$ as
+  $\operatorname{Im}\tau\to\infty$ \emph{uniformly in $\operatorname{Re}\tau$}.
+\item \lean{MDifferentiable 𝓘(ℂ) 𝓘(ℂ) f} says $f:\chsixteenH\to\C$ is complex-differentiable at every point of the
+  complex manifold $\chsixteenH$, i.e.\ holomorphic.
+\item \lean{Subgroup.adjoinNegOne Γ} is $\pm\Gamma=\{g: g\in\Gamma\ \text{or}\ -g\in\Gamma\}$.
+\end{itemize}
+The two local definitions of the statement file in this area are the cusp $\infty$ and the $q$-parameter.
+\begin{leancode}
+abbrev cuspInfty : OnePoint ℝ := OnePoint.infty
+
+noncomputable def qPar (τ : ℍ) : ℂ := Function.Periodic.qParam 1 (τ : ℂ)
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNStatement.lean}.)
+\begin{dictionary}
+\lean{OnePoint.infty} is the point $\infty\in\chsixteenP(\chsixteenR)$.  Mathlib's \lean{Function.Periodic.qParam h z} is
+$\exp(2\pi i z/h)$; with $h=1$, \lean{qPar τ} $=e^{2\pi i\tau}=q$.  Since $|q|=e^{-2\pi\operatorname{Im}\tau}<1$, $q$
+never vanishes and $q\to0$ as $\operatorname{Im}\tau\to\infty$.  Width $1$ is the right choice for all
+McKay--Thompson series: their invariance groups contain the translation $\tau\mapsto\tau+1$ and no smaller translation
+(\S\ref{ch16:sec:haupt}).
+\end{dictionary}
+\begin{physics}
+$q=e^{2\pi i\tau}$ is the exponentiated modulus of the torus on which the partition function is computed: $\tau$ is
+the ratio of the two periods, and $q^{L_0-c/24}$ propagates states once around the time circle.  The cusp $\infty$
+($q\to0$) is the limit of a very long torus, where the partition function is dominated by the vacuum, $Z\sim q^{-1}$.
+\end{physics}
+\begin{status}
+Definitions; both printed in \leanpath{VOA/Moonshine/MoonshineCNAudit3.lean} with standard axioms.
+\end{status}
+
+%======================================================================
+\section{Graded traces and the McKay--Thompson series}\label{ch16:sec:trace}
+%======================================================================
+
+\subsection{The action on a homogeneous piece, and its trace}
+
+Every automorphism $g$ of a vertex operator algebra $V$ maps each weight space $V_n$ to itself, and $V_n$ is finite
+dimensional; so $g$ has a trace on $V_n$.
+
+\begin{definition}[Graded action and graded trace]\label{ch16:def:gradedtrace}
+For a vertex operator algebra $V$, an integer $n$ and $g\in\Aut(V)$, let $g|_{V_n}\in\End(V_n)$ be the restriction,
+and $\tr(g\,|\,V_n)$ its trace.  The map $g\mapsto g|_{V_n}$ is a monoid homomorphism $\Aut(V)\to\End(V_n)$.
+\end{definition}
+\begin{leancode}
+noncomputable def gradedAutAction (V : VertexOperatorAlgebra M) (n : ℤ) :
+    Aut V →* Module.End ℂ (V.grading n) where
+  toFun g := (GriessAut.autRestrict g n).toLinearMap
+  map_one' := by ext x; rfl
+  map_mul' g h := by ext x; rfl
+
+noncomputable def gradedAutTrace (V : VertexOperatorAlgebra M) (g : Aut V) (n : ℤ) : ℂ :=
+  LinearMap.trace ℂ (V.grading n) (gradedAutAction V n g)
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNTrace.lean}, namespace \lean{VOA.Moonshine.ConwayNorton}.)
+\begin{dictionary}
+The carrier \lean{M} of \lean{V} is a section variable of the file, \lean{{M : Type u} [AddCommGroup M] [Module ℂ M]}:
+an arbitrary complex vector space.  \lean{V.grading n} is the weight-$n$ subspace $V_n$, regarded as a type (a
+submodule coerced to a type);
+\lean{Module.End ℂ (V.grading n)} is $\End_\C(V_n)$.  \lean{GriessAut.autRestrict g n} is the restriction of $g$ to
+$V_n$ as a linear equivalence $V_n\to V_n$ (defined in \leanpath{VOA/Core/GriessAutomorphism.lean} using
+\lean{aut_map_grading}, the fact that $g$ maps $V_n$ onto $V_n$); \lean{.toLinearMap} forgets invertibility.
+\lean{→*} means monoid homomorphism: \lean{map_one'} and \lean{map_mul'} say $1\mapsto\mathrm{id}$ and
+$gh\mapsto g|_{V_n}\circ h|_{V_n}$ (both hold by definition, \lean{rfl}).  \lean{LinearMap.trace ℂ (V.grading n)} is
+Mathlib's trace; it is the usual trace whenever the space is finite dimensional, which $V_n$ is by the axioms of
+\lean{VertexOperatorAlgebra} (the instance \lean{V.finrank n}).  (On an infinite-dimensional space Mathlib's trace is
+defined to be $0$; this junk value never arises here.)  The definition is the textbook one.
+\end{dictionary}
+\begin{physics}
+$\tr(g\,|\,V_n)$ counts the states of energy $n$ weighted by their $g$-charge: in a basis of $g$-eigenvectors with
+eigenvalues $\lambda_i$ it is $\sum_i\lambda_i$.  Summed against $q^{n-c/24}$ it becomes the partition function with
+a $g$-twist along the time direction.
+\end{physics}
+\begin{status}
+Definitions; printed in \leanpath{VOA/Moonshine/MoonshineCNAudit.lean} with standard axioms.
+\end{status}
+
+\begin{proposition}[Basic properties of graded traces]\label{ch16:prop:traces}
+For every vertex operator algebra $V$, $n\in\Z$ and $g,h\in\Aut(V)$:
+\begin{enumerate}[label=(\alph*)]
+\item $\tr(1\,|\,V_n)=\dim V_n$;
+\item $\tr(hgh^{-1}\,|\,V_n)=\tr(g\,|\,V_n)$ (traces are class functions);
+\item for $V=\Vnat$: every $g\in\Aut(\Vnat)$ maps $\Vnat_n$ onto $\Vnat_n$.
+\end{enumerate}
+\end{proposition}
+\begin{leancode}
+theorem gradedAutTrace_one (V : VertexOperatorAlgebra M) (n : ℤ) :
+    gradedAutTrace V 1 n = (Module.finrank ℂ (V.grading n) : ℂ)
+
+theorem gradedAutTrace_conjugate (V : VertexOperatorAlgebra M) (g h : Aut V) (n : ℤ) :
+    gradedAutTrace V (h * g * h⁻¹) n = gradedAutTrace V g n
+
+theorem vnatAut_preserves_grading (g : AutVnat) (n : ℤ) :
+    (VnatVOA.grading n).map g.toLinearEquiv.toLinearMap = VnatVOA.grading n
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNTrace.lean}.)
+\begin{dictionary}
+In (a), \lean{Module.finrank ℂ (V.grading n)} is $\dim_\C V_n$, cast to $\C$.  In (b), \lean{h * g * h⁻¹} is
+composition in \lean{Aut V}.  In (c), \lean{(VnatVOA.grading n).map g.toLinearEquiv.toLinearMap} is the image
+$g(\Vnat_n)$, and the equality of submodules says $g(\Vnat_n)=\Vnat_n$.  No hypotheses beyond the objects; all three
+statements are the textbook ones.
+\end{dictionary}
+\paragraph{Proof on paper.}  (a) The identity has trace equal to the dimension.  (b) $\tr(ABA^{-1})=\tr(B)$ on a
+finite-dimensional space, applied to the restrictions (restriction is a homomorphism).  (c) $g$ commutes with
+$L_0=\omega_{(1)}$ because $g(\omega_{(1)}v)=(g\omega)_{(1)}(gv)=\omega_{(1)}(gv)$; hence it preserves each
+$L_0$-eigenspace $\Vnat_n$, and so does $g^{-1}$, so $g(\Vnat_n)=\Vnat_n$. \qed
+\begin{physics}
+(b) is the statement that a partition function with a symmetry twist depends only on the conjugacy class of the
+twist; (c) is energy conservation for a symmetry commuting with the Hamiltonian $L_0-c/24$.
+\end{physics}
+\begin{status}
+Unconditional; printed in \leanpath{VOA/Moonshine/MoonshineCNAudit.lean}, standard axioms.
+\end{status}
+
+\subsection{The McKay--Thompson series as a power series}
+
+\begin{definition}[McKay--Thompson series, regular part]\label{ch16:def:mckayThompson}
+For $g\in\Aut(\Vnat)$ let
+\begin{equation*}
+  \mathrm{MT}_g \;=\;\sum_{n\ge0}\tr\bigl(g\,|\,\Vnat_{n+1}\bigr)\,X^n\;\in\;\C[[X]] .
+\end{equation*}
+Thus the McKay--Thompson series is $T_g(\tau)=q^{-1}+\mathrm{MT}_g(q)$, and $q\,T_g=1+q\,\mathrm{MT}_g(q)$.
+\end{definition}
+\begin{leancode}
+noncomputable def mckayThompson (g : AutVnat) : PowerSeries ℂ :=
+  PowerSeries.mk fun n => gradedAutTrace VnatVOA g ((n : ℤ) + 1)
+
+noncomputable def mckayThompsonShift (g : AutVnat) : PowerSeries ℂ :=
+  1 + PowerSeries.X * mckayThompson g
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNTrace.lean}.)
+\begin{dictionary}
+\lean{PowerSeries.mk a} is the formal power series $\sum_{n\ge0}a(n)X^n$; the $n$-th coefficient of
+\lean{mckayThompson g} is \lean{gradedAutTrace VnatVOA g ((n : ℤ) + 1)} $=\tr(g\,|\,\Vnat_{n+1})$.  \textbf{The index
+shift by one is the convention to remember}: the coefficient of $X^n$ is the trace on weight $n+1$, so that $X$
+plays the role of $q$ in $T_g-q^{-1}$.  The vacuum (weight $0$) contributes the $q^{-1}$, which is not part of
+\lean{mckayThompson}; it is added separately in \lean{mckayThompsonFun} below.  \lean{mckayThompsonShift g}
+$=1+X\cdot$\lean{mckayThompson g} is $q\,T_g$, in the same normalisation as the library's \lean{JShift}
+$=qJ$ (Chapter~\ref{ch:05}, Definition~\ref{ch05:def:jshift}); its constant term $1$ is $\tr(g|\Vnat_0)=1$.
+\end{dictionary}
+\begin{physics}
+$q\,T_g=\tr_{\Vnat}(g\,q^{L_0})$, the twisted partition function with the Casimir factor $q^{-c/24}=q^{-1}$ removed;
+the constant term $1$ is the unique vacuum, which every symmetry fixes.
+\end{physics}
+\begin{status}
+Definitions; printed in \leanpath{VOA/Moonshine/MoonshineCNAudit.lean}, standard axioms.
+\end{status}
+
+\begin{proposition}[First properties of $\mathrm{MT}_g$]\label{ch16:prop:mtprops}
+For all $g,h\in\Aut(\Vnat)$ and $n\in\N$:
+\begin{enumerate}[label=(\alph*)]
+\item the $n$-th coefficient of $\mathrm{MT}_g$ is $\tr(g\,|\,\Vnat_{n+1})$;
+\item the constant coefficient vanishes: $\tr(g\,|\,\Vnat_1)=0$;
+\item $\mathrm{MT}_{hgh^{-1}}=\mathrm{MT}_g$;
+\item $\mathrm{MT}_1=\sum_{n\ge0}[q^{n+1}](qJ)\,X^n$, i.e.\ the coefficients of $\mathrm{MT}_1$ are those of $J$;
+  equivalently $q\,T_1=qJ$;
+\item $\mathrm{MT}_1\ne qJ$ (a reminder that the two series live in different normalisations).
+\end{enumerate}
+\end{proposition}
+\begin{leancode}
+@[simp] theorem mckayThompson_coeff (g : AutVnat) (n : ℕ) :
+    PowerSeries.coeff n (mckayThompson g) =
+      gradedAutTrace VnatVOA g ((n : ℤ) + 1)
+
+theorem mckayThompson_coeff_zero (g : AutVnat) :
+    PowerSeries.coeff 0 (mckayThompson g) = 0
+
+theorem mckayThompson_conjugate (g h : AutVnat) :
+    mckayThompson (h * g * h⁻¹) = mckayThompson g
+
+theorem mckayThompson_one :
+    mckayThompson 1 = PowerSeries.mk (fun n => PowerSeries.coeff (n + 1) JShift)
+
+theorem mckayThompsonShift_one : mckayThompsonShift 1 = JShift
+
+theorem mckayThompson_one_ne_JShift : mckayThompson 1 ≠ JShift
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNTrace.lean}.)
+\begin{dictionary}
+\lean{PowerSeries.coeff n F} is the coefficient of $X^n$ in $F$.  \lean{JShift} is the library's formal
+$qJ=1+196884q^2+21493760q^3+\cdots$ (Chapter~\ref{ch:05}); its coefficient of $q^{n+1}$ is $c(n)$, the coefficient
+of $q^n$ in $J$.  So (d) says: $\tr(1|\Vnat_{n+1})=\dim\Vnat_{n+1}=c(n)$ for all $n\ge0$, which is the graded
+dimension theorem of Chapter~\ref{ch:14} in the present normalisation.  (e) is a deliberate ``negative'' lemma: the
+constant coefficients are $0$ and $1$.  It records the index shift as a theorem so that it cannot be silently
+confused.  All statements are the textbook ones.
+\end{dictionary}
+\paragraph{Proof on paper.}  (a) is the definition.  (b) $\Vnat_1=0$, so $g|_{\Vnat_1}$ is the zero map on the zero
+space.  (c) Proposition~\ref{ch16:prop:traces}(b) coefficientwise.  (d) $\tr(1|\Vnat_{n+1})=\dim\Vnat_{n+1}$, and
+$\dim\Vnat_m=[q^m]\,\mathtt{JShift}$ for all $m\ge0$ (\lean{finrank_gradingNat_eq_coeff_JShift},
+Chapter~\ref{ch:05}).  (e) The constant coefficients are $0$ (by (b)) and $1$. \qed
+\begin{physics}
+(b) says the Monster CFT has no weight-one states: no currents, so the twisted partition functions have no constant
+term.  This is why the Hauptmoduln are \emph{normalised} with constant term $0$.
+\end{physics}
+\begin{status}
+Unconditional; all six printed in \leanpath{VOA/Moonshine/MoonshineCNAudit.lean}, standard axioms.
+\end{status}
+
+\subsection{Trace bounds}
+
+To evaluate $T_g$ at a point of $\chsixteenH$ one needs the series to converge.  The trace of a finite-order linear
+map is bounded by the dimension, and $J$ converges on $\chsixteenH$; that is the whole argument.
+
+\begin{theorem}[Trace bounds]\label{ch16:thm:tracebounds}
+\begin{enumerate}[label=(\alph*)]
+\item If $f$ is a linear endomorphism of finite order of a finite-dimensional complex vector space $M$, then
+  $|\tr f|\le\dim M$.
+\item If $g$ is an automorphism of finite order of a vertex operator algebra $V$, then $|\tr(g|V_n)|\le\dim V_n$ for
+  all $n$.
+\item If $g\in\Aut(\Vnat)$ has finite order, then $|[X^n]\,\mathrm{MT}_g|\le|[X^n]\,\mathrm{MT}_1|=c(n)$ for all
+  $n\ge0$.
+\end{enumerate}
+\end{theorem}
+\begin{leancode}
+theorem finiteOrderTrace_norm_le {M : Type*} [AddCommGroup M] [Module ℂ M]
+    [FiniteDimensional ℂ M] (f : Module.End ℂ M) (hf : IsOfFinOrder f) :
+    ‖LinearMap.trace ℂ M f‖ ≤ Module.finrank ℂ M
+
+theorem gradedAutTrace_norm_le {M : Type*} [AddCommGroup M] [Module ℂ M]
+    (V : VertexOperatorAlgebra M) (g : Aut V) (hg : IsOfFinOrder g) (n : ℤ) :
+    ‖gradedAutTrace V g n‖ ≤ Module.finrank ℂ (V.grading n)
+
+theorem mckayThompson_coeff_norm_le (g : AutVnat) (hg : IsOfFinOrder g) (n : ℕ) :
+    ‖PowerSeries.coeff n (mckayThompson g)‖ ≤
+      ‖PowerSeries.coeff n (mckayThompson 1)‖
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNTraceBounds.lean}.)
+\begin{dictionary}
+\lean{IsOfFinOrder f} (Mathlib) means $f^N=1$ for some $N\ge1$.  \lean{‖z‖} is the absolute value of a complex number.
+\lean{[FiniteDimensional ℂ M]} is the hypothesis $\dim M<\infty$.  In (b) the finite-dimensionality of $V_n$ comes from
+the vertex operator algebra axioms.  In (c) the right-hand side is $|\tr(1|\Vnat_{n+1})|=\dim\Vnat_{n+1}$.  The
+hypothesis ``finite order'' is essential (a non-unitary automorphism of infinite order could have large traces), and
+it is discharged for \emph{every} $g\in\Aut(\Vnat)$ by \lean{autVnat_isOfFinOrder} in Chapter~\ref{ch:20}.  The file
+docstring stresses that no invariant Hermitian metric is used.
+\end{dictionary}
+\paragraph{Proof on paper.}  (a) If $f^N=1$ then every eigenvalue $\lambda$ satisfies $\lambda^N=1$, so $|\lambda|=1$.
+Over $\C$ the characteristic polynomial splits and $\tr f$ is the sum of its $\dim M$ roots (with multiplicity); the
+triangle inequality gives $|\tr f|\le\dim M$.  (b) Apply (a) to $g|_{V_n}$, which has finite order because
+restriction is a homomorphism.  (c) Apply (b) to $\Vnat_{n+1}$ and use Proposition~\ref{ch16:prop:traces}(a). \qed
+\begin{physics}
+A finite symmetry acts on each energy level by a unitary matrix in a suitable basis, so twisting can only reduce the
+magnitude of the partition-function coefficients: $|\tr(g|V_n)|\le\dim V_n$.  In particular $T_g$ converges wherever
+the untwisted partition function $J$ does.
+\end{physics}
+\begin{status}
+Unconditional (with the finite-order hypothesis explicit); printed in \leanpath{VOA/Moonshine/MoonshineCNAudit3.lean},
+standard axioms.
+\end{status}
+
+\subsection{The McKay--Thompson series as a function on the upper half-plane}
+
+\begin{definition}[McKay--Thompson function]\label{ch16:def:mtfun}
+For $g\in\Aut(\Vnat)$ and $\tau\in\chsixteenH$, with $q=e^{2\pi i\tau}$,
+\begin{equation*}
+  T_g(\tau)\;=\;q^{-1}+\sum_{n\ge0}\tr\bigl(g\,|\,\Vnat_{n+1}\bigr)\,q^n
+  \;=\;q^{-1}+\sum_{n\ge1}\tr\bigl(g\,|\,\Vnat_{n+1}\bigr)\,q^n .
+\end{equation*}
+\end{definition}
+\begin{leancode}
+noncomputable def mckayThompsonFun (g : AutVnat) (τ : ℍ) : ℂ :=
+  (qPar τ)⁻¹ + ∑' n : ℕ, PowerSeries.coeff n (mckayThompson g) * qPar τ ^ n
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNStatement.lean}.)
+\begin{dictionary}
+\lean{(qPar τ)⁻¹} is $q^{-1}$.  \lean{∑' n : ℕ, a n} is Mathlib's \emph{unconditional infinite sum} (\lean{tsum}):
+the sum of the family when it is summable, and \textbf{$0$ by convention when it is not} (a junk value,
+Chapter~\ref{ch:01}, \S\ref{ch01:sec:junk}).  The summand is $\tr(g|\Vnat_{n+1})\,q^n$ by
+Proposition~\ref{ch16:prop:mtprops}(a).  The $n=0$ term is $\tr(g|\Vnat_1)=0$, so the two displayed formulas agree;
+\lean{mckayThompsonFun_eq_qSeriesFun} below makes this precise in Lean.
+
+\textbf{Does the junk value matter?}  No, for two independent reasons.  (i) For $g$ of finite order the series is
+absolutely summable at every $\tau\in\chsixteenH$: by Theorem~\ref{ch16:thm:tracebounds}(c) it is dominated by
+$\sum_n c(n)|q|^n$, which converges because the $q$-expansion of $J$ converges on the open unit disc
+(\lean{hasSum_JShift_laurent}, Chapter~\ref{ch:05}); and every $g$ has finite order (Chapter~\ref{ch:20}).  (ii) Even
+without that, the junk value could only make the conjecture \emph{false}, never trivially true: where the sum is not
+summable the function would equal $q^{-1}$, and $q^{-1}$ is not invariant under any $\chsixteenmat10N1$, $N\ge1$,
+which every moonshine group contains (it is in $\Gamma_0(N)$).
+\end{dictionary}
+\begin{physics}
+$T_g(\tau)=\tr_{\Vnat}\bigl(g\,q^{L_0-1}\bigr)$, the twisted torus partition function, as an honest function of the
+modulus $\tau$.
+\end{physics}
+\begin{status}
+Definition; printed in \leanpath{VOA/Moonshine/MoonshineCNAudit3.lean}, standard axioms.
+\end{status}
+
+\begin{theorem}[$T_1=J$]\label{ch16:thm:T1}
+For every $\tau\in\chsixteenH$, $T_1(\tau)=j(\tau)-744$, where $j=E_4^3/\Delta$ is the analytic $j$-invariant.
+\end{theorem}
+\begin{leancode}
+theorem mckayThompsonFun_one :
+    mckayThompsonFun 1 = fun τ => jInvariant τ - 744
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNStatement.lean}.)
+\begin{dictionary}
+\lean{mckayThompsonFun 1} is $T_1$ for the identity automorphism \lean{1 : AutVnat}.  \lean{jInvariant} is the
+analytic $j(\tau)=E_4(\tau)^3/\Delta(\tau)$ of Chapter~\ref{ch:L14}, Definition~\ref{l14:def:jinv} (file
+\leanpath{VOA/Modularity/JInvariantAnalytic.lean}).  The equation is an equality of functions $\chsixteenH\to\C$.
+This is the analytic counterpart of Proposition~\ref{ch16:prop:mtprops}(d); it is the bridge between the formal
+graded dimension of Chapters~\ref{ch:05}--\ref{ch:14} and the analytic objects of the conjecture.
+\end{dictionary}
+\paragraph{Proof on paper.}  By Proposition~\ref{ch16:prop:mtprops}(d), the summand of $T_1$ is $c(n)q^n$ with
+$c(n)=[q^{n+1}]\,\mathtt{JShift}$.  The theorem \lean{hasSum_JShift_laurent} (Chapter~\ref{ch:05}) says that
+$\sum_{n\ge0}[q^{n+1}]\mathtt{JShift}\cdot q^n$ converges to $j(\tau)-744-q^{-1}$; it is proved from the
+$q$-expansion of $E_4^3/\Delta$.  Adding $q^{-1}$ gives the claim. \qed
+\begin{physics}
+The untwisted partition function of the Monster CFT is $J=j-744$: the unique modular invariant function with the
+vacuum pole $q^{-1}$ and no constant term (no currents).
+\end{physics}
+\begin{status}
+Unconditional; printed in \leanpath{VOA/Moonshine/MoonshineCNAudit3.lean}, standard axioms.
+\end{status}
+
+\begin{example}[Two McKay--Thompson series, on paper]\label{ch16:ex:T2}
+Under any isomorphism of $\Aut(\Vnat)$ with the Monster, the classes $2A$ and $2B$ give \eqref{ch16:eq:T2A} and
+\eqref{ch16:eq:T2B}.  For instance, $\Vnat_2$ decomposes as $1\oplus196883$, so $\tr(g|\Vnat_2)=1+\chi_{196883}(g)$,
+which is $4372$ for $2A$ and $276$ for $2B$.  For $2B$ there is a concrete representative, FLM's involution $z$,
+which acts by $+1$ on $V_\Leech^+$ and by $-1$ on $(V_\Leech^T)^+$ (it is an automorphism because the block vertex
+map respects the $\Z/2$-grading by sectors).  Its trace on $\Vnat_2$ is
+$\dim(V_\Leech^+)_2-\dim(V_\Leech^T)^+_2=98580-98304=276$ (Chapter~\ref{ch:05} gives both dimensions).  The library
+does not state class names; these examples are for orientation only.
+\end{example}
+
+
+%======================================================================
+\section{Hauptmoduln and genus zero, without Riemann surfaces}\label{ch16:sec:haupt}
+%======================================================================
+
+\subsection{Modular curves, cusps and genus: the classical picture}
+
+Let $\Gamma\le\chsixteenSLR$ be a subgroup commensurable with $\chsixteenSL$.  Such a group is discrete and acts
+properly discontinuously on $\chsixteenH$.  The quotient $Y(\Gamma)=\Gamma\backslash\chsixteenH$ is a non-compact
+Riemann surface: at a point $\tau_0$ whose stabiliser in $\Gamma/\{\pm1\}$ has order $e>1$ (an \emph{elliptic point})
+the local coordinate is $\bigl((\tau-\tau_0)/(\tau-\bar\tau_0)\bigr)^e$.  The \emph{cusps} of $\Gamma$ are the points of
+$\chsixteenP(\chsixteenR)$ fixed by parabolic elements of $\Gamma$; for our groups they are the points of $\chsixteenP(\Q)$, and
+there are finitely many $\Gamma$-orbits of them.  Adding one point for each orbit gives a compact Riemann surface
+\begin{equation*}
+  \chsixteenX=\Gamma\backslash\bigl(\chsixteenH\cup\chsixteenP(\Q)\bigr).
+\end{equation*}
+Near the cusp $\infty$, if the stabiliser $\Gamma_\infty$ contains $\pm\chsixteenmat1h01$ with $h>0$ minimal (the
+\emph{width} $h$), the local coordinate is $e^{2\pi i\tau/h}$; at another cusp $s=\gamma\infty$ one first moves $s$ to
+$\infty$ with $\gamma^{-1}$.  The \emph{genus} of $\Gamma$ is the genus of $\chsixteenX$.
+
+A \emph{modular function} for $\Gamma$ is a meromorphic function on $\chsixteenX$; equivalently, a $\Gamma$-invariant
+meromorphic function on $\chsixteenH$ that is meromorphic in the local coordinate at every cusp.  If $\chsixteenX$
+has genus zero, there is an isomorphism of Riemann surfaces $\chsixteenX\to\chsixteenP(\C)$, and it can be chosen to
+send the cusp $\infty$ to $\infty$.  Such an isomorphism is a \emph{Hauptmodul}; every modular function for $\Gamma$ is
+a rational function of it.  If the width of $\infty$ is $1$, the Hauptmodul has a simple pole $a\,q^{-1}$ at $\infty$,
+and replacing $f$ by $(f-b)/a$ we may arrange $f=q^{-1}+0+O(q)$; with this normalisation it is unique (two
+Hauptmoduln differ by an automorphism of $\chsixteenP(\C)$ fixing $\infty$, i.e.\ by $z\mapsto az+b$, and the
+expansion $q^{-1}+0+\cdots$ forces $a=1$, $b=0$), the \emph{normalised Hauptmodul}.  For all these classical facts
+(compactness of $\chsixteenX$, local coordinates at elliptic points and cusps, discreteness of groups commensurable
+with $\chsixteenSL$, cusps $=\chsixteenP(\Q)$) see Diamond--Shurman, Chapters~2 and~3.
+
+\begin{example}[Genus-zero and not genus-zero groups]\label{ch16:ex:genus}
+$\chsixteenSL$ has genus zero, with normalised Hauptmodul $J=j-744$.  $\Gamma_0(N)$ has genus zero exactly for
+$N\in\{1,\dots,10,12,13,16,18,25\}$; for instance the Hauptmodul of $\Gamma_0(2)$ is $(\eta(\tau)/\eta(2\tau))^{24}+24$.
+$\Gamma_0(11)$ has genus one ($X_0(11)$ is an elliptic curve), so it has no Hauptmodul; but the larger group
+$\Gamma_0(11)+$ obtained by adjoining the Fricke involution $\tau\mapsto-1/(11\tau)$ has genus zero, and its normalised
+Hauptmodul is $T_{11A}$.  Ogg's observation: $\Gamma_0(p)+$ has genus zero exactly for the fifteen primes dividing
+$|\chsixteenM|$.  Note that $\Gamma_0(p)+$ is not contained in $\chsixteenSL$: the Fricke involution is
+$\frac1{\sqrt p}\chsixteenmat0{-1}p0\in\chsixteenSLR$, with irrational entries.  This is why the conjecture is
+formulated in $\chsixteenSLR$, and the library works in $\chsixteenGLR$.
+\end{example}
+
+The library's Mathlib (v4.30) has congruence subgroups, cusps and the action of $\chsixteenGLR$, but no compactified
+modular curves as Riemann surfaces and no notion of genus.  The statement file therefore encodes ``normalised
+Hauptmodul of a genus-zero group'' \emph{without Riemann surfaces}: it asks that $f$ induce a \emph{bijection}
+$\chsixteenX\to\chsixteenP(\C)$ with the right behaviour at the cusps, and leaves to the mathematics (below) the
+observation that such a bijection is automatically an isomorphism of Riemann surfaces.
+
+\subsection{Values at cusps}
+
+\begin{definition}[Cusp data]\label{ch16:def:cuspdata}
+Let $c\in\chsixteenP(\chsixteenR)$, $\Gamma\le\chsixteenGLR$, $f:\chsixteenH\to\C$ and $w\in\C$.
+\begin{enumerate}[label=(\alph*)]
+\item $\gamma\in\chsixteenGLR$ \emph{sends $\infty$ to $c$} if $\det\gamma>0$ and $\gamma\cdot\infty=c$.
+\item $f$ \emph{has value $w$ at the cusp $c$} if for every $\gamma$ sending $\infty$ to $c$,
+  $f(\gamma\tau)\to w$ as $\operatorname{Im}\tau\to\infty$, uniformly in $\operatorname{Re}\tau$.
+\item $c$ is an \emph{other cusp} of $\Gamma$ if it is a cusp of $\Gamma$ and is not in the $\Gamma$-orbit of $\infty$.
+\end{enumerate}
+\end{definition}
+\begin{leancode}
+def SendsInftyTo (γ : GL (Fin 2) ℝ) (c : OnePoint ℝ) : Prop :=
+  0 < (γ.det : ℝ) ∧ γ • cuspInfty = c
+
+def HasCuspValue (f : ℍ → ℂ) (c : OnePoint ℝ) (w : ℂ) : Prop :=
+  ∀ γ : GL (Fin 2) ℝ, SendsInftyTo γ c → Tendsto (fun τ : ℍ => f (γ • τ)) atImInfty (𝓝 w)
+
+def IsOtherCusp (Γ : Subgroup (GL (Fin 2) ℝ)) (c : OnePoint ℝ) : Prop :=
+  IsCusp c Γ ∧ ∀ γ ∈ Γ, γ • cuspInfty ≠ c
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNStatement.lean}.)
+\begin{dictionary}
+\lean{(γ.det : ℝ)} is $\det\gamma$; \lean{γ • cuspInfty} is $\gamma\cdot\infty=a/c$ (or $\infty$ if $c=0$).
+\lean{Tendsto (fun τ => f (γ • τ)) atImInfty (𝓝 w)} is ``$f(\gamma\tau)\to w$ as $\operatorname{Im}\tau\to\infty$,
+uniformly in $\operatorname{Re}\tau$'' (\S\ref{ch16:sec:analytic}).  \lean{IsCusp c Γ} is Mathlib's: $c$ is fixed by a
+parabolic element of $\Gamma$.
+
+\textbf{``For every $\gamma$'' versus ``for some $\gamma$''.}  Two matrices $\gamma,\gamma'$ of positive determinant
+sending $\infty$ to $c$ differ by an element fixing $\infty$: $\gamma'=\gamma\beta$ with
+$\beta\tau=a\tau+b$, $a>0$.  Since $\operatorname{Im}(a\tau+b)\to\infty$ uniformly exactly when
+$\operatorname{Im}\tau\to\infty$, the limit along $\gamma$ exists iff it exists along $\gamma'$, with the same value.
+So the universal quantifier in \lean{HasCuspValue} is equivalent to an existential one; it simply avoids choosing a
+matrix.  The condition is the usual one: $f$ is bounded near $c$ and extends continuously (indeed, for invariant
+holomorphic $f$, holomorphically in the cusp coordinate, by Riemann's removable singularity theorem) with value $w$.
+\end{dictionary}
+\begin{physics}
+A cusp of $\Gamma$ is a degeneration limit of the torus, seen through a modular transformation in $\Gamma$; the other
+cusps correspond to long tori in which a twisted sector propagates.  ``$f$ has a finite value at the other cusps''
+says that only the cusp $\infty$ carries the vacuum pole $q^{-1}$: in the other degeneration limits the partition
+function is dominated by states of non-negative effective energy.
+\end{physics}
+\begin{status}
+Definitions; printed in \leanpath{VOA/Moonshine/MoonshineCNAudit3.lean}, standard axioms.
+\end{status}
+
+\subsection{The normalised Hauptmodul}
+
+\begin{definition}[Normalised Hauptmodul]\label{ch16:def:hauptmodul}
+Let $\Gamma\le\chsixteenGLR$ and $f:\chsixteenH\to\C$.  $f$ is a \emph{normalised Hauptmodul for $\Gamma$} if:
+\begin{enumerate}[label=(H\arabic*)]
+\item\label{ch16:H1} $f$ is holomorphic on $\chsixteenH$ \emph{(no poles in the interior)};
+\item\label{ch16:H2} $f(\gamma\tau)=f(\tau)$ for all $\gamma\in\Gamma$, $\tau\in\chsixteenH$ \emph{($f$ descends to
+  $\Gamma\backslash\chsixteenH$)};
+\item\label{ch16:H3} $f(\tau)-q^{-1}\to0$ as $\operatorname{Im}\tau\to\infty$ \emph{(a simple pole at the cusp $\infty$,
+  normalised $q^{-1}+0+O(q)$)};
+\item\label{ch16:H4} $f$ has a (finite) value at every other cusp of $\Gamma$ \emph{(no poles at the other cusps:
+  so $F$ below is well defined and takes the value $\infty$ only at the cusp $\infty$)};
+\item\label{ch16:H5} if $f(\tau)=f(\sigma)$ then $\sigma=\gamma\tau$ for some $\gamma\in\Gamma$ \emph{($F$ is injective
+  on interior points)};
+\item\label{ch16:H6} a value of $f$ at an other cusp is not attained on $\chsixteenH$ \emph{($F$ never gives an
+  interior point and a cusp the same value)};
+\item\label{ch16:H7} if two other cusps $c,c'$ have the same value, then $c'=\gamma c$ for some $\gamma\in\Gamma$
+  \emph{($F$ is injective on cusps)};
+\item\label{ch16:H8} every $w\in\C$ is attained on $\chsixteenH$ or is the value of $f$ at an other cusp \emph{($F$
+  is surjective)}.
+\end{enumerate}
+Here $F:\chsixteenX\to\chsixteenP(\C)$ is the map induced by $f$: $F(\Gamma\tau)=f(\tau)$ on interior points, $F$ of the
+cusp $\infty$ is $\infty$, and $F$ of another cusp is the value of $f$ there.  So \ref{ch16:H1}--\ref{ch16:H4} say that
+$f$ is a modular function for $\Gamma$ with a single, simple, normalised pole at $\infty$; \ref{ch16:H5}--\ref{ch16:H7}
+say that $F$ is injective (on interior points, between interior points and cusps, and on cusps); \ref{ch16:H8} says $F$
+is surjective.  Example~\ref{ch16:ex:gamma02} checks all eight clauses for $\Gamma_0(2)$.
+A subgroup is \emph{of genus zero} (with a cusp of width one at $\infty$) if it has a normalised Hauptmodul.
+\end{definition}
+\begin{leancode}
+structure IsNormalizedHauptmodul (Γ : Subgroup (GL (Fin 2) ℝ)) (f : ℍ → ℂ) : Prop where
+  holomorphic : MDifferentiable 𝓘(ℂ) 𝓘(ℂ) f
+  invariant : ∀ γ ∈ Γ, ∀ τ : ℍ, f (γ • τ) = f τ
+  normalized : Tendsto (fun τ : ℍ => f τ - (qPar τ)⁻¹) atImInfty (𝓝 0)
+  cuspFinite : ∀ c, IsOtherCusp Γ c → ∃ w, HasCuspValue f c w
+  injective : ∀ τ σ : ℍ, f τ = f σ → ∃ γ ∈ Γ, γ • τ = σ
+  cuspValue_not_attained :
+    ∀ c w, IsOtherCusp Γ c → HasCuspValue f c w → ∀ τ : ℍ, f τ ≠ w
+  cuspValue_injective : ∀ c c' w, IsOtherCusp Γ c → IsOtherCusp Γ c' →
+    HasCuspValue f c w → HasCuspValue f c' w → ∃ γ ∈ Γ, γ • c = c'
+  surjective : ∀ w : ℂ, (∃ τ : ℍ, f τ = w) ∨ ∃ c, IsOtherCusp Γ c ∧ HasCuspValue f c w
+
+def IsGenusZero (Γ : Subgroup (GL (Fin 2) ℝ)) : Prop :=
+  ∃ f : ℍ → ℂ, IsNormalizedHauptmodul Γ f
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNStatement.lean}.)
+\begin{dictionary}
+\textbf{Field by field.}  A \lean{structure ... : Prop} is a conjunction of named clauses
+(Chapter~\ref{ch:01}, \S\ref{ch01:sec:structures}).
+\begin{itemize}
+\item \lean{holomorphic} is \ref{ch16:H1}.
+\item \lean{invariant} is \ref{ch16:H2}, with $\gamma$ acting by \lean{γ • τ}.
+\item \lean{normalized} is \ref{ch16:H3}: \lean{f τ - (qPar τ)⁻¹ → 0} along \lean{atImInfty}.  For a $1$-periodic
+  holomorphic $f$ (which is the case in the conjecture, see below) this says exactly that the Fourier expansion of $f$
+  is $q^{-1}+\sum_{n\ge1}a_nq^n$: a simple pole with residue normalised to $1$, \emph{zero constant term}, and no other
+  negative powers.
+\item \lean{cuspFinite} is \ref{ch16:H4}.
+\item \lean{injective}, \lean{cuspValue_not_attained}, \lean{cuspValue_injective} are \ref{ch16:H5}--\ref{ch16:H7}:
+  together they say that the induced map $F:\chsixteenX\to\chsixteenP(\C)$, defined by $F(\Gamma\tau)=f(\tau)$,
+  $F(\Gamma\infty)=\infty$ and $F(\Gamma c)=$ the value at $c$, is \emph{injective}.  (Points of $\chsixteenH$ never go
+  to $\infty$ because $f$ is $\C$-valued, and the other cusps have finite values by \ref{ch16:H4}; so the only point
+  mapped to $\infty$ is the cusp $\infty$.)
+\item \lean{surjective} is \ref{ch16:H8}: $F$ is \emph{surjective} ($\infty$ is hit by the cusp $\infty$).
+\end{itemize}
+\lean{IsGenusZero Γ} is \lean{∃ f, IsNormalizedHauptmodul Γ f}.  It is \emph{not} used in the statement of the
+conjecture; it records the terminology.
+
+\textbf{Same as the textbook notion?}  For $\Gamma\le\chsixteenSLR$ commensurable with $\chsixteenSL$ and containing
+the translation $\tau\mapsto\tau+1$ (both hold in the conjecture), \lean{IsNormalizedHauptmodul Γ f} holds if and only
+if $\chsixteenX$ has genus zero, the width of $\infty$ is $1$, and $f$ is its normalised Hauptmodul.  The proof is
+Proposition~\ref{ch16:prop:haupt} below.  It is a paper argument: the library contains neither Riemann surfaces nor
+genus, so this equivalence is a statement \emph{about} the definition, not a Lean theorem.  This is the central
+translation step of the chapter, and the referee should check it.
+
+\textbf{How the definition could have been wrong, and why it is not.}
+\begin{itemize}
+\item \emph{Too weak, by choosing $\Gamma$ too small?}  Field \lean{injective} prevents this: the fibres of $f$ on
+  $\chsixteenH$ must be single $\Gamma$-orbits.  If $f(\delta\tau)=f(\tau)$ for some $\delta\in\chsixteenSLR$ and all
+  $\tau$, then for each $\tau$ some $\gamma_\tau\in\Gamma$ has $\gamma_\tau\tau=\delta\tau$.  When $\Gamma$ is countable (as it is in the
+  conjecture, being commensurable with $\chsixteenSL$), one $\gamma$ works for uncountably many $\tau$; then
+  $\gamma^{-1}\delta\in\chsixteenSLR$ fixes at least two points of $\chsixteenH$, and a non-scalar M\"obius map fixes
+  at most one, so $\gamma^{-1}\delta=\pm1$.  Hence $\pm\Gamma$ is the \emph{full} invariance group of $f$ in
+  $\chsixteenSLR$: the group is determined by the function, up to $\pm1$.
+\item \emph{Too weak, by allowing a pole of higher order, or poles at other cusps, or in $\chsixteenH$?}  Excluded by
+  \lean{normalized}, \lean{cuspFinite} and $f$ being $\C$-valued and holomorphic.
+\item \emph{Too weak, by allowing $F$ to be of higher degree?}  Excluded by injectivity: a degree-$d$ map with $d\ge2$
+  identifies $d$ points of a generic fibre.
+\item \emph{Too strong, by demanding something false of $J$?}  No: $J$ satisfies all eight clauses for
+  $\Gamma=\chsixteenSL$, by Proposition~\ref{ch16:prop:haupt} and the classical fact that $X(\chsixteenSL)$ has genus
+  zero with Hauptmodul $J$ (Chapter~\ref{ch:05}, Theorem~\ref{ch05:thm:haupt}).
+\item \emph{Vacuous because cusps are mis-specified?}  The cusps are Mathlib's parabolic fixed points; for groups
+  commensurable with $\chsixteenSL$ they are $\chsixteenP(\Q)$, as they should be.
+\end{itemize}
+\end{dictionary}
+
+\begin{physics}
+A normalised Hauptmodul is the partition function of a chiral theory whose symmetry group is $\Gamma$. Being a
+Hauptmodul means it is a single coordinate on the moduli space $\Gamma\backslash\mathbb H^{*}$ of tori with
+$\Gamma$-structure. Normalisation $q^{-1}+0+O(q)$ says the theory has a unique ground state of energy $-c/24=-1$ and
+no weight-one currents. In moonshine, $T_g$ is the torus partition function of $\Vnat$ twisted by the symmetry $g$ in
+the time direction. The genus-zero property says this twisted partition function alone determines the whole modular
+curve on which it lives.
+\end{physics}
+
+\begin{proposition}[What the eight fields mean; on paper]\label{ch16:prop:haupt}
+Let $\Gamma\le\chsixteenSLR$ be commensurable with $\chsixteenSL$ and contain $\chsixteenmat1101$.
+\begin{enumerate}[label=(\alph*)]
+\item If $f$ satisfies \ref{ch16:H1}--\ref{ch16:H8}, then the width of $\infty$ is $1$, the map
+  $F:\chsixteenX\to\chsixteenP(\C)$ is an isomorphism of Riemann surfaces, $\chsixteenX$ has genus zero, and $f$ is
+  the normalised Hauptmodul of $\Gamma$.
+\item Conversely, if $\chsixteenX$ has genus zero and $\infty$ has width $1$, the normalised Hauptmodul satisfies
+  \ref{ch16:H1}--\ref{ch16:H8}.
+\end{enumerate}
+\end{proposition}
+\paragraph{Proof on paper.}  (a) \emph{Width.}  If $\Gamma$ contained $\tau\mapsto\tau+h$ with $0<h<1$, then
+$f(\tau+h)=f(\tau)$ while $f(\tau)=e^{-2\pi i\tau}+o(1)$; comparing, $(e^{-2\pi ih}-1)e^{-2\pi i\tau}\to0$, which
+forces $e^{2\pi ih}=1$, impossible.  So the width is $1$ and $q$ is the local coordinate at $\infty$.
+\emph{Holomorphy of $F$.}  On $Y(\Gamma)$: $f$ is holomorphic and invariant, hence a holomorphic function of the local
+coordinate (at an elliptic point $\tau_0$ of order $e$, an invariant holomorphic function is a power series in
+$(\tau-\tau_0)^e/(\tau-\bar\tau_0)^e$).  At $\infty$: by \ref{ch16:H2} and periodicity $f=\sum_n a_nq^n$, and by
+\ref{ch16:H3} $f=q^{-1}+O(q)$, so $1/F=q+O(q^2)$ is holomorphic with a simple zero.  At another cusp $c=\gamma\infty$:
+$f\circ\gamma$ is invariant under the (conjugated) stabiliser and tends to $w$ by \ref{ch16:H4}, so by Riemann's
+removable singularity theorem it is holomorphic in the cusp coordinate with value $w$.  So $F$ is a holomorphic map of
+compact Riemann surfaces.  \emph{Bijectivity.}  Injectivity was explained in the dictionary; surjectivity is
+\ref{ch16:H8} together with $F(\infty)=\infty$.  A bijective holomorphic map between Riemann surfaces is a
+biholomorphism (an injective holomorphic map has nowhere vanishing derivative in local coordinates).  Hence
+$\chsixteenX\cong\chsixteenP(\C)$ has genus zero, and $F$ is a Hauptmodul with the normalisation $q^{-1}+0+O(q)$.
+
+(b) Let $F:\chsixteenX\to\chsixteenP(\C)$ be an isomorphism with $F(\infty)=\infty$, normalised to $q^{-1}+0+O(q)$
+(possible because the width is $1$), and $f=F\circ\pi$ on $\chsixteenH$.  Then \ref{ch16:H1}--\ref{ch16:H4} hold
+because $F$ is holomorphic with its only pole at $\infty$; \ref{ch16:H5}--\ref{ch16:H8} hold because $F$ is
+bijective. \qed
+
+\begin{example}[The eight clauses for $\Gamma_0(2)$; on paper]\label{ch16:ex:gamma02}
+Let $\Gamma=\Gamma_0(2)$ and $f=t+24$, $t(\tau)=(\eta(\tau)/\eta(2\tau))^{24}=\Delta(\tau)/\Delta(2\tau)$, so that
+$f=T_{2B}$ of \eqref{ch16:eq:T2B}.
+\emph{The quotient.}  $\Gamma_0(2)$ has index $3$ in $\chsixteenSL$.  A cusp $a/c$ (in lowest terms; $\infty=1/0$) is
+$\Gamma_0(2)$-equivalent to $\infty$ if $c$ is even and to $0$ if $c$ is odd, so there are two cusp orbits: $\infty$, of
+width $1$ (the stabiliser contains $\tau\mapsto\tau+1$), and $0$, of width $2$ (its stabiliser is conjugated by
+$S=\chsixteenmat0{-1}10$ to the translations by multiples of $2$).  There is one elliptic point, $(1+i)/2$, of
+order~$2$.  The other cusps in the sense of Definition~\ref{ch16:def:cuspdata} are exactly the rationals $a/c$ with
+$c$ odd.
+\begin{itemize}
+\item \ref{ch16:H1}: $\eta$ has no zeros on $\chsixteenH$, so $t$ is holomorphic.
+\item \ref{ch16:H2}: $\Delta(\tau)$ and $\Delta(2\tau)$ are both modular forms of weight $12$ for $\Gamma_0(2)$, so
+  their quotient is invariant.
+\item \ref{ch16:H3}: $t=q^{-1}\prod_{n\ge1}(1+q^n)^{-24}=q^{-1}-24+276q+\cdots$, so $f=q^{-1}+0+276q+\cdots$.
+\item \ref{ch16:H4}: the cusp $0$ is $S\infty$ ($\det S=1>0$).  From $\Delta(-1/\tau)=\tau^{12}\Delta(\tau)$ one gets
+  $t(S\tau)=2^{12}\Delta(\tau)/\Delta(\tau/2)=2^{12}q^{1/2}(1+O(q^{1/2}))\to0$, so $f$ has the value $24$ at the cusp
+  $0$, and hence (by invariance) at every other cusp.  The half-integral power $q^{1/2}$ is the width-$2$ coordinate.
+\item \ref{ch16:H6}: $f(\tau)=24$ would mean $\Delta(\tau)=0$, which never happens; so the cusp value $24$ is not
+  attained on $\chsixteenH$.
+\item \ref{ch16:H7}: there is only one orbit of other cusps, so any two other cusps are $\Gamma$-equivalent.
+\item \ref{ch16:H5}, \ref{ch16:H8}: the induced $F:X_0(2)\to\chsixteenP(\C)$ is a meromorphic function on a compact
+  Riemann surface whose only pole is the simple pole at $\infty$ (by \ref{ch16:H1}, \ref{ch16:H3}, \ref{ch16:H4}).  A
+  non-constant meromorphic function takes every value in $\chsixteenP(\C)$ exactly as many times as it has poles,
+  counted with multiplicity; here once.  So $F$ is bijective: every $w\ne24$ is attained at exactly one orbit in
+  $\Gamma\backslash\chsixteenH$ (\ref{ch16:H5}, \ref{ch16:H8}), and $24$ is attained only at the cusp $0$.  (In
+  particular $X_0(2)$ has genus zero.)
+\end{itemize}
+This is the pattern of every application: \ref{ch16:H1}--\ref{ch16:H4} are local checks, and the global clauses
+\ref{ch16:H5}--\ref{ch16:H8} follow from ``exactly one simple pole''.  For the McKay--Thompson series no such
+explicit formula is available in general, which is why the library proves the global clauses by the case-free
+argument of Chapter~\ref{ch:19}.
+\end{example}
+
+\begin{physics}
+Think of $\chsixteenX$ as a moduli space: the space of tori (of modulus $\tau$) carrying a fixed symmetry twist,
+modulo those modular transformations in $\Gamma$ that preserve the twist.  Its cusps are the degeneration limits
+(infinitely long tori).  ``Genus zero with Hauptmodul $f$'' says that this moduli space is a sphere and that the
+twisted partition function $f$ is a global coordinate on it, with the vacuum pole $q^{-1}$ at the one degeneration
+where the untwisted vacuum propagates and finite values at all others.  Consequently any other quantity of the theory
+that is invariant under $\Gamma$, holomorphic on $\chsixteenH$ and has at most poles at the degeneration limits is a
+rational function of $f$ (a polynomial if its only pole is at $\infty$); this is the twisted analogue of the
+statement that a $c=24$ holomorphic partition function is $J+\text{const}$.  It is a rigid condition: twisted
+partition functions of a general orbifold are invariant under congruence groups of positive genus.
+\end{physics}
+\begin{status}
+\lean{IsNormalizedHauptmodul}, \lean{IsGenusZero}: definitions, printed in
+\leanpath{VOA/Moonshine/MoonshineCNAudit3.lean}, standard axioms.  Proposition~\ref{ch16:prop:haupt}: argued on paper
+only (it is about the meaning of the definition and needs Riemann surfaces, which the library does not have).
+\end{status}
+
+%======================================================================
+\section{Moonshine groups and the Conway--Norton statement}\label{ch16:sec:statement}
+%======================================================================
+
+\subsection{Moonshine groups}
+
+\begin{definition}[Moonshine group]\label{ch16:def:moonshinegroup}
+For $N\in\N$, $\Gamma_0(N)$ and $\Gamma_1(N)$ are regarded as subgroups of $\chsixteenGLR$.  A subgroup
+$\Gamma\le\chsixteenGLR$ is a \emph{moonshine group of level $N$} if $N\ge1$, $\Gamma\le\chsixteenSLR$,
+$\Gamma_0(N)\le\Gamma$, and $\Gamma$ is commensurable with $\chsixteenSL$ (i.e.\ $\Gamma\cap\chsixteenSL$ has finite
+index in both $\Gamma$ and $\chsixteenSL$).
+\end{definition}
+\noindent\textbf{Terminology.}  ``Moonshine group'' is this chapter's (and the library's) local name, taken from the Lean
+definition \lean{IsMoonshineGroup}.  In the literature the phrase is used differently (for instance for the genus-zero
+groups of the Conway--Norton list, or for the groups of ``moonshine type'' of Conway--McKay--Sebbar); a reader
+consulting Gannon or Conway--Norton will not find this exact definition there.
+\begin{leancode}
+abbrev gamma0GL (N : ℕ) : Subgroup (GL (Fin 2) ℝ) := ((Gamma0 N : Subgroup SL(2, ℤ)) : Subgroup (GL (Fin 2) ℝ))
+abbrev gamma1GL (N : ℕ) : Subgroup (GL (Fin 2) ℝ) := ((Gamma1 N : Subgroup SL(2, ℤ)) : Subgroup (GL (Fin 2) ℝ))
+
+def IsMoonshineGroup (Γ : Subgroup (GL (Fin 2) ℝ)) (N : ℕ) : Prop :=
+  0 < N ∧ Γ.HasDetOne ∧ gamma0GL N ≤ Γ ∧ Subgroup.Commensurable Γ 𝒮ℒ
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNStatement.lean}.)
+\begin{dictionary}
+\textbf{Decoding.}  \lean{((Gamma0 N : Subgroup SL(2, ℤ)) : Subgroup (GL (Fin 2) ℝ))} is the image of Mathlib's
+$\Gamma_0(N)\le\chsixteenSL$ under \lean{mapGL ℝ} (\S\ref{ch16:sec:analytic}); likewise \lean{gamma1GL}.  In
+\lean{IsMoonshineGroup Γ N}: \lean{0 < N} is $N\ge1$; \lean{Γ.HasDetOne} is $\Gamma\le\chsixteenSLR$;
+\lean{gamma0GL N ≤ Γ} is $\Gamma_0(N)\subseteq\Gamma$; \lean{Subgroup.Commensurable Γ 𝒮ℒ} is commensurability with
+$\chsixteenSL$.
+
+\textbf{Each clause, and why it is the intended one.}
+\begin{itemize}
+\item \emph{Ambient group $\chsixteenGLR$, not $\chsixteenSL$}: necessary, since many Conway--Norton groups contain
+  Atkin--Lehner and Fricke elements with irrational entries (Example~\ref{ch16:ex:genus}).
+\item \emph{$\Gamma\le\chsixteenSLR$}: Conway--Norton's groups are subgroups of $\chsixteenSLR$ (or of
+  $\mathrm{PSL}_2(\chsixteenR)$; note $-1\in\Gamma_0(N)\le\Gamma$ always, so nothing is lost by working with matrices rather
+  than M\"obius maps).  Without this clause one could add orientation-reversing or scaling elements; with it, the
+  action on $\chsixteenH$ is the usual one.
+\item \emph{$\Gamma_0(N)\le\Gamma$ with $N\ge1$}: this is the ``congruence'' clause of the conjecture.  It forces
+  $\Gamma$ to contain $\chsixteenmat1101$ (so $T_g$ is $1$-periodic, which it is anyway) and $\chsixteenmat10N1$
+  (a non-trivial condition on $T_g$).  For $N=1$ it forces $\Gamma\supseteq\chsixteenSL$.
+\item \emph{Commensurable with $\chsixteenSL$}: implies that $\Gamma$ is discrete, of finite covolume, with cusps
+  $\chsixteenP(\Q)$; together with $\Gamma_0(N)\le\Gamma$ it says $[\Gamma:\Gamma_0(N)]<\infty$.
+\end{itemize}
+\textbf{Could the clauses be trivially satisfied?}  $\Gamma=\Gamma_0(1)=\chsixteenSL$, $N=1$ satisfies
+\lean{IsMoonshineGroup}; so the definition is not vacuous.  It is also not trivially satisfiable \emph{together with}
+\lean{IsNormalizedHauptmodul Γ f}: by the dictionary of Definition~\ref{ch16:def:hauptmodul}, $\pm\Gamma$ is the full
+invariance group of $f$, so the content of \lean{IsMoonshineGroup Γ N} is ``the invariance group of $f$ contains
+$\Gamma_0(N)$ and is commensurable with $\chsixteenSL$''.  For example $q^{-1}$ alone, or any $f$ invariant only
+under translations, admits no moonshine group.
+
+\textbf{Not required (deliberately).}  The definition does not ask that $\Gamma$ normalise $\Gamma_0(N)$, nor that $N$
+be related to the order of $g$; see \S\ref{ch16:sec:fidelity}.
+\end{dictionary}
+\begin{physics}
+Write $Z(h,g)$ for the torus partition function with commuting symmetry twists $h$ along the space cycle and $g$
+along the time cycle, so that $T_g=Z(1,g)$.  A modular transformation $\chsixteenmat abcd$ relabels the two cycles
+and sends $Z(h,g)$ to $Z(h^ag^c,h^bg^d)$ (up to a phase).  For $h=1$ and $g$ of order $N$, the matrices with
+$c\equiv0\pmod N$, i.e.\ $\Gamma_0(N)$, keep the space cycle untwisted and send $T_g$ to $T_{g^d}$; those of
+$\Gamma_1(N)$ ($d\equiv1$) send it back to $T_g$.  So invariance under $\Gamma_1(N)$ is the expected modularity of a
+twisted partition function, and invariance under $\Gamma_0(N)$ adds the statement $T_{g^d}=T_g$.  (The phases are why
+Conway and Norton's level is $o(g)h$ rather than $o(g)$.)  Commensurability with $\chsixteenSL$ says that $\Gamma$ is
+built from finitely many such relabellings up to finite index; heuristically, this is the content of orbifold
+modular invariance.
+\end{physics}
+\begin{status}
+Definitions; \lean{gamma0GL}, \lean{gamma1GL}, \lean{IsMoonshineGroup} printed in
+\leanpath{VOA/Moonshine/MoonshineCNAudit3.lean}, standard axioms.
+\end{status}
+
+\subsection{The conjecture}
+
+\begin{definition}[The Conway--Norton property and the Conway--Norton conjecture]\label{ch16:def:cn}
+$g\in\Aut(\Vnat)$ has the \emph{Conway--Norton property} if there are a subgroup $\Gamma\le\chsixteenGLR$ and
+$N\in\N$ such that $\Gamma$ is a moonshine group of level $N$ and $T_g$ is a normalised Hauptmodul for $\Gamma$.  The
+\emph{Conway--Norton conjecture} (for $\Aut(\Vnat)$) is: every $g\in\Aut(\Vnat)$ has the Conway--Norton property.  For a
+group homomorphism $\iota:G\to\Aut(\Vnat)$, \emph{Conway--Norton via $\iota$} means: $\iota(g)$ has the Conway--Norton
+property for every $g\in G$.
+\end{definition}
+\begin{leancode}
+def ConwayNortonFor (g : AutVnat) : Prop :=
+  ∃ (Γ : Subgroup (GL (Fin 2) ℝ)) (N : ℕ), IsMoonshineGroup Γ N ∧
+    IsNormalizedHauptmodul Γ (mckayThompsonFun g)
+
+def ConwayNortonConjecture : Prop :=
+  ∀ g : AutVnat, ConwayNortonFor g
+
+def ConwayNortonVia {𝕄 : Type*} [Group 𝕄] (ι : 𝕄 →* AutVnat) : Prop :=
+  ∀ g : 𝕄, ConwayNortonFor (ι g)
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNStatement.lean}.)
+\begin{dictionary}
+Unfolded, \lean{ConwayNortonConjecture} is
+\begin{align*}
+  &\forall g\in\Aut(\Vnat)\ \ \exists\,\Gamma\le\chsixteenGLR\ \ \exists\,N\in\N:\\
+  &\qquad N\ge1,\ \ \Gamma\le\chsixteenSLR,\ \ \Gamma_0(N)\le\Gamma,\ \ \Gamma\ \text{commensurable with}\ \chsixteenSL,\\
+  &\qquad T_g\ \text{satisfies \ref{ch16:H1}--\ref{ch16:H8} for }\Gamma .
+\end{align*}
+The quantifier order is the right one: $\Gamma$ and $N$ depend on $g$.  \lean{ConwayNortonVia ι} is the same statement
+for $\iota(g)$, $g\in G$; for any $\iota$ it follows immediately from \lean{ConwayNortonConjecture}, and it is the form
+in which the Monster version is stated in Chapter~\ref{ch:22} ($G=\mathrm{AutO}$ and $\iota$ an isomorphism).  The
+full comparison with Conway and Norton's conjecture is \S\ref{ch16:sec:fidelity}.
+\end{dictionary}
+\begin{physics}
+For every global symmetry $g$ of the Monster CFT, the torus partition function with a $g$-twist is a global
+coordinate on a genus-zero modular curve, with the vacuum pole at the cusp $\infty$ and finite values at all
+other degenerations.
+\end{physics}
+\begin{status}
+Definitions (propositions); printed in \leanpath{VOA/Moonshine/MoonshineCNAudit3.lean}, standard axioms.  The
+proposition \lean{ConwayNortonConjecture} is \emph{proved}, with no hypotheses, as \lean{conwayNorton}
+(\S\ref{ch16:sec:final}).  The statement file was fixed before the proof was attempted and has not been modified since.
+\end{status}
+
+\begin{definition}[The $\Gamma_1$ variant]\label{ch16:def:gammaone}
+The \emph{$\Gamma_1$ form of the conjecture}: for every $g\in\Aut(\Vnat)$ \emph{of finite order} there are
+$\Gamma\le\chsixteenSLR$ and $N\ge1$ with $\Gamma_1(N)\le\Gamma$, $\Gamma$ commensurable with $\chsixteenSL$, and $T_g$
+a normalised Hauptmodul for $\Gamma$.
+\end{definition}
+\begin{leancode}
+def ConwayNortonGammaOne : Prop :=
+  ∀ g : AutVnat, IsOfFinOrder g → ∃ (Γ : Subgroup (GL (Fin 2) ℝ)) (N : ℕ),
+    0 < N ∧ Γ.HasDetOne ∧ gamma1GL N ≤ Γ ∧ Subgroup.Commensurable Γ 𝒮ℒ ∧
+      IsNormalizedHauptmodul Γ (mckayThompsonFun g)
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNStatement.lean}.)
+\begin{dictionary}
+\lean{IsOfFinOrder g}: $g^n=1$ for some $n\ge1$.  The clauses are those of \lean{IsMoonshineGroup}, with
+\lean{gamma1GL N} instead of \lean{gamma0GL N}.  Since $\Gamma_1(N)\le\Gamma_0(N)$, the conclusion is weaker than that
+of \lean{ConwayNortonFor}; the extra hypothesis of finite order makes the whole proposition weaker still.  It is the
+natural output of the case-free genus-zero argument (Chapter~\ref{ch:19}) and the input of the bridge of
+\S\ref{ch16:sec:gammazero}, which upgrades it to \lean{ConwayNortonConjecture}.
+\end{dictionary}
+\begin{physics}
+$\Gamma_1(N)$ is the subgroup that preserves the twist \emph{exactly}, not only up to replacing $g$ by a power
+$g^u$, $\gcd(u,N)=1$.  The difference between $\Gamma_1$ and $\Gamma_0$ is therefore the statement that the twisted
+partition functions of $g$ and of $g^u$ coincide: a ``Galois'' symmetry of the twisted partition functions, which is
+proved in \S\ref{ch16:sec:gammazero} (Theorem~\ref{ch16:thm:galois}).
+\end{physics}
+\begin{status}
+Definition; printed in \leanpath{VOA/Moonshine/MoonshineCNAudit3.lean}.  Proved with no hypotheses as
+\lean{conwayNortonGammaOne_holds} (\leanpath{VOA/Moonshine/MoonshineCNRationalTraces.lean}, Chapter~\ref{ch:22}).
+\end{status}
+
+\subsection{Is \texttt{ConwayNortonConjecture} the Conway--Norton conjecture?}\label{ch16:sec:fidelity}
+
+This is the fidelity check on which the whole part rests.  We compare the Lean proposition with the conjecture as
+stated in \S\ref{ch16:sec:history}, clause by clause, and then with the stronger statements in Conway and Norton's
+paper.
+
+\paragraph{(1) The group acting.}  The conjecture is about the Monster acting on FLM's $\Vnat$.  The Lean proposition
+quantifies over \lean{AutVnat}, the automorphism group of the library's \lean{VnatVOA}.  Two separate identifications
+are therefore involved.
+\begin{itemize}
+\item \emph{The module.}  \lean{VnatVOA} is the vertex operator algebra on the FLM space constructed in
+  Chapters~\ref{ch:10}--\ref{ch:14}; Chapter~\ref{ch:14} records that its identification with FLM's $\Vnat$ (same
+  space, possibly a different-looking twisted$\times$twisted vertex operator) is a paper argument (uniqueness of
+  simple-current extensions).
+\item \emph{The group.}  \lean{AutVnat} is the full automorphism group, whatever it is.  The Lean statement is
+  therefore at least as strong as the conjecture for any subgroup, in particular for the Monster \emph{as a group of
+  automorphisms of $\Vnat$}.  Chapter~\ref{ch:22} proves, with no hypotheses, that \lean{AutVnat} is isomorphic to the
+  subgroup of AxiomMath's $\mathrm{AutO}$ consisting of the elements that act on $\Vnat$, which contains
+  $\mathrm{Gmat}\supseteq2^{1+24}.\mathrm{Co}_1$; and, given \lean{GmatEqAutO}, that \lean{AutVnat} $\cong$
+  $\mathrm{AutO}$.
+\end{itemize}
+So \lean{conwayNorton} is the conjecture for the group of all symmetries of the library's $\Vnat$; ``for the
+Monster'' requires Chapter~\ref{ch:22} and, for all of $\mathrm{AutO}$, the hypothesis \lean{GmatEqAutO}.
+
+\paragraph{(2) The series.}  \lean{mckayThompsonFun g} is $q^{-1}+\sum_{n\ge1}\tr(g|\Vnat_{n+1})q^n$, exactly
+$T_g$ (Definition~\ref{ch16:def:mtfun}), with the conventions $q=e^{2\pi i\tau}$ and weight $n+1$ in degree $n$.  The
+\lean{tsum} junk value is harmless (dictionary of Definition~\ref{ch16:def:mtfun}).  For $g=1$ it is $j-744$
+(Theorem~\ref{ch16:thm:T1}).
+
+\paragraph{(3) ``Normalised Hauptmodul of a genus-zero group''.}  Encoded by \lean{IsNormalizedHauptmodul}, which is
+equivalent to the textbook notion for the groups in question (Proposition~\ref{ch16:prop:haupt}, on paper).  The
+normalisation $q^{-1}+0+O(q)$ is Conway--Norton's: it matches $\tr(g|\Vnat_0)=1$ and $\tr(g|\Vnat_1)=0$.
+
+\paragraph{(4) ``Contains $\Gamma_0(N)$ and is commensurable with $\chsixteenSL$''.}  Encoded by
+\lean{IsMoonshineGroup}, clause by clause (dictionary of Definition~\ref{ch16:def:moonshinegroup}).  The Lean
+statement has $\Gamma_0(N)$, not the weaker $\Gamma_1(N)$; the $\Gamma_1$ form is a separate proposition.
+
+\paragraph{(5) The identity element.}  For $g=1$ the statement says that $J$ is the normalised Hauptmodul of some
+moonshine group.  By the dictionary of Definition~\ref{ch16:def:hauptmodul}, $\pm\Gamma$ is then the full invariance
+group of $J$, which is $\chsixteenSL$; so on paper the $g=1$ case is exactly the classical fact that $J$ is the
+normalised Hauptmodul of $\chsixteenSL$.  This classical fact is not separately stated in the library
+(Chapter~\ref{ch:L14} records that the textbook Hauptmodul theorem for $j$ is not formalised as such), but
+\lean{conwayNorton 1}, combined with \lean{mckayThompsonFun_one}, gives in Lean that $j-744$ is a normalised
+Hauptmodul of \emph{some} moonshine group.
+
+\paragraph{(6) What Conway and Norton said in addition.}  Their paper proposes, for each class, the group $\Gamma_g$ in
+the form $\Gamma_0(n|h)+e,f,\dots$, lying between $\Gamma_0(N)$ and its normaliser in $\chsixteenSLR$ with $N=nh$,
+$n=o(g)$, $h\mid\gcd(24,n)$; and the explicit Hauptmodul.  The Lean statement asserts neither: it is the
+\emph{qualitative} genus-zero statement (``the main conjecture'' in the literature, and the form in which Borcherds'
+theorem is usually quoted).  It is therefore \textbf{weaker} than the full table-level conjecture, in three precise
+respects: (i) $\Gamma$ is not identified; (ii) $\Gamma$ is not required to lie in the normaliser of $\Gamma_0(N)$;
+(iii) $N$ is not related to $o(g)$.  It is \textbf{the same} as the genus-zero form of the conjecture displayed in
+\S\ref{ch16:sec:history}.  The project's records state this explicitly: the statement is qualitative only (no identification of $\Gamma_g$ with the
+Conway--Norton table).
+
+\paragraph{(7) Could it be vacuous?}  The proposition is a universally quantified statement over \lean{AutVnat}; it
+would be weak if \lean{AutVnat} were small.  It is not: Chapter~\ref{ch:22} shows that \lean{AutVnat} contains a copy
+of $\mathrm{Gmat}$.  Each instance is strong: for each $g$ it determines the invariance group of $T_g$ up to sign
+(dictionary of Definition~\ref{ch16:def:hauptmodul}) and asserts that it is a genus-zero congruence-type group.  There
+is no hidden hypothesis: \lean{ConwayNortonConjecture} is a closed proposition, and \lean{conwayNorton} proves it with
+no arguments.
+
+\paragraph{Verdict.}  \lean{ConwayNortonConjecture} is the genus-zero (qualitative) form of the Conway--Norton
+conjecture, for the full automorphism group of the library's moonshine module.  It is weaker than the table-level
+conjecture in the three respects of (6), and it becomes a statement about the Monster through Chapter~\ref{ch:22}.
+
+\begin{warning}
+\textbf{Docstrings that say more than the Lean.}  The module docstring of
+\leanpath{VOA/Moonshine/MoonshineCNStatement.lean} begins ``For every automorphism $g$ of the moonshine module
+$\Vnat$ (the Monster, node M1)''; the parenthesis identifies \lean{AutVnat} with the Monster, which holds only given
+\lean{GmatEqAutO} (Chapter~\ref{ch:22}).  The docstring of \lean{ConwayNortonConjecture} is careful (``With M1
+(\lean{AutVnat ≃* 𝕄}) this is the conjecture for every element of the Monster'').  The docstring of
+\lean{RationalTraces} calls it ``the M1-side input that upgrades $\Gamma_1$ to $\Gamma_0$''; that was the original plan, but the upgrade actually used does not need rationality (\S\ref{ch16:sec:gammazero}), and rationality
+is now a corollary.  The Lean statements are unaffected; the statement file was frozen before the proof.
+\end{warning}
+
+
+%======================================================================
+\section{Replication, replicable families and rational traces}\label{ch16:sec:replication}
+%======================================================================
+
+The statement file also fixes the interface between the Lie-algebra side of the proof (Chapters~\ref{ch:17}--\ref{ch:19},
+which produce \emph{replication formulas}) and the analytic side (Chapter~\ref{ch:19} and \S\ref{ch16:sec:gammazero},
+which turn replication into genus zero).  We present these definitions here because they are part of the fixed
+statement file and because \S\ref{ch16:sec:gammazero} uses them.
+
+\subsection{Hecke operators and replication}
+
+For a $1$-periodic function $f$ on $\chsixteenH$ and $m\ge1$, the (unnormalised) Hecke operator is
+\begin{equation}\label{ch16:eq:hecke}
+  (f\,|\,T_m)(\tau)=\sum_{ad=m}\ \sum_{0\le b<d} f\Bigl(\frac{a\tau+b}{d}\Bigr),
+\end{equation}
+the sum over the $\sigma_1(m)$ upper-triangular integer matrices $\chsixteenmat ab0d$ of determinant $m$ with
+$0\le b<d$.  If $f=J$, then $J|T_m$ is again $\chsixteenSL$-invariant, holomorphic on $\chsixteenH$, and has
+$q$-expansion $q^{-m}+O(q)$: for fixed $a,d$ the sum over $b$ of $q^{k/d}$-terms keeps only exponents with $d\mid k$,
+so only integral powers of $q$ survive; the most negative one is $q^{-m}$ (from $a=m$, $d=1$); and the constant term is
+$\sigma_1(m)\,c(0)=0$ because $J$ has no constant term.  Hence it is a
+polynomial in $J$: there is a unique monic polynomial $P_m$ of degree $m$, the \emph{Faber polynomial}, with
+$P_m(J)=J|T_m$.
+
+\emph{Replication} (Norton) generalises this to McKay--Thompson series: the Hecke sum of $T_g$ is formed with the
+\emph{replicates} $T_{g^a}$ in the $a$-th block,
+\begin{equation}\label{ch16:eq:replication}
+  P_{g,m}\bigl(T_g(\tau)\bigr)=\sum_{ad=m}\ \sum_{0\le b<d}T_{g^a}\Bigl(\frac{a\tau+b}{d}\Bigr),
+\end{equation}
+where $P_{g,m}$ is the monic Faber polynomial of $T_g$ (the unique monic polynomial with $P_{g,m}(T_g)=q^{-m}+O(q)$).
+A function satisfying \eqref{ch16:eq:replication} for every $m$, with its replicates, is called \emph{completely
+replicable}.
+
+\begin{example}[Replication for $J$ at $m=2$]\label{ch16:ex:rep2}
+With $J=\sum_n c(n)q^n$, $c(-1)=1$, $c(0)=0$: $J^2=q^{-2}+2c(1)+2c(2)q+(2c(3)+c(1)^2)q^2+\cdots$, so
+$P_2(x)=x^2-2c(1)$.  On the other side, $J(2\tau)+J(\tfrac\tau2)+J(\tfrac{\tau+1}2)=q^{-2}+2c(2)q+(c(1)+2c(4))q^2+\cdots$
+(the two half-shifted terms add up to $2\sum_{n\text{ even}}c(n)q^{n/2}$).  Comparing coefficients of $q^2$ gives
+Mahler's recursion $c(4)=c(3)+\tfrac12(c(1)^2-c(1))$: indeed
+$864299970+\tfrac12(196884^2-196884)=20245856256$.
+\end{example}
+
+\begin{definition}[Hecke points and complete replicability]\label{ch16:def:replicable}
+For $a,d\ge1$ and $b\in\N$, the \emph{Hecke point} of $\tau\in\chsixteenH$ is $(a\tau+b)/d\in\chsixteenH$.  The family
+$(T_g)_{g\in\Aut(\Vnat)}$ is \emph{completely replicable} if for every $g$ and every $m\ge1$ there is a monic
+polynomial $P$ of degree $m$ with
+\begin{equation*}
+  P\bigl(T_g(\tau)\bigr)=\sum_{a\mid m}\ \sum_{0\le b<m/a}T_{g^a}\Bigl(\frac{a\tau+b}{m/a}\Bigr)
+  \qquad\text{for all }\tau\in\chsixteenH .
+\end{equation*}
+\end{definition}
+\begin{leancode}
+theorem heckePoint_im_pos (a d b : ℕ) (ha : 0 < a) (hd : 0 < d) (τ : ℍ) :
+    0 < ((a * (τ : ℂ) + b) / d).im
+
+noncomputable def heckePoint (a d : ℕ) (b : ℕ) (ha : 0 < a) (hd : 0 < d) (τ : ℍ) : ℍ :=
+  ⟨(a * (τ : ℂ) + b) / d, heckePoint_im_pos a d b ha hd τ⟩
+
+def CompletelyReplicable : Prop :=
+  ∀ (g : AutVnat) (m : ℕ) (hm : 0 < m), ∃ P : Polynomial ℂ, P.Monic ∧ P.natDegree = m ∧
+    ∀ τ : ℍ, P.eval (mckayThompsonFun g τ) =
+      ∑ a ∈ m.divisors.attach, ∑ b ∈ Finset.range (m / a),
+        mckayThompsonFun (g ^ (a : ℕ)) (heckePoint a (m / a) b (Nat.pos_of_mem_divisors a.2)
+          (Nat.div_pos (Nat.divisor_le a.2) (Nat.pos_of_mem_divisors a.2)) τ)
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNStatement.lean}.)
+\begin{dictionary}
+\lean{heckePoint a d b ha hd τ} is $(a\tau+b)/d$ packaged as a point of \lean{ℍ}; the proof argument
+\lean{heckePoint_im_pos} supplies $\operatorname{Im}>0$, since $\operatorname{Im}((a\tau+b)/d)=a\operatorname{Im}\tau/d$.
+In \lean{CompletelyReplicable}: \lean{m.divisors.attach} runs over the divisors $a$ of $m$ (each packaged with the proof
+that it divides $m$, used to prove $a>0$ and $m/a>0$); \lean{Finset.range (m / a)} is $\{0,\dots,d-1\}$ with
+$d=m/a$; \lean{g ^ (a : ℕ)} is the replicate $g^a$; \lean{P.Monic ∧ P.natDegree = m} is ``monic of degree $m$'';
+\lean{P.eval x} is $P(x)$.  This is \eqref{ch16:eq:replication} with an existential polynomial; as the docstring says,
+such a $P$ is necessarily the Faber polynomial (both sides are $q^{-m}+O(q)$ once replicates are normalised), but
+uniqueness is not part of the definition and is not needed.
+
+\textbf{Strength.}  The quantifier is over \emph{all} $g\in\Aut(\Vnat)$ (no finite-order hypothesis); every $g$ has
+finite order (Chapter~\ref{ch:20}), so this is not a restriction.  The definition is the textbook complete
+replicability of the family $\{T_g\}$, stated as an identity of functions on $\chsixteenH$ rather than of formal
+$q$-series; for finite-order $g$ the two are equivalent by absolute convergence.
+\end{dictionary}
+\begin{physics}
+Replication is a shadow of the Hecke operators acting on the space of twisted partition functions.  Physically, the
+Hecke sum computes the partition function of the symmetric-orbifold-like theory on an $m$-fold cover of the torus:
+covering a torus with a $g$-twist by a torus $a$ times longer in one direction produces the twist $g^a$.  This is why
+the replicate in the $a$-th block is $T_{g^a}$.  In Borcherds' proof the replication formulas come out of the twisted
+denominator identities of the Monster Lie algebra, i.e.\ from the string spectrum.
+\end{physics}
+\begin{status}
+Definitions; printed in \leanpath{VOA/Moonshine/MoonshineCNAudit3.lean}.  Chapter~\ref{ch:19} derives
+\lean{CompletelyReplicable} from the twisted denominator identities, given simple-root generation of $\mathfrak m$ and
+finite order (\lean{completelyReplicable_of_simpleRootGeneration}); both inputs are theorems (Chapter~\ref{ch:20}),
+and the hypothesis-free instance is \lean{completelyReplicable_holds} (file
+\leanpath{VOA/Moonshine/MoonshineCNRationalTraces.lean}, Chapter~\ref{ch:22}).
+\end{status}
+
+\subsection{Rational traces}
+
+\begin{definition}[Rational traces]\label{ch16:def:rational}
+\emph{All traces are rational} if $\tr(g|\Vnat_{n+1})\in\Q$ for all $g\in\Aut(\Vnat)$ and $n\ge0$.
+\end{definition}
+\begin{leancode}
+def RationalTraces : Prop :=
+  ∀ (g : AutVnat) (n : ℕ), ∃ r : ℚ, PowerSeries.coeff n (mckayThompson g) = r
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNStatement.lean}.)
+\begin{dictionary}
+\lean{∃ r : ℚ, ... = r} with the rational number \lean{r} coerced to $\C$.  For $n\ge0$ the coefficient is the trace
+on weight $n+1$; weight $0$ (trace $1$) is not included but is trivially rational.  Classically all traces are
+\emph{integers}; the Lean proposition asks only rationality, which is what the original route needed.
+\end{dictionary}
+\begin{physics}
+Rationality of the character values of a symmetry on every energy level: the twisted partition functions are
+invariant under the Galois group of $\Q(\zeta_{o(g)})/\Q$, equivalently $T_{g^u}=T_g$ for $u$ prime to $o(g)$.
+\end{physics}
+\begin{status}
+Definition; printed in \leanpath{VOA/Moonshine/MoonshineCNAudit3.lean}.  Proved with no hypotheses as
+\lean{rationalTraces} (Chapter~\ref{ch:22}); it is a \emph{consequence} of the moonshine theorem
+(\S\ref{ch16:sec:gammazero}), not an input to it.
+\end{status}
+
+\subsection{Abstract replicable families}
+
+The genus-zero argument of Chapter~\ref{ch:19} does not need $\Vnat$: it works for any family of $q$-series indexed by
+the powers of an element of order $N$, dominated by $J$ and satisfying replication.  The statement file therefore
+fixes an abstract interface.
+
+\begin{definition}[$q$-series function; replicable family]\label{ch16:def:family}
+For $c:\N\to\C$ let $Q_c(\tau)=q^{-1}+\sum_{n\ge1}c(n)q^n$ (the value $c(0)$ is ignored).  A \emph{completely replicable
+family of period $N$} is a doubly indexed sequence $c(k,n)\in\C$ ($k,n\in\N$; $k$ indexes the replicate, $n$ the
+coefficient) such that
+\begin{enumerate}[label=(\roman*)]
+\item $c(k+N,n)=c(k,n)$;
+\item $|c(k,n)|\le|c(0,n)|$;
+\item $c(0,n)=c(n)$, the coefficients of $J$;
+\item for all $k$ and $m\ge1$ there is a monic polynomial $P$ of degree $m$ with
+  $P(Q_{c(k,\cdot)}(\tau))=\sum_{a\mid m}\sum_{0\le b<m/a}Q_{c(ka,\cdot)}\bigl(\frac{a\tau+b}{m/a}\bigr)$.
+\end{enumerate}
+\end{definition}
+\begin{leancode}
+noncomputable def qSeriesFun (c : ℕ → ℂ) (τ : ℍ) : ℂ :=
+  (qPar τ)⁻¹ + ∑' n : ℕ, c (n + 1) * qPar τ ^ (n + 1)
+
+structure ReplicableFamily (N : ℕ) where
+  c : ℕ → ℕ → ℂ
+  periodic : ∀ k n, c (k + N) n = c k n
+  dominated : ∀ k n, ‖c k n‖ ≤ ‖c 0 n‖
+  zero_eq_J : ∀ n, c 0 n = PowerSeries.coeff (n + 1) JShift
+  replicable : ∀ (k m : ℕ) (hm : 0 < m), ∃ P : Polynomial ℂ, P.Monic ∧ P.natDegree = m ∧
+    ∀ τ : ℍ, P.eval (qSeriesFun (c k) τ) =
+      ∑ a ∈ m.divisors.attach, ∑ b ∈ Finset.range (m / a),
+        qSeriesFun (c (k * a)) (heckePoint a (m / a) b (Nat.pos_of_mem_divisors a.2)
+          (Nat.div_pos (Nat.divisor_le a.2) (Nat.pos_of_mem_divisors a.2)) τ)
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNStatement.lean}.)
+\begin{dictionary}
+\lean{qSeriesFun c τ} sums \lean{c (n + 1) * q ^ (n + 1)} over $n\ge0$, i.e.\ $\sum_{m\ge1}c(m)q^m$: the index $0$ is
+skipped, which is why ``the value \lean{c 0} is ignored''.  The \lean{tsum} junk convention applies as before.
+\lean{ReplicableFamily N} is a structure carrying \emph{data} (the sequence \lean{c}) and four properties: (i)
+\lean{periodic}, (ii) \lean{dominated}, (iii) \lean{zero_eq_J} (with $c(0,n)=[q^{n+1}]\mathtt{JShift}$, so $c(0,0)=0$ and
+$c(0,n)=c(n)$), (iv) \lean{replicable}, with the replicate index \lean{k * a} in the $a$-th block, mirroring
+$T_{(g^k)^a}=T_{g^{ka}}$.  Note that (iv) for $k$ involves only members $ka$, so a family is ``closed under taking
+replicates''.  For $N=0$ the periodicity clause is empty; the instances used below have $N=o(g)>0$.
+
+\textbf{Why (ii) and (iii)?}  (ii) gives convergence of every $Q_{c(k,\cdot)}$ on $\chsixteenH$ and the growth bounds of
+Chapter~\ref{ch:19}; (iii) pins the family to $J$.  Without (iii) the abstract notion would admit degenerate
+families: the project found that $q^{-1}+aq$ satisfies all replication identities with replicates $q^{-1}+a^mq$, for
+every $a\in\C$ (\S\ref{ch16:sec:traps}).
+\end{dictionary}
+\begin{physics}
+An abstract stand-in for the collection of twisted partition functions $\{Z[{}^1_{g^k}]\}_k$ of a cyclic symmetry
+group, retaining only what the genus-zero argument needs: the twisted partition functions of the powers of $g$, their
+domination by the untwisted one, and the Hecke (covering) relations among them.
+\end{physics}
+\begin{status}
+Definitions; printed in \leanpath{VOA/Moonshine/MoonshineCNAudit3.lean}, standard axioms.
+\end{status}
+
+\begin{proposition}[The McKay--Thompson family is a replicable family]\label{ch16:prop:mtfamily}
+\begin{enumerate}[label=(\alph*)]
+\item For every $g$, $T_g=Q_{c_g}$ where $c_g(n)=[X^n]\mathrm{MT}_g$.
+\item If the family $\{T_g\}$ is completely replicable and $g$ has finite order $o(g)$, then
+  $c(k,n)=[X^n]\mathrm{MT}_{g^k}$ is a completely replicable family of period $o(g)$, and $o(g)>0$.
+\end{enumerate}
+\end{proposition}
+\begin{leancode}
+theorem mckayThompsonFun_eq_qSeriesFun (g : AutVnat) :
+    mckayThompsonFun g = qSeriesFun (fun n => PowerSeries.coeff n (mckayThompson g))
+
+noncomputable def mckayThompsonReplicableFamily (hrep : CompletelyReplicable)
+    (g : AutVnat) (hg : IsOfFinOrder g) : ReplicableFamily (orderOf g) where
+  c k n := PowerSeries.coeff n (mckayThompson (g ^ k))
+
+theorem mckayThompson_replicableFamily_exists (hrep : CompletelyReplicable)
+    (g : AutVnat) (hg : IsOfFinOrder g) :
+    0 < orderOf g ∧ ∃ F : ReplicableFamily (orderOf g),
+      ∀ k n, F.c k n = PowerSeries.coeff n (mckayThompson (g ^ k))
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNStatement.lean}.)
+\begin{dictionary}
+(a) is an equality of functions: \lean{mckayThompsonFun} sums from $n=0$, \lean{qSeriesFun} from $n=1$, and the $n=0$
+term vanishes (Proposition~\ref{ch16:prop:mtprops}(b)).  The proof treats the summable and the non-summable case
+separately, so (a) holds even with the \lean{tsum} junk convention.  (b) is stated twice: as a definition producing the
+structure (with \lean{c k n := PowerSeries.coeff n (mckayThompson (g ^ k))}), and as an existence theorem that also
+records $0<o(g)$ (\lean{orderOf g}, Mathlib's order, which is $0$ for elements of infinite order) and the formula for
+the coefficients.  Hypotheses: complete replicability and finite order of this $g$; both are theorems (Chapters~\ref{ch:19}
+and~\ref{ch:20}).
+\end{dictionary}
+\paragraph{Proof on paper.}  (a) was explained.  (b) (i) $g^{k+o(g)}=g^k$.  (ii) Theorem~\ref{ch16:thm:tracebounds}(c)
+applied to $g^k$ (which has finite order).  (iii) Proposition~\ref{ch16:prop:mtprops}(d).  (iv) Complete
+replicability for $g^k$, rewritten with (a) and $(g^k)^a=g^{ka}$. \qed
+\begin{physics}
+The twisted partition functions of the powers of one symmetry form a closed system under the covering (Hecke)
+relations; this is the input to the genus-zero argument.
+\end{physics}
+\begin{status}
+Unconditional (with the stated hypotheses); printed in \leanpath{VOA/Moonshine/MoonshineCNAudit3.lean}, standard
+axioms.
+\end{status}
+
+%======================================================================
+\section{From \texorpdfstring{$\Gamma_1(N)$}{Gamma1(N)} to \texorpdfstring{$\Gamma_0(N)$}{Gamma0(N)}}\label{ch16:sec:gammazero}
+%======================================================================
+
+\subsection{Why this step is needed, and the idea}
+
+The case-free genus-zero argument of Chapter~\ref{ch:19} proves that each $T_g$ is the normalised Hauptmodul of a group
+$\Gamma\supseteq\Gamma_1(M)$ commensurable with $\chsixteenSL$ (the proposition \lean{ConwayNortonGammaOne}).  The
+classical way to get $\Gamma_0(M)$ uses rationality of the traces: $\Gamma_0(M)$ is generated by $\Gamma_1(M)$ and
+matrices $\delta$ whose lower-right entry $d$ is a unit mod $M$, and invariance under such $\delta$ amounts to
+$T_{g^d}=T_g$, a Galois symmetry.  The original plan obtained it from
+a rational form of $\Vnat$ and Tits' theorem; that route turned out to need group-theoretic classification input
+(\S\ref{ch16:sec:traps}).
+
+The library instead proves $\Gamma_0(M)\le\pm\Gamma$ \emph{from the $\Gamma_1$ theorem and replication at primes
+alone}.  The key idea is the following.  Let $p>M$ be prime and choose
+$m,n\in\Z$ with $mp-nM=1$; put
+\begin{equation*}
+  \sigma_p=\chsixteenmat mnMp\in\Gamma_0(M),\qquad \sigma_p\equiv\chsixteenmat{p^{-1}}{*}0p\pmod M .
+\end{equation*}
+The replication formula at $p$ involves $f=T_g$ at the $p$ points $(\tau+j)/p$ and the replicate $f'=T_{g^p}$ at
+$p\tau$.  A coset computation for the single matrix $L_M=\chsixteenmat10M1$ shows that $\psi=f\circ\sigma_p-f'$ is
+invariant under $\tau\mapsto\tau+1$ and under $L_{M/p}=\chsixteenmat10{M/p}1$ with $0<M/p<1$.  By Shimizu's lemma these
+two maps generate a non-discrete group; an invariant holomorphic function is then constant.  So
+$f(\sigma_p\tau)=f'(\tau)+c$; comparing with the normalisation at the cusps and using \ref{ch16:H4} gives $f'=f$ and
+$\pm\sigma_p\in\Gamma$.  Dirichlet's theorem supplies, for every $\delta\in\Gamma_0(M)$, a prime $p>M$ with
+$p\equiv d\pmod M$, and then $\delta\in\Gamma_1(M)\sigma_p\subseteq\pm\Gamma$.  As a by-product, $T_{g^u}=T_g$ for $u$
+prime to $o(g)$.
+
+We now go through the steps, each with its Lean statement.  The files are
+\leanpath{VOA/Moonshine/MoonshineCNGammaZeroShimizu.lean} (Shimizu and constancy),
+\leanpath{VOA/Moonshine/MoonshineCNGammaZeroCosets.lean} (coset matching),
+\leanpath{VOA/Moonshine/MoonshineCNGammaZeroBridge.lean} (asymptotics, $\pm\Gamma$, the bridge),
+\leanpath{VOA/Moonshine/MoonshineCNGammaZeroGalois.lean} (Galois invariance) and
+\leanpath{VOA/Moonshine/MoonshineCNGammaZeroFamily.lean} (the abstract family version).  All are in the namespace
+\lean{VOA.Moonshine.ConwayNorton}.
+
+\subsection{Shimizu's lemma and constancy}
+
+\begin{definition}[Unipotent matrices]\label{ch16:def:unipotent}
+For $x,y\in\chsixteenR$: $T_x=\chsixteenmat1x01$ (the translation $\tau\mapsto\tau+x$) and $L_y=\chsixteenmat10y1$ (the map
+$\tau\mapsto\tau/(y\tau+1)$), both in $\chsixteenSLR$.
+\end{definition}
+\begin{leancode}
+noncomputable def glOfDetOne (a b c d : ℝ) (h : a * d - b * c = 1) : GL (Fin 2) ℝ :=
+  GeneralLinearGroup.mkOfDetNeZero !![a, b; c, d] (by rw [det_fin_two_of, h]; exact one_ne_zero)
+
+noncomputable def glUpperUnipotent (x : ℝ) : GL (Fin 2) ℝ := glOfDetOne 1 x 0 1 (by ring)
+
+noncomputable def glLowerUnipotent (y : ℝ) : GL (Fin 2) ℝ := glOfDetOne 1 0 y 1 (by ring)
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNGammaZeroShimizu.lean}.)
+\begin{dictionary}
+\lean{glOfDetOne a b c d h} is the matrix $\chsixteenmat abcd$ as an element of $\chsixteenGLR$, built by Mathlib's
+\lean{GeneralLinearGroup.mkOfDetNeZero} from the fact that its determinant $ad-bc=1$ (\lean{h}) is non-zero;
+\lean{!![a, b; c, d]} is Mathlib's matrix literal.  The definitions are the textbook
+matrices.
+\end{dictionary}
+\begin{physics}
+$T_x$ shifts the torus modulus; $L_y$ is a ``Dehn twist in the other direction'' when $y\in\Z$, and a non-integral
+shear otherwise.  A modular-invariant quantity is invariant under $T_1$ and $L_1$; invariance under a shear $L_y$
+with $0<y<1$ is never expected of a physical partition function, and the lemma below shows it forces triviality.
+\end{physics}
+\begin{status}
+Definitions; used by the audited theorems below.
+\end{status}
+
+\begin{theorem}[Constancy under a non-discrete set; Shimizu]\label{ch16:thm:shimizu}
+Let $\psi:\chsixteenH\to\C$ be holomorphic.
+\begin{enumerate}[label=(\alph*)]
+\item If $C_n\in\chsixteenGLR$ converge entrywise to the identity, each $C_n$ moves some point of $\chsixteenH$, and
+  $\psi(C_n\tau)=\psi(\tau)$ for all $n,\tau$, then $\psi$ is constant.
+\item If $\psi(\tau+1)=\psi(\tau)$ and $\psi(L_y\tau)=\psi(\tau)$ for all $\tau$, for some $0<y<1$, then $\psi$ is
+  constant.
+\end{enumerate}
+\end{theorem}
+\begin{leancode}
+theorem eq_of_invariant_of_entries_tendsto_one {ψ : ℍ → ℂ}
+    (hψ : MDifferentiable 𝓘(ℂ) 𝓘(ℂ) ψ) {C : ℕ → GL (Fin 2) ℝ}
+    (hC : ∀ i j, Tendsto (fun n => (C n : Matrix (Fin 2) (Fin 2) ℝ) i j) atTop
+      (𝓝 ((1 : Matrix (Fin 2) (Fin 2) ℝ) i j)))
+    (hmove : ∀ n, ∃ τ : ℍ, C n • τ ≠ τ) (hinv : ∀ n τ, ψ (C n • τ) = ψ τ) (τ σ : ℍ) :
+    ψ τ = ψ σ
+
+theorem eq_of_invariant_upper_lower_unipotent {ψ : ℍ → ℂ} (hψ : MDifferentiable 𝓘(ℂ) 𝓘(ℂ) ψ)
+    {y : ℝ} (hy0 : 0 < y) (hy1 : y < 1) (hT : ∀ τ, ψ (glUpperUnipotent 1 • τ) = ψ τ)
+    (hL : ∀ τ, ψ (glLowerUnipotent y • τ) = ψ τ) (τ σ : ℍ) : ψ τ = ψ σ
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNGammaZeroShimizu.lean}.)
+\begin{dictionary}
+\lean{hC}: for all entries $(i,j)$, $(C_n)_{ij}\to\delta_{ij}$ as $n\to\infty$ (\lean{atTop} on $\N$).  \lean{hmove}:
+each $C_n$ acts non-trivially on $\chsixteenH$.  \lean{hinv}: invariance.  Conclusion: $\psi(\tau)=\psi(\sigma)$ for all
+$\tau,\sigma$, i.e.\ $\psi$ is constant.  In (b), \lean{hT}, \lean{hL} are invariance under $T_1$ and $L_y$, with
+\lean{0 < y < 1}.  Note that (b) does not require $\det>0$ or discreteness anywhere: it is a statement about any
+holomorphic function with these two invariances.  A sibling \lean{eq_of_invariant_of_tendsto_one} states (a) with
+convergence in the topology of $\chsixteenGLR$.  Both are the textbook statements.
+\end{dictionary}
+\paragraph{Proof on paper.}  (a) For large $n$, $\det C_n>0$, so $C_n$ is a M\"obius map; a non-trivial real
+M\"obius map of positive determinant fixes at most one point of $\chsixteenH$ (the fixed-point equation
+$c\tau^2+(d-a)\tau-b=0$ has at most one root in $\chsixteenH$ unless $c=b=0$, $a=d$).  Hence each such $C_n$ moves
+$i$ or $2i$, and one of the two, say $\tau_0$, is moved by infinitely many $C_n$.  Since $C_n\to1$, $C_n\tau_0\to\tau_0$
+with $C_n\tau_0\ne\tau_0$ infinitely often, and $\psi(C_n\tau_0)=\psi(\tau_0)$: the level set
+$\{\psi=\psi(\tau_0)\}$ accumulates at $\tau_0$.  By the identity theorem $\psi\equiv\psi(\tau_0)$.  (This avoids the
+inverse function theorem used in the paper blueprint.)
+
+(b) \emph{Shimizu's sequence.}  Let $B_0=L_y$ and $B_{n+1}=B_nT_1B_n^{-1}$.  If $B_n=\chsixteenmat{a_n}{*}{c_n}{*}$ then
+a direct computation gives
+\begin{equation*}
+  B_{n+1}=\chsixteenmat{1-a_nc_n}{a_n^2}{-c_n^2}{1+a_nc_n},
+  \qquad\text{so}\qquad c_{n+1}=-c_n^2,\ |c_n|=y^{2^n}\to0,
+\end{equation*}
+and $a_{n+1}=1-a_nc_n$, from which $a_n\to1$ (the corrections are summable).  Hence $B_n\to T_1$ and
+$C_n=B_{n+1}T_1^{-1}\to1$, while the lower-left entry of $C_n$ is $-c_n^2\neq0$, so $C_n$ moves points.  Every $C_n$
+lies in the group generated by $T_1$ and $L_y$, under which $\psi$ is invariant; apply (a). \qed
+\begin{physics}
+A function on moduli space invariant under a non-discrete group of modular transformations cannot vary: there is no
+``partition function'' with such a symmetry except a constant.  Shimizu's lemma says: a discrete group containing the
+unit translation cannot contain a shear $L_y$ with $0<|y|<1$.
+\end{physics}
+\begin{status}
+Unconditional; both printed in \leanpath{VOA/Moonshine/MoonshineCNGammaZeroAudit.lean} (47 reports, all
+\lean{[propext, Classical.choice, Quot.sound]}).
+\end{status}
+
+\subsection{The diamond lift and Hecke coset matching}
+
+\begin{definition}[Diamond lift; level sum]\label{ch16:def:diamond}
+Let $M\ge1$, $p$ prime, and $m,n\in\Z$ with $mp-nM=1$.  The \emph{diamond lift} is
+$\sigma=\chsixteenmat mnMp\in\Gamma_0(M)$.  For $f:\chsixteenH\to\C$ the \emph{level sum} is
+\begin{equation*}
+  S(\tau)=\sum_{j=0}^{p-1}f\Bigl(\frac{\tau+j}{p}\Bigr)+f\bigl(\sigma(p\tau)\bigr).
+\end{equation*}
+\end{definition}
+\begin{leancode}
+def diamondLift (M p : ℕ) (m n : ℤ) (h : m * p - n * M = 1) : SL(2, ℤ) :=
+  slOfDetOne m n M p h
+
+noncomputable def heckeLevelSum (f : ℍ → ℂ) (σ : SL(2, ℤ)) (p : ℕ) (hp : 0 < p) (τ : ℍ) : ℂ :=
+  ∑ j ∈ Finset.range p, f (heckePoint 1 p j one_pos hp τ) +
+    f (mapGL ℝ σ • heckePoint p 1 0 hp one_pos τ)
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNGammaZeroCosets.lean}.)
+\begin{dictionary}
+\lean{slOfDetOne m n M p h} is $\chsixteenmat mnMp\in\chsixteenSL$ (same file).  In \lean{heckeLevelSum},
+\lean{heckePoint 1 p j} is $(\tau+j)/p$, \lean{heckePoint p 1 0} is $p\tau$, and \lean{mapGL ℝ σ • ·} is the M\"obius
+action of $\sigma$.  The lemma \lean{diamondLift_mem_Gamma0} records $\sigma\in\Gamma_0(M)$.
+\end{dictionary}
+\begin{physics}
+$\sigma$ is an element of $\Gamma_0(M)$ whose action on a $g$-twisted torus replaces the twist by its $p$-th power
+($\sigma\equiv\operatorname{diag}(p^{-1},p)$ mod $M$); the level sum is the Hecke-covering sum of $f$ in which the
+$p$-fold-scaled term is transported by $\sigma$.
+\end{physics}
+\begin{status}
+Definitions; used by the audited theorems below (\lean{diamondLift_mem_Gamma0} is printed in
+\leanpath{VOA/Moonshine/MoonshineCNGammaZeroAudit.lean}).
+\end{status}
+
+\begin{theorem}[Hecke coset matching]\label{ch16:thm:cosets}
+Let $f$ be $\Gamma_1(M)$-invariant, $p$ prime and $mp-nM=1$.  Then:
+\begin{enumerate}[label=(\alph*)]
+\item $f\circ\sigma$ is $1$-periodic;
+\item $S(L_M\tau)=S(\tau)$ for all $\tau$.
+\end{enumerate}
+\end{theorem}
+\begin{leancode}
+theorem diamond_periodic {f : ℍ → ℂ} {M p : ℕ} {m n : ℤ} (h : m * p - n * M = 1)
+    (hf : ∀ γ ∈ Gamma1 M, ∀ τ : ℍ, f (mapGL ℝ γ • τ) = f τ) (τ : ℍ) :
+    f (mapGL ℝ (diamondLift M p m n h) • (glUpperUnipotent 1 • τ)) =
+      f (mapGL ℝ (diamondLift M p m n h) • τ)
+
+theorem heckeLevelSum_lowerSL {f : ℍ → ℂ} {M p : ℕ} (hp : p.Prime) {m n : ℤ}
+    (hmn : m * p - n * M = 1) (hf : ∀ γ ∈ Gamma1 M, ∀ τ : ℍ, f (mapGL ℝ γ • τ) = f τ) (τ : ℍ) :
+    heckeLevelSum f (diamondLift M p m n hmn) p hp.pos (mapGL ℝ (lowerSL M) • τ) =
+      heckeLevelSum f (diamondLift M p m n hmn) p hp.pos τ
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNGammaZeroCosets.lean}.)
+\begin{dictionary}
+\lean{hf}: $f(\gamma\tau)=f(\tau)$ for all $\gamma\in\Gamma_1(M)$.  \lean{lowerSL M} is $L_M=\chsixteenmat10M1$ and
+\lean{glUpperUnipotent 1} is $T_1$.  No hypothesis $p>M$ or $M>0$ is needed here.  The statements are exactly (a), (b).
+\end{dictionary}
+\paragraph{Proof on paper.}  (a) $\sigma T_1=\gamma\sigma$ with $\gamma=\chsixteenmat{1-mM}{m^2}{-M^2}{1+mM}\in\Gamma_1(M)$
+(multiply out, using $mp-nM=1$), so $f(\sigma(\tau+1))=f(\gamma\sigma\tau)=f(\sigma\tau)$.
+
+(b) Reduce modulo $p$: since $mp-nM=1$, $nM\equiv-1$, so $M$ is invertible mod $p$ and $-M^{-1}\equiv n$.  Let
+$j_0\equiv n$ and $j^*\equiv-n$ in $[0,p)$.  There are three matrix identities, each checked by multiplying out:
+\begin{itemize}
+\item \emph{generic $j\ne j_0$}: with $j'\equiv j/(1+jM)\pmod p$ in $[0,p)$ and $e=(j-(1+jM)j')/p\in\Z$,
+  \begin{equation*}
+    \chsixteenmat1j0p\,L_M=\gamma_j\chsixteenmat1{j'}0p,\qquad \gamma_j=\chsixteenmat{1+jM}{e}{pM}{1-Mj'}\in\Gamma_1(M);
+  \end{equation*}
+\item \emph{exceptional $j_0=n+kp$}: $\chsixteenmat1{j_0}0p\,L_M=T_k\,\sigma\,\chsixteenmat p001$;
+\item \emph{extra term}: with $e=(n-(mp+nM)j^*)/p\in\Z$,
+  $\sigma\chsixteenmat p001L_M=\gamma^*\chsixteenmat1{j^*}0p$, $\gamma^*=\chsixteenmat{mp+nM}{e}{2Mp}{1-2Mj^*}\in\Gamma_1(M)$
+  (the $\Gamma_1$ condition holds because $mp+nM\equiv mp\equiv1\pmod M$).
+\end{itemize}
+The map $j\mapsto j'$ is the M\"obius map $x\mapsto x/(1+Mx)$ of $\chsixteenP(\mathbb F_p)$, which sends $j_0=-1/M$ to
+$\infty$ and $\infty$ to $1/M=j^*$; so it is a bijection $[0,p)\setminus\{j_0\}\to[0,p)\setminus\{j^*\}$.  Applying
+$f$ and $\Gamma_1(M)$-invariance ($T_k$, $\gamma_j$, $\gamma^*\in\Gamma_1(M)$):
+\begin{equation*}
+  S(L_M\tau)=\sum_{j'\ne j^*}f\Bigl(\frac{\tau+j'}p\Bigr)+f\bigl(\sigma(p\tau)\bigr)+f\Bigl(\frac{\tau+j^*}p\Bigr)=S(\tau).
+  \qquad\qed
+\end{equation*}
+\begin{physics}
+The Hecke correspondence at level $p$ permutes its $p+1$ ``covering tori'' under a modular transformation of the base;
+the computation identifies the permutation explicitly for the generator $L_M$, with one covering torus exchanged
+between the ``$(\tau+j)/p$'' family and the ``$p\tau$'' term.
+\end{physics}
+\begin{status}
+Unconditional; printed in \leanpath{VOA/Moonshine/MoonshineCNGammaZeroAudit.lean} together with the three coset
+identities \lean{heckeShift_lowerSL}, \lean{heckeShift_lowerSL_exceptional}, \lean{diamondScale_lowerSL} and the
+index bijection lemmas.
+\end{status}
+
+\begin{theorem}[The replicate differs from the diamond image by a constant]\label{ch16:thm:diamondconst}
+Let $0<M<p$, $p$ prime, $mp-nM=1$, $f$ holomorphic and $\Gamma_1(M)$-invariant, $f'$ holomorphic and $1$-periodic, and
+suppose that for some function $\Phi:\C\to\C$
+\begin{equation*}
+  \Phi\bigl(f(\tau)\bigr)=\sum_{j=0}^{p-1}f\Bigl(\frac{\tau+j}p\Bigr)+f'(p\tau)\qquad(\tau\in\chsixteenH).
+\end{equation*}
+Then $\psi=f\circ\sigma-f'$ is invariant under $L_{M/p}$, and there is $c\in\C$ with $f(\sigma\tau)=f'(\tau)+c$ for all
+$\tau$.
+\end{theorem}
+\begin{leancode}
+theorem diamond_sub_replicate_lowerUnipotent {f f' : ℍ → ℂ} {Φ : ℂ → ℂ} {M p : ℕ}
+    (hp : p.Prime) {m n : ℤ} (hmn : m * p - n * M = 1)
+    (hf : ∀ γ ∈ Gamma1 M, ∀ τ : ℍ, f (mapGL ℝ γ • τ) = f τ)
+    (hrep : ∀ τ : ℍ, Φ (f τ) = ∑ j ∈ Finset.range p, f (heckePoint 1 p j one_pos hp.pos τ) +
+      f' (heckePoint p 1 0 hp.pos one_pos τ)) (z : ℍ) :
+    f (mapGL ℝ (diamondLift M p m n hmn) • (glLowerUnipotent ((M : ℝ) / p) • z)) -
+        f' (glLowerUnipotent ((M : ℝ) / p) • z) =
+      f (mapGL ℝ (diamondLift M p m n hmn) • z) - f' z
+
+theorem diamond_eq_replicate_add_const {f f' : ℍ → ℂ} {Φ : ℂ → ℂ} {M p : ℕ} (hM : 0 < M)
+    (hp : p.Prime) (hMp : M < p) {m n : ℤ} (hmn : m * p - n * M = 1)
+    (hfhol : MDifferentiable 𝓘(ℂ) 𝓘(ℂ) f)
+    (hf : ∀ γ ∈ Gamma1 M, ∀ τ : ℍ, f (mapGL ℝ γ • τ) = f τ)
+    (hf'hol : MDifferentiable 𝓘(ℂ) 𝓘(ℂ) f')
+    (hf'per : ∀ τ : ℍ, f' (glUpperUnipotent 1 • τ) = f' τ)
+    (hrep : ∀ τ : ℍ, Φ (f τ) = ∑ j ∈ Finset.range p, f (heckePoint 1 p j one_pos hp.pos τ) +
+      f' (heckePoint p 1 0 hp.pos one_pos τ)) :
+    ∃ c : ℂ, ∀ τ : ℍ, f (mapGL ℝ (diamondLift M p m n hmn) • τ) = f' τ + c
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNGammaZeroCosets.lean}.)
+\begin{dictionary}
+\lean{hrep} is the replication identity at $p$ in ``two-block'' form, with an \emph{arbitrary} function $\Phi$ of
+$f$ on the left: monicity and degree of the Faber polynomial are not used.  \lean{hfhol}, \lean{hf'hol}: holomorphy;
+\lean{hf}: $\Gamma_1(M)$-invariance; \lean{hf'per}: $f'(\tau+1)=f'(\tau)$; \lean{hM}, \lean{hMp}: $0<M<p$.  The first
+theorem is the invariance of $\psi$ under $L_{M/p}$ (\lean{glLowerUnipotent ((M : ℝ) / p)}), the second the
+constancy.  Statements as in the theorem.
+\end{dictionary}
+\paragraph{Proof on paper.}  By Theorem~\ref{ch16:thm:cosets}(b) $S$ is $L_M$-invariant; $\Phi\circ f$ is too, since
+$L_M\in\Gamma_1(M)$.  The replication identity says $S(\tau)-\Phi(f(\tau))=f(\sigma(p\tau))-f'(p\tau)=\psi(p\tau)$.  Hence
+$\psi(p\,L_M\tau)=\psi(p\tau)$.  Now $p\cdot L_M\tau=p\tau/(M\tau+1)=L_{M/p}(p\tau)$, and $\tau\mapsto p\tau$ is onto
+$\chsixteenH$; so $\psi$ is $L_{M/p}$-invariant.  It is also $1$-periodic (Theorem~\ref{ch16:thm:cosets}(a) and
+periodicity of $f'$) and holomorphic.  Since $0<M/p<1$, Theorem~\ref{ch16:thm:shimizu}(b) shows $\psi$ is constant. \qed
+\begin{physics}
+Replication relates the $p$-th Hecke transform of $T_g$ to the replicate $T_{g^p}$; the computation shows that the
+replicate is literally the twisted partition function $T_g$ seen through the modular transformation $\sigma$, up to a
+constant.
+\end{physics}
+\begin{status}
+Unconditional (with the stated hypotheses); both printed in \leanpath{VOA/Moonshine/MoonshineCNGammaZeroAudit.lean},
+standard axioms.
+\end{status}
+
+\subsection{Asymptotic comparison and the main lemma}
+
+\begin{lemma}[Asymptotic comparison]\label{ch16:lem:affine}
+Let $f,f'$ be normalised ($f-q^{-1}\to0$ and $f'-q^{-1}\to0$ as $\operatorname{Im}\tau\to\infty$), and suppose
+$f(a\tau+b)=f'(\tau)+c$ for all $\tau$, with $a>0$, $b\in\chsixteenR$, $c\in\C$.  Then $a=1$, $b\in\Z$ and $c=0$.
+\end{lemma}
+\begin{leancode}
+theorem affine_eq_of_normalized {f f' : ℍ → ℂ}
+    (hf : Tendsto (fun τ : ℍ => f τ - (qPar τ)⁻¹) atImInfty (𝓝 0))
+    (hf' : Tendsto (fun τ : ℍ => f' τ - (qPar τ)⁻¹) atImInfty (𝓝 0))
+    {φ : ℍ → ℍ} {a b : ℝ} (ha : 0 < a) (hφ : ∀ τ : ℍ, (φ τ : ℂ) = a * τ + b) {c : ℂ}
+    (heq : ∀ τ : ℍ, f (φ τ) = f' τ + c) :
+    a = 1 ∧ (∃ k : ℤ, b = k) ∧ c = 0
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNGammaZeroBridge.lean}.)
+\begin{dictionary}
+The affine map is given as a function \lean{φ : ℍ → ℍ} with \lean{(φ τ : ℂ) = a * τ + b} (\lean{hφ}); \lean{heq} is
+$f(\varphi\tau)=f'(\tau)+c$.  Conclusion \lean{a = 1 ∧ (∃ k : ℤ, b = k) ∧ c = 0}.  As stated.
+\end{dictionary}
+\paragraph{Proof on paper.}  Write $E(\tau)=q(\varphi\tau)^{-1}-q(\tau)^{-1}$; the hypotheses give $E\to c$.  But
+$|q(\varphi\tau)^{-1}|=e^{2\pi a\operatorname{Im}\tau}$ and $|q(\tau)^{-1}|=e^{2\pi\operatorname{Im}\tau}$, and if
+$a\ne1$ their difference tends to infinity; so $a=1$.  Then $q(\varphi\tau)=q(\tau)\,\omega$ with $\omega=e^{2\pi ib}$,
+and $E=q^{-1}(\omega^{-1}-1)$, which is unbounded unless $\omega=1$, i.e.\ $b\in\Z$, and then $E=0$, so $c=0$. \qed
+\begin{physics}
+The vacuum pole $q^{-1}$ fixes the normalisation of the modulus at the cusp: no rescaling, non-integral shift or
+additive constant is compatible with two partition functions having the same leading vacuum term and no constant term.
+\end{physics}
+\begin{status}
+Unconditional; printed in \leanpath{VOA/Moonshine/MoonshineCNGammaZeroAudit.lean}, standard axioms.
+\end{status}
+
+\begin{theorem}[Replicate equals Hauptmodul; diamond in $\pm\Gamma$]\label{ch16:thm:main}
+Let $f$ be a normalised Hauptmodul for $\Gamma\le\chsixteenSLR$ with $\Gamma_1(M)\le\Gamma$, $M\ge1$.  Let $p>M$ be prime,
+$mp-nM=1$, and $f'$ holomorphic, $1$-periodic and normalised, with
+$\Phi(f(\tau))=\sum_{j<p}f((\tau+j)/p)+f'(p\tau)$ for some $\Phi:\C\to\C$.  Then $f'=f$, and $\sigma\in\Gamma$ or
+$-\sigma\in\Gamma$.
+\end{theorem}
+\begin{leancode}
+theorem replicate_eq_and_diamond_mem {Γ : Subgroup (GL (Fin 2) ℝ)} {f f' : ℍ → ℂ}
+    {Φ : ℂ → ℂ} {M p : ℕ} (hH : IsNormalizedHauptmodul Γ f) (hdet : Γ.HasDetOne)
+    (hΓ1 : gamma1GL M ≤ Γ) (hM : 0 < M) (hp : p.Prime) (hMp : M < p) {m n : ℤ}
+    (hmn : m * p - n * M = 1) (hf'hol : MDifferentiable 𝓘(ℂ) 𝓘(ℂ) f')
+    (hf'per : ∀ τ : ℍ, f' (glUpperUnipotent 1 • τ) = f' τ)
+    (hf'norm : Tendsto (fun τ : ℍ => f' τ - (qPar τ)⁻¹) atImInfty (𝓝 0))
+    (hrep : ∀ τ : ℍ, Φ (f τ) = ∑ j ∈ Finset.range p, f (heckePoint 1 p j one_pos hp.pos τ) +
+      f' (heckePoint p 1 0 hp.pos one_pos τ)) :
+    f' = f ∧ (mapGL ℝ (diamondLift M p m n hmn) ∈ Γ ∨ -mapGL ℝ (diamondLift M p m n hmn) ∈ Γ)
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNGammaZeroBridge.lean}.)
+\begin{dictionary}
+\lean{hH}: \lean{IsNormalizedHauptmodul Γ f}; \lean{hdet}: $\Gamma\le\chsixteenSLR$; \lean{hΓ1}: $\Gamma_1(M)\le\Gamma$;
+\lean{hM}: $M>0$; \lean{hp}, \lean{hMp}: $p$ prime, $p>M$; \lean{hmn}: $mp-nM=1$; the three hypotheses on $f'$; and
+\lean{hrep}, the replication identity at $p$ with arbitrary $\Phi$.  Commensurability of $\Gamma$ is \emph{not} needed.
+The conclusion \lean{f' = f ∧ (σ ∈ Γ ∨ -σ ∈ Γ)}, with \lean{σ = mapGL ℝ (diamondLift M p m n hmn)}.  As stated.
+\end{dictionary}
+\paragraph{Proof on paper.}  By Theorem~\ref{ch16:thm:diamondconst}, $f(\sigma\tau)=f'(\tau)+c$; the right-hand side is
+unbounded as $\operatorname{Im}\tau\to\infty$ ($f'\sim q^{-1}$).  The point $\sigma\infty=m/M$ is a cusp of
+$\Gamma_1(M)\le\Gamma$.  If it were not $\Gamma$-equivalent to $\infty$, it would be an other cusp, and by \ref{ch16:H4}
+$f(\sigma\tau)$ would tend to a finite value: contradiction.  So $\gamma\infty=\sigma\infty$ for some $\gamma\in\Gamma$,
+and $\delta=\gamma^{-1}\sigma$ fixes $\infty$ and has determinant $1$: $\delta=\chsixteenmat{a}{b}{0}{a^{-1}}$, acting by
+$\tau\mapsto a^2\tau+ab$.  By invariance, $f(\sigma\tau)=f(\delta\tau)$, so $f(a^2\tau+ab)=f'(\tau)+c$.
+Lemma~\ref{ch16:lem:affine} gives $a^2=1$, $ab=k\in\Z$, $c=0$.  Hence $\delta=\pm T_k$, $f'(\tau)=f(\tau+k)=f(\tau)$ (as
+$T_k\in\Gamma_1(M)$), and $\sigma=\gamma\delta=\pm\gamma T_k\in\pm\Gamma$. \qed
+\begin{physics}
+If the twisted partition function of $g$ is a Hauptmodul, then the twisted partition function of $g^p$ (for a large
+prime $p$) is the same function, and the modular transformation that turns the $g$-twist into a $g^p$-twist is a
+symmetry of it.  The only physical input is the absence of a second vacuum-like pole at the other cusps.
+\end{physics}
+\begin{status}
+Unconditional (with the stated hypotheses); printed in \leanpath{VOA/Moonshine/MoonshineCNGammaZeroAudit.lean},
+standard axioms.
+\end{status}
+
+\subsection{\texorpdfstring{$\Gamma_0(M)\le\pm\Gamma$}{Gamma0(M) in ±Gamma} by Dirichlet's theorem}
+
+\begin{definition}[Replication at a prime]\label{ch16:def:repprime}
+$f$ \emph{replicates at the prime $p$ with replicate $f'$} if there is $\Phi:\C\to\C$ with
+$\Phi(f(\tau))=\sum_{j<p}f((\tau+j)/p)+f'(p\tau)$ for all $\tau$.
+\end{definition}
+\begin{leancode}
+def ReplicatesAtPrime (f f' : ℍ → ℂ) (p : ℕ) (hp : p.Prime) : Prop :=
+  ∃ Φ : ℂ → ℂ, ∀ τ : ℍ, Φ (f τ) = ∑ j ∈ Finset.range p, f (heckePoint 1 p j one_pos hp.pos τ) +
+    f' (heckePoint p 1 0 hp.pos one_pos τ)
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNGammaZeroBridge.lean}.)
+\begin{dictionary}
+Exactly the definition.  The lemma \lean{heckeSum_prime} (same file) shows that the divisor-sum of
+\lean{CompletelyReplicable} at $m=p$ prime has exactly these two blocks ($a=1$: $j=0,\dots,p-1$; $a=p$: one term),
+and \lean{replicatesAtPrime_of_replication} turns complete replicability of $g$ at $p$ into
+\lean{ReplicatesAtPrime (T g) (T (g ^ p)) p}.
+\end{dictionary}
+\begin{physics}
+The $p$-th Hecke covering relation, in its simplest (prime) form.
+\end{physics}
+\begin{status}
+Definition; used by the audited theorems below.
+\end{status}
+
+\begin{theorem}[$\Gamma_0$ from $\Gamma_1$ and replication]\label{ch16:thm:gamma0}
+Let $f$ be a normalised Hauptmodul for $\Gamma\le\chsixteenSLR$ with $\Gamma_1(M)\le\Gamma$, $M\ge1$, and suppose that for
+every prime $p>M$ there is a holomorphic, $1$-periodic, normalised $f'$ such that $f$ replicates at $p$ with replicate
+$f'$.  Then:
+\begin{enumerate}[label=(\alph*)]
+\item $\Gamma_0(M)\le\pm\Gamma$;
+\item $f$ is a normalised Hauptmodul for $\pm\Gamma$;
+\item if moreover $\Gamma$ is commensurable with $\chsixteenSL$, then $\pm\Gamma$ is a moonshine group of level $M$.
+\end{enumerate}
+\end{theorem}
+\begin{leancode}
+theorem gamma0_le_adjoinNegOne_of_replicable {Γ : Subgroup (GL (Fin 2) ℝ)} {f : ℍ → ℂ} {M : ℕ}
+    (hH : IsNormalizedHauptmodul Γ f) (hdet : Γ.HasDetOne) (hΓ1 : gamma1GL M ≤ Γ) (hM : 0 < M)
+    (hrep : ∀ (p : ℕ) (hp : p.Prime), M < p → ∃ f' : ℍ → ℂ,
+      MDifferentiable 𝓘(ℂ) 𝓘(ℂ) f' ∧ (∀ τ : ℍ, f' (glUpperUnipotent 1 • τ) = f' τ) ∧
+      Tendsto (fun τ : ℍ => f' τ - (qPar τ)⁻¹) atImInfty (𝓝 0) ∧ ReplicatesAtPrime f f' p hp) :
+    gamma0GL M ≤ Γ.adjoinNegOne
+
+theorem IsNormalizedHauptmodul.adjoinNegOne {Γ : Subgroup (GL (Fin 2) ℝ)} {f : ℍ → ℂ}
+    (hH : IsNormalizedHauptmodul Γ f) : IsNormalizedHauptmodul Γ.adjoinNegOne f where
+
+theorem isMoonshineGroup_adjoinNegOne_of_replicable {Γ : Subgroup (GL (Fin 2) ℝ)} {f : ℍ → ℂ}
+    {M : ℕ} (hH : IsNormalizedHauptmodul Γ f) (hdet : Γ.HasDetOne) (hΓ1 : gamma1GL M ≤ Γ)
+    (hM : 0 < M) (hcomm : Subgroup.Commensurable Γ 𝒮ℒ)
+    (hrep : ∀ (p : ℕ) (hp : p.Prime), M < p → ∃ f' : ℍ → ℂ,
+      MDifferentiable 𝓘(ℂ) 𝓘(ℂ) f' ∧ (∀ τ : ℍ, f' (glUpperUnipotent 1 • τ) = f' τ) ∧
+      Tendsto (fun τ : ℍ => f' τ - (qPar τ)⁻¹) atImInfty (𝓝 0) ∧ ReplicatesAtPrime f f' p hp) :
+    IsMoonshineGroup Γ.adjoinNegOne M ∧ IsNormalizedHauptmodul Γ.adjoinNegOne f
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNGammaZeroBridge.lean}.)
+\begin{dictionary}
+\lean{Γ.adjoinNegOne} is $\pm\Gamma$.  \lean{hrep} quantifies over primes $p>M$ and provides, for each, $f'$ with the
+three properties and \lean{ReplicatesAtPrime f f' p hp}.  (c) also needs \lean{hcomm}, commensurability of $\Gamma$.
+The conclusions are (a), (b), (c) exactly.  Note that the output group is $\pm\Gamma$, not $\Gamma$; this is harmless
+because $-1$ acts trivially on $\chsixteenH$ and on cusps, and $\Gamma_0(M)$ contains $-1$ anyway.
+\end{dictionary}
+\paragraph{Proof on paper.}  (a) Let $\delta=\chsixteenmat abcd\in\Gamma_0(M)$.  Then $ad\equiv1\pmod M$, so $d$ is a unit
+mod $M$.  By Dirichlet's theorem on primes in arithmetic progressions (Mathlib's
+\lean{Nat.forall_exists_prime_gt_and_eq_mod}) there is a prime $p>M$ with $p\equiv d\pmod M$; then $\gcd(p,M)=1$ and we
+choose $m,n$ with $mp-nM=1$.  Theorem~\ref{ch16:thm:main} gives $\pm\sigma\in\Gamma$.  The matrix
+$\varepsilon=\delta\sigma^{-1}$ has integer entries, determinant $1$, lower-left entry $cp-dM\equiv0$, and diagonal
+entries $\equiv ap\equiv ad\equiv1$ and $\equiv dm\equiv dp^{-1}\equiv1\pmod M$; so $\varepsilon\in\Gamma_1(M)\le\Gamma$ and
+$\delta=\varepsilon\sigma\in\pm\Gamma$.  (b) $-1$ acts trivially on $\chsixteenH$ and on $\chsixteenP(\chsixteenR)$, so each of
+the eight fields transfers from $\Gamma$ to $\pm\Gamma$ (the cusps and other cusps are the same).  (c) $\pm\Gamma$ has
+determinant one, contains $\Gamma_0(M)$ by (a), and is commensurable with $\Gamma$ (index at most $2$), hence with
+$\chsixteenSL$. \qed
+\begin{physics}
+Dirichlet's theorem supplies enough primes to realise every residue class of twists $g\mapsto g^d$; each realisation is
+a symmetry of the Hauptmodul by Theorem~\ref{ch16:thm:main}.  The upshot is the full $\Gamma_0(M)$ invariance expected of
+an order-$M$ twisted partition function whose twist is ``Galois-invariant''.
+\end{physics}
+\begin{status}
+Unconditional (with the stated hypotheses); all three printed in \leanpath{VOA/Moonshine/MoonshineCNGammaZeroAudit.lean},
+standard axioms.
+\end{status}
+
+\subsection{The bridge}
+
+\begin{theorem}[The bridge $\Gamma_1\Rightarrow\Gamma_0$]\label{ch16:thm:bridge}
+\begin{enumerate}[label=(\alph*)]
+\item If the $\Gamma_1$ form holds and $g$ has finite order and replicates at every prime (with some polynomial), then
+  $g$ has the Conway--Norton property.
+\item If every automorphism of $\Vnat$ has finite order, the $\Gamma_1$ form holds, and the finite-order McKay--Thompson
+  series are completely replicable, then the Conway--Norton conjecture holds.
+\item The same with \lean{CompletelyReplicable} in place of its finite-order restriction.
+\end{enumerate}
+\end{theorem}
+\begin{leancode}
+def CompletelyReplicableOfFinOrder : Prop :=
+  ∀ (g : AutVnat), IsOfFinOrder g → ∀ m : ℕ, 0 < m → ∃ P : Polynomial ℂ, P.Monic ∧
+    P.natDegree = m ∧ ∀ τ : ℍ, P.eval (mckayThompsonFun g τ) =
+      ∑ a ∈ m.divisors.attach, ∑ b ∈ Finset.range (m / a),
+        mckayThompsonFun (g ^ (a : ℕ)) (heckePoint a (m / a) b (Nat.pos_of_mem_divisors a.2)
+          (Nat.div_pos (Nat.divisor_le a.2) (Nat.pos_of_mem_divisors a.2)) τ)
+
+theorem conwayNortonFor_of_gammaOne (h1 : ConwayNortonGammaOne) {g : AutVnat}
+    (hg : IsOfFinOrder g)
+    (hrep : ∀ p : ℕ, p.Prime → ∃ P : Polynomial ℂ, ∀ τ : ℍ, P.eval (mckayThompsonFun g τ) =
+      ∑ a ∈ p.divisors.attach, ∑ b ∈ Finset.range (p / a),
+        mckayThompsonFun (g ^ (a : ℕ)) (heckePoint a (p / a) b (Nat.pos_of_mem_divisors a.2)
+          (Nat.div_pos (Nat.divisor_le a.2) (Nat.pos_of_mem_divisors a.2)) τ)) :
+    ConwayNortonFor g
+
+theorem conwayNorton_of_gammaOne_of_finOrder (hfin : ∀ g : AutVnat, IsOfFinOrder g)
+    (h1 : ConwayNortonGammaOne) (hrep : CompletelyReplicableOfFinOrder) :
+    ConwayNortonConjecture
+
+theorem conwayNorton_of_gammaOne (hfin : ∀ g : AutVnat, IsOfFinOrder g)
+    (h1 : ConwayNortonGammaOne) (hrep : CompletelyReplicable) : ConwayNortonConjecture
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNGammaZeroBridge.lean}.)
+\begin{dictionary}
+\lean{CompletelyReplicableOfFinOrder} is \lean{CompletelyReplicable} restricted to $g$ with \lean{IsOfFinOrder g}.
+In (a), \lean{hrep} asks for replication at every prime $p$ with a polynomial $P$ that need not be monic.  The
+hypotheses of (b) and (c) are named propositions: \lean{hfin : ∀ g, IsOfFinOrder g}, \lean{h1 : ConwayNortonGammaOne},
+\lean{hrep}.  The conclusions are \lean{ConwayNortonFor g} and \lean{ConwayNortonConjecture}.  These theorems are
+\textbf{conditional} on their hypotheses; \texttt{\#print axioms} does not show them.  All three hypotheses are
+theorems of the library (Chapters~\ref{ch:19} and~\ref{ch:20}); their combination is \lean{conwayNorton}.
+\end{dictionary}
+\paragraph{Proof on paper.}  (a) The $\Gamma_1$ form for $g$ gives $(\Gamma,M)$.  For a prime $p>M$, the replicate is
+$f'=T_{g^p}$: it is $1$-periodic by definition, and holomorphic and normalised because the $\Gamma_1$ form also applies
+to $g^p$ (which has finite order).  Replication of $g$ at $p$ is \lean{ReplicatesAtPrime} by \lean{heckeSum_prime}.
+Theorem~\ref{ch16:thm:gamma0} gives $\pm\Gamma$, a moonshine group of level $M$ for $T_g$.  (b), (c) Apply (a) to every
+$g$. \qed
+\begin{physics}
+Exact twist-preserving modular invariance ($\Gamma_1$) plus the covering relations between twisted partition functions
+imply invariance up to Galois twists ($\Gamma_0$).
+\end{physics}
+\begin{status}
+Conditional on the explicit hypotheses \lean{ConwayNortonGammaOne}, (finite-order) complete replicability and finite
+order; all printed in \leanpath{VOA/Moonshine/MoonshineCNGammaZeroAudit.lean} with standard axioms.  The final theorem
+\lean{conwayNorton} uses \lean{conwayNorton_of_gammaOne} with all three hypotheses discharged (\S\ref{ch16:sec:final}).
+\end{status}
+
+\subsection{Galois invariance}
+
+\begin{theorem}[Galois invariance of McKay--Thompson series]\label{ch16:thm:galois}
+Under the hypotheses of Theorem~\ref{ch16:thm:bridge}(a) (respectively (c)), $T_{g^u}=T_g$ for every $u$ coprime to the
+order of $g$ (respectively for every $g$ and every such $u$).
+\end{theorem}
+\begin{leancode}
+theorem mckayThompsonFun_pow_eq_of_coprime (h1 : ConwayNortonGammaOne) {g : AutVnat}
+    (hg : IsOfFinOrder g)
+    (hrep : ∀ p : ℕ, p.Prime → ∃ P : Polynomial ℂ, ∀ τ : ℍ, P.eval (mckayThompsonFun g τ) =
+      ∑ a ∈ p.divisors.attach, ∑ b ∈ Finset.range (p / a),
+        mckayThompsonFun (g ^ (a : ℕ)) (heckePoint a (p / a) b (Nat.pos_of_mem_divisors a.2)
+          (Nat.div_pos (Nat.divisor_le a.2) (Nat.pos_of_mem_divisors a.2)) τ))
+    {u : ℕ} (hu : Nat.Coprime u (orderOf g)) :
+    mckayThompsonFun (g ^ u) = mckayThompsonFun g
+
+theorem mckayThompsonFun_pow_eq_of_coprime_of_completelyReplicable
+    (hfin : ∀ g : AutVnat, IsOfFinOrder g) (h1 : ConwayNortonGammaOne)
+    (hrep : CompletelyReplicable) (g : AutVnat) {u : ℕ} (hu : Nat.Coprime u (orderOf g)) :
+    mckayThompsonFun (g ^ u) = mckayThompsonFun g
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNGammaZeroGalois.lean}.)
+\begin{dictionary}
+\lean{Nat.Coprime u (orderOf g)}: $\gcd(u,o(g))=1$.  The conclusion is an equality of functions on $\chsixteenH$.
+Conditional on the stated hypotheses (all theorems of the library; the unconditional version is
+\lean{mckayThompsonFun_pow_eq_of_coprime_holds}, Chapter~\ref{ch:22}).
+\end{dictionary}
+\paragraph{Proof on paper.}  Let $(\Gamma,M)$ come from the $\Gamma_1$ form for $g$.  By Dirichlet there is a prime
+$p>M$ with $p\equiv u\pmod{o(g)}$, so $g^p=g^u$.  Theorem~\ref{ch16:thm:main} with $f'=T_{g^p}$ gives
+$T_{g^u}=T_{g^p}=T_g$. \qed
+
+Comparing $q$-coefficients, $\tr(g^u|\Vnat_n)=\tr(g|\Vnat_n)$, and averaging over $u\in(\Z/o(g))^\times$ shows that the
+traces are rational (Ramanujan sums); this is how \lean{rationalTraces} is proved in Chapter~\ref{ch:22}.
+\begin{physics}
+The twisted partition function of $g$ depends only on the cyclic group generated by $g$: twisting by any generator
+$g^u$ gives the same function.  Equivalently the character values of $g$ on every energy level are rational.
+\end{physics}
+\begin{status}
+Conditional on the stated hypotheses; both printed in \leanpath{VOA/Moonshine/MoonshineCNGammaZeroAudit.lean},
+standard axioms.
+\end{status}
+
+\subsection{The family version}
+
+\begin{theorem}[$\Gamma_0$ for an abstract replicable family]\label{ch16:thm:family}
+Let $F$ be a completely replicable family, $k\in\N$, and suppose the member $Q_{c(k,\cdot)}$ is a normalised Hauptmodul
+for $\Gamma\le\chsixteenSLR$ with $\Gamma_1(M)\le\Gamma$, $M\ge1$.
+\begin{enumerate}[label=(\alph*)]
+\item If $\Gamma$ is commensurable with $\chsixteenSL$ and each replicate $Q_{c(kp,\cdot)}$, $p>M$ prime, is holomorphic
+  and normalised, then $\pm\Gamma$ is a moonshine group of level $M$ and $Q_{c(k,\cdot)}$ is a normalised Hauptmodul for
+  it.
+\item For each prime $p>M$ with $Q_{c(kp,\cdot)}$ holomorphic and normalised, $Q_{c(kp,\cdot)}=Q_{c(k,\cdot)}$.
+\end{enumerate}
+\end{theorem}
+\begin{leancode}
+theorem isMoonshineGroup_of_gammaOne (k : ℕ) {Γ : Subgroup (GL (Fin 2) ℝ)} {M : ℕ}
+    (hM : 0 < M) (hdet : Γ.HasDetOne) (hΓ1 : gamma1GL M ≤ Γ)
+    (hcomm : Subgroup.Commensurable Γ 𝒮ℒ) (hH : IsNormalizedHauptmodul Γ (qSeriesFun (F.c k)))
+    (hhol : ∀ p : ℕ, p.Prime → M < p → MDifferentiable 𝓘(ℂ) 𝓘(ℂ) (qSeriesFun (F.c (k * p))))
+    (hnorm : ∀ p : ℕ, p.Prime → M < p →
+      Tendsto (fun τ : ℍ => qSeriesFun (F.c (k * p)) τ - (qPar τ)⁻¹) atImInfty (𝓝 0)) :
+    IsMoonshineGroup Γ.adjoinNegOne M ∧
+      IsNormalizedHauptmodul Γ.adjoinNegOne (qSeriesFun (F.c k))
+
+theorem qSeriesFun_mul_prime_eq (k : ℕ) {Γ : Subgroup (GL (Fin 2) ℝ)} {M : ℕ}
+    (hM : 0 < M) (hdet : Γ.HasDetOne) (hΓ1 : gamma1GL M ≤ Γ)
+    (hH : IsNormalizedHauptmodul Γ (qSeriesFun (F.c k))) {p : ℕ} (hp : p.Prime) (hMp : M < p)
+    (hhol : MDifferentiable 𝓘(ℂ) 𝓘(ℂ) (qSeriesFun (F.c (k * p))))
+    (hnorm : Tendsto (fun τ : ℍ => qSeriesFun (F.c (k * p)) τ - (qPar τ)⁻¹) atImInfty (𝓝 0)) :
+    qSeriesFun (F.c (k * p)) = qSeriesFun (F.c k)
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNGammaZeroFamily.lean}, namespace \chsixteenlean{VOA.Moonshine.ConwayNorton.ReplicableFamily},
+with \lean{F : ReplicableFamily N} a variable.)
+\begin{dictionary}
+The same statements as Theorems~\ref{ch16:thm:gamma0} and~\ref{ch16:thm:main}, for member $k$ of an abstract family, with
+replicate \lean{qSeriesFun (F.c (k * p))}.  The lemma \lean{ReplicableFamily.replicatesAtPrime} extracts the two-block
+replication identity from field \lean{replicable}, and \lean{qSeriesFun_periodic} supplies periodicity.  These
+theorems are not on the path to \lean{conwayNorton}; they were provided so that the genus-zero track could work on the
+abstract interface alone, and (b) says that the abstract family is automatically ``Galois invariant'' once its members
+are Hauptmoduln.
+\end{dictionary}
+\paragraph{Proof on paper.}  As for Theorems~\ref{ch16:thm:gamma0} and~\ref{ch16:thm:main}. \qed
+\begin{physics}
+The same statement for an abstract system of twisted partition functions.
+\end{physics}
+\begin{status}
+Conditional on the stated hypotheses; printed in \leanpath{VOA/Moonshine/MoonshineCNGammaZeroAudit.lean}, standard
+axioms.
+\end{status}
+
+\subsection{Supporting declarations}
+
+The five files contain, besides the statements above, the following supporting material; none of it introduces a new
+mathematical notion.
+\begin{itemize}
+\item \leanpath{VOA/Moonshine/MoonshineCNGammaZeroShimizu.lean}: the invariance subgroup
+  \chsixteenlean{precompInvariantSubgroup ψ} $=\{g:\psi\circ g=\psi\}$; real M\"obius maps of positive determinant fixing two
+  points of $\chsixteenH$ are scalar (\chsixteenlean{entries_of_two_fixed}, \chsixteenlean{smul_eq_self_of_scalar}), hence a non-trivial
+  one moves $i$ or $2i$ (\chsixteenlean{moves_I_or_twoI}, \chsixteenlean{exists_smul_ne_of_lowerLeft_ne_zero}); entrywise convergence
+  $C_n\to1$ gives $C_n\tau\to\tau$ and eventually positive determinant; the identity-theorem step
+  \chsixteenlean{eq_of_invariant_of_frequently_moved}; Shimizu's sequence \chsixteenlean{shimizuPair}, \chsixteenlean{shimizuMatrix},
+  \chsixteenlean{shimizuWitness} with its recursion, convergence and non-triviality.
+\item \leanpath{VOA/Moonshine/MoonshineCNGammaZeroCosets.lean}: integer and real matrix constructors
+  (\chsixteenlean{slOfDetOne}, \chsixteenlean{upperSL}, \chsixteenlean{lowerSL}, \chsixteenlean{glUpperTri}, \chsixteenlean{heckeShiftGL} $=\chsixteenmat1j0p$,
+  \chsixteenlean{heckeScaleGL} $=\chsixteenmat p001$) and their actions on Hecke points; $\sigma T_1\sigma^{-1}\in\Gamma_1(M)$
+  (\chsixteenlean{diamondLift_mul_upperSL}); M\"obius arithmetic in a field and the index maps \chsixteenlean{heckeIndexMap},
+  \chsixteenlean{heckeIndexInv} with their bijectivity and integrality lemmas; the three coset identities; $p\,L_M\tau=L_{M/p}(p\tau)$
+  (\chsixteenlean{heckeScale_lowerSL}) and surjectivity of $\tau\mapsto p\tau$.
+\item \leanpath{VOA/Moonshine/MoonshineCNGammaZeroBridge.lean}: $|q^{-1}|=e^{2\pi\operatorname{Im}\tau}\to\infty$
+  (\chsixteenlean{norm_inv_qPar}, \chsixteenlean{tendsto_norm_inv_qPar_atTop}); periodicity of $q$ and of $T_g$
+  (\chsixteenlean{mckayThompsonFun_periodic}); an elementary inequality $|u-v|\le|e^u-e^v|$ for $u,v\ge0$; $-g$ and $g$ have the
+  same action on cusps, so other cusps of $\Gamma$ and $\pm\Gamma$ agree (\chsixteenlean{neg_smul_cuspInfty},
+  \chsixteenlean{isOtherCusp_adjoinNegOne_iff}); \chsixteenlean{hasDetOne_adjoinNegOne}; \chsixteenlean{heckePointAux} (a proof-free variant of
+  \chsixteenlean{heckePoint}), \chsixteenlean{heckeSum_prime}, \chsixteenlean{replicatesAtPrime_of_replication},
+  \chsixteenlean{completelyReplicableOfFinOrder_of_completelyReplicable}.
+\item \leanpath{VOA/Moonshine/MoonshineCNGammaZeroFamily.lean}: \chsixteenlean{qSeriesFun_periodic},
+  \chsixteenlean{ReplicableFamily.replicatesAtPrime}.
+\end{itemize}
+All of these are printed in \leanpath{VOA/Moonshine/MoonshineCNGammaZeroAudit.lean} or used by declarations printed
+there.
+
+\begin{warning}
+\textbf{Deviations from the paper blueprint, none a defect}.
+(i) Constancy uses the identity theorem, not local injectivity of $\psi$.  (ii) That $\sigma\infty$ is a cusp of $\Gamma$
+comes from arithmeticity of $\Gamma_1(M)$, not from the parabolic $\sigma T\sigma^{-1}$.  (iii) Coset matching holds for
+every prime $p$; $p>M$ is used only for $0<M/p<1$.  (iv) Replication is used with an arbitrary function $\Phi$; monicity
+and degree are never used.  (v) The output group is $\pm\Gamma$.  (vi) Holomorphy and normalisation of the replicate
+$T_{g^p}$ are taken from the $\Gamma_1$ theorem applied to $g^p$, so the bridge uses the $\Gamma_1$ theorem at $g$
+\emph{and} at all $g^p$.
+\end{warning}
+
+
+%======================================================================
+\section{The final theorem and the audit modules}\label{ch16:sec:final}
+%======================================================================
+
+\subsection{The theorem}
+
+\begin{theorem}[Conway--Norton for $\Aut(\Vnat)$; Borcherds]\label{ch16:thm:conwayNorton}
+For every automorphism $g$ of $\Vnat$ there are a subgroup $\Gamma_g\le\chsixteenSLR$ and $N\ge1$ such that
+$\Gamma_0(N)\le\Gamma_g$, $\Gamma_g$ is commensurable with $\chsixteenSL$, and the McKay--Thompson series
+$T_g=q^{-1}+\sum_{n\ge1}\tr(g|\Vnat_{n+1})q^n$ is the normalised Hauptmodul of $\Gamma_g$ in the sense of Definition~\ref{ch16:def:cn}; in particular $\Gamma_g$ has
+genus zero (this last consequence is Proposition~\ref{ch16:prop:haupt}, an argument on paper that is not formalized:
+the Lean statement asserts the defining properties of a normalised Hauptmodul, not the topology of
+$\Gamma_g\backslash\mathbb H^{*}$).
+\end{theorem}
+\begin{leancode}
+theorem conwayNorton : ConwayNortonConjecture :=
+  M8.conwayNortonConjecture_holds
+
+example (g : AutMonster.AutVnat) : ∃ (Γ : Subgroup (GL (Fin 2) ℝ)) (N : ℕ), IsMoonshineGroup Γ N ∧
+    IsNormalizedHauptmodul Γ (mckayThompsonFun g) :=
+  conwayNorton g
+\end{leancode}
+(\leanpath{VOA/Moonshine/MoonshineCNFinalAudit.lean}, \lean{VOA.Moonshine.ConwayNorton.conwayNorton}.)
+\begin{dictionary}
+\lean{ConwayNortonConjecture} is Definition~\ref{ch16:def:cn}; the \lean{example} unfolds it one step, and Lean accepts
+\lean{conwayNorton g} as its proof, so the unfolded form is literally what is proved.  The theorem has \textbf{no
+hypotheses}: no arguments, no section variables, no type-class assumptions beyond the fixed objects.  Its proof term
+\lean{M8.conwayNortonConjecture_holds} is the assembly of Chapter~\ref{ch:20}.  The full fidelity discussion is
+\S\ref{ch16:sec:fidelity}: this is the genus-zero form of the Conway--Norton conjecture, for the full automorphism group
+of the library's $\Vnat$.  ``Genus zero'' is read off on paper: Lean proves that $T_g$ has the defining properties of
+a normalised Hauptmodul (\lean{IsNormalizedHauptmodul}), and Proposition~\ref{ch16:prop:haupt} shows, without Lean, that
+a group admitting such a function has genus zero.
+\end{dictionary}
+\paragraph{Proof on paper; where each step lives.}  Unwinding the proof term, the theorem is the composite of the
+following implications (names in \chsixteenlean{VOA.Moonshine.ConwayNorton}).
+\begin{enumerate}[label=(\arabic*)]
+\item \chsixteenlean{M8.monsterLieSimpleRootGeneration}: the Monster Lie algebra is generated by its simple root spaces
+  (Chapter~\ref{ch:20}, from the product identity for $J(p)-J(q)$ of Chapter~\ref{ch:19}).
+\item \chsixteenlean{M8.autVnat_isOfFinOrder}: every automorphism of $\Vnat$ has finite order (Chapter~\ref{ch:20}).
+\item \chsixteenlean{completelyReplicable_of_simpleRootGeneration}: from (1), (2) and the twisted denominator identities,
+  \chsixteenlean{CompletelyReplicable} (Chapter~\ref{ch:19}).
+\item \chsixteenlean{conwayNortonGammaOne_of_completelyReplicable}: from complete replicability, the prime Hecke identity and the
+  non-injectivity of the replicable families modulo translations (both proved, Chapter~\ref{ch:19}), the case-free
+  genus-zero argument gives \chsixteenlean{ConwayNortonGammaOne}.
+\item \chsixteenlean{conwayNorton_of_gammaOne} (Theorem~\ref{ch16:thm:bridge}): from (2), (4) and (3), \chsixteenlean{ConwayNortonConjecture}.
+\end{enumerate}
+The links are \chsixteenlean{M8.conwayNortonConjecture_holds} $=$ \chsixteenlean{M8.conwayNorton_of_isOfFinOrder} (2), which applies
+\chsixteenlean{conwayNorton_of_simpleRootGeneration} to (1); that theorem calls
+\chsixteenlean{M8.conwayNorton_of_finOrder_of_completelyReplicable} with (3), which in turn calls
+\chsixteenlean{conwayNorton_of_completelyReplicable}, i.e.\ (4) followed by (5). \qed
+\begin{physics}
+Every global symmetry of the Monster conformal field theory has a twisted torus partition function that is the
+Hauptmodul of a genus-zero modular group.  In the string-theory language of Borcherds' proof: the physical spectrum of
+the $26$-dimensional bosonic string compactified on the moonshine orbifold times a Lorentzian torus organises the
+twisted partition functions into a completely replicable system, and complete replicability forces genus zero.
+\end{physics}
+\begin{status}
+\textbf{Unconditional.}  \texttt{\#print axioms} for \lean{conwayNorton}, \lean{M8.conwayNortonConjecture_holds},
+\lean{M8.monsterLieSimpleRootGeneration} and \lean{M8.autVnat_isOfFinOrder} (the four commands at the end of
+\leanpath{VOA/Moonshine/MoonshineCNFinalAudit.lean}): \lean{[propext, Classical.choice, Quot.sound]}, no
+\lean{sorryAx}, as recorded in the build record of the release (Chapter~\ref{ch:15}, Section~\ref{ch15:sec:record}): the umbrella
+\lean{VOA.Moonshine}, which imports this module, builds green (9,504 jobs), and \texttt{run\_axiom\_audits.py} passes
+(5,983 reports across 25 probes, all within \lean{[propext, Classical.choice, Quot.sound]}, with 0 \lean{sorryAx}).
+\end{status}
+
+\subsection{The audit modules}
+
+An \emph{audit module} is a Lean file containing \texttt{\#print axioms} commands (and sometimes \lean{example}s and
+\texttt{\#check}s) for the declarations of a batch of files; building it makes Lean print the axioms on which each
+declaration depends.  The moonshine development kept one cumulative chain of audits for the \texttt{MoonshineCN} files,
+each importing the previous one.  The following are assigned to this chapter; the material they audit is documented in
+the chapters indicated.  ``Reports'' is the number of \texttt{\#print axioms} lines in the file (counted in the source
+files of the release).  By the axiom audit of the release, every report is \lean{[propext, Classical.choice, Quot.sound]}, with no
+\lean{sorryAx}.
+\begin{center}\small
+\begin{longtable}{p{0.31\textwidth}p{0.07\textwidth}p{0.43\textwidth}p{0.08\textwidth}}
+\toprule
+file (\texttt{VOA/Moonshine/}) & reports & what is audited & chapter\\
+\midrule
+\endhead
+\texttt{MoonshineCNAudit.lean} & 53 & graded traces and McKay--Thompson series (\texttt{Trace}); the lattice $I\!I_{1,1}$, its
+  oscillators, the vertex-algebra target & \ref{ch:16}, \ref{ch:17}\\
+\texttt{MoonshineCNAudit2.lean} & 383 & the complex-frame construction of $V_{I\!I_{1,1}}$: charges, currents, exponentials,
+  conformal vector, Sugawara, Virasoro, reconstruction, grading & \ref{ch:17}\\
+\texttt{MoonshineCNAudit3.lean} & 105 & trace bounds; \textbf{the statement file}; tensor fields, conformal structure,
+  grading, momentum; Fock adjoint; lattice and tensor forms, nondegeneracy & \ref{ch:16}, \ref{ch:17}\\
+\texttt{MoonshineCNAudit4.lean} & 97 & abstract string module: generators, orthogonals, grading, critical dimension,
+  longitudinal, physical and transverse states (no-ghost core) & \ref{ch:18}\\
+\texttt{MoonshineCNAudit5.lean} & 117 & quotient isometries, string symmetry, hyperbolic Fock space, commutant, Sugawara,
+  form, straightening & \ref{ch:17}, \ref{ch:18}\\
+\texttt{MoonshineCNAudit6.lean} & 98 & hyperbolic light-cone splitting: negative modes, filtrations, PBW maps and
+  coordinates & \ref{ch:17}\\
+\texttt{MoonshineCNAudit7.lean} & 94 & central scalar, mixed modes, positive creation, Sugawara adjoint, tensor light cone
+  and PBW & \ref{ch:17}\\
+\texttt{MoonshineCNAudit8.lean} & 89 & the concrete no-ghost isometries for $\Vnat$: sector grading and laws,
+  $\Vnat$ string module, longitudinal quotient, zero weight & \ref{ch:18}\\
+\texttt{MoonshineCNAudit9.lean} & 105 & near-VOA mode identities: Goddard, translation, $n$-th products, iterate,
+  Borcherds identity, skew symmetry; sector form convention & \ref{ch:17}\\
+\texttt{MoonshineCNAudit10.lean} & 83 & physical Lie algebra, Monster Lie algebra, momentum grading, sector frame,
+  $\Aut(\Vnat)$ action, momentum reversal & \ref{ch:18}\\
+\texttt{MoonshineCNAudit11.lean} & 76 & root spaces, root radical, descended bilinear form and pairing & \ref{ch:18}\\
+\texttt{MoonshineCNAudit12.lean} & 66 & generator adjoints; Borcherds roots, data, $\mathfrak{sl}_2$, parabolic & \ref{ch:17}, \ref{ch:18}\\
+\texttt{MoonshineCNAudit13.lean} & 60 & charge-sensitive nilpotence, opposite modes, adjoint reduction & \ref{ch:17}\\
+\texttt{MoonshineCNAudit14.lean} & 111 & Borcherds algebras: augmentation, generation, Levi, parabolic and string actions,
+  relative induction and PBW, Verma multiplication & \ref{ch:18}\\
+\texttt{MoonshineCNAudit15.lean} & 80 & locally finite Casimir, root cutoff and duality, resolution range & \ref{ch:18}\\
+\texttt{MoonshineCNAudit16.lean} & 43 & opposite iterate identity; hypothesis-free Lie invariance of the form on
+  $\mathfrak m$ & \ref{ch:17}, \ref{ch:18}\\
+\texttt{MoonshineCNAudit17.lean} & 141 & Verma resolution, tensor algebra $\cong$ enveloping algebra, freeness of the
+  positive part, Cartan action, $\mathfrak m$ as Borcherds data (given generation) & \ref{ch:18}\\
+\texttt{MoonshineCNAudit18.lean} & 188 & twisted denominator identities, formal and analytic replication, complete
+  replicability; Conway--Norton given generation and finite order; imports the $\Gamma_0$ and genus-zero audits &
+  \ref{ch:19}\\
+\texttt{MoonshineCNGammaZeroAudit.lean} & 47 & the $\Gamma_1\Rightarrow\Gamma_0$ bridge (\S\ref{ch16:sec:gammazero}) &
+  \ref{ch:16}\\
+\texttt{MoonshineCNFinalAudit.lean} & 4 & \chsixteenlean{conwayNorton} and its three last inputs & \ref{ch:16}\\
+\bottomrule
+\end{longtable}
+\end{center}
+The audit modules prove nothing new; they exist to make the axiom check reproducible.  A clean audit line certifies
+that the declaration uses no axiom beyond Lean's three and no \lean{sorry}; it does not certify that the declaration is
+unconditional (several audited theorems have explicit hypotheses, e.g.\ \lean{conwayNorton_of_gammaOne}), and it does
+not certify that the statement means what it should: that is the job of the fidelity checks.  The other final audits of
+the part (\texttt{MoonshineCNMonsterFinalAudit}, \texttt{MoonshineCNSymmetryFinalAudit},
+\texttt{MoonshineCNRationalAudit}, \texttt{MoonshineCNGenusZeroAudit*}, \texttt{MoonshineLRLiftAudit} and the
+\texttt{MoonshineLR*Audit} files) are documented in Chapters~\ref{ch:19}--\ref{ch:22}.
+
+%======================================================================
+\section{Recorded traps and dead ends}\label{ch16:sec:traps}
+%======================================================================
+
+\begin{warning}
+\textbf{Rationality does not follow from the replication identities alone}.  For
+every $a\in\C$, the function $f=q^{-1}+aq$ satisfies all replication identities with replicates $f^{(k)}=q^{-1}+a^kq$.
+Certificate: in the Hecke sum $\sum_{ad=m}\sum_{b<d}f^{(a)}((a\tau+b)/d)$ the sum over $b$ kills both the $q^{-1}$ and
+the $q$ term unless $d=1$, leaving $q^{-m}+a^mq^m$; and the Dickson polynomial $D_m(x,a)$, defined by
+$D_m(u+a/u,a)=u^m+(a/u)^m$, is monic of degree $m$ with $D_m(q^{-1}+aq,a)=q^{-m}+a^mq^m$.  With $a=\zeta_N$ the family
+$k\mapsto q^{-1}+\zeta_N^kq$ is periodic of period $N$ and not rational.  \lean{ReplicableFamily} excludes it only
+through the clause \lean{zero_eq_J}.  Hence Galois invariance must come from the Hauptmodul property, as in
+\S\ref{ch16:sec:gammazero}, not from formal identities.
+\end{warning}
+
+\begin{warning}
+\textbf{Rationality through a $\Q$-form of $\Vnat$ (the original plan) is circular or needs classification}.
+The plan was: build a rational form of
+$\Vnat$, show every automorphism preserves it, conclude rationality of traces by Galois conjugation.  That every $g$
+preserves $\Vnat_2\cap V_\Q$ needs either $\Aut(\Vnat)=\langle C,\sigma\rangle$ (Tits-level group theory) or
+rationality of every Ising vector (which needs the Monster).  The Galois twist $g\mapsto\tau g\tau^{-1}$ only gives
+$\chi_n\circ c_\tau=\tau\circ\chi_n$ for an unknown automorphism $c_\tau$, which is circular.  Superseded by the bridge
+of \S\ref{ch16:sec:gammazero}, which makes rationality a corollary.  Shimura reciprocity on $q$-coefficients (D4) was
+also considered and rejected as unnecessary and expensive.
+\end{warning}
+
+\begin{warning}
+\textbf{The index shift} between \lean{mckayThompson} (coefficient $n$ = trace on weight $n+1$) and \lean{JShift}
+($=qJ$, coefficient $n$ = dimension of weight $n$) is easy to get wrong.  The library records it as the negative lemma
+\lean{mckayThompson_one_ne_JShift} and the positive lemmas \lean{mckayThompson_one} and \lean{mckayThompsonShift_one}
+(Proposition~\ref{ch16:prop:mtprops}).
+\end{warning}
+
+\begin{warning}
+\textbf{Sign convention for momenta} (Chapters~\ref{ch:17}--\ref{ch:19}).  In Borcherds'
+convention the root space of $\mathfrak m$ at $(m,n)$ is $\Vnat_{mn+1}$, for the form $\langle(m,n),(m,n)\rangle=-2mn$.
+The library's lattice \lean{lorentzianLattice} has norm $+2xy$, so Borcherds' $(m,n)$ is the library's $(m,-n)$, and
+the root space at library momentum $(x,y)$ is $\Vnat_{1-xy}$.  A product over library momenta $x,y\ge1$ is wrong: there
+$\Vnat_{1-xy}$ is $\Vnat_0=\C\mathbf 1$ at $(1,1)$ (the real simple root) and zero for $xy\ge2$, so such a product sees
+almost none of $\mathfrak m$.
+\end{warning}
+
+\begin{warning}
+\textbf{``Every element has finite order'' is not ``the group is finite''}.  The
+moonshine theorem needs only the former (\lean{autVnat_isOfFinOrder}); the latter, \lean{M8.finite_autVnat}, was proved
+separately (Chapter~\ref{ch:20}).  Neither is used to identify $\Aut(\Vnat)$ with the Monster.
+\end{warning}
+
+\begin{warning}
+\textbf{Literature steps that fail as printed} (Chapter~\ref{ch:19}).  Cummins--Gannon's
+Prop.~5.1 is not usable verbatim for $\Gamma_1$ (its prime-clearing step uses exponents not in the admissible set), and
+the last step of Cummins (2002), Prop.~2.1, is wrong as printed (right translations cannot change the lower-right entry
+modulo the level); the library's genus-zero argument uses corrected versions.  On the Monster side
+(Chapter~\ref{ch:22}), a first attempt at the commutant lemma used two code automorphisms that preserve the MOG column
+partition, which cannot give transitivity on octads; a third, column-breaking involution was needed.
+\end{warning}
+
+%======================================================================
+\section{Referee's checklist}\label{ch16:sec:checklist}
+%======================================================================
+
+All names are in \lean{VOA.Moonshine.ConwayNorton} unless stated; ``std.'' means \texttt{\#print axioms} $=$
+\lean{[propext, Classical.choice, Quot.sound]}.
+\begin{center}\small
+\begin{longtable}{p{0.27\textwidth}p{0.32\textwidth}p{0.19\textwidth}p{0.11\textwidth}}
+\toprule
+declaration & intended meaning & hypotheses; status & check\\
+\midrule
+\endhead
+\chsixteenlean{AutMonster.VnatVOA}, \chsixteenlean{AutMonster.AutVnat} & the moonshine VOA of Ch.~\ref{ch:14}; its automorphism group &
+  definitions & Def.~\ref{ch16:def:vnatvoa}\\
+\chsixteenlean{gradedAutAction}, \chsixteenlean{gradedAutTrace} & $g|_{V_n}$ and $\tr(g|V_n)$ & definitions & Def.~\ref{ch16:def:gradedtrace}\\
+\chsixteenlean{gradedAutTrace_one}, \chsixteenlean{gradedAutTrace_conjugate}, \chsixteenlean{vnatAut_preserves_grading} & trace of $1$ is $\dim$;
+  class function; $g\Vnat_n=\Vnat_n$ & none; std. & Prop.~\ref{ch16:prop:traces}\\
+\chsixteenlean{mckayThompson}, \chsixteenlean{mckayThompsonShift} & $\sum\tr(g|\Vnat_{n+1})X^n$; $qT_g$ & definitions &
+  Def.~\ref{ch16:def:mckayThompson}\\
+\chsixteenlean{mckayThompson_coeff}, \chsixteenlean{mckayThompson_coeff_zero}, \chsixteenlean{mckayThompson_conjugate}, \chsixteenlean{mckayThompson_one},
+  \chsixteenlean{mckayThompsonShift_one}, \chsixteenlean{mckayThompson_one_ne_JShift} & coefficients; $\tr(g|\Vnat_1)=0$; class function;
+  $T_1=J$ formally & none; std. & Prop.~\ref{ch16:prop:mtprops}\\
+\chsixteenlean{finiteOrderTrace_norm_le}, \chsixteenlean{gradedAutTrace_norm_le}, \chsixteenlean{mckayThompson_coeff_norm_le} &
+  $|\tr|\le\dim$ for finite order & finite order; std. & Thm.~\ref{ch16:thm:tracebounds}\\
+\chsixteenlean{qPar}, \chsixteenlean{mckayThompsonFun} & $q=e^{2\pi i\tau}$; $T_g$ on $\chsixteenH$ & definitions & Def.~\ref{ch16:def:mtfun}\\
+\chsixteenlean{mckayThompsonFun_one} & $T_1=j-744$ & none; std. & Thm.~\ref{ch16:thm:T1}\\
+\chsixteenlean{SendsInftyTo}, \chsixteenlean{HasCuspValue}, \chsixteenlean{IsOtherCusp} & cusp data & definitions & Def.~\ref{ch16:def:cuspdata}\\
+\chsixteenlean{IsNormalizedHauptmodul}, \chsixteenlean{IsGenusZero} & normalised Hauptmodul; genus zero (width-one cusp) & definitions;
+  equivalence with textbook notion on paper & Def.~\ref{ch16:def:hauptmodul}, Prop.~\ref{ch16:prop:haupt}\\
+\chsixteenlean{gamma0GL}, \chsixteenlean{gamma1GL}, \chsixteenlean{IsMoonshineGroup} & $\Gamma_0(N)$, $\Gamma_1(N)$ in $\chsixteenGLR$; moonshine
+  group & definitions & Def.~\ref{ch16:def:moonshinegroup}\\
+\chsixteenlean{ConwayNortonFor}, \chsixteenlean{ConwayNortonConjecture}, \chsixteenlean{ConwayNortonVia} & the conjecture (genus-zero form) for
+  $\Aut(\Vnat)$ & definitions & Def.~\ref{ch16:def:cn}, \S\ref{ch16:sec:fidelity}\\
+\chsixteenlean{ConwayNortonGammaOne} & $\Gamma_1$ form, finite-order $g$ & definition & Def.~\ref{ch16:def:gammaone}\\
+\chsixteenlean{heckePoint}, \chsixteenlean{CompletelyReplicable} & complete replicability & definitions & Def.~\ref{ch16:def:replicable}\\
+\chsixteenlean{RationalTraces} & all traces rational & definition & Def.~\ref{ch16:def:rational}\\
+\chsixteenlean{qSeriesFun}, \chsixteenlean{ReplicableFamily} & abstract replicable family & definitions & Def.~\ref{ch16:def:family}\\
+\chsixteenlean{mckayThompsonFun_eq_qSeriesFun}, \chsixteenlean{mckayThompsonReplicableFamily}, \chsixteenlean{mckayThompson_replicableFamily_exists}
+  & $T_g=Q_{c_g}$; the McKay--Thompson family & complete replicability, finite order; std. & Prop.~\ref{ch16:prop:mtfamily}\\
+\chsixteenlean{eq_of_invariant_of_entries_tendsto_one}, \chsixteenlean{eq_of_invariant_upper_lower_unipotent} & constancy; Shimizu &
+  none; std. & Thm.~\ref{ch16:thm:shimizu}\\
+\chsixteenlean{diamond_periodic}, \chsixteenlean{heckeLevelSum_lowerSL} & Hecke coset matching & $\Gamma_1(M)$-invariance; std. &
+  Thm.~\ref{ch16:thm:cosets}\\
+\chsixteenlean{diamond_sub_replicate_lowerUnipotent}, \chsixteenlean{diamond_eq_replicate_add_const} & $f\circ\sigma-f'$ constant &
+  replication at $p$, $0<M<p$; std. & Thm.~\ref{ch16:thm:diamondconst}\\
+\chsixteenlean{affine_eq_of_normalized} & asymptotic comparison & none; std. & Lem.~\ref{ch16:lem:affine}\\
+\chsixteenlean{replicate_eq_and_diamond_mem} & $f'=f$, $\pm\sigma\in\Gamma$ & Hauptmodul for $\Gamma\supseteq\Gamma_1(M)$,
+  replication at $p>M$; std. & Thm.~\ref{ch16:thm:main}\\
+\chsixteenlean{gamma0_le_adjoinNegOne_of_replicable}, \chsixteenlean{IsNormalizedHauptmodul.adjoinNegOne},
+  \chsixteenlean{isMoonshineGroup_adjoinNegOne_of_replicable} & $\Gamma_0(M)\le\pm\Gamma$ & replication at all $p>M$; std. &
+  Thm.~\ref{ch16:thm:gamma0}\\
+\chsixteenlean{conwayNortonFor_of_gammaOne}, \chsixteenlean{conwayNorton_of_gammaOne_of_finOrder}, \chsixteenlean{conwayNorton_of_gammaOne} &
+  the bridge $\Gamma_1\Rightarrow\Gamma_0$ & \textbf{conditional}: $\Gamma_1$ form, replication, finite order; std. &
+  Thm.~\ref{ch16:thm:bridge}\\
+\chsixteenlean{mckayThompsonFun_pow_eq_of_coprime}, \chsixteenlean{..._of_completelyReplicable} & $T_{g^u}=T_g$ & \textbf{conditional} as
+  above; std. & Thm.~\ref{ch16:thm:galois}\\
+\chsixteenlean{ReplicableFamily.isMoonshineGroup_of_gammaOne}, \chsixteenlean{ReplicableFamily.qSeriesFun_mul_prime_eq} & family version &
+  \textbf{conditional}; std. & Thm.~\ref{ch16:thm:family}\\
+\chsixteenlean{conwayNorton} & \textbf{Conway--Norton (genus-zero form) for every automorphism of $\Vnat$} & \textbf{none};
+  std. & Thm.~\ref{ch16:thm:conwayNorton}, \S\ref{ch16:sec:fidelity}\\
+\chsixteenlean{GmatEqAutO} & AxiomMath's $\mathrm{Gmat}=\mathrm{AutO}$ & named hypothesis (a \chsixteenlean{Prop}), not an axiom &
+  \S\ref{ch16:sec:gmat}\\
+\bottomrule
+\end{longtable}
+\end{center}
+\noindent\textbf{Files of this chapter and how they are covered.}  \leanpath{MoonshineCNStatement.lean},
+\leanpath{MoonshineCNTrace.lean}, \leanpath{MoonshineCNTraceBounds.lean}, \leanpath{MoonshineCNFinalAudit.lean}: every
+declaration individually.  \leanpath{MoonshineCNGammaZeroShimizu.lean}, \leanpath{...Cosets.lean},
+\leanpath{...Bridge.lean}, \leanpath{...Galois.lean}, \leanpath{...Family.lean}: headline declarations individually,
+supporting lemmas collectively (\S\ref{ch16:sec:gammazero}).  \leanpath{MoonshineCNGammaZeroAudit.lean} and
+\leanpath{MoonshineCNAudit.lean}, \leanpath{MoonshineCNAudit2.lean}--\leanpath{MoonshineCNAudit18.lean}: as a list
+(\S\ref{ch16:sec:final}).
+
+%======================================================================
+\section{Notes and references}\label{ch16:sec:notes}
+%======================================================================
+
+\paragraph{History.}  J.~G.~Thompson, \emph{Some numerology between the Fischer--Griess Monster and the elliptic modular
+function}, Bull.\ London Math.\ Soc.\ 11 (1979) 352--353, and \emph{Finite groups and modular functions}, ibid.\
+347--351 (McKay's observation is reported there).  J.~H.~Conway and S.~P.~Norton, \emph{Monstrous moonshine}, Bull.\
+London Math.\ Soc.\ 11 (1979) 308--339: the conjecture, the tables of groups $\Gamma_0(n|h)+e,f,\dots$ and the first
+coefficients.  A.~P.~Ogg, \emph{Automorphismes de courbes modulaires}, S\'eminaire Delange--Pisot--Poitou (1974/75),
+for the supersingular primes.  R.~L.~Griess, \emph{The friendly giant}, Invent.\ Math.\ 69 (1982) 1--102.
+
+\paragraph{The moonshine module.}  I.~B.~Frenkel, J.~Lepowsky, A.~Meurman, \emph{A natural representation of the
+Fischer--Griess Monster with the modular function $J$ as character}, Proc.\ Natl.\ Acad.\ Sci.\ USA 81 (1984)
+3256--3260; \emph{Vertex Operator Algebras and the Monster}, Pure and Applied Mathematics 134, Academic Press, 1988.
+The construction in this library is documented in Chapters~\ref{ch:02}--\ref{ch:14}.
+
+\paragraph{Borcherds' proof.}  R.~E.~Borcherds, \emph{Monstrous moonshine and monstrous Lie superalgebras}, Invent.\
+Math.\ 109 (1992) 405--444.  The no-ghost theorem: P.~Goddard and C.~B.~Thorn, \emph{Compatibility of the dual Pomeron
+with unitarity and the absence of ghosts in the dual resonance model}, Phys.\ Lett.\ B 40 (1972) 235--238.
+
+\paragraph{Replication and genus zero.}  S.~P.~Norton, \emph{More on moonshine}, in Computational Group Theory
+(Durham, 1982), Academic Press, 1984, 185--193 (replication formulae).  D.~Alexander, C.~Cummins, J.~McKay, C.~Simons,
+\emph{Completely replicable functions}, in Groups, Combinatorics and Geometry (Durham, 1990), LMS Lecture Note Ser.\
+165, CUP, 1992, 87--98.  Y.~Martin, \emph{On modular invariance of completely replicable functions}, in Moonshine, the
+Monster, and Related Topics, Contemp.\ Math.\ 193, AMS, 1996, 263--286.  C.~J.~Cummins and T.~Gannon, \emph{Modular
+equations and the genus zero property of moduli functions}, Invent.\ Math.\ 129 (1997) 413--443: completely
+replicable functions with suitable growth are Hauptmoduln; the design source of the library's case-free route.
+C.~J.~Cummins, \emph{Modular equations and discrete, genus-zero subgroups of $\mathrm{SL}(2,\mathbb R)$ containing
+$\Gamma(N)$}, Canad.\ Math.\ Bull.\ 45 (2002) 36--45.  H.~Shimizu, \emph{On discontinuous groups operating on the product
+of the upper half planes}, Ann.\ of Math.\ 77 (1963) 33--71, for the lemma of Theorem~\ref{ch16:thm:shimizu}.  F.~Diamond
+and J.~Shurman, \emph{A First Course in Modular Forms}, GTM 228, Springer, 2005, for congruence subgroups, cusps,
+modular curves and the Hecke cosets of $\Gamma_1(N)$.
+
+\paragraph{Surveys.}  T.~Gannon, \emph{Moonshine beyond the Monster}, Cambridge University Press, 2006, the standard
+reference (its \S5.2 is the source of the library's automorphism conventions).  J.~F.~R.~Duncan, M.~J.~Griffin,
+K.~Ono, \emph{Moonshine}, Research in the Mathematical Sciences 2 (2015), article 11.  On the physics: L.~Dixon,
+P.~Ginsparg, J.~Harvey, \emph{Beauty and the beast: superconformal symmetry in a Monster module}, Comm.\ Math.\ Phys.\
+119 (1988) 221--241; M.~P.~Tuite, \emph{On the relationship between monstrous moonshine and the uniqueness of the
+moonshine module}, Comm.\ Math.\ Phys.\ 166 (1995) 495--532; E.~Witten, \emph{Three-dimensional gravity revisited},
+arXiv:0706.3359 (2007).
+
+\paragraph{The Monster in Lean.}  AxiomMath, \emph{CFSG} (a Lean formalisation of parts of the classification of finite
+simple groups), commit \texttt{69cb972f587a3ecc035e092253167ff2e303c962}, Lean v4.35; the theorem
+\lean{CFSG.Blueprint.NativeSporadic.MonsterModel.gmat_eq_griess} is the content of \lean{GmatEqAutO}.  The fidelity of the port is
+documented in \texttt{Notes/monster\_aut/CFSG\_PORT\_FIDELITY.md}.
+
+\paragraph{The development record.}  The development was recorded in the authors' working notes, which are not part of
+the release.  The statement file was written first and frozen before the proof.  Where this chapter states what the
+machine confirmed, it relies on the build record and axiom audit of the release (Chapter~\ref{ch:15}).
+
+\endgroup

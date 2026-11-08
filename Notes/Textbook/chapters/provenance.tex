@@ -1,9 +1,13 @@
 \chapter{Provenance: the library state documented by this edition}\label{ch:provenance}
 This edition documents \bookrelease{} of the LeanVOA library (commit \texttt{\bookcommit}). Each Lean
 file of the library is assigned to one chapter of the book. The table lists, for each chapter of this
-edition, the number of Lean files of the released library assigned to it (11622 files in all); chapters
+edition, the number of Lean files of the released library assigned to it (12013 files in all); chapters
 without files of their own are omitted. The chapters in preparation are not part of this edition. The 38 files of the released library assigned to them are not counted.
 
+The Lean quoted in the brief can be re-checked against the library with
+\texttt{python3 scripts/textbook/brief.py --edition release --source published --verify}, which
+confirms that every excerpt occurs verbatim (up to whitespace and comments) in the \texttt{VOA/} source
+files or in the book's Lean certificates (\texttt{Notes/Textbook/certificates/}).
 {\small\begin{longtable}{l>{\raggedright\arraybackslash}p{0.72\textwidth}r}\toprule
 Chapter & Title & Lean files\\\midrule\endhead
 \texttt{ch01} & Reading Lean, and a map of the book & 7 \\
@@ -48,4 +52,11 @@ Chapter & Title & Lean files\\\midrule\endhead
 \texttt{ch12} & Existence of the twisted triality I: reduction to Zhu generation & 18 \\
 \texttt{ch13} & Existence of the twisted triality II: the explicit construction & 18 \\
 \texttt{ch14} & The key identity and the completion of the proof & 20 \\
+\texttt{ch16} & Monstrous moonshine: McKay--Thompson series, Hauptmoduln and the statement & 28 \\
+\texttt{ch17} & The vertex algebra of the hyperbolic plane and the tensor theory of central charge 26 & 91 \\
+\texttt{ch18} & The Monster Lie algebra: string states, the no-ghost theorem and the Borcherds--Kac--Moody structure & 75 \\
+\texttt{ch19} & Denominator identities, replication and genus zero & 60 \\
+\texttt{ch20} & Conway--Norton for the automorphism group of the moonshine module & 33 \\
+\texttt{ch21} & The Griess algebra of the moonshine module and AxiomMath's Monster & 65 \\
+\texttt{ch22} & The Monster acts on the moonshine module: lifts, triality, the commutant and the converse & 39 \\
 \bottomrule\end{longtable}}

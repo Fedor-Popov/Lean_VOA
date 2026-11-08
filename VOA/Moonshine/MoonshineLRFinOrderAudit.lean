@@ -1,0 +1,94 @@
+import VOA.Moonshine.MoonshineLRFinOrderIsing
+import VOA.Moonshine.MoonshineLRFinOrderPeriodic
+import VOA.Moonshine.MoonshineLRFinOrderRigid
+import VOA.Moonshine.MoonshineLRConwayNortonFinal
+import VOA.Moonshine.MoonshineLRFiniteAut
+
+#print axioms VOA.Moonshine.ConwayNorton.M8.mul_spectral_shift
+#print axioms VOA.Moonshine.ConwayNorton.M8.genEigenspace_mul_mem
+#print axioms VOA.Moonshine.ConwayNorton.M8.maxGenEigenspace_mul_le
+#print axioms VOA.Moonshine.ConwayNorton.M8.derivation_apply_eq_zero_of_rigid
+#print axioms VOA.Moonshine.ConwayNorton.M8.exists_addChar_eq_one_of_not_isOfFinOrder
+#print axioms VOA.Moonshine.ConwayNorton.M8.exists_addChar_ne_zero_of_not_isOfFinOrder
+#print axioms VOA.Moonshine.ConwayNorton.M8.mem_maxGenEigenspace_zero_eq_zero
+#print axioms VOA.Moonshine.ConwayNorton.M8.spectralDecomposition
+#print axioms VOA.Moonshine.ConwayNorton.M8.spectralDecomposition_apply_of_mem
+#print axioms VOA.Moonshine.ConwayNorton.M8.spectralWeight
+#print axioms VOA.Moonshine.ConwayNorton.M8.spectralWeight_apply_of_mem
+#print axioms VOA.Moonshine.ConwayNorton.M8.spectralWeight_mul_of_additive
+#print axioms VOA.Moonshine.ConwayNorton.M8.unitCharacterValue
+#print axioms VOA.Moonshine.ConwayNorton.M8.unitCharacterValue_mul
+#print axioms VOA.Moonshine.ConwayNorton.M8.characterDerivation
+#print axioms VOA.Moonshine.ConwayNorton.M8.characterDerivation_mul
+#print axioms VOA.Moonshine.ConwayNorton.M8.characterDerivation_apply_eq_zero_of_rigid
+#print axioms VOA.Moonshine.ConwayNorton.M8.spectralDecomposition_spectralWeight
+#print axioms VOA.Moonshine.ConwayNorton.M8.character_smul_component_eq_zero
+#print axioms VOA.Moonshine.ConwayNorton.M8.isOfFinOrder_of_rigid_component
+#print axioms VOA.Moonshine.ConwayNorton.M8.semisimplePart
+#print axioms VOA.Moonshine.ConwayNorton.M8.semisimplePart_mul
+#print axioms VOA.Moonshine.ConwayNorton.M8.spectralWeight_pow_component
+#print axioms VOA.Moonshine.ConwayNorton.M8.semisimplePart_pow_apply_eq_self_of_rigid
+#print axioms VOA.Moonshine.ConwayNorton.M8.polynomialCurve
+#print axioms VOA.Moonshine.ConwayNorton.M8.polynomialCurve_eq_zero_value_of_rigid
+#print axioms VOA.Moonshine.ConwayNorton.M8.equiv_pow_mul
+#print axioms VOA.Moonshine.ConwayNorton.M8.rigid_image
+#print axioms VOA.Moonshine.ConwayNorton.M8.unipotentOrbit_eq_polynomialCurve
+#print axioms VOA.Moonshine.ConwayNorton.M8.unipotent_fix_of_rigid
+#print axioms VOA.Moonshine.ConwayNorton.M8.maxGenEigenspace_pow_mem
+#print axioms VOA.Moonshine.ConwayNorton.M8.pow_apply_eq_self_of_rigid
+
+#print axioms VOA.Moonshine.ConwayNorton.M8.leech_form_cases_of_normFour
+#print axioms VOA.Moonshine.ConwayNorton.M8.leech_form_four_iff_of_normFour
+#print axioms VOA.Moonshine.ConwayNorton.M8.leech_form_neg_four_iff_of_normFour
+#print axioms VOA.Moonshine.ConwayNorton.M8.frameX0P_one_frameX0P_self
+#print axioms VOA.Moonshine.ConwayNorton.M8.frameX0P_one_frameX0P_of_form_neg_two
+#print axioms VOA.Moonshine.ConwayNorton.M8.frameX0P_one_frameX0P_of_form_two
+#print axioms VOA.Moonshine.ConwayNorton.M8.frameX0P_one_frameX0P_of_form_small
+#print axioms VOA.Moonshine.ConwayNorton.M8.quadH_one_frameX0P
+#print axioms VOA.Moonshine.ConwayNorton.M8.plus_one_comm
+#print axioms VOA.Moonshine.ConwayNorton.M8.frameX0P_one_quadH
+#print axioms VOA.Moonshine.ConwayNorton.M8.quadState_one_quadState
+#print axioms VOA.Moonshine.ConwayNorton.M8.isingQuadRow
+#print axioms VOA.Moonshine.ConwayNorton.M8.isingQuad
+#print axioms VOA.Moonshine.ConwayNorton.M8.isingQuad_chargeCoord
+#print axioms VOA.Moonshine.ConwayNorton.M8.isingQuad_one_qP
+#print axioms VOA.Moonshine.ConwayNorton.M8.isingQuad_one_isingQuad
+#print axioms VOA.Moonshine.ConwayNorton.M8.isingQuad_symm
+#print axioms VOA.Moonshine.ConwayNorton.M8.quadH_one_isingQuad
+#print axioms VOA.Moonshine.ConwayNorton.M8.isingQuad_mem_grading_two
+#print axioms VOA.Moonshine.ConwayNorton.M8.isingQuad_one_frameX0P
+#print axioms VOA.Moonshine.ConwayNorton.M8.frameX0P_one_isingQuad
+#print axioms VOA.Moonshine.ConwayNorton.M8.quadH_one_quadH_self
+#print axioms VOA.Moonshine.ConwayNorton.M8.isingVec
+#print axioms VOA.Moonshine.ConwayNorton.M8.isingVec_mem_grading_two
+#print axioms VOA.Moonshine.ConwayNorton.M8.isingVec_one_self
+#print axioms VOA.Moonshine.ConwayNorton.M8.leechVOAPlus_grading_two_eq_span
+#print axioms VOA.Moonshine.ConwayNorton.M8.twistedPlus_grading_two_eq_span
+
+#print axioms VOA.Moonshine.ConwayNorton.M8.isingPlusMode
+#print axioms VOA.Moonshine.ConwayNorton.M8.isingTwistedMode
+#print axioms VOA.Moonshine.ConwayNorton.M8.isingSpectralPolynomial
+#print axioms VOA.Moonshine.ConwayNorton.M8.isingVec_zeroMode_plus_annihilated
+#print axioms VOA.Moonshine.ConwayNorton.M8.isingChargeInvolution
+#print axioms VOA.Moonshine.ConwayNorton.M8.isingChargeInvolution_apply_twice
+#print axioms VOA.Moonshine.ConwayNorton.M8.isingTwistedMode_hP
+#print axioms VOA.Moonshine.ConwayNorton.M8.isingVec_zeroMode_twisted_annihilated
+#print axioms VOA.Moonshine.ConwayNorton.M8.isingVec_rigid
+#print axioms VOA.Moonshine.ConwayNorton.M8.aut_fix_quad_minimal_of_fix_ising
+#print axioms VOA.Moonshine.ConwayNorton.M8.aut_fix_untwisted_of_fix_quad_minimal
+#print axioms VOA.Moonshine.ConwayNorton.M8.aut_eq_one_of_fix_untwisted_twistedGen
+#print axioms VOA.Moonshine.ConwayNorton.M8.aut_isingVec_periodic
+#print axioms VOA.Moonshine.ConwayNorton.M8.aut_pow_fix_untwisted
+#print axioms VOA.Moonshine.ConwayNorton.M8.autVnat_isOfFinOrder
+#print axioms VOA.Moonshine.ConwayNorton.M8.conwayNortonConjecture_holds
+#print axioms VOA.Moonshine.ConwayNorton.M8.vnatGriessBilin
+#print axioms VOA.Moonshine.ConwayNorton.M8.vnatGriessBilin_apply
+#print axioms VOA.Moonshine.ConwayNorton.M8.vnatRigidSet
+#print axioms VOA.Moonshine.ConwayNorton.M8.autRestrict_mem_vnatRigidSet
+#print axioms VOA.Moonshine.ConwayNorton.M8.isingVec_mem_vnatRigidSet
+#print axioms VOA.Moonshine.ConwayNorton.M8.fix_untwisted_of_fix_rigid
+#print axioms VOA.Moonshine.ConwayNorton.M8.eq_one_of_fix_rigid
+#print axioms VOA.Moonshine.ConwayNorton.M8.finite_autVnat_of_finite_rigid
+#print axioms VOA.Moonshine.ConwayNorton.M8.finite_setOf_rigid_idempotent
+#print axioms VOA.Moonshine.ConwayNorton.M8.derivation_eq_zero_of_span_rigid
+#print axioms VOA.Moonshine.ConwayNorton.M8.finite_autVnat

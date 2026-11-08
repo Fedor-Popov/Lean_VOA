@@ -23,6 +23,8 @@
 \newcommand{\sltwo}{\mathfrak{sl}_2}
 \newcommand{\slthree}{\mathfrak{sl}_3}
 \newcommand{\g}{\mathfrak{g}}
+\newcommand{\Vn}{V^\natural}
+\newcommand{\Mon}{\mathbb{M}}
 
 \title{Vertex Operator Algebras in Lean:\\ a formal library and its companion book}
 \author{Fedor K.\ Popov\textsuperscript{a} \quad Leonardo Rastelli\textsuperscript{a,b}\\[0.8em]
@@ -30,7 +32,7 @@
   \small\textsuperscript{b}C.\,N.\ Yang Institute for Theoretical Physics, Stony Brook University, Stony Brook, NY
   11794-3840, USA\\[0.5em]
   \small\texttt{fpopov@scgp.stonybrook.edu}, \texttt{leonardo.rastelli@stonybrook.edu}}
-\date{November 3, 2026}
+\date{Release v1.05}
 
 \begin{document}
 \maketitle
@@ -38,13 +40,17 @@
 \begin{abstract}
   We present \texttt{LeanVOA}, a Lean~4 library for the theory of vertex operator algebras (VOAs), together with a
   companion book that sets each formalized result next to its textbook statement. The library constructs the
-  Moonshine module $V^\natural$ and formalizes Zhu's modular invariance, Huang's tensor categories with the Verlinde
-  formula, the Gannon--Rayhaun classification of $c=1$ VOAs, and classical freeness of the boundary admissible
+  Moonshine module $V^\natural$ and proves, with no hypotheses, the Conway--Norton moonshine conjecture for every
+  automorphism of $V^\natural$ (Borcherds' theorem), along Borcherds' route through the Monster Lie algebra. It
+  identifies $\mathrm{Aut}\,V^\natural$ with a formal model of the Monster taken from the AxiomMath library for the
+  classification of finite simple groups, given one named hypothesis that is a theorem of that library, so that
+  moonshine holds for every element of the Monster. It also formalizes Zhu's modular invariance, Huang's tensor
+  categories with the Verlinde formula, the Gannon--Rayhaun classification of $c=1$ VOAs, and classical freeness of the boundary admissible
   $L_k(\sltwo)$ (Arakawa--Dai) and of the minimal models $M(2,2m+3)$ (van Ekeren--Heluani). It also contains new
   results: graded first-order rigidity of all Virasoro minimal models and of $L_k(\sltwo)$ at every admissible level; classical freeness of $L_{-3/2}(\slthree)$, and of the other members of the Deligne series under stated
   assumptions; and a proof that graded
   unitarity of the boundary admissible $L_k(\sltwo)$ implies that of the minimal models $M(2,2n+1)$. The library
-  declares no axiom of its own.
+  declares no axiom of its own. This note announces release v1.05.
 \end{abstract}
 
 % =====================================================================
@@ -54,18 +60,18 @@
 The library \texttt{LeanVOA} formalizes, in Lean~4 \cite{lean4} on top of Mathlib \cite{mathlib}, the algebraic
 theory of vertex operator algebras: formal calculus and locality from first principles, the VOA axioms
 and the Borcherds identity, the standard constructions (Heisenberg, Virasoro, affine, lattice), the module theory,
-Zhu's algebra and modular invariance, Huang's tensor categories, and several recent theorems from the literature
-(listed in Section~\ref{sec:scope}). The companion book, \emph{Vertex Operator Algebras in Lean}, is the
+Zhu's algebra and modular invariance, Huang's tensor categories, the moonshine module and monstrous moonshine,
+and several recent theorems from the literature (listed in Section~\ref{sec:scope}). The companion book, \emph{Vertex Operator Algebras in Lean}, is the
 reviewed account of the library: for each definition and theorem it gives the mathematical statement, the Lean
 declaration copied verbatim from the source, and a ``dictionary'' that decodes every convention and hypothesis
 and says whether the Lean statement is the same as, stronger than, or weaker than the textbook one.
 
 \begin{itemize}
   \item Repository: \url{https://github.com/Fedor-Popov/Lean_VOA}
-  \item Release: v1.0 (tag \texttt{v1.0})
-  \item Book (PDF): \texttt{Notes/book.pdf} in the repository (2{,}337 pages); its \LaTeX{} sources are in
+  \item Release: v1.05 (tag \texttt{v1.05}; previous release v1.0)
+  \item Book (PDF): \texttt{Notes/book.pdf} in the repository (2{,}786 pages); its \LaTeX{} sources are in
     \texttt{Notes/Textbook/}
-  \item Short version of the book (PDF): \texttt{Notes/brief.pdf} (219 pages): the main statements of each chapter,
+  \item Short version of the book (PDF): \texttt{Notes/brief.pdf} (257 pages): the main statements of each chapter,
     each with its verbatim Lean declaration and its status, without proofs or discussion, numbered as in the book
   \item License: Apache-2.0.
 \end{itemize}
@@ -75,6 +81,44 @@ The library defines VOAs in the general sense of Frenkel--Lepowsky--Meurman and 
 $n<0$; \lean{VertexOperatorAlgebra}). Every theorem below about VOAs is about VOAs of CFT type; extending the theory
 to the general notion is future work.
 
+\paragraph{New in v1.05: monstrous moonshine.} Release v1.0 constructed $\Vn$ with no Monster action. Release v1.05
+adds monstrous moonshine, in the library and in a new Part~VIII of the book (seven chapters). The theorem
+\lean{VOA.Moonshine.ConwayNorton.conwayNorton}\,:\,\lean{ConwayNortonConjecture} has no hypotheses: for every
+automorphism $g$ of $\Vn$, the McKay--Thompson series
+\begin{equation*}
+  T_g(\tau)=q^{-1}+\sum_{n\ge1}\mathrm{tr}\bigl(g\,|\,\Vn_{n+1}\bigr)\,q^n
+\end{equation*}
+is the normalised Hauptmodul of a genus-zero group $\Gamma_g$ that contains $\Gamma_0(N)$ for some $N\ge1$ and is
+commensurable with $SL_2(\Z)$. This is the qualitative, genus-zero form of the conjecture of Conway and Norton
+\cite{ConwayNorton}, proved by Borcherds \cite{Borcherds}: it does not identify $\Gamma_g$ with the group in Conway
+and Norton's table, nor relate $N$ to the order of $g$, and ``genus zero'' is read off on paper from the Lean
+definition of a normalised Hauptmodul. The proof follows Borcherds: the vertex algebra of the hyperbolic plane
+$I\!I_{1,1}$, the tensor theory $\Vn\otimes V_{I\!I_{1,1}}$ of central charge $26$, the no-ghost theorem
+\cite{GoddardThorn}, the Monster Lie algebra as a Borcherds--Kac--Moody-type Lie algebra with a free positive part,
+the denominator identity (as the combination of two Lean theorems) and the twisted denominator identities, and
+complete replicability of the $T_g$. Borcherds' last step, a class-by-class comparison that needs the character table
+of the Monster, is replaced by a case-free proof that replicable families are Hauptmoduln (genus zero on an abstract
+interface), in the spirit of Cummins and Gannon \cite{CumminsGannon}, followed by an upgrade from $\Gamma_1(N)$ to
+$\Gamma_0(N)$. Along the way the library proves, again with no hypotheses and without group theory, that
+$\mathrm{Aut}\,\Vn$ is finite (it acts faithfully on the finitely many rigid idempotents of the Griess algebra $\Vn_2$), that every automorphism has
+finite order, and that every graded trace is rational.
+
+\paragraph{The Monster.} For the Monster we use the rational model of the AxiomMath Lean library for the
+classification of finite simple groups \cite{AxiomCFSG}, whose definitions we port: \lean{AutO} is the group of
+automorphisms of their rational Griess algebra \lean{SpaceB}, of dimension $196884$, built after Conway
+\cite{Conway85} from Griess' algebra \cite{Griess}. The library proves, with no hypotheses, that the Griess algebra
+$\Vn_2$ is $\C\otimes_{\mathbb Q}\mathrm{SpaceB}$, with its product and form (\lean{griessIso}); that every element of AxiomMath's generated
+group $\mathrm{Gmat}=\langle G_{\mathrm{vis}},\tau_B\rangle$ (with $G_{\mathrm{vis}}$ the visible group
+$2^{1+24}.\mathrm{Co}_1$, classical and not formalised as such) lifts to an automorphism of $\Vn$ and satisfies
+moonshine; and that $\mathrm{Aut}\,\Vn$ is isomorphic to the subgroup of \lean{AutO} that acts on $\Vn$. The last
+statement is proved without Tits' theorem \cite{Tits}, from rationality of traces, Schur's lemma, and a commutant
+lemma: every $\mathbb Q$-linear map commuting with $\mathrm{Gmat}$ is $a\cdot1+b\,P_0$, where $P_0$ is the projection onto
+the line of the Griess unit, with the transitivity inputs from the Mathieu group $M_{24}$ checked by the kernel. Finally, given
+the named hypothesis \lean{GmatEqAutO}, defined as the proposition $\mathrm{Gmat}=\mathrm{AutO}$, the theorem
+\lean{monstrousMoonshine} provides an isomorphism $\varphi:\mathrm{AutO}\simeq\mathrm{Aut}\,\Vn$ compatible with the
+Griess algebras, and moonshine for every element of the Monster. The hypothesis is a theorem of the AxiomMath library
+that does not yet run on our toolchain; Section~\ref{sec:trust} says exactly what is known about it.
+
 % =====================================================================
 \section{Scope}\label{sec:scope}
 % =====================================================================
@@ -82,7 +126,8 @@ to the general notion is future work.
 Table~\ref{tab:scope} lists the headline results: classical theorems, recent theorems from the literature, and
 new results. Each entry says what is proved and what, if anything, it assumes; the book gives the precise statements,
 conventions and caveats. Every listed declaration depends only on Lean's three standard axioms (\lean{propext},
-\lean{Classical.choice}, \lean{Quot.sound}).
+\lean{Classical.choice}, \lean{Quot.sound}). One entry, the last of the moonshine block, carries an explicit named
+hypothesis, discussed in Section~\ref{sec:trust}.
 
 {\footnotesize
   \setlength{\tabcolsep}{4pt}
@@ -109,7 +154,7 @@ conventions and caveats. Every listed declaration depends only on Lean's three s
     \addlinespace
     \textbf{Moonshine module.} The Frenkel--Lepowsky--Meurman module $V^\natural$, with no hypotheses: a simple VOA
     with $c=24$, $V^\natural_1=0$ and $\dim V^\natural_2=196884$, whose graded dimensions are the coefficients of
-    $j(\tau)-744$. No Monster action is claimed. Source: \cite{FLM,DGM}.
+    $j(\tau)-744$. Source: \cite{FLM,DGM}.
     & \lean{VOA.Moonshine.moonshine}, \lean{VOA.Moonshine.hasSum_JShift}\\
     \addlinespace
     \textbf{Zhu's modular invariance.} For a $C_2$-cofinite rational VOA, the torus one-point functions of the
@@ -158,6 +203,32 @@ conventions and caveats. Every listed declaration depends only on Lean's three s
     \cite{ArakawaKawasetsu}.
     & \lean{VOA.Sl2NonLisse.not_C2Cofinite_simpleSl2QL},
     \lean{VOA.IsSqPrimary.exists_monicMLDEOn_all_analyticBlocks_of_etingofFinite_uncond}\\
+    \midrule
+    \multicolumn{2}{l}{\textbf{Monstrous moonshine}}\\
+    \midrule
+    \textbf{Conway--Norton for every automorphism of $V^\natural$ (Borcherds).} For every $g\in\mathrm{Aut}\,V^\natural$,
+    $T_g$ is the normalised Hauptmodul of a genus-zero group containing some $\Gamma_0(N)$ and commensurable with
+    $SL_2(\Z)$. No hypotheses. Qualitative form: $\Gamma_g$ is not matched with the Conway--Norton table. Source:
+    \cite{ConwayNorton,Borcherds,CumminsGannon}.
+    & \lean{VOA.Moonshine.ConwayNorton.conwayNorton}\\
+    \addlinespace
+    \textbf{Finiteness and rationality.} $\mathrm{Aut}\,V^\natural$ is finite, every automorphism has finite order,
+    and every graded trace is rational. No hypotheses, no group theory.
+    & \lean{VOA.Moonshine.ConwayNorton.M8.finite_autVnat}, \lean{VOA.Moonshine.ConwayNorton.M8.autVnat_isOfFinOrder},
+    \lean{VOA.Moonshine.ConwayNorton.rationalTraces}\\
+    \addlinespace
+    \textbf{The Monster acts on $V^\natural$.} $V^\natural_2\cong\C\otimes\mathrm{SpaceB}$, AxiomMath's rational Griess
+    algebra; every element of $\mathrm{Gmat}=\langle 2^{1+24}.\mathrm{Co}_1,\tau_B\rangle$ lifts to $V^\natural$ and
+    satisfies moonshine; $\mathrm{Aut}\,V^\natural$ is isomorphic to the subgroup of $\mathrm{AutO}$ acting on
+    $V^\natural$. No hypotheses beyond $g\in\mathrm{Gmat}$; Tits' theorem is not used. Source: \cite{FLM,Conway85,AxiomCFSG}.
+    & \lean{VOA.Moonshine.ConwayNorton.conwayNorton_gmat},
+    \lean{VOA.Moonshine.ConwayNorton.nonempty_autVnat_mulEquiv_liftable}\\
+    \addlinespace
+    \textbf{Monstrous moonshine for the Monster, given one named theorem.} Given \lean{GmatEqAutO}
+    ($\mathrm{Gmat}=\mathrm{AutO}$, a theorem of AxiomMath's library on Lean v4.35): an isomorphism
+    $\mathrm{AutO}\simeq\mathrm{Aut}\,V^\natural$ compatible with the Griess algebras, and moonshine for every element
+    of the Monster.
+    & \lean{VOA.Moonshine.ConwayNorton.monstrousMoonshine}\\
     \midrule
     \multicolumn{2}{l}{\textbf{New results: rigidity}}\\
     \midrule
@@ -228,11 +299,27 @@ headline area received an independent \emph{release audit}: a fresh AI reviewer 
 compared the Lean statement with the source paper, traced every definition it depends on,
 listed every explicit hypothesis, and re-printed the axioms. A final read of the book's release edition then brought every chapter into line with the audited wording.
 
+\paragraph{The one named hypothesis.} \lean{GmatEqAutO} is a hypothesis of \lean{monstrousMoonshine}, not an axiom:
+the library still declares no axiom. It is the theorem \lean{CFSG.Blueprint.NativeSporadic.MonsterModel.gmat_eq_griess} of the AxiomMath library
+\cite{AxiomCFSG} after renaming. We compared the ported definitions with that library declaration by declaration: they
+are identical up to renaming, except one that is restated in a definitionally equal form; the comparison is the
+port-fidelity report \texttt{Notes/monster\_aut/CFSG\_PORT\_FIDELITY.md}, which ships with the release. The proof of
+\lean{gmat_eq_griess}, about $15{,}500$ files through the Stroth--Leon--Sims recognition of the Baby Monster, runs on
+Lean v4.35 and not on this library's v4.30. The literature milestones on its path that we inspected are theorems in
+AxiomMath's library, not axioms; we have not re-checked its axiom footprint ourselves. Every other result in
+Table~\ref{tab:scope}, including moonshine for every automorphism of $V^\natural$ and for every element of
+$\mathrm{Gmat}$, is independent of it.
+
+\paragraph{Verification of v1.05.} Every Lean file of v1.0 is byte-identical in v1.05, except four umbrella files
+whose only change is new imports. The new part builds green (\texttt{lake build VOA.Moonshine}, 9{,}504 jobs). The
+axiom audit passes with 5{,}983 reports across 25 probes; the new probe, for monstrous moonshine, covers 25 headline
+declarations. The library contains no \lean{axiom} declaration.
+
 % =====================================================================
 \section{Size and structure}
 % =====================================================================
 
-The released library has 11{,}660 Lean files and 3{,}752{,}244 lines under \texttt{VOA/}.
+The released library has 12{,}051 Lean files and 3{,}843{,}978 lines under \texttt{VOA/}.
 
 \begin{center}\small
   \begin{tabular}{lrrl}
@@ -246,12 +333,12 @@ The released library has 11{,}660 Lean files and 3{,}752{,}244 lines under \text
     \texttt{Examples} & 1{,}181 & 307{,}367 & constructions; rigidity; Arakawa--Dai; graded unitarity\\
     \texttt{AffineGeneral} & 354 & 21{,}641 & affine VOAs for every simple $\g$\\
     \texttt{LatticesAndCodes} & 25 & 8{,}472 & lattices, Golay code, Leech lattice\\
-    \texttt{Moonshine} & 170 & 55{,}246 & $V^\natural$\\
+    \texttt{Moonshine} & 561 & 146{,}923 & $V^\natural$; monstrous moonshine; the Monster's action\\
     \texttt{Huang} & 931 & 183{,}719 & tensor categories, rigidity, Verlinde, congruence\\
     \texttt{Classification} & 1{,}756 & 1{,}627{,}513 & Gannon--Rayhaun $c=1$ classification\\
     \texttt{DeligneAudit} & 6{,}173 & 1{,}241{,}760 & Deligne series\\
     \texttt{Commutative}, \texttt{Filtered}, \texttt{Geometric} & 201 & 45{,}436 & commutative algebra, Li filtration\\
-    umbrella files & 12 & 5{,}354 & \\
+    umbrella files & 12 & 5{,}411 & \\
     \bottomrule
   \end{tabular}
 \end{center}
@@ -261,8 +348,9 @@ A large part of the line count is certificate data. The 167 files larger than 20
 reduction (about 39{,}600 \texttt{decide +kernel} calls), and the book describes them collectively --- what is checked,
 how, and at what size --- while presenting the theorems that consume them individually.
 
-The release edition of the book has 2{,}337 pages, and its brief edition 219 pages; every Lean block quoted in the brief
-(1{,}315) is checked verbatim against the source.
+The release edition of the book has 2{,}786 pages, and its brief edition 257 pages; every Lean block quoted in
+the brief is checked verbatim against the source. Part~VIII of the book, on monstrous moonshine, has seven chapters,
+each refereed twice.
 
 % =====================================================================
 \section{Method}
@@ -285,8 +373,14 @@ examples in the book's verification chapter.
 % =====================================================================
 
 \begin{itemize}
+  \item \textbf{Lean v4.35 (release v1.1).} Moving the library to AxiomMath's toolchain and importing their theorem, so
+    that \lean{GmatEqAutO} is discharged and $\mathrm{Aut}\,V^\natural\cong\Mon$ holds with no hypotheses.
+  \item \textbf{The table-level Conway--Norton statement}, identifying each $\Gamma_g$ with the group in Conway and
+    Norton's table \cite{ConwayNorton}.
+  \item \textbf{Generalized moonshine} (Norton), for the twisted modules of $V^\natural$.
   \item \textbf{Deligne series beyond $A_2$.} Removing the assumptions of the conditional theorems; for $D_4$ the
-    book (Chapter~L27) describes the current state.
+    book (Chapter~L27) describes the current state. Newer Lean files on the Deligne series are held back from v1.05
+    and will be released when classical freeness for the whole series is unconditional.
   \item \textbf{Graded unitarity in the other direction}, from the minimal models to the affine algebra, through
     Adamovi\'c's free-field realization (inverse Drinfeld--Sokolov reduction).
   \item \textbf{Affine $\slthree$}, towards its rigidity.
@@ -397,6 +491,39 @@ grant 681267 (Simons Investigator Award).
   \bibitem{MathieuDCF}
   O.~Mathieu, Formules de caract\`eres pour les alg\`ebres de Kac--Moody g\'en\'erales, \emph{Ast\'erisque}
   \textbf{159--160} (1988).
+
+  \bibitem{ConwayNorton}
+  J.~H.~Conway and S.~P.~Norton, Monstrous moonshine, \emph{Bull.\ London Math.\ Soc.}\ \textbf{11} (1979), 308--339.
+
+  \bibitem{Borcherds}
+  R.~E.~Borcherds, Monstrous moonshine and monstrous Lie superalgebras, \emph{Invent.\ Math.}\ \textbf{109} (1992),
+  405--444.
+
+  \bibitem{CumminsGannon}
+  C.~J.~Cummins and T.~Gannon, Modular equations and the genus zero property of moduli functions, \emph{Invent.\
+  Math.}\ \textbf{129} (1997), 413--443.
+
+  \bibitem{GoddardThorn}
+  P.~Goddard and C.~B.~Thorn, Compatibility of the dual Pomeron with unitarity and the absence of ghosts in the dual
+  resonance model, \emph{Phys.\ Lett.\ B} \textbf{40} (1972), 235--238.
+
+  \bibitem{Griess}
+  R.~L.~Griess Jr., The friendly giant, \emph{Invent.\ Math.}\ \textbf{69} (1982), 1--102.
+
+  \bibitem{Conway85}
+  J.~H.~Conway, A simple construction for the Fischer--Griess monster group, \emph{Invent.\ Math.}\ \textbf{79}
+  (1985), 513--540.
+
+  \bibitem{Tits}
+  J.~Tits, On R.~Griess' ``friendly giant'', \emph{Invent.\ Math.}\ \textbf{78} (1984), 491--499.
+
+  \bibitem{AxiomCFSG}
+  D.~Cureton, V.~Ilin, B.~Mehta, N.~Voss, R.~Cabral, C.~Defant, E.~Gregory, A.~Hill, L.~Hong, Q.~Hu, D.~Jamner,
+  A.~Jiang, T.~Jordan, A.~Kurghinyan, K.~Lau, J.~Laurent, D.~Liang, J.~Limperg, S.~Mahns, B.~Nugent, C.~Olson, K.~Ono,
+  E.~Paul, D.~Rajan, K.~Ram, C.~Ray, H.~C.~Siu, A.~A.~Swaminathan, J.~Thorner, A.~Tsaplin and C.~Wang (AxiomMath),
+  Lean formalization of the classification of finite simple groups, software, 2026,
+  \url{https://github.com/AxiomMath/CFSG}, commit \texttt{69cb972f587a3ecc035e092253167ff2e303c962} (Lean
+  v4.35.0-rc3), Apache License~2.0.
 
   \bibitem{lean4}
   L.~de~Moura and S.~Ullrich, The Lean~4 theorem prover and programming language, in \emph{Automated Deduction ---

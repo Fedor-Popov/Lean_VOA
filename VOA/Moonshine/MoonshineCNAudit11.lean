@@ -1,0 +1,95 @@
+import VOA.Moonshine.MoonshineCNAudit10
+import VOA.Moonshine.MoonshineCNSectorOscillators
+import VOA.Moonshine.MoonshineCNSectorFormComparison
+import VOA.Moonshine.MoonshineCNSectorVirasoroOperators
+import VOA.Moonshine.MoonshineCNSectorVirasoroComparison
+import VOA.Moonshine.MoonshineCNSectorPhysicalTransfer
+import VOA.Moonshine.MoonshineCNRootSpaces
+import VOA.Moonshine.MoonshineCNRootSpaceAction
+import VOA.Moonshine.MoonshineCNRootRadical
+import VOA.Moonshine.MoonshineCNMonsterForm
+import VOA.Moonshine.MoonshineCNMonsterPairing
+import VOA.Moonshine.MoonshineCNMonsterZeroForm
+import VOA.Moonshine.MoonshineCNMonsterRadical
+
+/-! Kernel dependency audit for root spaces and the descended bilinear form.
+Lie invariance remains conditional on the explicitly stated primary adjointness input. -/
+
+open VOA.Moonshine.ConwayNorton VOA.NearVOA
+
+#print axioms lorentzianIsotropicVector
+#print axioms lorentzianIsotropicVector_pairing
+#print axioms hypLorentzianPolynomial_variable
+#print axioms hypLorentzianPolynomial_creation
+#print axioms hypLorentzianPolynomial_oscillator_positive
+#print axioms hypLorentzianPolynomial_oscillator
+#print axioms hypLorentzianPolynomial_constantCoeff
+#print axioms sigmaN_frameOscillator
+#print axioms hypLorentzianPolynomial_form
+#print axioms moonshineMatterSector_form
+#print axioms moonshineMatterSector_form_nondegenerate
+#print axioms hypLorentzianPolynomial_chargedOscillator
+#print axioms lorentzianIsotropicVector_charge
+#print axioms lorentzianSectorVirasoro
+#print axioms lorentzianSectorVirasoro_apply
+#print axioms lorentzianSectorVirasoro_tmul
+#print axioms lorentzianSectorVirasoro_nonnegative_one
+#print axioms lorentzianSectorVirasoro_creation
+#print axioms lorentzianSectorVirasoro_adjoint
+#print axioms hypLorentzianPolynomial_virasoro_nonnegative
+#print axioms hypLorentzianPolynomial_virasoro
+#print axioms moonshineMatterSectorMap_virasoro
+#print axioms moonshineMatterSectorEquiv_virasoro
+#print axioms moonshineMatterSectorMap_injective
+#print axioms grading_eq_virasoroZero_eigenspace
+#print axioms moonshineMatterSector_weight_iff
+#print axioms moonshineMatterSectorRetract
+#print axioms moonshineMatterSectorRetract_map
+#print axioms moonshineMatterSectorRetract_leftInverse
+#print axioms moonshineMatterSectorRetract_virasoro
+#print axioms moonshineMatterSectorMap_spurious
+#print axioms moonshineMatterSectorRetract_spurious
+#print axioms moonshineMatterSector_spurious_iff
+#print axioms moonshineMatterSector_primary_iff
+#print axioms vnatPhysicalRadical_mem_iff
+#print axioms moonshineMatterPhysicalSectorMap
+#print axioms monsterLieSectorProjection
+#print axioms monsterLieSectorProjection_surjective
+#print axioms monsterLieSectorProjection_ker
+#print axioms monsterLieSectorQuotientEquiv
+#print axioms monsterLieSectorQuotientEquiv_mk
+#print axioms monsterLieRootSpaceEquiv
+#print axioms monsterLieZeroMomentumTransport
+#print axioms monsterLieZeroMomentumTransport_coe
+#print axioms monsterLieZeroMomentumEquiv
+#print axioms monsterLieSectorQuotientEquiv_equivariant
+#print axioms monsterLieSectorQuotientEquiv_symm_equivariant
+#print axioms monsterLieRootSpaceEquiv_equivariant
+#print axioms moonshineMatterSector_physical_radical
+#print axioms moonshineMatterForm_spurious_primary
+#print axioms moonshineMatterForm_aut
+#print axioms moonshineMatterReversal_isometry
+#print axioms moonshineMatterReversal_selfAdjoint
+#print axioms moonshineMatterReversal_primary
+#print axioms monsterPhysicalBilinearForm
+#print axioms monsterPhysicalBilinearForm_left_null
+#print axioms monsterPhysicalBilinearForm_right_null
+#print axioms monsterLieBilinearForm
+#print axioms monsterLieBilinearForm_mk
+#print axioms monsterLieBilinearForm_symmetric
+#print axioms monsterLieBilinearForm_aut
+#print axioms monsterLieBilinearForm_momentum_orthogonal
+#print axioms monsterLieBilinearForm_pairing_nondegenerate
+#print axioms monsterLieBilinearForm_invariant_of_primaryAdjoint
+#print axioms moonshineMatterReversal_zeroBasis
+#print axioms moonshineMatterReversal_zeroWeight
+#print axioms moonshineMatterSector_zeroWeight_form
+#print axioms monsterLieZeroQuotientEquiv
+#print axioms monsterLieZeroQuotientEquiv_coe
+#print axioms monsterLieZeroQuotientEquiv_coordinates
+#print axioms monsterLieZeroQuotientEquiv_form
+#print axioms monsterLieBilinearForm_zeroMomentum
+#print axioms monsterLieZeroMomentum_aut_trivial
+#print axioms monsterLieBilinearForm_component
+#print axioms monsterLieBilinearForm_nondegenerate
+#print axioms moonshineMatterPrimary_radical
